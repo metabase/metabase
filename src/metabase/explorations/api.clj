@@ -54,18 +54,6 @@
         (api/write-check :model/Collection new-coll)
         (api/write-check collection/root-collection)))))
 
-(defn- attach-thread-groups [thread]
-  (let [card-names (into {} (keep (fn [{:keys [card_id card]}]
-                                    (when-let [n (:name card)] [card_id n])))
-                         (:metrics thread))]
-    (assoc thread :groups (explorations.groups/auto-groups (:queries thread) card-names))))
-
-(defn- hydrate-exploration [exploration]
-  (-> exploration
-      (t2/hydrate :creator
-                  [:threads [:metrics :card] :dimensions :timelines :queries :documents])
-      (update :threads #(some->> % (mapv attach-thread-groups)))))
-
 (defn- find-dimension-target
   "Look up the MBQL `target` for a dimension by ID inside a metric's snapshotted dimension_mappings."
   [dimension-id dimension-mappings]
@@ -84,6 +72,47 @@
     (if (and ambiguous? (not (str/blank? group-dn)))
       (str group-dn " → " dn)
       dn)))
+
+(defn- attach-thread-groups [thread]
+  (let [card-names (into {} (keep (fn [{:keys [card_id card]}]
+                                    (when-let [n (:name card)] [card_id n])))
+                         (:metrics thread))]
+    (assoc thread :groups (explorations.groups/auto-groups (:queries thread) card-names))))
+
+(defn- attach-query-dimension-labels
+  "Attach `:dimension_name` to each query on `thread`. Each thread dimension is enriched with
+  `:group` looked up from the metric Cards' snapshotted `:dimensions` (the only place group
+  metadata lives), then `exploration-query-dim-label` is applied with ambiguity scoped to the
+  thread's own dimension set."
+  [thread]
+  (let [card-dim-by-id (into {}
+                             (mapcat (fn [{:keys [card]}]
+                                       (map (juxt :id identity) (:dimensions card))))
+                             (:metrics thread))
+        enriched-dims  (mapv (fn [d]
+                               (if-let [group (get-in card-dim-by-id [(:dimension_id d) :group])]
+                                 (assoc d :group group)
+                                 d))
+                             (:dimensions thread))
+        dim-by-id      (into {} (map (juxt :dimension_id identity)) enriched-dims)
+        name-counts    (frequencies (keep :display_name enriched-dims))]
+    (update thread :queries
+            (fn [queries]
+              (some->> queries
+                       (mapv (fn [q]
+                               (let [dim-id     (:dimension_id q)
+                                     dim        (or (get dim-by-id dim-id)
+                                                    {:dimension_id dim-id})
+                                     ambiguous? (> (get name-counts (:display_name dim) 0) 1)]
+                                 (assoc q :dimension_name
+                                        (exploration-query-dim-label dim ambiguous?))))))))))
+
+(defn- hydrate-exploration [exploration]
+  (-> exploration
+      (t2/hydrate :creator
+                  [:threads [:metrics :card] :dimensions :timelines :queries :documents])
+      (update :threads #(some->> % (mapv attach-thread-groups)))
+      (update :threads #(some->> % (mapv attach-query-dimension-labels)))))
 
 (defn- dim-type-isa?
   "True if the dim's snapshot effective_type or semantic_type derives from `parent`. Snapshot
@@ -256,6 +285,7 @@
    [:card_id                          ms/PositiveInt]
    [:segment_id                       {:optional true} [:maybe ms/PositiveInt]]
    [:dimension_id                     [:maybe :string]]
+   [:dimension_name                   {:optional true} :string]
    [:name                             {:optional true} [:maybe :string]]
    [:position                         ms/IntGreaterThanOrEqualToZero]
    [:status                           :string]

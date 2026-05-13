@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -7,6 +8,7 @@ import type { ExplorationMetric } from "metabase/explorations/types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useDispatch } from "metabase/redux";
 import {
+  Accordion,
   ActionIcon,
   Box,
   Button,
@@ -115,100 +117,177 @@ export function NewExplorationData({
     [dimensions],
   );
 
+  const hasMetricsOrDimensions = metrics.length > 0 || dimensions.length > 0;
+  const hasTimelines = timelines.length > 0;
+
+  const handleOpenMetricsModal = useCallback((event?: MouseEvent) => {
+    event?.stopPropagation();
+    setIsAddMetricsModalOpen(true);
+  }, []);
+  const handleOpenTimelinesModal = useCallback((event?: MouseEvent) => {
+    event?.stopPropagation();
+    setIsAddTimelinesModalOpen(true);
+  }, []);
+
+  const handleRemoveMetric = useCallback(
+    (id: number | string) => {
+      const { metrics: nextMetrics, dimensions: nextDimensions } =
+        removeMetricFromSelection(
+          metrics,
+          dimensions,
+          id as ExplorationMetric["id"],
+        );
+      setMetrics(nextMetrics);
+      if (nextDimensions !== dimensions) {
+        setDimensions(nextDimensions);
+      }
+    },
+    [metrics, dimensions, setMetrics, setDimensions],
+  );
+
+  const handleRemoveDimensionGroup = useCallback(
+    (groupId: number | string) => {
+      const group = groupedDimensions.find((g) => g.id === groupId);
+      if (!group) {
+        return;
+      }
+      const dimensionsToRemove = new Set(
+        group.dimensions.map((dimension) => dimension.id),
+      );
+      setDimensions(
+        dimensions.filter((dimension) => !dimensionsToRemove.has(dimension.id)),
+      );
+    },
+    [groupedDimensions, dimensions, setDimensions],
+  );
+
+  const handleRemoveTimeline = useCallback(
+    (id: number | string) => {
+      setTimelines(timelines.filter((timeline) => timeline.id !== id));
+    },
+    [timelines, setTimelines],
+  );
+
   return (
     <>
-      <Stack
-        w="30rem"
-        h="100%"
-        gap={0}
-        bg="background-primary"
-        bd="1px solid border"
-        bdrs="md"
-      >
-        <Box flex={2} mih={0}>
-          <NewExplorationSection
-            title={t`Exploration data`}
-            onOpenModal={() => setIsAddMetricsModalOpen(true)}
-            ariaLabel={t`Add metrics and dimensions`}
-          >
-            {metrics.length > 0 || dimensions.length > 0 ? (
-              <>
-                <Text>{t`Metrics`}</Text>
-                <PillList
-                  items={metrics}
-                  onRemove={(id) => {
-                    const { metrics: nextMetrics, dimensions: nextDimensions } =
-                      removeMetricFromSelection(
-                        metrics,
-                        dimensions,
-                        id as ExplorationMetric["id"],
-                      );
-                    setMetrics(nextMetrics);
-                    if (nextDimensions !== dimensions) {
-                      setDimensions(nextDimensions);
-                    }
-                  }}
-                />
-                <Text>{t`Dimensions`}</Text>
-                <PillList
-                  items={groupedDimensions}
-                  onRemove={(groupId) => {
-                    const group = groupedDimensions.find(
-                      (group) => group.id === groupId,
-                    );
-                    if (!group) {
-                      return;
-                    }
-                    const dimensionsToRemove = new Set(
-                      group.dimensions.map((dimension) => dimension.id),
-                    );
-                    setDimensions(
-                      dimensions.filter(
-                        (dimension) => !dimensionsToRemove.has(dimension.id),
-                      ),
-                    );
-                  }}
-                />
-              </>
-            ) : (
-              <Text py="sm" c="text-secondary">
-                {t`Manually add metrics and dimensions to explore or ask for help from the agent.`}
+      <Stack w="28.75rem" h="100%" gap={0} bg="background-secondary">
+        <SectionHeader
+          title={t`Data`}
+          ariaLabel={t`Add metrics and dimensions`}
+          onAdd={handleOpenMetricsModal}
+        />
+        <Box flex={4} mih="18rem" style={{ overflowY: "auto" }}>
+          {hasMetricsOrDimensions ? (
+            <Accordion
+              multiple
+              defaultValue={["metrics", "dimensions"]}
+              chevronPosition="left"
+              classNames={{
+                root: S.accordionRoot,
+                item: S.accordionItem,
+                control: S.accordionControl,
+                content: S.accordionContent,
+                panel: S.accordionPanel,
+                label: S.accordionLabel,
+                chevron: S.accordionChevron,
+              }}
+            >
+              <Accordion.Item value="metrics">
+                <Accordion.Control>{t`Metrics`}</Accordion.Control>
+                <Accordion.Panel>
+                  {metrics.length > 0 ? (
+                    <PillList items={metrics} onRemove={handleRemoveMetric} />
+                  ) : (
+                    <Text size="sm" c="text-secondary">
+                      {t`No metrics yet. Click + to add some.`}
+                    </Text>
+                  )}
+                </Accordion.Panel>
+              </Accordion.Item>
+              <Accordion.Item value="dimensions">
+                <Accordion.Control>{t`Dimensions`}</Accordion.Control>
+                <Accordion.Panel>
+                  {groupedDimensions.length > 0 ? (
+                    <PillList
+                      items={groupedDimensions}
+                      onRemove={handleRemoveDimensionGroup}
+                    />
+                  ) : (
+                    <Text size="sm" c="text-secondary">
+                      {t`No dimensions yet. Click + to add some.`}
+                    </Text>
+                  )}
+                </Accordion.Panel>
+              </Accordion.Item>
+            </Accordion>
+          ) : (
+            <Box px="xl" pb="md">
+              <Text size="md" c="text-secondary" lh="1.25rem" w="18rem">
+                {t`Add metrics and dimensions you'd like to see specifically or have the agent help you assemble.`}
               </Text>
-            )}
-          </NewExplorationSection>
+            </Box>
+          )}
         </Box>
-        <Box flex={1} mih={0}>
-          <NewExplorationSection
-            title={t`Timelines`}
-            onOpenModal={() => setIsAddTimelinesModalOpen(true)}
-            ariaLabel={t`Add timelines`}
-          >
-            {timelines.length > 0 ? (
-              <PillList
-                items={timelines}
-                onRemove={(id) =>
-                  setTimelines(
-                    timelines.filter((timeline) => timeline.id !== id),
-                  )
-                }
+
+        <Box flex={1} mih={0} style={{ overflowY: "auto" }}>
+          {hasTimelines ? (
+            <Accordion
+              defaultValue="timelines"
+              chevronPosition="left"
+              classNames={{
+                root: S.accordionRoot,
+                item: S.accordionItem,
+                control: S.accordionControl,
+                content: S.accordionContent,
+                panel: S.accordionPanel,
+                label: S.accordionLabel,
+                chevron: S.accordionChevron,
+              }}
+            >
+              <Accordion.Item value="timelines">
+                <Accordion.Control>
+                  <Group justify="space-between" wrap="nowrap" w="100%">
+                    <Text fw="bold">{t`Timelines`}</Text>
+                    <ActionIcon
+                      component="div"
+                      role="button"
+                      aria-label={t`Add timelines`}
+                      onClick={handleOpenTimelinesModal}
+                    >
+                      <Icon name="add" c="icon-primary" />
+                    </ActionIcon>
+                  </Group>
+                </Accordion.Control>
+                <Accordion.Panel>
+                  <PillList items={timelines} onRemove={handleRemoveTimeline} />
+                </Accordion.Panel>
+              </Accordion.Item>
+            </Accordion>
+          ) : (
+            <>
+              <SectionHeader
+                title={t`Timelines`}
+                ariaLabel={t`Add timelines`}
+                onAdd={handleOpenTimelinesModal}
               />
-            ) : (
-              <Text py="sm" c="text-secondary">
-                {t`Add timelines to help look for correlations in your data.`}
-              </Text>
-            )}
-          </NewExplorationSection>
+              <Box px="xl" pb="md" lh="1.25rem">
+                <Text size="md" c="text-secondary" lh="1.25rem" w="18rem">
+                  {t`Add timelines to see if events shed light on data movement.`}
+                </Text>
+              </Box>
+            </>
+          )}
         </Box>
         <Button
-          flex={"none"}
-          mx="lg"
-          my="md"
+          flex="none"
+          mx="xl"
+          my="lg"
           size="sm"
           variant="filled"
           loading={isStarting}
           disabled={!canStart || isStarting}
           onClick={handleStart}
-        >{t`Start exploration`}</Button>
+        >{t`Begin research`}</Button>
       </Stack>
       <AddMetricsModal
         opened={isAddMetricsModalOpen}
@@ -230,31 +309,26 @@ export function NewExplorationData({
   );
 }
 
-interface NewExplorationSectionProps {
+interface SectionHeaderProps {
   title: string;
   ariaLabel: string;
-  onOpenModal: () => void;
-  children: React.ReactNode;
+  onAdd: () => void;
 }
 
-function NewExplorationSection({
-  title,
-  ariaLabel,
-  onOpenModal,
-  children,
-}: NewExplorationSectionProps) {
+function SectionHeader({ title, ariaLabel, onAdd }: SectionHeaderProps) {
   return (
-    <Stack h="100%" px="md" py="sm" className={S.section}>
-      <Group justify="space-between" align="center">
-        <Text size="lg" fw="bold">
-          {title}
-        </Text>
-        <ActionIcon aria-label={ariaLabel} onClick={onOpenModal}>
-          <Icon name="add" c="icon-primary" />
-        </ActionIcon>
-      </Group>
-      {children}
-    </Stack>
+    <Group justify="space-between" align="center" px="xl" py="md">
+      <Text fw="bold">{title}</Text>
+      <ActionIcon
+        className={S.sectionAddIcon}
+        bg="background-primary"
+        bd="1px solid border"
+        aria-label={ariaLabel}
+        onClick={onAdd}
+      >
+        <Icon name="add" size={12} c="icon-primary" />
+      </ActionIcon>
+    </Group>
   );
 }
 
@@ -282,7 +356,7 @@ function PillList({ items, onRemove }: PillListProps) {
             withRemoveButton
             onRemove={() => onRemove(item.id)}
             bdrs="xl"
-            bg="background-secondary"
+            bg="background-primary"
             fw="normal"
             px="sm"
             py="xs"

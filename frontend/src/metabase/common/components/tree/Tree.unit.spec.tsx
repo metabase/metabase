@@ -21,6 +21,21 @@ const data = [
   },
 ];
 
+const nestedData = [
+  {
+    id: "A",
+    name: "A",
+    icon: "group" as const,
+    children: [{ id: "A1", name: "A1", icon: "group" as const }],
+  },
+  {
+    id: "B",
+    name: "B",
+    icon: "group" as const,
+    children: [{ id: "B1", name: "B1", icon: "group" as const }],
+  },
+];
+
 describe("Tree", () => {
   it("should render collapsed items when selectedId is not specified", () => {
     render(<Tree data={data} onSelect={jest.fn()} />);
@@ -57,5 +72,26 @@ describe("Tree", () => {
 
     fireEvent.click(screen.getAllByRole("menuitem")[0]);
     expect(onSelectMock).toHaveBeenCalledWith(data[0]);
+  });
+
+  it("expands ancestors when selecting a child whose parent was collapsed", () => {
+    const { rerender } = render(
+      <Tree data={nestedData} onSelect={jest.fn()} selectedId="A1" />,
+    );
+
+    expect(screen.getByText("A1")).toBeInTheDocument();
+
+    // Collapse A by clicking its expand button
+    const expandButtons = screen.getAllByRole("button");
+    fireEvent.click(expandButtons[0]);
+    expect(screen.queryByText("A1")).not.toBeInTheDocument();
+
+    // Change selection to B1
+    rerender(<Tree data={nestedData} onSelect={jest.fn()} selectedId="B1" />);
+    expect(screen.getByText("B1")).toBeInTheDocument();
+
+    // Change selection back to A1 — A should re-expand
+    rerender(<Tree data={nestedData} onSelect={jest.fn()} selectedId="A1" />);
+    expect(screen.getByText("A1")).toBeInTheDocument();
   });
 });

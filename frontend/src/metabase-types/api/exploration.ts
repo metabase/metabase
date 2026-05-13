@@ -57,6 +57,9 @@ export interface ExplorationThreadMetric {
   card_id: CardId;
   dimension_mappings: DimensionMapping[] | null;
   position: number;
+  card?: {
+    name: string;
+  };
 }
 
 export interface ExplorationThreadDimension {
@@ -98,6 +101,7 @@ export interface ExplorationQuery {
   exploration_thread_id: ExplorationThreadId;
   card_id: CardId;
   dimension_id: string;
+  dimension_name: string;
   name: string | null;
   position: number;
   status: ExplorationQueryStatus;
@@ -192,6 +196,7 @@ export interface ExplorationThread {
   timelines?: ExplorationThreadTimeline[];
   queries?: ExplorationQuery[];
   documents?: ExplorationDocument[];
+  auto_insights_document_id?: DocumentId | null;
   groups?: ExplorationQueryGroup[] | null;
 }
 

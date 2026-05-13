@@ -3,13 +3,28 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
-import type { MetricDimension } from "metabase-types/api";
+import type { MetricDimension, Timeline } from "metabase-types/api";
 import {
   createMockMetric,
   createMockMetricDimension,
 } from "metabase-types/api/mocks/metric";
+import { createMockTimeline } from "metabase-types/api/mocks/timeline";
 
 import { NewExplorationData } from "./NewExplorationData";
+
+// `AddMetricsModal` and `AddTimelinesModal` pull in heavy
+// dependencies (virtual lists, metabase-lib metadata). We don't
+// need to render them in these tests; stubbing keeps things fast
+// and lets us assert WHICH modal was opened by inspecting test-id
+// presence/visibility props.
+jest.mock("./AddMetricsModal", () => ({
+  AddMetricsModal: ({ opened }: { opened: boolean }) =>
+    opened ? <div data-testid="add-metrics-modal" /> : null,
+}));
+jest.mock("./AddTimelinesModal", () => ({
+  AddTimelinesModal: ({ opened }: { opened: boolean }) =>
+    opened ? <div data-testid="add-timelines-modal" /> : null,
+}));
 
 jest.mock("metabase/metabot/hooks", () => ({
   ...jest.requireActual("metabase/metabot/hooks"),
@@ -45,9 +60,11 @@ const plan = createMockMetricDimension({
 function setup({
   metrics = [],
   dimensions = [],
+  timelines = [],
 }: {
   metrics?: ExplorationMetric[];
   dimensions?: MetricDimension[];
+  timelines?: Timeline[];
 } = {}) {
   jest.mocked(useMetabotAgent).mockReturnValue({
     messages: [],
@@ -63,7 +80,7 @@ function setup({
       setMetrics={setMetrics}
       dimensions={dimensions}
       setDimensions={setDimensions}
-      timelines={[]}
+      timelines={timelines}
       setTimelines={setTimelines}
       name={null}
     />,
@@ -159,6 +176,140 @@ describe("NewExplorationData", () => {
 
       expect(setMetrics).toHaveBeenCalledWith([revenueMetric]);
       expect(setDimensions).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("empty state (no metrics, dimensions, or timelines)", () => {
+    it("renders the two top-level section headers, descriptions, and a disabled Begin research button", () => {
+      setup();
+
+      // Two top-level section headers ("Data" + "Timelines"),
+      // each with a + button and a description paragraph below.
+      // The CTA is disabled (no metrics + dimensions selected).
+      expect(screen.getByText("Data")).toBeInTheDocument();
+      expect(screen.getByText("Timelines")).toBeInTheDocument();
+      expect(
+        screen.getByText(/Add metrics and dimensions you'd like to see/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/Add timelines to see if events shed light/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Begin research" }),
+      ).toBeDisabled();
+      // No Metrics / Dimensions sub-headers — those only appear
+      // inside the sub-accordion that lives below "Data" in the
+      // filled state.
+      expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
+      expect(screen.queryByText("Dimensions")).not.toBeInTheDocument();
+    });
+
+    it("opens the AddMetricsModal when the Data add icon is clicked", async () => {
+      setup();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Add metrics and dimensions" }),
+      );
+
+      expect(screen.getByTestId("add-metrics-modal")).toBeInTheDocument();
+    });
+
+    it("opens the AddTimelinesModal when the Timelines add icon is clicked", async () => {
+      setup();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Add timelines" }),
+      );
+
+      expect(screen.getByTestId("add-timelines-modal")).toBeInTheDocument();
+    });
+  });
+
+  describe("filled state", () => {
+    const revenueMetric = createMockMetric({
+      id: 1,
+      name: "Revenue",
+      dimension_ids: [createdAtMonth.id],
+    }) as ExplorationMetric;
+
+    it("renders a Data header + Metrics/Dimensions sub-accordion when a metric is added", () => {
+      setup({ metrics: [revenueMetric], dimensions: [createdAtMonth] });
+
+      // Top-level "Data" header still rendered (non-collapsible).
+      expect(screen.getByText("Data")).toBeInTheDocument();
+      // Sub-accordion controls.
+      expect(screen.getByText("Metrics")).toBeInTheDocument();
+      expect(screen.getByText("Dimensions")).toBeInTheDocument();
+      // Pills inside the expanded sub-panels — proves both panels
+      // start expanded.
+      expect(screen.getByText("Revenue")).toBeInTheDocument();
+      expect(screen.getByText("Orders - Created At")).toBeInTheDocument();
+      // The empty-state description is gone.
+      expect(
+        screen.queryByText(/Add metrics and dimensions you'd like to see/),
+      ).not.toBeInTheDocument();
+    });
+
+    it("keeps the Timelines section static when only metrics/dimensions are added", () => {
+      setup({ metrics: [revenueMetric], dimensions: [createdAtMonth] });
+
+      // Timelines header still present, but rendered as a static
+      // section with its empty-state description — it doesn't get
+      // promoted to an accordion item until at least one timeline
+      // exists.
+      expect(screen.getByText("Timelines")).toBeInTheDocument();
+      expect(
+        screen.getByText(/Add timelines to see if events shed light/),
+      ).toBeInTheDocument();
+    });
+
+    it("promotes the Timelines section into a collapsible accordion once a timeline is added", () => {
+      const timeline = createMockTimeline({ id: 99, name: "Releases" });
+      setup({ timelines: [timeline] });
+
+      // Data section stays in its empty shape (static header +
+      // description), since no metrics/dimensions exist yet.
+      expect(screen.getByText("Data")).toBeInTheDocument();
+      expect(
+        screen.getByText(/Add metrics and dimensions you'd like to see/),
+      ).toBeInTheDocument();
+      // Timelines is now a collapsible accordion item — its empty
+      // intro paragraph is gone and the timeline pill is visible.
+      expect(
+        screen.queryByText(/Add timelines to see if events shed light/),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("Timelines")).toBeInTheDocument();
+      expect(screen.getByText("Releases")).toBeInTheDocument();
+    });
+
+    it("clicking the Data + icon opens the AddMetricsModal", async () => {
+      setup({ metrics: [revenueMetric], dimensions: [createdAtMonth] });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Add metrics and dimensions" }),
+      );
+
+      expect(screen.getByTestId("add-metrics-modal")).toBeInTheDocument();
+      // Sub-accordion content stays visible — opening the modal
+      // doesn't collapse the sub-panels.
+      expect(screen.getByText("Revenue")).toBeInTheDocument();
+    });
+
+    it("clicking the Timelines + icon opens the AddTimelinesModal without toggling the panel", async () => {
+      const timeline = createMockTimeline({ id: 99, name: "Releases" });
+      setup({
+        metrics: [revenueMetric],
+        dimensions: [createdAtMonth],
+        timelines: [timeline],
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Add timelines" }),
+      );
+
+      expect(screen.getByTestId("add-timelines-modal")).toBeInTheDocument();
+      // Timelines panel still expanded — the pill is visible.
+      expect(screen.getByText("Releases")).toBeInTheDocument();
     });
   });
 });

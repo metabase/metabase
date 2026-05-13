@@ -473,6 +473,64 @@
         (is (every? #(= "Revenue by Created At" (:name %)) queries)
             "falls back to plain display_name when no :group is available")))))
 
+(deftest exploration-get-attaches-dimension-name-test
+  (testing "hydrate-exploration assoc's :dimension_name onto each query using the dim's display_name"
+    (mt/with-temp [:model/User u {:email "dim-name@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [body {:name "dim-name"
+                  :metrics    [{:card_id (:id metric)
+                                :dimension_mappings
+                                [{:dimension_id "country" :table_id 1 :target ["field" {} 1]}
+                                 {:dimension_id "no-name" :table_id 1 :target ["field" {} 2]}]}]
+                  :dimensions [{:dimension_id "country" :display_name "Country"}
+                               {:dimension_id "no-name"}]}
+            by-dim (->> (mt/user-http-request u :post 200 "exploration" body)
+                        :threads first :queries
+                        (into {} (map (juxt :dimension_id :dimension_name))))]
+        (is (= "Country" (get by-dim "country"))
+            "ships the dim's display_name as :dimension_name when unambiguous")
+        (is (= "no-name" (get by-dim "no-name"))
+            "falls back to dimension_id when display_name is missing")))))
+
+(deftest exploration-get-dimension-name-disambiguates-test
+  (testing "hydrate-exploration prefixes :dimension_name with the dim's group when two dims share a display_name"
+    (mt/with-temp
+      [:model/User u {:email "dim-name-ambig@example.com"}
+       :model/Card metric (assoc (valid-metric-card (:id u))
+                                 :dimensions
+                                 [{:id "users-created"  :name "CREATED_AT" :display_name "Created At"
+                                   :group {:id "g-users"  :type "main"       :display_name "Users"}}
+                                  {:id "orders-created" :name "CREATED_AT" :display_name "Created At"
+                                   :group {:id "g-orders" :type "connection" :display_name "Orders"}}
+                                  {:id "users-country"  :name "COUNTRY"    :display_name "Country"
+                                   :group {:id "g-users"  :type "main"       :display_name "Users"}}])]
+      (testing "shared display_name → both :dimension_names carry the group prefix"
+        (let [body   {:name "ambig"
+                      :metrics    [{:card_id (:id metric)
+                                    :dimension_mappings
+                                    [{:dimension_id "users-created"  :table_id 1 :target ["field" {} 1]}
+                                     {:dimension_id "orders-created" :table_id 1 :target ["field" {} 2]}]}]
+                      :dimensions [{:dimension_id "users-created"  :display_name "Created At"}
+                                   {:dimension_id "orders-created" :display_name "Created At"}]}
+              by-dim (->> (mt/user-http-request u :post 200 "exploration" body)
+                          :threads first :queries
+                          (into {} (map (juxt :dimension_id :dimension_name))))]
+          (is (= "Users → Created At"  (get by-dim "users-created")))
+          (is (= "Orders → Created At" (get by-dim "orders-created")))))
+      (testing "distinct display_names → no qualification"
+        (let [body   {:name "no-ambig"
+                      :metrics    [{:card_id (:id metric)
+                                    :dimension_mappings
+                                    [{:dimension_id "users-created" :table_id 1 :target ["field" {} 1]}
+                                     {:dimension_id "users-country" :table_id 1 :target ["field" {} 3]}]}]
+                      :dimensions [{:dimension_id "users-created" :display_name "Created At"}
+                                   {:dimension_id "users-country" :display_name "Country"}]}
+              by-dim (->> (mt/user-http-request u :post 200 "exploration" body)
+                          :threads first :queries
+                          (into {} (map (juxt :dimension_id :dimension_name))))]
+          (is (= "Created At" (get by-dim "users-created")))
+          (is (= "Country"    (get by-dim "users-country"))))))))
+
 (deftest exploration-list-queries-endpoint-test
   (testing "GET /:id/queries returns lightweight summaries without dataset_query"
     (mt/with-temp [:model/User u {:email "list@example.com"}

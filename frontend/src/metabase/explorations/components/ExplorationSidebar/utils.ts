@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import { AUTO_INSIGHTS_DOCUMENT_NAME } from "metabase/explorations/constants";
 import type {
   DocumentId,
   Exploration,
@@ -27,12 +26,14 @@ export interface ExplorationTreeQueryGroup {
   query_ids: ExplorationQueryId[];
   status: ExplorationQueryStatus;
   interestingness_score: number | null;
+  parent_id: ExplorationQueryGroupId | null;
 }
 
 export interface ExplorationTreeDocument {
   type: "document";
   id: DocumentId;
   status: ExplorationQueryStatus;
+  parent_id: string;
 }
 
 export type ExplorationTreeItem =
@@ -128,6 +129,7 @@ function getExplorationQueryTree(
           status: getExplorationQueryGroupStatus(groupQueries),
           interestingness_score:
             getExplorationQueryGroupInterestingness(groupQueries),
+          parent_id: group.parent_group_id,
         },
       });
     }
@@ -140,7 +142,20 @@ function getExplorationDocumentTree(
   exploration: Exploration,
 ): ITreeNodeItem<ExplorationTreeDocument>[] {
   return (exploration.threads ?? []).flatMap((thread) => {
-    return (thread.documents ?? []).map((document) => {
+    const autoInsightsId = thread.auto_insights_document_id;
+    // sort the documents so the auto insights document is first within each thread
+    const documents = [...(thread.documents ?? [])].sort((a, b) => {
+      if (autoInsightsId == null) {
+        return 0;
+      }
+      const aIsAuto = a.id === autoInsightsId;
+      const bIsAuto = b.id === autoInsightsId;
+      if (aIsAuto === bIsAuto) {
+        return 0;
+      }
+      return aIsAuto ? -1 : 1;
+    });
+    return documents.map((document) => {
       return {
         id: document.id,
         name: document.name,
@@ -149,11 +164,12 @@ function getExplorationDocumentTree(
           type: "document",
           id: document.id,
           status:
-            document.name === AUTO_INSIGHTS_DOCUMENT_NAME &&
+            document.id === thread.auto_insights_document_id &&
             thread.started_at != null &&
             thread.completed_at == null
               ? "running"
               : "done",
+          parent_id: "documents",
         },
       };
     });

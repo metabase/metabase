@@ -19,7 +19,7 @@ export function ExplorationChartSkeleton({
   return (
     <>
       <ExplorationVisualizationHeader
-        name={name}
+        name={name ?? ""}
         explorationQuery={explorationQuery}
       />
 

@@ -14,11 +14,9 @@ import { Box, Group } from "metabase/ui";
 import type {
   DocumentId,
   Exploration,
-  ExplorationDocument,
   ExplorationQuery,
   ExplorationQueryGroup,
   ExplorationQueryGroupId,
-  ExplorationQueryId,
   ExplorationThread,
   Timeline,
   TimelineEvent,
@@ -26,17 +24,16 @@ import type {
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
-import { ExplorationDocument as ExplorationDocumentComponent } from "../components/ExplorationDocument";
-import { ExplorationSidebar } from "../components/ExplorationSidebar";
 import {
-  ExplorationGroupVisualization,
-  ExplorationVisualization,
-} from "../components/ExplorationVisualization";
+  ExplorationDocument as ExplorationDocumentComponent,
+  type ExplorationDocumentWithIsAutoInsights,
+} from "../components/ExplorationDocument";
+import { ExplorationSidebar } from "../components/ExplorationSidebar";
+import { ExplorationGroupVisualization } from "../components/ExplorationVisualization";
 import {
   getInterestingTimelineIds,
   getMostInterestingTimelineId,
 } from "../components/ExplorationVisualization/utils";
-import { AUTO_INSIGHTS_DOCUMENT_NAME } from "../constants";
 
 const QUERY_POLL_INTERVAL_MS = 2000;
 
@@ -50,7 +47,7 @@ interface ExplorationPageQuery {
 interface ExplorationPageProps {
   params: {
     id: string;
-    entityType?: "query" | "document" | "group";
+    entityType?: "document" | "group";
     entityId?: string;
     childTargetId?: string;
   };
@@ -79,55 +76,19 @@ function hasUnsettledQueries(exploration: Exploration | undefined): boolean {
   );
 }
 
-/**
- * Pick the first entity the sidebar would render so the auto-selection
- * always lands on a row that's actually visible. The sidebar lays out
- * by group `position` (not by raw query interestingness), and a `page`
- * group exposes only the group itself — its constituent queries don't
- * appear as standalone rows. Auto-selecting the first query overall by
- * interestingness can therefore land on a query that has no sidebar
- * row, leaving the highlight + scroll anchor with nothing to follow.
- *
- * Walk threads in order; for each thread walk its position-sorted
- * groups. Return the group itself for `page` groups, or its first
- * `query_ids` entry otherwise. Fall back to the first ungrouped query
- * (defensive — every BE-emitted query is grouped today).
- */
 function pickInitialSidebarEntity(
   threads: ExplorationThread[] | undefined,
 ): SelectedEntityId | null {
   if (!threads) {
     return null;
   }
-  for (const thread of threads) {
-    const groups = (thread.groups ?? [])
-      .slice()
-      .sort((a, b) => a.position - b.position);
-    for (const group of groups) {
-      if (group.display_type === "page") {
-        return { type: "group", id: group.id };
-      }
-      const queryId = group.query_ids[0];
-      if (queryId != null) {
-        return { type: "query", id: queryId };
-      }
-    }
-    const groupedIds = new Set(
-      (thread.groups ?? []).flatMap((g) => g.query_ids),
-    );
-    const firstUngrouped = (thread.queries ?? []).find(
-      (q) => !groupedIds.has(q.id),
-    );
-    if (firstUngrouped) {
-      return { type: "query", id: firstUngrouped.id };
-    }
+  const firstGroupWithQueries = threads[0]?.groups?.find(
+    (g) => g.query_ids.length > 0,
+  );
+  if (firstGroupWithQueries) {
+    return { type: "group", id: firstGroupWithQueries.id };
   }
   return null;
-}
-
-interface SelectedQueryId {
-  type: "query";
-  id: ExplorationQueryId;
 }
 
 interface SelectedDocumentId {
@@ -140,10 +101,7 @@ interface SelectedGroupId {
   id: ExplorationQueryGroupId;
 }
 
-export type SelectedEntityId =
-  | SelectedQueryId
-  | SelectedDocumentId
-  | SelectedGroupId;
+export type SelectedEntityId = SelectedDocumentId | SelectedGroupId;
 
 export function ExplorationPage({
   params,
@@ -264,7 +222,7 @@ export function ExplorationPage({
         continue;
       }
       const autoDoc = thread.documents?.find(
-        (d) => d.name === AUTO_INSIGHTS_DOCUMENT_NAME,
+        (d) => d.id === thread.auto_insights_document_id,
       );
       if (!autoDoc) {
         continue;
@@ -286,45 +244,6 @@ export function ExplorationPage({
       });
     }
   }, [exploration, dispatch, selectedEntityId, sendToast, setSelectedEntityId]);
-
-  const queryIdToQueryAndThread: Map<
-    ExplorationQueryId,
-    { query: ExplorationQuery; thread: ExplorationThread }
-  > = useMemo(() => {
-    return new Map(
-      exploration?.threads?.flatMap(
-        (thread) =>
-          thread.queries?.map((query) => [query.id, { query, thread }]) ?? [],
-      ) ?? [],
-    );
-  }, [exploration]);
-
-  const { query: selectedQuery, thread: selectedThread } = useMemo<{
-    query?: ExplorationQuery;
-    thread?: ExplorationThread;
-  }>(
-    () =>
-      selectedEntityId?.type === "query"
-        ? (queryIdToQueryAndThread.get(selectedEntityId.id) ?? {})
-        : {},
-    [selectedEntityId, queryIdToQueryAndThread],
-  );
-
-  const documentIdToDocument: Map<DocumentId, ExplorationDocument> =
-    useMemo(() => {
-      return new Map(
-        exploration?.threads?.flatMap(
-          (thread) =>
-            thread.documents?.map((document) => [document.id, document]) ?? [],
-        ) ?? [],
-      );
-    }, [exploration]);
-
-  const selectedDocument = useMemo(() => {
-    return selectedEntityId?.type === "document"
-      ? documentIdToDocument.get(selectedEntityId.id)
-      : undefined;
-  }, [selectedEntityId, documentIdToDocument]);
 
   const groupIdToGroupAndQueries: Map<
     ExplorationQueryGroupId,
@@ -360,32 +279,20 @@ export function ExplorationPage({
       : undefined;
   }, [selectedEntityId, groupIdToGroupAndQueries]);
 
-  // For a selected group, treat the group's thread as the "selected thread"
-  // so timeline plumbing (timeline dropdown, per-thread selection memory)
-  // continues to work uniformly.
-  const effectiveSelectedThread = selectedThread ?? selectedGroup?.thread;
-
   const availableTimelines: Timeline[] = useMemo(() => {
     return (
-      effectiveSelectedThread?.timelines
+      selectedGroup?.thread?.timelines
         ?.map((timeline) => allTimelinesById.get(timeline.timeline_id))
         .filter((timeline) => timeline !== undefined) ?? []
     );
-  }, [effectiveSelectedThread, allTimelinesById]);
+  }, [selectedGroup, allTimelinesById]);
 
-  // Queries belonging to the currently-selected entity. Drives both the
-  // marker (which timelines are interesting) and the auto-default (which
-  // timeline to pre-select when the user hasn't picked one for this
-  // thread yet). Group views aggregate across all of the group's queries.
-  const entityQueries: ExplorationQuery[] = useMemo(() => {
-    if (selectedQuery) {
-      return [selectedQuery];
-    }
+  const selectedQueries: ExplorationQuery[] = useMemo(() => {
     if (selectedGroup) {
       return selectedGroup.queries;
     }
     return [];
-  }, [selectedQuery, selectedGroup]);
+  }, [selectedGroup]);
 
   const availableTimelineIds: ReadonlySet<TimelineId> = useMemo(
     () => new Set(availableTimelines.map((t) => t.id)),
@@ -393,12 +300,12 @@ export function ExplorationPage({
   );
 
   const interestingTimelineIds: ReadonlySet<TimelineId> = useMemo(
-    () => getInterestingTimelineIds(entityQueries),
-    [entityQueries],
+    () => getInterestingTimelineIds(selectedQueries),
+    [selectedQueries],
   );
 
   const selectedTimelineId: TimelineId | null = useMemo(() => {
-    if (!effectiveSelectedThread) {
+    if (!selectedGroup) {
       return null;
     }
     const param = location.query?.[TIMELINE_QUERY_PARAM];
@@ -411,13 +318,8 @@ export function ExplorationPage({
         return num;
       }
     }
-    return getMostInterestingTimelineId(entityQueries, availableTimelineIds);
-  }, [
-    effectiveSelectedThread,
-    location.query,
-    entityQueries,
-    availableTimelineIds,
-  ]);
+    return getMostInterestingTimelineId(selectedQueries, availableTimelineIds);
+  }, [selectedGroup, location.query, selectedQueries, availableTimelineIds]);
 
   const timelineEvents: TimelineEvent[] = useMemo(() => {
     if (selectedTimelineId == null) {
@@ -448,6 +350,29 @@ export function ExplorationPage({
     [dispatch, location.pathname, location.search],
   );
 
+  const documentIdToDocument: Map<
+    DocumentId,
+    ExplorationDocumentWithIsAutoInsights
+  > = useMemo(() => {
+    return new Map(
+      (exploration?.threads ?? []).flatMap((thread) =>
+        (thread.documents ?? []).map((document) => [
+          document.id,
+          {
+            ...document,
+            isAutoInsights: document.id === thread.auto_insights_document_id,
+          },
+        ]),
+      ),
+    );
+  }, [exploration]);
+
+  const selectedDocument = useMemo(() => {
+    return selectedEntityId?.type === "document"
+      ? documentIdToDocument.get(selectedEntityId.id)
+      : undefined;
+  }, [selectedEntityId, documentIdToDocument]);
+
   const isCommentsSidebarOpen = Boolean(children);
 
   if (isLoading || error) {
@@ -474,17 +399,6 @@ export function ExplorationPage({
         selectedEntityId={selectedEntityId}
         setSelectedEntityId={setSelectedEntityId}
       />
-      {selectedThread && selectedQuery && (
-        <ExplorationVisualization
-          explorationQuery={selectedQuery}
-          explorationThread={selectedThread}
-          availableTimelines={availableTimelines}
-          selectedTimelineId={selectedTimelineId}
-          onSelectTimelineId={handleSelectTimelineId}
-          timelineEvents={timelineEvents}
-          interestingTimelineIds={interestingTimelineIds}
-        />
-      )}
       {selectedGroup && (
         <ExplorationGroupVisualization
           // Key on group id so the component remounts when the user
@@ -501,6 +415,7 @@ export function ExplorationPage({
           onSelectTimelineId={handleSelectTimelineId}
           timelineEvents={timelineEvents}
           interestingTimelineIds={interestingTimelineIds}
+          exploration={exploration}
         />
       )}
       {selectedDocument && (

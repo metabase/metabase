@@ -19,13 +19,14 @@ import type {
   MetabotDebugToolCallMessage,
 } from "metabase/metabot/state";
 import { useDispatch } from "metabase/redux";
-import { Box, Stack } from "metabase/ui";
+import { Center, Flex, Stack } from "metabase/ui";
 import type {
   GetExplorationDataResponse,
   MetricDimension,
 } from "metabase-types/api";
 
 import S from "./NewExplorationChat.module.css";
+import { ResearchModeIntro } from "./ResearchModeIntro";
 
 export const EXPLORATIONS_AGENT_ID = "explorations";
 
@@ -168,10 +169,12 @@ export function NewExplorationChat({
     handleSetExplorationNameToolCallMessages,
   ]);
 
+  const hasMessages = messages.length > 0;
+
   return (
-    <>
-      {messages.length > 0 && (
-        <Stack flex={1} mih={0} gap={0} px="md" className={S.messagesContainer}>
+    <Stack flex={1} mih={0} gap="md">
+      {hasMessages ? (
+        <Stack flex={1} mih={0} gap={0} className={S.messagesContainer}>
           <Messages
             messages={messages}
             errorMessages={errorMessages}
@@ -181,17 +184,29 @@ export function NewExplorationChat({
           />
           {isDoingScience && <MetabotThinking toolCalls={activeToolCalls} />}
         </Stack>
+      ) : (
+        <Center flex={1} mih={0}>
+          <ResearchModeIntro />
+        </Center>
       )}
-      <Box bg="background-primary" bd="1px solid border" bdrs="md" pr="md">
+      <Flex
+        bg="background-primary"
+        bd="1px solid border"
+        bdrs="md"
+        m="lg"
+        mih="8rem"
+        flex="none"
+      >
         <MetabotChatEditor
           value={prompt}
           onChange={setPrompt}
           onSubmit={handleSubmit}
           onStop={() => {}}
+          placeholder={t`Ex. What recent events might be impacting our signups?`}
           suggestionConfig={{ suggestionModels: ["metric", "measure"] }}
         />
-      </Box>
-    </>
+      </Flex>
+    </Stack>
   );
 }
 

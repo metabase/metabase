@@ -107,6 +107,7 @@ function makeQuery(
     exploration_thread_id: 1,
     card_id: 1,
     dimension_id: "dim-1",
+    dimension_name: "Dim 1",
     position: 0,
     error_message: null,
     started_at: null,

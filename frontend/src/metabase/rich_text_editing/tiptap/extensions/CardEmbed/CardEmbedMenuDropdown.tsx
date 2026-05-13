@@ -81,7 +81,7 @@ export const CardEmbedMenuDropdown = ({
 
   return (
     <>
-      {!isWithinIframe() && canWrite && (
+      {!isWithinIframe() && (
         <Menu.Item
           leftSection={<Icon name="add_comment" size={14} />}
           component={ForwardRefLink}

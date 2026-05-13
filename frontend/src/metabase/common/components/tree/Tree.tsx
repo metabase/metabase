@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useState,
+} from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
@@ -8,6 +14,10 @@ import { TreeNode as DefaultTreeNode } from "./TreeNode";
 import { TreeNodeList } from "./TreeNodeList";
 import type { ITreeNodeItem } from "./types";
 import { getInitialExpandedIds } from "./utils";
+
+export interface TreeHandle {
+  collapse: (id: ITreeNodeItem["id"]) => void;
+}
 
 interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
   data: ITreeNodeItem<TData>[];
@@ -20,17 +30,20 @@ interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
   TreeNode?: any;
 }
 
-function BaseTree<TData = unknown>({
-  data,
-  selectedId,
-  role = "menu",
-  emptyState = null,
-  initialExpandedIds,
-  onSelect,
-  TreeNode = DefaultTreeNode,
-  rightSection,
-  ...boxProps
-}: TreeProps<TData>) {
+function BaseTree<TData = unknown>(
+  {
+    data,
+    selectedId,
+    role = "menu",
+    emptyState = null,
+    initialExpandedIds,
+    onSelect,
+    TreeNode = DefaultTreeNode,
+    rightSection,
+    ...boxProps
+  }: TreeProps<TData>,
+  ref: React.Ref<TreeHandle>,
+) {
   const [expandedIds, setExpandedIds] = useState(() => {
     if (initialExpandedIds) {
       return new Set(initialExpandedIds);
@@ -47,8 +60,7 @@ function BaseTree<TData = unknown>({
       return;
     }
     const dataHasChanged = !_.isEqual(data, prevData);
-    const selectedItemChanged =
-      previousSelectedId !== selectedId && !expandedIds.has(selectedId);
+    const selectedItemChanged = previousSelectedId !== selectedId;
 
     if (selectedItemChanged || dataHasChanged) {
       setExpandedIds(
@@ -57,6 +69,20 @@ function BaseTree<TData = unknown>({
       );
     }
   }, [prevData, data, selectedId, previousSelectedId, expandedIds]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      collapse(id) {
+        setExpandedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      },
+    }),
+    [],
+  );
 
   const handleToggleExpand = useCallback(
     (itemId: string | number) => {
@@ -91,7 +117,11 @@ function BaseTree<TData = unknown>({
   );
 }
 
-export const Tree = Object.assign(BaseTree, {
+const ForwardedTree = forwardRef(BaseTree) as <TData = unknown>(
+  props: TreeProps<TData> & React.RefAttributes<TreeHandle>,
+) => React.ReactElement | null;
+
+export const Tree = Object.assign(ForwardedTree, {
   Node: DefaultTreeNode,
   NodeList: TreeNodeList,
 });

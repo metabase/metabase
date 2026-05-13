@@ -506,6 +506,8 @@ import table_component from "./table.svg?component";
 import table_source from "./table.svg?source";
 import table2_component from "./table2.svg?component";
 import table2_source from "./table2.svg?source";
+import telescope_component from "./telescope.svg?component";
+import telescope_source from "./telescope.svg?source";
 import test_tube_component from "./test_tube.svg?component";
 import test_tube_source from "./test_tube.svg?source";
 import text_bold_component from "./text_bold.svg?component";
@@ -1565,6 +1567,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: table2_component,
       source: table2_source,
     },
+    telescope: {
+      component: telescope_component,
+      source: telescope_source,
+    },
     text_bold: {
       component: text_bold_component,
       source: text_bold_source,
@@ -1987,6 +1993,7 @@ export type IconName =
   | "tab"
   | "table"
   | "table2"
+  | "telescope"
   | "text_bold"
   | "text_italic"
   | "text_strike"

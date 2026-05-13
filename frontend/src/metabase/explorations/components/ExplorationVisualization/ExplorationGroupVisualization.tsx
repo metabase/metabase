@@ -15,9 +15,12 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
+  CardId,
+  Exploration,
   ExplorationQuery,
   ExplorationQueryGroup,
   ExplorationThread,
+  ExplorationThreadMetric,
   SingleSeries,
   Timeline,
   TimelineEvent,
@@ -51,6 +54,7 @@ interface ExplorationGroupVisualizationProps {
   onSelectTimelineId: (timelineId: TimelineId | null) => void;
   timelineEvents: TimelineEvent[];
   interestingTimelineIds?: ReadonlySet<TimelineId>;
+  exploration: Exploration;
 }
 
 export function ExplorationGroupVisualization(
@@ -150,6 +154,7 @@ function ExplorationGroupVisualizationChart({
   onSelectTimelineId,
   timelineEvents,
   interestingTimelineIds,
+  exploration,
 }: ExplorationGroupVisualizationProps) {
   // One RTKQ hook per query. ESLint complains about hooks-in-a-loop;
   // safe here because the parent keys this component on `group.id`, so
@@ -177,6 +182,14 @@ function ExplorationGroupVisualizationChart({
   // value that changes whenever any dataset reference changes.
   const datasetRefs = datasets.map((d) => d.currentData);
 
+  const metricsById: Map<CardId, ExplorationThreadMetric> = useMemo(() => {
+    return new Map(
+      (exploration?.threads ?? []).flatMap((thread) =>
+        (thread.metrics ?? []).map((metric) => [metric.card_id, metric]),
+      ),
+    );
+  }, [exploration]);
+
   const queryColors = useMemo(
     () => getColorsForValues(queries.map((q) => String(q.id))),
     [queries],
@@ -199,6 +212,9 @@ function ExplorationGroupVisualizationChart({
       if (cartesian) {
         cardSettings["graph.dimensions"] = getDimensions(dataset);
         cardSettings["graph.split_panels"] = true; // Render every series in its own vertical pane along a shared x-axis
+        cardSettings["graph.y_axis.title_text"] = metricsById.get(
+          q.card_id,
+        )?.card?.name;
       } else if (baseDisplay === "map") {
         const color = queryColors[String(q.id)];
         if (color) {
@@ -272,31 +288,33 @@ function ExplorationGroupVisualizationChart({
         // row (color dot + chart name) consolidated in a single
         // wrap-flex legend at the top.
         <Stack gap="md" flex={1} mih={0} style={{ overflowY: "auto" }}>
-          <Group gap="lg" wrap="wrap" role="list" aria-label={t`Legend`}>
-            {series.map((s) => {
-              const color = queryColors[s.card.id];
-              return (
-                <Group
-                  key={s.card.id}
-                  gap="xs"
-                  align="center"
-                  wrap="nowrap"
-                  role="listitem"
-                >
-                  <Box
-                    aria-hidden
-                    w="0.625rem"
-                    h="0.625rem"
-                    bdrs="50%"
-                    style={{ background: color }}
-                  />
-                  <Text fw="bold" size="sm">
-                    {s.card.name}
-                  </Text>
-                </Group>
-              );
-            })}
-          </Group>
+          {queries.length > 1 && (
+            <Group gap="lg" wrap="wrap" role="list" aria-label={t`Legend`}>
+              {series.map((s) => {
+                const color = queryColors[s.card.id];
+                return (
+                  <Group
+                    key={s.card.id}
+                    gap="xs"
+                    align="center"
+                    wrap="nowrap"
+                    role="listitem"
+                  >
+                    <Box
+                      aria-hidden
+                      w="0.625rem"
+                      h="0.625rem"
+                      bdrs="50%"
+                      style={{ background: color }}
+                    />
+                    <Text fw="bold" size="sm">
+                      {s.card.name}
+                    </Text>
+                  </Group>
+                );
+              })}
+            </Group>
+          )}
           {series.map((s) => (
             <Box key={s.card.id} flex={1} mih="10rem" style={{ flexShrink: 0 }}>
               <Visualization rawSeries={[s]} className={S.chart} />

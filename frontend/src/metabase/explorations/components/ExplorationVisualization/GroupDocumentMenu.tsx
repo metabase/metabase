@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { c, t } from "ttag";
 
@@ -16,6 +16,8 @@ import type {
   ExplorationThread,
   VisualizationSettings,
 } from "metabase-types/api";
+
+import { getDocumentsForDocumentMenu } from "./utils";
 
 interface GroupDocumentMenuProps {
   queries: ExplorationQuery[];
@@ -134,7 +136,10 @@ export function GroupDocumentMenu({
     ],
   );
 
-  const { documents = [] } = explorationThread;
+  const documents = useMemo(
+    () => getDocumentsForDocumentMenu(explorationThread),
+    [explorationThread],
+  );
 
   return (
     <Menu

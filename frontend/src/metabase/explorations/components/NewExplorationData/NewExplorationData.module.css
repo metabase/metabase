@@ -1,7 +1,78 @@
-.section {
-  border-bottom: 1px solid var(--mb-color-border);
+.sectionAddIcon {
+  box-shadow: 0 1px 3px var(--mb-color-border);
 }
 
-.sectionTitle {
-  border-bottom: 1px solid var(--mb-color-border);
+.accordionRoot {
+  background: transparent;
+}
+
+.accordionRoot .accordionItem {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+
+  /* `&[data-active]` keeps the same chrome as the inactive state. */
+  &[data-active] {
+    background: transparent !important;
+    border: none !important;
+  }
+}
+
+.accordionRoot .accordionControl {
+  /* Tight padding so the control sits flush with the surrounding
+     section header padding. */
+  padding-inline: var(--mantine-spacing-md) !important;
+  padding-block: var(--mantine-spacing-xs) !important;
+  background: transparent !important;
+  color: var(--mb-color-text-primary);
+
+  &:hover {
+    background: transparent !important;
+  }
+}
+
+.accordionRoot .accordionLabel {
+  /* Override the global theme: smaller font, neutral colour,
+     reset the heavy vertical padding the theme adds. */
+  color: var(--mb-color-text-secondary) !important;
+  font-weight: var(--mantine-font-weight-bold) !important;
+  font-size: var(--mantine-font-size-md) !important;
+  line-height: 1rem !important;
+  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  &:after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    border-bottom: 1px dashed var(--mb-color-border);
+  }
+}
+
+.accordionRoot .accordionChevron {
+  /* Strip the circular bordered chevron the global theme adds.
+     We want a plain caret icon. */
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  width: 1rem !important;
+  height: 1rem !important;
+  margin-left: 0 !important;
+  margin-right: var(--mantine-spacing-xs) !important;
+  color: var(--mb-color-brand);
+}
+
+.accordionRoot .accordionContent {
+  /* Drop the theme's top border on the panel content. */
+  border-top: none !important;
+  padding-inline: var(--mantine-spacing-md) !important;
+  padding-bottom: var(--mantine-spacing-sm) !important;
+  padding-top: 0.75rem !important;
+}
+
+.accordionRoot .accordionPanel {
+  padding: 0 !important;
 }

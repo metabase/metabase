@@ -1,5 +1,11 @@
 import { TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
-import type { Dataset, ExplorationQuery, TimelineId } from "metabase-types/api";
+import type {
+  Dataset,
+  ExplorationDocument,
+  ExplorationQuery,
+  ExplorationThread,
+  TimelineId,
+} from "metabase-types/api";
 
 /**
  * Pick the columns to use as `graph.dimensions` for an exploration query.
@@ -94,4 +100,12 @@ export function getMostInterestingTimelineId(
     }
   }
   return best?.id ?? null;
+}
+
+export function getDocumentsForDocumentMenu(
+  explorationThread: ExplorationThread,
+): ExplorationDocument[] {
+  return (explorationThread.documents ?? []).filter(
+    (d) => d.id !== explorationThread.auto_insights_document_id,
+  );
 }
