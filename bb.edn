@@ -144,7 +144,7 @@
    :usage-fn start-db/usage
    :task (task!
           (let [[db version] (:arguments parsed)]
-            (start-db/start-db (:db-info (current-task)) db version (:options parsed))))}
+            (start-db/start-db (-> (current-task) :db-info db) db version (:options parsed))))}
 
   nrepl
   {:doc "Starts the babashka nrepl: helpful for mage development"
