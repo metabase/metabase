@@ -213,7 +213,7 @@ export const ResourceCard = () => {
 
 type ResourceExperience = Exclude<
   SdkIframeEmbedSetupExperience,
-  (typeof STEPS_WITHOUT_RESOURCE_SELECTION)[number]
+  (typeof EXPERIENCES_WITHOUT_RESOURCE_SELECTION)[number]
 >;
 
 const getResourceCopy = (experience: ResourceExperience) =>
