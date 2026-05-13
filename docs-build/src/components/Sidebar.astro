@@ -1,14 +1,15 @@
 ---
-import { getNav, findTrail } from "../lib/nav";
+import { getNav } from "../lib/nav";
+import type { NavPage } from "../lib/nav";
 import NavItem from "./NavItem.astro";
 
 interface Props {
   currentSlug: string;
+  trail: NavPage[];
 }
 
-const { currentSlug } = Astro.props;
+const { currentSlug, trail } = Astro.props;
 const nav = getNav();
-const trail = findTrail(currentSlug, nav) ?? [];
 const expandedNames = new Set(trail.map((t) => t.name));
 ---
 

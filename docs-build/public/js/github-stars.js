@@ -1,18 +1,13 @@
+// Vendored from the marketing site's github-stars.js. The marketing original
+// reports DOM and fetch failures via window.Sentry, which the docs build
+// does not load — those calls were stripped here.
 (function() {
   window.addEventListener("DOMContentLoaded", async () => {
     const MAX_RETRY = 3;
 
     async function getGithubData(retryCount) {
-      // github stars is missing
       const $githubStars = document.querySelectorAll(".github-stars");
-      if (!$githubStars || $githubStars.length === 0) {
-        window.Sentry.captureMessage(".github-stars not found", {
-          tags: {
-            section: "GH stars",
-          },
-        });
-        return;
-      }
+      if ($githubStars.length === 0) return;
 
       try {
         const response = await fetch(
@@ -22,24 +17,13 @@
         const starsCount = Math.ceil(githubData.stargazers_count / 100) / 10;
         $githubStars.forEach(($node) => ($node.innerHTML = `${starsCount}k`));
       } catch (err) {
-        // retry with Sentry message
         if (retryCount + 1 < MAX_RETRY) {
           return await getGithubData(retryCount + 1);
         }
-        // error
-        else {
-          window.Sentry.captureException(
-            new Error(
-              `Fail to load GitHub data: ${err.message ||
-                err.status ||
-                err.toString()}`,
-            ),
-          );
-        }
+        console.warn("Failed to load GitHub data:", err);
       }
     }
 
-    // load
     await getGithubData(0);
   });
 })();

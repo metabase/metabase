@@ -30,23 +30,13 @@ export function rehypeInternalLinks({ base = "/" } = {}) {
       // Strip /index endings (e.g., "foo/index.md" → "foo/").
       next = next.replace(/\/index(#.*)?$/, "/$1");
 
-      // If the link is already an absolute /docs/... path with the old
-      // hardcoded /docs/latest prefix, swap that prefix for the build's base.
+      // If the link is an absolute /docs/... path with the old hardcoded
+      // /docs/latest prefix, swap that prefix for the build's base. Other
+      // absolute paths and relative paths pass through with just the .md
+      // strip — Astro resolves the latter against the current page URL.
       if (next.startsWith("/docs/")) {
         next = next.replace(/^\/docs\/[^/]+/, baseClean);
-        node.properties.href = next;
-        return;
       }
-
-      // Site-root-absolute paths starting with anything else stay alone.
-      if (next.startsWith("/")) {
-        node.properties.href = next;
-        return;
-      }
-
-      // Relative path: Astro resolves these against the current page URL
-      // automatically once the .md is stripped, so leave the rewritten
-      // value (sans .md) on the node.
       node.properties.href = next;
     });
   };

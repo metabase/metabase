@@ -3,46 +3,18 @@
 // Server-renders static markup; the client hydrates it via /js/feedback-widget.js
 // (vote handling, comment form, POST to the CRM endpoint, and computing the
 // "Propose a change" GitHub link from window.location.pathname).
+import ThumbIcon from "./ThumbIcon.astro";
 ---
 
 <div id="was-this-helpful-widget" class="feedback-widget">
   <div id="page-feedback">
     <h6>Was this helpful?</h6>
     <button id="page-feedback-vote-up" class="vote-button" type="button">
-      <svg
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-      >
-        <path
-          d="M10.6667 7.33333H14.6367C14.9207 7.33334 15.2001 7.40595 15.4482 7.54427C15.6963 7.68259 15.9049 7.88202 16.0543 8.12364C16.2036 8.36525 16.2888 8.64104 16.3016 8.9248C16.3144 9.20857 16.2545 9.4909 16.1275 9.745L13.2108 15.5783C13.0724 15.8554 12.8595 16.0884 12.596 16.2512C12.3325 16.414 12.0289 16.5001 11.7192 16.5H8.37167C8.23583 16.5 8.1 16.4833 7.9675 16.45L4.83333 15.6667M10.6667 7.33333V3.16667C10.6667 2.72464 10.4911 2.30072 10.1785 1.98816C9.86595 1.67559 9.44203 1.5 9 1.5H8.92083C8.50417 1.5 8.16667 1.8375 8.16667 2.25417C8.16667 2.84917 7.99083 3.43083 7.66 3.92583L4.83333 8.16667V15.6667M10.6667 7.33333H9M4.83333 15.6667H3.16667C2.72464 15.6667 2.30072 15.4911 1.98816 15.1785C1.67559 14.866 1.5 14.442 1.5 14V9C1.5 8.55797 1.67559 8.13405 1.98816 7.82149C2.30072 7.50893 2.72464 7.33333 3.16667 7.33333H5.25"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"></path>
-      </svg>
+      <ThumbIcon />
       Yes
     </button>
     <button id="page-feedback-vote-down" class="vote-button" type="button">
-      <svg
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-        style="transform: rotate(180deg)"
-      >
-        <path
-          d="M10.6667 7.33333H14.6367C14.9207 7.33334 15.2001 7.40595 15.4482 7.54427C15.6963 7.68259 15.9049 7.88202 16.0543 8.12364C16.2036 8.36525 16.2888 8.64104 16.3016 8.9248C16.3144 9.20857 16.2545 9.4909 16.1275 9.745L13.2108 15.5783C13.0724 15.8554 12.8595 16.0884 12.596 16.2512C12.3325 16.414 12.0289 16.5001 11.7192 16.5H8.37167C8.23583 16.5 8.1 16.4833 7.9675 16.45L4.83333 15.6667M10.6667 7.33333V3.16667C10.6667 2.72464 10.4911 2.30072 10.1785 1.98816C9.86595 1.67559 9.44203 1.5 9 1.5H8.92083C8.50417 1.5 8.16667 1.8375 8.16667 2.25417C8.16667 2.84917 7.99083 3.43083 7.66 3.92583L4.83333 8.16667V15.6667M10.6667 7.33333H9M4.83333 15.6667H3.16667C2.72464 15.6667 2.30072 15.4911 1.98816 15.1785C1.67559 14.866 1.5 14.442 1.5 14V9C1.5 8.55797 1.67559 8.13405 1.98816 7.82149C2.30072 7.50893 2.72464 7.33333 3.16667 7.33333H5.25"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"></path>
-      </svg>
+      <ThumbIcon flipped />
       No
     </button>
   </div>

@@ -44,26 +44,17 @@
 
   function renderFooter(isHelpful) {
     const gh = toGithubUrl(window.location.pathname);
-    if (isHelpful === null) {
+    const proposeLink =
+      '<a href="' + gh + '" target="_blank" rel="noopener">Propose a change.</a>';
+    if (isHelpful === false) {
       return (
-        'Want to improve these docs?<br><a href="' +
-        gh +
-        '" target="_blank" rel="noopener">Propose a change.</a>'
+        'Need some help? <a href="https://www.metabase.com/help/">' +
+        "We're right here.</a> " +
+        "Want to improve these docs? " +
+        proposeLink
       );
     }
-    if (isHelpful) {
-      return (
-        'Want to improve these docs?<br><a href="' +
-        gh +
-        '" target="_blank" rel="noopener">Propose a change.</a>'
-      );
-    }
-    return (
-      'Need some help? <a href="https://www.metabase.com/help/">We\'re right here.</a> ' +
-      'Want to improve these docs? <a href="' +
-      gh +
-      '" target="_blank" rel="noopener">Propose a change.</a>'
-    );
+    return "Want to improve these docs?<br>" + proposeLink;
   }
 
   async function postFeedback(body) {
