@@ -89,13 +89,20 @@
       (flush))))
 
 (defn- bootstrap-appdb!
-  "Bring up the application database (migrations + connection pool) so that `t2/select` against
-  Toucan models and settings/feature-flag lookups succeed. We resolve at call time so a pure
-  representation-mode run without `--write-to-appdb` doesn't pay the setup cost. Driver plugin
-  loading is intentionally skipped: the scorer only queries appdb metadata (Card, Table, Field,
-  Measure rows), never user databases, so the driver/plugin layer isn't on this path."
+  "Verify the appdb connection and mark it ready — never run migrations or mutate the schema in any way.
+  The scorer reads a small, slow-changing slice of Toucan models, so we proceed against any appdb version.
+  Any schema mismatch surfaces as a runtime error caught by [[-main]]; the DB itself is never touched.
+  We deliberately skip [[metabase.app-db.setup/check-encryption]] because its auto-encrypt branch can rewrite
+  every encrypted `setting` row — exactly the kind of silent side effect we're avoiding."
   []
-  ((requiring-resolve 'metabase.app-db.core/setup-db!) :create-sample-content? false))
+  (let [verify-conn (requiring-resolve 'metabase.app-db.setup/verify-db-connection)
+        finish!     (requiring-resolve 'metabase.app-db.core/finish-db-setup!)
+        is-set-up?  (requiring-resolve 'metabase.app-db.core/db-is-set-up?)
+        db-type-fn  (requiring-resolve 'metabase.app-db.connection/db-type)
+        ds-fn       (requiring-resolve 'metabase.app-db.connection/data-source)]
+    (when-not (is-set-up?)
+      (verify-conn (db-type-fn) (ds-fn))
+      (finish!))))
 
 (defn- resolve-write?
   "Apply the source-driven default for `--write-to-appdb` when it wasn't passed explicitly."
@@ -132,12 +139,11 @@
     result))
 
 (defn- run-representation-mode!
-  "Score against an on-disk serdes export; optionally persist with a representation-tagged
-  `source` so the row is distinguishable from cron/API/CLI-from-appdb rows. The persisted
-  fingerprint still uses [[task.complexity-score/current-fingerprint]] so it lines up with the
-  cron's bookkeeping; the new `source` column does the discrimination. We never advance
-  `data-complexity-scoring-last-fingerprint` here — a representation-derived score isn't
-  authoritative for this instance and mustn't mute the cron."
+  "Score against an on-disk serdes export; optionally persist with `source` = `representation:<digest>`.
+  The fingerprint still comes from [[task.complexity-score/current-fingerprint]]; the `source` column is what
+  separates these rows from cron/API/CLI-from-appdb rows.
+  We never advance `data-complexity-scoring-last-fingerprint` here — a representation-derived score isn't
+  authoritative for this instance and would mute the cron."
   [{:keys [representation-dir embeddings]} write?]
   (when write?
     (bootstrap-appdb!))
@@ -160,10 +166,9 @@
 (defn- run-cli
   "Pure core of the CLI: validates options and dispatches to the source-specific runner.
   Returns the result map so tests can call this directly without intercepting `System/exit`.
-  Throws `ex-info` for validation failures (with `:cli-validation true` in the ex-data) and
-  propagates `representation/load-dir`'s `ex-info` (e.g. missing `--embeddings` override).
-  `-main` converts those into user-facing `fail!`; library callers can inspect the ex-data
-  and render errors their own way."
+  Throws `ex-info` for validation failures (`:cli-validation true`) and propagates `representation/load-dir`'s
+  `ex-info` (e.g. missing `--embeddings` override).
+  `-main` converts those to `fail!`; library callers can inspect the ex-data themselves."
   [options]
   (let [options (with-defaults options)]
     (validate-options! options)
@@ -191,5 +196,8 @@
                           (let [data (ex-data e)]
                             (if (or (:cli-validation data) (:embeddings-path data))
                               (fail! (ex-message e))
-                              (throw e)))))))
+                              (fail! (format "%s: %s" (.getName (class e)) (ex-message e))))))
+                        (catch Throwable t
+                          ;; Most likely an older appdb missing a column/table the scorer reads.
+                          (fail! (format "%s: %s" (.getName (class t)) (.getMessage t)))))))
   (System/exit 0))

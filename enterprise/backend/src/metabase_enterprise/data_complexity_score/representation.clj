@@ -219,8 +219,7 @@
   (make-array OpenOption 0))
 
 (defn- sha256-file-hex
-  "SHA-256 of a file's bytes, streamed in 8 KiB chunks so even multi-megabyte exports
-  (e.g. embeddings.json) don't materialize the whole file in memory."
+  "SHA-256 of a file's bytes, streamed in 8 KiB chunks to keep large exports off the heap."
   [^File f]
   (let [md  (MessageDigest/getInstance "SHA-256")
         buf (byte-array 8192)]
@@ -229,9 +228,9 @@
     (hex (.digest md))))
 
 (defn dir-digest
-  "Stable SHA-256 over the file contents of `dir`. Two directories with byte-identical files at the
-  same relative paths produce the same digest. Used as the `<digest>` part of the `source` column
-  on `data_complexity_score` rows when the CLI scores a representation directory."
+  "Stable SHA-256 over the file contents of `dir`.
+  Two directories with byte-identical files at the same relative paths produce the same digest.
+  Used as the `<digest>` part of the `source` column on `data_complexity_score` rows."
   [dir]
   (let [dir-file (io/file dir)
         root     (.toPath dir-file)

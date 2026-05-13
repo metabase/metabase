@@ -41,10 +41,9 @@
                        (synonym-source/fingerprint-fragment)))))
 
 (defn maybe-advance-last-fingerprint!
-  "If `result` carries a confirmed Snowplow publish, advance [[settings/data-complexity-scoring-last-fingerprint]]
-  to `fingerprint`. Otherwise log and leave it untouched so the next boot or cron retries instead of
-  silently stalling behind a transient publish failure. Shared by the cron path, the API recompute
-  path, and the CLI's appdb mode so any caller that persists a fresh snapshot stays in lockstep."
+  "Advance [[settings/data-complexity-scoring-last-fingerprint]] only if Snowplow accepted the publish.
+  On failure we leave it untouched so the next boot or cron retries.
+  Shared by the cron, API recompute, and CLI appdb paths to keep all persisters in lockstep."
   [fingerprint result]
   (if (::complexity/snowplow-published? (meta result))
     (settings/data-complexity-scoring-last-fingerprint! fingerprint)
