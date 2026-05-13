@@ -635,12 +635,11 @@
 
 (defmethod sql.qp/->honeysql [:postgres :median]
   [driver [_ arg]]
-  (sql.qp/->honeysql driver [:percentile arg 0.5]))
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :percentile arg 0.5)))
 
 (defmethod sql.qp/->honeysql [:postgres-mbql5 :median]
   [driver [_ _opts arg]]
-  ((get-method sql.qp/->honeysql [:postgres :median])
-   driver (sql.qp/mbql-clause driver :percentile arg 0.5)))
+  ((get-method sql.qp/->honeysql [:postgres :median]) driver [:median arg]))
 
 (defmethod sql.qp/datetime-diff [:postgres :year]
   [_driver _unit x y]
@@ -700,8 +699,7 @@
 
 (defmethod sql.qp/->honeysql [:postgres-mbql5 :regex-match-first]
   [driver [_ _opts arg pattern]]
-  ((get-method sql.qp/->honeysql [:postgres :regex-match-first])
-   driver [:regex-match-first arg pattern]))
+  ((get-method sql.qp/->honeysql [:postgres :regex-match-first]) driver [:regex-match-first arg pattern]))
 
 (defmethod sql.qp/->honeysql [:postgres :split-part]
   [driver [_ text divider position]]
@@ -715,8 +713,7 @@
 
 (defmethod sql.qp/->honeysql [:postgres-mbql5 :split-part]
   [driver [_ _opts text divider position]]
-  ((get-method sql.qp/->honeysql [:postgres :split-part])
-   driver [:split-part text divider position]))
+  ((get-method sql.qp/->honeysql [:postgres :split-part]) driver [:split-part text divider position]))
 
 (defmethod sql.qp/->honeysql [:postgres :text]
   [driver [_ value]]
@@ -724,7 +721,7 @@
 
 (defmethod sql.qp/->honeysql [:postgres-mbql5 :text]
   [driver [_ _opts value]]
-  (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
+  ((get-method sql.qp/->honeysql [:postgres :text]) driver [:text value]))
 
 (defn- format-pg-conversion [_fn [expr psql-type]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})]

@@ -2268,7 +2268,8 @@
           mbql5-query (driver-api/query-from-legacy-inner-query metadata-provider database-id inner-query)]
       (recur driver mbql5-query))))
 
-(def ^:private experimental-mbql5-drivers {:h2 :h2-mbql5})
+(def ^:private experimental-mbql5-drivers {:h2 :h2-mbql5
+                                           :postgres :postgres-mbql5})
 
 (defn- mbql5-experiment-report
   [driver experimental-driver query]
