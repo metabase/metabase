@@ -1,5 +1,5 @@
 import type { Row, SortingState, Updater } from "@tanstack/react-table";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
@@ -14,7 +14,15 @@ import type {
 
 import type { TransformRunSortOptions } from "../types";
 
-import { getColumns, getSortingOptions, getSortingState } from "./utils";
+import {
+  DURATION_SORT_ID,
+  getColumns,
+  getRunDurationMs,
+  getSortingOptions,
+  getSortingState,
+} from "./utils";
+
+type DurationSortDirection = "asc" | "desc";
 
 type RunTableProps = {
   runs: TransformRun[];
@@ -42,10 +50,39 @@ export function RunTable({
     [tags, systemTimezone],
   );
 
-  const sortingState = useMemo(
-    () => getSortingState(sortOptions),
-    [sortOptions],
-  );
+  // Duration is sorted client-side over the current page only — the
+  // backend has no `duration` sort key. While duration sort is active the
+  // server-side sort is suspended so the two never compete.
+  const [durationSort, setDurationSort] =
+    useState<DurationSortDirection | null>(null);
+
+  const sortingState = useMemo<SortingState>(() => {
+    if (durationSort != null) {
+      return [{ id: DURATION_SORT_ID, desc: durationSort === "desc" }];
+    }
+    return getSortingState(sortOptions);
+  }, [durationSort, sortOptions]);
+
+  const sortedRuns = useMemo(() => {
+    if (durationSort == null) {
+      return runs;
+    }
+    const sign = durationSort === "asc" ? 1 : -1;
+    return [...runs].sort((a, b) => {
+      const da = getRunDurationMs(a);
+      const db = getRunDurationMs(b);
+      if (da == null && db == null) {
+        return 0;
+      }
+      if (da == null) {
+        return 1; // nulls last
+      }
+      if (db == null) {
+        return -1;
+      }
+      return sign * (da - db);
+    });
+  }, [runs, durationSort]);
 
   const notFoundLabel = hasFilters ? t`No runs found` : t`No runs yet`;
 
@@ -60,13 +97,22 @@ export function RunTable({
     (updater: Updater<SortingState>) => {
       const newSortingState =
         typeof updater === "function" ? updater(sortingState) : updater;
+      const next = newSortingState[0];
+      if (next?.id === DURATION_SORT_ID) {
+        setDurationSort(next.desc ? "desc" : "asc");
+        if (sortOptions != null) {
+          onSortOptionsChange(undefined);
+        }
+        return;
+      }
+      setDurationSort(null);
       onSortOptionsChange(getSortingOptions(newSortingState));
     },
-    [sortingState, onSortOptionsChange],
+    [sortingState, sortOptions, onSortOptionsChange],
   );
 
   const treeTableInstance = useTreeTableInstance<TransformRun>({
-    data: runs,
+    data: sortedRuns,
     columns,
     sorting: sortingState,
     manualSorting: true,

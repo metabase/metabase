@@ -124,18 +124,37 @@ function getEndedAtColumn(
   };
 }
 
+// Duration is sorted entirely client-side over the already-fetched page.
+// It is intentionally NOT one of TRANSFORM_RUN_SORT_COLUMNS — the backend
+// has no sort key for it. RunTable detects this id and routes the sort
+// into local state.
+export const DURATION_SORT_ID = "duration";
+
 function getDurationColumn(): TreeTableColumnDef<TransformRun> {
   return {
-    id: "duration",
-    header: t`Duration`,
+    id: DURATION_SORT_ID,
+    header: ({ header }) => (
+      <SortableHeaderPill
+        name={t`Duration`}
+        sort={header.column.getIsSorted() || undefined}
+      />
+    ),
     width: "auto",
-    enableSorting: false,
+    enableSorting: true,
     accessorFn: (run) => formatRunDuration(run.start_time, run.end_time),
     cell: ({ getValue }) => {
       const value = getValue();
       return value != null ? <Ellipsified>{String(value)}</Ellipsified> : null;
     },
   };
+}
+
+export function getRunDurationMs(run: TransformRun): number | null {
+  if (!run.start_time || !run.end_time) {
+    return null;
+  }
+  const ms = Date.parse(run.end_time) - Date.parse(run.start_time);
+  return Number.isFinite(ms) && ms >= 0 ? ms : null;
 }
 
 function getStatusColumn(): TreeTableColumnDef<TransformRun> {
