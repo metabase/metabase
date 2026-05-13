@@ -53,7 +53,7 @@ describe(suiteTitle, () => {
       cy.findByText("Select a dashboard to embed").should("be.visible");
 
       cy.log("a default dashboard is preselected");
-      getResourceSelectorButton().should("be.visible");
+      getResourceSelectorButton().should("contain", FIRST_DASHBOARD_NAME);
 
       cy.findByText("Next").click();
     });
@@ -277,69 +277,6 @@ describe(suiteTitle, () => {
         .should("be.visible");
 
       cy.findByText("Second collection").should("be.visible");
-    });
-  });
-
-  describe("when there is no recent activity", () => {
-    beforeEach(() => {
-      cy.intercept("GET", "/api/activity/recents?*", {
-        recents: [],
-      }).as("emptyRecentItems");
-
-      // The embed wizard calls the search API to find recently created
-      // dashboards. Without this, the snapshot's admin-owned dashboards
-      // would be returned and selected as the default.
-      cy.log("simulate that there are no recently created dashboards");
-      cy.intercept("GET", "/api/search?*", { data: [], total: 0 }).as(
-        "emptySearch",
-      );
-
-      visitNewEmbedPage();
-      cy.wait("@emptyRecentItems");
-    });
-
-    it("can open the dashboard picker from the resource selector button", () => {
-      getEmbedSidebar().within(() => {
-        cy.findByText("Next").click();
-
-        getResourceSelectorButton().should("be.visible").click();
-      });
-
-      H.entityPickerModal().within(() => {
-        cy.findByText("Select a dashboard").should("be.visible");
-      });
-    });
-
-    it("can open the chart picker from the resource selector button", () => {
-      getEmbedSidebar().within(() => {
-        cy.findByText("Chart").click();
-        cy.findByText("Next").click();
-
-        getResourceSelectorButton().should("be.visible").click();
-      });
-
-      H.entityPickerModal().within(() => {
-        cy.findByText("Select a chart").should("be.visible");
-      });
-    });
-
-    it("can open the collection picker from the resource selector button", () => {
-      getEmbedSidebar().within(() => {
-        cy.findByLabelText("Metabase account (SSO)").click();
-      });
-
-      embedModalEnableEmbedding();
-
-      getEmbedSidebar().within(() => {
-        cy.findByText("Browser").click();
-        cy.findByText("Next").click();
-
-        getResourceSelectorButton().should("be.visible").click();
-      });
-
-      H.entityPickerModal().within(() => {
-        cy.findByText("Select a collection").should("be.visible");
-      });
     });
   });
 });

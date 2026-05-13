@@ -71,6 +71,8 @@ export const SelectEmbedResourceStep = () => {
     (item) => item.id === selectedItemId,
   )?.name;
 
+  const { title, icon, placeholder, label } = getResourceCopy(experience);
+
   const updateEmbedSettings = (
     experience: SdkIframeEmbedSetupExperience,
     id: string | number,
@@ -185,25 +187,21 @@ export const SelectEmbedResourceStep = () => {
       <Card p="md" mb="md">
         <Stack gap="md">
           <Text size="lg" fw="bold">
-            {getEmbedTitle(experience)}
+            {title}
           </Text>
 
           <Button
             variant="default"
-            leftSection={
-              <Icon name={getResourceIcon(experience)} c="brand" size={16} />
-            }
+            leftSection={<Icon name={icon} c="brand" size={16} />}
             rightSection={<Icon name="chevrondown" size={12} />}
             onClick={openPicker}
             data-testid="embed-browse-entity-button"
-            aria-label={getChangeResourceLabel(experience)}
+            aria-label={label}
             fullWidth
             styles={{ label: { flex: 1, textAlign: "left" } }}
           >
             <Text fw="bold">
-              {selectedResourceName ??
-                fallbackResourceName ??
-                getResourcePlaceholder(experience)}
+              {selectedResourceName ?? fallbackResourceName ?? placeholder}
             </Text>
           </Button>
         </Stack>
@@ -214,33 +212,35 @@ export const SelectEmbedResourceStep = () => {
   );
 };
 
-const getEmbedTitle = (experience: SdkIframeEmbedSetupExperience) =>
-  match(experience)
-    .with("dashboard", () => t`Select a dashboard to embed`)
-    .with("chart", () => t`Select a chart to embed`)
-    .with("browser", () => t`Select a collection to embed`)
-    .otherwise(() => t`Select content to embed`);
+type ResourceExperience = Exclude<
+  SdkIframeEmbedSetupExperience,
+  (typeof STEPS_WITHOUT_RESOURCE_SELECTION)[number]
+>;
 
-const getResourceIcon = (experience: SdkIframeEmbedSetupExperience): IconName =>
-  match<SdkIframeEmbedSetupExperience, IconName>(experience)
-    .with("dashboard", () => "dashboard")
-    .with("chart", () => "bar")
-    .with("browser", () => "collection")
-    .otherwise(() => "dashboard");
-
-const getResourcePlaceholder = (experience: SdkIframeEmbedSetupExperience) =>
-  match(experience)
-    .with("dashboard", () => t`Select a dashboard`)
-    .with("chart", () => t`Select a chart`)
-    .with("browser", () => t`Select a collection`)
-    .otherwise(() => t`Select content`);
-
-const getChangeResourceLabel = (experience: SdkIframeEmbedSetupExperience) =>
-  match(experience)
-    .with("dashboard", () => t`Change dashboard`)
-    .with("chart", () => t`Change chart`)
-    .with("browser", () => t`Change collection`)
-    .otherwise(() => t`Change resource`);
+const getResourceCopy = (experience: ResourceExperience) =>
+  match<
+    ResourceExperience,
+    { title: string; icon: IconName; placeholder: string; label: string }
+  >(experience)
+    .with("dashboard", () => ({
+      title: t`Select a dashboard to embed`,
+      icon: "dashboard",
+      placeholder: t`Select a dashboard`,
+      label: t`Change dashboard`,
+    }))
+    .with("chart", () => ({
+      title: t`Select a chart to embed`,
+      icon: "bar",
+      placeholder: t`Select a chart`,
+      label: t`Change chart`,
+    }))
+    .with("browser", () => ({
+      title: t`Select a collection to embed`,
+      icon: "collection",
+      placeholder: t`Select a collection`,
+      label: t`Change collection`,
+    }))
+    .exhaustive();
 
 const MODAL_OPTIONS = {
   showPersonalCollections: true,
