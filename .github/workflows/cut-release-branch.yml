@@ -53,36 +53,8 @@ jobs:
 
             core.setOutput('branch', branch);
             core.setOutput('next', String(next));
+            core.setOutput('nextMilestone', String(next + 1));
             core.setOutput('needsRequirementsUpdate', String(needsRequirementsUpdate));
-
-      # Create the milestone BEFORE pushing the branch: the push fires
-      # set-milestone.yml's full-backfill path, which needs an open milestone
-      # for this major version to assign issues to. Failures other than 422
-      # ("already exists", which the script catches) abort the cut so we
-      # don't end up with a fresh branch and no milestone to backfill into.
-      - name: Create 0.${{ steps.preflight.outputs.next }} milestone
-        id: milestone
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-          script: | # js
-            const next = '${{ steps.preflight.outputs.next }}';
-            const title = `0.${next}`;
-
-            try {
-              await github.rest.issues.createMilestone({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title,
-              });
-              console.log(`Created milestone ${title}`);
-            } catch (err) {
-              if (err.status === 422) {
-                console.log(`Milestone ${title} already exists — skipping`);
-                return;
-              }
-              throw err;
-            }
 
       # Pushing the new branch triggers set-milestone.yml, which does the
       # full milestone backfill and then dispatches release-notes-preview
@@ -107,6 +79,34 @@ jobs:
           gh variable set CURRENT_VERSION \
             --body "${{ steps.preflight.outputs.next }}" \
             --repo "${{ github.repository }}"
+
+      # Pre-create the milestone for the version AFTER this cut, so it's
+      # already open when next time's backfill needs somewhere to assign
+      # issues. The milestone for THIS cut (0.{next}) is expected to exist
+      # from the previous run of this workflow.
+      - name: Create 0.${{ steps.preflight.outputs.nextMilestone }} milestone
+        id: milestone
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: | # js
+            const title = '0.${{ steps.preflight.outputs.nextMilestone }}';
+
+            try {
+              await github.rest.issues.createMilestone({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+              });
+              console.log(`Created milestone ${title}`);
+            } catch (err) {
+              if (err.status === 422) {
+                console.log(`Milestone ${title} already exists — skipping`);
+                return;
+              }
+              throw err;
+            }
 
       - name: Create Bug:v${{ steps.preflight.outputs.next }} label
         id: label
@@ -187,6 +187,7 @@ jobs:
             const next = '${{ steps.preflight.outputs.next }}';
             const sha = '${{ steps.cut.outputs.sha }}';
             const bumpFailed = '${{ steps.bump.outcome }}' === 'failure';
+            const milestoneFailed = '${{ steps.milestone.outcome }}' === 'failure';
             const labelFailed = '${{ steps.label.outcome }}' === 'failure';
             const timelineFailed = '${{ steps.timeline.outcome }}' === 'failure';
             const needsReqs = '${{ steps.preflight.outputs.needsRequirementsUpdate }}' === 'true';
@@ -203,6 +204,9 @@ jobs:
               bumpFailed
                 ? `:warning: Auto-bump of \`CURRENT_VERSION\` to *${next}* failed — please update it manually: <https://github.com/${owner}/${repo}/settings/variables/actions|Actions variables>`
                 : `\`CURRENT_VERSION\` bumped to *${next}*.`,
+              milestoneFailed
+                ? `:warning: Pre-creating milestone \`0.${{ steps.preflight.outputs.nextMilestone }}\` (for the next cut) failed — please create it manually: <https://github.com/${owner}/${repo}/milestones|Repository milestones>`
+                : null,
               labelFailed
                 ? `:warning: Creating label \`Bug:v${next}\` failed — please create it manually: <https://github.com/${owner}/${repo}/labels|Repository labels>`
                 : null,
@@ -226,8 +230,8 @@ jobs:
             }).catch(console.error);
 
       # `failure()` fires when any previous step without continue-on-error
-      # fails — preflight, the milestone creation, the cut itself, or the
-      # surrounding setup steps. The post-cut steps (bump, label) set
+      # fails — preflight, the cut itself, or the surrounding setup steps.
+      # The post-cut steps (bump, milestone, label, timeline) set
       # continue-on-error and surface their own failures as warnings in
       # the happy-path message above.
       - name: Notify Slack on cut failure
