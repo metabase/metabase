@@ -25,6 +25,7 @@ import {
 import * as Urls from "metabase/urls";
 
 import { useMetabotAgent, useUserMetabotPermissions } from "../../hooks";
+import { QuestionModeSwitcher } from "../QuestionModeSwitcher";
 
 import S from "./MetabotQueryBuilder.module.css";
 
@@ -169,6 +170,9 @@ const MetabotQueryBuilderInner = () => {
 
   return (
     <Box className={S.page}>
+      <Box className={S.modeSwitcher}>
+        <QuestionModeSwitcher value="ask" />
+      </Box>
       <Box className={S.centeredContainer}>
         <Box className={S.greeting}>
           {showIllustrations && <MetabotLogo className={S.greetingIcon} />}

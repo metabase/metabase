@@ -174,7 +174,14 @@ export function NewExplorationChat({
   return (
     <Stack flex={1} mih={0} gap="md">
       {hasMessages ? (
-        <Stack flex={1} mih={0} gap={0} className={S.messagesContainer}>
+        <Stack
+          flex={1}
+          mih={0}
+          gap={0}
+          px="lg"
+          pt="lg"
+          className={S.messagesContainer}
+        >
           <Messages
             messages={messages}
             errorMessages={errorMessages}
@@ -193,7 +200,8 @@ export function NewExplorationChat({
         bg="background-primary"
         bd="1px solid border"
         bdrs="md"
-        m="lg"
+        mx="lg"
+        mb="lg"
         mih="8rem"
         flex="none"
       >

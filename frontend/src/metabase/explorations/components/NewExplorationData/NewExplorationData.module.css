@@ -20,9 +20,7 @@
 }
 
 .accordionRoot .accordionControl {
-  /* Tight padding so the control sits flush with the surrounding
-     section header padding. */
-  padding-inline: var(--mantine-spacing-md) !important;
+  padding-inline: 2rem !important;
   padding-block: var(--mantine-spacing-xs) !important;
   background: transparent !important;
   color: var(--mb-color-text-primary);
@@ -68,7 +66,7 @@
 .accordionRoot .accordionContent {
   /* Drop the theme's top border on the panel content. */
   border-top: none !important;
-  padding-inline: var(--mantine-spacing-md) !important;
+  padding-inline: 3rem !important;
   padding-bottom: var(--mantine-spacing-sm) !important;
   padding-top: 0.75rem !important;
 }
