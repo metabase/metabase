@@ -368,10 +368,14 @@
   `entity-type-str` is the `analyzed_entity_type` value to filter on
   (`\"card\"`, `\"dashboard\"`, or `\"transform\"`).
 
-  We only attach a source name when the analyzer itself recorded one
-  (`analysis_finding_error.source_entity_*`). If the analyzer couldn't pin the
-  error to a table, the humaniser says so explicitly — we don't speculate by
-  enumerating dependency edges."
+  Source-name resolution order, from most authoritative to least:
+    1. `source_entity_type` + `source_entity_id` — analyzer resolved to a
+       Metabase row; we look up its display name.
+    2. `source_entity_name` — analyzer saw a textual reference in the SQL
+       (e.g. `schema.table`) but couldn't resolve it to an id (commonly the
+       referenced warehouse table has been renamed/archived).
+    3. None of the above — humaniser falls back to a generic \"couldn't
+       attribute\" sentence."
   [entity-type-str entity-ids]
   (if-not (seq entity-ids)
     {}
@@ -380,7 +384,8 @@
                                   [:afe.error_type          :error_type]
                                   [:afe.error_detail        :error_detail]
                                   [:afe.source_entity_type  :source_entity_type]
-                                  [:afe.source_entity_id    :source_entity_id]]
+                                  [:afe.source_entity_id    :source_entity_id]
+                                  [:afe.source_entity_name  :source_entity_name]]
                          :from   [[:analysis_finding_error :afe]]
                          :where  [:and
                                   [:= :afe.analyzed_entity_type (h2x/literal entity-type-str)]
@@ -392,10 +397,11 @@
                              rows)
           source-name  (resolve-source-names source-pairs)]
       (reduce (fn [m {:keys [id error_type error_detail
-                             source_entity_type source_entity_id]}]
-                (let [src    (when (and source_entity_type source_entity_id)
-                               (get source-name [source_entity_type source_entity_id]))
-                      detail (humanize-error-detail error_type error_detail src)]
+                             source_entity_type source_entity_id source_entity_name]}]
+                (let [resolved (when (and source_entity_type source_entity_id)
+                                 (get source-name [source_entity_type source_entity_id]))
+                      src      (or resolved source_entity_name)
+                      detail   (humanize-error-detail error_type error_detail src)]
                   (update m id (fnil conj [])
                           {:flag   "broken"
                            :code   "analysis-finding-error"

@@ -25,7 +25,13 @@
    [:error_type            ::lib.schema.validate/validate-error-type]
    [:error_detail          {:optional true} [:maybe :string]]
    [:source_entity_type    {:optional true} [:maybe ::lib.schema.validate/source-entity-type]]
-   [:source_entity_id      {:optional true} [:maybe ms/PositiveInt]]])
+   [:source_entity_id      {:optional true} [:maybe ms/PositiveInt]]
+   ;; Textual reference to the source (e.g. `schema.table`) when the analyzer
+   ;; saw the entity in the SQL but couldn't resolve it to a Metabase id
+   ;; (common when the warehouse table has been renamed/archived). Optional —
+   ;; resolved sources will have :source_entity_id; unresolved ones rely on
+   ;; this column.
+   [:source_entity_name    {:optional true} [:maybe :string]]])
 
 (t2/deftransforms :model/AnalysisFindingError
   {:analyzed_entity_type mi/transform-keyword
@@ -38,7 +44,8 @@
    [:error-type         ::lib.schema.validate/validate-error-type]
    [:error-detail       {:optional true} [:maybe :string]]
    [:source-entity-type {:optional true} [:maybe ::lib.schema.validate/source-entity-type]]
-   [:source-entity-id   {:optional true} [:maybe ms/PositiveInt]]])
+   [:source-entity-id   {:optional true} [:maybe ms/PositiveInt]]
+   [:source-entity-name {:optional true} [:maybe :string]]])
 
 (mu/defn replace-errors-for-entity!
   "Delete existing errors for an entity and insert new ones.
@@ -46,7 +53,10 @@
    - `:error-type` - keyword like `:missing-column`
    - `:error-detail` - string (column name, alias, message, etc.) or nil
    - `:source-entity-type` - keyword like `:table`, `:card`, or nil
-   - `:source-entity-id` - int or nil"
+   - `:source-entity-id` - int or nil
+   - `:source-entity-name` - string (qualified textual reference) or nil. Used
+     when the analyzer saw a source in the SQL but couldn't resolve it to a
+     Metabase id; allows the UI to still surface a concrete name."
   [entity-type :- ::deps.dependency-types/dependency-types
    entity-id   :- ms/PositiveInt
    errors      :- [:sequential ::error-input]]
@@ -56,13 +66,16 @@
                 :analyzed_entity_id entity-id)
     (when (seq errors)
       (t2/insert! :model/AnalysisFindingError
-                  (mapv (fn [{:keys [error-type error-detail source-entity-type source-entity-id]}]
+                  (mapv (fn [{:keys [error-type error-detail
+                                     source-entity-type source-entity-id
+                                     source-entity-name]}]
                           {:analyzed_entity_type (name entity-type)
                            :analyzed_entity_id entity-id
                            :error_type error-type
                            :error_detail error-detail
                            :source_entity_type (some-> source-entity-type name)
-                           :source_entity_id source-entity-id})
+                           :source_entity_id source-entity-id
+                           :source_entity_name source-entity-name})
                         errors)))))
 
 (mu/defn errors-by-source :- [:sequential ::analysis-finding-error]

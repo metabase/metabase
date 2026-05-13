@@ -163,12 +163,29 @@
       (some #(= (driver.sql/normalize-name driver (:name %)) normalized)
             (:result-metadata card)))))
 
+(defn- table-spec->name
+  "Render a SQL-tools table-spec `{:table \"t\" :schema \"s\"}` as a single
+  qualified `schema.table` string for human display, e.g. when the analyzer
+  saw a textual reference in the SQL that doesn't resolve to a Metabase id."
+  [{:keys [table schema]}]
+  (cond
+    (str/blank? (str table)) nil
+    (str/blank? (str schema)) (str table)
+    :else (str schema "." table)))
+
 (defn- enrich-error
   "Enrich a :missing-column error with source entity information from its col-spec.
    When card-placeholders? is true, checks card placeholder columns against card metadata:
    valid columns return nil (suppressed), invalid ones get source attribution.
    Suppresses :missing-table-alias errors for card placeholder table names.
-   For other error types, returns the error unchanged."
+   For other error types, returns the error unchanged.
+
+   When `resolve-table-id` returns nil — typical when the SQL references a
+   table that has been renamed/archived/dropped in the warehouse and no
+   longer has a synced `metabase_table` row — we still capture the textual
+   `schema.table` reference under `:source-entity-name`, so the downstream
+   reasons UI can name the offending source instead of saying \"couldn't
+   attribute\"."
   [driver mp card-placeholders? col-spec error]
   (cond
     ;; Suppress missing-table-alias for card placeholders (e.g. SELECT * FROM mb__validat_card__1)
@@ -187,7 +204,12 @@
         (and (map? source) (= (:kind source) :table))
         (if-let [table-id (resolve-table-id driver mp (:spec source))]
           (assoc error :source-entity-type :table :source-entity-id table-id)
-          error)
+          ;; Couldn't resolve to a Metabase id — keep the textual name so the
+          ;; UI can still point at the source. We tag :source-entity-type as
+          ;; :table so the reader knows the textual reference is a table.
+          (if-let [nm (table-spec->name (:spec source))]
+            (assoc error :source-entity-type :table :source-entity-name nm)
+            error))
 
         ;; Card placeholder source — check column against card metadata
         (and (map? source) (= (:kind source) :card))

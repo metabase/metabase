@@ -3482,6 +3482,21 @@ databaseChangeLog:
         - customChange:
             class: "metabase.app_db.custom_migrations.DropMedallionNamesForDataLayer"
 
+  - changeSet:
+      id: v59.2026-05-13T00:00:00
+      author: yeowboon
+      comment: Capture textual source reference on analysis_finding_error when the SQL references an entity that isn't resolved to a Metabase id (e.g. a renamed/archived warehouse table). Surfaced in the admin Introspector reasons column.
+      changes:
+        - addColumn:
+            tableName: analysis_finding_error
+            columns:
+              - column:
+                  name: source_entity_name
+                  type: varchar(254)
+                  remarks: Textual source reference (e.g. "schema.table") when the source entity could not be resolved to a Metabase id. Nullable.
+                  constraints:
+                    nullable: true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

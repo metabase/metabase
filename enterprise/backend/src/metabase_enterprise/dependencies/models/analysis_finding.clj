@@ -26,8 +26,11 @@
   - 4: Disable naive sql validation
   - 5: Added source entity tracking in analysis_finding_error table
   - 6: Removed validate prefix from error_type in analysis_finding_error
-  - 7: Only mark inactive (not missing) field refs in :fields as soft (GHY-3157)"
-  7)
+  - 7: Only mark inactive (not missing) field refs in :fields as soft (GHY-3157)
+  - 8: Capture textual source-entity-name on missing-column errors when the
+       referenced table doesn't resolve to a Metabase id (POC: surfaces the
+       offending `schema.table` in the admin Introspector's Reasons column)."
+  8)
 
 (defn- error->finding-error-row
   "Convert an error from lib/find-bad-refs-with-source to a row for analysis_finding_error table.
@@ -37,7 +40,13 @@
    ;; error-detail cannot be longer than 254
    :error-detail        (some-> (or (:name error) (:message error)) (u/truncate 254))
    :source-entity-type  (:source-entity-type error)
-   :source-entity-id    (:source-entity-id error)})
+   :source-entity-id    (:source-entity-id error)
+   ;; Persist the textual `schema.table` reference when the analyzer captured
+   ;; one but couldn't resolve it to a Metabase id (see `enrich-error` in
+   ;; metabase-enterprise.dependencies.native-validation). The Introspector
+   ;; surfaces this in the Reasons column so admins still see the offending
+   ;; source name instead of an opaque "couldn't attribute" message.
+   :source-entity-name  (some-> (:source-entity-name error) (u/truncate 254))})
 
 (defn upsert-analysis!
   "Given the details of an AnalysisFinding row, upsert the data into the actual db.
