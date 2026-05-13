@@ -33,9 +33,8 @@
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.driver :as driver]
-   [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
+   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
+   [metabase.workspaces.core :as ws]
    [toucan2.core :as t2]))
 
 (defn engine-namespace-positions
@@ -120,48 +119,20 @@
   *workspace-instance-config*
   (atom nil))
 
-(mr/def ::table-namespace
-  "A `{:db ?, :schema ?}` namespace map. Either or both keys may be present
-   depending on the driver's `qualified-name-components`; at least one must
-   populate. Empty-string `\"\"` is reserved for the storage layer; the atom
-   carries `nil`/missing for absent slots."
-  [:and
-   [:map
-    [:db     {:optional true} [:maybe :string]]
-    [:schema {:optional true} [:maybe :string]]]
-   [:fn {:error/message "table namespace must populate at least one of :db or :schema"}
-    (fn [m] (or (some? (:db m)) (some? (:schema m))))]])
+(defenterprise-schema set-instance-workspace! :- :any
+  "EE impl: install the in-process workspace config atom. Replaces any prior
+   value. The shape is validated against `::ws/workspace-instance-config`."
+  :feature :none
+  [config :- ::ws/workspace-instance-config]
+  (reset! *workspace-instance-config* config)
+  nil)
 
-(mr/def ::workspace-database-config
-  "Per-database workspace config: `:input_schemas` is a non-empty vector of
-   driver-opaque schema names (the source schemas the workspace reads from);
-   `:output` is a single namespace map (the workspace's isolation schema,
-   expanded with the warehouse catalog at boot)."
-  [:map
-   [:input_schemas [:vector {:min 1} :string]]
-   [:output        ::table-namespace]])
-
-(mr/def ::workspace-instance-config
-  "Shape stored in [[workspace-instance-config]] after the `:workspace` config.yml
-   loader has resolved database names to ids. Database keys are integer ids
-   (post-resolution); the wire format with name keys lives in
-   `metabase-enterprise.advanced-config.file.workspace`."
-  [:map
-   [:name      [:string {:min 1}]]
-   [:databases [:map-of :int ::workspace-database-config]]])
-
-(mu/defn set-instance-workspace!
-  "Set the in-process workspace config for this instance. Replaces any prior value.
-  The config is validated against [[::workspace-instance-config]] — a malformed
-  config throws at the boundary rather than propagating into transform target
-  rewriting or QP middleware."
-  [config :- ::workspace-instance-config]
-  (reset! *workspace-instance-config* config))
-
-(defn clear-instance-workspace!
-  "Clear the in-process workspace config. Mostly for tests."
+(defenterprise clear-instance-workspace!
+  "EE impl: clear the in-process workspace config atom."
+  :feature :none
   []
-  (reset! *workspace-instance-config* nil))
+  (reset! *workspace-instance-config* nil)
+  nil)
 
 (defn instance-workspace
   "Return the workspace loaded on this instance, or nil if none."

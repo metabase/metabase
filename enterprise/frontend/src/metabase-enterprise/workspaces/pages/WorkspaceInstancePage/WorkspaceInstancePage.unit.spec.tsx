@@ -21,14 +21,12 @@ function setup({ remappings = [] as TableRemapping[] } = {}) {
   setupGetCurrentWorkspaceEndpoint(
     createMockWorkspaceInstance({
       name: "Dev workspace",
-      databases: [
-        createMockWorkspaceInstanceDatabase({
-          id: POSTGRES.id,
-          name: POSTGRES.name,
+      databases: {
+        [POSTGRES.id]: createMockWorkspaceInstanceDatabase({
           input_schemas: ["public"],
-          output_namespace: "ws_dev",
+          output: { schema: "ws_dev" },
         }),
-      ],
+      },
     }),
   );
   setupListTableRemappingsEndpoint(remappings);

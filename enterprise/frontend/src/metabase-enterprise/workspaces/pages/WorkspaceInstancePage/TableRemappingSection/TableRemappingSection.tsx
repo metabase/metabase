@@ -1,5 +1,5 @@
 import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
-import { FixedSizeIcon, Group } from "metabase/ui";
+import { Box, FixedSizeIcon, Group } from "metabase/ui";
 import type { Database, TableRemapping } from "metabase-types/api";
 
 import { TableRemappingTable } from "./TableRemappingTable";
@@ -14,15 +14,17 @@ export function TableRemappingSection({
   remappings,
 }: TableRemappingSectionProps) {
   return (
-    <TitleSection
-      label={
-        <Group gap="sm" wrap="nowrap">
-          <FixedSizeIcon name="database" />
-          {database.name}
-        </Group>
-      }
-    >
-      <TableRemappingTable remappings={remappings} />
-    </TitleSection>
+    <Box role="region" aria-label={database.name}>
+      <TitleSection
+        label={
+          <Group gap="sm" wrap="nowrap">
+            <FixedSizeIcon name="database" aria-hidden />
+            {database.name}
+          </Group>
+        }
+      >
+        <TableRemappingTable remappings={remappings} />
+      </TitleSection>
+    </Box>
   );
 }

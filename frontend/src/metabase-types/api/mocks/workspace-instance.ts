@@ -8,10 +8,8 @@ export function createMockWorkspaceInstanceDatabase(
   opts?: Partial<WorkspaceInstanceDatabase>,
 ): WorkspaceInstanceDatabase {
   return {
-    id: 1,
-    name: "Sample Database",
     input_schemas: [],
-    output_namespace: "",
+    output: { schema: null, db: null },
     ...opts,
   };
 }
@@ -21,7 +19,7 @@ export function createMockWorkspaceInstance(
 ): WorkspaceInstance {
   return {
     name: "Test workspace",
-    databases: [],
+    databases: {},
     ...opts,
   };
 }

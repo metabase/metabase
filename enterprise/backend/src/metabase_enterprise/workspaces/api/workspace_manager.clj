@@ -1,4 +1,4 @@
-(ns metabase-enterprise.workspaces.api.manager
+(ns metabase-enterprise.workspaces.api.workspace-manager
   "EE API endpoints for managing workspaces, served under `/api/ee/workspace-manager`.
    Validation and presentation only — domain logic lives in
    [[metabase-enterprise.workspaces.core]] and permission predicates live on

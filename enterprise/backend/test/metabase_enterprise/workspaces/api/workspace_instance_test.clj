@@ -1,4 +1,4 @@
-(ns metabase-enterprise.workspaces.api.instance-test
+(ns metabase-enterprise.workspaces.api.workspace-instance-test
   "Smoke tests for the workspace-instance HTTP API.
    Behavioral logic is tested elsewhere — these just verify routing, auth, and
    request/response shape through the HTTP layer."
@@ -28,19 +28,20 @@
       (is (nil? (mt/user-http-request :crowberto :get 204 "ee/workspace-instance/current"))))))
 
 (deftest current-with-workspace-test
-  (testing "GET /ee/workspace-instance/current returns the workspace name + per-database info"
+  (testing "GET /ee/workspace-instance/current returns the atom shape — name + databases map keyed by id"
     (with-redefs [ws/instance-workspace (constantly {:name      "Current Test"
                                                      :databases {(mt/id) {:input_schemas ["PUBLIC"]
                                                                           :output        {:schema "ws_alice"}}}})]
       (let [result (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current")]
         (is (= "Current Test" (:name result)))
-        (testing "databases is a list with id + name + input/output schemas"
+        (testing "databases is a map keyed by database id with input_schemas + output"
           (is (= 1 (count (:databases result))))
-          (let [[db] (:databases result)]
-            (is (= (mt/id) (:id db)))
-            (is (string? (:name db)))
+          (let [databases (:databases result)
+                db        (or (get databases (mt/id))
+                              (get databases (keyword (str (mt/id))))
+                              (get databases (str (mt/id))))]
             (is (= ["PUBLIC"] (:input_schemas db)))
-            (is (= "ws_alice" (:output_namespace db)))))))))
+            (is (= {:schema "ws_alice"} (:output db)))))))))
 
 (deftest table-remappings-superuser-only-test
   (testing "GET /ee/workspace-instance/table-remappings requires superuser"

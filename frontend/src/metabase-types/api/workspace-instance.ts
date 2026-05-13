@@ -1,15 +1,18 @@
 import type { DatabaseId } from "./database";
 
+export type TableNamespace = {
+  db?: string | null;
+  schema?: string | null;
+};
+
 export type WorkspaceInstanceDatabase = {
-  id: DatabaseId;
-  name: string;
   input_schemas: string[];
-  output_namespace: string;
+  output: TableNamespace;
 };
 
 export type WorkspaceInstance = {
   name: string;
-  databases: WorkspaceInstanceDatabase[];
+  databases: Record<DatabaseId, WorkspaceInstanceDatabase>;
 };
 
 export type TableRemappingId = number;

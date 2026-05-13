@@ -38,7 +38,45 @@
    the gates are no-ops. The EE impl in `metabase-enterprise.workspaces.core`
    reads the in-process workspace atom."
   (:require
-   [metabase.premium-features.core :refer [defenterprise]]))
+   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
+   [metabase.util.malli.registry :as mr]))
+
+;;; ----------------------------- Workspace config schemas ----------------------------------
+;;;
+;;; The canonical shape of the in-process workspace config atom. The schemas
+;;; live in OSS so the `defenterprise` boundary below can validate without
+;;; pulling in the EE namespace. The EE impl (and the boot loader, and the
+;;; testing-api endpoint) all read/write this exact shape.
+
+(mr/def ::table-namespace
+  "A `{:db ?, :schema ?}` namespace map. Either or both keys may be present
+   depending on the driver's `qualified-name-components`; at least one must
+   populate. Empty-string `\"\"` is reserved for the storage layer; the atom
+   carries `nil`/missing for absent slots."
+  [:and
+   [:map
+    [:db     {:optional true} [:maybe :string]]
+    [:schema {:optional true} [:maybe :string]]]
+   [:fn {:error/message "table namespace must populate at least one of :db or :schema"}
+    (fn [m] (or (some? (:db m)) (some? (:schema m))))]])
+
+(mr/def ::workspace-database-config
+  "Per-database workspace config: `:input_schemas` is a non-empty vector of
+   driver-opaque schema names (the source schemas the workspace reads from);
+   `:output` is a single namespace map (the workspace's isolation schema,
+   expanded with the warehouse catalog at boot)."
+  [:map
+   [:input_schemas [:vector {:min 1} :string]]
+   [:output        ::table-namespace]])
+
+(mr/def ::workspace-instance-config
+  "The shape stored in the EE workspace atom after the `:workspace` config.yml
+   loader has resolved database names to ids. Database keys are integer ids
+   (post-resolution); the wire format with name keys lives in
+   `metabase-enterprise.advanced-config.file.workspace`."
+  [:map
+   [:name      [:string {:min 1}]]
+   [:databases [:map-of :int ::workspace-database-config]]])
 
 (defenterprise workspace-mode?
   "True iff this instance is running in workspace mode — a `:workspace` section
@@ -53,6 +91,23 @@
   metabase-enterprise.workspaces.core
   []
   false)
+
+(defenterprise-schema set-instance-workspace! :- :any
+  "Install the in-process workspace config atom on this instance. The shape is
+   validated against `::workspace-instance-config` at the OSS boundary so a
+   malformed config never reaches the EE atom or the QP / transform hooks that
+   read from it.
+
+   No-op on OSS — workspace mode is EE-only."
+  metabase-enterprise.workspaces.core
+  [_config :- ::workspace-instance-config]
+  nil)
+
+(defenterprise clear-instance-workspace!
+  "Clear the in-process workspace config atom. No-op on OSS."
+  metabase-enterprise.workspaces.core
+  []
+  nil)
 
 (defn check-not-in-workspace-mode!
   "Throws an HTTP 400 `ex-info` if this instance is running in workspace mode.

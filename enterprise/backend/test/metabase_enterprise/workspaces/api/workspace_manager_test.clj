@@ -1,4 +1,4 @@
-(ns metabase-enterprise.workspaces.api.manager-test
+(ns metabase-enterprise.workspaces.api.workspace-manager-test
   "HTTP smoke tests for the workspace-manager API. Permission rules are exercised at the
    model level — see workspace_test.clj and workspace_database_test.clj. These tests just
    verify routing, request/response shape, and that the model-level permission predicates
@@ -74,8 +74,8 @@
 (deftest add-database-without-schemas-feature-test
   (testing "POST /:id/database accepts an empty :input_schemas list for drivers that support workspaces but not the `:schemas` feature (e.g. MySQL)"
     (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-      (mt/with-model-cleanup [:model/Workspace]
-        (mt/with-temp [:model/Database {db-id :id} {:engine :mysql :details {}}]
+      (mt/with-temp [:model/Database {db-id :id} {:engine :mysql :details {}}]
+        (mt/with-model-cleanup [:model/Workspace]
           (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
                                                   {:name "Schemaless"})]
             (is (=? {:databases [{:database_id db-id

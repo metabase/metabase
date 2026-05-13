@@ -1,27 +1,29 @@
-(ns metabase-enterprise.workspaces.api.instance
+(ns metabase-enterprise.workspaces.api.workspace-instance
   "EE API endpoints for the workspace loaded on this (child) instance, served under
-   `/api/ee/workspace-instance`. Read-only — see [[metabase-enterprise.workspaces.api.manager]]
+   `/api/ee/workspace-instance`. Read-only — see [[metabase-enterprise.workspaces.api.workspace-manager]]
    for admin operations."
   (:require
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
+(def ^:private TableNamespace
+  [:map
+   [:db     {:optional true} [:maybe :string]]
+   [:schema {:optional true} [:maybe :string]]])
+
 (def ^:private WorkspaceInstanceDatabase
   [:map
-   [:id               ms/PositiveInt]
-   [:name             :string]
-   [:input_schemas    [:sequential :string]]
-   [:output_namespace :string]])
+   [:input_schemas [:sequential :string]]
+   [:output        TableNamespace]])
 
 (def ^:private WorkspaceInstance
   [:map
    [:name      ms/NonBlankString]
-   [:databases [:sequential WorkspaceInstanceDatabase]]])
+   [:databases [:map-of :int WorkspaceInstanceDatabase]]])
 
 (def ^:private TableRemapping
   [:map
@@ -43,24 +45,12 @@
                     :to_db :to_schema :to_table_name
                     :created_at]))
 
-(defn- present-workspace-instance-database [db-id wsd dbs-by-id]
-  {:id               db-id
-   :name             (get-in dbs-by-id [db-id :name] "")
-   :input_schemas    (vec (:input_schemas wsd))
-   :output_namespace (or (:schema (:output wsd)) "")})
+(defn- present-workspace-instance-database [wsd]
+  (select-keys wsd [:input_schemas :output]))
 
 (defn- present-workspace-instance [workspace]
-  (let [db-ids    (sort (keys (:databases workspace)))
-        dbs-by-id (when (seq db-ids)
-                    (into {} (map (juxt :id identity))
-                          (t2/select [:model/Database :id :name] :id [:in db-ids])))]
-    {:name      (:name workspace)
-     :databases (mapv (fn [db-id]
-                        (present-workspace-instance-database
-                         db-id
-                         (get-in workspace [:databases db-id])
-                         dbs-by-id))
-                      db-ids)}))
+  {:name      (:name workspace)
+   :databases (update-vals (:databases workspace) present-workspace-instance-database)})
 
 ;;; ---------------------------------------------- Endpoints ---------------------------------------------------
 

@@ -116,4 +116,12 @@ export const WorkspaceInstancePage = {
     cy.visit("/data-studio/workspaces/instance");
     WorkspaceInstancePage.get().should("be.visible");
   },
+  database: (name: string) =>
+    WorkspaceInstancePage.get().findByRole("region", { name }),
+  emptyState: () =>
+    WorkspaceInstancePage.get().findByText(
+      /Tables will be remapped here the first time a transform runs/,
+    ),
+  remappingRow: (canonicalName: string) =>
+    WorkspaceInstancePage.get().findByText(canonicalName),
 };

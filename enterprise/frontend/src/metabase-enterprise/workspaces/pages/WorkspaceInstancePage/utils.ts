@@ -26,15 +26,19 @@ export function getDatabasesInfo(
     remappingsByDatabaseId.set(remapping.database_id, list);
   }
 
-  return workspace.databases.reduce<DatabaseInfo[]>((result, entry) => {
-    const database = databaseById.get(entry.id);
-    if (database == null) {
+  return Object.keys(workspace.databases).reduce<DatabaseInfo[]>(
+    (result, key) => {
+      const databaseId = Number(key);
+      const database = databaseById.get(databaseId);
+      if (database == null) {
+        return result;
+      }
+      result.push({
+        database,
+        remappings: remappingsByDatabaseId.get(databaseId) ?? [],
+      });
       return result;
-    }
-    result.push({
-      database,
-      remappings: remappingsByDatabaseId.get(entry.id) ?? [],
-    });
-    return result;
-  }, []);
+    },
+    [],
+  );
 }
