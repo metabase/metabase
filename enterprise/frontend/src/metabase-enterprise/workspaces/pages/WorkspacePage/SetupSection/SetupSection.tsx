@@ -15,14 +15,17 @@ export function SetupSection({ workspace }: SetupSectionProps) {
   const description = jt`Run a local Metabase instance backed by this workspace's data so you can make changes safely. Pass this ${<Code key="config">{CONFIG_FILENAME}</Code>} file, containing the database credentials, when starting the instance.`;
 
   return (
-    <TitleSection label={t`How to set up a development instance`}>
+    <TitleSection
+      data-testid="workspace-setup-section"
+      label={t`How to set up a development instance`}
+    >
       <Group p="lg" justify="space-between" align="center">
         <Text maw="40rem">{description}</Text>
         <Button
           component="a"
           href={`/api/ee/workspace-manager/${workspace.id}/config`}
           download={CONFIG_FILENAME}
-          leftSection={<FixedSizeIcon name="download" />}
+          leftSection={<FixedSizeIcon name="download" aria-hidden />}
         >
           {t`Download ${CONFIG_FILENAME}`}
         </Button>

@@ -24,10 +24,8 @@ export function useDeleteDatabase({
     workspace: Workspace,
     workspaceDatabase: WorkspaceDatabase,
   ) => {
-    const databaseLabel = database ? database.name : t`database`;
-
     show({
-      title: t`Remove ${databaseLabel} from this workspace?`,
+      title: t`Remove ${database?.name} from this workspace?`,
       message: t`This will delete the temporary user and schema from this database.`,
       confirmButtonText: t`Remove`,
       confirmButtonProps: { color: "danger" },

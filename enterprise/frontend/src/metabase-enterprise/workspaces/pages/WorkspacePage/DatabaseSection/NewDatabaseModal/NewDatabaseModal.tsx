@@ -222,7 +222,7 @@ function DatabaseLabel({ database }: DatabaseLabelProps) {
     <Group gap="xs" wrap="nowrap" component="span">
       <span>{database.name}</span>
       <Tooltip label={t`This database does not support workspaces.`}>
-        <FixedSizeIcon name="info" c="text-secondary" />
+        <FixedSizeIcon name="info" c="text-secondary" aria-hidden />
       </Tooltip>
     </Group>
   );

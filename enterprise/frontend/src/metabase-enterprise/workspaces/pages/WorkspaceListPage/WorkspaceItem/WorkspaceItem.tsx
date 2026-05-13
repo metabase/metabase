@@ -25,6 +25,9 @@ export function WorkspaceItem({
 
   return (
     <Card
+      role="region"
+      aria-label={workspace.name}
+      data-testid="workspace-item"
       className={S.workspaceItem}
       component={Link}
       to={Urls.workspace(workspace.id)}

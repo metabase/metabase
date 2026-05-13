@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 import { Group, Pill, Text } from "metabase/ui";
 import type { Database, WorkspaceDatabase } from "metabase-types/api";
 
@@ -12,12 +10,9 @@ export function DatabaseInfo({
   workspaceDatabase,
   database,
 }: DatabaseInfoProps) {
-  const databaseLabel =
-    database?.name ?? t`Database ${workspaceDatabase.database_id}`;
-
   return (
     <Group gap="sm">
-      <Text fw="bold">{databaseLabel}</Text>
+      <Text fw="bold">{database?.name}</Text>
       <Group gap="sm">
         {workspaceDatabase.input_schemas.map((schema) => (
           <Pill key={schema}>{schema}</Pill>

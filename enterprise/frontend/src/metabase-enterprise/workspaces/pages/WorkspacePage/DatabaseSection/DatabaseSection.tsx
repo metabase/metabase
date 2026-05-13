@@ -22,7 +22,7 @@ export function DatabaseSection({
   const isEmpty = workspace.databases.length === 0;
 
   return (
-    <Stack>
+    <Stack data-testid="workspace-database-section">
       <Stack gap="sm">
         <Title order={4}>{t`Databases to include`}</Title>
         <Text c="text-secondary">

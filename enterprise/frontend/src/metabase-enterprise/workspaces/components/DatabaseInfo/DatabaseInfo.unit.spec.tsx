@@ -24,18 +24,4 @@ describe("DatabaseInfo", () => {
     expect(screen.getByText("public")).toBeInTheDocument();
     expect(screen.getByText("analytics")).toBeInTheDocument();
   });
-
-  it("falls back to a `Database <id>` label when the database is undefined", () => {
-    renderWithProviders(
-      <DatabaseInfo
-        workspaceDatabase={createMockWorkspaceDatabase({
-          database_id: 999,
-          input_schemas: [],
-        })}
-        database={undefined}
-      />,
-    );
-
-    expect(screen.getByText("Database 999")).toBeInTheDocument();
-  });
 });

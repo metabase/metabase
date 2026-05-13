@@ -32,7 +32,7 @@ export function AddDatabaseButton({
         <Button
           variant={isEmpty ? "filled" : "default"}
           disabled={isDisabled}
-          leftSection={<FixedSizeIcon name="add" />}
+          leftSection={<FixedSizeIcon name="add" aria-hidden />}
           onClick={open}
         >
           {isEmpty ? t`Add database` : t`Add another database`}

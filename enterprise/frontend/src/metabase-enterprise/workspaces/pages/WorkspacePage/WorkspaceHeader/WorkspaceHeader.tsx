@@ -42,6 +42,7 @@ export function WorkspaceHeader({ workspace, actions }: WorkspaceHeaderProps) {
     <PaneHeader
       title={
         <PaneHeaderInput
+          data-testid="workspace-name-input"
           initialValue={workspace.name}
           onChange={handleNameChange}
         />
@@ -76,12 +77,12 @@ function WorkspaceHeaderMenu({ workspace }: WorkspaceHeaderMenuProps) {
       <Menu>
         <Menu.Target>
           <ActionIcon size="sm" aria-label={t`Workspace actions`}>
-            <FixedSizeIcon name="ellipsis" />
+            <FixedSizeIcon name="ellipsis" aria-hidden />
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Item
-            leftSection={<FixedSizeIcon name="trash" />}
+            leftSection={<FixedSizeIcon name="trash" aria-hidden />}
             onClick={() => handleDelete(workspace)}
           >
             {t`Delete`}

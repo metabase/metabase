@@ -75,7 +75,7 @@ function WorkspaceListPageBody({
         py={0}
       />
       {hasWorkspaces ? (
-        <Stack gap="lg">
+        <Stack data-testid="workspace-list" gap="lg">
           {workspaces.map((workspace) => (
             <WorkspaceItem
               key={workspace.id}

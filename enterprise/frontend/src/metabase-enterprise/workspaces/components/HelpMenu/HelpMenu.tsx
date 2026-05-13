@@ -18,7 +18,7 @@ export function HelpMenu() {
     <Menu>
       <Menu.Target>
         <Button
-          rightSection={<FixedSizeIcon name="chevrondown" />}
+          rightSection={<FixedSizeIcon name="chevrondown" aria-hidden />}
         >{t`Help`}</Button>
       </Menu.Target>
       <Menu.Dropdown>
@@ -28,7 +28,7 @@ export function HelpMenu() {
             to={fileBasedDevDocsUrl}
             target="_blank"
             rel="noreferrer"
-            leftSection={<FixedSizeIcon name="reference" />}
+            leftSection={<FixedSizeIcon name="reference" aria-hidden />}
           >
             {t`File-based development`}
           </Menu.Item>
@@ -39,7 +39,7 @@ export function HelpMenu() {
             to={remoteSyncDocsUrl}
             target="_blank"
             rel="noreferrer"
-            leftSection={<FixedSizeIcon name="reference" />}
+            leftSection={<FixedSizeIcon name="reference" aria-hidden />}
           >
             {t`Using remote sync`}
           </Menu.Item>

@@ -29,7 +29,14 @@ export function DatabaseItem({
   const supportsSchemas = database != null && hasFeature(database, "schemas");
 
   return (
-    <Card p="lg" shadow="none" withBorder>
+    <Card
+      role="region"
+      aria-label={database?.name}
+      data-testid="workspace-database-item"
+      p="lg"
+      shadow="none"
+      withBorder
+    >
       <Group justify="space-between" align="center" wrap="nowrap">
         <DatabaseInfo
           workspaceDatabase={workspaceDatabase}
@@ -38,18 +45,18 @@ export function DatabaseItem({
         <Menu>
           <Menu.Target>
             <ActionIcon size="sm" aria-label={t`Database actions`}>
-              <FixedSizeIcon name="ellipsis" />
+              <FixedSizeIcon name="ellipsis" aria-hidden />
             </ActionIcon>
           </Menu.Target>
           <Menu.Dropdown>
             {supportsSchemas && (
               <Menu.Item
-                leftSection={<FixedSizeIcon name="pencil" />}
+                leftSection={<FixedSizeIcon name="pencil" aria-hidden />}
                 onClick={open}
               >{t`Edit`}</Menu.Item>
             )}
             <Menu.Item
-              leftSection={<FixedSizeIcon name="trash" />}
+              leftSection={<FixedSizeIcon name="trash" aria-hidden />}
               onClick={() => handleDelete(workspace, workspaceDatabase)}
             >{t`Remove`}</Menu.Item>
           </Menu.Dropdown>

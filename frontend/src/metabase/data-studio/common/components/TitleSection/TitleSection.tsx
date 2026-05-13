@@ -6,15 +6,17 @@ type TitleSectionProps = {
   label: ReactNode;
   description?: ReactNode;
   children?: ReactNode;
+  "data-testid"?: string;
 };
 
 export function TitleSection({
   label,
   description,
   children,
+  "data-testid": dataTestId,
 }: TitleSectionProps) {
   return (
-    <Stack>
+    <Stack data-testid={dataTestId}>
       <Group>
         <Stack flex={1} gap="sm">
           <Title order={4}>{label}</Title>

@@ -20,7 +20,10 @@ export function NewWorkspaceButton() {
 
   return (
     <>
-      <Button leftSection={<FixedSizeIcon name="add" />} onClick={open}>
+      <Button
+        leftSection={<FixedSizeIcon name="add" aria-hidden />}
+        onClick={open}
+      >
         {t`New`}
       </Button>
       <NewWorkspaceModal
