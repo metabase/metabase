@@ -105,9 +105,11 @@ WHERE NOT EXISTS (SELECT 1 FROM events WHERE customer_id = c.id)
 ```
 
 Only propose the `NOT IN → NOT EXISTS` rewrite when the inner column
-is **declared `NOT NULL`** in the schema you were given (or the
-subquery explicitly filters NULLs with `WHERE col IS NOT NULL`).
-Otherwise the rewrite is unsafe.
+is **declared `NOT NULL`** in the schema you were given, **or the
+field-stats annotation shows `null=0%`** (see "Field stats annotation"
+below — fingerprints are sampled, so very low non-zero percentages
+are still risky), or the subquery explicitly filters NULLs with
+`WHERE col IS NOT NULL`. Otherwise the rewrite is unsafe.
 
 The same applies in reverse to `<> ALL` (subquery) and `IN` vs `EXISTS`
 on outer-NULL paths — be skeptical of any rewrite that touches NULL
@@ -212,6 +214,40 @@ join order, materialised intermediate, index usage that's only
 reachable from one form because of a planner quirk in the *given*
 EXPLAIN plan). In that case, lead the `rationale` with the structural
 win — not the cosmetic swap.
+
+## Field stats annotation
+
+Fields that the SQL actually references (FROM, WHERE, JOIN, GROUP BY,
+ORDER BY, SELECT) carry a compact stats annotation in `{ … }` after
+their type / index / FK markers. Example:
+
+```
+  - occurred_at : type/DateTime [indexed] {ndv≈8421 null=0.1% time=[2024-01-01..2026-05-12]}
+  - customer_id : type/Integer [FK → shop.customers.id] {ndv≈12534 null=0%}
+  - amount      : type/Decimal {ndv≈210 null=0% range=[0.01,9999.99] avg=42.7}
+```
+
+Only fields referenced by the query get stats — unreferenced columns
+on the same table render without the `{ … }` block to save tokens.
+**Absence of stats means "not referenced," not "no data."**
+
+Stats are derived from sampled fingerprints, so treat them as
+*estimates* — `ndv≈` is rounded, `null=` is sampled (a column with
+true 0 NULLs and one with very few may both show `null=0%`), and the
+range may miss outliers. Use them for **direction**, not certainty.
+
+| Key | Meaning | Typical use |
+|---|---|---|
+| `ndv≈<int>` | Estimated number of distinct values. | Selectivity: `ndv` close to row count ⇒ near-unique ⇒ index on this column would be highly selective. Low `ndv` (≲ 100) ⇒ a B-tree index is usually *worse* than a seq-scan; consider a partial index instead. |
+| `null=<pct>%` | Sampled percentage of NULL values. | The `NOT IN` ↔ `NOT EXISTS` pitfall — see above. Also informs whether `LEFT JOIN`-with-`IS NULL` anti-join is safe. |
+| `range=[min,max]` | Sampled min/max for numeric columns. | Filter selectivity (`WHERE x > k`). Detect bounded vs unbounded growth (`id` columns up to ~current scale; surrogate keys with tight `max`). |
+| `avg=<num>` | Sampled mean. | Tail vs body decisions for aggregate strategies; rarely the deciding factor alone. |
+| `time=[earliest..latest]` | Sampled earliest/latest temporal value. | Crucial for `WHERE ts >= NOW() - INTERVAL '90 days'` style filters — tells you *what fraction of the table* survives the filter, and so whether a precompute / partial index is worth proposing. Also informs precompute granularity (daily vs hourly vs weekly). |
+
+When you cite a stat in your `rationale`, write the actual number
+(`"events.occurred_at spans 2.3 years, so the 90-day window is ~10%
+of the table"`) — that's the kind of justification that makes a
+proposal land.
 
 ## Output schema
 
