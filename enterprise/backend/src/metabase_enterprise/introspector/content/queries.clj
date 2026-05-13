@@ -127,11 +127,14 @@
             [:= :dep_table.id nil]]})
 
 (defn- transform-target-missing-broken-cte
-  "Transforms whose target table is inactive **and that have been run at least
-  once** — the broken signal. A never-run transform with a missing target is
-  more likely an abandoned config (covered by `transform-stale-cte`) than a
-  break; we only call it broken once something has actually executed against
-  it. Trashed transforms (`archived = true`) are excluded."
+  "Transforms whose target table is inactive **and that have succeeded at
+  least once** — the broken signal. We require a prior success rather than
+  just any run because the target table only ever gets created by a
+  successful run; a never-succeeded transform with a missing target hasn't
+  *lost* its table, it never had one. That's a `latest-run-failed` or
+  `transform-stale-cte` problem, not `target-table-missing`.
+
+  Trashed transforms (`archived = true`) are excluded."
   []
   {:select [[:transform.id :id]]
    :from   [:transform]
@@ -142,7 +145,9 @@
             [:= :metabase_table.active false]
             [:exists {:select [[[:inline 1]]]
                       :from   [[:transform_run :__has_runs]]
-                      :where  [:= :__has_runs.transform_id :transform.id]}]]})
+                      :where  [:and
+                               [:= :__has_runs.transform_id :transform.id]
+                               [:= :__has_runs.status (h2x/literal "succeeded")]]}]]})
 
 (defn- transform-stale-cte
   "Transforms that look abandoned rather than broken:
@@ -197,13 +202,13 @@
 (defn- broken-transforms-cte
   "Combined broken signal for transforms:
     - analysis-finding error, OR
-    - target table missing **and at least one run has happened** (a never-run
-      transform with a missing target is `transform-stale-cte`, not broken), OR
+    - target table missing **and at least one run has succeeded historically**
+      — i.e. the table was created at some point and has since been
+      dropped/deactivated. Transforms whose target table never existed
+      (no succeeded runs) are not flagged here; the real signal there is
+      `latest-run-failed` (the failure itself) or `transform-stale-cte`
+      (the abandoned config), OR
     - the latest finished run failed.
-
-  Matches `docs/developers-guide/transforms-admin-cleanup-spike.md` with the
-  refinement that target-table-missing only flags as broken once the transform
-  has actually been executed.
 
   Uses `:union` (deduplicating) so a transform that trips multiple broken
   signals appears once — keeps the outer LEFT JOIN cardinality-preserving."
