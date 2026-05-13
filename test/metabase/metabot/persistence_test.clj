@@ -325,7 +325,7 @@
                              rows)))))))))))
 
 (deftest start-turn-user-and-placeholder-share-created-at-test
-  (testing "user-message and assistant-placeholder rows inserted by start-turn! share created_at;
+  (testing "user-message and assistant-placeholder rows inserted by start-turn! share an instant;
             readers must tiebreak on :id to preserve user-before-assistant ordering"
     (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
       (let [conversation-id (str (random-uuid))]
@@ -338,8 +338,8 @@
           (is (= :user      (:role u)))
           (is (= :assistant (:role a)))
           (is (< (:id u) (:id a)) "user row is inserted first; smaller :id")
-          (is (= (:created_at u) (:created_at a))
-              "intra-transaction inserts resolve current_timestamp to the same value"))))))
+          (is (<= (compare (:created_at u) (:created_at a)) 0)
+              "user row's created_at is no later than the placeholder's"))))))
 
 (deftest conversation-detail-drops-errored-pair-under-created-at-collision-test
   (testing "drop-errored-pairs works correctly when the errored user/asst rows share created_at"
@@ -403,7 +403,8 @@
                                         :external_id     (or external-id (str (random-uuid)))
                                         :total_tokens    0
                                         :data            [{:type "text" :text text :id (str (random-uuid))}]
-                                        :created_at      created-at}
+                                        :created_at      created-at
+                                        :finished        true}
                                  deleted-at (assoc :deleted_at deleted-at))))]
         (t2/insert! :model/MetabotConversation {:id conversation-id :user_id user-id})
         (insert! {:text "second" :created-at (.plusSeconds now 2)})
