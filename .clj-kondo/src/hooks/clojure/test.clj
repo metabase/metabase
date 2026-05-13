@@ -185,8 +185,16 @@
     (warn-about-missing-test-expr-requires-in-cljs node))
   {:node node})
 
-(defn use-fixtures [{:keys [node config]}]
-  ;; Mirror `deftest`'s lookup: `:parallel/safe` / `:parallel/unsafe` whitelists
-  ;; live under `[:linters :metabase/validate-deftest]`, not at top level.
-  (warn-about-disallowed-parallel-forms node (get-in config [:linters :metabase/validate-deftest]))
+(defn use-fixtures [{:keys [node]}]
+  ;; `deftest-check-parallel` already flags `:parallel/unsafe` forms inside
+  ;; `^:parallel`-marked deftests. The fixture-level check is intentionally a
+  ;; no-op: it would need ns-wide knowledge ("does any deftest in this ns
+  ;; have ^:parallel?") to fire correctly, and kondo hooks fire per-form
+  ;; without that context, so any always-fire policy here produces false
+  ;; positives for non-parallel test namespaces that use destructive ops in
+  ;; `:each` fixtures (a common pattern).
+  ;;
+  ;; If a future change makes the fixture body cheaper to gate on the
+  ;; surrounding ns's parallelism (e.g. by walking deftest metadata in a
+  ;; separate pass), wire `warn-about-disallowed-parallel-forms` back in here.
   {:node node})
