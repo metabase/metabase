@@ -11,10 +11,14 @@ on:
       commit:
         description: 'A full-length commit SHA-1 hash'
         required: true
-      auto:
-        description: 'auto-patch release DO NOT SET MANUALLY'
-        type: boolean
-        default: false
+      kind:
+        description: 'Release kind'
+        type: choice
+        required: true
+        default: 'patch'
+        options:
+          - patch
+          - minor
 
 permissions:
   id-token: write
@@ -260,11 +264,10 @@ jobs:
 
   auto-publish-release:
     name: Auto-publish release ${{ inputs.version }}
-    if: ${{ inputs.auto }}
     needs: run-pre-release-tests
     uses: ./.github/workflows/release.yml
     secrets: inherit
     with:
       version: ${{ inputs.version }}
       commit: ${{ inputs.commit }}
-      auto: ${{ inputs.auto }}
+      kind: ${{ inputs.kind }}

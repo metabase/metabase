@@ -11,10 +11,14 @@ on:
       commit:
         description: 'A full-length commit SHA-1 hash'
         required: true
-      auto:
-        description: 'auto-patch release DO NOT SET MANUALLY'
-        type: boolean
-        default: false
+      kind:
+        description: 'Release kind'
+        type: choice
+        required: true
+        default: 'patch'
+        options:
+          - patch
+          - minor
   workflow_call:
     inputs:
       version:
@@ -25,10 +29,11 @@ on:
         description: 'A full-length commit SHA-1 hash'
         type: string
         required: true
-      auto:
-        description: 'auto-patch release DO NOT SET MANUALLY'
-        type: boolean
-        default: false
+      kind:
+        description: 'Release kind'
+        type: string
+        required: true
+        default: 'patch'
 
 permissions:
   id-token: write
@@ -358,7 +363,7 @@ jobs:
       dot-x-tag: ${{ startsWith(matrix.tag, 'v') }}
 
   trigger-cloud-issues:
-    if: ${{ !inputs.auto }}
+    if: ${{ inputs.kind == 'minor' }}
     needs: push-tags
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
@@ -433,7 +438,7 @@ jobs:
             });
 
   draft-release-notes:
-    if: ${{ !inputs.auto }}
+    if: ${{ inputs.kind == 'minor' }}
     needs: add-extra-tags
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
@@ -502,6 +507,7 @@ jobs:
             }).catch(console.warn);
 
   publish-version-info:
+    if: ${{ inputs.kind == 'minor' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: [push-tags, check-version]
     timeout-minutes: 15
@@ -512,11 +518,6 @@ jobs:
       AWS_S3_STATIC_BUCKET: ${{ vars.AWS_S3_STATIC_BUCKET }}
       AWS_REGION: ${{ vars.AWS_REGION }}
     steps:
-    - name: Finish early
-      if: ${{ inputs.auto }}
-      run: |
-        echo "skipping version info update for nightly patch"
-        exit 0
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
       with:
@@ -585,8 +586,6 @@ jobs:
         with:
           script: | # js
             const { sendPublishCompleteMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
-
-            const isAutoRelease = '${{ inputs.auto }}' === 'true';
 
             await sendPublishCompleteMessage({
               owner: context.repo.owner,
