@@ -5,6 +5,7 @@
    instead of compressing on the fly. This avoids CPU overhead at request time
    and lets us use higher compression levels during the build."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [compojure.core :as compojure]
    [ring.util.mime-type :as mime]
@@ -21,10 +22,9 @@
    :identity "identity"})
 
 (def ^:private header->encoding
-  {"gzip"     :gzip
-   "br"       :brotli
-   "identity" :identity
-   "*"        :*})
+  (into
+   {"*" :*}
+   (set/map-invert encoding->header)))
 
 (defn- parse-quality
   [str]
