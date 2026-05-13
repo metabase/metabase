@@ -260,6 +260,17 @@ describe("AppBar", () => {
 
         expect(await screen.findByText("Foo Collection")).toBeInTheDocument();
       });
+
+      it("should work for collection pages (UXW-249)", async () => {
+        setup({
+          initialRoute: `/collection/${FOO_COLLECTION.id}-foo-collection`,
+          embedOptions: {
+            breadcrumbs: true,
+          },
+        });
+
+        expect(await screen.findByText("Foo Collection")).toBeInTheDocument();
+      });
     });
   });
 });
