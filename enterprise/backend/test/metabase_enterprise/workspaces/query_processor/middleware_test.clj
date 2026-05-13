@@ -4,12 +4,17 @@
    [metabase-enterprise.workspaces.query-processor.middleware :as ws.middleware]
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
+   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -88,16 +93,18 @@
 ;;; --------------------------------- Phase 2: Post-Compilation SQL Rewrite ----------------------------------------
 
 (deftest phase-2-no-remappings-passthrough-test
-  (testing "Phase 2 passes through when no remappings exist"
+  (testing "Phase 2 passes through when no remappings exist — the next middleware sees the SQL verbatim"
     (mt/with-premium-features #{:workspaces}
       (binding [ws.remapping/*remapping-store* (ws.remapping/map-store {})]
-        (let [called? (atom false)
-              mock-qp (fn [_query _rff] (reset! called? true) :ok)
-              wrapped  (#'ws.middleware/apply-workspace-sql-remapping mock-qp)
-              query    {:database (mt/id)
-                        :qp/compiled {:query "SELECT * FROM foo"}}]
+        (let [original-sql "SELECT * FROM foo"
+              captured     (atom nil)
+              mock-qp      (fn [query _rff] (reset! captured query) :ok)
+              wrapped      (#'ws.middleware/apply-workspace-sql-remapping mock-qp)
+              query        {:database    (mt/id)
+                            :qp/compiled {:query original-sql}}]
           (wrapped query identity)
-          (is @called?))))))
+          (is (= original-sql (get-in @captured [:qp/compiled :query]))
+              "SQL flows through unchanged when no remappings exist"))))))
 
 (deftest phase-2-skip-dynamic-var-test
   (testing "Phase 2 passes through when *skip-remapping?* is true"
@@ -160,17 +167,124 @@
               (is (= [42] params)))))))))
 
 (deftest phase-2-noop-when-already-remapped-test
-  (testing "Phase 2 passes through when all refs are already in the workspace schema"
+  (testing "Phase 2 is a no-op when refs are already in the workspace schema — SQL identical at next middleware"
     (mt/with-premium-features #{:workspaces}
       (with-remappings (mt/id) {["PUBLIC" "VENUES"] ["mb_iso_abc" "VENUES"]}
         (binding [driver/*driver* :h2]
-          (let [called? (atom false)
-                mock-qp (fn [_query _rff] (reset! called? true) :ok)
-                wrapped (#'ws.middleware/apply-workspace-sql-remapping mock-qp)
-                query   {:database    (mt/id)
-                         :qp/compiled {:query "SELECT * FROM mb_iso_abc.VENUES"}}]
+          (let [original-sql "SELECT * FROM mb_iso_abc.VENUES"
+                captured     (atom nil)
+                mock-qp      (fn [query _rff] (reset! captured query) :ok)
+                wrapped      (#'ws.middleware/apply-workspace-sql-remapping mock-qp)
+                query        {:database    (mt/id)
+                              :qp/compiled {:query original-sql}}]
             (wrapped query identity)
-            (is @called?)))))))
+            ;; The semantic claim is "already-remapped SQL doesn't change." SQLGlot's
+            ;; re-emission can normalize whitespace/casing on a round-trip, so equality
+            ;; via `referenced-tables-raw` is the right comparison: same AST tables in,
+            ;; same AST tables out.
+            (let [rewritten (get-in @captured [:qp/compiled :query])]
+              (is (= (set (sql-tools/referenced-tables-raw :h2 original-sql))
+                     (set (sql-tools/referenced-tables-raw :h2 rewritten)))
+                  "the same set of table references appears in input and output"))))))))
+
+;;; -------------------------------------------- Fail-closed contracts -------------------------------------------
+;;;
+;;; Phase 2 is the workspace-isolation security boundary. Three branches must fail closed:
+;;;
+;;;   1. SQLGlot parse failure on the compiled SQL  -> throw, never reach the driver.
+;;;   2. Database routing engaged                   -> throw, the rewriter can't reason about
+;;;                                                    a destination connection different from
+;;;                                                    the one the remap rows reference.
+;;;   3. Connection impersonation engaged           -> throw, the impersonated role almost
+;;;                                                    certainly lacks GRANT on the iso schema,
+;;;                                                    and silently running canonical SQL would
+;;;                                                    leak through the isolation boundary.
+;;;
+;;; Each test stubs the relevant predicate and asserts the throw before the next-fn runs.
+
+(deftest phase-2-fail-closed-on-unparseable-sql-test
+  (testing "Phase 2 throws (does not pass through) when the compiled SQL can't be parsed"
+    (mt/with-premium-features #{:workspaces}
+      (with-remappings (mt/id) {["PUBLIC" "VENUES"] ["mb_iso_abc" "VENUES"]}
+        (binding [driver/*driver* :h2]
+          (let [next-called? (atom false)
+                mock-qp      (fn [_ _] (reset! next-called? true) :ok)
+                wrapped      (#'ws.middleware/apply-workspace-sql-remapping mock-qp)
+                ;; SQLGlot rejects this -- not a SELECT, not valid SQL at all.
+                garbage      "this is not sql, it's a love letter"
+                query        {:database    (mt/id)
+                              :qp/compiled {:query garbage}}]
+            (is (thrown? Exception (wrapped query identity))
+                "unparseable SQL must throw")
+            (is (false? @next-called?)
+                "next middleware must NOT be called -- failing closed means no query reaches the warehouse")))))))
+
+(deftest phase-2-fail-closed-on-db-routing-test
+  (testing "Phase 2 throws when the request is db-routed -- workspace remap is incompatible"
+    (mt/with-premium-features #{:workspaces}
+      (with-remappings (mt/id) {["PUBLIC" "VENUES"] ["mb_iso_abc" "VENUES"]}
+        (with-redefs [qp.middleware.enterprise/currently-db-routed? (constantly true)]
+          (let [next-called? (atom false)
+                mock-qp      (fn [_ _] (reset! next-called? true) :ok)
+                wrapped      (#'ws.middleware/apply-workspace-sql-remapping mock-qp)
+                query        {:database    (mt/id)
+                              :qp/compiled {:query "SELECT * FROM PUBLIC.VENUES"}}]
+            (try
+              (wrapped query identity)
+              (is false "Phase 2 must throw on db-routed request")
+              (catch clojure.lang.ExceptionInfo e
+                (is (= qp.error-type/qp (:type (ex-data e)))
+                    "the error must carry the QP error type so the wrapper can render it")
+                (is (re-find #"(?i)database routing" (ex-message e))
+                    "the message must name db-routing as the reason")))
+            (is (false? @next-called?)
+                "next middleware must NOT be called when db-routing is incompatible")))))))
+
+(deftest phase-2-fail-closed-on-impersonation-test
+  (testing "Phase 2 throws when the user has connection-impersonation enforced -- iso role mismatch"
+    (mt/with-premium-features #{:workspaces}
+      (with-remappings (mt/id) {["PUBLIC" "VENUES"] ["mb_iso_abc" "VENUES"]}
+        (with-redefs [qp.middleware.enterprise/currently-db-routed? (constantly false)
+                      perms/impersonation-enforced-for-db?          (constantly true)]
+          (binding [api/*current-user-id* 1]
+            (let [next-called? (atom false)
+                  mock-qp      (fn [_ _] (reset! next-called? true) :ok)
+                  wrapped      (#'ws.middleware/apply-workspace-sql-remapping mock-qp)
+                  query        {:database    (mt/id)
+                                :qp/compiled {:query "SELECT * FROM PUBLIC.VENUES"}}]
+              (try
+                (wrapped query identity)
+                (is false "Phase 2 must throw on impersonation-enforced request")
+                (catch clojure.lang.ExceptionInfo e
+                  (is (= qp.error-type/qp (:type (ex-data e)))
+                      "the error must carry the QP error type")
+                  (is (re-find #"(?i)impersonation" (ex-message e))
+                      "the message must name impersonation as the reason")))
+              (is (false? @next-called?)
+                  "next middleware must NOT be called when impersonation engages"))))))))
+
+(deftest phase-2-impersonation-skipped-without-current-user-test
+  (testing "impersonation-enforced-for-db? is NOT consulted when no current user is bound (sync/transform paths)"
+    (mt/with-premium-features #{:workspaces}
+      (with-remappings (mt/id) {["PUBLIC" "VENUES"] ["mb_iso_abc" "VENUES"]}
+        (let [impersonation-checked? (atom false)]
+          (with-redefs [qp.middleware.enterprise/currently-db-routed? (constantly false)
+                        perms/impersonation-enforced-for-db?
+                        (fn [_db]
+                          (reset! impersonation-checked? true)
+                          (throw (ex-info "must not be called without a current user" {})))]
+            (binding [api/*current-user-id* nil
+                      driver/*driver*       :h2]
+              (let [captured (atom nil)
+                    mock-qp  (fn [query _] (reset! captured query) :ok)
+                    wrapped  (#'ws.middleware/apply-workspace-sql-remapping mock-qp)
+                    query    {:database    (mt/id)
+                              :qp/compiled {:query "SELECT * FROM PUBLIC.VENUES"}}]
+                (wrapped query identity)
+                (is (false? @impersonation-checked?)
+                    "the impersonation predicate must be short-circuited when no user is bound")
+                (is (some? @captured)
+                    "the rewrite proceeds normally and the next middleware is called")))))))))
 
 ;;; -------------------------------------------- Helper tests -----------------------------------------------------
 

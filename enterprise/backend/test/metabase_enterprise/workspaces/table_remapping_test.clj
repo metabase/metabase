@@ -140,8 +140,8 @@
   [db-id output-namespace f]
   (try
     (ws/set-instance-workspace! {:name "ws-3-slot"
-                                 :databases {db-id {:input  [{:schema "_"}]
-                                                    :output output-namespace}}})
+                                 :databases {db-id {:input_schemas ["_"]
+                                                    :output        output-namespace}}})
     (f)
     (finally
       (ws/clear-instance-workspace!))))
@@ -917,3 +917,121 @@
          (let [{:keys [active]} (t2/select-one [:model/Table :active] :db_id (mt/id) :name "ws_canonical_keep")]
            (is (true? active)
                "canonical Table row with an active remap stays active across syncs")))))))
+
+;;; -------------------------- engine-namespace-positions: unknown-engine handling --------------------------
+
+(deftest engine-namespace-positions-unknown-2-slot-degrades-test
+  (testing "Unknown engine whose qualified-name-components is [:schema] degrades to table's :schema column"
+    (with-redefs [driver/qualified-name-components (fn [d]
+                                                     (case d
+                                                       :ws-test-2-slot [:schema]
+                                                       [:schema]))]
+      (is (= {:db nil :schema "public"}
+             (ws/engine-namespace-positions {:engine :ws-test-2-slot :name "x"}
+                                            {:schema "public" :name "orders"}))))))
+
+(deftest engine-namespace-positions-unknown-3-slot-throws-test
+  (testing "Unknown engine whose qualified-name-components includes :db throws (programmer error)"
+    (with-redefs [driver/qualified-name-components (fn [d]
+                                                     (case d
+                                                       :ws-test-3-slot [:db :schema]
+                                                       [:schema]))]
+      (let [database {:engine  :ws-test-3-slot
+                      :name    "x"
+                      :details {:db "warehouse"}}
+            table    {:schema "public" :name "orders"}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"engine-namespace-positions has no case for engine :ws-test-3-slot"
+             (ws/engine-namespace-positions database table)))
+        (try
+          (ws/engine-namespace-positions database table)
+          (catch clojure.lang.ExceptionInfo e
+            (let [data (ex-data e)]
+              (is (= :ws-test-3-slot (:engine data)))
+              (is (= #{:db :schema} (:components data))))))))))
+
+;;; -------------------------- GHY-3553: MySQL-shape sentinel-leak regressions --------------------------
+;;;
+;;; MySQL stores `:schema` as `""` (the no-level sentinel) at the storage layer but
+;;; sync tuples / FK-result rows / describe-database tuples carry `:schema nil`. Pre-fix,
+;;; the three workspace-aware filter/inject/rewrite fns built comparison keys from raw
+;;; storage values, so the comparison never matched on schema-less drivers. Result:
+;;;
+;;;   - `filter-workspace-side-tables` leaked iso-DB tuples through to sync.
+;;;   - `inject-workspace-canonical-tuples` failed to inject, so canonical rows were retired.
+;;;   - `rewrite-fk-result-canonical` silently no-op'd; iso-DB FK rows leaked.
+;;;
+;;; The fix (commit db39a79608a) routes both sides of every comparison through
+;;; `denormalize-level`. These tests lock that fix in by simulating the MySQL shape:
+;;; `add-mapping!` with `:schema nil`, then call the fn with sync tuples carrying
+;;; `:schema nil`.
+
+(deftest filter-workspace-side-tables-mysql-shape-test
+  (testing "MySQL: storage `\"\"` schema sentinel matches sync `:schema nil` tuple"
+    (clean-db-fixture!
+     (mt/id)
+     (fn []
+       ;; MySQL-style mapping: no schema layer; only :db and :table.
+       (ws.table-remapping/add-mapping!
+        (mt/id)
+        {:db "test_data"     :schema nil :table "orders"}
+        {:db "ws_iso_alice"  :schema nil :table "orders"})
+       ;; Sync surfaces both the canonical and iso-DB tuples with :schema nil.
+       (let [tuples   #{{:schema nil :name "orders"}
+                        {:schema nil :name "users"}}
+             filtered (ws.table-remapping/filter-workspace-side-tables tuples (mt/id))]
+         ;; Pre-fix: filtered == tuples (the iso row leaks). Post-fix: orders drops out.
+         ;; NOTE: `filter-workspace-side-tables` keys only on `(schema, name)` so it can't
+         ;; distinguish canonical-DB orders from iso-DB orders on MySQL. The filter is run
+         ;; per-DB at a higher layer; the regression here is that without denormalization
+         ;; the row never drops at all (`"" != nil`). See namespace docstring.
+         (is (= #{{:schema nil :name "users"}} filtered)
+             "iso-DB orders tuple is dropped despite storage `\"\"` vs sync `nil`"))))))
+
+(deftest inject-workspace-canonical-tuples-mysql-shape-test
+  (testing "MySQL: synthetic canonical tuple carries `:schema nil` to match sync diff key shape"
+    (clean-db-fixture!
+     (mt/id)
+     (fn []
+       (ws.table-remapping/add-mapping!
+        (mt/id)
+        {:db "test_data"    :schema nil :table "my_output"}
+        {:db "ws_iso_alice" :schema nil :table "my_output"})
+       ;; Sync diff input: describe-database surfaced only the unrelated table after
+       ;; filter-workspace-side-tables ran. The canonical `:schema nil` tuple is absent.
+       (let [tuples   #{{:schema nil :name "unrelated"}}
+             injected (ws.table-remapping/inject-workspace-canonical-tuples tuples (mt/id))]
+         (is (contains? injected {:schema nil :name "my_output"})
+             "synthetic canonical tuple uses `:schema nil`, not `\"\"`; sync diff keys won't retire it")
+         (is (contains? injected {:schema nil :name "unrelated"})
+             "non-remapped tuple passes through"))))))
+
+(deftest rewrite-fk-result-canonical-mysql-shape-test
+  (testing "MySQL: FK rows with `:fk-table-schema nil` translate via storage `\"\"` sentinel"
+    (clean-db-fixture!
+     (mt/id)
+     (fn []
+       (ws.table-remapping/add-mapping!
+        (mt/id)
+        {:db "test_data"    :schema nil :table "orders"}
+        {:db "ws_iso_alice" :schema nil :table "orders"})
+       (ws.table-remapping/add-mapping!
+        (mt/id)
+        {:db "test_data"    :schema nil :table "users"}
+        {:db "ws_iso_alice" :schema nil :table "users"})
+       ;; JDBC FK enumeration in the iso DB returns rows whose schema is nil (MySQL
+       ;; has no schema layer). Pre-fix, the storage `""` schema sentinel built a
+       ;; lookup key `["" "orders"]` that never matched the row's `[nil "orders"]`.
+       (let [row   {:fk-table-schema nil :fk-table-name "orders" :fk-column-name "user_id"
+                    :pk-table-schema nil :pk-table-name "users"  :pk-column-name "id"}
+             [out] (ws.table-remapping/rewrite-fk-result-canonical [row] (mt/id))]
+         ;; Output schemas are denormalized too: storage `""` -> output `nil`.
+         (is (nil? (:fk-table-schema out))
+             "fk-side schema rewrites to canonical (denormalized nil)")
+         (is (= "orders" (:fk-table-name out))
+             "fk-side name rewrites to canonical")
+         (is (nil? (:pk-table-schema out))
+             "pk-side schema rewrites to canonical (denormalized nil)")
+         (is (= "users" (:pk-table-name out))
+             "pk-side name rewrites to canonical"))))))

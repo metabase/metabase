@@ -210,7 +210,7 @@
 (deftest invalidate-pool-clears-all-connection-types-test
   (mt/test-driver :h2
     (when config/ee-available?
-      (mt/with-premium-features #{:writable-connection :admin-connection}
+      (mt/with-premium-features #{:writable-connection :workspaces}
         (testing "invalidate-pool-for-db! clears default, write, and admin pools"
           (let [read-details  {:db "mem:invalidate_test"}
                 write-details {:db "mem:invalidate_write_test"}

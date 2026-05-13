@@ -25,11 +25,14 @@
    [metabase-enterprise.serialization.metadata-file-import.parsers :as parsers]
    [metabase-enterprise.serialization.metadata-file-import.processors :as processors]
    [metabase.app-db.core :as mdb]
+   [metabase.sync.util :as sync.util]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.models.table :as schema.table]
    [toucan2.core :as t2])
   (:import
    (java.io File)
    (java.sql Connection PreparedStatement)
+   (java.time Instant)
    (org.postgresql PGConnection)
    (org.postgresql.copy CopyIn CopyManager)))
 
@@ -200,29 +203,108 @@
         ;; --- table resolve round 1: matched-vs-insert decision for merge-tables! ---
         (processors/resolve-target-table-ids-in-staging!)
         ;; --- merge (one txn — every live-data write all-or-nothing) ---
-        (t2/with-transaction [_]
-          (processors/merge-tables!)
-          ;; round 2 captures INSERT-assigned ids back into table staging
-          (processors/resolve-target-table-ids-in-staging!)
-          ;; copy target-table-ids from table staging onto field staging
-          (processors/resolve-target-table-ids-for-fields-in-staging!)
-          ;; depth-walk: per-depth resolve + UPDATE matched + INSERT new
-          (processors/merge-fields-by-depth!)
-          (mark-databases-sync-complete! matched-target-db-ids))
+        (let [new-tables
+              (t2/with-transaction [_]
+                (let [insert-source-ids (processors/merge-tables!)]
+                  ;; round 2 captures INSERT-assigned ids back into table staging
+                  (processors/resolve-target-table-ids-in-staging!)
+                  ;; copy target-table-ids from table staging onto field staging
+                  (processors/resolve-target-table-ids-for-fields-in-staging!)
+                  ;; depth-walk: per-depth resolve + UPDATE matched + INSERT new
+                  (processors/merge-fields-by-depth!)
+                  (mark-databases-sync-complete! matched-target-db-ids)
+                  (processors/new-target-tables-from-staging insert-source-ids)))]
+          ;; Permission grants run outside the merge txn — the cluster lock
+          ;; shouldn't be held across the long merge work.
+          (doseq [[db-id rows] (group-by :db_id new-tables)]
+            (schema.table/set-new-tables-permissions! db-id rows)))
         (log/infof "metadata-file-import: complete (matched-databases=%d)"
                    (count matched-target-db-ids))))
     :ok))
 
+;;; ============================== Concurrency guard ==============================
+;;; In-JVM only — matches the scope of `metabase.sync.util/operation->db-ids`.
+
+(defonce ^:private import-state
+  (atom {:status :idle :file nil :since nil :last-result nil}))
+
+(defonce ^:private import-agent
+  (agent ::serializer :error-mode :continue))
+
+(defn import-running?
+  "Truthy iff a metadata-file-import is currently in flight on this JVM."
+  []
+  (= :running (:status @import-state)))
+
+(defn- import-busy-reason []
+  (let [{:keys [status file since]} @import-state]
+    (when (= :running status)
+      {:reason (format "metadata-file-import in progress (file=%s, since=%s)"
+                       file since)})))
+
+(defonce ^:private initialized? (atom false))
+
+(defn init!
+  "Register hooks with the subsystems this module coordinates with (sync).
+  Called from `metabase-enterprise.serialization.init` at boot. Idempotent —
+  callers don't need to guard against multiple invocations."
+  []
+  (when (compare-and-set! initialized? false true)
+    (sync.util/register-busy-predicate! import-busy-reason)))
+
+(defn- run-import*
+  "Agent body. Always returns `::serializer`; `:error-mode :continue` plus
+  the inner try/catch means a failing import never poisons the agent."
+  [_serializer ^File file {:keys [delete-after?]}]
+  (let [path (.getAbsolutePath file)
+        t0   (System/nanoTime)]
+    (swap! import-state assoc :status :running :file path :since (Instant/now))
+    (log/infof "metadata-file-import: starting (file=%s)" path)
+    (try
+      (import-metadata-file! file)
+      (let [wall-ms (/ (- (System/nanoTime) t0) 1e6)]
+        (log/infof "metadata-file-import: complete (file=%s, wall-ms=%.0f)" path wall-ms)
+        (swap! import-state assoc
+               :status :idle :file nil :since nil
+               :last-result {:status :ok
+                             :file path
+                             :wall-ms wall-ms
+                             :finished-at (Instant/now)}))
+      (catch Throwable t
+        (let [wall-ms (/ (- (System/nanoTime) t0) 1e6)]
+          (log/errorf t "metadata-file-import: failed (file=%s, wall-ms=%.0f)" path wall-ms)
+          (swap! import-state assoc
+                 :status :idle :file nil :since nil
+                 :last-result {:status :error
+                               :file path
+                               :wall-ms wall-ms
+                               :ex (str t)
+                               :finished-at (Instant/now)})))
+      (finally
+        (when delete-after?
+          (try (.delete file) (catch Throwable _ nil)))))
+    ::serializer))
+
+(defn enqueue-import!
+  "Submit `file` to the import agent and return immediately. Imports execute
+  in arrival order. With `{:delete-after? true}`, the agent deletes `file`
+  once it finishes (success or failure)."
+  ([^File file]
+   (enqueue-import! file {}))
+  ([^File file opts]
+   (log/infof "metadata-file-import: queued (file=%s)" (.getAbsolutePath file))
+   (send-off import-agent run-import* file opts)
+   :queued))
+
 (defn initialize-from-env!
-  "If `MB_TABLE_METADATA_PATH` is set in the environment, run the import
-  pipeline against the referenced file. Returns `:ok` on success, including
-  the no-env-vars case (silent no-op).
+  "If `MB_TABLE_METADATA_PATH` is set in the environment, enqueue an import of
+  the referenced file. Returns `:ok` on success, including the no-env-vars
+  case (silent no-op). Does not block on the import completing.
 
   Hard-fails if the referenced file doesn't exist or isn't readable."
   []
-  (if-let [metadata-path (env-path table-metadata-path-key)]
+  (when-let [metadata-path (env-path table-metadata-path-key)]
     (let [metadata-file (assert-file-readable! metadata-path)]
       (log/infof "metadata-file-import: loading metadata from %s" metadata-path)
-      (import-metadata-file! metadata-file)
-      :ok)
-    :ok))
+      (enqueue-import! metadata-file)))
+  :ok)

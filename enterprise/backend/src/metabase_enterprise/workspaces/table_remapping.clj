@@ -9,10 +9,9 @@
 
    - [[add-mapping!]] — the writer. Takes `db-id` and two `::table-spec` maps
      (`{:db, :schema, :table}`). Idempotent on the unique constraint.
-   - [[add-transform-target-mapping!]] — transform-hook integration. Called when a
-     transform target is rewritten to a workspace schema; resolves the workspace output
-     schema from the database's provisioned `WorkspaceDatabase` row and delegates to
-     [[add-mapping!]]. Used by [[metabase-enterprise.workspaces.transform-hooks]].
+   - [[add-transform-target-mapping!]] — transform-hook integration for rewriting a
+     transform target to a workspace schema. Resolves the workspace output schema from
+     the database's provisioned `WorkspaceDatabase` row and delegates to [[add-mapping!]].
 
    Callers with `:model/Database` and `:model/Table` rows can produce a `::table-spec`
    via [[spec-for-table]] and hand it to [[add-mapping!]] directly.
@@ -85,60 +84,12 @@
 
 ;;; ---------------------------------------- Driver-aware resolution ----------------------------------------
 
-(defn engine-namespace-positions
-  "Return `{:db ?, :schema ?}` — the values that should populate the `:db` and
-   `:schema` AST slots for a Table row in `database`. `table` is optional; pass
-   it when you want the schema position derived from the Table's `:schema`
-   column (the normal `spec-for-table` case). Pass nil for `table` when you only
-   need the `:db` slot (workspace `output_namespace` expansion, GRANT emission).
-
-   Each engine is spelled out explicitly. Verbose, but obvious at a glance —
-   no more cross-referencing two `case` fns to figure out where each driver
-   reads from.
-
-   `nil` for either slot means \"this driver doesn't emit this AST level.\"
-   Empty-string sentinel coercion happens at the storage boundary, not here."
-  ([database]       (engine-namespace-positions database nil))
-  ([database table]
-   (case (:engine database)
-     ;; 2-slot, schema-from-table
-     :postgres   {:db nil
-                  :schema (:schema table)}
-     :redshift   {:db nil
-                  :schema (:schema table)}
-     :h2         {:db nil
-                  :schema (:schema table)}
-
-     ;; 2-slot, schema-from-database-name (ClickHouse calls its top level
-     ;; \"database\" but emits it at the schema position in compiled SQL).
-     :clickhouse {:db nil
-                  :schema (:name database)}
-
-     ;; 1-slot (db only); MySQL has no schema layer.
-     :mysql      {:db (:db (:details database))
-                  :schema nil}
-
-     ;; 3-slot
-     :snowflake  {:db (:db (:details database))
-                  :schema (:schema table)}
-     :sqlserver  {:db (:db (:details database))
-                  :schema (:schema table)}
-     :bigquery-cloud-sdk
-     {:db (:project-id (:details database))
-      :schema (:schema table)}
-
-     ;; Unknown engine: degrade to the table's own schema column. Anything
-     ;; calling this for a 3-slot driver we haven't enumerated is a bug;
-     ;; surface it loudly at the call site (downstream `:db` lookup yields nil).
-     {:db nil
-      :schema (:schema table)})))
-
 (defn db-position-value
   "Value to put in the `:db` slot for `database`. Convenience accessor over
-   [[engine-namespace-positions]]. Only meaningful for drivers whose
+   [[ws/engine-namespace-positions]]. Only meaningful for drivers whose
    `qualified-name-components` includes `:db`."
   [database]
-  (:db (engine-namespace-positions database)))
+  (:db (ws/engine-namespace-positions database)))
 
 (mu/defn spec-for-table :- ::table-spec
   "Return `{:db, :schema, :table}` for `table` in `database`, populating only the
@@ -160,7 +111,7 @@
   [database :- [:map [:engine :keyword]]
    table    :- [:map [:name :string]]]
   (let [components (set (driver/qualified-name-components (:engine database)))
-        positions  (engine-namespace-positions database table)]
+        positions  (ws/engine-namespace-positions database table)]
     {:db     (normalize-level (when (:db components)     (:db positions)))
      :schema (normalize-level (when (:schema components) (:schema positions)))
      :table  (:name table)}))
@@ -280,8 +231,8 @@
 ;;; ----------------------------------------- SQL rewriting -----------------------------------------
 ;;;
 ;;; Pure SQL rewrite primitives keyed off `::table-spec`. Pure relative to a `{from-spec to-spec}`
-;;; remappings map -- callers fetch from the active store and pass it in. Used by every workspace
-;;; rewrite site: QP middleware Phase 2 and the native-transform exec hook.
+;;; remappings map -- fetched from the active store and passed in. Shared between the QP
+;;; middleware Phase 2 rewriter and the native-transform exec hook.
 
 (defn table-spec->sqlglot-key
   "Translate our `::table-spec` (`{:db :schema :table}` with our AST-position vocab,
@@ -367,7 +318,7 @@
 (defn- driver-for-db
   ; TODO think about whether we can keep track of the db driver in a more efficient way
   ; Probably just convert the callers to pass the whole `database` instead of just the ID
-  "Fetch the engine keyword for `db-id`. Used by translators that take a consumer-shape
+  "Fetch the engine keyword for `db-id`. For translators that take a consumer-shape
    spec (no driver in scope) and need driver-aware key projection. The app-DB cache
    keeps repeat lookups cheap."
   [db-id]
@@ -419,12 +370,15 @@
    ungated on premium features: if rows exist, the filter must apply. See DEV-1898."
   :feature :none
   [tuples db-id]
+  ;; Storage rows carry the `""` sentinel for absent slots; sync tuples carry
+  ;; `nil` (e.g. MySQL `:schema` is always nil). Denormalize both sides so the
+  ;; comparison matches across the boundary.
   (let [to-pairs (into #{}
-                       (map (fn [to-spec] [(:schema to-spec) (:table to-spec)]))
+                       (map (fn [to-spec] [(denormalize-level (:schema to-spec)) (:table to-spec)]))
                        (vals (all-mappings-for-db db-id)))]
     (if (empty? to-pairs)
       tuples
-      (into #{} (remove (fn [t] (contains? to-pairs [(:schema t) (:name t)]))) tuples))))
+      (into #{} (remove (fn [t] (contains? to-pairs [(denormalize-level (:schema t)) (:name t)]))) tuples))))
 
 (defenterprise expand-schema-names-with-workspace
   "Enterprise impl: augment a `:schema-names` list with `to_schema` values for
@@ -456,12 +410,16 @@
    `sync-tables-and-database!` diff keys on."
   :feature :none
   [tuples db-id]
+  ;; Storage rows carry the `""` sentinel for absent slots; the sync diff
+  ;; matches against `nil`-schema tuples on schema-less drivers (MySQL). Use
+  ;; `denormalize-level` so synthetic tuples match the diff key shape.
   (let [mappings (all-mappings-for-db db-id)]
     (if (empty? mappings)
       tuples
       (let [synthetic (into #{}
                             (map (fn [[from-spec _]]
-                                   {:schema (:schema from-spec) :name (:table from-spec)}))
+                                   {:schema (denormalize-level (:schema from-spec))
+                                    :name   (:table from-spec)}))
                             mappings)]
         (into tuples synthetic)))))
 
@@ -474,16 +432,20 @@
    canonical."
   :feature :none
   [rows db-id]
+  ;; Storage `:schema` is the `""` sentinel for absent slots; FK-result rows
+  ;; carry `nil` on schema-less drivers (MySQL). Denormalize on both sides of
+  ;; the lookup so the rewrite matches across the boundary. Output `:schema`
+  ;; values come from the canonical from-spec — also denormalized.
   (let [to->from (into {}
                        (map (fn [[from-spec to-spec]]
-                              [[(:schema to-spec) (:table to-spec)]
-                               [(:schema from-spec) (:table from-spec)]]))
+                              [[(denormalize-level (:schema to-spec)) (:table to-spec)]
+                               [(denormalize-level (:schema from-spec)) (:table from-spec)]]))
                        (all-mappings-for-db db-id))]
     (if (empty? to->from)
       rows
       (mapv (fn [row]
-              (let [fk-key [(:fk-table-schema row) (:fk-table-name row)]
-                    pk-key [(:pk-table-schema row) (:pk-table-name row)]]
+              (let [fk-key [(denormalize-level (:fk-table-schema row)) (:fk-table-name row)]
+                    pk-key [(denormalize-level (:pk-table-schema row)) (:pk-table-name row)]]
                 (cond-> row
                   (contains? to->from fk-key)
                   (assoc :fk-table-schema (first (to->from fk-key))
@@ -498,14 +460,14 @@
    `to-spec` (`{:db :schema :name}`), return a `{:db :schema :name}` map for the
    canonical table if a TableRemapping row records that pair as the destination
    of a canonical table; nil otherwise. Mirror of `workspace-remap-schema+name`
-   for write-side callers that already have the rewritten target on hand and
-   need the canonical slot before touching `:model/Table` rows.
+   for write-side paths that already have the rewritten target on hand and need
+   the canonical slot before touching `:model/Table` rows.
 
    Driver-aware: matches against the slots the driver actually emits, so an
    engine like MySQL (whose canonical and isolated tables differ at `:db` rather
    than `:schema`) inverts correctly. Output `:db` / `:schema` slots are nil
-   when the driver doesn't populate them, so callers don't need to denormalize
-   the empty-string sentinel themselves."
+   when the driver doesn't populate them, so the empty-string sentinel never
+   leaks above this boundary."
   :feature :none
   [db-id to-spec]
   (when-let [driver (driver-for-db db-id)]
@@ -516,9 +478,9 @@
 
 (defenterprise call-with-display-context
   "Enterprise impl: bind `ws.remapping/*skip-remapping?*` true around `thunk` so Phase 1
-   (metadata override) and Phase 2 (SQLGlot rewrite) both short-circuit. Used by display
-   paths (e.g. the QB's `POST /api/dataset/native` SQL preview) so users see canonical
-   SQL instead of the isolation schema. Deliberately ungated on premium features."
+   (metadata override) and Phase 2 (SQLGlot rewrite) both short-circuit. For display
+   paths that want users to see canonical SQL instead of the isolation schema.
+   Deliberately ungated on premium features."
   :feature :none
   [thunk]
   (binding [ws.remapping/*skip-remapping?* true]
@@ -601,13 +563,11 @@
 
    Returns the to-side as a denormalized `{:db :schema :name}` map (consumer
    shape: `nil` for slots the driver doesn't fill, string otherwise). The
-   storage layer's `\"\"` sentinel never leaks above this boundary, so callers
-   like [[metabase-enterprise.workspaces.transform-hooks/resolve-transform-target]]
-   can `assoc` the values onto the transform target without a per-call
-   denormalization shim.
+   storage layer's `\"\"` sentinel never leaks above this boundary, so the value
+   can be `assoc`ed onto a transform target without a per-call denormalization shim.
 
-   Throws when the database is not workspaced -- a caller getting here in that case is a
-   programming error; the transform-hook path should gate on [[ws/db-workspace-namespace]] first."
+   Throws when the database is not workspaced -- reaching this with a non-workspaced
+   db is a programming error; gate on [[ws/db-workspace-namespace]] first."
   [db-id target]
   (let [workspace-ns (ws/db-workspace-namespace db-id)]
     (when-not workspace-ns

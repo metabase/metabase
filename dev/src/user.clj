@@ -17,22 +17,24 @@
 ;;
 ;;   `#p`  - hashp's stock reader. Writes to *err* with color, suitable for
 ;;           live REPL inspection.
-;;   `#d`  - our `dev.trace/d` reader. Writes to `MB_TRACE_LOG` (default
-;;           `/tmp/trace.log`). Real source line numbers (captured from
-;;           `(meta form)` at read time, not the runtime JVM stack like
+;;   `#d`  - our `dev.debug/d` reader. Writes to `DEV_DEBUG_LOG` (default
+;;           `/tmp/<cwd-basename>_debug.log`, so side-by-side checkouts
+;;           don't stomp the same file). Real source line numbers (captured
+;;           from `(meta form)` at read time, not the runtime JVM stack like
 ;;           hashp does). Survives across threads and JVM processes
 ;;           (test-agent + REPL share the file).
 ;;
 ;; Use `#p` for live REPL inspection, `#d` for grep/tail-able output (test
 ;; runs, agent debugging, cross-thread tracing).
 ;;
-;; REPL helpers in `dev.trace`:
-;;   `(dev.trace/clear!)`   — truncate the file
-;;   `(dev.trace/tail 50)`  — last 50 lines as a string
-;;   `(dev.trace/stack!)`   — spit a filtered call stack
+;; In-form commands (pass these as the value to `#d`):
+;;   `#d :clear`               — truncate the log + print the path
+;;   `#d :where`               — print the resolved log path
+;;   `#d :stack`               — log the current call stack
+;;   `#d [:set-file! "/p"]`    — redirect the log file at runtime
 ;;
 ;; Watch the log live:
-;;   tail -f /tmp/trace.log | bat --paging=never -l edn
+;;   tail -f $(echo /tmp/*_debug.log) | bat --paging=never -l edn
 
 (set! *warn-on-reflection* true)
 

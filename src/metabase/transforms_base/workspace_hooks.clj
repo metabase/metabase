@@ -9,8 +9,8 @@
 (defenterprise rewrite-native-sql-for-workspace
   "Rewrite canonical table references in `sql` to their workspace-isolation counterparts.
 
-   Called from the native-transform exec path -- transforms hand compiled SQL directly to
-   `driver/run-transform!`, so the QP's Phase 2 SQL rewriter never sees it.
+   Hook for native-transform exec paths that hand compiled SQL directly to
+   `driver/run-transform!` and bypass the QP's Phase 2 SQL rewriter.
 
    OSS / no-workspace fallback: returns the SQL unchanged."
   metabase-enterprise.workspaces.transform-hooks

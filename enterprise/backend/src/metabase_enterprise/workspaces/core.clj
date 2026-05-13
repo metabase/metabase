@@ -32,10 +32,72 @@
   (:require
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
+   [metabase.driver :as driver]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
+
+(defn engine-namespace-positions
+  "Return `{:db ?, :schema ?}` — the values that should populate the `:db` and
+   `:schema` AST slots for a Table row in `database`. `table` is optional; pass
+   it when you want the schema position derived from the Table's `:schema`
+   column (the normal `spec-for-table` case). Pass nil for `table` when you only
+   need the `:db` slot (workspace `output_namespace` expansion, GRANT emission).
+
+   Each engine is spelled out explicitly. Verbose, but obvious at a glance —
+   no more cross-referencing two `case` fns to figure out where each driver
+   reads from.
+
+   `nil` for either slot means \"this driver doesn't emit this AST level.\"
+   Empty-string sentinel coercion happens at the storage boundary, not here."
+  ([database]       (engine-namespace-positions database nil))
+  ([database table]
+   (case (:engine database)
+     ;; 2-slot, schema-from-table
+     :postgres   {:db nil
+                  :schema (:schema table)}
+     :redshift   {:db nil
+                  :schema (:schema table)}
+     :h2         {:db nil
+                  :schema (:schema table)}
+
+     ;; 2-slot, schema-from-database-name (ClickHouse calls its top level
+     ;; "database" but emits it at the schema position in compiled SQL).
+     :clickhouse {:db nil
+                  :schema (:name database)}
+
+     ;; 1-slot (db only); MySQL has no schema layer.
+     :mysql      {:db (:db (:details database))
+                  :schema nil}
+
+     ;; 3-slot
+     :snowflake  {:db (:db (:details database))
+                  :schema (:schema table)}
+     :sqlserver  {:db (:db (:details database))
+                  :schema (:schema table)}
+     :bigquery-cloud-sdk
+     {:db (:project-id (:details database))
+      :schema (:schema table)}
+
+     ;; Unknown engine. Two outcomes:
+     ;;   - If the driver declares `:db` in `qualified-name-components`, we're
+     ;;     missing a case for a 3-slot (or 1-slot-with-db, like MySQL) driver.
+     ;;     Silently degrading would store remap rows with `:db nil` and break
+     ;;     cross-DB routing at query time. Throw to surface the gap.
+     ;;   - Otherwise the driver is at most 2-slot; degrade to the table's
+     ;;     `:schema` column, which is the conventional shape for any
+     ;;     `[:schema]` driver we haven't enumerated.
+     (let [components (set (driver/qualified-name-components (:engine database)))]
+       (if (contains? components :db)
+         (throw (ex-info (str "engine-namespace-positions has no case for engine "
+                              (pr-str (:engine database))
+                              " but its qualified-name-components includes :db; "
+                              "add an explicit branch.")
+                         {:engine     (:engine database)
+                          :components components}))
+         {:db nil
+          :schema (:schema table)})))))
 
 (defonce ^{:dynamic true
            :doc "The single workspace loaded into this instance from `config.yml`, or nil
@@ -89,10 +151,10 @@
    [:databases [:map-of :int ::workspace-database-config]]])
 
 (mu/defn set-instance-workspace!
-  "Set the in-process workspace config for this instance. Called by the `:workspace`
-  section loader at boot. Replaces any prior value. The config is validated against
-  [[::workspace-instance-config]] - a malformed config throws at the boundary
-  rather than propagating into transform target rewriting or QP middleware."
+  "Set the in-process workspace config for this instance. Replaces any prior value.
+  The config is validated against [[::workspace-instance-config]] — a malformed
+  config throws at the boundary rather than propagating into transform target
+  rewriting or QP middleware."
   [config :- ::workspace-instance-config]
   (reset! *workspace-instance-config* config))
 

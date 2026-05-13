@@ -44,11 +44,11 @@
                       :schema-filters-type     "inclusion"
                       :schema-filters-patterns "raw_github"}
                      (:details db))))))
-        (testing "workspace entry uses flat input_schemas + driver-aware :output"
+        (testing "workspace entry uses flat input_schemas + opaque output_namespace string"
           (is (= "github" (-> cfg :config :workspace :name)))
           (is (= {"Analytics Data Warehouse"
-                  {:input_schemas ["raw_github"]
-                   :output        {:schema "mb_isolation_github"}}}
+                  {:input_schemas    ["raw_github"]
+                   :output_namespace "mb_isolation_github"}}
                  (-> cfg :config :workspace :databases))))))))
 
 (deftest build-workspace-config-three-slot-engine-test
@@ -69,8 +69,8 @@
                       :status           :provisioned}]
         (let [cfg (config/build-workspace-config ws-id)]
           (is (= {"Snowflake DW"
-                  {:input_schemas ["PUBLIC"]
-                   :output        {:db "ANALYTICS" :schema "WS_ALICE"}}}
+                  {:input_schemas    ["PUBLIC"]
+                   :output_namespace "WS_ALICE"}}
                  (-> cfg :config :workspace :databases))))))))
 
 (deftest build-workspace-config-joins-multiple-input-schemas-test

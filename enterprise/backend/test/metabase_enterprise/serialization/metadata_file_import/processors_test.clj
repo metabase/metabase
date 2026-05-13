@@ -7,10 +7,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.metadata-file-import.processors :as processors]
    [metabase.test :as mt]
-   [metabase.util.json :as json]
-   [toucan2.core :as t2])
-  (:import
-   (java.io File)))
+   [toucan2.core :as t2]))
 
 (use-fixtures :once
   (fn [thunk]

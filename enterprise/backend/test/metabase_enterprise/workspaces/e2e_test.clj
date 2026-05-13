@@ -60,7 +60,17 @@
 (def workspaces-supported-drivers
   "Drivers covered by the full e2e. JDBC drivers go through `jdbc/execute!`+
    `jdbc/query`; `:bigquery-cloud-sdk` goes through the BQ Java API via
-   `bq.util`. Each helper below dispatches on driver."
+   `bq.util`. Each helper below dispatches on driver.
+
+   The `workspace-full-e2e-test` exercises this whole set. The smaller
+   `native-transform-references-prior-canonical-output-test` deliberately runs on
+   `#{:postgres :mysql}` only -- not because Redshift/Snowflake/etc. aren't
+   workspace-supported, but because that test depends on workspace-user
+   `describe-database` returning the source table, and on Redshift the
+   workspace user's `describe-database` returns `{:tables #{}}` even when
+   USAGE/SELECT grants are intact (root cause pending investigation; see
+   that test's docstring). Don't add drivers to the smaller test without
+   first fixing the underlying sync visibility."
   #{:postgres :sqlserver :clickhouse :mysql :redshift :snowflake :bigquery-cloud-sdk})
 
 (defn- three-slot-driver?
@@ -165,6 +175,11 @@
     :bigquery-cloud-sdk ((bq-util 'create-dataset!) admin-warehouse
                                                     ((bq-util 'project-id) admin-details)
                                                     schema)
+    ;; ClickHouse calls its top level a "database" — `CREATE SCHEMA` is a
+    ;; syntax error there. Same drop counterpart in `drop-canonical-schema!`.
+    :clickhouse (jdbc/execute! admin-warehouse
+                               [(format "CREATE DATABASE %s"
+                                        (sql.u/quote-name driver :schema schema))])
     (jdbc/execute! admin-warehouse [(format "CREATE SCHEMA %s"
                                             (sql.u/quote-name driver :schema schema))])))
 
@@ -279,8 +294,13 @@
                                          :bigquery-cloud-sdk ((bq-util 'list-tables) admin-spec
                                                                                      ((bq-util 'project-id) admin-details)
                                                                                      main-schema)
+                                         ;; No LIMIT/TOP — the source table is seeded with 3
+                                         ;; rows above (`create-source-table!`); the assertion
+                                         ;; below only needs >= 1 row, and avoiding `LIMIT`
+                                         ;; keeps this portable across SQL Server (`TOP`) and
+                                         ;; the LIMIT-aware drivers.
                                          (jdbc/query admin-spec
-                                                     [(format "SELECT 1 FROM %s LIMIT 1"
+                                                     [(format "SELECT 1 FROM %s"
                                                               (qualified-table-sql admin-driver admin-details main-schema src-name))]))]
                   (is (>= (count warehouse-tables) 1)
                       (str "warehouse source table " main-schema "." src-name " is not queryable")))
@@ -444,7 +464,7 @@
                                              :from_db         (or input-ns-db "")
                                              :to_db           to-db-stored
                                              :database_id     (:id ws-db)}]
-                                           (for [r (t2/select :model/TableRemapping)]
+                                           (for [r (t2/select :model/TableRemapping :database_id (:id ws-db))]
                                              (select-keys r [:to_schema :from_schema :from_table_name :from_db :to_db :database_id]))))))
                           ;; --- Assertion: describe-database stays in main ------
                           ;; describe-database reads JDBC's TABLE_SCHEM into `:schema`. For MySQL
@@ -479,7 +499,9 @@
                                                                :db_id  (:id ws-db)
                                                                :schema tbl-schema
                                                                :name   output-table-name)
-                                      {:keys [to_table_name]} (t2/select-one :model/TableRemapping)]
+                                      {:keys [to_table_name]} (t2/select-one :model/TableRemapping
+                                                                             :database_id     (:id ws-db)
+                                                                             :from_table_name output-table-name)]
                                   (is (some? out-table)
                                       "canonical-named output table exists to represent the table that will exist as a result of the new transform running in production")
                               ;; Diagnostic: the Card MBQL query downstream needs Fields on
@@ -514,8 +536,22 @@
                                     (let [rows (set (mt/rows (mt/process-query (:dataset_query card))))]
                                       (testing "querying the isolation table directly works like querying any other table"
                                         (is (= #{[1 "a"] [2 "b"] [3 "c"]} rows)))))
-                              ;; FIXME: native sql w/ default from-schema fails for now (Bug 2).
-                              ;; More info: https://gist.github.com/escherize/721764240c300e995c54add2d71ff356
+                              ;; INTENTIONALLY DISABLED (GHY-3580): bare-table-name SQL.
+                              ;;
+                              ;; The two `mt/with-temp` blocks immediately above and below this one cover
+                              ;; the qualified-name flows:
+                              ;;   - above: `SELECT * FROM iso_schema.table` (workspace-side identifier)
+                              ;;   - below: `SELECT * FROM main_schema.table` (canonical identifier;
+                              ;;     Phase 2 rewrites it to iso)
+                              ;; The skipped variant covers `SELECT * FROM table` -- bare, unqualified.
+                              ;; That shape isn't supported yet because the Phase 2 SQLGlot rewriter keys
+                              ;; on `(schema, table)` pairs, and an unqualified ref carries no schema slot
+                              ;; for the lookup to match. Re-enabling needs the rewriter to attribute
+                              ;; bare refs to the connection's default schema before lookup. See gist
+                              ;; https://gist.github.com/escherize/721764240c300e995c54add2d71ff356 for the
+                              ;; repro and proposed approach.
+                              ;;
+                              ;; Re-enable when GHY-3580 lands: delete the `#_`, run the test.
                                   #_(mt/with-temp [:model/Card card
                                                    {:name          (str "ws-e2e-card-native-" run-id)
                                                     :database_id   (:id ws-db)

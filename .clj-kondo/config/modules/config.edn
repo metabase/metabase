@@ -2314,6 +2314,7 @@
            events
            lib
            lib-be
+           premium-features
            query-processor
            sync
            util
@@ -2716,7 +2717,7 @@
            enterprise/scim
            enterprise/semantic-search
            enterprise/sso}
-   :model-imports #{:model/Database :model/Sandbox}}
+   :model-imports #{:model/Database :model/Sandbox :model/Workspace}}
 
   enterprise/api
   {:team "UX West"
@@ -3320,6 +3321,7 @@
    :api  #{metabase-enterprise.serialization.api
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core
+           metabase-enterprise.serialization.init
            metabase-enterprise.serialization.metadata-file-import
            metabase-enterprise.serialization.schema
            metabase-enterprise.serialization.v2.backfill-ids}
@@ -3338,7 +3340,9 @@
            search
            server
            setup
-           util}
+           sync
+           util
+           warehouse-schema}
    :model-imports :bypass}
 
   enterprise/snippet-collections
@@ -3495,9 +3499,11 @@
            premium-features
            query-processor
            server
+           settings
            sql-tools
            util
            enterprise/serialization}
+   :model-exports #{:model/Workspace}
    :model-imports #{:model/Database
                     :model/User}}}
 

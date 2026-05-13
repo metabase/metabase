@@ -261,6 +261,24 @@
        table
        (group-perm-defaults table all-users-group non-magic-groups non-admin-groups)))))
 
+(defn set-new-tables-permissions!
+  "Batch variant of [[set-new-table-permissions!]] for many newly-inserted
+  tables on the same database. Acquires the cluster lock once and delegates
+  to [[perms/set-default-table-permissions-bulk!]]. All `tables` must share
+  `db-id`."
+  [db-id tables]
+  (when (seq tables)
+    (perms/with-db-scoped-permissions-lock db-id
+      (let [all-users-group  (perms/all-users-group)
+            non-magic-groups (perms/non-magic-groups)
+            non-admin-groups (conj non-magic-groups all-users-group)
+            tables+defaults  (mapv (fn [t]
+                                     [t (group-perm-defaults t all-users-group
+                                                             non-magic-groups
+                                                             non-admin-groups)])
+                                   tables)]
+        (perms/set-default-table-permissions-bulk! db-id tables+defaults)))))
+
 (t2/define-after-insert :model/Table
   [table]
   (u/prog1 table

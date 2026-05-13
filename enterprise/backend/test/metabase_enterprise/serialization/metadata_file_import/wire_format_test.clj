@@ -1,10 +1,14 @@
-(ns ^:parallel metabase-enterprise.serialization.metadata-file-import.wire-format-test
+(ns metabase-enterprise.serialization.metadata-file-import.wire-format-test
   "Contract test between the metadata export and import sides. The importer's
   Malli schemas describe what the importer expects on the wire; this test
   exercises the export pipeline against a small hand-built fixture and
   validates every emitted row against the corresponding import schema. If the
   export starts emitting a column the import schema doesn't know about — or
-  stops emitting a required one — the test fails."
+  stops emitting a required one — the test fails.
+
+  NOT `^:parallel`: each test does an `mt/with-temp [:model/Database :model/Table
+  :model/Field …]` whose `:after-insert` chain hits `metabase_data_permissions`
+  + the cluster lock. Concurrent tests in this ns reliably deadlock on MariaDB."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.export :as export]
@@ -15,12 +19,14 @@
   (:import
    (java.io ByteArrayOutputStream)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once
   (fn [thunk]
     (mt/with-temporary-setting-values [disable-auto-sync true]
       (thunk))))
 
-(defn- export-as-json
+(defn- export-as-json!
   "Run the export against `opts`, decode JSON to keyword-keyed maps."
   [opts]
   (let [bos (ByteArrayOutputStream.)]
@@ -59,21 +65,21 @@
                                                :fk_target_field_id target-id#}]
        ~@body)))
 
-(defn- export-fixture
+(defn- export-fixture!
   "Run the export scoped to the fixture's database id."
   [db-id]
-  (export-as-json {:user-info      {:user-id (mt/user->id :crowberto) :is-superuser? true}
-                   :with-databases true
-                   :with-tables    true
-                   :with-fields    true
-                   :database-ids   [db-id]}))
+  (export-as-json! {:user-info      {:user-id (mt/user->id :crowberto) :is-superuser? true}
+                    :with-databases true
+                    :with-tables    true
+                    :with-fields    true
+                    :database-ids   [db-id]}))
 
 ;;; ============================== Per-section tests ==============================
 
 (deftest database-rows-validate-against-import-schema-test
   (mt/with-premium-features #{:serialization}
     (with-tiny-fixture! [db-id _t1 _t2]
-      (let [{:keys [databases]} (export-fixture db-id)]
+      (let [{:keys [databases]} (export-fixture! db-id)]
         (testing "fixture surfaces at least one database row"
           (is (= 1 (count databases))))
         (doseq [row databases]
@@ -83,7 +89,7 @@
 (deftest table-rows-validate-against-import-schema-test
   (mt/with-premium-features #{:serialization}
     (with-tiny-fixture! [db-id _t1 _t2]
-      (let [{:keys [tables]} (export-fixture db-id)]
+      (let [{:keys [tables]} (export-fixture! db-id)]
         (testing "fixture surfaces both tables"
           (is (= 2 (count tables))))
         (doseq [row tables]
@@ -93,7 +99,7 @@
 (deftest field-rows-validate-against-import-schema-test
   (mt/with-premium-features #{:serialization}
     (with-tiny-fixture! [db-id _t1 _t2]
-      (let [{:keys [fields]} (export-fixture db-id)]
+      (let [{:keys [fields]} (export-fixture! db-id)]
         (testing "fixture surfaces all six field shapes"
           (is (= 6 (count fields))))
         (doseq [row fields]
@@ -109,7 +115,7 @@
 (deftest field-shape-coverage-test
   (mt/with-premium-features #{:serialization}
     (with-tiny-fixture! [db-id _t1 _t2]
-      (let [{:keys [fields]} (export-fixture db-id)]
+      (let [{:keys [fields]} (export-fixture! db-id)]
         (testing "exactly one nested leaf (parent_id + nfc_path)"
           (is (= 1 (count (filter #(and (:parent_id %) (:nfc_path %)) fields)))))
         (testing "exactly one unfolded leaf (nfc_path without parent_id)"

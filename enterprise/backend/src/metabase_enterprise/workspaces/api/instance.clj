@@ -13,10 +13,10 @@
 
 (def ^:private WorkspaceInstanceDatabase
   [:map
-   [:id            ms/PositiveInt]
-   [:name          :string]
-   [:input_schemas [:sequential :string]]
-   [:output_schema :string]])
+   [:id               ms/PositiveInt]
+   [:name             :string]
+   [:input_schemas    [:sequential :string]]
+   [:output_namespace :string]])
 
 (def ^:private WorkspaceInstance
   [:map
@@ -44,10 +44,10 @@
                     :created_at]))
 
 (defn- present-workspace-instance-database [db-id wsd dbs-by-id]
-  {:id            db-id
-   :name          (get-in dbs-by-id [db-id :name] "")
-   :input_schemas (vec (keep :schema (:input wsd)))
-   :output_schema (or (:schema (:output wsd)) "")})
+  {:id               db-id
+   :name             (get-in dbs-by-id [db-id :name] "")
+   :input_schemas    (vec (:input_schemas wsd))
+   :output_namespace (or (:schema (:output wsd)) "")})
 
 (defn- present-workspace-instance [workspace]
   (let [db-ids    (sort (keys (:databases workspace)))
