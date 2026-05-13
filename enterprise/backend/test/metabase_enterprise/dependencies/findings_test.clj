@@ -51,6 +51,21 @@
         (is (= 2 (deps.findings/analyze-batch! :card 2)))
         (is (= 0 (deps.findings/analyze-batch! :card 2)))))))
 
+(deftest ^:sequential python-transforms-are-not-repeatedly-analyzed-test
+  (testing "Python transforms (no MBQL :source.query) should be analyzed once and not re-picked forever (GHY bug — staging entity-check loop)"
+    (backfill-all-entity-analyses!)
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Transform _ {:name   "py-transform"
+                                         :source {:type            :python
+                                                  :source-tables   {}
+                                                  :source-database (mt/id)
+                                                  :body            "def transform(): pass"}
+                                         :target {:schema "PUBLIC" :name "py_out" :type :table}}]
+        (is (= 1 (deps.findings/analyze-batch! :transform 10))
+            "first batch analyzes the python transform")
+        (is (= 0 (deps.findings/analyze-batch! :transform 10))
+            "second batch finds nothing — finding row was written so the transform is not re-picked")))))
+
 (deftest ^:sequential re-analyze-entities-when-analysis-version-bumped-test
   (backfill-all-entity-analyses!)
   (let [mp (mt/metadata-provider)
