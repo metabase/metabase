@@ -46,7 +46,9 @@
   get-transform
   create-transform!
   update-transform!
-  delete-transform!]
+  delete-transform!
+  archive-transform!
+  restore-transform!]
  [metabase.transforms.canceling
   cancel-run!]
  [metabase.transforms.execute

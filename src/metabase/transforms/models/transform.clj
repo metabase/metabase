@@ -424,7 +424,7 @@
 (search.spec/define-spec "transform"
   {:model        :model/Transform
    :visibility   :superuser
-   :attrs        {:archived      false
+   :attrs        {:archived      :archived
                   :collection-id false
                   :creator-id    false
                   :created-at    true

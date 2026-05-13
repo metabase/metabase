@@ -58,6 +58,7 @@ import {
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
   PLUGIN_DEPENDENCIES,
+  PLUGIN_INTROSPECTOR,
   PLUGIN_SECURITY_CENTER,
   PLUGIN_SUPPORT,
   PLUGIN_TENANTS,
@@ -340,6 +341,18 @@ export const getRoutes = (
               <Route
                 path="dependencies"
                 component={PLUGIN_DEPENDENCIES.DependencyGraphPage}
+              />
+            )}
+            {PLUGIN_INTROSPECTOR.isEnabled && (
+              <Route
+                path="introspector"
+                component={PLUGIN_INTROSPECTOR.IntrospectorPage}
+              />
+            )}
+            {PLUGIN_INTROSPECTOR.isEnabled && (
+              <Route
+                path="introspector/workload"
+                component={PLUGIN_INTROSPECTOR.WorkloadPage}
               />
             )}
           </Route>

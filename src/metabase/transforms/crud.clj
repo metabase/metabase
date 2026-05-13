@@ -78,13 +78,19 @@
                                      (pr-str (:base_type field))))))))
 
 (defn get-transforms
-  "Get a list of transforms."
-  [& {:keys [last-run-start-time last-run-statuses tag-ids database-id]}]
+  "Get a list of transforms.
+
+  By default trashed transforms (`archived = true`) are excluded. Pass
+  `:include-archived true` to include them — matches the cards/dashboards
+  `?archived=true` convention used by the Trash collection view."
+  [& {:keys [last-run-start-time last-run-statuses tag-ids database-id include-archived]}]
   (let [enabled-types (transforms.u/enabled-source-types-for-user)]
     (api/check-403 (seq enabled-types))
-    (let [transforms (t2/select :model/Transform {:where    (into [:and [:in :source_type enabled-types]]
-                                                                  (when database-id
-                                                                    [[:= :source_database_id database-id]]))
+    (let [transforms (t2/select :model/Transform {:where    (cond-> (into [:and [:in :source_type enabled-types]]
+                                                                          (when database-id
+                                                                            [[:= :source_database_id database-id]]))
+                                                              (not include-archived)
+                                                              (conj [:= :archived false]))
                                                   :order-by [[:id :asc]]})]
       (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner)
            (into []
@@ -170,10 +176,46 @@
         transforms.u/add-source-readable)))
 
 (defn delete-transform!
-  "Delete a transform and publish the delete event."
+  "Permanently delete a transform row from the application DB. **Unchanged
+  semantics from before the trash pattern was introduced** so external
+  `DELETE /api/transform/:id` callers stay at parity. FK behavior on
+  `public.transform`:
+    metabase_table.transform_id          → SET NULL (warehouse table row preserved, disowned)
+    transform_run.transform_id           → SET NULL (run history preserved, orphaned)
+    transform_transform_tag.transform_id → CASCADE  (tag-mapping rows go away; tags stay)
+
+  Soft-delete-to-Trash lives in [[archive-transform!]] and is exposed via the
+  new `POST /api/transform/:id/archive` endpoint — preferred for UI-driven
+  deletes."
   [transform]
   (t2/delete! :model/Transform (:id transform))
   (events/publish-event! :event/transform-delete
+                         {:object transform
+                          :user-id api/*current-user-id*})
+  nil)
+
+(defn archive-transform!
+  "Move a transform to the Trash (soft delete) — sets `:archived true` and
+  `:archived_directly true`. Mirrors the cards/dashboards trash pattern at
+  `src/metabase/api/common.clj :: present-in-trash-if-archived-directly`.
+  The transform row stays in the DB so it can be restored or hard-deleted later."
+  [transform]
+  (t2/update! :model/Transform (:id transform)
+              {:archived true
+               :archived_directly true})
+  (events/publish-event! :event/transform-update
+                         {:object transform
+                          :user-id api/*current-user-id*})
+  nil)
+
+(defn restore-transform!
+  "Untrash a transform — clears both archive flags. Mirrors
+  `PUT /api/card/:id {archived: false}` for cards."
+  [transform]
+  (t2/update! :model/Transform (:id transform)
+              {:archived false
+               :archived_directly false})
+  (events/publish-event! :event/transform-update
                          {:object transform
                           :user-id api/*current-user-id*})
   nil)

@@ -24,6 +24,8 @@
    [metabase-enterprise.email.api]
    [metabase-enterprise.embedding-hub.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
+   [metabase-enterprise.introspector.content.api]
+   [metabase-enterprise.introspector.workload.api]
    [metabase-enterprise.library.api]
    [metabase-enterprise.metabot-analytics.api]
    [metabase-enterprise.metabot.api]
@@ -122,6 +124,8 @@
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections))
+   "/introspector"                 {"/content"  metabase-enterprise.introspector.content.api/routes
+                                    "/workload" metabase-enterprise.introspector.workload.api/routes}
    "/library"                      (premium-handler metabase-enterprise.library.api/routes :library)
    "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/metabot"                      (premium-handler 'metabase-enterprise.metabot.api :metabot-v3)

@@ -30,6 +30,7 @@ import { initializePlugin as initializeEmbeddingIframeSdk } from "./embedding_if
 import { initializePlugin as initializeEmbeddingIframeSdkSetup } from "./embedding_iframe_sdk_setup";
 import { initializePlugin as initializeFeatureLevelPermissions } from "./feature_level_permissions";
 import { initializePlugin as initializeGroupManagers } from "./group_managers";
+import { initializePlugin as initializeIntrospector } from "./introspector";
 import { initializePlugin as initializeMetabot } from "./metabot";
 import { initializePlugin as initializeModelPersistence } from "./model_persistence";
 import { initializePlugin as initializeModeration } from "./moderation";
@@ -105,4 +106,5 @@ export function initializePlugins() {
   initializeTenants?.();
   initializeWritableConnection();
   initializeAiControls();
+  initializeIntrospector();
 }

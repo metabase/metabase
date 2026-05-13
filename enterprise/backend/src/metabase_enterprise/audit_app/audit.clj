@@ -218,7 +218,8 @@
      (->> (iterator-seq (.iterator stream))
           (filter (fn [^Path p]
                     (and (Files/isRegularFile p (u/varargs LinkOption))
-                         (str/ends-with? (str (.getFileName p)) suffix))))
+                         (str/ends-with? (str (.getFileName p)) suffix)
+                         (not (str/starts-with? (str (.getFileName p)) ".")))))
           (mapv (fn [^Path path]
                   [(str (.relativize root path))
                    (Files/readString path)]))
