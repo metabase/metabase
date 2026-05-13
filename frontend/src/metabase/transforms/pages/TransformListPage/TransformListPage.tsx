@@ -412,16 +412,14 @@ function getNameCell({
 
   const hasWarning = !!getWarningMessage();
 
+  // Optimized transforms swap the regular icon for the Sonic gif so the
+  // celebratory state is visible at-a-glance in the list. Warning icon still
+  // wins over the gif — if something is broken, that's more important to see.
+  const useSonicIcon = !hasWarning && row.original.optimized === true;
+
   return (
     <Group gap="sm" wrap="nowrap" miw={0}>
-      <EntityNameCell
-        data-testid="tree-node-name"
-        icon={hasWarning ? "warning" : row.original.icon}
-        iconColor={hasWarning ? "warning" : getNodeIconColor(row.original)}
-        name={row.original.name}
-        ellipsifiedProps={{ ...getTooltipProps(getWarningMessage()) }}
-      />
-      {row.original.optimized && (
+      {useSonicIcon && (
         <Tooltip label={t`Fully optimized`}>
           <Box
             component="img"
@@ -434,6 +432,13 @@ function getNameCell({
           />
         </Tooltip>
       )}
+      <EntityNameCell
+        data-testid="tree-node-name"
+        icon={useSonicIcon ? undefined : hasWarning ? "warning" : row.original.icon}
+        iconColor={hasWarning ? "warning" : getNodeIconColor(row.original)}
+        name={row.original.name}
+        ellipsifiedProps={{ ...getTooltipProps(getWarningMessage()) }}
+      />
       {isLibraryWithoutFeature && <UpsellGem.New size={14} />}
     </Group>
   );
