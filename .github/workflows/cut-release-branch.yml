@@ -108,15 +108,17 @@ jobs:
               throw err;
             }
 
-      - name: Create Bug:v${{ steps.preflight.outputs.next }} label
+      # Same logic as the milestone above: Bug:v{next} should already exist
+      # from the previous run; we pre-create Bug:v{next+1} for next time.
+      - name: Create Bug:v${{ steps.preflight.outputs.nextMilestone }} label
         id: label
         continue-on-error: true
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: | # js
-            const next = '${{ steps.preflight.outputs.next }}';
-            const name = `Bug:v${next}`;
+            const nextMilestone = '${{ steps.preflight.outputs.nextMilestone }}';
+            const name = `Bug:v${nextMilestone}`;
             const color = Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
 
             try {
@@ -125,7 +127,7 @@ jobs:
                 repo: context.repo.repo,
                 name,
                 color,
-                description: `bugs or regressions introduced in v${next}`,
+                description: `bugs or regressions introduced in v${nextMilestone}`,
               });
               console.log(`Created label ${name} (#${color})`);
             } catch (err) {
@@ -208,7 +210,7 @@ jobs:
                 ? `:warning: Pre-creating milestone \`0.${{ steps.preflight.outputs.nextMilestone }}\` (for the next cut) failed — please create it manually: <https://github.com/${owner}/${repo}/milestones|Repository milestones>`
                 : null,
               labelFailed
-                ? `:warning: Creating label \`Bug:v${next}\` failed — please create it manually: <https://github.com/${owner}/${repo}/labels|Repository labels>`
+                ? `:warning: Pre-creating label \`Bug:v${{ steps.preflight.outputs.nextMilestone }}\` (for the next cut) failed — please create it manually: <https://github.com/${owner}/${repo}/labels|Repository labels>`
                 : null,
               timelineFailed
                 ? `:warning: Logging the cut to the <https://stats.metabase.com|stats> release timeline failed — please add an \`x.${next}.0\` event manually.`
