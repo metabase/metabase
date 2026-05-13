@@ -106,7 +106,8 @@ function DocsLink({ title, description, link }: DocsLinkProps) {
       rel="noreferrer"
       p="md"
       bdrs="md"
-      flex={1}
+      flex="1 1 auto"
+      miw="15rem"
     >
       <Group gap="sm" wrap="nowrap" align="flex-start">
         <FixedSizeIcon c="brand" name="reference" />
