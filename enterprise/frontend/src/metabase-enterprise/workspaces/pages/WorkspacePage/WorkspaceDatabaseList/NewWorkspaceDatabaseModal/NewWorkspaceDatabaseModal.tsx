@@ -12,6 +12,7 @@ import {
   Button,
   FocusTrap,
   Group,
+  Input,
   Modal,
   Radio,
   Stack,
@@ -117,7 +118,7 @@ function NewWorkspaceDatabaseForm({
               <Text>
                 {t`This will create a temporary schema and user in this database, grant that user read access to the schemas you select, and write access to the temporary schema.`}
               </Text>
-              <DatabaseRadioGroup
+              <DatabaseInput
                 databases={availableDatabases}
                 value={values.database_id}
                 onChange={(databaseId) => {
@@ -147,17 +148,20 @@ function NewWorkspaceDatabaseForm({
   );
 }
 
-type DatabaseRadioGroupProps = {
+type DatabaseInputProps = {
   databases: Database[];
   value: DatabaseId | null;
   onChange: (databaseId: DatabaseId | null) => void;
 };
 
-function DatabaseRadioGroup({
-  databases,
-  value,
-  onChange,
-}: DatabaseRadioGroupProps) {
+function DatabaseInput({ databases, value, onChange }: DatabaseInputProps) {
+  if (databases.length === 1) {
+    return (
+      <Input.Wrapper label={t`Database`}>
+        <Text>{databases[0].name}</Text>
+      </Input.Wrapper>
+    );
+  }
   return (
     <Radio.Group
       label={t`Database`}
