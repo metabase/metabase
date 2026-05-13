@@ -87,15 +87,12 @@ describe("QuestionInfoSidebar", () => {
         });
         const tabs = await screen.findAllByRole("tab");
         expect(tabs).toHaveLength(4);
-        expect(
-          screen.getByRole("tab", { name: "Overview" }),
-        ).toBeInTheDocument();
-        expect(
-          screen.getByRole("tab", { name: "History" }),
-        ).toBeInTheDocument();
-        expect(
-          screen.getByRole("tab", { name: "Relationships" }),
-        ).toBeInTheDocument();
+        expect(tabs.map((tab) => tab.textContent)).toEqual([
+          "Overview",
+          "History",
+          "Relationships",
+          "Insights",
+        ]);
 
         const insightsTab = screen.getByText("Insights");
         await userEvent.click(insightsTab);
