@@ -130,27 +130,49 @@
   (when-let [body-norm (normalize-sql (:body proposal))]
     (= body-norm original-norm)))
 
+(defn- transitively-drop-dependents
+  "Given a set of proposal ids being dropped, expand the set to include any
+  proposal in `proposals` that `depends_on` a dropped id. Iterates to
+  fixed point so chains (p3 → p2 → p1) collapse together.
+
+  Returns `[final-dropped-set kept-proposals dropped-proposals]`."
+  [proposals initial-dropped]
+  (loop [dropped initial-dropped]
+    (let [next-dropped (into dropped
+                             (keep (fn [p]
+                                     (when (and (not (contains? dropped (:id p)))
+                                                (some dropped (:depends_on p)))
+                                       (:id p))))
+                             proposals)]
+      (if (= next-dropped dropped)
+        [dropped
+         (remove #(contains? dropped (:id %)) proposals)
+         (filterv #(contains? dropped (:id %)) proposals)]
+        (recur next-dropped)))))
+
 (defn finalise-proposals
   "Server-side cleanup applied to a raw proposal set from the LLM:
 
    1. Drop proposals whose body is textually equivalent to the original
       (cosmetic-only rewrites — strip comments / semicolons / whitespace
       and compare).
-   2. Validate the single DDL statement on each `:index` proposal against
+   2. Transitively drop any proposal that `depends_on` a dropped one —
+      a dependent rewrite would FROM a precompute table no one creates.
+   3. Validate the single DDL statement on each `:index` proposal against
       the CREATE-INDEX allowlist and tag with
       `:validation = :accepted | :rejected`.
-   3. Compute the deterministic optimization_degree from what's left.
+   4. Compute the deterministic optimization_degree from what's left.
 
    Returns the response payload exactly as the UI consumes it."
   [proposals ctx]
-  (let [allowed       (pair-set ctx)
-        original-norm (normalize-sql (:sql ctx))
-        noop?         (partial noop-rewrite? original-norm)
-        dropped       (filterv noop? proposals)
-        kept          (remove noop? proposals)
-        cleaned       (mapv #(validate-proposal-ddl % allowed) kept)]
+  (let [allowed         (pair-set ctx)
+        original-norm   (normalize-sql (:sql ctx))
+        noop?           (partial noop-rewrite? original-norm)
+        initial-dropped (into #{} (keep (fn [p] (when (noop? p) (:id p)))) proposals)
+        [_dropped-ids kept dropped] (transitively-drop-dependents proposals initial-dropped)
+        cleaned         (mapv #(validate-proposal-ddl % allowed) kept)]
     (when (seq dropped)
-      (log/infof "transform-optimizer: dropped %d cosmetic-only proposal(s): %s"
+      (log/infof "transform-optimizer: dropped %d proposal(s) (cosmetic + orphaned dependents): %s"
                  (count dropped)
                  (pr-str (mapv :id dropped))))
     {:optimization_degree (scoring/optimization-degree cleaned)
