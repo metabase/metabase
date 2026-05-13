@@ -1,17 +1,20 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { Component } from "react";
+import { Component, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useSearchQuery } from "metabase/api";
+import {
+  useLazyListDatabaseSchemaTablesQuery,
+  useLazyListDatabaseSchemasQuery,
+  useSearchQuery,
+} from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { Databases } from "metabase/entities/databases";
 import { Questions } from "metabase/entities/questions";
-import { Schemas } from "metabase/entities/schemas";
 import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -23,6 +26,7 @@ import {
   getQuestionIdFromVirtualTableId,
   isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
+import { parseSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 
 import { DataSelectorDataBucketPicker } from "./DataSelectorDataBucketPicker";
 import { DataSelectorDatabasePicker } from "./DataSelectorDatabasePicker";
@@ -1059,6 +1063,42 @@ export class UnconnectedDataSelector extends Component {
   }
 }
 
+// Exposes `fetchSchemas` / `fetchSchemaTables` as props backed by RTK's lazy
+// query triggers. The triggers' subscriptions are tied to this wrapper's
+// lifecycle, so the cache is released when the DataSelector unmounts.
+function withSchemaFetchers(WrappedComponent) {
+  return function DataSelectorWithSchemaFetchers(props) {
+    const [triggerListSchemas] = useLazyListDatabaseSchemasQuery();
+    const [triggerListSchemaTables] = useLazyListDatabaseSchemaTablesQuery();
+
+    const fetchSchemas = useCallback(
+      (databaseId) =>
+        triggerListSchemas({ id: databaseId, "can-query": true }).unwrap(),
+      [triggerListSchemas],
+    );
+
+    const fetchSchemaTables = useCallback(
+      (schemaId) => {
+        const [dbId, schema] = parseSchemaId(schemaId);
+        return triggerListSchemaTables({
+          id: dbId,
+          schema,
+          "can-query": true,
+        }).unwrap();
+      },
+      [triggerListSchemaTables],
+    );
+
+    return (
+      <WrappedComponent
+        {...props}
+        fetchSchemas={fetchSchemas}
+        fetchSchemaTables={fetchSchemaTables}
+      />
+    );
+  };
+}
+
 // If there is at least one model or metric, we want to display a slightly
 // different data picker view (see DATA_BUCKET step). Pre-fetches available
 // models via search and exposes them as `metadata`/`loading`/`loaded` props.
@@ -1092,6 +1132,7 @@ const DataSelector = _.compose(
     listName: "allDatabases",
   }),
   withAvailableModels,
+  withSchemaFetchers,
   connect(
     (state, ownProps) => ({
       availableModels: ownProps.metadata?.available_models ?? [],
@@ -1120,10 +1161,6 @@ const DataSelector = _.compose(
     {
       fetchDatabases: (databaseQuery) =>
         Databases.actions.fetchList({ ...databaseQuery, "can-query": true }),
-      fetchSchemas: (databaseId) =>
-        Schemas.actions.fetchList({ dbId: databaseId, "can-query": true }),
-      fetchSchemaTables: (schemaId) =>
-        Schemas.actions.fetch({ id: schemaId, "can-query": true }),
       fetchFields: (tableId) => Tables.actions.fetchMetadata({ id: tableId }),
       fetchQuestion: (id) =>
         Questions.actions.fetch({

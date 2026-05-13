@@ -9,7 +9,6 @@ import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 
 export const QuestionSchema = new schema.Entity("questions");
 export const CacheConfigSchema = new schema.Entity("cacheConfigs");
-export const BookmarkSchema = new schema.Entity("bookmarks");
 export const DashboardSchema = new schema.Entity("dashboards");
 export const CollectionSchema = new schema.Entity("collections");
 
@@ -117,7 +116,6 @@ CacheConfigSchema.define({});
 export const ENTITIES_SCHEMA_MAP = {
   questions: QuestionSchema,
   cacheConfigs: CacheConfigSchema,
-  bookmarks: BookmarkSchema,
   dashboards: DashboardSchema,
   collections: CollectionSchema,
   segments: SegmentSchema,

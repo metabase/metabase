@@ -50,7 +50,7 @@ describe("MetabotNavPane", () => {
     reinitialize();
   });
 
-  it("hides the ai controls items when all AI features are disabled", () => {
+  it("hides the ai controls items and disables MCP when all AI features are disabled", () => {
     setup({
       aiControlsEnabled: true,
       aiFeaturesEnabled: false,
@@ -58,6 +58,9 @@ describe("MetabotNavPane", () => {
     });
 
     expect(screen.getByText("AI Settings")).toBeInTheDocument();
+    expect(
+      screen.getByText("MCP", { selector: '[data-disabled="true"] *' }),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Usage controls")).not.toBeInTheDocument();
     expect(screen.queryByText("Customization")).not.toBeInTheDocument();
     expect(screen.queryByText("System prompts")).not.toBeInTheDocument();
@@ -67,15 +70,24 @@ describe("MetabotNavPane", () => {
     setup({ aiControlsEnabled: true, isConfigured: false });
 
     expect(await screen.findByText("AI Settings")).toBeInTheDocument();
+    expect(
+      screen.queryByText("MCP", { selector: '[data-disabled="true"] *' }),
+    ).not.toBeInTheDocument();
 
     expect(
-      screen.getByText("Usage controls").closest('[data-disabled="true"]'),
+      screen.getByText("Usage controls", {
+        selector: '[data-disabled="true"] *',
+      }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Customization").closest('[data-disabled="true"]'),
+      screen.getByText("Customization", {
+        selector: '[data-disabled="true"] *',
+      }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("System prompts").closest('[data-disabled="true"]'),
+      screen.getByText("System prompts", {
+        selector: '[data-disabled="true"] *',
+      }),
     ).toBeInTheDocument();
   });
 
@@ -83,6 +95,10 @@ describe("MetabotNavPane", () => {
     setup({ aiControlsEnabled: false, aiFeaturesEnabled: true });
 
     expect(await screen.findByText("AI Settings")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /MCP/ })).toHaveAttribute(
+      "href",
+      "/admin/metabot/mcp",
+    );
 
     expect(
       screen.getByRole("link", { name: /Usage controls/ }),
