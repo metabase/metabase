@@ -99,9 +99,35 @@ export function useGetTransformWarnings(transforms: Transform[] | undefined) {
 export function buildTreeData(
   collections: Collection[] | undefined,
   transforms: Transform[] | undefined,
+  options: { flat?: boolean } = {},
 ): TreeNode[] {
   if (!collections && !transforms) {
     return [];
+  }
+
+  function buildTransformNode(transform: Transform): TreeNode {
+    return {
+      id: getTransformNodeId(transform.id),
+      name: transform.name,
+      nodeType: "transform",
+      icon: "transform",
+      updated_at: transform.updated_at,
+      target: transform.target,
+      owner: transform.owner,
+      owner_email: transform.owner_email,
+      transformId: transform.id,
+      source_readable: transform.source_readable,
+      optimized: transform.optimized,
+    };
+  }
+
+  // Flat mode: caller wants every supplied transform as a root-level node,
+  // ignoring its `collection_id`. Used by the "find slow" filter so a
+  // matching transform that lives inside a (now-hidden) collection still
+  // appears in the list. Without this branch, only transforms with a null
+  // collection_id would render and the rest would silently disappear.
+  if (options.flat) {
+    return (transforms ?? []).map(buildTransformNode);
   }
 
   const transformsByCollectionId = new Map<CollectionId | null, Transform[]>();
@@ -126,22 +152,6 @@ export function buildTreeData(
       icon: getCollectionIcon(collection).name,
       children: [...childFolders, ...childTransforms],
       collection,
-    };
-  }
-
-  function buildTransformNode(transform: Transform): TreeNode {
-    return {
-      id: getTransformNodeId(transform.id),
-      name: transform.name,
-      nodeType: "transform",
-      icon: "transform",
-      updated_at: transform.updated_at,
-      target: transform.target,
-      owner: transform.owner,
-      owner_email: transform.owner_email,
-      transformId: transform.id,
-      source_readable: transform.source_readable,
-      optimized: transform.optimized,
     };
   }
 

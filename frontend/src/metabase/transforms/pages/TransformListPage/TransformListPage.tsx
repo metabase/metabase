@@ -236,10 +236,15 @@ export const TransformListPage = ({
 
   const treeData = useMemo(() => {
     // When the slow filter is on, hide collections — show a flat list of
-    // matching transforms so the user can scan the hits directly.
+    // matching transforms so the user can scan the hits directly. Pass
+    // `{ flat: true }` so transforms living inside a (now-hidden)
+    // collection still surface as roots; otherwise only those with a null
+    // collection_id would render and the rest would silently disappear.
+    const isFlat = slowThresholdSec != null;
     const data = buildTreeData(
-      slowThresholdSec == null ? collections : [],
+      isFlat ? [] : collections,
       visibleTransforms,
+      { flat: isFlat },
     );
 
     // It will trigger the upsell modal if the feature isn't enabled.
