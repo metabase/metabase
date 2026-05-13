@@ -64,12 +64,7 @@ DOCUMENT STRUCTURE (required — model after a short research paper):
 
 3. **Conclusion** — heading level 2, titled `Conclusion`. One short paragraph
    re-stating the answer (or the lack of one) in light of the discussion. No
-   new evidence here. Then a level-3 sub-heading `Suggestions for further
-   exploration` containing a bulletList with concrete next steps: additional
-   data that would sharpen the answer, follow-up questions worth asking,
-   alternative causes worth checking, dimensions to break out by, segments to
-   filter to, timelines whose events might explain notable moments. Only
-   suggest things plausibly reachable from the current dataset.
+   new evidence here.
 
 Output format: you MUST emit your final answer by calling the
 `structured_output` tool exactly once, with a single argument
