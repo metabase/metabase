@@ -668,7 +668,12 @@ describe("issue 26988", () => {
     });
 
     cy.wait("@previewDashboard");
-    H.getIframeBody().should("have.css", "font-family", "Lato, sans-serif");
+    H.getIframeBody().findByTestId("embed-frame").should("exist");
+    H.getIframeBody().should(
+      "have.css",
+      "font-family",
+      "Lato, Arial, sans-serif",
+    );
 
     cy.findByLabelText("Customizing look and feel")
       .findByLabelText("Font")
@@ -676,7 +681,11 @@ describe("issue 26988", () => {
       .click();
     H.popover().findByText("Oswald").click();
 
-    H.getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
+    H.getIframeBody().should(
+      "have.css",
+      "font-family",
+      'Oswald, "Roboto Condensed", sans-serif',
+    );
 
     cy.get("@font-control").click();
     H.popover().findByText("Slabo 27px").click();
@@ -684,7 +693,7 @@ describe("issue 26988", () => {
     H.getIframeBody().should(
       "have.css",
       "font-family",
-      '"Slabo 27px", sans-serif',
+      '"Slabo 27px", "Roboto Slab", serif',
     );
   });
 });

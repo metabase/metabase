@@ -4,6 +4,8 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { isTableDisplay } from "metabase/dashboard/utils";
+import { clickBehaviorIsValid } from "metabase/parameters/utils/click-behavior";
 import {
   Button,
   Flex,
@@ -12,9 +14,7 @@ import {
   Text,
   TextInputBlurChange,
 } from "metabase/ui";
-import { isTableDisplay } from "metabase/utils/click-behavior";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import { clickBehaviorIsValid } from "metabase-lib/v1/parameters/utils/click-behavior";
 import type {
   ArbitraryCustomDestinationClickBehavior,
   ClickBehavior,

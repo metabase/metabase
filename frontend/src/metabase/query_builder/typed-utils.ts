@@ -1,6 +1,6 @@
 import type { LocationDescriptorObject } from "history";
 
-import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
+import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
 
 type LocationQBModeResult = {
   queryBuilderMode: QueryBuilderMode;

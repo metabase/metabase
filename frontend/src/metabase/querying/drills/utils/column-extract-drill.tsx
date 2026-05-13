@@ -1,7 +1,7 @@
 import { c } from "ttag";
 
+import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
-import { useDispatch } from "metabase/utils/redux";
 import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import type {
   ClickActionPopoverProps,
@@ -86,7 +86,7 @@ export function getExample(info: Lib.ColumnExtractionInfo) {
     case "quarter-of-year":
       return "Q1, Q2";
     case "year":
-      return "2023, 2024";
+      return "2026, 2027";
     case "domain":
       return "example, online";
     case "host":

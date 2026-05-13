@@ -11,6 +11,7 @@ import {
   ContactAdminAlert,
   INNER_WIDTH,
 } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/Panels/AddDataModalEmptyStates";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Alert,
@@ -24,8 +25,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
-import { getSubpathSafeUrl } from "metabase/utils/urls";
+import { getSubpathSafeUrl } from "metabase/urls";
 import { useGetGsheetsFolderQuery } from "metabase-enterprise/api";
 import {
   DriveConnectionDisplay,
@@ -193,7 +193,7 @@ export const GdriveAddDataPanel = ({
   // Finally, all conditions have been met, and all screens below this line depend only
   // on the status of the attempted connection
 
-  if (status === "active") {
+  if (status === "active" || status === "syncing") {
     return (
       <PanelWrapper title={t`Import Google Sheets`}>
         <DriveConnectionDisplay />
@@ -262,7 +262,7 @@ export const GdriveAddDataPanel = ({
   }
 
   const buttonText = match(status)
-    .with("syncing", () => t`Connecting...`)
+    .with("initializing", () => t`Connecting...`)
     .with("error", () => t`Something went wrong`)
     .exhaustive();
 

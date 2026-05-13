@@ -4,12 +4,12 @@ import { t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { PLUGIN_AUDIT } from "metabase/plugins";
+import type { State } from "metabase/redux/store";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { isNotNull } from "metabase/utils/types";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Database as DatabaseType } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import type { EntityId, RawDataRouteParams } from "../../types";
 import {
@@ -91,8 +91,7 @@ const getTablesSidebar = (
         name: schema.name,
         entityId: getSchemaEntityId(schema),
         icon: "folder" as const,
-        children: schema
-          .getTables()
+        children: (schema.tables ?? [])
           .sort((a, b) => a.displayName().localeCompare(b.displayName()))
           .map((table) => ({
             id: getTableId(table.id),

@@ -210,10 +210,10 @@
               result (transforms-base.u/normalize-source-tables source-tables)]
           (is (= 999 (:table_id (first result))))))
 
-      (testing "creates transform target table for non-existent table ref"
+      (testing "leaves :table_id nil for non-existent table ref"
         (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "nonexistent"}]
               result (transforms-base.u/normalize-source-tables source-tables)]
-          (is (int? (:table_id (first result))))))
+          (is (nil? (:table_id (first result))))))
 
       (testing "handles entries needing different kinds of enrichment"
         (let [source-tables [{:alias "t1" :table_id (:id t1)}
@@ -351,31 +351,43 @@
             (is (false? (:is_writable table))
                 "Computed transform tables should have is_writable=false")))))))
 
+(deftest target-table-handles-nil-schema-test
+  (testing "target-table can find a Table row with schema=nil (GDGT-2144)"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
+                   :model/Table _table {:db_id  db-id
+                                        :schema nil
+                                        :name   "some_nil_schema_table"
+                                        :active true}]
+      (let [found (transforms-base.u/target-table db-id {:schema nil :name "some_nil_schema_table"})]
+        (is (some? found)
+            "target-table must find a Table row with schema=nil — otherwise schemas-less drivers (MySQL) would silently miss their targets")
+        (is (= "some_nil_schema_table" (:name found)))))))
+
 (deftest execute-sets-transform-id-on-target-table-test
   (testing "Executing a query transform sets transform_id on the target table"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:transforms-basic}
         (let [target {:type "table" :schema nil :name "test_output_table"}]
-          ;; The Transform after-insert hook creates a provisional table for the target,
-          ;; so we don't need to create one explicitly.
-          (mt/with-temp [:model/Transform {transform-id :id :as transform}
+          (mt/with-temp [:model/Table {table-id :id} {:db_id  (mt/id)
+                                                      :schema nil
+                                                      :name   "test_output_table"}
+                         :model/Transform {transform-id :id :as transform}
                          {:target target
                           :source {:type  "query"
                                    :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}]
-            (let [table-id (t2/select-one-fn :id :model/Table :db_id (mt/id) :name "test_output_table" :schema nil)]
-              ;; Mock execute-base! to return success without actually running a query,
-              ;; run-cancelable-transform! to bypass schema creation / cancellation infra,
-              ;; and sync-target! to skip driver calls but still return the provisional table
-              ;; so complete-execution! can set transform_id on it.
-              (mt/with-dynamic-fn-redefs
-                [transforms-base.i/execute-base!        (constantly {:status :succeeded})
-                 transforms-base.u/sync-target!         (fn [_target _database]
-                                                          (t2/select-one :model/Table table-id))
-                 transforms.u/run-cancelable-transform! (fn [_run-id _transform _driver _details run-fn & _opts]
-                                                          (run-fn (a/promise-chan) nil))]
-                (transforms.execute/execute! transform {:run-method :manual})
-                (is (= transform-id
-                       (t2/select-one-fn :transform_id :model/Table :id table-id)))))))))))
+            ;; Mock execute-base! to return success without actually running a query,
+            ;; run-cancelable-transform! to bypass schema creation / cancellation infra,
+            ;; and sync-target! to skip driver calls but still return the target table
+            ;; so complete-execution! can set transform_id on it.
+            (mt/with-dynamic-fn-redefs
+              [transforms-base.i/execute-base!        (constantly {:status :succeeded})
+               transforms-base.u/sync-target!         (fn [_target _database]
+                                                        (t2/select-one :model/Table table-id))
+               transforms.u/run-cancelable-transform! (fn [_run-id _transform _driver _details run-fn & _opts]
+                                                        (run-fn (a/promise-chan) nil))]
+              (transforms.execute/execute! transform {:run-method :manual})
+              (is (= transform-id
+                     (t2/select-one-fn :transform_id :model/Table :id table-id))))))))))
 
 (deftest transform-hydration-test
   (testing "hydrating :transform on a table"

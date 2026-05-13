@@ -10,22 +10,22 @@ import { GenericError } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
+import { isDbModifiable } from "metabase/common/utils/database";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import type {
   DatabaseFormConfig,
   FormLocation,
 } from "metabase/databases/types";
+import { useDispatch } from "metabase/redux";
+import type { Dispatch } from "metabase/redux/store";
 import { Text } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import type {
   DatabaseData,
   DatabaseEditErrorType,
   DatabaseId,
 } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
 
 import { saveDatabase } from "../database";
-import { isDbModifiable } from "../utils";
 
 const makeDefaultSaveDbFn =
   (dispatch: Dispatch) =>

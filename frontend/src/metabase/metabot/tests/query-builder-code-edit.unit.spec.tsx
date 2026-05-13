@@ -10,6 +10,8 @@ import {
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
 import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -21,8 +23,6 @@ import {
   createMockUserMetabotPermissions,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { MetabotProvider } from "../context";
 import { sendAgentRequest } from "../state/actions";
@@ -79,6 +79,8 @@ describe("query builder code edits from omnibot", () => {
     mockedAiStreamingQuery.mockImplementation(async (request, callbacks) => {
       requestBody = request.body;
 
+      callbacks?.onStartMessagePart?.({ messageId: "msg_test_code_edit" });
+      callbacks?.onTextPart?.("Reviewing the query.");
       callbacks?.onDataPart?.({
         type: "code_edit",
         version: 1,
@@ -171,6 +173,22 @@ describe("query builder code edits from omnibot", () => {
         SUGGESTED_SQL,
       );
     });
+
+    expect(
+      typedStore.getState().metabot.conversations.omnibot?.messages,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "text",
+          externalId: "msg_test_code_edit",
+        }),
+        expect.objectContaining({
+          type: "data_part",
+          externalId: "msg_test_code_edit",
+          part: expect.objectContaining({ type: "code_edit" }),
+        }),
+      ]),
+    );
 
     expect(requestBody?.context).toEqual(
       expect.objectContaining({

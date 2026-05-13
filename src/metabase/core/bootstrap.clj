@@ -1,7 +1,8 @@
 (ns metabase.core.bootstrap
   (:gen-class)
   (:require
-   [clojure.java.io :as io]))
+   [clojure.java.io :as io]
+   [clojure.tools.cli :as cli]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,11 +27,46 @@
 ;; ensure the [[clojure.tools.logging]] logger factory is the log4j2 version (slf4j is far slower and identified first)
 (System/setProperty "clojure.tools.logging.factory" "clojure.tools.logging.impl/log4j2-factory")
 
+;;; ===========================================================================
+;;; Standalone modes
+;;;
+;;; These modes don't need the full Metabase infrastructure (app-db, events,
+;;; etc.) and can run with minimal namespace loading for fast startup.
+;;;
+;;; Usage: java -jar metabase.jar --mode checker [checker-specific args...]
+;;; ===========================================================================
+
+#_{:clj-kondo/ignore [:discouraged-var]}
+(def output!
+  "Alias for println so can suppress warning in one place"
+  println)
+
+(defn- run-standalone-mode
+  "Errors if --mode is specified but not recognized.
+   The mode's -main function is responsible for calling System/exit."
+  [mode args]
+  (let [startup (case mode
+                  ;; schema checker was moved out to js. Perhaps this will get a long running server mode checker? Or
+                  ;; perhaps just this one.
+                  "checker" 'metabase-enterprise.checker.cli/entrypoint
+                  nil)]
+    (if startup
+      ((requiring-resolve startup) args)
+      (do (binding [*out* *err*]
+            (output! (str "Unknown mode: " mode))
+            (output! "Available modes: checker"))
+          (System/exit 1)))))
+
 (defn -main
   "Main entrypoint. Invokes [[metabase.core.core/entrypoint]]"
   [& args]
   ;; We need to install the classloader here before other namespaces are loaded since they could launch threads on load.
-  ;; If a thread is spun uo and put back into a pool before this happens that pool will have a poisoned thread unable to
+  ;; If a thread is spun up and put back into a pool before this happens that pool will have a poisoned thread unable to
   ;; see classes in our classloader.
   ((requiring-resolve 'metabase.classloader.core/the-classloader))
-  (apply (requiring-resolve 'metabase.core.core/entrypoint) args))
+  ;; Check for standalone modes first - these skip loading metabase.core.core
+  (let [{:keys [options]} (cli/parse-opts args [[nil "--mode MODE"]])
+        mode              (:mode options)]
+    (if mode
+      (run-standalone-mode mode args)
+      (apply (requiring-resolve 'metabase.core.core/entrypoint) args))))

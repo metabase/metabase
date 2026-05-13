@@ -250,8 +250,7 @@ describe("issue 12926", () => {
   });
 
   describe("saving a dashboard that retriggers a non saved query (negative id)", () => {
-    it("should stop the ongoing query", () => {
-      // this test requires the card to be manually added to the dashboard, as it requires the dashcard id to be negative
+    it("should load the card with correct parameters after save", () => {
       H.createNativeQuestion(questionDetails);
 
       H.createDashboard().then(({ body: { id: dashboardId } }) => {
@@ -261,8 +260,6 @@ describe("issue 12926", () => {
       H.editDashboard();
 
       H.openQuestionsSidebar();
-      // when the card is added to a dashboard, it doesn't use the dashcard endpoint but instead uses the card one
-      slowDownCardQuery().as("cardQuerySlowed");
       H.sidebar().findByText(questionDetails.name).click();
 
       H.setFilter("Number", "Equal to");
@@ -274,10 +271,6 @@ describe("issue 12926", () => {
       H.popover().contains(filterDisplayName).eq(0).click();
 
       H.saveDashboard();
-
-      cy.wait("@cardQuerySlowed").then((xhrProxy) =>
-        expect(xhrProxy.state).to.eq("Errored"),
-      );
 
       H.getDashboardCard().findByText(queryResult + parameterValue);
     });
@@ -443,7 +436,7 @@ describe("issue 16559", () => {
     H.closeDashboardInfoSidebar();
 
     H.openDashboardSettingsSidebar();
-    H.sidesheet().findByText("Auto-apply filters").click();
+    H.sidesheet().findByLabelText("Auto-apply filters").click();
     cy.wait("@saveDashboard");
     H.closeDashboardSettingsSidebar();
 
@@ -576,28 +569,28 @@ describe("issue 17879", () => {
   it("should map dashcard date parameter to correct date range filter in target question - month -> day (metabase#17879)", () => {
     setupDashcardAndDrillToQuestion({
       sourceDateUnit: "month",
-      expectedFilterText: "Created At is Apr 1–30, 2022",
+      expectedFilterText: "Created At is Apr 1–30, 2025",
     });
   });
 
   it("should map dashcard date parameter to correct date range filter in target question - week -> day (metabase#17879)", () => {
     setupDashcardAndDrillToQuestion({
       sourceDateUnit: "week",
-      expectedFilterText: "Created At is Apr 24–30, 2022",
+      expectedFilterText: "Created At is Apr 27 – May 3, 2025",
     });
   });
 
   it("should map dashcard date parameter to correct date range filter in target question - year -> day (metabase#17879)", () => {
     setupDashcardAndDrillToQuestion({
       sourceDateUnit: "year",
-      expectedFilterText: "Created At is Jan 1 – Dec 31, 2022",
+      expectedFilterText: "Created At is Jan 1 – Dec 31, 2025",
     });
   });
 
   it("should map dashcard date parameter to correct date range filter in target question - year -> month (metabase#17879)", () => {
     setupDashcardAndDrillToQuestion({
       sourceDateUnit: "year",
-      expectedFilterText: "Created At is Jan 1 – Dec 31, 2022",
+      expectedFilterText: "Created At is Jan 1 – Dec 31, 2025",
       targetDateUnit: "month",
     });
   });

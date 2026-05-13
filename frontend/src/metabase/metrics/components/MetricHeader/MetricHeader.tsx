@@ -50,7 +50,7 @@ export function MetricHeader({
       icon="metric"
       tabs={<MetricTabs card={card} urls={urls} />}
       actions={
-        <Group wrap="nowrap" gap="sm" align="center">
+        <Group wrap="nowrap" align="center">
           {actions}
           <MetricToolbar
             card={card}

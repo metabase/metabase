@@ -24,9 +24,9 @@ import { useGetDefaultCollectionId } from "./use-get-default-collection-id";
 import {
   filterOutItemsFromInstanceAnalytics,
   getCollectionType,
-  getIcon,
   isRegularCollection,
   isSyncedCollection,
+  useGetIcon,
 } from "./utils";
 
 /**
@@ -41,7 +41,7 @@ export function initializePlugin() {
     PLUGIN_COLLECTIONS.isRegularCollection = isRegularCollection;
     PLUGIN_COLLECTIONS.REGULAR_COLLECTION = REGULAR_COLLECTION;
     PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = AUTHORITY_LEVELS;
-    PLUGIN_COLLECTIONS.getIcon = getIcon;
+    PLUGIN_COLLECTIONS.useGetIcon = useGetIcon;
 
     PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems = (
       collection: Collection,

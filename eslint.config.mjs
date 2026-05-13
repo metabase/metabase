@@ -22,7 +22,12 @@ import storybookPlugin from "eslint-plugin-storybook";
 import i18nextPlugin from "eslint-plugin-i18next";
 import ttagPlugin from "eslint-plugin-ttag";
 
+import boundaries from "eslint-plugin-boundaries";
 import metabasePlugin from "./frontend/lint/eslint-plugin-metabase/index.js";
+import {
+  elements as boundaryElements,
+  enforcedRules as boundaryRules,
+} from "./frontend/lint/module-boundaries.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -42,7 +47,7 @@ const baseMetabaseRestrictedConfig = {
     {
       name: "react-redux",
       importNames: ["useSelector", "useDispatch", "connect"],
-      message: "Please import from `metabase/utils/redux` instead.",
+      message: "Please import from `metabase/redux` instead.",
     },
     {
       name: "@mantine/core",
@@ -70,10 +75,13 @@ const configs = [
     ignores: [
       "frontend/src/cljs/**",
       "frontend/src/cljs_release/**",
+      "**/*.d.ts",
       "e2e/support/cypress_sample_database.js",
       "e2e/support/cypress_sample_instance_data.js",
+      "e2e/support/assets/**",
       "e2e/embedding-sdk-host-apps/**",
-      "frontend/src/metabase-types/openapi/types.gen.ts",
+      "e2e/tmp/**",
+      "frontend/test/__support__/custom-viz-fixtures/**/*.js",
       "node_modules/**",
       "**/dist/**",
       "**/target/**",
@@ -272,6 +280,34 @@ const configs = [
     },
   },
   {
+    files: [
+      "frontend/src/**/*.{js,jsx,ts,tsx}",
+      "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}",
+    ],
+    plugins: {
+      boundaries,
+    },
+    settings: {
+      "boundaries/elements": boundaryElements,
+      "boundaries/ignore": [
+        "**/*.unit.spec.*",
+        "**/e2e/**",
+        "*.stories.*",
+        "test/**",
+      ],
+    },
+    rules: {
+      "boundaries/element-types": [
+        "error",
+        {
+          default: "disallow",
+          rules: boundaryRules,
+          message: "${file.type} cannot import from ${dependency.type}",
+        },
+      ],
+    },
+  },
+  {
     files: ["**/*.js", "**/*.jsx"],
     languageOptions: {
       parser: babelParser,
@@ -312,7 +348,7 @@ const configs = [
   },
   {
     files: [
-      "**/*.unit.spec.*",
+      "**/*.spec.*",
       "frontend/lint/**/*",
       "**/*.stories.*",
       "**/stories-data.*",
@@ -548,7 +584,7 @@ const configs = [
     },
   },
   {
-    files: ["frontend/src/metabase/utils/redux/hooks.ts"],
+    files: ["frontend/src/metabase/redux/hooks.ts"],
     rules: {
       "no-restricted-imports": "off",
     },
@@ -610,7 +646,7 @@ const configs = [
             {
               name: "react-redux",
               importNames: ["useSelector", "useDispatch", "connect"],
-              message: "Please import from `metabase/utils/redux` instead.",
+              message: "Please import from `metabase/redux` instead.",
             },
             {
               name: "@mantine/core",
@@ -663,7 +699,7 @@ const configs = [
                 "!metabase/utils/time",
                 "!metabase/utils/time-dayjs",
                 "!metabase/utils/types",
-                "!metabase/utils/urls",
+                "!metabase/urls",
                 "!metabase/utils/clone",
               ],
             },
@@ -837,7 +873,7 @@ const configs = [
               message: 'Please use "useSdkSelector", "useSdkDispatch"',
             },
             {
-              name: "metabase/utils/redux",
+              name: "metabase/redux",
               importNames: ["useStore", "useDispatch"],
               message: 'Please use "useSdkStore", "useSdkDispatch"',
             },
@@ -936,6 +972,23 @@ const configs = [
     },
   },
   {
+    files: ["frontend/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "custom-viz",
+              allowTypeImports: true,
+              message: "Please use only type-only imports from 'custom-viz'.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["enterprise/frontend/src/embedding-sdk-package/bin/**/*"],
     rules: {
       "metabase/no-literal-metabase-strings": "off",
@@ -948,6 +1001,13 @@ const configs = [
       "metabase/no-literal-metabase-strings": "off",
       "metabase/no-color-literals": "off",
       "no-console": "off",
+    },
+  },
+  {
+    files: ["enterprise/frontend/src/custom-viz/src/templates/index.tsx"],
+    rules: {
+      "import/no-default-export": "off",
+      "metabase/no-color-literals": "off",
     },
   },
   {

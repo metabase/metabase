@@ -156,12 +156,19 @@
   {:arglists '([field])}
   driver-api/dispatch-by-clause-name-or-class)
 
-(defn- col->name-components [{:keys [parent-id], field-name :name, :as _col}]
-  (concat
-   ;; TODO (Cam 8/11/25) -- this should be using `:nfc-path` instead of looking this up the hard way
-   (when parent-id
-     (col->name-components (driver-api/field (driver-api/metadata-provider) parent-id)))
-   [field-name]))
+(defn- col->name-components [{:keys [parent-id nfc-path], field-name :name, :as _col}]
+  (cond
+    ;; mongo sync stores `:nfc-path` with the field's own name as the last element, matching sql-jdbc nested json
+    (seq nfc-path)
+    nfc-path
+
+    ;; fall back to walking `:parent-id` for fields synced before `:nfc-path` was populated
+    parent-id
+    (concat (col->name-components (driver-api/field (driver-api/metadata-provider) parent-id))
+            [field-name])
+
+    :else
+    [field-name]))
 
 (mu/defn field->name
   "Return a single string name for column metadata `col` For nested fields, this creates a combined qualified name."
@@ -1045,7 +1052,7 @@ function(bin) {
   "Rename :join-alias properties fields to ::join-local.
   See [[find-mapped-field-name]] for an explanation why this is done."
   [expr alias]
-  (driver-api/replace-lite expr
+  (driver-api/replace expr
     [:field _ {:join-alias (a :guard (= a alias))}]
     (update &match 2 set/rename-keys {:join-alias ::join-local})))
 
@@ -1122,7 +1129,7 @@ function(bin) {
              :default  (->rvalue (:default options))}})
 
 (defn- aggregation->rvalue [ag]
-  (driver-api/match-lite ag
+  (driver-api/match-one ag
     [:aggregation-options ag' _]
     (&recur ag')
 
@@ -1462,7 +1469,7 @@ function(bin) {
    (fn [m field-clause]
      (assoc-in
       m
-      (driver-api/match-lite field-clause
+      (driver-api/match-one field-clause
         [:field (field-id :guard integer?) _]
         (str/split (field-alias field-clause) #"\.")
 
@@ -1513,6 +1520,21 @@ function(bin) {
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
+(defn- field-id->path
+  "Return the full document-path components for `field-id` as a vector of strings. Uses [[col->name-components]],
+  which prefers `:nfc-path` and falls back to walking `:parent-id` for fields synced before `:nfc-path` was populated."
+  [field-id]
+  (vec (col->name-components (driver-api/field (driver-api/metadata-provider) field-id))))
+
+(defn- field-clauses->id->path
+  "Build a map of `field-id -> path-vector` for all `:field` clauses in `fields` that reference an integer ID."
+  [fields]
+  (into {}
+        (keep (fn [[agg-type field-id & _]]
+                (when (and (= agg-type :field) (integer? field-id))
+                  [field-id (field-id->path field-id)])))
+        fields))
+
 (defn- remove-parent-fields
   "Removes any and all entries in `fields` that are parents of another field in `fields`. This is necessary because as
   of MongoDB 4.4, including both will result in an error (see:
@@ -1520,18 +1542,15 @@ function(bin) {
 
   Removing parents is useful when sorting, because leaf fields sort."
   [fields]
-  (let [parent->child-id (reduce (fn [acc [agg-type field-id & _]]
-                                   (if (and (= agg-type :field)
-                                            (integer? field-id))
-                                     (let [{:keys [parent-id], :as field} (driver-api/field (driver-api/metadata-provider) field-id)]
-                                       (if parent-id
-                                         (update acc parent-id conj (u/the-id field))
-                                         acc))
-                                     acc))
-                                 {}
-                                 fields)]
+  (let [id->path     (field-clauses->id->path fields)
+        parent-paths (into #{}
+                           (keep (fn [path]
+                                   (when (> (count path) 1)
+                                     (vec (butlast path)))))
+                           (vals id->path))]
     (remove (fn [[_ field-id & _]]
-              (and (integer? field-id) (contains? parent->child-id field-id)))
+              (and (integer? field-id)
+                   (contains? parent-paths (id->path field-id))))
             fields)))
 
 (defn- remove-child-fields
@@ -1542,17 +1561,13 @@ function(bin) {
   Removing children is useful when projecting, because the return value of a mongo query is json, and so a parent
   includes all of its children."
   [fields]
-  (let [field-ids (into #{}
-                        (map (fn [[agg-type field-id]]
-                               (when (and (= agg-type :field)
-                                          (integer? field-id))
-                                 field-id)))
-                        fields)]
+  (let [id->path  (field-clauses->id->path fields)
+        all-paths (set (vals id->path))]
     (remove (fn [[agg-type field-id]]
-              (when (and (= agg-type :field)
-                         (integer? field-id))
-                (let [{:keys [parent-id]} (driver-api/field (driver-api/metadata-provider) field-id)]
-                  (and parent-id (contains? field-ids parent-id)))))
+              (when (and (= agg-type :field) (integer? field-id))
+                (let [path (id->path field-id)]
+                  (and (> (count path) 1)
+                       (contains? all-paths (vec (butlast path)))))))
             fields)))
 
 (defn- handle-order-by [{:keys [order-by breakout aggregation]} pipeline-ctx]
@@ -1663,7 +1678,7 @@ function(bin) {
 (defn- query->collection-name
   "Return `:collection` from a source query, if it exists."
   [query]
-  (driver-api/match-lite query
+  (driver-api/match-one query
     {:collection (collection :guard identity)}
     ;; ignore source queries inside `:joins` or `:collection` outside of a `:source-query`
     (when (and (some #{:source-query} &parents)
@@ -1761,14 +1776,13 @@ function(bin) {
                        source-alias)
                 [:field source-alias opts]
                 [:field id-or-name opts])))]
-    (driver-api/replace-lite form
+    (driver-api/replace form
       [:field & _]
       (update-field-ref &match)
 
-      (join :guard (and (map? join)
-                        (driver-api/qp.add.alias join)
-                        (not= (driver-api/qp.add.alias join) (:alias join))))
-      (&recur (assoc join :alias (driver-api/qp.add.alias join))))))
+      (:and join
+            {driver-api/qp.add.alias (add-alias :guard (and add-alias (not= add-alias (:alias join))))})
+      (&recur (assoc join :alias add-alias)))))
 
 (defn- preprocess
   [inner-query]

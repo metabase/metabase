@@ -1,52 +1,73 @@
 import { t } from "ttag";
-import _ from "underscore";
 
+import {
+  useCreateTimelineEventMutation,
+  useCreateTimelineMutation,
+  useListTimelinesQuery,
+} from "metabase/api";
+import { getDefaultTimeline } from "metabase/common/utils/timelines";
 import { Collections, ROOT_COLLECTION } from "metabase/entities/collections";
-import { TimelineEvents } from "metabase/entities/timeline-events";
-import { Timelines } from "metabase/entities/timelines";
+import { useDispatch } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
-import { connect } from "metabase/utils/redux";
-import type { Collection, TimelineEvent } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import type {
+  Collection,
+  CreateTimelineEventRequest,
+  CreateTimelineRequest,
+  TimelineEvent,
+} from "metabase-types/api";
 
-interface NewEventModalProps {
+interface NewEventModalContainerProps {
   cardId?: number;
   collectionId?: number;
   onClose?: () => void;
+  collection?: Collection;
 }
 
-const timelineProps = {
-  query: { include: "events" },
-};
-
 const collectionProps = {
-  id: (state: State, props: NewEventModalProps) => {
+  id: (state: State, props: NewEventModalContainerProps) => {
     return props.collectionId ?? ROOT_COLLECTION.id;
   },
 };
 
-const mapStateToProps = (state: State, { onClose }: NewEventModalProps) => ({
-  source: "question",
-  onSubmitSuccess: onClose,
-  onCancel: onClose,
-});
+function NewEventModalContainer({
+  onClose,
+  collection,
+}: NewEventModalContainerProps) {
+  const dispatch = useDispatch();
+  const [createTimeline] = useCreateTimelineMutation();
+  const [createTimelineEvent] = useCreateTimelineEventMutation();
+  const { data: timelines = [] } = useListTimelinesQuery({ include: "events" });
 
-const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (values: Partial<TimelineEvent>, collection: Collection) => {
+  const onSubmit = async (
+    values: Partial<TimelineEvent>,
+    collection?: Collection,
+  ) => {
     if (values.timeline_id) {
-      await dispatch(TimelineEvents.actions.create(values));
-    } else {
-      await dispatch(Timelines.actions.createWithEvent(values, collection));
+      await createTimelineEvent(values as CreateTimelineEventRequest).unwrap();
+    } else if (collection) {
+      const timeline = await createTimeline(
+        getDefaultTimeline(collection) as CreateTimelineRequest,
+      ).unwrap();
+      await createTimelineEvent({
+        ...values,
+        timeline_id: timeline.id,
+      } as CreateTimelineEventRequest).unwrap();
     }
-
     dispatch(addUndo({ message: t`Created event` }));
-  },
-});
+  };
+
+  return (
+    <NewEventModal
+      source="question"
+      timelines={timelines}
+      collection={collection}
+      onSubmit={onSubmit}
+      onSubmitSuccess={onClose}
+    />
+  );
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Timelines.loadList(timelineProps),
-  Collections.load(collectionProps),
-  connect(mapStateToProps, mapDispatchToProps),
-)(NewEventModal);
+export default Collections.load(collectionProps)(NewEventModalContainer);

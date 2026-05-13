@@ -39,3 +39,5 @@ export type AcknowledgeAdvisoryResponse = {
   acknowledged_by: { id: number; common_name: string; email: string } | null;
   acknowledged_at: string | null;
 };
+
+export type AcknowledgeAdvisoriesResponse = AcknowledgeAdvisoryResponse[];

@@ -5,10 +5,10 @@ import { type PlainRoute, withRouter } from "react-router";
 import { t } from "ttag";
 
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
+import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { Box, Card, Center, Icon, Overlay, Stack, rem } from "metabase/ui";
 import { isWithinIframe } from "metabase/utils/iframe";
-import { useSelector } from "metabase/utils/redux";
 
 import { useCommandPalette } from "../hooks/useCommandPalette";
 import { useCommandPaletteBasicActions } from "../hooks/useCommandPaletteBasicActions";
@@ -56,10 +56,15 @@ export const PaletteContainer = withRouter(
     disabled: boolean;
     locationQuery: Query;
   }) => {
-    const { query } = useKBar((state) => ({ actions: state.actions }));
+    const { query } = useKBar();
     const ref = useRef(null);
 
-    const { searchRequestId, searchResults, searchTerm } = useCommandPalette({
+    const {
+      searchRequestId,
+      searchResults,
+      liveSearchTerm,
+      debouncedSearchTerm,
+    } = useCommandPalette({
       locationQuery,
       disabled,
     });
@@ -99,7 +104,8 @@ export const PaletteContainer = withRouter(
             locationQuery={locationQuery}
             searchRequestId={searchRequestId}
             searchResults={searchResults}
-            searchTerm={searchTerm}
+            liveSearchTerm={liveSearchTerm}
+            debouncedSearchTerm={debouncedSearchTerm}
           />
         </Stack>
       </Card>

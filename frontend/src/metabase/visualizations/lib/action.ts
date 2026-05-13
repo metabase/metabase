@@ -2,15 +2,16 @@ import type { LocationDescriptorObject } from "history";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import { open } from "metabase/utils/dom";
+import type { Dispatch } from "metabase/redux/store";
 import type Question from "metabase-lib/v1/Question";
-import type { Dispatch } from "metabase-types/store";
 
 import type {
   ClickAction,
   OnChangeCardAndRun,
   QuestionChangeClickAction,
 } from "../types";
+
+import { openUrl } from "./open-url";
 
 type ActionProps = {
   dispatch: Dispatch;
@@ -43,7 +44,7 @@ export function performAction(
     const url = action.url();
     const ignoreSiteUrl = action.ignoreSiteUrl;
     if (url) {
-      open(url, {
+      openUrl(url, {
         openInSameOrigin: (location) => {
           if (props.onSameOriginNavigation) {
             props.onSameOriginNavigation(location);

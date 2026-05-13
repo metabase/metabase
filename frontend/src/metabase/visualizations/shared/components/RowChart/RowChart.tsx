@@ -1,9 +1,9 @@
 import type { NumberValue } from "d3-scale";
 import { useMemo } from "react";
 
+import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 import type { HoveredData } from "metabase/visualizations/shared/types/events";
 import type { ChartTicksFormatters } from "metabase/visualizations/shared/types/format";
-import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
 
 import type { SeriesInfo } from "../../types/data";
 import type { ContinuousScaleType, Range } from "../../types/scale";
@@ -48,7 +48,10 @@ export interface RowChartProps<TDatum> {
   hasYAxis?: boolean;
 
   tickFormatters?: ChartTicksFormatters;
-  labelsFormatter?: (value: NumberValue) => string;
+  labelsFormatter?: (
+    value: NumberValue,
+    bar?: BarData<TDatum, SeriesInfo>,
+  ) => string;
   measureTextWidth: TextWidthMeasurer;
 
   xScaleType?: ContinuousScaleType;

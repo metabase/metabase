@@ -18,19 +18,19 @@ import { SmallGenericError } from "metabase/common/components/ErrorPages";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import type { CardSlownessStatus } from "metabase/dashboard/components/DashCard/types";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
-import {
-  getIsShowingRawTable,
-  getUiControls,
-} from "metabase/query_builder/selectors";
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
+import { VisualizationRunningState } from "metabase/querying/components/QueryVisualization";
+import { connect } from "metabase/redux";
 import { getIsDownloadingToImage } from "metabase/redux/downloads";
+import type { Dispatch, State } from "metabase/redux/store";
+import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
 import { getTokenFeature } from "metabase/setup/selectors";
 import { getFont } from "metabase/styled-components/selectors";
 import type { IconName, IconProps } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
-import { connect } from "metabase/utils/redux";
+import { memoizeClass } from "metabase/utils/memoize";
 import {
   extractRemappings,
   getVisualizationTransformed,
@@ -48,6 +48,7 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getCardKey, isSameSeries } from "metabase/visualizations/lib/utils";
 import {
+  type CardSlownessStatus,
   type ClickActionModeGetter,
   type ClickActionsMode,
   type ClickObject,
@@ -67,7 +68,6 @@ import {
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
-import { memoizeClass } from "metabase-lib/v1/utils";
 import type {
   Card,
   CardId,
@@ -79,13 +79,13 @@ import type {
   TimelineEvent,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { Dispatch, State } from "metabase-types/store";
 
 import { EmptyVizState } from "../EmptyVizState";
 
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
 import { ErrorView } from "./ErrorView";
 import LoadingView, { type LoadingViewProps } from "./LoadingView";
+import { DashCardLoadingView } from "./LoadingView/DashCardLoadingView";
 import NoResultsView from "./NoResultsView";
 import {
   VisualizationActionButtonsContainer,
@@ -103,9 +103,7 @@ type StateDispatchProps = {
 type StateProps = {
   hasDevWatermark: boolean;
   fontFamily: string;
-  isRawTable: boolean;
   isEmbeddingSdk: boolean;
-  scrollToLastColumn: boolean;
   isDownloadingToImage: boolean;
 };
 
@@ -143,11 +141,13 @@ type VisualizationOwnProps = {
   isDocument?: boolean;
   isMetricsViewer?: boolean;
   isMobile?: boolean;
+  isRawTable?: boolean;
   isRunning?: boolean;
   isShowingSummarySidebar?: boolean;
   isSlow?: CardSlownessStatus;
   isVisible?: boolean;
   isVisualizer?: boolean;
+  scrollToLastColumn?: boolean;
   renderLoadingView?: (props: LoadingViewProps) => JSX.Element | null;
   metadata?: Metadata;
   mode?: ClickActionModeGetter | ClickActionsMode | QueryClickActionsMode;
@@ -212,9 +212,7 @@ type VisualizationState = {
 const mapStateToProps = (state: State): StateProps => ({
   hasDevWatermark: getTokenFeature(state, "development_mode"),
   fontFamily: getFont(state),
-  isRawTable: getIsShowingRawTable(state),
   isEmbeddingSdk: isEmbeddingSdk(),
-  scrollToLastColumn: getUiControls(state)?.scrollToLastColumn ?? false,
   isDownloadingToImage: getIsDownloadingToImage(state),
 });
 
@@ -883,7 +881,7 @@ class Visualization extends PureComponent<
           )}
           {replacementContent ? (
             replacementContent
-          ) : isDashboard && noResults ? (
+          ) : (isDashboard || isMetricsViewer) && noResults ? (
             <NoResultsView isSmall={small} />
           ) : error && !isRunning ? (
             <ErrorView
@@ -1042,6 +1040,28 @@ export default _.compose(
 )(
   forwardRef<HTMLDivElement, VisualizationProps>(
     function VisualizationForwardRef(props, ref) {
+      const display = props.rawSeries?.[0]?.card?.display;
+      const { loading: customVizLoading } =
+        PLUGIN_CUSTOM_VIZ.useAutoLoadCustomVizPlugin(display);
+
+      if (customVizLoading) {
+        if (props.isDocument) {
+          return <CardEmbedLoadingState />;
+        }
+
+        if (props.isDashboard) {
+          return (
+            <DashCardLoadingView
+              display="table"
+              expectedDuration={props.expectedDuration}
+              isSlow={props.isSlow}
+            />
+          );
+        }
+
+        return <VisualizationRunningState className={cx(CS.spread, CS.z2)} />;
+      }
+
       return <VisualizationMemoized {...props} forwardedRef={ref} />;
     },
   ),

@@ -2,16 +2,16 @@ import type { ComponentType, PropsWithChildren } from "react";
 
 import { Badge } from "metabase/common/components/Badge";
 import { Collections } from "metabase/entities/collections";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { getIcon } from "metabase/utils/icon";
-import { modelToUrl } from "metabase/utils/urls/modelToUrl";
+import type { State } from "metabase/redux/store";
+import { modelToUrl } from "metabase/urls/modelToUrl";
+import { getName } from "metabase/utils/name";
 import type {
   CollectionId,
   Collection as CollectionType,
 } from "metabase-types/api";
-import type { WrappedEntity } from "metabase-types/entities";
-import type { State } from "metabase-types/store";
 
 const IRREGULAR_ICON_WIDTH = 16;
 const IRREGULAR_ICON_PROPS = {
@@ -24,7 +24,7 @@ const IRREGULAR_ICON_PROPS = {
 
 type CollectionBadgeProps = {
   className?: string;
-  collection: WrappedEntity<CollectionType>;
+  collection: CollectionType;
   isSingleLine?: boolean;
   onClick?: () => void;
 };
@@ -36,6 +36,7 @@ const CollectionBadgeInner = ({
   onClick,
 }: CollectionBadgeProps) => {
   const tc = useTranslateContent();
+  const getIcon = useGetIcon();
 
   if (!collection) {
     return null;
@@ -59,7 +60,7 @@ const CollectionBadgeInner = ({
       isSingleLine={isSingleLine}
       {...clickActionProps}
     >
-      {tc(collection.getName())}
+      {tc(getName(collection))}
     </Badge>
   );
 };

@@ -35,12 +35,16 @@ jobs:
         run: bun install --cwd release --frozen-lockfile && bun run --cwd release build
       - name: Trigger auto-patch
         uses: actions/github-script@v7
+        env:
+          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
           script: | # js
             const {
               getLatestGreenCommit,
               getNextPatchVersion,
               hasCommitBeenReleased,
+              sendAutoPatchFailureMessage,
             } = require('${{ github.workspace }}/release/dist/index.cjs');
 
             const currentRelease = Number('${{ vars.CURRENT_VERSION }}');
@@ -86,9 +90,25 @@ jobs:
                     auto: true,
                   }
                 }).catch(console.error);
-              } else {
-                console.error(`No new patch version or no green commit found for v${majorVersion}`);
+                return;
               }
+
+              const reason = !nextPatch
+                ? 'no-next-patch'
+                : !releaseCommit
+                  ? 'no-green-commit'
+                  : 'already-released';
+
+              console.error(`Auto-patch skipped for v${majorVersion}: ${reason}`);
+
+              await sendAutoPatchFailureMessage({
+                channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
+                majorVersion,
+                reason,
+                runId: '${{ github.run_id }}',
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+              }).catch(console.error);
             }
 
             if (context.eventName === 'workflow_dispatch') {

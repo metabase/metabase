@@ -3,6 +3,8 @@ import { t } from "ttag";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
+import { getFontFamilyValue } from "metabase/ui/fonts";
+import type { FontStyle } from "metabase/utils/measure-text";
 import { measureTextWidth } from "metabase/utils/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";
 import {
@@ -29,7 +31,6 @@ import type {
   SeriesInfo,
 } from "metabase/visualizations/shared/types/data";
 import type { HoveredData } from "metabase/visualizations/shared/types/events";
-import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 import {
   getGroupedDataset,
   getSeries,
@@ -143,10 +144,7 @@ const RowChartVisualization = ({
   );
   const goal = useMemo(() => getChartGoal(settings), [settings]);
   const stackOffset = getStackOffset(settings);
-  const theme = useRowChartTheme(
-    `${fontFamily}, Arial, sans-serif`,
-    isDashboard,
-  );
+  const theme = useRowChartTheme(getFontFamilyValue(fontFamily), isDashboard);
 
   const chartWarnings = useMemo(
     () => getChartWarnings(chartColumns, data.rows),
@@ -219,7 +217,13 @@ const RowChartVisualization = ({
 
   const handleSelectSeries = (event: React.MouseEvent, seriesIndex: number) => {
     const clickData = {
-      ...getLegendClickData(seriesIndex, series, settings, chartColumns),
+      ...getLegendClickData(
+        seriesIndex,
+        series,
+        settings,
+        chartColumns,
+        groupedData,
+      ),
       element: event.currentTarget,
     };
 

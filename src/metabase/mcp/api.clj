@@ -9,7 +9,9 @@
    [metabase.api.common :as api]
    [metabase.api.macros.scope :as scope]
    [metabase.api.open-api :as open-api]
+   [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.tools :as mcp.tools]
+   [metabase.mcp.validation :as mcp.validation]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
@@ -73,7 +75,7 @@
   (jsonrpc-response
    id
    {:protocolVersion protocol-version
-    :capabilities    {:tools {}}
+    :capabilities    {:tools {} :resources {}}
     :serverInfo      server-info}))
 
 (defn- handle-tools-list [id _params token-scopes]
@@ -83,6 +85,20 @@
   (let [tool-name (:name params)
         arguments (or (:arguments params) {})]
     (jsonrpc-response id (mcp.tools/call-tool token-scopes tool-name arguments))))
+
+(defn- handle-resources-list [id _params token-scopes]
+  (jsonrpc-response id (mcp.resources/list-resources token-scopes)))
+
+(defn- handle-resources-read [id params token-scopes]
+  (let [uri (:uri params)]
+    (if (or (not (string? uri)) (str/blank? uri))
+      (jsonrpc-error id -32602 "Missing required parameter: uri")
+      (let [{:keys [status contents]} (mcp.resources/read-resource uri token-scopes {})]
+        ;; :not-found and :scope-denied collapse to the same generic error so we
+        ;; don't leak resource existence to callers without scope.
+        (case status
+          (:not-found :scope-denied) (jsonrpc-error id -32602 "Resource not found")
+          :ok                        (jsonrpc-response id {:contents contents}))))))
 
 (defn- handle-ping [id _params]
   (jsonrpc-response id {}))
@@ -98,6 +114,8 @@
         "notifications/initialized" nil
         "tools/list"                (handle-tools-list id params token-scopes)
         "tools/call"                (handle-tools-call id params token-scopes)
+        "resources/list"            (handle-resources-list id params token-scopes)
+        "resources/read"            (handle-resources-read id params token-scopes)
         "ping"                      (handle-ping id params)
         (if id
           (jsonrpc-error id -32601 (str "Method not found: " method))
@@ -275,6 +293,10 @@
 
 (defn- www-authenticate-discovery []
   (str "Bearer realm=\"mcp\" resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource/api/mcp\""))
+
+(def +mcp-enabled
+  "Wrap routes so they may only be accessed when the MCP server is enabled."
+  mcp.validation/+mcp-enabled)
 
 (def ^{:arglists '([request respond raise])} handler
   "Ring async handler for the MCP endpoint.

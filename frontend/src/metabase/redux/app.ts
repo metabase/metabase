@@ -5,19 +5,16 @@ import {
 } from "@reduxjs/toolkit";
 import { LOCATION_CHANGE, push } from "react-router-redux";
 
-import {
-  isSmallScreen,
-  openInBlankWindow,
-  shouldOpenInBlankWindow,
-} from "metabase/utils/dom";
-import { combineReducers, handleActions } from "metabase/utils/redux";
+import { combineReducers, handleActions } from "metabase/redux";
 import type {
   DetailViewState,
   Dispatch,
   TempStorage,
   TempStorageKey,
   TempStorageValue,
-} from "metabase-types/store";
+} from "metabase/redux/store";
+import { isSmallScreen, openInBlankWindow } from "metabase/utils/dom";
+import { shouldOpenInBlankWindow } from "metabase/visualizations/lib/open-url";
 
 interface LocationChangeAction {
   type: string; // "@@router/LOCATION_CHANGE"

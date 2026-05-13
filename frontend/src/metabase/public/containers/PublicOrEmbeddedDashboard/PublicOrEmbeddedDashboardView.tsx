@@ -6,9 +6,9 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import { Dashboard } from "metabase/dashboard/components/Dashboard";
 import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { getTabHiddenParameterSlugs } from "metabase/embedding/lib/tab-parameters";
+import type { DisplayTheme } from "metabase/embedding/types";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { getTabHiddenParameterSlugs } from "metabase/public/lib/tab-parameters";
-import type { DisplayTheme } from "metabase/public/lib/types";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { isWithinIframe } from "metabase/utils/iframe";
 

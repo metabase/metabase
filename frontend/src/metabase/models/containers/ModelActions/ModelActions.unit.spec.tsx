@@ -21,9 +21,13 @@ import {
 import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
 import { Questions as Models } from "metabase/entities/questions";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
-import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
   Card,
   Collection,
@@ -50,10 +54,6 @@ import {
   createStructuredModelCard as _createStructuredModelCard,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import ModelActions from "./ModelActions";
 
@@ -583,13 +583,17 @@ describe("ModelActions", () => {
       await userEvent.click(screen.getByLabelText("Actions menu"));
       await userEvent.click(await screen.findByText("Create basic actions"));
 
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls("path:/api/action", { method: "POST" }),
+        ).toHaveLength(3);
+      });
       const createActionCalls = fetchMock.callHistory.calls(
         "path:/api/action",
         {
           method: "POST",
         },
       );
-      expect(createActionCalls).toHaveLength(3);
 
       expect(await createActionCalls[0].request?.json()).toEqual({
         name: "Delete",
@@ -619,13 +623,18 @@ describe("ModelActions", () => {
         screen.getByRole("button", { name: /Create basic action/i }),
       );
 
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls("path:/api/action", { method: "POST" }),
+        ).toHaveLength(3);
+      });
+
       const createActionCalls = fetchMock.callHistory.calls(
         "path:/api/action",
         {
           method: "POST",
         },
       );
-      expect(createActionCalls).toHaveLength(3);
 
       expect(await createActionCalls[0].request?.json()).toEqual({
         name: "Delete",
@@ -691,7 +700,7 @@ describe("ModelActions", () => {
       });
 
       expect(history?.getCurrentLocation().pathname).toBe(
-        ML_Urls.getUrl(question),
+        Urls.question(question),
       );
     });
 

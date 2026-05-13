@@ -3,15 +3,7 @@ import type { ComponentType } from "react";
 
 import type { SearchFilterKeys } from "metabase/search/constants";
 import type { IconName } from "metabase/ui";
-import type {
-  EnabledSearchModel,
-  SearchResult,
-  UserId,
-} from "metabase-types/api";
-
-export interface WrappedResult extends SearchResult {
-  getCollection: () => SearchResult["collection"];
-}
+import type { EnabledSearchModel, UserId } from "metabase-types/api";
 
 export type TypeFilterProps = EnabledSearchModel[];
 export type CreatedByFilterProps = UserId[];
@@ -70,8 +62,9 @@ interface SearchFilter<T extends FilterTypeKeys = any> {
   toUrl: (value: SearchFilterPropTypes[T] | null) => SearchQueryParamValue;
 }
 
-export interface SearchFilterDropdown<T extends FilterTypeKeys = any>
-  extends SearchFilter {
+export interface SearchFilterDropdown<
+  T extends FilterTypeKeys = any,
+> extends SearchFilter {
   type: "dropdown";
   DisplayComponent: ComponentType<Pick<SearchFilterComponentProps<T>, "value">>;
   ContentComponent: ComponentType<SearchFilterComponentProps<T>>;

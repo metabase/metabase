@@ -10,8 +10,8 @@ import {
   createMockLoginStatusState,
   createMockSdkState,
 } from "embedding-sdk-bundle/test/mocks/state";
+import { createMockState } from "metabase/redux/store/mocks";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { QuestionAlertsButton } from "./QuestionAlertsButton";
 

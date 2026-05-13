@@ -7,6 +7,8 @@ import fetchMock from "fetch-mock";
 
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, waitFor } from "__support__/ui";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import { isNotNull } from "metabase/utils/types";
 import type {
   AutocompleteMatchStyle,
@@ -16,8 +18,6 @@ import type {
   NativeQuerySnippet,
 } from "metabase-types/api";
 import { createMockCard, createMockField } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import {
   useCardTagCompletion,

@@ -249,6 +249,11 @@
   (testing "returns empty string when no recent views"
     (let [context {}
           result (user-context/format-recent-views context)]
+      (is (= "" result))))
+
+  (testing "returns empty string when recent views is an empty vector (e.g. after verified-only filter)"
+    (let [context {:user_recently_viewed []}
+          result (user-context/format-recent-views context)]
       (is (= "" result)))))
 
 (deftest format-current-user-info-test
@@ -378,9 +383,9 @@
 
   (testing "table viewing context omits measures/segments sections when none exist"
     (with-redefs [entity-details/get-table-details
-                  (fn [{:keys [table-id]}]
+                  (fn [{:keys [entity-id]}]
                     {:structured-output
-                     {:id table-id
+                     {:id entity-id
                       :type :table
                       :name "plain_table"
                       :database_id 1
