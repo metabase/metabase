@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupEnterpriseTest } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
 import {
   type CollectionEndpoints,
@@ -250,6 +250,14 @@ async function fillForm({
 
 const saveLocDropdown = () =>
   screen.getByLabelText(/Where do you want to save this/);
+
+function setupEnterpriseCachingPlugin() {
+  jest.mock("metabase-enterprise/settings", () => ({
+    hasPremiumFeature: jest.fn().mockReturnValue(true),
+  }));
+
+  setupEnterpriseOnlyPlugin("caching");
+}
 
 describe("SaveQuestionModal", () => {
   beforeAll(() => {
@@ -860,7 +868,7 @@ describe("SaveQuestionModal", () => {
 
     describe("EE", () => {
       beforeEach(() => {
-        setupEnterpriseTest();
+        setupEnterpriseCachingPlugin();
       });
 
       it("is not shown", async () => {

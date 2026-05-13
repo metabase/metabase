@@ -18,15 +18,16 @@ import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 function setup(opts: SetupOpts = {}) {
   baseSetup({
-    enterprisePlugins: "*", // TODO be more granular about this
+    enterprisePlugins: ["caching"],
     tokenFeatures: createMockTokenFeatures({ cache_granular_controls: true }),
     ...opts,
   });
 }
 
 describe("StrategyEditorForDatabases", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     setup();
+    await screen.findByText("Default policy");
   });
 
   it("lets user override root strategy on enterprise instance", async () => {
@@ -286,13 +287,14 @@ describe("StrategyEditorForDatabases", () => {
 });
 
 describe("StrategyEditorForDatabases (cache_preemptive enabled)", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     setup({
       tokenFeatures: createMockTokenFeatures({
         cache_granular_controls: true,
         cache_preemptive: true,
       }),
     });
+    await screen.findByText("Default policy");
   });
 
   // The preemptive caching switch only renders for question/dashboard targets.

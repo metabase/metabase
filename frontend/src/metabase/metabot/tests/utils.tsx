@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupDatabaseListEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
@@ -192,7 +192,7 @@ export function setup(
     "is-hosted?": options?.isHosted ?? false,
   });
 
-  setupEnterprisePlugins();
+  setupEnterpriseOnlyPlugin("metabot");
 
   const _metabotState = getMetabotInitialState();
   const metabotState = assocIn(

@@ -13,6 +13,7 @@ import {
   setupUnauthorizedFieldValuesEndpoints,
 } from "__support__/server-mocks";
 import {
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -24,7 +25,6 @@ import { getNextId } from "__support__/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
-import registerVisualizations from "metabase/visualizations/register";
 import type {
   Database,
   Field,
@@ -55,8 +55,6 @@ import {
 
 import { DataModelV1 } from "./DataModelV1";
 import type { ParsedRouteParams } from "./types";
-
-registerVisualizations();
 
 const DEFAULT_ROUTE_PARAMS: ParsedRouteParams = {
   databaseId: undefined,
@@ -274,7 +272,7 @@ describe("DataModelV1", () => {
 
   describe("no schema database", () => {
     it("should select the first database and skip schema selection by default", async () => {
-      setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
+      await setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
 
       await waitFor(async () => {
         expect(
@@ -687,7 +685,9 @@ describe("DataModelV1", () => {
         await waitForLoaderToBeRemoved();
         expect(screen.getByText("Sample Database")).toBeInTheDocument();
 
-        history?.goBack();
+        act(() => {
+          history?.goBack();
+        });
 
         await waitFor(() => {
           expect(
