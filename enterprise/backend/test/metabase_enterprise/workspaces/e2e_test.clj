@@ -113,6 +113,16 @@
                                 ((bq-util 'project-id) admin-details) schema table)
     (sql.u/quote-name driver :table schema table)))
 
+(defn- create-table-tail
+  "Driver-specific suffix appended to `CREATE TABLE ...` statements. ClickHouse
+   requires every MergeTree-family table to declare a storage engine and (for
+   MergeTree-family) an ORDER BY key; SQL drivers don't. Mirror
+   `driver-isolation-test/create-table-tail`."
+  [driver]
+  (case driver
+    :clickhouse " ENGINE = MergeTree() ORDER BY id"
+    ""))
+
 (defn- create-source-table!
   "Driver-aware CREATE TABLE + INSERT for the e2e source table."
   [driver admin-warehouse admin-details schema table]
@@ -124,8 +134,9 @@
 
     (let [int-type  (sql.tx/field-base-type->sql-type driver :type/Integer)
           text-type (sql.tx/field-base-type->sql-type driver :type/Text)
-          qual      (qualified-table-sql driver admin-details schema table)]
-      (jdbc/execute! admin-warehouse [(format "CREATE TABLE %s (id %s, v %s)" qual int-type text-type)])
+          qual      (qualified-table-sql driver admin-details schema table)
+          tail      (create-table-tail driver)]
+      (jdbc/execute! admin-warehouse [(format "CREATE TABLE %s (id %s, v %s)%s" qual int-type text-type tail)])
       (jdbc/execute! admin-warehouse [(format "INSERT INTO %s (id, v) VALUES (1, 'a'), (2, 'b'), (3, 'c')" qual)]))))
 
 (defn- create-output-table!
@@ -142,8 +153,9 @@
         ((bq-util 'execute!) admin-warehouse (format "INSERT INTO %s (id, v) VALUES %s" qual values)))
 
       (let [int-type  (sql.tx/field-base-type->sql-type driver :type/Integer)
-            text-type (sql.tx/field-base-type->sql-type driver :type/Text)]
-        (jdbc/execute! admin-warehouse [(format "CREATE TABLE %s (id %s, v %s)" qual int-type text-type)])
+            text-type (sql.tx/field-base-type->sql-type driver :type/Text)
+            tail      (create-table-tail driver)]
+        (jdbc/execute! admin-warehouse [(format "CREATE TABLE %s (id %s, v %s)%s" qual int-type text-type tail)])
         (jdbc/execute! admin-warehouse [(format "INSERT INTO %s (id, v) VALUES %s" qual values)])))))
 
 (defn- canonical-schema-name
