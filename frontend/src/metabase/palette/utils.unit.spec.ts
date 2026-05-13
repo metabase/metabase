@@ -73,25 +73,25 @@ describe("command palette utils", () => {
     const testDoc = [createMockAction({ name: "doc action", section: "docs" })];
 
     it("should limit to 6 actions including header", () => {
-      const result = processResults(testActions, "xyz");
+      const result = processResults(testActions, true);
       expect(result).toHaveLength(6);
       expect(result[0]).toBe("Actions");
     });
 
     it("should not limit the other action types", () => {
       expect(
-        processResults([...testActions, ...testSearch], "xyz"),
+        processResults([...testActions, ...testSearch], true),
       ).toHaveLength(12);
       expect(
-        processResults([...testActions, ...testRecent], "xyz"),
+        processResults([...testActions, ...testRecent], true),
       ).toHaveLength(12);
       expect(
-        processResults([...testRecent, ...testAdmin, ...testDoc], "xyz"),
+        processResults([...testRecent, ...testAdmin, ...testDoc], true),
       ).toHaveLength(19);
     });
 
     it("should add a header to doc", () => {
-      expect(processResults([...testDoc], "xyz")).toHaveLength(2);
+      expect(processResults([...testDoc], true)).toHaveLength(2);
     });
 
     it("should enforce a specific order", () => {
@@ -103,7 +103,7 @@ describe("command palette utils", () => {
           ...testActions,
           ...testRecent,
         ],
-        "xyz",
+        true,
       );
 
       const actionsIndex = results.findIndex((action) => action === "Actions");
@@ -121,7 +121,7 @@ describe("command palette utils", () => {
     });
 
     it("should not show actions if there is no search query", () => {
-      const result = processResults(testActions, "");
+      const result = processResults(testActions, false);
       expect(result).toHaveLength(0);
     });
 
@@ -151,7 +151,7 @@ describe("command palette utils", () => {
         createMockAction({ id, name: id }),
       );
 
-      const result = processResults(actionsList, "xyz");
+      const result = processResults(actionsList, true);
       expect(result).toEqual([
         "Actions",
         createMockAction({

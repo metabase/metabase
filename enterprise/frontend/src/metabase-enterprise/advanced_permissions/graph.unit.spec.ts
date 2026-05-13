@@ -1,5 +1,4 @@
 import Database from "metabase-lib/v1/metadata/Database";
-import Schema from "metabase-lib/v1/metadata/Schema";
 import {
   DataPermission,
   DataPermissionValue,
@@ -21,14 +20,11 @@ const database = new Database({
   tables: [tableId],
 });
 
-// mock out schemas as real Schema
 database.schemas = [
-  new Schema(
-    createMockSchema({
-      id: "100",
-      name: schema,
-    }),
-  ),
+  createMockSchema({
+    id: "100",
+    name: schema,
+  }),
 ];
 
 const createGraph = (viewPermissions: SchemasPermissions) => ({

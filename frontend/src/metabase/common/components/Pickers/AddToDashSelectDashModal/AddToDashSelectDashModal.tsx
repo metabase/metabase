@@ -1,18 +1,16 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import {
-  type OmniPickerItem,
-  isInDbTree,
-} from "metabase/common/components/Pickers";
-import { DashboardPickerModal } from "metabase/common/components/Pickers/DashboardPicker";
-import { getCollectionType } from "metabase/common/components/Pickers/EntityPicker/utils";
 import { canPlaceEntityInCollectionOrDescendants } from "metabase/data-studio/utils";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { useSelector } from "metabase/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";
 import type { Card, Dashboard } from "metabase-types/api";
+
+import { DashboardPickerModal } from "../DashboardPicker";
+import { type OmniPickerItem, isInDbTree } from "../EntityPicker";
+import { getCollectionType } from "../EntityPicker/utils";
 
 import { useMostRecentlyViewedDashboard } from "./hooks";
 import { isInPersonalCollection } from "./utils";

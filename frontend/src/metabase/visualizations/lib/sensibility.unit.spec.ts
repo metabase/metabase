@@ -8,7 +8,7 @@ import {
   createMockNumericColumn,
 } from "metabase-types/api/mocks";
 
-import { groupVisualizationsBySensibility } from "./sensibility-grouping";
+import { groupVisualizationsBySensibility } from "./sensibility";
 import { DEFAULT_VIZ_ORDER } from "./viz-order";
 
 registerVisualizations();

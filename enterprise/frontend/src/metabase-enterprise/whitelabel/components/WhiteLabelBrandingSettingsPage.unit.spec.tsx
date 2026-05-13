@@ -40,6 +40,7 @@ describe("branding settings", () => {
     "Logo",
     "Font",
     "Favicon",
+    "Loading message",
   ];
 
   it.each(brandingSettings)("renders %s", async (setting) => {

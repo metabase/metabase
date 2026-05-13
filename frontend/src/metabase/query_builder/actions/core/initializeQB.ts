@@ -1,19 +1,20 @@
 import type { LocationDescriptorObject } from "history";
 import { replace } from "react-router-redux";
 
+import { snippetApi } from "metabase/api";
 import {
   cardIsEquivalent,
   deserializeCard,
   parseHash,
 } from "metabase/common/utils/card";
 import { Questions } from "metabase/entities/questions";
-import { Snippets } from "metabase/entities/snippets";
 import {
   getIsEditingInDashboard,
   getNotebookNativePreviewSidebarWidth,
 } from "metabase/query_builder/selectors";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
+import type { DispatchFn } from "metabase/redux/hooks";
 import { addFields } from "metabase/redux/metadata";
 import { INITIALIZE_QB, resetQB } from "metabase/redux/query-builder";
 import type {
@@ -246,9 +247,17 @@ export async function updateTemplateTagNames(
 
   query = updateCardTemplateTagNames(query, referencedCards);
   if (query.hasSnippets()) {
-    await dispatch(Snippets.actions.fetchList());
-    const snippets = Snippets.selectors.getList(getState());
-    query = query.updateSnippetNames(snippets);
+    const action = (dispatch as DispatchFn)(
+      snippetApi.endpoints.listSnippets.initiate(undefined, {
+        forceRefetch: true,
+      }),
+    );
+    try {
+      const snippets = await action.unwrap();
+      query = query.updateSnippetNames(snippets);
+    } finally {
+      action.unsubscribe();
+    }
   }
   return query;
 }

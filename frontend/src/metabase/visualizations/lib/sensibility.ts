@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import visualizations from "metabase/visualizations";
+import { sanitizeResultData } from "metabase/visualizations/shared/utils/data";
 import {
   hasLatitudeAndLongitudeColumns,
   isCountry,
@@ -13,10 +14,14 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 import {
   type CardDisplayType,
+  type Dataset,
   type DatasetData,
   type QueryVisualizationDisplayType,
   isCardDisplayType,
 } from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards/visualization";
+
+import { DEFAULT_VIZ_ORDER } from "./viz-order";
 
 const MAX_RECOMMENDED = 12;
 
@@ -160,3 +165,53 @@ function getRecommendedVisualizations(
   }
   return recommended;
 }
+
+export type GetSensibleVisualizationsProps = {
+  result: Dataset | null;
+};
+
+const isSupportedVisualization = (
+  display: string,
+): display is QueryVisualizationDisplayType =>
+  isCardDisplayType(display) || isCustomVizDisplay(display);
+
+export const getSensibleVisualizations = ({
+  result,
+}: GetSensibleVisualizationsProps) => {
+  const availableVizTypes = Array.from(visualizations.entries()).reduce<
+    QueryVisualizationDisplayType[]
+  >((types, [vizType, config]) => {
+    if (!config.hidden && isSupportedVisualization(vizType)) {
+      types.push(vizType);
+    }
+
+    return types;
+  }, []);
+
+  const orderedVizTypes = _.union(DEFAULT_VIZ_ORDER, availableVizTypes);
+
+  if (result?.data) {
+    const sanitizedData = sanitizeResultData(result.data);
+
+    const { recommended, sensible, nonsensible } =
+      groupVisualizationsBySensibility({
+        orderedVizTypes,
+        data: sanitizedData,
+      });
+
+    return {
+      sensibleVisualizations: recommended,
+      nonSensibleVisualizations: [...sensible, ...nonsensible],
+    };
+  }
+
+  const [sensibleVisualizations, nonSensibleVisualizations] = _.partition(
+    orderedVizTypes,
+    (vizType) => {
+      const viz = visualizations.get(vizType);
+      return Boolean(viz?.isSensible);
+    },
+  );
+
+  return { sensibleVisualizations, nonSensibleVisualizations };
+};

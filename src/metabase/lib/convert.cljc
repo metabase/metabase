@@ -445,7 +445,7 @@
 
 (defmethod ->mbql5 ::string-comparison
   [[tag opts & args :as clause]]
-  (if (> (count args) 2)
+  (if (or (> (count args) 2) (map? opts))
     ;; Multi-arg, MBQL 5 style: [tag {opts...} x y z ...]
     (lib.options/ensure-uuid (into [tag opts] (map ->mbql5 args)))
     ;; Two-arg, legacy style: [tag x y] or [tag x y opts].

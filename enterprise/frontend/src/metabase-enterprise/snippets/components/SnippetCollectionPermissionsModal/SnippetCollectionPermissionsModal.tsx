@@ -1,20 +1,13 @@
-import { useEffect } from "react";
-
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
+import { useListCollectionsQuery } from "metabase/api";
 import { Modal } from "metabase/common/components/Modal";
-import { SnippetCollections } from "metabase/entities/snippet-collections";
 import type { SnippetCollectionPermissionsModalProps } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
 
 export function SnippetCollectionPermissionsModal({
   collectionId,
   onClose,
 }: SnippetCollectionPermissionsModalProps) {
-  const dispatch = useDispatch();
-
-  useEffect(() => {
-    dispatch(SnippetCollections.actions.fetchList());
-  }, [dispatch]);
+  useListCollectionsQuery({ namespace: "snippets" });
 
   return (
     <Modal onClose={onClose}>
