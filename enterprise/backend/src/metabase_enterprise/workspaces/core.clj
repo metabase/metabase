@@ -188,8 +188,7 @@
    workspace has no entry for `db-id`. The namespace map is
    `{:db ?, :schema ?}` - either or both keys may be absent depending on
    the driver's `qualified-name-components`. Reads from the in-process atom
-   populated by `config.yml`. See
-   `ai-reports/2026-05-04-table-namespace-mapping-spec.md` for the contract."
+   populated by `config.yml`."
   [db-id]
   (get-in @*workspace-instance-config* [:databases db-id :output]))
 
