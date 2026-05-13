@@ -441,35 +441,63 @@ ffmpeg -i ~/Desktop/sample.m4a -ar 22050 -ac 1 ~/tmp/voice-ref.wav
 - `lucataco/xtts-v2` — older but proven, multilingual
 - `jaaari/kokoro-82m` — preset voices only (no cloning), fastest/cheapest
 
+### Local voice registry
+
+Replicate file URLs expire in 24 hours. Re-uploading the same reference WAV every demo run is wasteful (it's the same bytes) and slow on bigger samples. The `references/voice-registry.mjs` module caches uploads by content hash and respects `expires_at`:
+
+- **Hash-based cache** — same WAV content → same Replicate URL is reused until it expires (or until the file changes)
+- **Named voices** — register a sample under a name (`ngoc`, `vamsi`) and reference it from a storyboard or script
+- **Per-voice knob overrides** — store `exaggeration`, `cfg_weight`, etc. with the named voice
+
+Registry lives at `~/.metabase-feature-demo/voices.json`; sample WAVs are copied into `~/.metabase-feature-demo/voices/<name>.wav` so the entry survives the original being moved.
+
+**CLI:**
+
+```bash
+# Register a named voice (copies the WAV in; does NOT upload until first use)
+node .claude/skills/feature-demo/references/voice-registry.mjs \
+  register ngoc ~/tmp/voice-ref.wav
+
+# Register with per-voice knob overrides
+node .claude/skills/feature-demo/references/voice-registry.mjs \
+  register vamsi ~/tmp/voice-ref-vamsi.wav --knob exaggeration=0.5 --knob cfg_weight=0.6
+
+# List registered voices (shows fresh / stale / not-uploaded status)
+node .claude/skills/feature-demo/references/voice-registry.mjs list
+
+# Set the default voice (used when no Voice: line in storyboard)
+node .claude/skills/feature-demo/references/voice-registry.mjs default vamsi
+
+# Resolve a name or path to a Replicate URL (uploads if needed; caches result)
+node .claude/skills/feature-demo/references/voice-registry.mjs resolve vamsi
+
+# Remove
+node .claude/skills/feature-demo/references/voice-registry.mjs remove ngoc
+```
+
+Once registered, the storyboard can refer to voices by name:
+
+```markdown
+**Voice:** vamsi      <!-- registry name; takes precedence over Voice ref -->
+```
+
 ### Quick voice preview
 
-Before running the full demo, synthesize one short sample to confirm the clone sounds right. Cheap (~$0.001), takes ~5s.
+Before running the full demo, synthesize one short sample to confirm the clone sounds right. Cheap (~$0.001), takes ~5s. Uses the registry, so the upload happens at most once per 24h per WAV.
 
 Write `tmp/voice-preview.mjs`:
 
 ```javascript
-import { writeFileSync, readFileSync, existsSync } from "fs";
-import { homedir } from "os";
-import { join, basename } from "path";
+import { writeFileSync } from "fs";
+import { resolveVoice } from "../.claude/skills/feature-demo/references/voice-registry.mjs";
 
 const TOKEN = process.env.REPLICATE_API_TOKEN;
 if (!TOKEN) { console.error("REPLICATE_API_TOKEN not set"); process.exit(1); }
 
-const REF_PATH = process.env.REPLICATE_TTS_REF_AUDIO || join(homedir(), "tmp/voice-ref.wav");
-if (!existsSync(REF_PATH)) { console.error(`Reference not found: ${REF_PATH}`); process.exit(1); }
+// Resolve voice (name or path or null → default/env/~/tmp/voice-ref.wav)
+const { url: audioUrl, name, cached } = await resolveVoice(process.env.VOICE);
+console.log(`Voice "${name}" ${cached ? "(cached)" : "(uploaded)"}: ${audioUrl}`);
 
-// 1. Upload reference WAV → Replicate file URL
-const fd = new FormData();
-fd.append("content", new Blob([readFileSync(REF_PATH)], { type: "audio/wav" }), basename(REF_PATH));
-const up = await fetch("https://api.replicate.com/v1/files", {
-  method: "POST", headers: { "Authorization": `Token ${TOKEN}` }, body: fd,
-});
-const upJson = await up.json();
-const audioUrl = upJson.urls?.get;
-if (!audioUrl) { console.error("Upload failed:", upJson); process.exit(1); }
-console.log("Reference uploaded:", audioUrl);
-
-// 2. Synthesize a sample line with the clone
 const text = process.argv[2] || "Hi, this is a quick preview of my cloned voice for the demo.";
 const res = await fetch("https://api.replicate.com/v1/models/resemble-ai/chatterbox/predictions", {
   method: "POST",
@@ -489,8 +517,8 @@ console.log("Preview: tmp/voice-preview.wav");
 ```
 
 ```bash
-node tmp/voice-preview.mjs                                # default sample line
-node tmp/voice-preview.mjs "Today I'm walking through…"   # custom line
+node tmp/voice-preview.mjs                                # uses default voice
+VOICE=vamsi node tmp/voice-preview.mjs "Today I'm walking through…"
 open tmp/voice-preview.wav                                # listen
 ```
 
@@ -505,15 +533,14 @@ If the preview sounds off:
 Write `tmp/tts.mjs`:
 
 ```javascript
-import { writeFileSync, mkdirSync, readFileSync, existsSync } from "fs";
-import { join, basename } from "path";
-import { homedir } from "os";
+import { writeFileSync, mkdirSync, readFileSync } from "fs";
+import { join } from "path";
+import { resolveVoice } from "../.claude/skills/feature-demo/references/voice-registry.mjs";
 
 const TOKEN = process.env.REPLICATE_API_TOKEN;
 if (!TOKEN) { console.error("REPLICATE_API_TOKEN not set"); process.exit(1); }
 
 const MODEL = process.env.REPLICATE_TTS_MODEL || "resemble-ai/chatterbox";
-const REF_PATH = process.env.REPLICATE_TTS_REF_AUDIO || join(homedir(), "tmp/voice-ref.wav");
 
 // Chatterbox knobs (env-overridable, storyboard-overridable upstream)
 const KNOBS = {
@@ -523,28 +550,13 @@ const KNOBS = {
   seed:         +(process.env.REPLICATE_TTS_SEED         ?? 0),
 };
 
-// Upload the reference WAV once → URL reused for all cues.
-// More reliable than data-URI; faster (one small upload instead of N).
-async function uploadReference(path) {
-  if (!existsSync(path)) {
-    console.error(`Reference audio not found at ${path}.`);
-    console.error("Record a sample with `sox -d -r 22050 -c 1 ~/tmp/voice-ref.wav trim 0 12`.");
-    process.exit(1);
-  }
-  const fd = new FormData();
-  fd.append("content", new Blob([readFileSync(path)], { type: "audio/wav" }), basename(path));
-  const res = await fetch("https://api.replicate.com/v1/files", {
-    method: "POST", headers: { "Authorization": `Token ${TOKEN}` }, body: fd,
-  });
-  const j = await res.json();
-  if (!j.urls?.get) throw new Error(`Reference upload failed: ${JSON.stringify(j)}`);
-  return j.urls.get;
-}
-
+// Resolve voice via the registry: cached if hash + URL are still fresh,
+// uploaded otherwise. Accepts a registered name (e.g. "vamsi") or a path.
 let audioUrl = null;
 if (MODEL === "resemble-ai/chatterbox" || MODEL.includes("xtts") || MODEL.includes("minimax")) {
-  audioUrl = await uploadReference(REF_PATH);
-  console.log("Reference uploaded:", audioUrl);
+  const r = await resolveVoice(process.env.VOICE);  // name | path | undefined → default
+  audioUrl = r.url;
+  console.log(`Voice "${r.name}" ${r.cached ? "(cached)" : "(uploaded)"}: ${audioUrl}`);
 }
 
 // Per-model input shape. Add new model keys here.
