@@ -1,10 +1,15 @@
 (ns metabase.parameters.chain-filter-test
   (:require
+   [clojure.set]
    [clojure.test :refer :all]
+   [clojure.walk]
+   [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.field-values :as params.field-values]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -601,6 +606,151 @@
           ;; Pre-populated by `add-joins` so the implicit-fields middleware doesn't expand the inner
           ;; subquery's projection to every column on the joined Table.
           (is (= 1 (count (:fields (first (:stages a-join)))))))))))
+
+;;; ------------ Structural invariant: tight inner-stage :fields per join (GHY-3586) ------------
+;;;
+;;; The fix narrows each chain-filter join's inner subquery to project only those columns the
+;;; rest of the query references via that join's alias. Two failure modes need to be ruled out:
+;;;
+;;;   - UNDER-projection — some column the query references via this alias is missing from the
+;;;     inner :fields. The SQL won't compile (or projects the wrong shape) and the query
+;;;     returns wrong/missing values.
+;;;
+;;;   - OVER-projection — the inner :fields contains a column nothing references. The SQL
+;;;     compiles fine and values are correct, but we're still materializing columns we don't
+;;;     need, defeating the point of the fix.
+;;;
+;;; The structural invariant: for every join, inner :fields equals "field-ids referenced via
+;;; this join's :alias anywhere else in the query."
+
+(defn- field-ref-ids
+  "Collect field-ids from a sequence of MBQL clauses (`:fields` lists, breakout lists, etc.)."
+  [clauses]
+  (set (keep (fn [c]
+               (when (and (vector? c) (= :field (first c)) (= 3 (count c)) (integer? (nth c 2)))
+                 (nth c 2)))
+             clauses)))
+
+(defn- field-refs-by-join-alias
+  "Walk an MBQL query and return {join-alias #{field-id ...}} for every `[:field id {:join-alias …}]`
+  reference anywhere in the query (including inside join conditions, but inner stages contribute
+  only refs that themselves carry a :join-alias — bare refs in a subquery have no alias)."
+  [query]
+  (let [acc (atom {})]
+    (clojure.walk/postwalk
+     (fn [x]
+       (when (and (vector? x) (= :field (first x)) (= 3 (count x)))
+         (let [opts (nth x 1)
+               id   (nth x 2)]
+           (when (and (map? opts) (string? (:join-alias opts)) (integer? id))
+             (swap! acc update (:join-alias opts) (fnil conj #{}) id))))
+       x)
+     query)
+    @acc))
+
+(defn- inner-projection-by-join-alias
+  "Return {join-alias #{field-id ...}} — the field-ids each join's inner-stage :fields projects."
+  [query]
+  (into {}
+        (for [a-join (get-in query [:stages 0 :joins])]
+          [(:alias a-join)
+           (field-ref-ids (:fields (first (:stages a-join))))])))
+
+(defn- projection-violations
+  "Return a seq of diagnostic maps (one per offending join) or nil if the invariant holds:
+  inner-stage :fields equals the set of field-ids referenced via that join's alias."
+  [query]
+  (let [refs (field-refs-by-join-alias query)
+        proj (inner-projection-by-join-alias query)]
+    (not-empty
+     (vec
+      (for [a-alias (sort (into (set (keys refs)) (keys proj)))
+            :let [r (get refs a-alias #{})
+                  p (get proj a-alias #{})]
+            :when (not= r p)]
+        {:alias                   a-alias
+         :referenced              r
+         :projected               p
+         :missing-from-projection (clojure.set/difference r p)
+         :extra-in-projection     (clojure.set/difference p r)})))))
+
+(defn- mbql-for
+  "Convenience: build the chain-filter-mbql-query for a given field/original/constraints triple."
+  [field-id original-field-id constraints]
+  (#'chain-filter/chain-filter-mbql-query
+   field-id
+   (when (seq constraints)
+     (vec (for [[fid v] constraints]
+            (shorthand->constraint fid v))))
+   (when original-field-id {:original-field-id original-field-id})))
+
+(defn- sql-over-projections
+  "Return a map of `{table-id {:declared #{…} :actual #{…} :extra #{…}}}` for any joined Table
+  whose compiled-SQL field references aren't a subset of the MBQL inner-stage `:fields` for that
+  join. Returns nil if the SQL is tight.
+
+  This is the SQL-level analogue of `projection-violations`. Where that one asserts the chain-filter
+  builder produces correct MBQL, this asserts that the QP compiled that MBQL into the expected SQL
+  — guarding against a future middleware change that would decouple the two."
+  [query]
+  (let [database-id (:database query)
+        driver      (t2/select-one-fn :engine :model/Database :id database-id)
+        sql         (:query (qp.compile/compile query))
+        mp          (lib-be/application-database-metadata-provider database-id)
+        nq          (lib/native-query mp sql)
+        sql-refs    (reduce (fn [m {:keys [table-id id]}]
+                              (update m table-id (fnil conj #{}) id))
+                            {}
+                            (sql-tools/referenced-fields driver nq))
+        mbql-proj (into {}
+                        (for [a-join (get-in query [:stages 0 :joins])
+                              :let [tid    (get-in a-join [:stages 0 :source-table])
+                                    fields (field-ref-ids (:fields (first (:stages a-join))))]]
+                          [tid fields]))]
+    (not-empty
+     (into {}
+           (for [[tid declared] mbql-proj
+                 :let [actual (get sql-refs tid #{})
+                       extra  (clojure.set/difference actual declared)]
+                 :when (seq extra)]
+             [tid {:declared declared, :actual actual, :extra extra}])))))
+
+(defn- check-tight-projections!
+  "Run both the MBQL-level and SQL-level invariants on a chain-filter query."
+  [query]
+  (testing "MBQL: each join's inner-stage :fields equals the fields referenced via its alias"
+    (is (nil? (projection-violations query))))
+  (testing "SQL: the compiled query references no joined-Table columns outside MBQL :fields"
+    (is (nil? (sql-over-projections query)))))
+
+;;; Scenarios that exercise the join-building paths in `chain-filter-mbql-query`. Each `:build`
+;;; thunk runs inside `mt/dataset test-data` so `mt/id` resolves correctly. Add scenarios here as
+;;; new code paths emerge.
+(def ^:private projection-scenarios
+  [{:label "no-joins"
+    :build #(mbql-for (mt/id :categories :name) nil nil)}
+   {:label "fk-remap-only (GHY-3586)"
+    :build #(mbql-for (mt/id :categories :name) (mt/id :venues :category_id) nil)}
+   {:label "fk-remap + same-table constraint"
+    :build #(mbql-for (mt/id :categories :name) (mt/id :venues :category_id)
+                      {(mt/id :venues :price) 4})}
+   {:label "constraint only, reverse-direction join"
+    :build #(mbql-for (mt/id :categories :name) nil {(mt/id :venues :price) 4})}
+   {:label "constraint on a different joined table"
+    :build #(mbql-for (mt/id :venues :name) nil {(mt/id :categories :name) "BBQ"})}
+   {:label "multi-hop chain (categories→venues→checkins→users)"
+    :build #(mbql-for (mt/id :categories :name) nil
+                      {(mt/id :users :name) "Charles Lindbergh"})}
+   {:label "multi-hop + multi-table constraints"
+    :build #(mbql-for (mt/id :categories :name) nil
+                      {(mt/id :venues :price) 4
+                       (mt/id :users :name) "Charles Lindbergh"})}])
+
+(deftest ^:parallel tight-projections-test
+  (mt/dataset test-data
+    (doseq [{:keys [label build]} projection-scenarios]
+      (testing label
+        (check-tight-projections! (build))))))
 
 ;; Detail: Key (entity_id)=(6nmVTpCpKFRkZJigvqSVm) already exists.
 (deftest use-cached-field-values-test
