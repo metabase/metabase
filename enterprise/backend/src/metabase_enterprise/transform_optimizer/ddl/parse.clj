@@ -99,8 +99,29 @@
 ;; shape. Anything after the WHERE clause is treated as opaque; the planner
 ;; rejects malformed predicates at execution time.
 
+;; An identifier is either bare (\w+) or double-quoted Postgres-style
+;; ("…", with "" as the escape for an inner "). We accept either form for
+;; the index name and for each side of the qualified table.
+(def ^:private ident-pattern "(?:\"(?:[^\"]|\"\")+\"|\\w+)")
+
 (def ^:private create-index-re
-  #"(?is)\A\s*CREATE\s+(?:UNIQUE\s+)?INDEX(?:\s+CONCURRENTLY)?(?:\s+IF\s+NOT\s+EXISTS)?\s+(\w+)\s+ON\s+(?:ONLY\s+)?(\w+)\.(\w+)\s*.*\z")
+  (re-pattern
+   (str "(?is)\\A\\s*CREATE\\s+(?:UNIQUE\\s+)?INDEX(?:\\s+CONCURRENTLY)?"
+        "(?:\\s+IF\\s+NOT\\s+EXISTS)?\\s+"
+        "(" ident-pattern ")\\s+ON\\s+(?:ONLY\\s+)?"
+        "(" ident-pattern ")\\.(" ident-pattern ")\\s*.*\\z")))
+
+(defn- unquote-ident
+  "Strip a wrapping pair of double-quotes (and collapse the doubled-quote
+  escape) from a Postgres identifier. No-op for bare identifiers."
+  [s]
+  (let [s (str s)]
+    (if (and (> (count s) 1)
+             (= \" (.charAt s 0))
+             (= \" (.charAt s (dec (count s)))))
+      (-> (subs s 1 (dec (count s)))
+          (str/replace "\"\"" "\""))
+      s)))
 
 ;; ---------------------------------------------------------------------------
 ;; Public API
@@ -132,16 +153,19 @@
 
       :else
       (if-let [[_ idx-name schema table] (re-matches create-index-re (first parts))]
-        (let [allowed-lc (into #{}
+        (let [idx-name*  (unquote-ident idx-name)
+              schema*    (unquote-ident schema)
+              table*     (unquote-ident table)
+              allowed-lc (into #{}
                                (map (fn [[s t]]
                                       [(some-> s u/lower-case-en)
                                        (some-> t u/lower-case-en)]))
                                allowed-tables)]
-          (if (contains? allowed-lc [(u/lower-case-en schema) (u/lower-case-en table)])
-            {:ok? true :name idx-name :schema schema :table table}
+          (if (contains? allowed-lc [(u/lower-case-en schema*) (u/lower-case-en table*)])
+            {:ok? true :name idx-name* :schema schema* :table table*}
             {:ok?    false
              :reason :unknown-table
-             :detail (str schema "." table " is not in the referenced-tables set")}))
+             :detail (str schema* "." table* " is not in the referenced-tables set")}))
         {:ok?    false
          :reason :not-create-index
          :detail "Statement does not match: CREATE [UNIQUE] INDEX [CONCURRENTLY] [IF NOT EXISTS] <name> ON <schema>.<table> …"}))))
