@@ -1,0 +1,20 @@
+## Make metabot_message.finished nullable so it directly carries the
+## "in-flight placeholder" concept: NULL = placeholder (or stale stub),
+## true = completed, false = aborted, true + error = errored.
+
+databaseChangeLog:
+  - changeSet:
+      id: v61.2026-05-12T11:00:00
+      author: tyler
+      comment: Drop NOT NULL on metabot_message.finished so start-turn! placeholders can write NULL
+      changes:
+        - dropNotNullConstraint:
+            tableName: metabot_message
+            columnName: finished
+            columnDataType: ${boolean.type}
+      rollback:
+        - addNotNullConstraint:
+            tableName: metabot_message
+            columnName: finished
+            columnDataType: ${boolean.type}
+            defaultNullValue: true
