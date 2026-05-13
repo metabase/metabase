@@ -37,6 +37,10 @@ export type Transform = {
   updated_at: string;
   source_readable: boolean;
 
+  // true when the transform optimizer last reported an optimization_degree of 100;
+  // cleared by the BE on source changes
+  optimized?: boolean;
+
   // true when transform was deleted but still referenced by runs
   deleted?: boolean;
 

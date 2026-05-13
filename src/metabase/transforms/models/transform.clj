@@ -128,7 +128,10 @@
     (cond-> transform
       source
       (assoc :source_type (transforms-base.u/transform-source-type source)
-             :source_database_id (or source_database_id (transforms-base.i/source-db-id transform)))
+             :source_database_id (or source_database_id (transforms-base.i/source-db-id transform))
+             ;; Source changed → any prior "fully optimized" judgment from the
+             ;; optimizer no longer applies. Re-run the optimizer to re-flag.
+             :optimized false)
 
       target-changed?
       (assoc :target_db_id target-db-id)

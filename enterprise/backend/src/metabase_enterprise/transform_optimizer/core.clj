@@ -151,8 +151,16 @@
           prompt-map  (apply build-prompt transform (mapcat identity ctx-opts))
           llm-out     (apply llm/propose-optimizations prompt-map
                              (mapcat identity (or llm-opts {})))
-          finalised   (finalise-proposals (:proposals llm-out) (:context prompt-map))]
-      (merge {:transform (select-keys transform [:id :name :source_database_id])
+          finalised   (finalise-proposals (:proposals llm-out) (:context prompt-map))
+          optimized?  (= 100 (:optimization_degree finalised))]
+      ;; Persist the "fully optimized" verdict so the UI can render its
+      ;; celebratory state without re-running the LLM on every page view.
+      ;; We always write — flipping back to false on a regression is what
+      ;; lets the UI hide the gif if the optimizer later finds proposals.
+      (when (not= optimized? (boolean (:optimized transform)))
+        (t2/update! :model/Transform (:id transform) {:optimized optimized?}))
+      (merge {:transform (-> (select-keys transform [:id :name :source_database_id])
+                             (assoc :optimized optimized?))
               :sql       (-> prompt-map :context :sql)
               :summary   (:summary llm-out)}
              finalised))

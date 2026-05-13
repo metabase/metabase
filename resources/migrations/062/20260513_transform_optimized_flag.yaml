@@ -1,0 +1,22 @@
+## Add transform.optimized — set by the transform optimizer when it reports
+## an optimization_degree of 100 (no proposals worth shipping). Cleared by
+## the model's before-update hook whenever the transform's source changes.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/062_update_migrations.yaml
+
+  - changeSet:
+      id: v62.2026-05-13T10:00:00
+      author: bronsa
+      comment: Add optimized flag to transform
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: optimized
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when the transform optimizer last reported an optimization_degree of 100. Cleared when the transform's source changes.
+                  constraints:
+                    nullable: false

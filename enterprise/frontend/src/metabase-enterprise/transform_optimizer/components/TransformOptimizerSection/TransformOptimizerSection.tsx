@@ -30,6 +30,7 @@ import { ProposalCard } from "../ProposalCard";
 import { TargetIndexesSection } from "../TargetIndexesSection";
 
 import { ProposalGroup } from "./ProposalGroup";
+import { SonicOptimizedBanner } from "./SonicOptimizedBanner";
 
 type Props = {
   transform: Transform;
@@ -129,28 +130,25 @@ export function TransformOptimizerSection({ transform, readOnly }: Props) {
   const isLoading = state.status === "loading";
   const isDone = state.status === "done";
   const isErrored = state.status === "error";
-  const isCollapsed =
+  const isInSessionOptimized =
     isDone && state.optimizationDegree === 100 && state.proposals.length === 0;
+  // Render the Sonic banner whenever the optimizer's verdict — either
+  // persisted on the transform from a prior run, or from this session — is
+  // "fully optimized" and there's nothing currently in flight to contradict
+  // it. Re-analyze flips it back if the new run finds proposals.
+  const showOptimizedBanner =
+    !isLoading &&
+    state.proposals.length === 0 &&
+    (isInSessionOptimized || transform.optimized === true);
   const canTrigger = !isLoading;
 
   return (
     <Stack p="lg" gap="md">
-      {isCollapsed ? (
-        <>
-          <Alert color="success" icon={<Icon name="check" />}>
-            <Text fw="bold">{t`Already optimized — nothing to suggest`}</Text>
-            {state.summary && (
-              <Text c="text-secondary" mt={4}>
-                {state.summary}
-              </Text>
-            )}
-          </Alert>
-          <Group justify="flex-end">
-            <Button variant="subtle" onClick={handleStart}>
-              {t`Re-analyze`}
-            </Button>
-          </Group>
-        </>
+      {showOptimizedBanner ? (
+        <SonicOptimizedBanner
+          summary={state.summary}
+          onReanalyze={handleStart}
+        />
       ) : (
         <>
           <Group
