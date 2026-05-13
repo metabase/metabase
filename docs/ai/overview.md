@@ -11,7 +11,6 @@ There are three main ways you can use AI with your Metabase:
 - [MCP server](#mcp-server)
 - [Agent-driven file-based development workflow](#agent-driven-development-workflow)
 
-Each has its own uses and
 
 ## Metabot
 
@@ -23,12 +22,12 @@ Each has its own uses and
 
 **Controls:** Metabot will only see what the person using it can see. Metabot also comes with additional permission controls and usage limits so that you control who can use which Metabot tools (e.g. chat vs SQL generation) and how many tokens they can spend.
 
-**Provider**: You can configure the AI provider used to process and respond people's requests:
+**Provider**:  Choose from:
 
-- Metabase's own model (available on Metabase Cloud only, comes with an additional charge)
+- Metabase's own AI Service (available as an add-on exclusively for Metabase Cloud)
 - Third-party models via an API key (Anthropic models only for now).
 
-**Plans**: available on all plans. You can only use the model hosted by Metabase on Metabase Cloud.
+**Plans**: available on all plans. You can only use Metabase's AI Service on Metabase Cloud.
 
 ## MCP server
 
