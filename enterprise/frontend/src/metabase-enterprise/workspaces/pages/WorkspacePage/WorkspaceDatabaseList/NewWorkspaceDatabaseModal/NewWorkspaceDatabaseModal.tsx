@@ -162,6 +162,7 @@ function DatabaseInput({ databases, value, onChange }: DatabaseInputProps) {
       </Input.Wrapper>
     );
   }
+
   return (
     <Radio.Group
       label={t`Database`}
