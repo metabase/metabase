@@ -8,9 +8,8 @@ databaseChangeLog:
       id: v61.2026-05-13T10:00:00
       author: christruter
       comment: |
-        Add source column to data_complexity_score with a default of 'appdb' so that
-        (a) existing rows are populated and (b) older nodes inserting rows mid-rolling-deploy
-        get a non-NULL value, making the later NOT NULL constraint safe to apply.
+        Add NOT NULL source column with a default of 'appdb'. The default backfills existing rows
+        and keeps old nodes' inserts safe during rolling deploys (they don't know to set source).
       changes:
         - addColumn:
             tableName: data_complexity_score
@@ -19,7 +18,9 @@ databaseChangeLog:
                   name: source
                   type: varchar(255)
                   defaultValue: appdb
-                  remarks: Provenance of this score — "appdb" for cron/API/CLI-from-appdb, or "representation:<digest>" for CLI runs that scored a representation directory.
+                  constraints:
+                    nullable: false
+                  remarks: Provenance — "appdb" for cron/API/CLI-from-appdb, or "representation:<digest>" for CLI runs that scored a representation directory.
       rollback:
         - dropColumn:
             tableName: data_complexity_score
@@ -29,27 +30,18 @@ databaseChangeLog:
       id: v61.2026-05-13T10:00:01
       author: christruter
       comment: |
-        Belt-and-suspenders backfill — most DBs already populated existing rows via the column
-        default above, but some Liquibase/JDBC combos skip that. This guarantees no NULLs remain
-        before we add the NOT NULL constraint.
+        Drop the column default once the rolling-deploy window has closed. Keeping it would
+        silently fill 'appdb' for any future insert that forgets to set source, masking the case
+        where a representation-derived row should have been tagged 'representation:<digest>'.
+        App-layer code must set source explicitly.
       changes:
-        - sql:
-            sql: UPDATE data_complexity_score SET source = 'appdb' WHERE source IS NULL
-      rollback:
-        - sql:
-            sql: UPDATE data_complexity_score SET source = NULL
-
-  - changeSet:
-      id: v61.2026-05-13T10:00:02
-      author: christruter
-      comment: Enforce NOT NULL on data_complexity_score.source now that it is backfilled
-      changes:
-        - addNotNullConstraint:
+        - dropDefaultValue:
             tableName: data_complexity_score
             columnName: source
             columnDataType: varchar(255)
       rollback:
-        - dropNotNullConstraint:
+        - addDefaultValue:
             tableName: data_complexity_score
             columnName: source
             columnDataType: varchar(255)
+            defaultValue: appdb
