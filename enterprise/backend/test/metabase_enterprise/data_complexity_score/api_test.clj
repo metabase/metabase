@@ -85,15 +85,15 @@
 
 (deftest complexity-endpoint-returns-latest-stored-score-test
   (testing "superusers read the latest persisted score snapshot instead of recomputing it on demand"
-    (let [captured-args (atom nil)]
+    (let [captured-fingerprint (atom nil)]
       (mt/with-dynamic-fn-redefs [task.complexity-score/current-fingerprint (constantly "api-test-fp")
                                   data-complexity-score/latest-score
-                                  (fn [fingerprint source]
-                                    (reset! captured-args [fingerprint source])
+                                  (fn [fingerprint]
+                                    (reset! captured-fingerprint fingerprint)
                                     (with-sample-calculated-at sample-score))]
         (let [resp (mt/user-http-request :crowberto :get 200 endpoint)]
-          (is (= ["api-test-fp" "appdb"] @captured-args)
-              "API must filter by source=\"appdb\" so representation-derived rows can't shadow the authoritative row")
+          (is (= "api-test-fp" @captured-fingerprint)
+              "API passes the cron fingerprint through; source=\"appdb\" defaulting is covered by latest-score-filters-by-source-test")
           (is (= (m.util/deep-snake-keys (with-sample-calculated-at sample-score)) resp))
           (is (contains? (:meta resp) :formula_version))
           (is (= sample-calculated-at (get-in resp [:meta :calculated_at])))

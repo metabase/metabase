@@ -230,14 +230,21 @@
 (defn dir-digest
   "Stable SHA-256 over the file contents of `dir`.
   Two directories with byte-identical files at the same relative paths produce the same digest.
-  Used as the `<digest>` part of the `source` column on `data_complexity_score` rows."
+  Used as the `<digest>` part of the `source` column on `data_complexity_score` rows.
+
+  Relative paths are joined with `/` regardless of the host OS so that a digest computed on
+  Linux/macOS matches one computed on Windows for the same export."
   [dir]
   (let [dir-file (io/file dir)
         root     (.toPath dir-file)
         entries  (->> (file-seq dir-file)
                       (filter #(.isFile ^File %))
                       (map (fn [^File f]
-                             [(str (.relativize root (.toPath f)))
+                             [(->> (.relativize root (.toPath f))
+                                   .iterator
+                                   iterator-seq
+                                   (map str)
+                                   (str/join "/"))
                               (sha256-file-hex f)]))
                       (sort-by first))]
     (hex (sha256-bytes (.getBytes (pr-str entries) "UTF-8")))))
