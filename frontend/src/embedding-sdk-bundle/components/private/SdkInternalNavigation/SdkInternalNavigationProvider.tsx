@@ -58,12 +58,12 @@ const SdkInternalNavigationProviderInner = ({
   const dispatch = useSdkDispatch();
   const currentDashboard = useSelector(getDashboardComplete);
 
-  // Click behaviours that target the *currently* loaded dashboard should
-  // switch tab / apply parameters in place rather than push a new stack
-  // entry (which would re-mount the dashboard from scratch and lose the
-  // requested tab).
   const push = useCallback(
     (entry: SdkInternalNavigationEntry) => {
+      // Click behaviors that target the currently loaded dashboard should
+      // switch tab / apply parameters in place rather than push a new stack
+      // entry (which would re-mount the dashboard from scratch and lose the
+      // requested tab).
       if (
         entry.type === "dashboard" &&
         currentDashboard != null &&
@@ -77,6 +77,7 @@ const SdkInternalNavigationProviderInner = ({
         }
         return;
       }
+      // Handle cross dashboard navigation with initial tab.
       if (entry.type === "dashboard") {
         dispatch(setInitialDashboardTabId(entry.tabId ?? null));
       }
