@@ -285,6 +285,27 @@ export const SmartScalarDarkTheme = {
   },
 };
 
+// Regression guard for metabase#72443 — the `₂` subscript descender used to
+// clip at the bottom of the value box.
+export const SmartScalarUnicodeSubscript = {
+  render: Template,
+
+  args: {
+    ...SmartScalarLightTheme.args,
+    card: createMockCard({
+      id: getNextId(),
+      display: "smartscalar",
+      visualization_settings: {
+        "graph.dimensions": ["timestamp"],
+        "graph.metrics": ["count"],
+        column_settings: {
+          '["name","Count"]': { suffix: "tCO₂e" },
+        },
+      },
+    }),
+  },
+};
+
 export const SmartScalarLightThemeTooltip = {
   parameters: {
     loki: { skip: true },
