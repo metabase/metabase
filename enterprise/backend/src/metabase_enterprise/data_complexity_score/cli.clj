@@ -13,13 +13,20 @@
   Persistence is controlled independently by `--write-to-appdb`. The default tracks the source:
   true in appdb mode, false in representation mode. Both can be overridden explicitly.
 
-  Invoke via:
+  Two invocation styles:
 
-    clojure -M:ee:dev -m metabase-enterprise.data-complexity-score.cli --source appdb
-    clojure -M:ee:dev -m metabase-enterprise.data-complexity-score.cli \\
-      --source representation -r path/to/fixture/
+    Dev (classpath, no AOT):
+      clojure -M:ee:dev -m metabase-enterprise.data-complexity-score.cli --source appdb
+      clojure -M:ee:dev -m metabase-enterprise.data-complexity-score.cli \\
+        --source representation -r path/to/fixture/
 
-  Patterned after [[metabase-enterprise.checker.cli]] — same `fail!` pattern, same arg style."
+    AOT JAR (via `metabase.core.bootstrap`):
+      java -jar metabase.jar --mode complexity-score --source appdb
+      java -jar metabase.jar --mode complexity-score \\
+        --source representation -r path/to/fixture/
+
+  Patterned after [[metabase-enterprise.checker.cli]] — same `fail!` pattern, same arg style,
+  and the same bootstrap-dispatched [[entrypoint]] hook."
   (:require
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
@@ -69,10 +76,15 @@
     :parse-fn #(case % "true" true "false" false ::invalid)
     :validate [#(not= % ::invalid) "--write-to-appdb must be 'true' or 'false'."]]
    ["-o" "--output PATH"             "Write EDN result to this file instead of stdout."]
+   ;; Consumed by `metabase.core.bootstrap` when invoked as `java -jar metabase.jar --mode …`. Declared
+   ;; here so tools.cli accepts it and `parse-opts` doesn't report it as an unknown flag.
+   [nil  "--mode MODE"               "(JAR invocation only; handled by bootstrap before reaching this CLI.)"]
    ["-h" "--help"                    "Show this message."]])
 
 (defn- usage [summary]
-  (str "Usage: clojure -M:ee:dev -m metabase-enterprise.data-complexity-score.cli [options]\n\n"
+  (str "Usage:\n"
+       "  clojure -M:ee:dev -m metabase-enterprise.data-complexity-score.cli [options]\n"
+       "  java -jar metabase.jar --mode complexity-score [options]\n\n"
        "Options:\n" summary))
 
 (defn- pretty [result]
@@ -91,7 +103,7 @@
 (defn- bootstrap-appdb!
   "Verify the appdb connection and mark it ready — never run migrations or mutate the schema in any way.
   The scorer reads a small, slow-changing slice of Toucan models, so we proceed against any appdb version.
-  Any schema mismatch surfaces as a runtime error caught by [[-main]]; the DB itself is never touched.
+  Any schema mismatch surfaces as a runtime error caught by [[entrypoint]]; the DB itself is never touched.
   We deliberately skip [[metabase.app-db.setup/check-encryption]] because its auto-encrypt branch can rewrite
   every encrypted `setting` row — exactly the kind of silent side effect we're avoiding."
   []
@@ -139,11 +151,7 @@
     result))
 
 (defn- run-representation-mode!
-  "Score against an on-disk serdes export; optionally persist with `source` = `representation:<digest>`.
-  The fingerprint still comes from [[task.complexity-score/current-fingerprint]]; the `source` column is what
-  separates these rows from cron/API/CLI-from-appdb rows.
-  We never advance `data-complexity-scoring-last-fingerprint` here — a representation-derived score isn't
-  authoritative for this instance and would mute the cron."
+  "Score against an on-disk serdes export; optionally persist with `source` = `representation:<digest>`."
   [{:keys [representation-dir embeddings]} write?]
   (when write?
     (bootstrap-appdb!))
@@ -168,7 +176,7 @@
   Returns the result map so tests can call this directly without intercepting `System/exit`.
   Throws `ex-info` for validation failures (`:cli-validation true`) and propagates `representation/load-dir`'s
   `ex-info` (e.g. missing `--embeddings` override).
-  `-main` converts those to `fail!`; library callers can inspect the ex-data themselves."
+  [[entrypoint]] converts those to `fail!`; library callers can inspect the ex-data themselves."
   [options]
   (let [options (with-defaults options)]
     (validate-options! options)
@@ -178,11 +186,11 @@
         (run-appdb-mode! write?)
         (run-representation-mode! options write?)))))
 
-;; `-main` is invoked via `clj -M:ee:dev -m …cli`, not via an AOT'd jar, so `(:gen-class)` is unnecessary.
-#_{:clj-kondo/ignore [:main-without-gen-class]}
-(defn -main
-  "Entrypoint."
-  [& args]
+(defn entrypoint
+  "Main entrypoint. Receives raw args (a seq) and owns the process — it always calls `System/exit`.
+  Called from [[metabase.core.bootstrap/run-standalone-mode]] via `--mode complexity-score`
+  in the AOT JAR, and delegated to from [[-main]] for the `clj -M:ee:dev -m …` dev path."
+  [args]
   (let [{:keys [options errors summary]} (cli/parse-opts args cli-options)]
     (cond
       (:help options) (do (output! (usage summary)) (System/exit 0))
@@ -199,5 +207,14 @@
                               (fail! (format "%s: %s" (.getName (class e)) (ex-message e))))))
                         (catch Throwable t
                           ;; Most likely an older appdb missing a column/table the scorer reads.
-                          (fail! (format "%s: %s" (.getName (class t)) (.getMessage t)))))))
-  (System/exit 0))
+                          (fail! (format "%s: %s" (.getName (class t)) (.getMessage t))))))
+    (System/exit 0)))
+
+;; No `(:gen-class)` — the AOT JAR routes through [[metabase.core.bootstrap]] and dispatches to
+;; [[entrypoint]] via `requiring-resolve`, so a class-file `-main` would be dead weight. `-main`
+;; only exists for the `clj -M:ee:dev -m …cli` dev path.
+#_{:clj-kondo/ignore [:main-without-gen-class]}
+(defn -main
+  "Dev entrypoint. Delegates to [[entrypoint]], which owns the process and calls `System/exit`."
+  [& args]
+  (entrypoint args))
