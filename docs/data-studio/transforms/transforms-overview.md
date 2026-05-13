@@ -49,10 +49,18 @@ Metabase supports two types of transforms: query-based transforms and Python tra
 
 If you are running Metabase Open Source/Starter, Admins (and only Admins) can see and run transforms.
 
-Metabase Pro/Enterprise comes with additional permission controls for transforms:
+Metabase Pro/Enterprise comes with additional permission controls for transforms: a special group for non-Admins who you want to have transform access, and granular transform permissions for each database.
+
+On Metabase Pro/Enterprise:
 
 - To **see** the list of transforms on your instance, people need to be able to access Data Studio, so they need to be either an Admin or a member of the special [Data Analyst group](../../people-and-groups/managing.md).
-- To **execute** transforms on a database, people additionally need to have the [Transform permissions](../../permissions/data.md) for that database.
+- To **execute** transforms on a database, people need to be either Admins on belong to the special [Data Analyst group](../../people-and-groups/managing.md). Additionally people need to have the [Transform permissions](../../permissions/data.md) for that database.
+
+## Enable transforms
+
+Before you can start writing transforms, you'll need to enable transforms in your Metabase instances. If you are on a Metabase Cloud plan, you'll also need to purchase one of the transform add-ons, see [Transform add-ons](addons.md).
+
+To enable
 
 ## See all transforms
 
@@ -74,7 +82,7 @@ If you're using remote sync, you won't be able to create transforms if your inst
 
 To create a transform:
 
-1. Make sure you have [appropriate permissions for creating transforms](#permissions-for-transforms).
+1. [Enable transforms](#enable-transforms).
 2. Click the **grid** icon on top right and go to **Data Studio**.
 3. In the left sidebar, select **Transforms**.
 4. Click **+ New** and select a source for your transform.
@@ -111,7 +119,7 @@ To create a transform:
 
 ## Use Metabot to generate code for transforms
 
-> Code generation for transforms requires [Metabot to be enabled](../../ai/settings.md#enable-ai-features) and the **Transforms** add-on.
+> Code generation for transforms requires [AI features](../../ai/settings.md#enable-ai-features).
 
 You can ask Metabot to generate a new SQL or Python-based transform, or edit an existing transform.
 
@@ -182,6 +190,8 @@ For Python transforms, you'll also see the transform's execution logs.
 
 _Data Studio > Transforms > [transform name] > Inspect_
 
+> Transform inspector required the Advanced transforms add-on
+
 The [transform inspector](./transform-inspector.md) lets you poke at the input and outputs of your transform.
 
 ## Transform dependencies
@@ -220,6 +230,8 @@ Incremental transforms work differently for query-based transforms and Python tr
 
 _Admin > General > Remote sync_
 
+{% include plans-blockquote.html feature="Versioning transforms" %}
+
 You can check your transforms into git with [Remote Sync](../../installation-and-operation/remote-sync.md). If you enable transform sync, Metabase will serialize transforms as YAML files and push them to your specified GitHub repo branch.
 
 To enable git sync of transforms:
@@ -241,34 +253,4 @@ Transforms are similar to models with model persistence turned on, but there are
 
 Use models to enable non-admins to create their own datasets within Metabase, and to add context like field descriptions and semantic types. Use transforms to create persisted datasets in your database and reuse them across Metabase. In future versions of Metabase, model persistence will be deprecated in favor of transforms.
 
-## Convert models to transforms
-
-If you have models you'd like to migrate to transforms, Metabase can convert them for you. When you convert a model, Metabase:
-
-1. Creates a new transform based on the model's query.
-2. Runs the transform to create the output table in your database.
-3. Replaces every question, dashboard, and other item that used the model with the transform's output table.
-4. Converts the original model to a question.
-
-You must be an admin to convert models, and the model's database must [support transforms](#databases-that-support-transforms).
-
-Before converting models into transforms, review [Replacing data sources](../dependencies/replace-data-sources.md) docs for overview and limitations of the process.
-
-To convert a model into a transform:
-
-1. Open **Data Studio** and select **Transforms** in the sidebar.
-2. Click **Tools > Migrate models**.
-3. Find the model you want to convert and click it to open its details panel. The panel shows the model's name, database, and collection, and a list of items that depend on it.
-4. Click **Convert to a transform**.
-5. Fill out the transform settings. See [Create a transform](#create-a-transform) for the overview of settings.
-6. Click **Convert to a transform**.
-
-Metabase runs the conversion in the background. A status indicator at the bottom of the screen shows progress.
-
-If the transform run fails, Metabase stops and leaves the model unchanged—nothing is replaced.
-
-If the transform runs successfully but the source swap fails afterward, the transform and its output table are kept. The model is left unchanged. You can complete the migration manually using [Replace data sources](../dependencies/replace-data-sources.md) to point remaining content from the model to the transform's output table.
-
-Once conversion completes, all content that previously queried the model now queries the transform's output table, and the model becomes a saved question.
-
-Newly created tables will be created with default permissions and will _not_ inherit the model's permissions. As an alternative, consider manually creating and running the transform first, setting up the permissions, then using [Replace data sources](../dependencies/replace-data-sources.md) to swap the model for the transform's output table once you configured permissions.
+You can convert Metabase models to transforms in bulk, see [Convert models to transforms](query-transforms.md#convert-models-to-transforms)

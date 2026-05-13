@@ -127,8 +127,8 @@ To make this transform incrementally load the data based on new values of `order
 1. Add a table variable, for example `{{orders_var}}` replacing `orders` in the `FROM` statement;
 2. In the table variable settings, connect the table variable to the `orders` table;
 3. Replace other references to the table in your query with either:
-    - The name of the table variable (if you have "Emit table alias" toggled on in variable's setting).
-    - Your own handcrafted alias for the variable.
+   - The name of the table variable (if you have "Emit table alias" toggled on in variable's setting).
+   - Your own handcrafted alias for the variable.
 
 So your query will look like this:
 
@@ -152,3 +152,36 @@ To make a query transform incremental:
 1. Go to the transform's page in **Data studio > Transforms**.
 2. Switch to **Settings** tab.
 3. In **Column to check for new values**, select the column in one of the source tables that Metabase should check to determine which values are new. Only some columns are eligible. See [prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms).
+
+## Convert models to transforms
+
+> {% include plans-blockquote.html feature="Converting models to transforms"%}
+
+If you have models you'd like to migrate to transforms, Metabase can convert them for you. When you convert a model, Metabase:
+
+1. Creates a new transform based on the model's query.
+2. Runs the transform to create the output table in your database.
+3. Replaces every question, dashboard, and other item that used the model with the transform's output table.
+4. Converts the original model to a question.
+
+You must be an admin to convert models, and the model's database must [support transforms](transforms-overview.md#databases-that-support-transforms).
+
+To convert a model into a transform:
+
+1. Review [Replacing data sources](../dependencies/replace-data-sources.md) docs for overview and limitations of the process.
+2. Open **Data Studio** and select **Transforms** in the sidebar.
+3. Click **Tools > Migrate models**.
+4. Find the model you want to convert and click it to open its details panel. The panel shows the model's name, database, and collection, and a list of items that depend on it.
+5. Click **Convert to a transform**.
+6. Fill out the transform settings. See [Create a transform](#create-a-query-based-transform) for the overview of settings.
+7. Click **Convert to a transform**.
+
+Metabase runs the conversion in the background. A status indicator at the bottom of the screen shows progress.
+
+If the transform run fails, Metabase stops and leaves the model unchanged—nothing is replaced.
+
+If the transform runs successfully but the source swap fails afterward, the transform and its output table are kept. The model is left unchanged. You can complete the migration manually using [Replace data sources](../dependencies/replace-data-sources.md) to point remaining content from the model to the transform's output table.
+
+Once conversion completes, all content that previously queried the model now queries the transform's output table, and the model becomes a saved question.
+
+Newly created tables will be created with default permissions and will _not_ inherit the model's permissions. As an alternative, consider manually creating and running the transform first, setting up the permissions, then using [Replace data sources](../dependencies/replace-data-sources.md) to swap the model for the transform's output table once you configured permissions.
