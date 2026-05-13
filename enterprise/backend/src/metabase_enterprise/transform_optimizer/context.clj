@@ -164,10 +164,23 @@
     :run_history      [{id, status, start_time, end_time, duration_ms,
                         run_method, message} …] (most recent first)"
   [transform & {:as opts}]
-  (let [inspector   (inspector.context/build-context transform)
+  (let [;; Inspector context is best-effort. It can fail for plenty of
+        ;; reasons we can't paper over here (unparseable native SQL, missing
+        ;; FK metadata, schema drift), and when it does the optimizer should
+        ;; still produce a degraded context — the LLM gets less schema info
+        ;; but EXPLAIN, run history, and compiled SQL all still apply.
+        inspector   (try
+                      (inspector.context/build-context transform)
+                      (catch Exception e
+                        (log/warnf e "transform-optimizer: inspector context failed (transform-id=%s); proceeding without sources"
+                                   (:id transform))
+                        nil))
         sources     (:sources inspector)
-        db-id       (:db-id inspector)
-        driver-kw   (:driver inspector)
+        db-id       (or (:db-id inspector)
+                        (transforms-base.u/transform-source-database transform))
+        driver-kw   (or (:driver inspector)
+                        (when db-id
+                          (t2/select-one-fn (comp keyword :engine) :model/Database :id db-id)))
         database    (when db-id (t2/select-one :model/Database :id db-id))
         sql         (transform-sql transform)
         fk-index    (fk-target-index (collect-fk-target-ids sources))
