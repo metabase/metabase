@@ -96,7 +96,12 @@ describe("QuestionInfoSidebar", () => {
         expect(
           screen.getByRole("tab", { name: "Relationships" }),
         ).toBeInTheDocument();
-        expect(screen.getByText("Insights")).toBeInTheDocument();
+
+        const insightsTab = screen.getByText("Insights");
+        await userEvent.click(insightsTab);
+        expect(
+          await screen.findByText(/See who.s doing what, when/),
+        ).toBeInTheDocument();
       });
     });
   });

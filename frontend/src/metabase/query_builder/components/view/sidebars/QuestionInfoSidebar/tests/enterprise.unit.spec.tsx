@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { screen } from "__support__/ui";
 import type { Card } from "metabase-types/api";
 import {
@@ -77,6 +79,12 @@ describe("QuestionInfoSidebar > enterprise", () => {
           screen.getByRole("tab", { name: "Relationships" }),
         ).toBeInTheDocument();
         expect(screen.getByText("Insights")).toBeInTheDocument();
+
+        const insightsTab = screen.getByText("Insights");
+        await userEvent.click(insightsTab);
+        expect(
+          await screen.findByText(/See who.s doing what, when/),
+        ).toBeInTheDocument();
       });
     });
   });
