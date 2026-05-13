@@ -204,7 +204,9 @@ body::before {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 8px;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--neutral-90);
 }
 .docs-topbar-right {
   display: flex;
@@ -216,10 +218,12 @@ body::before {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 10px 16px 11px 13px;
+  height: 40px;
+  padding: 0 16px 0 13px;
+  box-sizing: border-box;
   border-radius: 6px;
   background: var(--blue-95);
-  border: 1px solid var(--blue-90);
+  border: 1px solid var(--blue-95);
   color: var(--blue-60);
   font-size: 14px;
   font-weight: 700;
