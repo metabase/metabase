@@ -9,4 +9,5 @@ export * from "./Kbd";
 export * from "./SortableHeaderPill";
 export * from "./Stepper";
 export * from "./Timeline";
+export * from "./Tree";
 export * from "./TreeTable";

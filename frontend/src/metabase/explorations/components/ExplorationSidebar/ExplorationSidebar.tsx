@@ -2,18 +2,20 @@ import cx from "classnames";
 import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
-import { Tree } from "metabase/common/components/tree";
-import type { TreeNodeProps } from "metabase/common/components/tree/types";
 import { QUERY_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
 import {
   Box,
   Ellipsified,
   Icon,
+  type IconName,
   type IconProps,
   Loader,
+  type RenderTreeNodePayload,
   Stack,
   Text,
+  Tree,
   UnstyledButton,
+  useTree,
 } from "metabase/ui";
 import type { Exploration, ExplorationQueryStatus } from "metabase-types/api";
 
@@ -23,11 +25,15 @@ import { PotentiallyInterestingMarker } from "../PotentiallyInterestingMarker";
 
 import S from "./ExplorationSidebar.module.css";
 import {
-  type ExplorationTreeHeading,
-  type ExplorationTreeItem,
-  type ExplorationTreeNode,
+  DOCUMENT_TREE_ID_PREFIX,
+  type ExplorationTreeNodePayloadHeading,
+  type ExplorationTreeNodePayloadItem,
   flattenTree,
+  getDocumentTreeId,
   getExplorationSidebarTree,
+  isExplorationTreeNodePayloadHeading,
+  isExplorationTreeNodePayloadItem,
+  removeDocumentTreeIdPrefix,
 } from "./utils";
 
 interface ExplorationSidebarProps {
@@ -41,42 +47,68 @@ export function ExplorationSidebar({
   selectedEntityId,
   setSelectedEntityId,
 }: ExplorationSidebarProps) {
-  const tree = useMemo(
+  const treeData = useMemo(
     () => getExplorationSidebarTree(exploration),
     [exploration],
   );
 
-  const flatItems = useMemo(() => flattenTree(tree), [tree]);
+  const tree = useTree({
+    initialSelectedState:
+      selectedEntityId?.type === "document"
+        ? [getDocumentTreeId(selectedEntityId.id)]
+        : selectedEntityId?.type === "group"
+          ? [selectedEntityId.id]
+          : undefined,
+  });
 
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (selectedEntityId == null) {
-        return;
-      }
-      if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") {
-        return;
-      }
-      if (shouldIgnoreKeyboardEvent(event)) {
-        return;
-      }
-      const direction = event.key === "ArrowRight" ? 1 : -1;
-      const nextItem = getAdjacentById(
-        flatItems,
-        selectedEntityId.id,
-        direction,
-      );
-      if (nextItem != null && nextItem.id !== selectedEntityId.id) {
-        if (nextItem.data?.type === "group") {
-          setSelectedEntityId({ type: "group", id: nextItem.data.group_id });
-        } else if (nextItem.data?.type === "document") {
-          setSelectedEntityId({ type: "document", id: nextItem.data.id });
+    if (tree.selectedState.length === 1) {
+      const id = tree.selectedState[0];
+      if (id.startsWith(DOCUMENT_TREE_ID_PREFIX)) {
+        const documentId = removeDocumentTreeIdPrefix(id);
+        if (documentId !== selectedEntityId?.id) {
+          setSelectedEntityId({ type: "document", id: documentId });
         }
-        event.preventDefault();
+      } else {
+        const groupId = id;
+        if (groupId !== selectedEntityId?.id) {
+          setSelectedEntityId({ type: "group", id: groupId });
+        }
       }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [flatItems, selectedEntityId, setSelectedEntityId]);
+    }
+  }, [tree.selectedState, selectedEntityId, setSelectedEntityId]);
+
+  // const flatItems = useMemo(() => flattenTree(treeData), [treeData]);
+
+  // useEffect(() => {
+  //   const handleKeyDown = (event: KeyboardEvent) => {
+  //     if (selectedEntityId == null) {
+  //       return;
+  //     }
+  //     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") {
+  //       return;
+  //     }
+  //     if (shouldIgnoreKeyboardEvent(event)) {
+  //       return;
+  //     }
+  //     const direction = event.key === "ArrowRight" ? 1 : -1;
+  //     const nextItem = getAdjacentById(
+  //       flatItems,
+  //       selectedEntityId.id,
+  //       direction,
+  //     );
+  //     if (nextItem != null && nextItem.id !== selectedEntityId.id) {
+  //       if (nextItem.data?.type === "group") {
+  //         setSelectedEntityId({ type: "group", id: nextItem.data.group_id });
+  //       } else if (nextItem.data?.type === "document") {
+  //         setSelectedEntityId({ type: "document", id: nextItem.data.id });
+  //       }
+  //       event.preventDefault();
+  //     }
+  //   };
+  //   window.addEventListener("keydown", handleKeyDown);
+  //   return () => window.removeEventListener("keydown", handleKeyDown);
+  // }, [flatItems, selectedEntityId, setSelectedEntityId]);
 
   return (
     <Stack h="100%" w="20%" flex="none" gap="lg" pt="3rem" mr="2rem">
@@ -85,92 +117,88 @@ export function ExplorationSidebar({
       </Text>
       <Box className={S.tree}>
         <Tree
-          data={tree}
-          selectedId={selectedEntityId?.id}
-          onSelect={(item) => {
-            if (item.data?.type === "group") {
-              setSelectedEntityId({ type: "group", id: item.data.group_id });
-            } else if (item.data?.type === "document") {
-              setSelectedEntityId({ type: "document", id: item.data.id });
-            }
-          }}
-          TreeNode={ExplorationTreeNode}
+          tree={tree}
+          data={treeData}
+          renderNode={ExplorationTreeNode}
+          selectOnClick
         />
       </Box>
     </Stack>
   );
 }
 
-function ExplorationTreeNode(props: TreeNodeProps<ExplorationTreeNode>) {
-  const { item } = props;
-  if (item.data?.type === "heading") {
-    return (
-      <ExplorationTreeHeading
-        {...(props as TreeNodeProps<ExplorationTreeHeading>)}
-      />
-    );
+function ExplorationTreeNode(props: RenderTreeNodePayload) {
+  if (isExplorationTreeNodePayloadHeading(props)) {
+    return <ExplorationTreeHeading {...props} />;
   }
-  if (item.data?.type === "document" || item.data?.type === "group") {
-    return (
-      <ExplorationTreeItem {...(props as TreeNodeProps<ExplorationTreeItem>)} />
-    );
+  if (isExplorationTreeNodePayloadItem(props)) {
+    return <ExplorationTreeItem {...props} />;
   }
   return null;
 }
 
 function ExplorationTreeHeading({
-  item,
-  isExpanded,
-  onToggleExpand,
-  depth,
-}: TreeNodeProps<ExplorationTreeHeading>) {
+  node,
+  expanded,
+  elementProps,
+  level,
+}: ExplorationTreeNodePayloadHeading) {
   return (
     <UnstyledButton
-      aria-expanded={isExpanded}
+      {...elementProps}
+      aria-expanded={expanded}
       className={S.treeRow}
-      onClick={onToggleExpand}
-      style={{ marginLeft: depth * 16 }}
+      style={{ marginLeft: level * 16 }}
     >
       <Icon
-        name={isExpanded ? "chevrondown" : "chevronright"}
+        name={expanded ? "chevrondown" : "chevronright"}
         c="brand"
         aria-hidden
       />
       <Ellipsified flex={1} size="md" lh="1.5rem">
-        {item.name}
+        {node.label}
       </Ellipsified>
     </UnstyledButton>
   );
 }
 
 function ExplorationTreeItem({
-  item,
-  isSelected,
-  onSelect,
-  depth,
-}: TreeNodeProps<ExplorationTreeItem>) {
-  const iconProps =
-    typeof item.icon === "string" ? { name: item.icon } : item.icon;
-
+  node,
+  selected,
+  elementProps,
+  level,
+  tree,
+}: ExplorationTreeNodePayloadItem) {
   return (
     <UnstyledButton
+      {...elementProps}
       role="listitem"
-      aria-pressed={isSelected}
+      aria-pressed={selected}
       className={cx(S.treeRow, {
-        [S.treeRowSelected]: isSelected,
+        [S.treeRowSelected]: selected,
       })}
-      onClick={onSelect}
-      style={{ marginLeft: depth * 16 }}
+      style={{ marginLeft: level * 16 }}
+      onClick={(e) => {
+        if (e.ctrlKey || e.metaKey) {
+          tree.setSelectedState((prev) =>
+            prev.includes(node.value)
+              ? prev.filter((id) => id !== node.value)
+              : [...prev, node.value],
+          );
+          return;
+        }
+        elementProps.onClick(e);
+      }}
     >
       <ExplorationTreeItemIcon
-        status={item.data?.status}
-        iconProps={iconProps}
+        status={node.data.status}
+        icon={node.data.type === "group" ? "lineandbar" : "document"}
       />
       <Ellipsified flex={1} size="md" lh="1.5rem">
-        {item.name}
+        {node.label}
       </Ellipsified>
-      {item.data?.type === "group" &&
-        (item.data.interestingness_score ?? 0) >
+      {node.data.type === "group" &&
+        (node.data.interestingness_score ?? 0) >
           QUERY_INTERESTINGNESS_SCORE_THRESHOLD && (
           <PotentiallyInterestingMarker />
         )}
@@ -180,10 +208,10 @@ function ExplorationTreeItem({
 
 function ExplorationTreeItemIcon({
   status,
-  iconProps,
+  icon,
 }: {
   status: ExplorationQueryStatus | undefined;
-  iconProps: IconProps;
+  icon: IconName;
 }) {
   if (status === "running" || status === "pending") {
     return <Loader size="xs" aria-label={t`Loading…`} />;
@@ -191,5 +219,5 @@ function ExplorationTreeItemIcon({
   if (status === "error") {
     return <Icon name="warning" c="error" aria-label={t`Failed to generate`} />;
   }
-  return <Icon {...iconProps} c="text-secondary" aria-label={t`Ready`} />;
+  return <Icon name={icon} c="text-secondary" aria-label={t`Ready`} />;
 }

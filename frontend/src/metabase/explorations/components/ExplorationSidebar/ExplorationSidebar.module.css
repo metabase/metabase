@@ -7,7 +7,7 @@
   padding: 0 1rem 1rem 0;
 }
 
-.tree :global(ul) {
+.tree :global(li) {
   display: flex;
   flex-direction: column;
 }

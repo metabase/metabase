@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { AUTO_INSIGHTS_DOCUMENT_NAME } from "metabase/explorations/constants";
+import type { RenderTreeNodePayload, TreeNodeData } from "metabase/ui";
 import type {
   DocumentId,
   Exploration,
@@ -41,29 +41,77 @@ export type ExplorationTreeItem =
 
 export type ExplorationTreeNode = ExplorationTreeItem | ExplorationTreeHeading;
 
+export interface ExplorationTreeNodeData extends TreeNodeData {
+  data: ExplorationTreeNode;
+  children?: ExplorationTreeNodeData[];
+}
+
+export interface ExplorationTreeNodeItem extends ExplorationTreeNodeData {
+  data: ExplorationTreeItem;
+}
+
+export function isExplorationTreeNodeItem(
+  node: ExplorationTreeNodeData,
+): node is ExplorationTreeNodeItem {
+  return node.data.type === "document" || node.data.type === "group";
+}
+
+export interface ExplorationTreeNodeHeading extends ExplorationTreeNodeData {
+  data: ExplorationTreeHeading;
+}
+
+export function isExplorationTreeNodeHeading(
+  node: ExplorationTreeNodeData,
+): node is ExplorationTreeNodeHeading {
+  return node.data.type === "heading";
+}
+
+export interface ExplorationTreeNodePayloadItem extends RenderTreeNodePayload {
+  node: ExplorationTreeNodeItem;
+}
+
+export function isExplorationTreeNodePayloadItem(
+  payload: RenderTreeNodePayload,
+): payload is ExplorationTreeNodePayloadItem {
+  return (
+    "data" in payload.node &&
+    isExplorationTreeNodeItem(payload.node as ExplorationTreeNodeData)
+  );
+}
+
+export interface ExplorationTreeNodePayloadHeading
+  extends RenderTreeNodePayload {
+  node: ExplorationTreeNodeHeading;
+}
+
+export function isExplorationTreeNodePayloadHeading(
+  payload: RenderTreeNodePayload,
+): payload is ExplorationTreeNodePayloadHeading {
+  return (
+    "data" in payload.node &&
+    isExplorationTreeNodeHeading(payload.node as ExplorationTreeNodeData)
+  );
+}
+
 export function getExplorationSidebarTree(
   exploration: Exploration,
-): ITreeNodeItem<ExplorationTreeNode>[] {
-  const tree: ITreeNodeItem<ExplorationTreeNode>[] = (
-    exploration.threads ?? []
-  ).map((thread, index) => {
-    return {
-      id: thread.id,
-      name: getExplorationThreadName(thread, index),
-      icon: "empty",
-      data: {
-        type: "heading",
-      },
-      children: getExplorationQueryTree(thread),
-    };
-  });
-  tree.push({
-    id: "documents",
-    name: t`Findings`,
-    icon: "empty",
-    data: {
-      type: "heading",
+): ExplorationTreeNodeData[] {
+  const tree: ExplorationTreeNodeData[] = (exploration.threads ?? []).map(
+    (thread, index) => {
+      return {
+        value: `thread-${thread.id}`,
+        label: getExplorationThreadName(thread, index),
+        data: {
+          type: "heading",
+        },
+        children: getExplorationQueryTree(thread),
+      };
     },
+  );
+  tree.push({
+    value: "documents",
+    label: t`Findings`,
+    data: { type: "heading" },
     children: getExplorationDocumentTree(exploration),
   });
   return tree;
@@ -71,16 +119,16 @@ export function getExplorationSidebarTree(
 
 function getExplorationQueryTree(
   thread: ExplorationThread,
-): ITreeNodeItem<ExplorationTreeNode>[] {
+): ExplorationTreeNodeData[] {
   const groups = (thread.groups ?? []).filter(
     (group): group is ExplorationQueryGroup & { name: string } =>
       group.name != null, // don't show anything missing a name
   );
 
-  const headings: ITreeNodeItem<ExplorationTreeNode>[] = [];
+  const headings: ExplorationTreeNodeData[] = [];
   const headingsById = new Map<
     ExplorationQueryGroupId,
-    ITreeNodeItem<ExplorationTreeNode>
+    ExplorationTreeNodeData
   >();
 
   // first pass - get the headings
@@ -88,10 +136,9 @@ function getExplorationQueryTree(
     if (group.parent_group_id != null) {
       continue;
     }
-    const heading: ITreeNodeItem<ExplorationTreeNode> = {
-      id: group.id,
-      name: group.name,
-      icon: "empty",
+    const heading: ExplorationTreeNodeData = {
+      value: group.id,
+      label: group.name,
       data: {
         type: "heading",
       },
@@ -118,9 +165,8 @@ function getExplorationQueryTree(
       // TODO delete me - this is a hack and won't work with translations
       const dimensionName = group.name.split(" by ")[1];
       heading.children.push({
-        id: group.id,
-        name: dimensionName ? `By ${dimensionName}` : group.name,
-        icon: "lineandbar",
+        value: group.id,
+        label: dimensionName ? `By ${dimensionName}` : group.name,
         data: {
           type: "group",
           group_id: group.id,
@@ -138,13 +184,12 @@ function getExplorationQueryTree(
 
 function getExplorationDocumentTree(
   exploration: Exploration,
-): ITreeNodeItem<ExplorationTreeDocument>[] {
+): ExplorationTreeNodeData[] {
   return (exploration.threads ?? []).flatMap((thread) => {
     return (thread.documents ?? []).map((document) => {
       return {
-        id: document.id,
-        name: document.name,
-        icon: "document",
+        value: getDocumentTreeId(document.id),
+        label: document.name,
         data: {
           type: "document",
           id: document.id,
@@ -170,18 +215,25 @@ function getExplorationThreadName(thread: ExplorationThread, index: number) {
   return t`New exploration`;
 }
 
+export const DOCUMENT_TREE_ID_PREFIX = "document-";
+
+export function getDocumentTreeId(id: DocumentId) {
+  return `${DOCUMENT_TREE_ID_PREFIX}${id}`;
+}
+
+export function removeDocumentTreeIdPrefix(id: string): DocumentId {
+  return parseInt(id.replace(DOCUMENT_TREE_ID_PREFIX, ""), 10);
+}
+
 export function flattenTree(
-  nodes: ITreeNodeItem<ExplorationTreeNode>[],
-): ITreeNodeItem<ExplorationTreeItem>[] {
-  const result: ITreeNodeItem<ExplorationTreeNode>[] = [];
+  nodes: ExplorationTreeNodeData[],
+): ExplorationTreeNodeItem[] {
+  const result: ExplorationTreeNodeData[] = [];
   for (const node of nodes) {
     result.push(node);
     if (node.children?.length) {
       result.push(...flattenTree(node.children));
     }
   }
-  return result.filter(
-    (node): node is ITreeNodeItem<ExplorationTreeItem> =>
-      node.data?.type === "document" || node.data?.type === "group",
-  );
+  return result.filter(isExplorationTreeNodeItem);
 }
