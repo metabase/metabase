@@ -1,10 +1,10 @@
-## Track per-assistant-turn outcome on metabot_message: was the turn aborted (finished=false) or did it error (error text set).
+## Track per-assistant-turn outcome on metabot_message.
 
 databaseChangeLog:
   - changeSet:
       id: v61.2026-05-08T10:00:00
       author: sloansparger
-      comment: Add finished column to metabot_message to flag client-aborted assistant turns
+      comment: Add finished column to metabot_message tracking in-flight/completed/aborted assistant turns
       changes:
         - addColumn:
             tableName: metabot_message
@@ -13,9 +13,7 @@ databaseChangeLog:
                   name: finished
                   type: ${boolean.type}
                   defaultValueBoolean: true
-                  remarks: True for completed assistant turns; false only when the client aborted mid-stream.
-                  constraints:
-                    nullable: false
+                  remarks: NULL while in flight, true once completed, false if the client aborted mid-stream.
 
   - changeSet:
       id: v61.2026-05-08T10:00:01
