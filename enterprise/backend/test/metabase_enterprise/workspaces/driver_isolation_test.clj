@@ -66,15 +66,15 @@
    the resulting `mysql.db` row and lets the iso user connect with the bound
    DB as the default.
 
-   For these drivers we skip `create-input-namespace-sql` (the bound DB already
-   exists) and `drop-input-namespace-sqls` (we don't own the bound DB, only the
+   For these drivers we skip [[create-input-namespace-sql]] (the bound DB already
+   exists) and [[drop-input-namespace-sqls]] (we don't own the bound DB, only the
    per-run tables inside it -- caller cleans those up explicitly)."
   [driver]
   (= driver :mysql))
 
 (defn- input-namespace-name
   "Resolve the input-namespace name for a per-run test.
-   - On `reuse-bound-db-as-input?` drivers (MySQL): return the bound DB.
+   - On [[reuse-bound-db-as-input?]] drivers (MySQL): return the bound DB.
      `fresh-name` is ignored; source tables go in the bound DB with random
      per-run suffixes so they don't collide.
    - On schema-having drivers: return `fresh-name` -- a freshly-created schema
@@ -97,7 +97,7 @@
 
 (defn- maybe-create-input-namespace!
   "Create the per-run input namespace UNLESS the caller is using the bound DB as
-   the input (the `reuse-bound-db-as-input?` path on MySQL) -- in which case the
+   the input (the [[reuse-bound-db-as-input?]] path on MySQL) -- in which case the
    namespace already exists and is owned by the test DB, not by us."
   [admin-spec driver database namespace-name]
   (when-not (and (reuse-bound-db-as-input? driver)
@@ -123,8 +123,8 @@
       (:mysql :clickhouse)             [(str "DROP DATABASE `" namespace-name "`")])))
 
 (defn- maybe-drop-input-namespace!
-  "Issue `drop-input-namespace-sqls` UNLESS the caller is using the bound DB
-   as the input (the `reuse-bound-db-as-input?` path on MySQL) -- in which
+  "Issue [[drop-input-namespace-sqls]] UNLESS the caller is using the bound DB
+   as the input (the [[reuse-bound-db-as-input?]] path on MySQL) -- in which
    case we don't own the bound DB and only need to drop the per-run tables
    inside it. Errors are swallowed per-statement so we keep cleaning up after
    a partial-failure run."
