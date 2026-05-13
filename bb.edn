@@ -172,6 +172,60 @@
                 [:string {:name "description" :description "Lowercase alphanumeric/underscore name (e.g., mq_indexes)"}]]
    :task (task! (new-migration/new-migration parsed))}
 
+  ;;; Docs build / generate
+
+  docs-build
+  {:doc "Build the docs site to docs-build/dist/"
+   :examples [["./bin/mage docs-build" "Build the site for the current branch's base path"]
+              ["./bin/mage docs-build --base-path /docs/v0.55" "Build with an explicit base path"]
+              ["DOCS_BASE_PATH=/docs/v0.55 ./bin/mage docs-build" "Same, via environment variable"]]
+   :requires [[mage.docs :as docs]]
+   :options [[nil "--base-path PATH" "URL prefix (default: /docs/latest, or /docs/v0.NN inferred from a release-x.NN.x branch)"]
+             [nil "--site-url URL" "Absolute site URL for canonical/sitemap"]]
+   :task (task! (docs/build parsed))}
+
+  docs-build-branch
+  {:doc "Build the docs site for an arbitrary git branch via a worktree"
+   :examples [["./bin/mage docs-build-branch release-x.55.x" "Build v0.55 docs into build/docs/v0.55/"]
+              ["./bin/mage docs-build-branch master --no-fetch" "Skip git fetch, use local ref"]
+              ["./bin/mage docs-build-branch master --keep" "Keep the worktree after a successful build"]]
+   :requires [[mage.docs :as docs]]
+   :arg-schema [:tuple [:string {:name "branch"}]]
+   :options [[nil "--output DIR" "Output directory (default: build/docs/<base-tail>)"]
+             [nil "--worktree-dir DIR" "Worktree path (default: __worktrees/docs-<slug>)"]
+             [nil "--no-fetch" "Skip git fetch origin <branch>"]
+             [nil "--keep" "Keep the worktree on success (always kept on failure)"]
+             [nil "--base-path PATH" "Override DOCS_BASE_PATH"]
+             [nil "--site-url URL" "Override DOCS_SITE_URL"]]
+   :task (task! (docs/build-branch parsed))}
+
+  docs-generate
+  {:doc "Regenerate auto-derived backend docs (env vars, config, REST API, CLI commands, usage analytics)"
+   :examples [["./bin/mage docs-generate" "Run every generator (default)"]
+              ["./bin/mage docs-generate --api" "Regenerate only the REST API reference"]
+              ["./bin/mage docs-generate --env-vars --config" "Regenerate env vars + config template"]]
+   :requires [[mage.docs :as docs]]
+   :options [[nil "--env-vars" "Generate environment variables doc"]
+             [nil "--config" "Generate config template doc"]
+             [nil "--api" "Generate REST API doc"]
+             [nil "--commands" "Generate CLI command doc"]
+             [nil "--analytics" "Generate usage analytics doc"]]
+   :task (task! (docs/generate parsed))}
+
+  docs-generate-embedding
+  {:doc "Regenerate embedding SDK and Embed.js typedoc reference docs"
+   :examples [["./bin/mage docs-generate-embedding" "Full SDK rebuild + typedoc"]
+              ["./bin/mage docs-generate-embedding --pure" "Typedoc only (SDK d.ts files already current)"]]
+   :requires [[mage.docs :as docs]]
+   :options [[nil "--pure" "Skip rebuilding the SDK package (typedoc-only)"]]
+   :task (task! (docs/generate-embedding parsed))}
+
+  docs-ensure-generated
+  {:doc "Lazily generate the docs artifacts that the Astro build depends on (typedoc snippets, OpenAPI spec)"
+   :examples [["./bin/mage docs-ensure-generated" "Generate missing artifacts; skip ones already present"]]
+   :requires [[mage.docs :as docs]]
+   :task (task! (docs/ensure-generated parsed))}
+
   jar-download
   {:doc "Download (and optionally run) jar for a metabase version or branch"
    :examples [["./bin/mage jar-download 50" "Download the latest enterprise version of release 50 to ~/path/to/my/metabase/jars"]
