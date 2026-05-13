@@ -102,10 +102,6 @@
           ;; SQL rewritten here so canonical refs resolve to workspace-isolation
           ;; tables. No-op when no workspace is active. See
           ;; `metabase.transforms-base.workspace-hooks`.
-          ;;
-          ;; (An earlier attempt to gate this on `:native`-only sources was
-          ;; reverted -- the premise that "QP middleware handles MBQL" only holds
-          ;; for queries that go through `qp.execute/run`. Transforms don't.)
           compiled-query (-> (transforms-base.u/compile-source transform source-range-params)
                              (update :query
                                      #(transforms-base.workspace-hooks/rewrite-native-sql-for-workspace

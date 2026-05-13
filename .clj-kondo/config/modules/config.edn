@@ -2207,7 +2207,8 @@
            permissions
            premium-features
            search
-           util}
+           util
+           workspaces}
    :model-imports #{:model/AiUsageLog
                     :model/Card
                     :model/Dashboard
@@ -2609,7 +2610,8 @@
   {:team "Graphy"
    :api #{metabase.workspaces.core
           metabase.workspaces.table-remapping}
-   :uses #{premium-features}}
+   :uses #{premium-features
+           util}}
 
   xrays
   {:team "Graphy"
@@ -3502,6 +3504,7 @@
            settings
            sql-tools
            util
+           workspaces
            enterprise/serialization}
    :model-exports #{:model/Workspace}
    :model-imports #{:model/Database
