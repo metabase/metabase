@@ -5,8 +5,12 @@ import {
   type AdminNavItemProps,
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
-import { shouldNudgeToPro } from "metabase/admin/people/selectors";
+import {
+  shouldNudgeToPro,
+  shouldShowTenantsUpsell,
+} from "metabase/admin/people/selectors";
 import { UpsellSSO } from "metabase/admin/upsells";
+import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
@@ -15,6 +19,9 @@ import { Divider, Stack } from "metabase/ui";
 export function PeopleNav() {
   const shouldNudge = useSelector(shouldNudgeToPro) as boolean;
   const isUsingTenants = useSetting("use-tenants");
+  const showTenantsUpsell = useSelector(shouldShowTenantsUpsell);
+  const showTenantsNav = isUsingTenants || showTenantsUpsell;
+  const tenantUpsellGem = showTenantsUpsell ? <UpsellGem /> : undefined;
 
   return (
     <AdminNavWrapper justify="space-between" aria-label="people-nav">
@@ -31,7 +38,7 @@ export function PeopleNav() {
           label={isUsingTenants ? t`Internal groups` : t`Groups`}
           icon="group"
         />
-        {isUsingTenants && (
+        {showTenantsNav && (
           <>
             <Divider my="sm" />
             <PeopleNavItem
@@ -39,18 +46,21 @@ export function PeopleNav() {
               data-testid="nav-item-tenants"
               label={t`Tenants`}
               icon="globe"
+              rightSection={tenantUpsellGem}
             />
             <PeopleNavItem
               path="/admin/people/tenants/groups"
               data-testid="nav-item-tenant-groups"
               label={t`Tenant groups`}
               icon="group"
+              rightSection={tenantUpsellGem}
             />
             <PeopleNavItem
               path="/admin/people/tenants/people"
               data-testid="nav-item-external-users"
               label={t`Tenant users`}
               icon="person"
+              rightSection={tenantUpsellGem}
             />
           </>
         )}

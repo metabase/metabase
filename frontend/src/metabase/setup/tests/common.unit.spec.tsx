@@ -136,6 +136,7 @@ describe("setup (OSS)", () => {
 
       expect(await getLastSettingsPutPayload()).toEqual({
         "embedding-homepage": "visible",
+        "setup-embedding-autoenabled": true,
         "setup-license-active-at-setup": false,
       });
     });
@@ -181,6 +182,7 @@ describe("setup (OSS)", () => {
 
       expect(flags).toEqual({
         "embedding-homepage": "visible",
+        "setup-embedding-autoenabled": true,
         "setup-license-active-at-setup": false,
       });
     });
