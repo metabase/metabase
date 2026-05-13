@@ -8,7 +8,6 @@ import { getDatabasesById } from "../../../utils";
 import { AddWorkspaceDatabaseButton } from "./AddWorkspaceDatabaseButton";
 import { WorkspaceDatabaseEmptyState } from "./WorkspaceDatabaseEmptyState";
 import { WorkspaceDatabaseSection } from "./WorkspaceDatabaseSection";
-import { getSelectableDatabases } from "./utils";
 
 export type WorkspaceDatabaseListProps = {
   workspace: Workspace;
@@ -20,10 +19,6 @@ export function WorkspaceDatabaseList({
   availableDatabases,
 }: WorkspaceDatabaseListProps) {
   const databaseById = getDatabasesById(availableDatabases);
-  const selectableDatabases = getSelectableDatabases(
-    availableDatabases,
-    workspace.databases,
-  );
   const isEmpty = workspace.databases.length === 0;
 
   return (
@@ -37,7 +32,7 @@ export function WorkspaceDatabaseList({
       {isEmpty ? (
         <WorkspaceDatabaseEmptyState
           workspace={workspace}
-          availableDatabases={selectableDatabases}
+          availableDatabases={availableDatabases}
         />
       ) : (
         <>
@@ -54,7 +49,7 @@ export function WorkspaceDatabaseList({
           <Box>
             <AddWorkspaceDatabaseButton
               workspace={workspace}
-              availableDatabases={selectableDatabases}
+              availableDatabases={availableDatabases}
             />
           </Box>
         </>

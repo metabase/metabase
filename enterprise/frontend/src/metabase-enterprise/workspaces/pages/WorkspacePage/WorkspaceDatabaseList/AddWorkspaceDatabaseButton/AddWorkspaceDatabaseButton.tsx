@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { Button, FixedSizeIcon, Tooltip } from "metabase/ui";
 import type { Database, Workspace } from "metabase-types/api";
 
+import { supportsWorkspaces } from "../../../../utils";
 import { NewWorkspaceDatabaseModal } from "../NewWorkspaceDatabaseModal";
 
 export type AddWorkspaceDatabaseButtonProps = {
@@ -16,18 +17,21 @@ export function AddWorkspaceDatabaseButton({
   availableDatabases,
 }: AddWorkspaceDatabaseButtonProps) {
   const [opened, { open, close }] = useDisclosure(false);
-  const hasAvailableDatabases = availableDatabases.length > 0;
+
+  const selectedIds = new Set(workspace.databases.map((db) => db.database_id));
+  const selectableDatabases = availableDatabases.filter(
+    (database) => !selectedIds.has(database.id),
+  );
+  const errorMessage = getErrorMessage(selectableDatabases);
+  const isDisabled = errorMessage != null;
   const isEmpty = workspace.databases.length === 0;
 
   return (
     <>
-      <Tooltip
-        label={t`There are no more databases available.`}
-        disabled={hasAvailableDatabases}
-      >
+      <Tooltip label={errorMessage} disabled={!isDisabled}>
         <Button
           variant={isEmpty ? "filled" : "default"}
-          disabled={!hasAvailableDatabases}
+          disabled={isDisabled}
           leftSection={<FixedSizeIcon name="add" />}
           onClick={open}
         >
@@ -36,11 +40,21 @@ export function AddWorkspaceDatabaseButton({
       </Tooltip>
       <NewWorkspaceDatabaseModal
         workspace={workspace}
-        availableDatabases={availableDatabases}
+        availableDatabases={selectableDatabases}
         opened={opened}
         onCreate={close}
         onClose={close}
       />
     </>
   );
+}
+
+function getErrorMessage(databases: Database[]): string | undefined {
+  if (databases.length === 0) {
+    return t`There are no more databases available.`;
+  }
+  if (!databases.some(supportsWorkspaces)) {
+    return t`None of the remaining databases support workspaces.`;
+  }
+  return undefined;
 }

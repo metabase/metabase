@@ -10,7 +10,6 @@ import { useListWorkspacesQuery } from "metabase-enterprise/api";
 import type { Database, Workspace } from "metabase-types/api";
 
 import { WorkspaceHelpMenu } from "../../components/WorkspaceHelpMenu";
-import { getAvailableDatabases } from "../../utils";
 
 import { NewWorkspaceButton } from "./NewWorkspaceButton";
 import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
@@ -43,7 +42,7 @@ export function WorkspaceListPage() {
   return (
     <WorkspaceListPageBody
       workspaces={workspaces}
-      availableDatabases={getAvailableDatabases(databasesResponse.data)}
+      availableDatabases={databasesResponse.data}
     />
   );
 }

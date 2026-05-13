@@ -18,6 +18,7 @@ export function getDatabasesInfo(
   const databaseById = new Map<DatabaseId, Database>(
     databases.map((database) => [database.id, database]),
   );
+
   const remappingsByDatabaseId = new Map<DatabaseId, TableRemapping[]>();
   for (const remapping of remappings) {
     const list = remappingsByDatabaseId.get(remapping.database_id) ?? [];

@@ -7,7 +7,6 @@ import { useGetWorkspaceQuery } from "metabase-enterprise/api";
 import type { Database, Workspace, WorkspaceId } from "metabase-types/api";
 
 import { WorkspaceHelpMenu } from "../../components/WorkspaceHelpMenu";
-import { getAvailableDatabases } from "../../utils";
 
 import { SetupSection } from "./SetupSection";
 import { WorkspaceDatabaseList } from "./WorkspaceDatabaseList";
@@ -53,7 +52,7 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
   return (
     <WorkspacePageBody
       workspace={workspace}
-      availableDatabases={getAvailableDatabases(databasesResponse.data)}
+      availableDatabases={databasesResponse.data}
     />
   );
 }

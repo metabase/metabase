@@ -10,6 +10,7 @@ import {
 } from "metabase/forms";
 import {
   Button,
+  FixedSizeIcon,
   FocusTrap,
   Group,
   Input,
@@ -17,11 +18,13 @@ import {
   Radio,
   Stack,
   Text,
+  Tooltip,
 } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { useCreateWorkspaceDatabaseMutation } from "metabase-enterprise/api";
 import type { Database, DatabaseId, Workspace } from "metabase-types/api";
 
+import { supportsWorkspaces } from "../../../../utils";
 import { SchemaMultiSelect } from "../SchemaMultiSelect";
 
 export type NewWorkspaceDatabaseModalProps = {
@@ -83,7 +86,7 @@ function NewWorkspaceDatabaseForm({
   const [createWorkspaceDatabase] = useCreateWorkspaceDatabaseMutation();
 
   const initialValues: NewWorkspaceDatabaseFormValues = {
-    database_id: availableDatabases[0]?.id ?? null,
+    database_id: availableDatabases.find(supportsWorkspaces)?.id ?? null,
     input_schemas: [],
   };
 
@@ -171,15 +174,34 @@ function DatabaseInput({ databases, value, onChange }: DatabaseInputProps) {
         onChange(newValue != null ? Number(newValue) : null)
       }
     >
-      <Stack>
+      <Stack gap="sm">
         {databases.map((database) => (
           <Radio
             key={database.id}
             value={String(database.id)}
-            label={database.name}
+            label={<DatabaseLabel database={database} />}
+            disabled={!supportsWorkspaces(database)}
           />
         ))}
       </Stack>
     </Radio.Group>
+  );
+}
+
+type DatabaseLabelProps = {
+  database: Database;
+};
+
+function DatabaseLabel({ database }: DatabaseLabelProps) {
+  if (supportsWorkspaces(database)) {
+    return <>{database.name}</>;
+  }
+  return (
+    <Group gap="xs" wrap="nowrap" component="span">
+      <span>{database.name}</span>
+      <Tooltip label={t`This database does not support workspaces.`}>
+        <FixedSizeIcon name="info" c="text-secondary" />
+      </Tooltip>
+    </Group>
   );
 }
