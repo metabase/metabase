@@ -19,6 +19,7 @@ import {
 } from "metabase-types/api";
 
 import {
+  formatRunDuration,
   formatRunMethod,
   formatStatus,
   getTransformRunName,
@@ -123,6 +124,20 @@ function getEndedAtColumn(
   };
 }
 
+function getDurationColumn(): TreeTableColumnDef<TransformRun> {
+  return {
+    id: "duration",
+    header: t`Duration`,
+    width: "auto",
+    enableSorting: false,
+    accessorFn: (run) => formatRunDuration(run.start_time, run.end_time),
+    cell: ({ getValue }) => {
+      const value = getValue();
+      return value != null ? <Ellipsified>{String(value)}</Ellipsified> : null;
+    },
+  };
+}
+
 function getStatusColumn(): TreeTableColumnDef<TransformRun> {
   return {
     id: "status" satisfies TransformRunSortColumn,
@@ -200,6 +215,7 @@ export function getColumns(
     getTransformColumn(),
     getStartedAtColumn(systemTimezone),
     getEndedAtColumn(systemTimezone),
+    getDurationColumn(),
     getStatusColumn(),
     getRunMethodColumn(),
     getTransformTagsColumn(tagsById),
