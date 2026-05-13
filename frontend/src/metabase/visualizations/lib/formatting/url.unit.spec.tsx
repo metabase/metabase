@@ -8,7 +8,10 @@ import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensur
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import { TYPE } from "metabase-lib/v1/types/constants";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import {
+  createMockColumn,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
 import { formatUrl, slugify } from "./url";
 import { formatValue } from "./value";
@@ -227,6 +230,118 @@ describe("formatUrl", () => {
       expect(isElementOfType(formatted, ExternalLink)).toEqual(true);
       expect(formatted.props.children).toEqual("metabase link");
       expect(formatted.props.href).toEqual("http://metabase.com");
+    });
+
+    it("should apply the column's number formatting settings to the link text when link_text references the current column (metabase#56876)", () => {
+      const column = createMockColumn({
+        name: "hubspot_id",
+        base_type: TYPE.Integer,
+      });
+      const value = 35660212261;
+      const formatted = formatValue(value, {
+        jsx: true,
+        rich: true,
+        column,
+        view_as: "link",
+        link_text: "{{hubspot_id}}",
+        link_url: "http://example.com/{{hubspot_id}}",
+        number_style: "decimal",
+        // No thousand separator: the user has chosen to render the value
+        // without group separators (e.g. for ID-like numbers).
+        number_separators: ".",
+        clicked: {
+          value,
+          column,
+          data: [{ value, col: column }],
+          settings: {
+            column_settings: {
+              '["name","hubspot_id"]': {
+                number_style: "decimal",
+                number_separators: ".",
+              },
+            },
+          },
+        },
+      }) as ReactElement;
+
+      expect(isElementOfType(formatted, ExternalLink)).toBe(true);
+      expect(formatted.props.children).toBe("35660212261");
+    });
+
+    it("should apply the column's separator-style setting to a link text referencing the current column", () => {
+      const column = createMockColumn({
+        name: "amount",
+        base_type: TYPE.Float,
+      });
+      const value = 1234567.89;
+      const formatted = formatValue(value, {
+        jsx: true,
+        rich: true,
+        column,
+        view_as: "link",
+        link_text: "{{amount}}",
+        link_url: "http://example.com",
+        number_style: "decimal",
+        // European-style separators: "." for thousands, "," for decimals.
+        number_separators: ",.",
+        clicked: {
+          value,
+          column,
+          data: [{ value, col: column }],
+          settings: {
+            column_settings: {
+              '["name","amount"]': {
+                number_style: "decimal",
+                number_separators: ",.",
+              },
+            },
+          },
+        },
+      }) as ReactElement;
+
+      expect(isElementOfType(formatted, ExternalLink)).toBe(true);
+      expect(formatted.props.children).toBe("1.234.567,89");
+    });
+
+    it("should apply a different column's formatting when link_text references that other column", () => {
+      const linkColumn = createMockColumn({
+        name: "name",
+        base_type: TYPE.Text,
+      });
+      const amountColumn = createMockColumn({
+        name: "amount",
+        base_type: TYPE.Float,
+      });
+      const linkValue = "Widget";
+      const amountValue = 1234567.89;
+      const formatted = formatValue(linkValue, {
+        jsx: true,
+        rich: true,
+        column: linkColumn,
+        view_as: "link",
+        link_text: "Buy for {{amount}}",
+        link_url: "http://example.com",
+        clicked: {
+          value: linkValue,
+          column: linkColumn,
+          data: [
+            { value: linkValue, col: linkColumn },
+            { value: amountValue, col: amountColumn },
+          ],
+          settings: {
+            column_settings: {
+              '["name","amount"]': {
+                number_style: "currency",
+                currency: "USD",
+                currency_style: "symbol",
+              },
+            },
+          },
+        },
+      }) as ReactElement;
+
+      expect(isElementOfType(formatted, ExternalLink)).toBe(true);
+      expect(formatted.props.children).toBe("Buy for $1,234,567.89");
     });
 
     it("should not return an ExternalLink in jsx + rich mode if there's click behavior", () => {
