@@ -16,6 +16,7 @@ import type {
   MetabotAgentTextChatMessage,
   MetabotChatMessage,
 } from "metabase/metabot/state/types";
+import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -43,7 +44,6 @@ import { useGetMetabotConversationQuery } from "../../api";
 import type { ConversationFeedback, GeneratedQuery } from "../../types";
 
 import { ConversationHeader } from "./ConversationHeader";
-import { convertSlackChatMessage } from "./slack-mrkdwn";
 
 export function ConversationDetailPage({ params }: WithRouterProps) {
   const convoId = params.convoId;
@@ -57,11 +57,11 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   });
 
   const chatMessages = useMemo(() => {
-    const isSlackbot =
-      conversation?.profile_id === "slackbot" ||
-      conversation?.profile_id === "slack";
-    const msgs = conversation?.chat_messages ?? [];
-    return isSlackbot ? msgs.map(convertSlackChatMessage) : msgs;
+    return normalizeFetchedChatMessages(conversation?.chat_messages ?? [], {
+      isSlack:
+        conversation?.profile_id === "slackbot" ||
+        conversation?.profile_id === "slack",
+    });
   }, [conversation]);
 
   if (isLoading || error) {
@@ -127,7 +127,6 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
           <Card withBorder shadow="none" p="xl">
             <Messages
               messages={chatMessages}
-              errorMessages={[]}
               isDoingScience={false}
               debug
               readonly
