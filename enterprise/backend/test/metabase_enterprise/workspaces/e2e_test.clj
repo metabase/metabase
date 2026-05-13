@@ -354,11 +354,15 @@
                             wsd      (-> (ws/get-workspace ws-id) :databases first)
                             isolation-schema (:output_namespace wsd)]
 
-                        ;;----------------------------\
-                        ;;        Parent above        |
-                        ;;----------------------------|
-                        ;;        Child  below        |
-                        ;;----------------------------/
+                        ;;+---------------------------+
+                        ;;|       Parent above        |
+                        ;;+---------------------------+
+
+                        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+                        ;;+---------------------------+
+                        ;;|       Child  below        |
+                        ;;+---------------------------+
 
                         ;; --- Stage 3: bind `*config*` and run the file loader. This invokes
                         ;; `init-from-config-file!` for the `:databases` section (updates the
