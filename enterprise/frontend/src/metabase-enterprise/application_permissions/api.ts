@@ -1,4 +1,4 @@
-import { GET, PUT } from "metabase/utils/api";
+import { GET, PUT } from "metabase/api/legacy-client";
 
 export const ApplicationPermissionsApi = {
   graph: GET("/api/ee/advanced-permissions/application/graph"),

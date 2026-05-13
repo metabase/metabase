@@ -21,6 +21,8 @@ const propsSchema: Yup.SchemaOf<InteractiveQuestionInternalProps> = Yup.object({
   dataPicker: Yup.mixed().optional(),
   height: Yup.mixed().optional(),
   initialSqlParameters: Yup.mixed().optional(),
+  sqlParameters: Yup.mixed().optional(),
+  onSqlParametersChange: Yup.mixed().optional(),
   hiddenParameters: Yup.mixed().optional(),
   isSaveEnabled: Yup.mixed().optional(),
   onBeforeSave: Yup.mixed().optional(),

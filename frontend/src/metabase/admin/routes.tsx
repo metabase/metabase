@@ -1,3 +1,4 @@
+import type { Store } from "@reduxjs/toolkit";
 import { Fragment } from "react";
 import {
   IndexRedirect,
@@ -65,7 +66,7 @@ import {
 import type { State } from "metabase/redux/store";
 import { getTokenFeature } from "metabase/setup";
 
-import { AISettingsPage } from "./ai/AISettingsPage";
+import { AISettingsPage, McpSettingsPage } from "./ai/AISettingsPage";
 import { MetabotAdminLayout } from "./ai/MetabotAdminLayout";
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
@@ -81,7 +82,7 @@ import {
 } from "./utils";
 
 export const getRoutes = (
-  store: { getState: () => State },
+  store: Store<State>,
   CanAccessSettings: RouteComponent,
   IsAdmin: RouteComponent,
 ) => {
@@ -242,7 +243,7 @@ export const getRoutes = (
 
         {/* SETTINGS */}
         <Route path="settings" component={createAdminRouteGuard("settings")}>
-          {getSettingsRoutes()}
+          {getSettingsRoutes(store, IsAdmin)}
         </Route>
         {/* PERMISSIONS */}
         <Route path="permissions" component={IsAdmin}>
@@ -270,6 +271,7 @@ export const getRoutes = (
           {PLUGIN_AUDIT.getAiAnalyticsRoutes()}
           <Route key="index-layout" component={MetabotAdminLayout}>
             <IndexRoute key="index" component={AISettingsPage} />
+            <Route key="mcp" path="mcp" component={McpSettingsPage} />
             <Route key="metabot" path=":metabotId" component={AISettingsPage} />
           </Route>
           <Route

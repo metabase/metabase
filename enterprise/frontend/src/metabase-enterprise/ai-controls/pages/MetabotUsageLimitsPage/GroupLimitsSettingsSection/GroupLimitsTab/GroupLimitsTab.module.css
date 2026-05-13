@@ -39,11 +39,12 @@
   color: var(--mb-color-text-primary);
 }
 
-.LimitInput {
-  max-width: 10rem;
+/* Caps input + right-section unit, hence wider than input-only would be. */
+.LimitInputWrapper {
+  max-width: 14rem;
 }
 
-.InputWrapper {
-  display: inline-flex;
-  position: relative;
+.InputUnitSection {
+  color: var(--mb-color-text-primary);
+  padding-inline: 0.75rem;
 }

@@ -51,15 +51,6 @@ export function AISettingsPage() {
   } = useAdminSetting("ai-features-enabled?");
   const areAiFeaturesEnabled = aiFeaturesEnabledValue !== false;
 
-  const {
-    value: agentApiEnabledValue,
-    updateSetting: updateAgentApiSetting,
-    isLoading: isUpdatingAgentApi,
-  } = useAdminSetting("agent-api-enabled?");
-  const isAgentApiEnabled = agentApiEnabledValue !== false;
-
-  const { url: agentApiDocsUrl } = useDocsUrl("ai/agent-api");
-
   const selectedTab = getSelectedMetabotTab(params.metabotId, pathname, {
     hasEmbedding,
   });
@@ -71,17 +62,10 @@ export function AISettingsPage() {
     });
   };
 
-  const handleAgentApiChange = async (checked: boolean) => {
-    await updateAgentApiSetting({
-      key: "agent-api-enabled?",
-      value: checked,
-    });
-  };
-
   return (
     <SettingsPageWrapper
       title={t`AI features`}
-      description={t`Manage AI integrations and Metabot.`}
+      description={t`Manage your AI provider connection and Metabot.`}
     >
       {areAiFeaturesEnabled && (
         <>
@@ -93,24 +77,6 @@ export function AISettingsPage() {
               selectedTab={selectedTab}
             />
           </DisabledSection>
-          <Divider />
-          <Stack gap="lg">
-            <McpAppsSettings id={MCP_SECTION_ID} />
-
-            <ToggleSettingsSection
-              checked={isAgentApiEnabled}
-              description={jt`Enable external access to the Agent API. ${(
-                <ExternalLink key="docs" href={agentApiDocsUrl}>
-                  {t`Learn more`}
-                </ExternalLink>
-              )}`}
-              disabled={isUpdatingAgentApi}
-              id={AGENT_API_SECTION_ID}
-              onChange={handleAgentApiChange}
-              title={t`Agent API`}
-            />
-          </Stack>
-
           <Divider />
         </>
       )}
@@ -124,6 +90,59 @@ export function AISettingsPage() {
         title={t`Disable all AI features`}
       />
     </SettingsPageWrapper>
+  );
+}
+
+export function McpSettingsPage() {
+  const { value: aiFeaturesEnabledValue } = useAdminSetting(
+    "ai-features-enabled?",
+  );
+  const areAiFeaturesEnabled = aiFeaturesEnabledValue !== false;
+
+  return (
+    <SettingsPageWrapper
+      title={t`MCP`}
+      description={t`Manage MCP server and Agent API access.`}
+    >
+      <DisabledSection disabled={!areAiFeaturesEnabled}>
+        <McpAppsSettings id={MCP_SECTION_ID} />
+
+        <AgentApiSettingsSection disabled={!areAiFeaturesEnabled} />
+      </DisabledSection>
+    </SettingsPageWrapper>
+  );
+}
+
+function AgentApiSettingsSection({ disabled }: { disabled: boolean }) {
+  const {
+    value: agentApiEnabledValue,
+    updateSetting: updateAgentApiSetting,
+    isLoading: isUpdatingAgentApi,
+  } = useAdminSetting("agent-api-enabled?");
+  const isAgentApiEnabled = agentApiEnabledValue !== false;
+
+  const { url: agentApiDocsUrl } = useDocsUrl("ai/agent-api");
+
+  const handleAgentApiChange = async (checked: boolean) => {
+    await updateAgentApiSetting({
+      key: "agent-api-enabled?",
+      value: checked,
+    });
+  };
+
+  return (
+    <ToggleSettingsSection
+      checked={isAgentApiEnabled}
+      description={jt`Enable external access to the Agent API. ${(
+        <ExternalLink key="docs" href={agentApiDocsUrl}>
+          {t`Learn more`}
+        </ExternalLink>
+      )}`}
+      disabled={disabled || isUpdatingAgentApi}
+      id={AGENT_API_SECTION_ID}
+      onChange={handleAgentApiChange}
+      title={t`Agent API`}
+    />
   );
 }
 

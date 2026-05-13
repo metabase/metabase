@@ -1497,8 +1497,15 @@ function updateTableAttributes({
 }
 
 function publishTables(tableIds: TableId[]) {
-  return cy.request("POST", "/api/ee/data-studio/table/publish-tables", {
-    table_ids: tableIds,
+  return cy.request("GET", "/api/ee/library").then(({ body }) => {
+    const dataCollection = body.effective_children?.find(
+      (collection: { type?: string }) => collection.type === "library-data",
+    );
+
+    return cy.request("POST", "/api/ee/data-studio/table/publish-tables", {
+      table_ids: tableIds,
+      collection_id: dataCollection.id,
+    });
   });
 }
 

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type { QueryParams } from "metabase/query_builder/actions";
 import type { Deferred } from "metabase/utils/promise";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
@@ -142,3 +143,27 @@ export type SqlParameterValues = Record<
   | null
   | undefined
 >;
+
+/**
+ * Source of a sql-parameter-change event:
+ * - `initial-state` - first applied state, fired once per question load.
+ * - `manual-change` - user edited parameters in UI.
+ * - `auto-change` - in the case of auto-updates, e.g. to pass normalized values back to parent.
+ *
+ * @category InteractiveQuestion
+ */
+export type SqlParameterChangeSource =
+  | "initial-state"
+  | "manual-change"
+  | "auto-change";
+
+/**
+ * Payload passed to `onSqlParametersChange` callback
+ *
+ * @category InteractiveQuestion
+ */
+export type SqlParameterChangePayload = {
+  source: SqlParameterChangeSource;
+  parameters: ParameterValues;
+  defaultParameters: ParameterValues;
+};

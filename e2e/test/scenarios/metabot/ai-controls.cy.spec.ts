@@ -269,7 +269,8 @@ describe("AI Controls > Metabot access and customization", () => {
       cy.findByRole("textbox", { name: /AI chat prompt instructions/ })
         .should("be.visible")
         .click()
-        .type("Be concise and helpful.");
+        .type("Be concise and helpful.")
+        .blur();
 
       cy.wait("@savePrompt").its("response.statusCode").should("eq", 204);
 
@@ -297,7 +298,8 @@ describe("AI Controls > Metabot access and customization", () => {
       })
         .should("be.visible")
         .click()
-        .type("Always use uppercase SQL keywords.");
+        .type("Always use uppercase SQL keywords.")
+        .blur();
 
       cy.wait("@saveSqlPrompt").its("response.statusCode").should("eq", 204);
 
@@ -364,7 +366,7 @@ describe("AI controls > AI usage limits", () => {
       });
 
       // Type an instance limit value
-      cy.findByLabelText(/Total weekly instance limit/).type("500");
+      cy.findByLabelText("Total weekly instance message limit").type("500");
       cy.wait("@updateInstanceLimit").then(({ request }) => {
         expect(request.body).to.deep.equal({ max_usage: 500 });
       });
@@ -390,7 +392,7 @@ describe("AI controls > AI usage limits", () => {
       cy.wait("@getInstanceLimit");
 
       cy.findByRole("textbox", {
-        name: /Total monthly instance limit/,
+        name: "Total monthly instance token limit",
       }).clear();
       cy.wait("@updateInstanceLimit").then(({ request }) => {
         expect(request.body).to.deep.equal({ max_usage: null });
@@ -663,9 +665,7 @@ describe("AI Controls > Tenant usage limits", () => {
     cy.findByTestId("tenant-limits-tab")
       .findByText("Test Corp")
       .should("be.visible");
-    cy.findByLabelText(
-      "Max total monthly tokens for Test Corp (millions)",
-    ).type("10");
+    cy.findByLabelText("Max total monthly tokens for Test Corp").type("10");
     cy.wait("@updateTenantLimit").its("response.statusCode").should("eq", 200);
   });
 

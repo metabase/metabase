@@ -8,10 +8,9 @@ import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { getCollection } from "metabase/collections/utils";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { useSetting } from "metabase/common/hooks";
-import { getIcon } from "metabase/common/utils/icon";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
-import { Search } from "metabase/entities/search";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useGetIcon } from "metabase/hooks/use-icon";
+import { useSelector } from "metabase/redux";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
   getDocsSearchUrl,
@@ -42,7 +41,7 @@ export const useCommandPalette = ({
   disabled: boolean;
   locationQuery: Query;
 }) => {
-  const dispatch = useDispatch();
+  const getIcon = useGetIcon();
   const docsUrl = useSelector((state) => getDocsUrl(state, {}));
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const { isVisible } = useKBar((s) => ({
@@ -179,13 +178,13 @@ export const useCommandPalette = ({
     } else if (debouncedSearchText) {
       if (searchResults?.data.length) {
         return searchResults.data.map((result, index) => {
-          const wrappedResult = Search.wrapEntity(result, dispatch);
-          const icon = getIcon(wrappedResult);
+          const icon = getIcon(result);
           return {
             id: `search-result-${result.model}-${result.id}`,
             name: result.name,
             subtitle: result.description || "",
             icon: icon.name,
+            iconUrl: icon.iconUrl,
             section: "search",
             keywords: debouncedSearchText,
             priority: Priority.NORMAL - index,
@@ -203,9 +202,9 @@ export const useCommandPalette = ({
             },
             extra: {
               moderatedStatus: result.moderated_status,
-              href: modelToUrl(wrappedResult),
+              href: modelToUrl(result),
               iconColor: icon.color,
-              subtext: getSearchResultSubtext(wrappedResult),
+              subtext: getSearchResultSubtext(result),
             },
           };
         });
@@ -224,7 +223,6 @@ export const useCommandPalette = ({
     return [];
   }, [
     disabled,
-    dispatch,
     debouncedSearchText,
     searchQuery,
     isSearchLoading,
@@ -233,6 +231,7 @@ export const useCommandPalette = ({
     locationQuery,
     isSearchTypeaheadEnabled,
     searchRequestId,
+    getIcon,
   ]);
 
   useRegisterActions(searchResultActions, [searchResultActions]);
@@ -249,6 +248,7 @@ export const useCommandPalette = ({
           id: `recent-item-${getName(item)}-${item.model}-${item.id}`,
           name: getName(item),
           icon: icon.name,
+          iconUrl: icon.iconUrl,
           section: "recent",
           perform: () => {},
           extra: {
@@ -262,7 +262,7 @@ export const useCommandPalette = ({
         };
       }) || []
     );
-  }, [disabled, recentItems]);
+  }, [disabled, recentItems, getIcon]);
 
   useRegisterActions(hasQuery ? [] : recentItemsActions, [
     recentItemsActions,

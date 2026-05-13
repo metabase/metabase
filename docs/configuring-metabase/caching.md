@@ -97,7 +97,7 @@ For example, let's say you have a dashboard with a category filter (default valu
 
 ### Automatic caching logs
 
-To view the queries Metabase ran to automatically refresh the cache, check out the [query log](../usage-and-performance-tools/usage-analytics.md#query-log-model) and filter the `Query source` by `cache-refresh`.
+To view the queries Metabase ran to automatically refresh the cache, check out the [query log](../usage-and-performance-tools/usage-analytics-reference.md#query-log) and filter the `Query source` by `cache-refresh`.
 
 ## Set caching policies for dashboards, questions, and databases
 

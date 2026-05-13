@@ -247,15 +247,15 @@ describe(
 
         cy.log("revert button should appear after changing a main color");
         H.main()
-          .findByLabelText("Revert to default main colors")
+          .findByLabelText("Reset main colors to defaults")
           .should("be.visible");
 
         cy.log("click revert to reset main colors back to defaults");
-        H.main().findByLabelText("Revert to default main colors").click();
+        H.main().findByLabelText("Reset main colors to defaults").click();
 
         cy.log("revert button should disappear after resetting");
         H.main()
-          .findByLabelText("Revert to default main colors")
+          .findByLabelText("Reset main colors to defaults")
           .should("not.exist");
 
         cy.log("change the brand color again");
@@ -309,17 +309,15 @@ describe(
           cy.log(
             "revert button should be visible since the API theme has non-default additional colors",
           );
-          cy.findByLabelText("Revert to default additional colors").should(
+          cy.findByLabelText("Regenerate from brand color").should(
             "be.visible",
           );
 
           cy.log("click revert to reset additional colors to defaults");
-          cy.findByLabelText("Revert to default additional colors").click();
+          cy.findByLabelText("Regenerate from brand color").click();
 
           cy.log("revert button should disappear after resetting");
-          cy.findByLabelText("Revert to default additional colors").should(
-            "not.exist",
-          );
+          cy.findByLabelText("Regenerate from brand color").should("not.exist");
         });
       });
 

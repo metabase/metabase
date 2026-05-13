@@ -371,16 +371,24 @@
 
 (defn- ftree->nested-fields
   "Create nested-fields structure suitable for :fields key of structure return by [[driver/describe-table]]. `ftree`
-  is a tree that represents sampled mongo documents. See the [[dbfields->ftree]] for details."
+  is a tree that represents sampled mongo documents. See the [[dbfields->ftree]] for details.
+
+  Each nested field is annotated with `:nfc-path` — the chain of names from the root document down to and
+  including the field's own name (matching the convention used by the sql-jdbc nested json paths)."
   [ftree]
-  (letfn [(ftree->nested-fields*
-            [ftree*]
-            (-> ftree*
-                (cond-> (contains? ftree* :children)
-                  (-> (update :children #(set (map ftree->nested-fields* (vals %))))
-                      (set/rename-keys {:children :nested-fields})))
-                (dissoc :index)))]
-    (:nested-fields (ftree->nested-fields* ftree))))
+  (letfn [(walk
+            [field ancestor-path]
+            (let [self-path (conj ancestor-path (:name field))]
+              (cond-> field
+                (seq ancestor-path)
+                (assoc :nfc-path self-path)
+                (contains? field :children)
+                (-> (update :children
+                            (fn [children]
+                              (set (map #(walk % self-path) (vals children)))))
+                    (set/rename-keys {:children :nested-fields}))
+                true (dissoc :index))))]
+    (set (map #(walk % []) (vals (:children ftree))))))
 
 (defn- fetch-dbfields-rff
   [_metadata]
@@ -447,34 +455,42 @@
 
 (defmethod driver/database-supports? [:mongo :schemas] [_driver _feat _db] false)
 
+(defn- dbms-version [database]
+  ;; avoid trying `:dbms_version` if `:dbms-version` is present but `nil`; this will cause snake-hating-map warnings
+  (when-let [k (some #(when (contains? database %)
+                        %)
+                     [:dbms-version
+                      :dbms_version])]
+    (get database k)))
+
 (defmethod driver/database-supports? [:mongo :window-functions/cumulative]
   [_driver _feat db]
-  (-> ((some-fn :dbms-version :dbms_version) db)
+  (-> (dbms-version db)
       :semantic-version
       (driver.u/semantic-version-gte [5])))
 
 (defmethod driver/database-supports? [:mongo :expressions]
   [_driver _feature db]
-  (-> ((some-fn :dbms-version :dbms_version) db)
+  (-> (dbms-version db)
       :semantic-version
       (driver.u/semantic-version-gte [4 2])))
 
 (defmethod driver/database-supports? [:mongo :date-arithmetics]
   [_driver _feature db]
-  (-> ((some-fn :dbms-version :dbms_version) db)
+  (-> (dbms-version db)
       :semantic-version
       (driver.u/semantic-version-gte [5])))
 
 (defmethod driver/database-supports? [:mongo :datetime-diff]
   [_driver _feature db]
-  (-> ((some-fn :dbms-version :dbms_version) db)
+  (-> (dbms-version db)
       :semantic-version
       (driver.u/semantic-version-gte [5])))
 
 (defmethod driver/database-supports? [:mongo :now]
   ;; The $$NOW aggregation expression was introduced in version 4.2.
   [_driver _feature db]
-  (-> ((some-fn :dbms-version :dbms_version) db)
+  (-> (dbms-version db)
       :semantic-version
       (driver.u/semantic-version-gte [4 2])))
 

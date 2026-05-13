@@ -2,6 +2,7 @@ import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 
 import { useGetTableSelectionInfoQuery } from "metabase/api";
+import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { trackDataStudioTablePublished } from "metabase/data-studio/analytics";
 import {
@@ -11,7 +12,7 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import type { PublishTablesModalProps } from "metabase/plugins";
+import { PLUGIN_LIBRARY, type PublishTablesModalProps } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import {
   Box,
@@ -27,6 +28,7 @@ import * as Urls from "metabase/urls";
 import { usePublishTablesMutation } from "metabase-enterprise/api";
 import type {
   BulkTableInfo,
+  BulkTableRequest,
   DatabaseId,
   SchemaId,
   TableId,
@@ -107,18 +109,27 @@ function ModalBody({
   const [publishTables] = usePublishTablesMutation();
   const { sendSuccessToast } = useMetadataToasts();
   const dispatch = useDispatch();
+  const dataCollection = PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({
+    type: "library-data",
+  });
 
-  if (isLoading || error != null || data == null) {
-    return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if (isLoading || error != null || data == null || dataCollection == null) {
+    return (
+      <DelayedLoadingAndErrorWrapper
+        loading={isLoading || dataCollection == null}
+        error={error}
+      />
+    );
   }
 
   const { selected_table, unpublished_upstream_tables } = data;
 
-  const handleSubmit = async () => {
+  const handleSubmit = async ({ collection_id }: BulkTableRequest) => {
     const { target_collection: collection } = await publishTables({
       database_ids: databaseIds,
       schema_ids: schemaIds,
       table_ids: tableIds,
+      collection_id,
     }).unwrap();
 
     if (collection != null) {
@@ -137,7 +148,11 @@ function ModalBody({
   };
 
   return (
-    <FormProvider initialValues={{}} onSubmit={handleSubmit}>
+    <FormProvider<BulkTableRequest>
+      enableReinitialize
+      initialValues={{ collection_id: dataCollection.id as number }}
+      onSubmit={handleSubmit}
+    >
       <Form>
         <Stack gap="sm">
           <Text>{t`Publishing a table saves it to the Library.`}</Text>
@@ -153,6 +168,23 @@ function ModalBody({
               </List>
             </>
           )}
+          <FormCollectionPicker
+            mt="md"
+            name="collection_id"
+            title={t`Publish to`}
+            entityType="table"
+            collectionPickerModalProps={{
+              options: {
+                hasLibrary: true,
+                hasRootCollection: false,
+                hasPersonalCollections: false,
+                hasSearch: true,
+                hasRecents: false,
+                hasConfirmButtons: true,
+                canCreateCollections: false,
+              },
+            }}
+          />
         </Stack>
         <Group mt="xl" gap="sm" wrap="nowrap">
           <Box flex={1}>
