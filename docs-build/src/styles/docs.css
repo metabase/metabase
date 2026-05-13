@@ -136,6 +136,41 @@ body {
 .docs-sidebar ul ul li { border-left: 1px solid var(--blue-90); padding-left: 10px; }
 .docs-sidebar ul ul ul li { margin-left: 10px; }
 
+/* Collapsible groups */
+.docs-sidebar li.has-children > ul { display: none; }
+.docs-sidebar li.has-children.expanded > ul { display: block; }
+
+.docs-sidebar .nav-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.docs-sidebar .nav-row > a,
+.docs-sidebar .nav-row > .docs-sidebar-group-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.docs-sidebar-toggle {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 0;
+  padding: 6px;
+  margin-right: 2px;
+  cursor: pointer;
+  color: var(--neutral-60);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+.docs-sidebar-toggle:hover { color: var(--blue-60); background: var(--blue-95); }
+.docs-sidebar-toggle svg { transition: transform 0.2s ease; display: block; }
+.docs-sidebar li.has-children.expanded > .nav-row > .docs-sidebar-toggle svg {
+  transform: rotate(90deg);
+}
+
 /* ---------- Top bar / breadcrumbs ---------- */
 .docs-topbar {
   margin-bottom: 8px;
@@ -373,7 +408,7 @@ article.docs-content td code { background: var(--neutral-95); }
   position: sticky;
   top: 16px;
   align-self: start;
-  max-height: calc(100vh - 32px);
+  height: calc(100vh - 32px);
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -412,8 +447,6 @@ article.docs-content td code { background: var(--neutral-95); }
 /* ---------- Feedback widget ---------- */
 .feedback-widget {
   flex: 0 0 auto;
-  border-top: 1px solid var(--neutral-95);
-  padding-top: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
