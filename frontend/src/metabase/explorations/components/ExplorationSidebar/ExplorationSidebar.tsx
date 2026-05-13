@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { QUERY_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
@@ -8,19 +8,19 @@ import {
   Ellipsified,
   Icon,
   type IconName,
-  type IconProps,
+  Input,
   Loader,
   type RenderTreeNodePayload,
   Stack,
   Text,
+  TextInput,
   Tree,
   UnstyledButton,
   useTree,
 } from "metabase/ui";
 import type { Exploration, ExplorationQueryStatus } from "metabase-types/api";
 
-import type { SelectedEntityId } from "../../pages/ExplorationPage";
-import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../../utils";
+import type { SelectedEntity } from "../../pages/ExplorationPage";
 import { PotentiallyInterestingMarker } from "../PotentiallyInterestingMarker";
 
 import S from "./ExplorationSidebar.module.css";
@@ -28,7 +28,7 @@ import {
   DOCUMENT_TREE_ID_PREFIX,
   type ExplorationTreeNodePayloadHeading,
   type ExplorationTreeNodePayloadItem,
-  flattenTree,
+  filterExplorationTree,
   getDocumentTreeId,
   getExplorationSidebarTree,
   isExplorationTreeNodePayloadHeading,
@@ -38,26 +38,33 @@ import {
 
 interface ExplorationSidebarProps {
   exploration: Exploration;
-  selectedEntityId: SelectedEntityId | null;
-  setSelectedEntityId: (entityId: SelectedEntityId) => void;
+  selectedEntity: SelectedEntity | null;
+  setSelectedEntity: (entity: SelectedEntity) => void;
 }
 
 export function ExplorationSidebar({
   exploration,
-  selectedEntityId,
-  setSelectedEntityId,
+  selectedEntity,
+  setSelectedEntity,
 }: ExplorationSidebarProps) {
+  const [searchFilter, setSearchFilter] = useState("");
+
   const treeData = useMemo(
     () => getExplorationSidebarTree(exploration),
     [exploration],
   );
 
+  const filteredTreeData = useMemo(
+    () => filterExplorationTree(treeData, searchFilter),
+    [treeData, searchFilter],
+  );
+
   const tree = useTree({
     initialSelectedState:
-      selectedEntityId?.type === "document"
-        ? [getDocumentTreeId(selectedEntityId.id)]
-        : selectedEntityId?.type === "group"
-          ? [selectedEntityId.id]
+      selectedEntity?.type === "document"
+        ? [getDocumentTreeId(selectedEntity.id)]
+        : selectedEntity?.type === "group"
+          ? selectedEntity.ids
           : undefined,
   });
 
@@ -66,17 +73,26 @@ export function ExplorationSidebar({
       const id = tree.selectedState[0];
       if (id.startsWith(DOCUMENT_TREE_ID_PREFIX)) {
         const documentId = removeDocumentTreeIdPrefix(id);
-        if (documentId !== selectedEntityId?.id) {
-          setSelectedEntityId({ type: "document", id: documentId });
+        if (
+          selectedEntity?.type !== "document" ||
+          documentId !== selectedEntity?.id
+        ) {
+          setSelectedEntity({ type: "document", id: documentId });
         }
-      } else {
-        const groupId = id;
-        if (groupId !== selectedEntityId?.id) {
-          setSelectedEntityId({ type: "group", id: groupId });
-        }
+        return;
       }
     }
-  }, [tree.selectedState, selectedEntityId, setSelectedEntityId]);
+    const groupIds = tree.selectedState.filter(
+      (id) => !id.startsWith(DOCUMENT_TREE_ID_PREFIX),
+    );
+    if (
+      selectedEntity?.type !== "group" ||
+      selectedEntity.ids.length !== groupIds.length ||
+      !selectedEntity.ids.every((id) => groupIds.includes(id))
+    ) {
+      setSelectedEntity({ type: "group", ids: groupIds });
+    }
+  }, [tree.selectedState, selectedEntity, setSelectedEntity]);
 
   // const flatItems = useMemo(() => flattenTree(treeData), [treeData]);
 
@@ -115,10 +131,27 @@ export function ExplorationSidebar({
       <Text size="xl" fw="bold" pl="0.75rem">
         {exploration.name}
       </Text>
+      <TextInput
+        value={searchFilter}
+        onChange={(e) => setSearchFilter(e.currentTarget.value)}
+        placeholder={t`Search…`}
+        leftSection={<Icon name="search" c="text-secondary" />}
+        rightSectionPointerEvents="all"
+        rightSection={
+          searchFilter ? (
+            <Input.ClearButton
+              c="text-secondary"
+              onClick={() => setSearchFilter("")}
+            />
+          ) : (
+            <div />
+          )
+        }
+      />
       <Box className={S.tree}>
         <Tree
           tree={tree}
-          data={treeData}
+          data={filteredTreeData}
           renderNode={ExplorationTreeNode}
           selectOnClick
         />

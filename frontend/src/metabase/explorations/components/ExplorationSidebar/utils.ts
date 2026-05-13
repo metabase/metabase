@@ -225,6 +225,36 @@ export function removeDocumentTreeIdPrefix(id: string): DocumentId {
   return parseInt(id.replace(DOCUMENT_TREE_ID_PREFIX, ""), 10);
 }
 
+export function filterExplorationTree(
+  tree: ExplorationTreeNodeData[],
+  filter: string,
+): ExplorationTreeNodeData[] {
+  const normalizedFilter = filter.trim().toLowerCase();
+  if (normalizedFilter.length === 0) {
+    return tree;
+  }
+
+  return tree.flatMap((node): ExplorationTreeNodeData[] => {
+    if (node.data.type === "document") {
+      return [];
+    }
+
+    if (node.data.type === "group") {
+      const label = String(node.label).toLowerCase();
+      return label.includes(normalizedFilter) ? [node] : [];
+    }
+
+    const filteredChildren = filterExplorationTree(
+      node.children ?? [],
+      normalizedFilter,
+    );
+    if (filteredChildren.length > 0) {
+      return [{ ...node, children: filteredChildren }];
+    }
+    return [];
+  });
+}
+
 export function flattenTree(
   nodes: ExplorationTreeNodeData[],
 ): ExplorationTreeNodeItem[] {

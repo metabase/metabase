@@ -25,8 +25,8 @@ import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader
 import { getDimensions } from "./utils";
 
 interface ExplorationVisualizationProps {
-  explorationQuery: ExplorationQuery;
-  explorationThread: ExplorationThread;
+  explorationQueries: ExplorationQuery[];
+  explorationThread?: ExplorationThread;
   availableTimelines: Timeline[];
   selectedTimelineId: TimelineId | null;
   onSelectTimelineId: (timelineId: TimelineId | null) => void;
@@ -34,9 +34,23 @@ interface ExplorationVisualizationProps {
   interestingTimelineIds?: ReadonlySet<TimelineId>;
 }
 
+type ExplorationVisualizationBodyProps = Omit<
+  ExplorationVisualizationProps,
+  "explorationQueries"
+> & {
+  explorationQuery: ExplorationQuery;
+};
+
 export function ExplorationVisualization(props: ExplorationVisualizationProps) {
   return (
-    <Stack flex={1} h="100%" py="3rem" pr="3rem" align="center">
+    <Stack
+      flex={1}
+      h="100%"
+      py="3rem"
+      pr="3rem"
+      align="center"
+      style={{ overflowY: "auto" }}
+    >
       <Stack
         flex={1}
         w="100%"
@@ -46,13 +60,21 @@ export function ExplorationVisualization(props: ExplorationVisualizationProps) {
         bdrs="md"
         p="lg"
       >
-        <ExplorationVisualizationBody {...props} />
+        {props.explorationQueries.map((query) => (
+          <ExplorationVisualizationBody
+            key={query.id}
+            explorationQuery={query}
+            {...props}
+          />
+        ))}
       </Stack>
     </Stack>
   );
 }
 
-function ExplorationVisualizationBody(props: ExplorationVisualizationProps) {
+function ExplorationVisualizationBody(
+  props: ExplorationVisualizationBodyProps,
+) {
   const { explorationQuery } = props;
   if (explorationQuery.status === "error") {
     return <ExplorationVisualizationError {...props} />;
@@ -78,7 +100,7 @@ function ExplorationVisualizationChart({
   onSelectTimelineId,
   timelineEvents,
   interestingTimelineIds,
-}: ExplorationVisualizationProps) {
+}: ExplorationVisualizationBodyProps) {
   const { currentData: dataset } = useGetExplorationQueryResultQuery(
     explorationQuery.id,
   );
@@ -129,7 +151,7 @@ function ExplorationVisualizationChart({
   }
 
   return (
-    <>
+    <Stack flex={1} mih="15rem">
       <ExplorationVisualizationHeader
         name={explorationQuery.name}
         explorationQuery={explorationQuery}
@@ -147,13 +169,13 @@ function ExplorationVisualizationChart({
         timelineEvents={timelineEvents}
         className={S.chart}
       />
-    </>
+    </Stack>
   );
 }
 
 function ExplorationVisualizationError({
   explorationQuery,
-}: ExplorationVisualizationProps) {
+}: ExplorationVisualizationBodyProps) {
   return (
     <>
       <ExplorationVisualizationHeader
