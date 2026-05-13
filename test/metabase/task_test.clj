@@ -187,12 +187,17 @@
               (swap! processed conj tk)
               (when (= (count @processed) (count trigger-keys))
                 (deliver done :all-processed))))]
-      (#'task.impl/reset-errored-triggers! mock-scheduler)
-      (testing "function returns before the worker does any reset work"
-        (is (= :ready (deref ready 5000 :timeout))
-            "worker thread should have entered getTriggerKeys")
-        (is (empty? @processed)
-            "no triggers should have been reset yet — worker is parked at the gate"))
+      ;; Wrap in a future so a regression to synchronous behavior fails with a timeout instead
+      ;; of deadlocking the suite (the worker parks inside getTriggerKeys before the gate is
+      ;; delivered, so a sync call would never return).
+      (let [call-future (future (#'task.impl/reset-errored-triggers! mock-scheduler))]
+        (testing "function returns before the worker does any reset work"
+          (is (not= :timeout (deref call-future 1000 :timeout))
+              "reset-errored-triggers! must not block the caller while the worker runs")
+          (is (= :ready (deref ready 5000 :timeout))
+              "worker thread should have entered getTriggerKeys")
+          (is (empty? @processed)
+              "no triggers should have been reset yet — worker is parked at the gate")))
       (testing "worker thread is a daemon with the expected name"
         (is (= {:name "quartz-error-trigger-reset", :daemon? true}
                @worker-info)))

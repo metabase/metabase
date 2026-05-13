@@ -152,8 +152,11 @@
         ;; Register Prometheus listeners
 
         (delete-jobs-with-no-class!)
-        (reset-errored-triggers! new-scheduler)
-        (init-tasks!)))))
+        (init-tasks!)
+        ;; Run AFTER init-tasks! — the background sweep contends with task scheduling for the
+        ;; Quartz `TRIGGER_ACCESS` lock, so letting init-tasks! finish its rescheduling first
+        ;; keeps that path snappy.
+        (reset-errored-triggers! new-scheduler)))))
 
 ;;; this is a function mostly to facilitate testing.
 (defn- disable-scheduler? []
