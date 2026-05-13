@@ -69,13 +69,11 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.walk.util :as lib.walk.util]
    [metabase.parameters.chain-filter.dedupe-joins :as dedupe]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.parameters.params :as params]
@@ -416,9 +414,9 @@
   BigQuery-partitioned joined Tables) automatically contributes to the projection — its references are visible in the
   finished MBQL when we walk it."
   [query :- ::lib.schema/query]
-  (if (empty? (lib.join/joins query))
+  (if (empty? (lib/joins query))
     query
-    (let [refs (lib.walk.util/all-field-ids-by-join-alias query)]
+    (let [refs (lib/all-field-ids-by-join-alias query)]
       (lib.util/update-query-stage
        query 0
        update :joins
@@ -427,7 +425,7 @@
           (fn [a-join]
             (let [a-alias     (lib/current-join-alias a-join)
                   field-ids   (get refs a-alias #{})
-                  joinable    (lib.join/joined-thing query a-join)
+                  joinable    (lib/joined-thing query a-join)
                   field-mds   (mapv #(lib.metadata/field query %) field-ids)
                   inner-query (lib/with-fields (lib/query query joinable) field-mds)]
               (-> (lib/join-clause inner-query)

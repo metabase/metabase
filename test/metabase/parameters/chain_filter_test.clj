@@ -4,10 +4,8 @@
    [clojure.test :refer :all]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.walk.util :as lib.walk.util]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.query-processor.compile :as qp.compile]
@@ -624,7 +622,7 @@
   "Return a seq of diagnostic maps (one per offending join) or nil if the invariant holds:
   inner-stage :fields equals the set of field-ids referenced via that join's alias."
   [query]
-  (let [refs (lib.walk.util/all-field-ids-by-join-alias query)
+  (let [refs (lib/all-field-ids-by-join-alias query)
         proj (inner-projection-by-join-alias query)]
     (not-empty
      (vec
@@ -668,7 +666,7 @@
                             (sql-tools/referenced-fields driver nq))
         mbql-proj (into {}
                         (for [a-join (lib/joins query)
-                              :let [tid    (:id (lib.join/joined-thing query a-join))
+                              :let [tid    (:id (lib/joined-thing query a-join))
                                     fields (set (keep (fn [clause]
                                                         (when (lib.util/clause-of-type? clause :field)
                                                           (let [id (last clause)]
@@ -683,7 +681,7 @@
                  :when (seq extra)]
              [tid {:declared declared, :actual actual, :extra extra}])))))
 
-(defn- check-tight-projections!
+(defn- check-tight-projections
   "Run both the MBQL-level and SQL-level invariants on a chain-filter query."
   [query]
   (testing "MBQL: each join's inner-stage :fields equals the fields referenced via its alias"
@@ -718,7 +716,7 @@
   (mt/dataset test-data
     (doseq [{:keys [label build]} projection-scenarios]
       (testing label
-        (check-tight-projections! (build))))))
+        (check-tight-projections (build))))))
 
 (deftest ^:sequential chain-filter-preserves-required-partition-filter-on-joined-table-test
   ;; `add-required-filters-if-needed` runs at the END of `chain-filter-mbql-query`, after joins
@@ -745,7 +743,7 @@
           (let [q    (mbql-for (mt/id :categories :name)
                                (mt/id :venues :category_id)
                                nil)
-                refs (get (lib.walk.util/all-field-ids-by-join-alias q) venues-alias)]
+                refs (get (lib/all-field-ids-by-join-alias q) venues-alias)]
             (is (contains? refs partition-fid)
                 (str "expected refs on " venues-alias " to include " partition-fid
                      " (venues.price); got " refs))))))))

@@ -793,6 +793,15 @@
     stage-number :- :int]
    (lib.join/joins a-query stage-number)))
 
+(mu/defn joined-thing
+  "Return metadata about the origin of `a-join` (the joined Table or Card) using `metadata-providerable` as the source
+  of information. Use this when you need to construct a fresh query against the same source as an existing join — e.g.
+  to rebuild a join with a narrowed projection.
+
+  **Code Health:** Healthy. This is a core API."
+  [metadata-providerable a-join]
+  (lib.join/joined-thing metadata-providerable a-join))
+
 ;;; ### Join Strategies
 
 (mu/defn join-strategy :- ::lib.schema.join/strategy.option
@@ -1607,6 +1616,7 @@
   validation-exception-error]
  [metabase.lib.walk.util
   all-field-ids
+  all-field-ids-by-join-alias
   all-referenced-entity-ids
   all-implicitly-joined-field-ids
   all-implicitly-joined-table-ids
