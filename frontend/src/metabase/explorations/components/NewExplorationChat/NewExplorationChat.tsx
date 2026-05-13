@@ -25,9 +25,8 @@ import type {
   MetricDimension,
 } from "metabase-types/api";
 
-import { ResearchModeIntro } from "../ResearchModeIntro";
-
 import S from "./NewExplorationChat.module.css";
+import { ResearchModeIntro } from "./ResearchModeIntro";
 
 export const EXPLORATIONS_AGENT_ID = "explorations";
 

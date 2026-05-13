@@ -57,6 +57,9 @@ export interface ExplorationThreadMetric {
   card_id: CardId;
   dimension_mappings: DimensionMapping[] | null;
   position: number;
+  card?: {
+    name: string;
+  };
 }
 
 export interface ExplorationThreadDimension {
