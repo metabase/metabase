@@ -208,7 +208,19 @@ describe("scenarios > question > saved", () => {
       cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/reverted to an earlier version/i);
       cy.findByText(/This is a question/i).should("not.exist");
+
+      // Simulate a backend failure on revert and confirm we surface
+      // the error message as a toast (UXW-310).
+      cy.intercept("POST", "/api/revision/revert", {
+        statusCode: 500,
+        body: { message: "Cannot revert: missing card" },
+      }).as("failedRevert");
+
+      cy.findAllByTestId("question-revert-button").first().click();
+      cy.wait("@failedRevert");
     });
+
+    H.undoToast().should("contain.text", "Cannot revert: missing card");
   });
 
   it("should show collection breadcrumbs for a saved question in the root collection", () => {

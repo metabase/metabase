@@ -1,6 +1,8 @@
+import { t } from "ttag";
 import _ from "underscore";
 
 import { invalidateNotificationsApiCache, revisionApi } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
@@ -21,6 +23,7 @@ import {
   setParameterValue,
 } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
+import { addUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import { clone } from "metabase/utils/clone";
@@ -355,15 +358,29 @@ export const revertToRevision = createThunkAction(
   REVERT_CARD_TO_REVISION,
   (cardId, revision) => {
     return async (dispatch) => {
-      await entityCompatibleQuery(
-        {
-          id: cardId,
-          entity: "card",
-          revision_id: revision.id,
-        },
-        dispatch,
-        revisionApi.endpoints.revertRevision,
-      );
+      try {
+        await entityCompatibleQuery(
+          {
+            id: cardId,
+            entity: "card",
+            revision_id: revision.id,
+          },
+          dispatch,
+          revisionApi.endpoints.revertRevision,
+        );
+      } catch (error) {
+        dispatch(
+          addUndo({
+            icon: "warning",
+            toastColor: "error",
+            message: getErrorMessage(
+              error,
+              t`Failed to revert to previous version.`,
+            ),
+          }),
+        );
+        throw error;
+      }
       await dispatch(reloadCard());
       await dispatch(runQuestionQuery({ shouldUpdateUrl: false }));
       return { id: cardId };
