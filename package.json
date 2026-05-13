@@ -488,6 +488,7 @@
     "dev-ee": "bun install && bun run clean-dev:cljs && concurrently -n 'backend,frontend,cljs,static-viz' -c 'blue,green,yellow,magenta,red,cyan' 'clojure -M:run:ee:dev:dev-start --hot' 'MB_EDITION=ee bun run build-hot:js-wait' 'MB_EDITION=ee bun run build:cljs' 'bun run build-static-viz:watch-wait'",
     "dev-ee-hot-be": "bun install && bun run clean-dev:cljs && concurrently -n 'backend,frontend,cljs,static-viz' -c 'blue,green,yellow,magenta,red,cyan' 'clojure -M:run:ee:dev:dev-start --hot' 'MB_EDITION=ee ENABLE_CLJS_HOT_RELOAD=true bun run build-hot:js-wait' 'MB_EDITION=ee bun run build-hot:cljs' 'bun run build-static-viz:watch-wait'",
     "docs:dev": "cd docs-build && bun install && bun run dev",
+    "docs:dev:clean": "cd docs-build && bun run dev:clean",
     "docs:build": "./bin/mage docs-build",
     "docs:preview": "./bin/mage docs-ensure-generated && cd docs-build && bun install && bun run build && bun run preview",
     "docs:check": "cd docs-build && bun install && bun run check",
