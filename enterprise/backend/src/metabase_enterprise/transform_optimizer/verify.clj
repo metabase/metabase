@@ -10,9 +10,12 @@
   We can extend to other dialects later by parameterising the scratch-schema
   / EXCEPT-ALL form."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -123,6 +126,68 @@
        :only_in_fast (collect sql-only-in-fast)})))
 
 ;; ---------------------------------------------------------------------------
+;; Static (parser-only) preflight
+;;
+;; Cheap sanity check we run before materialising anything: same set of
+;; referenced tables, same returned column names in the same order. Catches
+;; the common LLM failure mode where a rewrite's FROM clause references a
+;; table that doesn't exist in the original (name drift, hallucinated
+;; precompute targets, typos) without paying the cost of executing both
+;; queries against the source DB.
+;;
+;; Tolerant of parse failures: if macaw can't analyse one side, we return
+;; nil and let the materialise step surface a real Postgres error instead
+;; of a parser one.
+
+(defn- lower [s] (some-> s u/lower-case-en))
+
+(defn- normalize-table-spec [{:keys [schema table]}]
+  [(lower schema) (lower table)])
+
+(defn- referenced-tables [driver sql]
+  (try
+    (into #{} (map normalize-table-spec) (sql-tools/referenced-tables-raw driver sql))
+    (catch Exception _ nil)))
+
+(defn- returned-column-names [driver sql]
+  (try
+    (let [{:keys [returned-fields errors]} (sql-tools/field-references driver sql)]
+      (when (empty? errors)
+        (mapv (fn [{:keys [alias column]}] (lower (or alias column)))
+              returned-fields)))
+    (catch Exception _ nil)))
+
+(defn- static-check
+  "Parser-only equivalence preflight. Returns `{:error … :detail …}` on a
+  known mismatch, otherwise nil. Skips the table-set check when the
+  proposal depends on another proposal — a dependent rewrite legitimately
+  references the precompute's target table."
+  [driver original-sql proposal-sql {:keys [depends_on]}]
+  (let [orig-tables (referenced-tables driver original-sql)
+        prop-tables (referenced-tables driver proposal-sql)
+        orig-cols   (returned-column-names driver original-sql)
+        prop-cols   (returned-column-names driver proposal-sql)]
+    (cond
+      (and (empty? depends_on)
+           orig-tables prop-tables
+           (not= orig-tables prop-tables))
+      (let [missing (set/difference orig-tables prop-tables)
+            extra   (set/difference prop-tables orig-tables)]
+        {:error  "table_set_mismatch"
+         :detail (str "Proposal references a different set of tables than the original."
+                      (when (seq missing) (str " Original-only: " (pr-str (vec missing)) "."))
+                      (when (seq extra)   (str " Proposal-only: "  (pr-str (vec extra))  ".")))})
+
+      (and orig-cols prop-cols
+           (not= orig-cols prop-cols))
+      {:error  "returned_columns_mismatch"
+       :detail (str "Returned column names differ. "
+                    "Original: " (pr-str orig-cols) ". "
+                    "Proposal: " (pr-str prop-cols) ".")}
+
+      :else nil)))
+
+;; ---------------------------------------------------------------------------
 ;; Public API
 
 (defn- ensure-scratch-schema! [^Connection conn]
@@ -170,6 +235,9 @@
     (when (str/blank? slow-sql)
       (throw (ex-info "could not compile original transform"
                       {:status-code 422 :error "compile_failed"})))
+
+    (when-let [{:keys [error detail]} (static-check driver-kw slow-sql fast-sql proposal)]
+      (throw (ex-info detail {:status-code 422 :error error})))
 
     (sql-jdbc.execute/do-with-connection-with-options
      driver-kw db-id nil
