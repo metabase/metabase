@@ -18,6 +18,7 @@ import {
   ScrollArea,
   Stack,
   Text,
+  Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -420,13 +421,48 @@ function BulkResultRow({
   );
 }
 
+/**
+ * True when this batch entry has at least one high-severity rewrite or
+ * precompute proposal. Index proposals are valuable but the user's bar
+ * for "strong rewrite candidate" is specifically about *structural* SQL
+ * changes the LLM is confident about — those are the ones worth a human
+ * review pass first. We don't include medium/low because the LLM already
+ * downgrades cosmetic-or-borderline rewrites per the prelude.
+ */
+function isStrongRewriteCandidate(row: Row): boolean {
+  if (row.status !== "done") {
+    return false;
+  }
+  return row.entry.proposals.some(
+    (p) =>
+      (p.kind === "rewrite" || p.kind === "precompute") &&
+      p.severity === "high",
+  );
+}
+
 function RowHeader({ row }: { row: Row }) {
+  const isStrong = isStrongRewriteCandidate(row);
   return (
     <Group gap="sm" wrap="nowrap" align="center" w="100%">
       <StatusIndicator status={row.status} />
       <Text fw="bold" miw={0} truncate style={{ flex: 1 }}>
         {row.name}
       </Text>
+      {isStrong && (
+        <Tooltip
+          label={t`The optimizer is confident this transform has a high-impact rewrite or precompute available.`}
+          multiline
+          w={260}
+        >
+          <Badge
+            color="brand"
+            variant="filled"
+            leftSection={<Icon name="star" size={10} />}
+          >
+            {t`Top rewrite candidate`}
+          </Badge>
+        </Tooltip>
+      )}
       <RowStatusMeta row={row} />
     </Group>
   );

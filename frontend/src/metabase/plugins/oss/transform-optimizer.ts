@@ -11,6 +11,13 @@ export type FindSlowToolProps = {
   thresholdSec: number | undefined;
   onThresholdChange: (sec: number | undefined) => void;
   /**
+   * Whether to also surface transforms whose last run hit the timeout
+   * regardless of duration threshold. Off by default — timed-out runs
+   * are a different bucket from "finished but slow" workloads.
+   */
+  includeTimedOut: boolean;
+  onIncludeTimedOutChange: (next: boolean) => void;
+  /**
    * The transform ids that currently match the threshold. The "Hammer
    * time" button POSTs these to the bulk-optimize endpoint. Empty when
    * no threshold is set OR no transform's last_run survives the filter.

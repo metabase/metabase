@@ -92,20 +92,50 @@ const NODE_ICON_COLORS: Record<TreeNode["nodeType"], ColorName> = {
 
 const getNodeIconColor = (node: TreeNode) => NODE_ICON_COLORS[node.nodeType];
 
-function getLastRunDurationMs(transform: {
-  last_run?: { start_time: string; end_time: string | null } | null;
-}): number | null {
+/**
+ * "Slow" semantics for the find-slow filter.
+ *
+ * - timeout: opt-in via `includeTimedOut`. The run exceeded its allotted
+ *   budget, which is the strongest "slow" signal, but the user may want
+ *   to scope to "finished but slow" runs separately.
+ * - started (in flight): match when the elapsed wall-clock already
+ *   exceeds the threshold — a hung 6-hour run is unambiguously slow,
+ *   no point waiting for it to finish to find that out.
+ * - succeeded / failed: match when end - start ≥ threshold.
+ * - canceling / canceled: skip — user explicitly stopped it, the
+ *   duration isn't a property of the workload.
+ */
+function isTransformSlow(
+  transform: {
+    last_run?: {
+      status?: string;
+      start_time: string;
+      end_time: string | null;
+    } | null;
+  },
+  thresholdMs: number,
+  includeTimedOut: boolean,
+): boolean {
   const run = transform.last_run;
-  if (!run?.start_time || !run.end_time) {
-    return null;
+  if (!run?.start_time) {
+    return false;
+  }
+  if (run.status === "timeout") {
+    return includeTimedOut;
+  }
+  if (run.status === "canceling" || run.status === "canceled") {
+    return false;
   }
   const start = Date.parse(run.start_time);
-  const end = Date.parse(run.end_time);
-  if (!Number.isFinite(start) || !Number.isFinite(end)) {
-    return null;
+  if (!Number.isFinite(start)) {
+    return false;
   }
-  const diff = end - start;
-  return diff >= 0 ? diff : null;
+  const endRaw = run.status === "started" ? Date.now() : Date.parse(run.end_time ?? "");
+  if (!Number.isFinite(endRaw)) {
+    return false;
+  }
+  const elapsed = endRaw - start;
+  return elapsed >= thresholdMs;
 }
 const globalFilterFn = (
   row: { original: TreeNode },
@@ -140,6 +170,12 @@ export const TransformListPage = ({
   const [slowThresholdSec, setSlowThresholdSec] = useState<number | undefined>(
     undefined,
   );
+  // Whether the find-slow filter should also surface runs that hit the
+  // timeout regardless of threshold. Off by default — most "slow" hunts
+  // are looking for finished-but-slow workloads to optimise; timed-out
+  // runs are a different bucket (process killed before completion) the
+  // user can opt into.
+  const [includeTimedOut, setIncludeTimedOut] = useState(false);
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
   const isMeterLocked = useSetting("transforms-meter-locked");
 
@@ -173,23 +209,22 @@ export const TransformListPage = ({
 
   const warningsByTransformId = useGetTransformWarnings(transforms);
 
-  // Transforms whose last_run wall-clock duration meets `slowThresholdSec`.
-  // We do this client-side: the transforms list endpoint already hydrates
-  // last_run, so an extra request isn't needed. In-progress runs (no
-  // end_time) are excluded — we can only score runs that finished.
+  // Transforms whose `last_run` qualifies as slow. We do this client-side
+  // because the transforms list endpoint already hydrates `last_run` —
+  // see `isTransformSlow` above for the semantics (timeouts opt-in,
+  // in-flight runs counted by elapsed time, etc.).
   const matchingSlowTransformIds = useMemo(() => {
     if (slowThresholdSec == null) {
       return [];
     }
     const minMs = slowThresholdSec * 1000;
     return (transforms ?? []).reduce<number[]>((acc, t) => {
-      const ms = getLastRunDurationMs(t);
-      if (ms != null && ms >= minMs) {
+      if (isTransformSlow(t, minMs, includeTimedOut)) {
         acc.push(t.id);
       }
       return acc;
     }, []);
-  }, [slowThresholdSec, transforms]);
+  }, [slowThresholdSec, includeTimedOut, transforms]);
 
   const visibleTransforms = useMemo(() => {
     if (slowThresholdSec == null) {
@@ -407,6 +442,8 @@ export const TransformListPage = ({
             <PLUGIN_TRANSFORM_OPTIMIZER.FindSlowTool
               thresholdSec={slowThresholdSec}
               onThresholdChange={setSlowThresholdSec}
+              includeTimedOut={includeTimedOut}
+              onIncludeTimedOutChange={setIncludeTimedOut}
               matchingTransformIds={matchingSlowTransformIds}
             />
           )}

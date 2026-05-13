@@ -12,6 +12,7 @@ import {
   NumberInput,
   Popover,
   Stack,
+  Switch,
   Text,
 } from "metabase/ui";
 import type { FindSlowToolProps } from "metabase/plugins/oss/transform-optimizer";
@@ -24,6 +25,8 @@ const POPOVER_MIN_WIDTH = 320;
 export function FindSlowTool({
   thresholdSec,
   onThresholdChange,
+  includeTimedOut,
+  onIncludeTimedOutChange,
   matchingTransformIds,
 }: FindSlowToolProps) {
   const [isOpened, { toggle, close }] = useDisclosure();
@@ -97,6 +100,14 @@ export function FindSlowTool({
               allowNegative={false}
               autoFocus
               onChange={(v) => setDraftSec(typeof v === "number" ? v : "")}
+            />
+            <Switch
+              label={t`Include timed-out runs`}
+              description={t`Show transforms whose last run hit the timeout, regardless of threshold.`}
+              checked={includeTimedOut}
+              onChange={(event) =>
+                onIncludeTimedOutChange(event.currentTarget.checked)
+              }
             />
             {hasThreshold && (
               <Text c="text-secondary" fz="sm">
