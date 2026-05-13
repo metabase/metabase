@@ -7,6 +7,8 @@ import type {
   MetabaseTheme,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types";
+import type { ParameterChangePayload } from "embedding-sdk-bundle/types/dashboard";
+import type { SqlParameterChangePayload } from "embedding-sdk-bundle/types/question";
 import type {
   SdkIframeDashboardEmbedSettings,
   SdkIframeQuestionEmbedSettings,
@@ -22,8 +24,12 @@ import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/em
 import type { CollectionId } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
-/** Events that the embed.js script listens for */
+/** Events that the embed.js script listens for. */
 export type SdkIframeEmbedTagMessage =
+  | SdkIframeEmbedTagTransportMessage
+  | SdkIframeEmbedComponentTagMessage;
+
+export type SdkIframeEmbedTagTransportMessage =
   | SdkIframeEmbedTagIframeReadyMessage
   | SdkIframeEmbedTagRequestSessionTokenMessage
   | SdkIframeEmbedTagHandleLinkMessage
@@ -46,7 +52,6 @@ export type SdkIframeEmbedTagRequestGuestTokenRefreshMessage = {
   };
 };
 
-/** Events that the sdk embed route listens for */
 export type SdkIframeEmbedMessage =
   | SdkIframeEmbedSetSettingsMessage
   | SdkIframeEmbedSubmitSessionTokenMessage
@@ -90,6 +95,16 @@ export type SdkIframeEmbedSubmitRefreshedGuestTokenMessage = {
   };
 };
 
+export type SdkIframeEmbedComponentTagMessage =
+  | {
+      type: "metabase.embed.parametersChange";
+      data: ParameterChangePayload;
+    }
+  | {
+      type: "metabase.embed.sqlParametersChange";
+      data: SqlParameterChangePayload;
+    };
+
 // --- Embed Option Interfaces ---
 
 export type DashboardEmbedOptions = StrictUnion<
@@ -105,6 +120,7 @@ export type DashboardEmbedOptions = StrictUnion<
 
   // parameters
   initialParameters?: ParameterValues;
+  parameters?: ParameterValues;
   hiddenParameters?: string[];
   enableEntityNavigation?: boolean;
 
@@ -130,6 +146,7 @@ export type QuestionEmbedOptions = StrictUnion<
 
   // parameters
   initialSqlParameters?: SqlParameterValues;
+  sqlParameters?: SqlParameterValues;
   hiddenParameters?: string[];
 
   customContext?: string | Record<string, unknown>;

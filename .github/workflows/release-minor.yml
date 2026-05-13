@@ -79,7 +79,7 @@ jobs:
                 await github.rest.actions.createWorkflowDispatch({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  workflow_id: 'build-for-release.yml',
+                  workflow_id: 'tag-for-release.yml',
                   ref: 'refs/heads/master',
                   inputs: {
                     commit: releaseCommit,

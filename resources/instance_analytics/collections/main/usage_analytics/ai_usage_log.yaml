@@ -274,6 +274,36 @@ result_metadata:
   semantic_type: type/Category
   settings: null
   visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: Input tokens written to the provider prompt cache (Anthropic cache_creation_input_tokens). Subset of Prompt Tokens.
+  display_name: Cache Creation Tokens
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_ai_usage_log, cache_creation_tokens]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_ai_usage_log, cache_creation_tokens]
+  name: cache_creation_tokens
+  semantic_type: type/Quantity
+  settings: null
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: Input tokens served from the provider prompt cache (Anthropic cache_read_input_tokens). Subset of Prompt Tokens.
+  display_name: Cache Read Tokens
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_ai_usage_log, cache_read_tokens]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_ai_usage_log, cache_read_tokens]
+  name: cache_read_tokens
+  semantic_type: type/Quantity
+  settings: null
+  visibility_type: normal
 visualization_settings:
   column_settings: null
 card_schema: 23

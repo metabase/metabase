@@ -1615,7 +1615,8 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
     result = {"is_single_stmt?": False}
     try:
         stmts = sqlglot.parse(sql, read=dialect)
-        allowed_types = (exp.Select,) if stmt_type == "read" else (exp.Update, exp.Insert, exp.Delete)
+        allowed_types = (exp.Select, exp.SetOperation)
+        if stmt_type != "read": allowed_types = (exp.Update, exp.Insert, exp.Delete)
         if len(stmts) == 1 and isinstance(stmts[0], allowed_types):
             result["is_single_stmt?"] = True
             result["sql"] = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()

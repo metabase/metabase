@@ -38,7 +38,7 @@ export function FixSqlQueryButton() {
       return;
     }
 
-    if (action.payload.errorMessage?.type === "locked") {
+    if (action.payload.error?.type === "locked") {
       sendToast(getMetabotManagedProviderLimitToastProps());
       return;
     }
@@ -46,7 +46,7 @@ export function FixSqlQueryButton() {
     sendToast({
       icon: "warning",
       toastColor: "error",
-      message: action.payload.errorMessage?.message ?? METABOT_ERR_MSG.default,
+      message: action.payload.error?.message ?? METABOT_ERR_MSG.default,
     });
   };
 

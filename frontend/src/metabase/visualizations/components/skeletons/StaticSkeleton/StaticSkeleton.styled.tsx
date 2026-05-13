@@ -20,13 +20,6 @@ export const SkeletonDescription = styled(MarkdownPreview)`
   line-height: 1.5rem;
 `;
 
-export const SkeletonIcon = styled(Icon)`
-  display: block;
-  color: var(--mb-color-text-secondary);
-  width: 1.5rem;
-  height: 1.5rem;
-`;
-
 export const SkeletonTooltipIcon = styled(Icon)`
   display: block;
   color: var(--mb-color-text-tertiary);

@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 import { c, t } from "ttag";
 
-import { Box, Card, TreeTable } from "metabase/ui";
 import {
   isAdminGroup,
   isDefaultGroup,
   isDefaultTenantGroup,
-} from "metabase/utils/groups";
+} from "metabase/admin/utils/groups";
+import { Box, Card, TreeTable } from "metabase/ui";
 
 import { AdvancedGroupModeButton } from "./AdvancedGroupMode";
 import S from "./AiFeatureAccessTable.module.css";

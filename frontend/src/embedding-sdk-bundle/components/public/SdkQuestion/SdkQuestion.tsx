@@ -136,6 +136,8 @@ export const _SdkQuestion = ({
   dataPicker,
   targetCollection,
   initialSqlParameters,
+  sqlParameters,
+  onSqlParametersChange,
   hiddenParameters,
   withDownloads = false,
   withAlerts = false,
@@ -192,6 +194,8 @@ export const _SdkQuestion = ({
         dataPicker={dataPicker}
         targetCollection={targetCollection}
         initialSqlParameters={initialSqlParameters}
+        sqlParameters={sqlParameters}
+        onSqlParametersChange={onSqlParametersChange}
         hiddenParameters={hiddenParameters}
         withDownloads={withDownloads}
         withAlerts={withAlerts}

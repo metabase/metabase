@@ -21,6 +21,15 @@ describe("scenarios > question > saved", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
     cy.findAllByText("Orders"); // question and table name appears
 
+    // capture the view header height in the saved state to assert it does not
+    // change after the question transitions to ad-hoc (UXW-3751)
+    let savedHeaderHeight;
+    cy.findByTestId("qb-header")
+      .invoke("outerHeight")
+      .then((h) => {
+        savedHeaderHeight = h;
+      });
+
     // filter to only orders with quantity=100
     H.tableHeaderClick("Quantity");
     H.popover().findByText("Filter by this column").click();
@@ -35,10 +44,17 @@ describe("scenarios > question > saved", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 2 rows"); // query updated
 
+    // view header height should be unchanged in the ad-hoc state
+    cy.findByTestId("qb-header")
+      .invoke("outerHeight")
+      .should((h) => {
+        expect(h).to.equal(savedHeaderHeight);
+      });
+
     // check that save will give option to replace
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within((modal) => {
+    cy.findByTestId("save-question-modal").within(() => {
       cy.findByText('Replace original question, "Orders"');
       cy.findByText("Save as new question");
       cy.findByText("Cancel").click();

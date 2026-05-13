@@ -58,6 +58,31 @@
                 "type" : "integer",
                 "minimum" : 1
               },
+              "sync_started_at" : {
+                "type" : "integer",
+                "minimum" : 1
+              },
+              "url" : {
+                "type" : "string",
+                "minLength" : 1
+              }
+            },
+            "required" : [ "url", "created_at", "sync_started_at", "created_by_id", "db_id" ]
+          }, {
+            "type" : "object",
+            "properties" : {
+              "created_at" : {
+                "type" : "integer",
+                "minimum" : 1
+              },
+              "created_by_id" : {
+                "type" : "integer",
+                "minimum" : 1
+              },
+              "db_id" : {
+                "type" : "integer",
+                "minimum" : 1
+              },
               "last_sync_at" : {
                 "type" : "integer",
                 "minimum" : 1
@@ -1142,6 +1167,39 @@
           "$ref" : "#/components/schemas/metabase-enterprise.action-v2.api.api-action-expression"
         } ]
       },
+      "metabase-enterprise.data-studio.api.table.publish-table-selectors" : {
+        "type" : "object",
+        "properties" : {
+          "collection_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "database_ids" : {
+            "type" : "array",
+            "items" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }
+          },
+          "schema_ids" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "table_ids" : {
+            "type" : "array",
+            "items" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }
+          }
+        },
+        "required" : [ "collection_id" ]
+      },
       "metabase-enterprise.data-studio.api.table.publish-tables-response" : {
         "description" : "Schema for /publish-tables endpoint response. Matches frontend PublishTablesResponse type.",
         "type" : "object",
@@ -2138,6 +2196,110 @@
           }
         },
         "required" : [ "min", "fixed" ]
+      },
+      "metabase-enterprise.serialization.schema.export-metadata-response" : {
+        "type" : "object",
+        "properties" : {
+          "databases" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.exported-database"
+            }
+          },
+          "fields" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.exported-field"
+            }
+          },
+          "tables" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.exported-table"
+            }
+          }
+        }
+      },
+      "metabase-enterprise.serialization.schema.exported-database" : {
+        "type" : "object",
+        "properties" : {
+          "engine" : {
+            "type" : "string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name", "engine" ]
+      },
+      "metabase-enterprise.serialization.schema.exported-field" : {
+        "type" : "object",
+        "properties" : {
+          "base_type" : {
+            "type" : "string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          },
+          "coercion_strategy" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "semantic_type" : {
+            "type" : "string"
+          },
+          "table_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+          },
+          "nfc_path" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "effective_type" : {
+            "type" : "string"
+          },
+          "parent_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          },
+          "database_type" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "fk_target_field_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          }
+        },
+        "required" : [ "id", "table_id", "name", "base_type" ]
+      },
+      "metabase-enterprise.serialization.schema.exported-table" : {
+        "type" : "object",
+        "properties" : {
+          "db_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "schema" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "db_id", "name" ]
       },
       "metabase-enterprise.support-access-grants.schema.create-grant-request" : {
         "description" : "Schema for POST /api/ee/support-access-grants request body.",
@@ -8157,6 +8319,8 @@
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema..stage.valid-refs"
         }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema..stage.page-and-limit-are-mutually-exclusive"
+        }, {
           "allOf" : [ ]
         } ]
       },
@@ -8208,6 +8372,9 @@
         }, {
           "allOf" : [ ]
         } ]
+      },
+      "metabase.lib.schema..stage.page-and-limit-are-mutually-exclusive" : {
+        "description" : "If an MBQL query stage specifies `:page`, it should not also specify `:limit`"
       },
       "metabase.lib.schema..stage.type" : {
         "type" : "string",
@@ -14064,146 +14231,6 @@
           "required" : [ "enabled" ]
         }
       },
-      "metabase.warehouses-rest.api.database-info" : {
-        "type" : "object",
-        "properties" : {
-          "engine" : {
-            "type" : "string"
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-          },
-          "name" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "id", "name", "engine" ]
-      },
-      "metabase.warehouses-rest.api.databases-metadata-response" : {
-        "type" : "object",
-        "properties" : {
-          "databases" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.warehouses-rest.api.database-info"
-            }
-          },
-          "fields" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.warehouses-rest.api.field-info"
-            }
-          },
-          "tables" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.warehouses-rest.api.table-info"
-            }
-          }
-        },
-        "required" : [ "databases", "tables", "fields" ]
-      },
-      "metabase.warehouses-rest.api.field-info" : {
-        "type" : "object",
-        "properties" : {
-          "base_type" : {
-            "type" : "string"
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-          },
-          "coercion_strategy" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "semantic_type" : {
-            "type" : "string"
-          },
-          "table_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
-          },
-          "effective_type" : {
-            "type" : "string"
-          },
-          "parent_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-          },
-          "database_type" : {
-            "type" : "string"
-          },
-          "description" : {
-            "type" : "string"
-          },
-          "fk_target_field_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-          }
-        },
-        "required" : [ "id", "table_id", "name", "base_type" ]
-      },
-      "metabase.warehouses-rest.api.field-values-info" : {
-        "type" : "object",
-        "properties" : {
-          "field_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-          },
-          "has_more_values" : {
-            "type" : "boolean"
-          },
-          "human_readable_values" : {
-            "type" : "array",
-            "items" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            }
-          },
-          "values" : {
-            "type" : "array",
-            "items" : {
-              "type" : "array",
-              "items" : { }
-            }
-          }
-        },
-        "required" : [ "field_id", "values", "has_more_values" ]
-      },
-      "metabase.warehouses-rest.api.field-values-response" : {
-        "type" : "object",
-        "properties" : {
-          "field_values" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.warehouses-rest.api.field-values-info"
-            }
-          }
-        },
-        "required" : [ "field_values" ]
-      },
-      "metabase.warehouses-rest.api.table-info" : {
-        "type" : "object",
-        "properties" : {
-          "db_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-          },
-          "description" : {
-            "type" : "string"
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "schema" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "id", "db_id", "name" ]
-      },
       "metabase.xrays.api.automagic-dashboards.base-64-encoded-json" : {
         "description" : "form-encoded base-64-encoded JSON"
       },
@@ -17011,6 +17038,26 @@
                   "display" : {
                     "type" : "string",
                     "minLength" : 1
+                  },
+                  "size" : {
+                    "oneOf" : [ {
+                      "type" : "object",
+                      "properties" : {
+                        "size_x" : {
+                          "description" : "value must be an integer greater than zero.",
+                          "type" : "integer",
+                          "minimum" : 1
+                        },
+                        "size_y" : {
+                          "description" : "value must be an integer greater than zero.",
+                          "type" : "integer",
+                          "minimum" : 1
+                        }
+                      },
+                      "required" : [ "size_x", "size_y" ]
+                    }, {
+                      "type" : "null"
+                    } ]
                   },
                   "parameters" : {
                     "oneOf" : [ {
@@ -21440,60 +21487,6 @@
         "tags" : [ "/api/database" ]
       }
     },
-    "/api/database/field-values" : {
-      "get" : {
-        "operationId" : "get-api-database-field-values",
-        "summary" : "GET /api/database/field-values",
-        "description" : "Get sampled field values for every field in the instance, streamed as a single\n  `{\"field_values\": [...]}` document. Each entry carries `field_id`, `values`,\n  optional `human_readable_values`, and `has_more_values`.\n\n  Only unconstrained (`:full`) FieldValues are included — sandboxed, impersonation, and\n  linked-filter variants are user-specific and would bypass their own enforcement\n  mechanisms in a bulk export. Pair with `GET /api/database/metadata` to resolve\n  `field_id` to table and field names. Response is streamed for efficiency with large\n  schemas.\n\n  Admin-only: this endpoint exposes cached values computed over the unrestricted\n  dataset, so it would leak data past sandbox / impersonation rules if served to\n  regular users.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.warehouses-rest.api.field-values-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/database" ]
-      }
-    },
-    "/api/database/metadata" : {
-      "get" : {
-        "operationId" : "get-api-database-metadata",
-        "summary" : "GET /api/database/metadata",
-        "description" : "Get metadata (databases, tables, and fields) for all databases visible to the current user.\n  Returns a flat structure with three arrays: databases, tables, and fields.\n  Response is streamed for efficiency with large schemas.\n\n  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or\n  `Query builder and native`) permissions on each database and table.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.warehouses-rest.api.databases-metadata-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/database" ]
-      }
-    },
     "/api/database/sample_database" : {
       "post" : {
         "operationId" : "post-api-database-sample_database",
@@ -25019,6 +25012,973 @@
         "tags" : [ "/api/ee/content-translation" ]
       }
     },
+    "/api/ee/custom-viz-plugin" : {
+      "post" : {
+        "operationId" : "post-api-ee-custom-viz-plugin",
+        "summary" : "POST /api/ee/custom-viz-plugin",
+        "description" : "Register a new custom visualization plugin from an uploaded tar.gz bundle.\n\n  The archive must contain `metabase-plugin.json` at the root and\n  `dist/index.js` for the JS bundle, plus any whitelisted assets under\n  `dist/assets/`. The plugin's `identifier` is taken from the manifest's `name`\n  field.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "enabled" : {
+                      "type" : "boolean"
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "updated_at" : { },
+                    "status" : {
+                      "type" : "string",
+                      "enum" : [ "active", "error" ]
+                    },
+                    "error_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "identifier" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "display_name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "dev_only" : {
+                      "type" : "boolean"
+                    },
+                    "created_at" : { },
+                    "bundle_hash" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "manifest" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "dev_bundle_url" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "metabase_version" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "icon" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "object",
+                    "properties" : {
+                      "filename" : {
+                        "type" : "string"
+                      },
+                      "tempfile" : { }
+                    },
+                    "required" : [ "filename", "tempfile" ]
+                  }
+                },
+                "required" : [ "file" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      },
+      "get" : {
+        "operationId" : "get-api-ee-custom-viz-plugin",
+        "summary" : "GET /api/ee/custom-viz-plugin",
+        "description" : "List all registered custom visualization plugins.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "enabled" : {
+                        "type" : "boolean"
+                      },
+                      "id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "updated_at" : { },
+                      "status" : {
+                        "type" : "string",
+                        "enum" : [ "active", "error" ]
+                      },
+                      "error_message" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "identifier" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "display_name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "dev_only" : {
+                        "type" : "boolean"
+                      },
+                      "created_at" : { },
+                      "bundle_hash" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "manifest" : {
+                        "oneOf" : [ { }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "dev_bundle_url" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "metabase_version" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "icon" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
+                    "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/dev" : {
+      "post" : {
+        "operationId" : "post-api-ee-custom-viz-plugin-dev",
+        "summary" : "POST /api/ee/custom-viz-plugin/dev",
+        "description" : "Register a dev-only custom visualization plugin from a local dev server.\n   No bundle upload is required — files are served from the dev server URL.\n   Requires custom viz plugin dev mode to be enabled.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "enabled" : {
+                      "type" : "boolean"
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "updated_at" : { },
+                    "status" : {
+                      "type" : "string",
+                      "enum" : [ "active", "error" ]
+                    },
+                    "error_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "identifier" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "display_name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "dev_only" : {
+                      "type" : "boolean"
+                    },
+                    "created_at" : { },
+                    "bundle_hash" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "manifest" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "dev_bundle_url" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "metabase_version" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "icon" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "dev_bundle_url" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "identifier" : {
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "minLength" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "dev_bundle_url" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/list" : {
+      "get" : {
+        "operationId" : "get-api-ee-custom-viz-plugin-list",
+        "summary" : "GET /api/ee/custom-viz-plugin/list",
+        "description" : "List active and enabled custom visualization plugins. Available to any authenticated user.\n   Plugins with incompatible Metabase version requirements are excluded.\n   Dev-only plugins are excluded when dev mode is disabled.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "bundle_hash" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "bundle_url" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "dev_bundle_url" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "display_name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "icon" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "identifier" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "manifest" : {
+                        "oneOf" : [ { }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
+                    "required" : [ "id", "identifier", "display_name", "bundle_url" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/{id}" : {
+      "delete" : {
+        "operationId" : "delete-api-ee-custom-viz-plugin-id",
+        "summary" : "DELETE /api/ee/custom-viz-plugin/{id}",
+        "description" : "Remove a custom visualization plugin and evict its on-disk cache.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      },
+      "put" : {
+        "operationId" : "put-api-ee-custom-viz-plugin-id",
+        "summary" : "PUT /api/ee/custom-viz-plugin/{id}",
+        "description" : "Update a custom visualization plugin. Currently only `enabled` may be toggled.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "enabled" : {
+                      "type" : "boolean"
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "updated_at" : { },
+                    "status" : {
+                      "type" : "string",
+                      "enum" : [ "active", "error" ]
+                    },
+                    "error_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "identifier" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "display_name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "dev_only" : {
+                      "type" : "boolean"
+                    },
+                    "created_at" : { },
+                    "bundle_hash" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "manifest" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "dev_bundle_url" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "metabase_version" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "icon" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "enabled" : {
+                    "oneOf" : [ {
+                      "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/{id}/asset" : {
+      "get" : {
+        "operationId" : "get-api-ee-custom-viz-plugin-id-asset",
+        "summary" : "GET /api/ee/custom-viz-plugin/{id}/asset",
+        "description" : "Serve a static image asset from the plugin's bundle.\n   The asset path is passed as a `path` query parameter (e.g. `?path=icon.svg`)\n   and must match an entry in the manifest's `assets` whitelist.\n   Only image files are served.\n   In dev mode, proxies from the dev base URL if set.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/{id}/bundle" : {
+      "put" : {
+        "operationId" : "put-api-ee-custom-viz-plugin-id-bundle",
+        "summary" : "PUT /api/ee/custom-viz-plugin/{id}/bundle",
+        "description" : "Replace the bundle for an existing plugin. Accepts a multipart tar.gz upload in\n   the same format as the `POST /` endpoint. The manifest's `name` field must\n   match the plugin's existing `identifier`.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "enabled" : {
+                      "type" : "boolean"
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "updated_at" : { },
+                    "status" : {
+                      "type" : "string",
+                      "enum" : [ "active", "error" ]
+                    },
+                    "error_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "identifier" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "display_name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "dev_only" : {
+                      "type" : "boolean"
+                    },
+                    "created_at" : { },
+                    "bundle_hash" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "manifest" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "dev_bundle_url" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "metabase_version" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "icon" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "object",
+                    "properties" : {
+                      "filename" : {
+                        "type" : "string"
+                      },
+                      "tempfile" : { }
+                    },
+                    "required" : [ "filename", "tempfile" ]
+                  }
+                },
+                "required" : [ "file" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      },
+      "get" : {
+        "operationId" : "get-api-ee-custom-viz-plugin-id-bundle",
+        "summary" : "GET /api/ee/custom-viz-plugin/{id}/bundle",
+        "description" : "Serve the JS bundle for a plugin from the on-disk cache.\n   Returns application/javascript with ETag and Cache-Control headers.\n   In dev mode, proxies from `dev_bundle_url` if set.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/{id}/dev-sse" : {
+      "get" : {
+        "operationId" : "get-api-ee-custom-viz-plugin-id-dev-sse",
+        "summary" : "GET /api/ee/custom-viz-plugin/{id}/dev-sse",
+        "description" : "Proxy Server-Sent Events from the plugin's dev server.\n   Connects to `{dev_bundle_url}/__sse` and forwards events to the browser.\n   This avoids the need for a CSP exception for the dev server origin.\n   Requires custom viz plugin dev mode to be enabled.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/{id}/dev-url" : {
+      "put" : {
+        "operationId" : "put-api-ee-custom-viz-plugin-id-dev-url",
+        "summary" : "PUT /api/ee/custom-viz-plugin/{id}/dev-url",
+        "description" : "Set or clear the dev base URL for a plugin (e.g. `http://localhost:5174`).\n   The bundle is fetched from `{base}/index.js` and assets from `{base}/assets/{name}`.\n   Persisted to the database so it survives server restarts.\n   Requires custom viz plugin dev mode to be enabled.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "dev_bundle_url" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "dev_bundle_url" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "dev_bundle_url" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "dev_bundle_url" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/{id}/refresh" : {
+      "post" : {
+        "operationId" : "post-api-ee-custom-viz-plugin-id-refresh",
+        "summary" : "POST /api/ee/custom-viz-plugin/{id}/refresh",
+        "description" : "Re-fetch the manifest from the dev server for a dev-only plugin. For uploaded\n   plugins this is a no-op — to update an upload-backed plugin, PUT a new bundle\n   to `/:id/bundle`.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "enabled" : {
+                      "type" : "boolean"
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "updated_at" : { },
+                    "status" : {
+                      "type" : "string",
+                      "enum" : [ "active", "error" ]
+                    },
+                    "error_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "identifier" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "display_name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "dev_only" : {
+                      "type" : "boolean"
+                    },
+                    "created_at" : { },
+                    "bundle_hash" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "manifest" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "dev_bundle_url" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "metabase_version" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "icon" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
     "/api/ee/data-complexity-score/complexity" : {
       "get" : {
         "operationId" : "get-api-ee-data-complexity-score-complexity",
@@ -25640,7 +26600,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.table-selectors"
+                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.publish-table-selectors"
               }
             }
           }
@@ -27090,6 +28050,20 @@
                       "items" : {
                         "type" : "object",
                         "properties" : {
+                          "sanitized_user_agent" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "embedding_path" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "user" : {
                             "oneOf" : [ {
                               "type" : "object",
@@ -27118,6 +28092,13 @@
                                 }
                               },
                               "required" : [ "id", "email", "first_name", "last_name" ]
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "embedding_hostname" : {
+                            "oneOf" : [ {
+                              "type" : "string"
                             }, {
                               "type" : "null"
                             } ]
@@ -27189,9 +28170,16 @@
                             "description" : "value must be an integer greater or equal to than zero.",
                             "type" : "integer",
                             "minimum" : 0
+                          },
+                          "user_agent" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
                           }
                         },
-                        "required" : [ "conversation_id", "created_at", "summary", "message_count", "user_message_count", "assistant_message_count", "total_tokens", "last_message_at", "profile_id", "search_count", "query_count", "ip_address", "user" ]
+                        "required" : [ "conversation_id", "created_at", "summary", "message_count", "user_message_count", "assistant_message_count", "total_tokens", "last_message_at", "profile_id", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "user" ]
                       }
                     },
                     "limit" : {
@@ -27321,6 +28309,20 @@
                         "required" : [ "tool", "call_id", "message_id", "query_id", "query_type", "sql", "mbql", "display", "database_id", "tables" ]
                       }
                     },
+                    "sanitized_user_agent" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "embedding_path" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "slack_permalink" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -27356,6 +28358,13 @@
                           }
                         },
                         "required" : [ "id", "email", "first_name", "last_name" ]
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "embedding_hostname" : {
+                      "oneOf" : [ {
+                        "type" : "string"
                       }, {
                         "type" : "null"
                       } ]
@@ -27498,6 +28507,13 @@
                       "type" : "integer",
                       "minimum" : 0
                     },
+                    "user_agent" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "chat_messages" : {
                       "type" : "array",
                       "items" : {
@@ -27506,7 +28522,7 @@
                       }
                     }
                   },
-                  "required" : [ "conversation_id", "created_at", "summary", "user", "message_count", "total_tokens", "profile_id", "slack_permalink", "chat_messages", "queries", "search_count", "query_count", "ip_address", "feedback" ]
+                  "required" : [ "conversation_id", "created_at", "summary", "user", "message_count", "total_tokens", "profile_id", "slack_permalink", "chat_messages", "queries", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "feedback" ]
                 }
               }
             }
@@ -29912,6 +30928,69 @@
         "tags" : [ "/api/ee/serialization" ]
       }
     },
+    "/api/ee/serialization/metadata/export" : {
+      "post" : {
+        "operationId" : "post-api-ee-serialization-metadata-export",
+        "summary" : "POST /api/ee/serialization/metadata/export",
+        "description" : "Get warehouse metadata (databases, tables, and fields) for all databases visible to the\n  current user. References between rows are emitted as raw numeric ids (`db_id`,\n  `table_id`, `parent_id`, `fk_target_field_id`).\n\n  Sections must be opted into with the `with-databases`, `with-tables`, and `with-fields`\n  query parameters — they all default to `false`. The response is streamed for efficiency\n  with large schemas.\n\n  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or\n  `Query builder and native`) permissions on each database and table.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "with-databases",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "with-tables",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "with-fields",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.export-metadata-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/serialization" ]
+      }
+    },
     "/api/ee/stale/{id}" : {
       "get" : {
         "operationId" : "get-api-ee-stale-id",
@@ -32053,6 +33132,64 @@
         "tags" : [ "/api/embed" ]
       }
     },
+    "/api/field/table-ids" : {
+      "post" : {
+        "operationId" : "post-api-field-table-ids",
+        "summary" : "POST /api/field/table-ids",
+        "description" : "Get unique Table IDs for a list of Field IDs.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "table_ids" : {
+                      "type" : "array",
+                      "items" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }
+                    }
+                  },
+                  "required" : [ "table_ids" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "field_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  }
+                },
+                "required" : [ "field_ids" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/field" ]
+      }
+    },
     "/api/field/{id}" : {
       "get" : {
         "operationId" : "get-api-field-id",
@@ -32938,11 +34075,11 @@
         "tags" : [ "/api/ldap" ]
       }
     },
-    "/api/llm/extract-tables" : {
+    "/api/llm/extract-sources" : {
       "post" : {
-        "operationId" : "post-api-llm-extract-tables",
-        "summary" : "POST /api/llm/extract-tables",
-        "description" : "Parse SQL and return referenced tables with their columns.\n\n   Uses Macaw to parse the SQL, resolves table names to IDs,\n   and returns permission-filtered tables with column metadata.\n\n   This is a lightweight endpoint that does not trigger fingerprinting\n   or field value fetching.",
+        "operationId" : "post-api-llm-extract-sources",
+        "summary" : "POST /api/llm/extract-sources",
+        "description" : "Parse native query sources and return referenced tables and cards/models.\n\n    Uses Macaw to parse the SQL, resolves table names to IDs,\n    and returns permission-filtered tables with column metadata. Card and model\n    references are extracted from native query template tags.\n\n    This is a lightweight endpoint that does not trigger fingerprinting\n    or field value fetching.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -32952,6 +34089,13 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
+                    "card_ids" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "integer",
+                        "minimum" : 1
+                      }
+                    },
                     "tables" : {
                       "type" : "array",
                       "items" : {
@@ -33039,7 +34183,7 @@
                       }
                     }
                   },
-                  "required" : [ "tables" ]
+                  "required" : [ "tables", "card_ids" ]
                 }
               }
             }
@@ -33063,6 +34207,22 @@
                   },
                   "sql" : {
                     "type" : "string"
+                  },
+                  "template_tags" : {
+                    "type" : "object",
+                    "additionalProperties" : {
+                      "type" : "object",
+                      "properties" : {
+                        "card-id" : {
+                          "type" : "integer",
+                          "minimum" : 1
+                        },
+                        "type" : {
+                          "type" : "string"
+                        }
+                      },
+                      "required" : [ "type" ]
+                    }
                   }
                 },
                 "required" : [ "database_id", "sql" ]
@@ -34165,11 +35325,27 @@
       "post" : {
         "operationId" : "post-api-metabot-feedback",
         "summary" : "POST /api/metabot/feedback",
-        "description" : "Persist Metabot feedback locally and proxy it to Harbormaster.",
+        "description" : "Persist Metabot feedback.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "body" : {
+                      "type" : "null"
+                    },
+                    "status" : {
+                      "const" : 204
+                    }
+                  },
+                  "required" : [ "status", "body" ]
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -34857,6 +36033,75 @@
           }
         },
         "tags" : [ "/api/metabot/slack" ]
+      }
+    },
+    "/api/metabot/source-feedback" : {
+      "post" : {
+        "operationId" : "post-api-metabot-source-feedback",
+        "summary" : "POST /api/metabot/source-feedback",
+        "description" : "Persist Metabot source feedback.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "body" : {
+                      "type" : "null"
+                    },
+                    "status" : {
+                      "const" : 204
+                    }
+                  },
+                  "required" : [ "status", "body" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "message_id" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "metabot_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "positive" : {
+                    "type" : "boolean"
+                  },
+                  "source_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "source_type" : {
+                    "type" : "string",
+                    "enum" : [ "table", "card", "model" ]
+                  }
+                },
+                "required" : [ "metabot_id", "message_id", "source_id", "source_type", "positive" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/metabot" ]
       }
     },
     "/api/metric" : {
@@ -41549,6 +42794,15 @@
                       "type" : "null"
                     } ]
                   },
+                  "collection_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "data_source" : {
                     "oneOf" : [ {
                       "type" : "string"
@@ -43967,6 +45221,9 @@
                       }
                     },
                     "created_at" : { },
+                    "active" : {
+                      "type" : "boolean"
+                    },
                     "description" : {
                       "oneOf" : [ {
                         "anyOf" : [ {
@@ -43979,7 +45236,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "id", "name", "description", "schedule", "ui_display_type", "entity_id", "created_at", "updated_at" ],
+                  "required" : [ "id", "name", "description", "schedule", "ui_display_type", "active", "entity_id", "created_at", "updated_at" ],
                   "additionalProperties" : false
                 }
               }
@@ -44206,6 +45463,9 @@
                         }
                       },
                       "created_at" : { },
+                      "active" : {
+                        "type" : "boolean"
+                      },
                       "description" : {
                         "oneOf" : [ {
                           "anyOf" : [ {
@@ -44218,7 +45478,7 @@
                         } ]
                       }
                     },
-                    "required" : [ "id", "name", "description", "schedule", "ui_display_type", "entity_id", "created_at", "updated_at" ],
+                    "required" : [ "id", "name", "description", "schedule", "ui_display_type", "active", "entity_id", "created_at", "updated_at" ],
                     "additionalProperties" : false
                   }
                 }
@@ -44230,6 +45490,58 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/transform-job" ]
+      }
+    },
+    "/api/transform-job/active" : {
+      "put" : {
+        "operationId" : "put-api-transform-job-active",
+        "summary" : "PUT /api/transform-job/active",
+        "description" : "Activate or deactivate every transform job. Inactive jobs do not run on schedule. Manual runs\n  via `POST /api/transform-job/:job-id/run` ignore this flag.\n\n  Reports per-job outcome counts: `:updated` (successfully flipped) and `:failed` (raised an\n  error during the flip — the row update or Quartz write failed and was logged).",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "failed" : {
+                      "type" : "integer"
+                    },
+                    "updated" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "updated", "failed" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "active" : {
+                    "type" : "boolean"
+                  }
+                },
+                "required" : [ "active" ]
+              }
+            }
           }
         },
         "tags" : [ "/api/transform-job" ]
@@ -44359,6 +45671,9 @@
                       }
                     },
                     "created_at" : { },
+                    "active" : {
+                      "type" : "boolean"
+                    },
                     "description" : {
                       "oneOf" : [ {
                         "anyOf" : [ {
@@ -44371,7 +45686,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "id", "name", "description", "schedule", "ui_display_type", "entity_id", "created_at", "updated_at" ],
+                  "required" : [ "id", "name", "description", "schedule", "ui_display_type", "active", "entity_id", "created_at", "updated_at" ],
                   "additionalProperties" : false
                 }
               }
@@ -44390,6 +45705,9 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
+                  "active" : {
+                    "type" : "boolean"
+                  },
                   "description" : {
                     "oneOf" : [ {
                       "type" : "string",
@@ -44575,6 +45893,9 @@
                       }
                     },
                     "created_at" : { },
+                    "active" : {
+                      "type" : "boolean"
+                    },
                     "description" : {
                       "oneOf" : [ {
                         "anyOf" : [ {
@@ -44587,7 +45908,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "id", "name", "description", "schedule", "ui_display_type", "entity_id", "created_at", "updated_at" ],
+                  "required" : [ "id", "name", "description", "schedule", "ui_display_type", "active", "entity_id", "created_at", "updated_at" ],
                   "additionalProperties" : false
                 }
               }

@@ -11,13 +11,15 @@ export const CollectionAuthorityLevelDisplay = ({
 }: {
   collection: Collection;
 }) => {
-  const iconProps = useMemo(() => {
-    const icon = PLUGIN_COLLECTIONS.getIcon({
-      ...collection,
-      model: "collection",
-    } as ObjectWithModel);
-    return icon;
-  }, [collection]);
+  const getIcon = PLUGIN_COLLECTIONS.useGetIcon();
+  const iconProps = useMemo(
+    () =>
+      getIcon({
+        ...collection,
+        model: "collection",
+      } as unknown as ObjectWithModel),
+    [collection, getIcon],
+  );
 
   if (collection.authority_level !== "official") {
     return null;

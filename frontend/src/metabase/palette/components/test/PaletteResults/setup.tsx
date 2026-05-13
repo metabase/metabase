@@ -34,7 +34,12 @@ import { PaletteResults } from "../../PaletteResults";
 const TestComponent = withRouter(
   ({ q, ...props }: WithRouterProps & { q?: string; isLoggedIn: boolean }) => {
     useCommandPaletteBasicActions(props);
-    const { searchRequestId, searchResults, searchTerm } = useCommandPalette({
+    const {
+      searchRequestId,
+      searchResults,
+      liveSearchTerm,
+      debouncedSearchTerm,
+    } = useCommandPalette({
       disabled: false,
       locationQuery: props.location.query,
     });
@@ -53,7 +58,8 @@ const TestComponent = withRouter(
         locationQuery={props.location.query}
         searchRequestId={searchRequestId}
         searchResults={searchResults}
-        searchTerm={searchTerm}
+        liveSearchTerm={liveSearchTerm}
+        debouncedSearchTerm={debouncedSearchTerm}
       />
     );
   },

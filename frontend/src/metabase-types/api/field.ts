@@ -1,6 +1,6 @@
 import type { RowValue } from "./dataset";
 import type { DimensionReference, FieldReference } from "./query";
-import type { Table, TableId } from "./table";
+import type { ConcreteTableId, Table, TableId } from "./table";
 
 export type FieldId = number;
 
@@ -122,6 +122,14 @@ export interface FieldFormattingSettings {
 export interface GetFieldRequest {
   id: FieldId;
   include_editable_data_model?: boolean;
+}
+
+export interface GetFieldTableIdsRequest {
+  field_ids: FieldId[];
+}
+
+export interface GetFieldTableIdsResponse {
+  table_ids: ConcreteTableId[];
 }
 
 export interface UpdateFieldRequest {

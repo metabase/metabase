@@ -68,24 +68,10 @@
  *   )(BookContainer);
  */
 
-export { Actions as actions } from "./actions/actions";
 export { Collections as collections } from "./collections";
-export { SnippetCollections as snippetCollections } from "./snippet-collections";
 export { Dashboards as dashboards } from "./dashboards";
 export { Questions as questions } from "./questions";
 
-export { Bookmarks as bookmarks } from "./bookmarks";
 export { Databases as databases } from "./databases";
-export { Schemas as schemas } from "./schemas";
 export { Tables as tables } from "./tables";
 export { Fields as fields } from "./fields";
-export { Segments as segments } from "./segments";
-export { Measures as measures } from "./measures";
-export { Metrics as metrics } from "./metrics";
-
-export { Groups as groups } from "./groups";
-
-export { Search as search } from "./search";
-export { Snippets as snippets } from "./snippets";
-
-export { entityCompatibleQuery, combineEntities } from "./utils";

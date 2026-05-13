@@ -3,8 +3,8 @@
    [metabase-enterprise.sandbox.api.table :as table]
    [metabase-enterprise.sandbox.query-processor.middleware.sandboxing :as sandboxing]
    [metabase.api.common :as api]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.match :as match]
    [metabase.warehouse-schema.models.field :as field]
    [toucan2.core :as t2]))
 
@@ -70,7 +70,7 @@
          (into {} (for [[k v] attribute_remappings
                         ;; get attribute that map to fields of the same table
                         :when (contains? field-ids
-                                         (lib.util.match/match-lite v
+                                         (match/match-one v
                                            ;; new style with {:stage-number }
                                            [:dimension [:field field-id _] _] field-id
                                            ;; old style without stage number
