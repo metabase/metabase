@@ -40,7 +40,7 @@ export function PythonTransformsUpsell({
     t`Use Python to handle complex logic that's awkward or brittle in SQL`,
     t`Use the transform inspector to inspect the output of transforms to verify your logic`,
     t`Unblock advanced use cases without pushing work into another tool`,
-    t`Put pandas to work for data analysis and manipulation`,
+    t`Add a separate database connection for write operations`,
   ];
 
   const isHosted = useSelector(getIsHosted);
