@@ -467,12 +467,11 @@ jobs:
               repo: context.repo.repo,
             });
 
-            // github release notes
+            // github releases page
             await publishRelease({
               github,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issues,
               version,
             }).then(() => {
               console.log('Successfully published release notes', '${{ inputs.version }}');

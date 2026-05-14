@@ -253,9 +253,8 @@ export async function publishRelease({
   version,
   owner,
   repo,
-  issues,
   github,
-}: ReleaseProps & { oss_checksum: string, ee_checksum: string, issues: Issue[] }) {
+}: ReleaseProps) {
   if (!isValidVersionString(version)) {
     throw new Error(`Invalid version string: ${version}`);
   }
@@ -266,7 +265,7 @@ export async function publishRelease({
     name: getReleaseTitle(version),
     body: generateReleaseNotes({
       version,
-      issues,
+      issues: [], // we don't actually post any issue data with this template
       template: githubReleaseTemplate,
     }),
     draft: true,
@@ -299,18 +298,4 @@ export function getWebsiteChangelog({
   });
 
   return markdownIssueLinks(notes);
-}
-
-export async function getChangelog({
-  version,
-}: ReleaseProps) {
-  if (!isValidVersionString(version)) {
-    throw new Error(`Invalid version string: ${version}`);
-  }
-
-  return generateReleaseNotes({
-    template: githubReleaseTemplate,
-    version,
-    issues: [], // we don't post any issue in this template
-  });
 }
