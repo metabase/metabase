@@ -10,13 +10,25 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [not-empty]]))
 
 (set! *warn-on-reflection* true)
 
 (declare #^:private substitute*)
 
-(defn- substitute-field-param [[sql args missing] in-optional? k {:keys [_field value], :as v}]
+(mr/def ::acc
+  [:maybe
+   [:tuple
+    #_sql     [:maybe string?]
+    #_args    [:maybe [:sequential any?]]
+    #_missing [:maybe any?]]])
+
+(mu/defn- substitute-field-param :- ::acc
+  [[sql args missing] :- ::acc
+   in-optional?
+   k
+   {:keys [_field value], :as v}]
   (if (and (= value lib/parsed-param-no-value-placeholder) in-optional?)
     ;; no-value field filters inside optional clauses are ignored, and eventually emitted entirely
     [sql args (conj missing k)]
@@ -25,19 +37,26 @@
           (sql.params.substitution/->replacement-snippet-info driver/*driver* v)]
       [(str sql replacement-snippet) (concat args prepared-statement-args) missing])))
 
-(defn- substitute-simple-query [[sql args missing] v]
+(mu/defn- substitute-simple-query :- ::acc
+  [[sql args missing] :- ::acc
+   v]
   (let [{:keys [replacement-snippet prepared-statement-args]}
         (sql.params.substitution/->replacement-snippet-info driver/*driver* v)]
     [(str sql replacement-snippet) (concat args prepared-statement-args) missing]))
 
-(defn- substitute-native-query-snippet [param->value [sql args missing] in-optional? v]
+(mu/defn- substitute-native-query-snippet :- ::acc
+  [param->value [sql args missing] in-optional? v]
   (let [{:keys [replacement-snippet]} (sql.params.substitution/->replacement-snippet-info driver/*driver* v)
         [processed-snippet snippet-args snippet-missing] (substitute* param->value (lib/parse-parameters replacement-snippet) in-optional?)]
     [(str sql processed-snippet)
      (not-empty (concat args snippet-args))
      (not-empty (concat missing snippet-missing))]))
 
-(defn- substitute-param [param->value [sql args missing] in-optional? {:keys [k]}]
+(mu/defn- substitute-param :- ::acc
+  [param->value
+   [sql args missing] :- ::acc
+   in-optional?
+   {:keys [k]} :- :metabase.lib.parameters.parse.types/param]
   (if-not (contains? param->value k)
     [sql args (conj missing k)]
     (let [v (get param->value k)]
@@ -61,16 +80,16 @@
               (sql.params.substitution/->replacement-snippet-info driver/*driver* v)]
           [(str sql replacement-snippet) (concat args prepared-statement-args) missing])))))
 
-(defn- substitute-optional [param->value [sql args missing] {subclauses :args}]
+(mu/defn- substitute-optional :- ::acc
+  [param->value
+   [sql args missing] :- ::acc
+   {subclauses :args}]
   (let [[opt-sql opt-args opt-missing] (substitute* param->value subclauses true)]
     (if (seq opt-missing)
       [sql args missing]
       [(str sql opt-sql) (concat args opt-args) missing])))
 
-(mu/defn- substitute* :- [:tuple
-                          #_sql     string?
-                          #_args    [:sequential any?]
-                          #_missing any?]
+(mu/defn- substitute* :- ::acc
   "Returns a sequence of `[replaced-sql-string jdbc-args missing-parameters]`."
   [param->value :- [:maybe [:map-of string? any?]]
    parsed

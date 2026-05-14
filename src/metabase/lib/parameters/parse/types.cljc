@@ -202,15 +202,21 @@
   [x]
   (= (:lib/type x) ::referenced-query-snippet))
 
+(mr/def ::date.value
+  [:or
+   ::lib.schema.literal/string.date
+   ::lib.schema.literal/string.datetime])
+
+;; TODO (Cam 2026-05-14) -- rename to `::datetime`
 (mr/def ::date
   "As in a literal date, defined by date-string `s`."
   [:map
    [:lib/type [:= ::date]]
-   [:s        ::lib.schema.literal/string.date]])
+   [:s        ::date.value]])
 
 (mu/defn date :- ::date
   "Create a parsed `date` parameter from map `m`."
-  [s :- ::lib.schema.literal/string.date]
+  [s :- ::date.value]
   {:lib/type ::date, :s s})
 
 (defn date?
