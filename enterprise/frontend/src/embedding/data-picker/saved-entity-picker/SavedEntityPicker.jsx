@@ -68,7 +68,7 @@ export function SavedEntityPicker(props) {
     namespaces: ["", "shared-tenant-collection", "tenant-specific"],
   });
   const { data: rootCollection } = useGetCollectionQuery({ id: "root" });
-  if (!collections || !rootCollection) {
+  if (!collections) {
     return null;
   }
   return (
@@ -178,5 +178,5 @@ SavedEntityPicker.propTypes = propTypes;
 InnerSavedEntityPicker.propTypes = {
   ...propTypes,
   collections: PropTypes.array.isRequired,
-  rootCollection: PropTypes.object.isRequired,
+  rootCollection: PropTypes.object,
 };
