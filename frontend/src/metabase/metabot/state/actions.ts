@@ -403,12 +403,6 @@ export const sendAgentRequest = createAsyncThunk<
               >,
             ) => dispatch(addAgentMessage({ ...message, agentId }));
 
-            if (request.context.disabled_data_parts?.includes(part.type)) {
-              throw new Error(
-                `Unexpected disabled data part ${part.type} received in response`,
-              );
-            }
-
             match(part)
               // only update the convo state if the request is successful
               .with({ type: "data-state" }, (part) => (state = part.data))

@@ -24,7 +24,6 @@ import {
   getMentionsCache,
 } from "metabase/documents/selectors";
 import { getMentionsCacheKey } from "metabase/documents/utils/mentionsUtils";
-import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { AIMarkdown } from "metabase/metabot/components/AIMarkdown/AIMarkdown";
 import MetabotThinkingStyles from "metabase/metabot/components/MetabotChat/MetabotThinking.module.css";
 import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
@@ -299,12 +298,6 @@ export const MetabotComponent = memo(
         (message ? t`Something went wrong` : undefined)
       );
     }, [messages]);
-
-    useRegisterMetabotContextProvider(async () => {
-      return {
-        disabled_data_parts: ["navigate_to"],
-      };
-    });
 
     const handleRunMetabot = async () => {
       const serializePrompt = extension?.options?.getState

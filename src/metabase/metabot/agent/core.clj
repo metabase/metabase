@@ -333,6 +333,13 @@
   [context]
   (update context :user_is_viewing #(mapv ensure-context-item-id %)))
 
+(defn- apply-profile-context-settings
+  "Apply profile-owned context settings before memory is initialized."
+  [context profile]
+  (if-let [disabled-data-parts (seq (:disabled-data-parts profile))]
+    (update context :disabled_data_parts #(vec (distinct (concat % disabled-data-parts))))
+    context))
+
 (defn- extract-query-from-context-item
   "Extract [query-id query] from viewing context item."
   [{:keys [id type query source] :as _item}]
@@ -422,11 +429,13 @@
 (defn- init-agent
   "Initialize agent state."
   [{:keys [messages state metabot-id profile-id context tracking-opts]}]
-  (let [context      (assign-context-ids context)
-        ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
+  (let [;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
         ;; prompt and the tools so they can't disagree about whether the curated library tool is offered.
         profile      (or (profiles/get-profile profile-id)
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
+        context      (-> context
+                         assign-context-ids
+                         (apply-profile-context-settings profile))
         capabilities (get context :capabilities #{})
         base-tools   (profiles/profile->tools profile capabilities)
         seeded       (-> (or state {})

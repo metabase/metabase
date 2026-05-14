@@ -189,7 +189,7 @@
                             (map? (:data %)))
                       result))))))))
 
-(deftest run-agent-loop-respects-disabled-data-parts-during-post-processing-test
+(deftest run-agent-loop-respects-profile-disabled-data-parts-during-post-processing-test
   (mt/as-admin
     (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
       (with-redefs [self/call-llm (fn [& _]
@@ -202,7 +202,7 @@
                                {:messages   [{:role :user :content "Open that question"}]
                                 :state      {}
                                 :profile-id :document-generate-content
-                                :context    {:disabled_data_parts ["navigate_to"]}}))]
+                                :context    {}}))]
           (is (some #(= :tool-output (:type %)) result))
           (is (not-any? #(= "navigate_to" (:data-type %)) result)))))))
 

@@ -1,5 +1,3 @@
-import type { KnownDataPart } from "metabase/api/ai-streaming/schemas";
-
 import type {
   CardDisplayType,
   CardId,
@@ -51,7 +49,6 @@ export type MetabotChatContext = {
   default_database_id?: number;
   capabilities: string[];
   code_editor?: MetabotCodeEditorContext;
-  disabled_data_parts?: KnownDataPart["type"][];
 };
 
 export type MetabotTool = {
