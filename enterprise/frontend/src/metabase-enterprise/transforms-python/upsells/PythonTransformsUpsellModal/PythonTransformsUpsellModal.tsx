@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -17,6 +17,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { useTransformsBilling } from "metabase-enterprise/transforms/upsells/hooks";
 
 import { PurchaseAdvancedTransforms } from "./PurchaseAdvancedTransforms";
@@ -29,9 +30,11 @@ type PythonTransformsUpsellModalProps = {
 export function PythonTransformsUpsell({
   shouldShowLeftColumn,
   onClose,
+  onSuccess,
 }: {
   shouldShowLeftColumn: boolean;
   onClose?: () => void;
+  onSuccess: () => void;
 }) {
   const bulletPoints = [
     t`Use Python to handle complex logic that's awkward or brittle in SQL`,
@@ -72,7 +75,7 @@ export function PythonTransformsUpsell({
               </Title>
               <Text c="text-secondary" lh="lg">
                 {t`Run Python-based transforms alongside SQL to handle more complex logic and data workflows.`}{" "}
-                {t`Use the transform inspector to verify output output to verify it.`}
+                {t`Use the transform inspector to verify output.`}
               </Text>
               {!advancedTransformsAddOn ? (
                 <Text>
@@ -83,6 +86,7 @@ export function PythonTransformsUpsell({
                   handleModalClose={onClose}
                   addOn={advancedTransformsAddOn}
                   freeUnitsIncluded={!hadAdvancedTransforms}
+                  onSuccess={onSuccess}
                 />
               )}
             </Stack>
@@ -137,6 +141,9 @@ export function PythonTransformsUpsellModal({
   const isHosted = useSelector(getIsHosted);
   const { isStoreUser } = useSelector(getStoreUsers);
   const shouldShowLeftColumn = isStoreUser && isHosted;
+  const onSuccess = useCallback(() => {
+    window.location.href = Urls.transformList(); // On success, do a full-page redirect to transforms list
+  }, []);
 
   return (
     <Modal.Root
@@ -150,6 +157,7 @@ export function PythonTransformsUpsellModal({
           <PythonTransformsUpsell
             shouldShowLeftColumn={shouldShowLeftColumn}
             onClose={onClose}
+            onSuccess={onSuccess}
           />
         </Modal.Body>
       </Modal.Content>

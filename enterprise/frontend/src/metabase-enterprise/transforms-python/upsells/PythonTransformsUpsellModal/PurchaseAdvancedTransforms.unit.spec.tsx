@@ -38,6 +38,7 @@ const setup = () => {
       handleModalClose={handleModalClose}
       addOn={mockAdvancedTransformsCloudAddOn}
       freeUnitsIncluded
+      onSuccess={jest.fn()}
     />,
     {
       storeInitialState: state,

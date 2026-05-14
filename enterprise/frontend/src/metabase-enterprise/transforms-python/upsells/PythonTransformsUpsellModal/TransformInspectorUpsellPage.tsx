@@ -8,6 +8,7 @@ import { TransformHeader } from "metabase/transforms/components/TransformHeader"
 import { useTransformWithPolling } from "metabase/transforms/hooks/use-transform-with-polling";
 import { Card, Center, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { reload } from "metabase/utils/dom";
 
 import { PythonTransformsUpsell } from "./PythonTransformsUpsellModal";
 
@@ -40,6 +41,7 @@ export function TransformInspectorUpsellPage({
           <Card p={0} withBorder maw="48rem" w="100%">
             <PythonTransformsUpsell
               shouldShowLeftColumn={shouldShowLeftColumn}
+              onSuccess={reload}
             />
           </Card>
         </Stack>
