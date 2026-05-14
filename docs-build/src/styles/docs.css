@@ -686,6 +686,19 @@ article.docs-content td code { background: var(--neutral-95); }
  * main-nav.js via the hovered button's offsetLeft — stranded off-button
  * in our layout). */
 
+/* chrome.css sets z-index:1001 on .navigation-header but never gives it a
+ * position, so the z-index is inert — leaving the nav (and its dropdowns)
+ * painting in document order against the docs shell, which then bleeds
+ * the sidebar and TOC through any open mega menu. Sticky-position the
+ * outer <header> so its 1001 takes effect (and so the nav stays pinned
+ * as you scroll, which the `sticky` class on the element already
+ * implies). */
+header.bootstrap.sticky {
+  position: sticky;
+  top: 0;
+  z-index: 1001;
+}
+
 .bootstrap .navigation-header > .container {
   position: relative;
 }
