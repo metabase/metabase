@@ -10,12 +10,16 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
+;; TODO (Cam 2025-05-14) Consider whether to remove this and the predicate functions below and just rely on the types
+;; directly
 (def no-value
   "Convenience for representing an *optional* parameter present in a query but whose value is unspecified in the param
   values."
   ::no-value)
 
 (mr/def ::no-value
+  "Convenience for representing an *optional* parameter present in a query but whose value is unspecified in the param
+  values."
   [:= ::no-value])
 
 (mr/def ::field-filter.value.map

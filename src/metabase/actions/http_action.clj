@@ -2,13 +2,13 @@
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu])
   (:import
    (com.fasterxml.jackson.databind ObjectMapper)
    (net.thisptr.jackson.jq BuiltinFunctionLoader JsonQuery Output Scope Versions)))
@@ -27,18 +27,25 @@
 ;; May go away if parameters substitution is taken out of query-processing/db dependency
 (declare substitute*)
 
-(defn- substitute-param [param->value [sql missing] _in-optional? {:keys [k]}]
+(mu/defn- substitute-param
+  [param->value
+   [sql missing]
+   _in-optional?
+   {:keys [k]} :- :metabase.lib.parameters.parse.types/param]
   (if-not (contains? param->value k)
     [sql (conj missing k)]
     (let [v (get param->value k)]
       (cond
-        (= params/no-value v)
+        (= v :metabase.lib.parameters.parse.types/no-value)
         [sql (conj missing k)]
 
         :else
         [(str sql v) missing]))))
 
-(defn- substitute-optional [param->value [sql missing] {subclauses :args}]
+(mu/defn- substitute-optional
+  [param->value
+   [sql missing]
+   {subclauses :args} :- :metabase.lib.parameters.parse.types/optional]
   (let [[opt-sql opt-missing] (substitute* param->value subclauses true)]
     (if (seq opt-missing)
       [sql missing]
@@ -53,15 +60,15 @@
        (string? x)
        [(str sql x) missing]
 
-       (params/Param? x)
+       (= (:lib/type x) :metabase.lib.parameters.parse.types/param)
        (substitute-param param->value [sql missing] in-optional? x)
 
-       (params/Optional? x)
+       (= (:lib/type x) :metabase.lib.parameters.parse.types/optional)
        (substitute-optional param->value [sql missing] x)))
    nil
    parsed))
 
-(defn substitute
+(defn- substitute
   "Substitute `Optional` and `Param` objects in a `parsed-template`, a sequence of parsed string fragments and tokens, with
   the values from the map `param->value` (using logic from `substitution` to decide what replacement SQL should be
   generated).
@@ -90,7 +97,7 @@
 (defn- parse-and-substitute [s params->value]
   (when s
     (-> s
-        params.parse/parse
+        lib/parse-parameters
         (substitute params->value))))
 ;;
 
