@@ -10,6 +10,7 @@
    [mage.bot.dev-env-core-test]
    [mage.bot.env-test]
    [mage.bot.prompt-test]
+   [mage.docs-test]
    [mage.doctor-test]
    [mage.fix-unused-requires-test]
    [mage.merge-yaml-migrations-test :as merge-yaml-migrations-test]

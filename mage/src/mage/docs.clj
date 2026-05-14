@@ -80,25 +80,39 @@
 ;; ---------------------------------------------------------------------------
 
 (def ^:private generators
-  "Ordered list of generator tags and the command that produces them. Keep the
-  order stable — the original generate-docs.sh ran them in this order, and
-  some users rely on the deterministic output order."
-  [[:env-vars  "Generating environment variables documentation"
-    ["clojure" "-M:ee:doc" "environment-variables-documentation"]]
-   [:config    "Generating config template documentation"
-    ["clojure" "-M:ee:doc" "config-template"]]
-   [:api       "Generating REST API documentation"
-    ["clojure" "-M:ee:doc" "api-documentation"]]
-   [:commands  "Generating CLI command documentation"
-    ["clojure" "-M:ee:doc" "command-documentation"]]
-   [:analytics "Generating usage analytics documentation"
-    ["./bin/generate-usage-analytics-docs.bb"]]])
+  "Ordered list of auto-doc generators. `:writes` paths are informational —
+  the actual sinks are in each generator's source — but they're surfaced in
+  log output so users can see where the diff is going to land. Keep the order
+  stable: the original generate-docs.sh ran them in this order, and some
+  users rely on the deterministic output order."
+  [{:tag :env-vars
+    :msg "Generating environment variables documentation"
+    :cmd ["clojure" "-M:ee:doc" "environment-variables-documentation"]
+    :writes ["docs/configuring-metabase/environment-variables.md"]}
+   {:tag :config
+    :msg "Generating config template documentation"
+    :cmd ["clojure" "-M:ee:doc" "config-template"]
+    :writes ["docs/configuring-metabase/config-template.md"]}
+   {:tag :api
+    :msg "Generating REST API documentation"
+    :cmd ["clojure" "-M:ee:doc" "api-documentation"]
+    :writes ["docs/api.json"]}
+   {:tag :commands
+    :msg "Generating CLI command documentation"
+    :cmd ["clojure" "-M:ee:doc" "command-documentation"]
+    :writes ["docs/installation-and-operation/commands.md"]}
+   {:tag :analytics
+    :msg "Generating usage analytics documentation"
+    :cmd ["./bin/generate-usage-analytics-docs.bb"]
+    :writes ["docs/usage-and-performance-tools/usage-analytics-reference.md"]}])
 
 (defn- run-generate! [selected]
   (let [root u/project-root-directory]
-    (doseq [[tag msg cmd] generators
+    (doseq [{:keys [tag msg cmd writes]} generators
             :when (contains? selected tag)]
       (step msg)
+      (doseq [path writes]
+        (println (str "    → " path)))
       (apply shell/sh {:dir root} cmd))
     (println)
     (println (c/green "✓ Docs generated."))
@@ -106,7 +120,7 @@
 
 (defn generate [parsed]
   (let [opts        (:options parsed)
-        all-tags    (set (map first generators))
+        all-tags    (set (map :tag generators))
         chosen      (->> all-tags (filter #(get opts %)) set)
         run-tags    (if (seq chosen) chosen all-tags)]
     (run-generate! run-tags)))
@@ -115,31 +129,123 @@
 ;; docs-ensure-generated
 ;; ---------------------------------------------------------------------------
 
-(defn- ensure-file! [path missing-msg generate-fn]
-  (when-not (fs/exists? path)
-    (println (str "→ " missing-msg))
-    (generate-fn)))
+(defn newest-mtime-ms
+  "Newest mtime in millis across all files matching any glob in `sources`,
+  relative to `root`. Returns nil if no files match — callers should treat
+  nil as 'no source dependency known' and fall back to existence checks."
+  [root sources]
+  (let [mtimes (->> sources
+                    (mapcat #(fs/glob root %))
+                    (map fs/last-modified-time)
+                    (map #(.toMillis ^java.nio.file.attribute.FileTime %)))]
+    (when (seq mtimes)
+      (apply max mtimes))))
+
+(defn newest-source
+  "Like `newest-mtime-ms` but returns `{:path :mtime}` for the actual newest
+  file. Used by `--verbose` mode to attribute staleness to a specific source."
+  [root sources]
+  (->> sources
+       (mapcat #(fs/glob root %))
+       (map (fn [p]
+              {:path  (str p)
+               :mtime (.toMillis ^java.nio.file.attribute.FileTime
+                       (fs/last-modified-time p))}))
+       (sort-by (comp - :mtime))
+       first))
+
+(defn artifact-fresh?
+  "True if the artifact at `<root>/<rel-path>` exists, is non-empty, and is
+  at least as new as the newest file matching any glob in `sources`
+  (relative to `root`). When `sources` is empty or matches no files, falls
+  back to existence + non-empty."
+  [root rel-path sources]
+  (let [f (java.io.File. (str root "/" rel-path))]
+    (and (.exists f)
+         (pos? (.length f))
+         (let [src (newest-mtime-ms root sources)]
+           (or (nil? src) (<= src (.lastModified f)))))))
+
+(defn staleness
+  "Returns a map describing *why* the artifact at `<root>/<rel-path>` would be
+  considered stale by `artifact-fresh?`, or nil when it is fresh. Used by
+  `--verbose` mode to make 'regenerating X' lines self-explanatory.
+
+  Shape: `{:reason :missing}` / `{:reason :empty}` /
+  `{:reason :stale :artifact-mtime ms :newest-source {:path :mtime}}`."
+  [root rel-path sources]
+  (let [f (java.io.File. (str root "/" rel-path))]
+    (cond
+      (not (.exists f))      {:reason :missing}
+      (zero? (.length f))    {:reason :empty}
+      :else
+      (when-let [src (newest-source root sources)]
+        (when (> (:mtime src) (.lastModified f))
+          {:reason          :stale
+           :artifact-mtime  (.lastModified f)
+           :newest-source   src})))))
 
 (def ^:private generated-artifacts
-  "Files the docs build expects to find on disk, paired with the command that
-  regenerates them. Used by `docs-ensure-generated` as a lazy pre-flight:
-  anything missing here gets generated before the build. Add new
-  auto-generated artifacts here so the pre-flight stays in sync."
+  "Files the docs build expects to find on disk, paired with the source globs
+  that drive freshness checks and the command that regenerates them. Used
+  by `docs-ensure-generated` (and the lazy regen path inside `run-build!`)
+  as a pre-flight: anything missing, empty, or older than its newest source
+  gets regenerated before the build. Add new auto-generated artifacts here
+  so the pre-flight stays in sync."
   [{:path        "docs/embedding/sdk/api/snippets/index.md"
-    :missing-msg "embedding docs missing, generating (typedoc --pure)..."
+    :missing-msg "embedding docs missing or stale, regenerating (typedoc --pure)..."
+    :sources     ["enterprise/frontend/src/embedding-sdk-package/**.ts"
+                  "enterprise/frontend/src/embedding-sdk-package/**.tsx"
+                  "enterprise/frontend/src/embedding-sdk-bundle/**.ts"
+                  "enterprise/frontend/src/embedding-sdk-bundle/**.tsx"
+                  "enterprise/frontend/src/embedding-sdk-shared/**.ts"
+                  "enterprise/frontend/src/embedding-sdk-shared/**.tsx"]
     :regen       #(run-generate-embedding! true)}
    {:path        "docs-build/public/embedding/sdk/api/index.html"
-    :missing-msg "embedding HTML API reference missing, generating..."
+    :missing-msg "embedding HTML API reference missing or stale, regenerating..."
+    :sources     ["enterprise/frontend/src/embedding-sdk-package/**.ts"
+                  "enterprise/frontend/src/embedding-sdk-package/**.tsx"
+                  "enterprise/frontend/src/embedding-sdk-bundle/**.ts"
+                  "enterprise/frontend/src/embedding-sdk-bundle/**.tsx"
+                  "enterprise/frontend/src/embedding-sdk-shared/**.ts"
+                  "enterprise/frontend/src/embedding-sdk-shared/**.tsx"]
     :regen       #(shell/sh {:dir u/project-root-directory}
                             "bun" "run" "embedding-sdk:docs:generate:html:pure")}
    {:path        "docs/api.json"
-    :missing-msg "OpenAPI spec missing, generating..."
+    :missing-msg "OpenAPI spec missing or stale, regenerating..."
+    :sources     ;; `**` requires a non-empty path element, so we need both
+                 ;; the directly-under-src and the nested-module forms.
+    ["src/metabase/api/**.clj"
+     "src/metabase/**/api/**.clj"
+     "enterprise/backend/src/metabase_enterprise/api/**.clj"
+     "enterprise/backend/src/metabase_enterprise/**/api/**.clj"]
     :regen       #(run-generate! #{:api})}])
 
-(defn ensure-generated [_parsed]
-  (let [root u/project-root-directory]
-    (doseq [{:keys [path missing-msg regen]} generated-artifacts]
-      (ensure-file! (str root "/" path) missing-msg regen))))
+(defn- print-staleness [{:keys [reason artifact-mtime newest-source]}]
+  (case reason
+    :missing (println "    reason: artifact missing")
+    :empty   (println "    reason: artifact is empty (zero bytes)")
+    :stale   (do (println "    reason: source newer than artifact")
+                 (println (str "    newest source:  " (:path newest-source)))
+                 (println (str "    source mtime:   "
+                               (java.time.Instant/ofEpochMilli (:mtime newest-source))))
+                 (println (str "    artifact mtime: "
+                               (java.time.Instant/ofEpochMilli artifact-mtime))))))
+
+(defn- ensure-artifact!
+  ([artifact] (ensure-artifact! false artifact))
+  ([verbose? {:keys [path missing-msg sources regen]}]
+   (when-not (artifact-fresh? u/project-root-directory path sources)
+     (println (str "→ " missing-msg))
+     (when verbose?
+       (when-let [s (staleness u/project-root-directory path sources)]
+         (print-staleness s)))
+     (regen))))
+
+(defn ensure-generated [parsed]
+  (let [verbose? (boolean (:verbose (:options parsed)))]
+    (doseq [artifact generated-artifacts]
+      (ensure-artifact! verbose? artifact))))
 
 ;; ---------------------------------------------------------------------------
 ;; docs-build
@@ -173,12 +279,33 @@
   (doseq [d [".astro" "node_modules/.astro" "dist"]]
     (fs/delete-tree (str docs-build-dir "/" d))))
 
+(defn- regen-source!
+  "Regenerate the gitignored source-of-truth content the Astro build depends
+  on. `:full` rebuilds everything from scratch (multi-minute — used by
+  `docs-build` since CI has no pre-built SDK). `:lazy` only regenerates
+  missing or stale artifacts (sub-second on hot reruns — used by
+  `docs-preview` for fast inner-loop iteration)."
+  [mode]
+  (case mode
+    :full
+    (do (step "Regenerating embedding docs")
+        (run-generate-embedding! false)
+        (step "Regenerating OpenAPI spec")
+        (run-generate! #{:api}))
+    :lazy
+    (do (step "Ensuring generated artifacts present and fresh")
+        (doseq [artifact generated-artifacts]
+          (ensure-artifact! artifact)))))
+
 (defn- run-build!
-  "Run the full docs build pipeline in the caller's repo
+  "Run the docs build pipeline in the caller's repo
   (`u/project-root-directory`). For worktree builds, the caller is mage
   re-invoked inside the worktree, so this naturally targets the right tree.
-  Returns the absolute path of the dist/ directory."
-  [{:keys [base-path site-url]}]
+  `:regen-mode` selects between full (default — rebuild everything) and
+  lazy (only regenerate missing/stale artifacts). Returns the absolute path
+  of the dist/ directory."
+  [{:keys [base-path site-url regen-mode]
+    :or   {regen-mode :full}}]
   (let [root (str u/project-root-directory)
         base (resolve-base-path base-path)
         env  (cond-> (assoc (into {} (System/getenv)) "DOCS_BASE_PATH" base)
@@ -187,13 +314,7 @@
     (println "  repo:" root)
     (println "  base:" base)
 
-    ;; Regenerate gitignored source-of-truth content before building. Full
-    ;; mode here — CI has no built SDK, and local docs-build is the explicit
-    ;; "I want the full clean build" command.
-    (step "Regenerating embedding docs")
-    (run-generate-embedding! false)
-    (step "Regenerating OpenAPI spec")
-    (run-generate! #{:api})
+    (regen-source! regen-mode)
 
     (let [docs-build-dir (str root "/docs-build")]
       (step "Installing docs-build dependencies")
@@ -212,8 +333,31 @@
 
 (defn build [parsed]
   (let [opts (:options parsed)]
-    (run-build! {:base-path (:base-path opts)
-                 :site-url  (:site-url opts)})))
+    (run-build! {:base-path  (:base-path opts)
+                 :site-url   (:site-url opts)
+                 :regen-mode :full})))
+
+;; ---------------------------------------------------------------------------
+;; docs-preview
+;; ---------------------------------------------------------------------------
+
+(defn preview
+  "Lazy-regen build + Astro preview server. Same output shape as `build`,
+  but skips the multi-minute SDK + OpenAPI rebuild when those artifacts are
+  already present and not stale. Use for inner-loop preview; use `build`
+  for the canonical production build."
+  [parsed]
+  (let [opts           (:options parsed)
+        base           (resolve-base-path (:base-path opts))
+        site-url       (or (:site-url opts) (System/getenv "DOCS_SITE_URL"))
+        env            (cond-> (assoc (into {} (System/getenv)) "DOCS_BASE_PATH" base)
+                         site-url (assoc "DOCS_SITE_URL" site-url))
+        docs-build-dir (str u/project-root-directory "/docs-build")]
+    (run-build! {:base-path  base
+                 :site-url   site-url
+                 :regen-mode :lazy})
+    (step "Starting Astro preview server")
+    (shell/sh {:dir docs-build-dir :env env} "bun" "run" "preview")))
 
 ;; ---------------------------------------------------------------------------
 ;; docs-build-branch
@@ -263,6 +407,27 @@
   (shell/sh* {:dir root :quiet? true}
              "git" "worktree" "remove" "--force" worktree-dir))
 
+(defn list-docs-worktrees
+  "Returns a sorted seq of `{:dir :branch :mtime}` for every directory under
+  `<root>/__worktrees/` whose name starts with `docs-` and that contains the
+  `.docs-build-branch` marker dropped by `create-worktree!`. Sorted oldest
+  first so destructive callers process the staler stuff first."
+  [root]
+  (let [parent (str root "/__worktrees")]
+    (when (fs/exists? parent)
+      (->> (fs/list-dir parent)
+           (filter fs/directory?)
+           (filter #(str/starts-with? (fs/file-name %) "docs-"))
+           (keep (fn [d]
+                   (let [marker (str d "/.docs-build-branch")]
+                     (when (fs/exists? marker)
+                       {:dir    (str d)
+                        :branch (str/trim (slurp marker))
+                        :mtime  (.toMillis ^java.nio.file.attribute.FileTime
+                                 (fs/last-modified-time d))}))))
+           (sort-by :mtime)
+           vec))))
+
 (defn- rsync-dist! [dist output-dir]
   (fs/create-dirs output-dir)
   (println)
@@ -270,6 +435,36 @@
   ;; rsync's trailing-slash semantics: `dist/` means contents of dist, not the
   ;; dist directory itself. --delete keeps re-runs clean.
   (shell/sh "rsync" "-a" "--delete" (str dist "/") (str output-dir "/")))
+
+(defn clean-worktrees
+  "List (dry-run) or remove `__worktrees/docs-*` directories left behind by
+  `docs-build-branch`. With `--force`, removes them via `git worktree
+  remove --force`; without, prints the list and what each was built for."
+  [parsed]
+  (let [root  u/project-root-directory
+        force? (boolean (:force (:options parsed)))
+        wts   (list-docs-worktrees root)]
+    (cond
+      (empty? wts)
+      (println "No docs worktrees found under __worktrees/.")
+
+      force?
+      (do (println (str "Removing " (count wts) " docs worktree(s)..."))
+          (doseq [{:keys [dir branch]} wts]
+            (println (str "  " dir " (built from: " branch ")"))
+            (remove-worktree! root dir))
+          (println)
+          (println (c/green "✓ Done.")))
+
+      :else
+      (do (println (str "Found " (count wts) " docs worktree(s):"))
+          (println)
+          (doseq [{:keys [dir branch mtime]} wts]
+            (println (str "  " dir))
+            (println (str "    built from:    " branch))
+            (println (str "    last touched:  " (str (java.time.Instant/ofEpochMilli mtime)))))
+          (println)
+          (println "Re-run with --force to remove them.")))))
 
 (defn build-branch
   "Build the docs site for an arbitrary git branch via a git worktree."

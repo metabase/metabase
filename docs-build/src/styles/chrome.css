@@ -2846,6 +2846,16 @@
 @media(max-width: 991.98px) {
   .bootstrap .upcoming-events .no-upcoming-events .subscribe#mc-embedded-subscribe-form {margin:0;padding:0}
 }
+/* The marketing site's body is white, so the vendored footer rules don't
+ * carry a background. The docs body is `--neutral-98` (#fafbfe), which would
+ * bleed through, so we paint the footer wrapper white. Applied to the
+ * `.footer-wrap` class set on the outer div in Footer.astro so it doesn't
+ * also target the `.bootstrap` header. */
+.bootstrap.footer-wrap {background:#fff}
+/* main.css:211-220 — the marketing site sets `a { text-decoration: none }`
+ * globally on body; the docs site does not, so footer links would inherit the
+ * browser default underline. Scope the override to the footer wrapper. */
+.bootstrap.footer-wrap a {text-decoration:none}
 .bootstrap .body-footer {margin:0 auto;max-width:1280px;padding-top:80px;width:100%}
 .bootstrap .body-footer>form {border-bottom:1px solid #f1f2f4;display:flex;justify-content:space-between;margin-bottom:34px;padding-bottom:36px}
 .bootstrap .body-footer>form h5,.bootstrap .body-footer>form .h5 {color:#5a6072;font-size:18px;font-weight:700;line-height:26px;text-align:left}
@@ -2889,6 +2899,43 @@
   .bootstrap .body-footer>div.links {flex:1 50%;flex-wrap:wrap;gap:0}
   .bootstrap .body-footer>div.links>div {flex:0 0 auto;flex-basis:50%;max-width:50%}
 }
+
+/* --- marketing utility classes (extracted from main.css) ---
+ * Referenced by the vendored footer snapshot (Sign up button, email-input
+ * border, Status dot, GitHub stars chip) but not part of Bootstrap 5. Listed
+ * in the same order they appear in main.css. Scoped under .bootstrap to match
+ * the rest of the chrome and avoid leaking into the docs-content area. */
+.bootstrap .pseudo-link {color:#509ee3}
+.bootstrap .pseudo-link.light {color:#8d93a5}
+.bootstrap .Button {background-color:transparent;border:1px solid #5ea4e3;border-radius:6px;color:#5ea4e3;display:block;font-family:Lato,"Helvetica Neue",Helvetica,sans-serif;font-size:.843rem;padding:16px 20px;text-align:center}
+
+@media screen and (min-width: 60em) {
+  .bootstrap .Button {display:inline-block}
+}
+.bootstrap .Button:hover {border-color:#5ea4e3;color:#5ea4e3;cursor:pointer;transition:all .3s linear}
+.bootstrap .Button.Button--primary {background-color:#5ea4e3;box-shadow:0 1px 3px rgba(0,0,0,.04);color:#fff;transition:background .3s ease}
+.bootstrap .Button.Button--primary:hover {background-color:#2d86d4;border-color:#2d86d4;color:#fff}
+.bootstrap .Button--small {padding:.834em 1em}
+.bootstrap .ml-2 {margin-left:8px}
+.bootstrap .mr-1 {margin-right:4px}
+.bootstrap .mr-2 {margin-right:8px}
+.bootstrap .flex {display:flex}
+.bootstrap .align-center {align-items:center}
+.bootstrap .text-dark-yellow {color:#f7c217}
+.bootstrap .bg-light-yellow {background-color:#fef9e6}
+.bootstrap .input-small {flex-grow:1;padding:.834em 1em}
+.bootstrap .bordered {border:1px solid #ddd}
+.bootstrap .mini-box {border-radius:4px;font-size:12px;padding:2px 6px 3px;width:fit-content}
+/* .mini-circle's background-color is overwritten at runtime by public/js/status.js */
+.bootstrap .mini-circle {background-color:#c6c9d2;border-radius:50%;height:12px;width:12px}
+/* main.css:1542-1544 + 3221-3223 — collapsed-list helper used by the
+ * `.more-resources-wrapper.hide` blocks under Resources, and the rotated
+ * chevron the click handler in public/js/more-resources.js toggles. Declared
+ * AFTER .flex so `<div class="hide flex flex-column">` collapses by default —
+ * cascade order matters, both rules have the same specificity. */
+.bootstrap .hide {display:none}
+.bootstrap .chevron-up {transform:rotate(180deg)}
+
 .bootstrap .navigation-header {box-shadow:0 1px 1px rgba(0,0,0,.05);left:0;transform:translateY(0);transition:background-color .3s ease;width:100%;z-index:1001}
 .bootstrap .navigation-header.visible {visibility:visible}
 .bootstrap .navigation-header.promo-banner-hidden [id$=nav-menu-wrapper] {top:56px}
