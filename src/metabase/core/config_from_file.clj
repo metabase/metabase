@@ -6,12 +6,7 @@
 (defn init-from-file-if-code-available!
   "Shim for running the config-from-file code, used by [[metabase.core.core]]. The config-from-file code only ships in
   the Enterprise Edition™ JAR, so this checks whether the namespace exists, and if it does,
-  invokes [[metabase-enterprise.advanced-config.file/initialize!]]; otherwise, this no-ops.
-
-  After the EE config-from-file hook (if any), also runs
-  [[metabase-enterprise.serialization.metadata-file-import/initialize-from-env!]] (also EE-only) to
-  stream `MB_TABLE_METADATA_PATH` into
-  the appdb."
+  invokes [[metabase-enterprise.advanced-config.file/initialize!]]; otherwise, this no-ops."
   []
   (when (try
           (classloader/require 'metabase-enterprise.advanced-config.file)
@@ -19,11 +14,4 @@
           (catch Throwable _
             (log/debug "metabase-enterprise.advanced-config.file not available; cannot initialize from file.")
             nil))
-    ((resolve 'metabase-enterprise.advanced-config.file/initialize!)))
-  (when (try
-          (classloader/require 'metabase-enterprise.serialization.metadata-file-import)
-          :ok
-          (catch Throwable _
-            (log/debug "metabase-enterprise.serialization.metadata-file-import not available; skipping metadata file import.")
-            nil))
-    ((resolve 'metabase-enterprise.serialization.metadata-file-import/initialize-from-env!))))
+    ((resolve 'metabase-enterprise.advanced-config.file/initialize!))))

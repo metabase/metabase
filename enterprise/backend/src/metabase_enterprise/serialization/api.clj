@@ -27,7 +27,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.random :as u.random]
-   [ring.core.protocols :as ring.protocols])
+   [ring.core.protocols :as ring.protocols]
+   [ring.util.response :as response])
   (:import
    (java.io ByteArrayOutputStream File InputStream)))
 
@@ -350,13 +351,20 @@
         (throw t)))))
 
 (api.macros/defendpoint :post "/metadata/import"
-  :- [:map [:queued :boolean]]
+  :- [:map
+      [:status [:= 202]]
+      [:body [:map {:closed true}
+              [:queued :boolean]
+              [:import-id :string]]]]
   "Import warehouse metadata previously emitted by `POST /metadata/export`. The
   request body is the JSON document `{databases, tables, fields}`; sections are
   parsed incrementally so memory stays bounded regardless of payload size.
 
   To bypass the JSON-parsing request middleware, send with `Content-Type:
-  application/octet-stream`. Restricted to superusers."
+  application/octet-stream`. Restricted to superusers.
+
+  Returns `202` immediately with an `:import-id`; the import runs
+  asynchronously. Poll `GET /metadata/import/:id` for its outcome."
   [_route-params
    _query-params
    _body
@@ -373,9 +381,35 @@
                     {:status-code 415}))
 
     :else
-    (let [tmp (spool-to-temp-file! body)]
-      (metadata-file-import/enqueue-import! tmp {:delete-after? true})
-      {:queued true})))
+    (let [tmp (spool-to-temp-file! body)
+          id  (metadata-file-import/enqueue-import! tmp {:delete-after? true})]
+      (-> (response/response {:queued true :import-id id})
+          (assoc :status 202)))))
+
+;;; ------------------------------- GET /api/ee/serialization/metadata/import/:id -------------------------------
+
+(defn- present-import-status
+  "Project an internal registry record onto the public wire shape. Deliberately
+  omits the server-side `:file` path; stringifies the status keyword and the
+  timestamps."
+  [record]
+  {:id          (:id record)
+   :status      (name (:status record))
+   :enqueued-at (str (:enqueued-at record))
+   :started-at  (some-> (:started-at record) str)
+   :finished-at (some-> (:finished-at record) str)
+   :wall-ms     (:wall-ms record)
+   :error       (:error record)})
+
+(api.macros/defendpoint :get "/metadata/import/:id"
+  :- ::schema/import-status-response
+  "Status of a metadata import previously started by `POST /metadata/import`.
+  Status is retained in-memory and is not durable across server restarts.
+  Restricted to superusers."
+  [{:keys [id]} :- [:map [:id ms/UUIDString]]]
+  (api/check-superuser)
+  (or (some-> (metadata-file-import/import-status id) present-import-status)
+      (throw (ex-info "Unknown or expired import id" {:status-code 404}))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/serialization` routes."

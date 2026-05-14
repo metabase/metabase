@@ -67,3 +67,16 @@
    [:databases {:optional true} [:sequential ::exported-database]]
    [:tables    {:optional true} [:sequential ::exported-table]]
    [:fields    {:optional true} [:sequential ::exported-field]]])
+
+(mr/def ::import-status-response
+  "Wire shape of `GET /metadata/import/:id`. Timestamps are ISO-8601 strings.
+  `:started-at`/`:finished-at`/`:wall-ms` are nil until the relevant lifecycle
+  stage is reached; `:error` is nil unless the import failed."
+  [:map {:closed true}
+   [:id          :string]
+   [:status      [:enum "queued" "running" "ok" "error"]]
+   [:enqueued-at :string]
+   [:started-at  [:maybe :string]]
+   [:finished-at [:maybe :string]]
+   [:wall-ms     [:maybe number?]]
+   [:error       [:maybe :string]]])

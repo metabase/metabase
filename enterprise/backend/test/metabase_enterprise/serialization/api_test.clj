@@ -672,7 +672,7 @@
 (defn- import-metadata!
   "Helper: JSON-encode `payload` and POST it as an octet-stream body to
   `/api/ee/serialization/metadata/import`."
-  ([payload] (import-metadata! :crowberto 200 payload))
+  ([payload] (import-metadata! :crowberto 202 payload))
   ([user expected-status payload]
    (mt/user-http-request
     user :post expected-status "ee/serialization/metadata/import"
@@ -680,6 +680,13 @@
      {:headers {"content-type" "application/octet-stream"}
       :body    (ByteArrayInputStream.
                 (.getBytes ^String (json/encode payload) "UTF-8"))}})))
+
+(defn- import-status!
+  "Helper: GET `/api/ee/serialization/metadata/import/:id`."
+  ([id] (import-status! :crowberto 200 id))
+  ([user expected-status id]
+   (mt/user-http-request
+    user :get expected-status (str "ee/serialization/metadata/import/" id))))
 
 (deftest metadata-import-roundtrip-test
   (testing "POST /api/ee/serialization/metadata/import is the inverse of POST /metadata/export"
@@ -703,15 +710,17 @@
                                                       :with-tables    true
                                                       :with-fields    true)
                   before-tables (t2/count :model/Table :db_id db-id)
-                  before-fields (t2/count :model/Field :table_id t-id)]
-              (is (= {:queued true} (import-metadata! exported)))
+                  before-fields (t2/count :model/Field :table_id t-id)
+                  resp          (import-metadata! exported)]
+              (is (true? (:queued resp)) "POST acknowledges the import was queued")
+              (is (string? (:import-id resp)) "POST returns a string import-id")
               ;; The import endpoint hands the file off to an agent and returns
               ;; immediately. Block until the agent has drained it, then assert
               ;; the agent didn't silently swallow an exception (without this
               ;; check, the row-count assertions below would falsely pass on a
               ;; failed re-import since nothing would have changed).
               (await @#'metadata-file-import/import-agent)
-              (is (= :ok (:status (:last-result @@#'metadata-file-import/import-state)))
+              (is (= :ok (:status (metadata-file-import/import-status (:import-id resp))))
                   "agent finished the import successfully")
               (testing "no rows are added by re-importing the same payload"
                 (is (= before-tables (t2/count :model/Table :db_id db-id)))
@@ -719,6 +728,66 @@
               (testing "the table description is preserved"
                 (is (= "round trip"
                        (t2/select-one-fn :description :model/Table t-id)))))))))))
+
+(deftest metadata-import-post-returns-202-and-import-id-test
+  (testing "POST /api/ee/serialization/metadata/import returns 202 with :queued true and a string :import-id"
+    (mt/with-premium-features #{:serialization}
+      (let [resp (import-metadata! :crowberto 202 {:databases [] :tables [] :fields []})]
+        (is (true? (:queued resp)))
+        (is (string? (:import-id resp)) ":import-id is a string")
+        (is (uuid? (java.util.UUID/fromString (:import-id resp)))
+            ":import-id parses as a UUID")
+        (await @#'metadata-file-import/import-agent)))))
+
+(deftest metadata-import-status-endpoint-lifecycle-test
+  (testing "GET /metadata/import/:id reports the import status across its lifecycle"
+    (mt/with-temporary-setting-values [disable-auto-sync true]
+      (mt/test-helpers-set-global-values!
+        (mt/with-premium-features #{:serialization}
+          (let [resp (import-metadata! :crowberto 202 {:databases [] :tables [] :fields []})
+                id   (:import-id resp)]
+            ;; settle the agent, then the GET endpoint should report a terminal status
+            (await @#'metadata-file-import/import-agent)
+            (let [status (import-status! :crowberto 200 id)]
+              (is (= id (:id status)) "the status response echoes the id")
+              (is (string? (:status status)) ":status is serialized as a string")
+              (is (contains? #{"ok" "error"} (:status status))
+                  "after the agent settles the status is terminal")
+              (is (contains? status :enqueued-at))
+              (is (contains? status :started-at))
+              (is (contains? status :finished-at))
+              (is (contains? status :wall-ms)))))))))
+
+(deftest metadata-import-status-omits-file-path-test
+  (testing "GET /metadata/import/:id never leaks the server-side temp file path"
+    (mt/with-premium-features #{:serialization}
+      (let [resp (import-metadata! :crowberto 202 {:databases [] :tables [] :fields []})
+            id   (:import-id resp)]
+        (await @#'metadata-file-import/import-agent)
+        (let [status (import-status! :crowberto 200 id)]
+          (is (not (contains? status :file))
+              "the wire shape must not include :file")
+          (is (= #{:id :status :enqueued-at :started-at :finished-at :wall-ms :error}
+                 (set (keys status)))
+              "the wire shape is exactly the documented key set"))))))
+
+(deftest metadata-import-status-unknown-id-404-test
+  (testing "GET /metadata/import/:id returns 404 for an unknown or evicted id"
+    (mt/with-premium-features #{:serialization}
+      (import-status! :crowberto 404 (str (java.util.UUID/randomUUID))))))
+
+(deftest metadata-import-status-superuser-test
+  (testing "GET /metadata/import/:id — non-admins get a 403"
+    (mt/with-premium-features #{:serialization}
+      (is (= "You don't have permissions to do that."
+             (import-status! :rasta 403 (str (java.util.UUID/randomUUID))))))))
+
+(deftest metadata-import-status-token-feature-test
+  (testing "GET /metadata/import/:id requires the :serialization premium feature"
+    (mt/with-premium-features #{}
+      (mt/assert-has-premium-feature-error
+       "Serialization"
+       (import-status! :crowberto 402 (str (java.util.UUID/randomUUID)))))))
 
 (deftest metadata-import-wrong-content-type-test
   (testing "POST /api/ee/serialization/metadata/import — JSON content-type is rejected with 415"

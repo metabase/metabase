@@ -1,5 +1,5 @@
 (ns metabase-enterprise.serialization.metadata-file-import
-  "Boot-time loader that streams a metadata file into the appdb, populating
+  "Streams a metadata file into the appdb, populating
   `:model/Database` (matched, never created), `:model/Table`, and `:model/Field`.
 
   Composes three building blocks:
@@ -20,8 +20,6 @@
   (try/finally), so a crashed prior attempt cannot leak rows into the next
   run."
   (:require
-   [clojure.string :as str]
-   [environ.core :as env]
    [metabase-enterprise.serialization.metadata-file-import.parsers :as parsers]
    [metabase-enterprise.serialization.metadata-file-import.processors :as processors]
    [metabase.app-db.core :as mdb]
@@ -33,36 +31,11 @@
    (java.io File)
    (java.sql Connection PreparedStatement)
    (java.time Instant)
+   (java.util UUID)
    (org.postgresql PGConnection)
    (org.postgresql.copy CopyIn CopyManager)))
 
 (set! *warn-on-reflection* true)
-
-;;; ============================== Env handling ==============================
-
-(def ^:dynamic *env*
-  "Environment map. Dynamic for test rebinding; defaults to `environ.core/env`."
-  env/env)
-
-(def ^:private table-metadata-path-key :mb-table-metadata-path)
-
-(defn- env-path
-  "Read `*env*` at `k`, treating blank strings as absent."
-  [k]
-  (let [v (get *env* k)]
-    (when (and (string? v) (not (str/blank? v))) v)))
-
-(defn- assert-file-readable!
-  "Coerce `path` to a `File`. Throws if the file doesn't exist or can't be read."
-  ^File [^String path]
-  (let [f (File. path)]
-    (when-not (.exists f)
-      (throw (ex-info (format "Metadata file not found at path %s" (pr-str path))
-                      {:kind :file_not_found, :path path})))
-    (when-not (.canRead f)
-      (throw (ex-info (format "Metadata file at path %s is not readable" (pr-str path))
-                      {:kind :file_not_readable, :path path})))
-    f))
 
 ;;; ============================== drain + database matching ==============================
 
@@ -219,25 +192,64 @@
                    (count matched-target-db-ids))))
     :ok))
 
-;;; ============================== Concurrency guard ==============================
+;;; ============================== Import registry + agent ==============================
 ;;; In-JVM only — matches the scope of `metabase.sync.util/operation->db-ids`.
+;;; Status is not durable across server restarts.
 
-(defonce ^:private import-state
-  (atom {:status :idle :file nil :since nil :last-result nil}))
+(def ^:private terminal-record-limit
+  "Max number of completed (`:ok`/`:error`) records retained in the registry.
+  In-flight (`:queued`/`:running`) records are never evicted regardless of count."
+  10)
+
+;; id -> {:id :status :file :enqueued-at :started-at :finished-at :wall-ms :error}
+(defonce ^:private import-registry (atom {}))
 
 (defonce ^:private import-agent
   (agent ::serializer :error-mode :continue))
 
+;; The id currently being run by the agent, or nil. A single-element index over
+;; `import-registry` so the sync busy-check is O(1) instead of scanning.
+(defonce ^:private running-import-id (atom nil))
+
+(defn- terminal-status? [status]
+  (contains? #{:ok :error} status))
+
+(defn- prune-terminal-records
+  "Drop the oldest terminal records past `terminal-record-limit`, ordered by
+  `:finished-at`. Non-terminal records are retained regardless of count."
+  [registry]
+  (let [terminal (filter (comp terminal-status? :status val) registry)]
+    (if (<= (count terminal) terminal-record-limit)
+      registry
+      (->> terminal
+           (sort-by (comp :finished-at val))
+           (drop-last terminal-record-limit)
+           (map key)
+           (apply dissoc registry)))))
+
+(defn- finalize-record
+  "Merge terminal `attrs` onto record `id`, then prune."
+  [registry id attrs]
+  (-> registry
+      (update id merge attrs)
+      prune-terminal-records))
+
+(defn import-status
+  "Registry record for import `id`, or nil if the id is unknown or has been
+  evicted."
+  [id]
+  (get @import-registry id))
+
 (defn import-running?
   "Truthy iff a metadata-file-import is currently in flight on this JVM."
   []
-  (= :running (:status @import-state)))
+  (some? @running-import-id))
 
 (defn- import-busy-reason []
-  (let [{:keys [status file since]} @import-state]
-    (when (= :running status)
+  (when-let [id @running-import-id]
+    (let [{:keys [file started-at]} (get @import-registry id)]
       {:reason (format "metadata-file-import in progress (file=%s, since=%s)"
-                       file since)})))
+                       file started-at)})))
 
 (defonce ^:private initialized? (atom false))
 
@@ -252,56 +264,48 @@
 (defn- run-import*
   "Agent body. Always returns `::serializer`; `:error-mode :continue` plus
   the inner try/catch means a failing import never poisons the agent."
-  [_serializer ^File file {:keys [delete-after?]}]
+  [_serializer id ^File file {:keys [delete-after?]}]
   (let [path (.getAbsolutePath file)
         t0   (System/nanoTime)]
-    (swap! import-state assoc :status :running :file path :since (Instant/now))
-    (log/infof "metadata-file-import: starting (file=%s)" path)
+    (swap! import-registry update id merge {:status :running :started-at (Instant/now)})
+    (reset! running-import-id id)
+    (log/infof "metadata-file-import: starting (id=%s, file=%s)" id path)
     (try
       (import-metadata-file! file)
       (let [wall-ms (/ (- (System/nanoTime) t0) 1e6)]
-        (log/infof "metadata-file-import: complete (file=%s, wall-ms=%.0f)" path wall-ms)
-        (swap! import-state assoc
-               :status :idle :file nil :since nil
-               :last-result {:status :ok
-                             :file path
-                             :wall-ms wall-ms
-                             :finished-at (Instant/now)}))
+        (log/infof "metadata-file-import: complete (id=%s, file=%s, wall-ms=%.0f)" id path wall-ms)
+        (swap! import-registry finalize-record id
+               {:status :ok :finished-at (Instant/now) :wall-ms wall-ms :error nil}))
       (catch Throwable t
         (let [wall-ms (/ (- (System/nanoTime) t0) 1e6)]
-          (log/errorf t "metadata-file-import: failed (file=%s, wall-ms=%.0f)" path wall-ms)
-          (swap! import-state assoc
-                 :status :idle :file nil :since nil
-                 :last-result {:status :error
-                               :file path
-                               :wall-ms wall-ms
-                               :ex (str t)
-                               :finished-at (Instant/now)})))
+          (log/errorf t "metadata-file-import: failed (id=%s, file=%s, wall-ms=%.0f)" id path wall-ms)
+          (swap! import-registry finalize-record id
+                 {:status :error :finished-at (Instant/now) :wall-ms wall-ms :error (str t)})))
       (finally
+        (reset! running-import-id nil)
         (when delete-after?
           (try (.delete file) (catch Throwable _ nil)))))
     ::serializer))
 
 (defn enqueue-import!
-  "Submit `file` to the import agent and return immediately. Imports execute
-  in arrival order. With `{:delete-after? true}`, the agent deletes `file`
-  once it finishes (success or failure)."
+  "Submit `file` to the import agent and return its import id (a string UUID).
+  Imports execute in arrival order; a `:queued` registry record is created
+  synchronously before this returns, so the caller can immediately look the id
+  up via `import-status`. With `{:delete-after? true}`, the agent deletes
+  `file` once it finishes (success or failure)."
   ([^File file]
    (enqueue-import! file {}))
   ([^File file opts]
-   (log/infof "metadata-file-import: queued (file=%s)" (.getAbsolutePath file))
-   (send-off import-agent run-import* file opts)
-   :queued))
-
-(defn initialize-from-env!
-  "If `MB_TABLE_METADATA_PATH` is set in the environment, enqueue an import of
-  the referenced file. Returns `:ok` on success, including the no-env-vars
-  case (silent no-op). Does not block on the import completing.
-
-  Hard-fails if the referenced file doesn't exist or isn't readable."
-  []
-  (when-let [metadata-path (env-path table-metadata-path-key)]
-    (let [metadata-file (assert-file-readable! metadata-path)]
-      (log/infof "metadata-file-import: loading metadata from %s" metadata-path)
-      (enqueue-import! metadata-file)))
-  :ok)
+   (let [id   (str (UUID/randomUUID))
+         path (.getAbsolutePath file)]
+     (swap! import-registry assoc id {:id          id
+                                      :status      :queued
+                                      :file        path
+                                      :enqueued-at (Instant/now)
+                                      :started-at  nil
+                                      :finished-at nil
+                                      :wall-ms     nil
+                                      :error       nil})
+     (log/infof "metadata-file-import: queued (id=%s, file=%s)" id path)
+     (send-off import-agent run-import* id file opts)
+     id)))

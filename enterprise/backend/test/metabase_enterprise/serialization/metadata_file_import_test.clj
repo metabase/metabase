@@ -269,18 +269,3 @@
           (is (nil? (:parent_id leaf)))
           (is (= ["data" "user" "zip"] (:nfc_path leaf))))))))
 
-;;; ============================== initialize-from-env! ==============================
-
-(deftest initialize-from-env-no-vars-set-is-noop-test
-  (testing "initialize-from-env! silently returns :ok when no MB_TABLE_METADATA_PATH is set"
-    (binding [loader/*env* {}]
-      (is (= :ok (loader/initialize-from-env!))))))
-
-(deftest initialize-from-env-missing-file-hard-fails-test
-  (testing "initialize-from-env! throws :file_not_found when the path is set but the
-            file doesn't exist"
-    (binding [loader/*env* {:mb-table-metadata-path "/nope/this/path/does/not/exist.json"}]
-      (let [thrown (try (loader/initialize-from-env!) nil
-                        (catch clojure.lang.ExceptionInfo e e))]
-        (is (some? thrown))
-        (is (= :file_not_found (:kind (ex-data thrown))))))))

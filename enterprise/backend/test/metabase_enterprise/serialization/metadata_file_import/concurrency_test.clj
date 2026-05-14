@@ -10,8 +10,7 @@
    [metabase.test :as mt]
    [metabase.util.json :as json])
   (:import
-   (java.io File)
-   (java.time Instant)))
+   (java.io File)))
 
 (set! *warn-on-reflection* true)
 
@@ -106,26 +105,138 @@
     (is (false? (mfi/import-running?))
         "state reset to :idle after the failure")))
 
+;;; ============================== Registry ==============================
+
+(deftest enqueue-import-returns-string-id-and-creates-queued-record-test
+  (testing "enqueue-import! returns a string UUID id and synchronously inserts a :queued record"
+    (await @#'mfi/import-agent)
+    ;; Block the agent so we can observe the :queued record before it transitions.
+    (let [release (promise)]
+      (with-redefs [mfi/import-metadata-file! (fn [_f] @release :ok)]
+        (let [id (mfi/enqueue-import! (tiny-meta-file (tiny-payload "mfi-queued")))]
+          (is (string? id) "enqueue-import! returns a string id, not :queued")
+          (is (uuid? (java.util.UUID/fromString id))
+              "the returned id parses as a UUID")
+          (let [record (mfi/import-status id)]
+            (is (some? record) "a registry record exists for the returned id")
+            (is (= id (:id record)))
+            (is (contains? #{:queued :running} (:status record))
+                "record is :queued (or already :running if the agent picked it up)")
+            (is (some? (:enqueued-at record)) ":enqueued-at is set on insert"))
+          (deliver release :go)
+          (await @#'mfi/import-agent))))))
+
+(deftest record-transitions-queued-running-ok-test
+  (testing "the registry record moves :queued -> :running -> :ok through the agent"
+    (mt/with-temp [:model/Database {} {:name "mfi-lifecycle-ok" :engine :postgres}]
+      (await @#'mfi/import-agent)
+      (let [file (tiny-meta-file (tiny-payload "mfi-lifecycle-ok"))
+            id   (mfi/enqueue-import! file)]
+        ;; Capturing the record mid-flight is racy; settle the agent and assert
+        ;; the terminal record — the recorded timestamps prove it passed
+        ;; through :running.
+        (await @#'mfi/import-agent)
+        (let [record (mfi/import-status id)]
+          (is (some? record))
+          (is (= :ok (:status record)) "terminal status is :ok on success")
+          (is (some? (:started-at record)) ":started-at set => passed through :running")
+          (is (some? (:finished-at record)) ":finished-at set on completion")
+          (is (number? (:wall-ms record)) ":wall-ms recorded on completion")
+          (is (nil? (:error record)) "no :error on a successful import"))))))
+
+(deftest record-transitions-to-error-on-failing-import-test
+  (testing "a failing import yields an :error record and does not poison the agent"
+    (await @#'mfi/import-agent)
+    (let [id (with-redefs [mfi/import-metadata-file!
+                           (fn [_f] (throw (ex-info "synthetic failure" {:kind :test-failure})))]
+               (let [id (mfi/enqueue-import! (tiny-meta-file (tiny-payload "mfi-lifecycle-err")))]
+                 (await @#'mfi/import-agent)
+                 id))]
+      (is (nil? (agent-error @#'mfi/import-agent))
+          "agent did not enter a failed state")
+      (let [record (mfi/import-status id)]
+        (is (some? record))
+        (is (= :error (:status record)) "terminal status is :error on failure")
+        (is (some? (:started-at record)))
+        (is (some? (:finished-at record)))
+        (is (number? (:wall-ms record)))
+        (is (string? (:error record)) ":error holds a stringified exception")))))
+
+(deftest import-status-nil-for-unknown-id-test
+  (testing "import-status returns nil for an id that was never enqueued"
+    (is (nil? (mfi/import-status (str (java.util.UUID/randomUUID))))
+        "unknown id => nil")
+    (is (nil? (mfi/import-status "not-even-a-uuid"))
+        "garbage id => nil")))
+
+;;; ============================== Eviction ==============================
+
+(defn- terminal-record [i]
+  [(str "id-" i) {:id (str "id-" i) :status :ok
+                  :finished-at (java.time.Instant/ofEpochSecond i)}])
+
+(deftest prune-terminal-records-noop-under-bound-test
+  (testing "prune-terminal-records leaves the registry untouched when terminal count is within the bound"
+    (let [limit @#'mfi/terminal-record-limit
+          reg   (into {} (map terminal-record) (range (dec limit)))]
+      (is (= reg (#'mfi/prune-terminal-records reg))))))
+
+(deftest prune-terminal-records-drops-oldest-terminal-test
+  (testing "prune-terminal-records caps terminal records at the bound, dropping the oldest by :finished-at"
+    (let [limit  @#'mfi/terminal-record-limit
+          extra  5
+          reg    (into {} (map terminal-record) (range (+ limit extra)))
+          pruned (#'mfi/prune-terminal-records reg)]
+      (is (= limit (count pruned))
+          "terminal records are capped at the bound")
+      (is (every? #(contains? pruned (str "id-" %)) (range extra (+ limit extra)))
+          "the most-recent `limit` records are retained")
+      (is (not-any? #(contains? pruned (str "id-" %)) (range extra))
+          "the oldest records are evicted"))))
+
+(deftest prune-terminal-records-never-drops-in-flight-test
+  (testing ":queued and :running records are never pruned, regardless of count"
+    (let [limit     @#'mfi/terminal-record-limit
+          in-flight (into {} (for [i (range (* 3 limit))]
+                               [(str "q-" i) {:id (str "q-" i)
+                                              :status (if (even? i) :queued :running)}]))
+          terminal  (into {} (map terminal-record) (range (* 2 limit)))
+          pruned    (#'mfi/prune-terminal-records (merge in-flight terminal))]
+      (is (every? #(contains? pruned (str "q-" %)) (range (* 3 limit)))
+          "every in-flight record survives")
+      (is (= limit (count (filter (comp #{:ok} :status val) pruned)))
+          "terminal records are still capped at the bound"))))
+
 ;;; ============================== Sync-side skip ==============================
 
 (deftest sync-skips-when-import-is-running-test
   (testing "sync.util/do-sync-operation skips its body when an import is in flight"
     (mt/with-temp [:model/Database db {:name "mfi-sync-skip" :engine :postgres}]
-      (let [import-state (deref #'mfi/import-state)]
-        (try
-          (reset! import-state {:status :running
-                                :file   "test-file"
-                                :since  (Instant/now)})
-          (let [sync-ran? (atom false)]
-            (sync.util/do-sync-operation
-             :sync-metadata
-             db
-             "test-sync"
-             (fn [] (reset! sync-ran? true) :result-not-checked))
-            (is (false? @sync-ran?)
-                "sync body did NOT run because import-busy short-circuited it"))
-          (finally
-            (reset! import-state {:status :idle :file nil :since nil :last-result nil})))))))
+      (await @#'mfi/import-agent)
+      ;; Drive a real :running record into the registry by blocking the agent
+      ;; inside a redef'd slow import, then exercise the busy-check while it sits.
+      (let [release (promise)]
+        (with-redefs [mfi/import-metadata-file! (fn [_f] @release :ok)]
+          (mfi/enqueue-import! (tiny-meta-file (tiny-payload "mfi-sync-skip")))
+          ;; Wait until the agent has actually flipped a record to :running.
+          (let [deadline (+ (System/currentTimeMillis) 5000)]
+            (while (and (not (mfi/import-running?))
+                        (< (System/currentTimeMillis) deadline))
+              (Thread/sleep 10)))
+          (try
+            (is (true? (mfi/import-running?))
+                "an import is in flight before we exercise the busy-check")
+            (let [sync-ran? (atom false)]
+              (sync.util/do-sync-operation
+               :sync-metadata
+               db
+               "test-sync"
+               (fn [] (reset! sync-ran? true) :result-not-checked))
+              (is (false? @sync-ran?)
+                  "sync body did NOT run because import-busy short-circuited it"))
+            (finally
+              (deliver release :go)
+              (await @#'mfi/import-agent))))))))
 
 (deftest sync-runs-normally-when-no-import-in-flight-test
   (testing "control: sync body executes normally when no import is in flight"
