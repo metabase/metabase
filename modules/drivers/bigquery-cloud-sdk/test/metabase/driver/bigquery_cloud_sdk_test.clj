@@ -407,6 +407,70 @@
                     {:source-table (mt/id view-name)
                      :order-by     [[:asc (mt/id view-name :id)]]})))))))))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            Description sync (#18872)                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private descriptions-dataset
+  "Dataset for #18872 sync test. Carries table-level, top-level column, and nested RECORD subfield descriptions."
+  (tx/map->DatabaseDefinition
+   {:database-name "descriptions-dataset"
+    :options       {}
+    :table-definitions
+    [(tx/map->TableDefinition
+      {:table-name    "described_table"
+       :table-comment "Top-level table description for sync test (#18872)."
+       :rows          []
+       :field-definitions
+       [(tx/map->FieldDefinition
+         {:field-name    "described_text"
+          :base-type     :type/Text
+          :field-comment "Top-level column description for sync test (#18872)."})
+        (tx/map->FieldDefinition
+         {:field-name "undescribed_text"
+          :base-type  :type/Text})
+        (tx/map->FieldDefinition
+         {:field-name    "described_record"
+          :base-type     :type/Dictionary
+          :nested-fields [(tx/map->FieldDefinition
+                           {:field-name    "described_nested"
+                            :base-type     :type/Text
+                            :field-comment "Nested column description for sync test (#18872)."})
+                          (tx/map->FieldDefinition
+                           {:field-name "undescribed_nested"
+                            :base-type  :type/Text})]})]})]}))
+
+(deftest sync-descriptions-test
+  (testing "BigQuery driver propagates table and column descriptions during sync (#18872)"
+    (mt/test-driver
+      :bigquery-cloud-sdk
+      (mt/dataset
+        descriptions-dataset
+        (let [table-name  "described_table"
+              schema-name (get-test-data-name)]
+          (testing "describe-database carries the table-level description"
+            (let [tables    (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
+                  described (first (filter #(= table-name (:name %)) tables))]
+              (is (some? described)
+                  "the test table should be visible to describe-database")
+              (is (= "Top-level table description for sync test (#18872)."
+                     (:description described)))))
+          (testing "describe-fields carries top-level column descriptions"
+            (let [fields  (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db)
+                                                           {:table-names  [table-name]
+                                                            :schema-names [schema-name]}))
+                  by-name (into {} (map (juxt :name identity)) fields)]
+              (is (= "Top-level column description for sync test (#18872)."
+                     (:field-comment (by-name "described_text"))))
+              (testing "columns without a BigQuery description are emitted without :field-comment"
+                (is (not (contains? (by-name "undescribed_text") :field-comment))))
+              (testing "RECORD subfield descriptions are also propagated"
+                (let [nested-by-name (into {} (map (juxt :name identity))
+                                           (:nested-fields (by-name "described_record")))]
+                  (is (= "Nested column description for sync test (#18872)."
+                         (:field-comment (nested-by-name "described_nested"))))
+                  (is (not (contains? (nested-by-name "undescribed_nested") :field-comment))))))))))))
+
 (deftest sync-materialized-view-test
   (mt/test-driver
     :bigquery-cloud-sdk

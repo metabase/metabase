@@ -240,19 +240,33 @@
                                      :where [:and
                                              [:= :o.table_name :t.table_name]
                                              [:= :o.option_name "require_partition_filter"]]}
-                                    :require_partition_filter]]
+                                    :require_partition_filter]
+                                   ;; BigQuery stores table descriptions in INFORMATION_SCHEMA.TABLE_OPTIONS as a
+                                   ;; DDL string literal (e.g. `"my description"`). BigQuery string literals follow
+                                   ;; JSON escape rules, so JSON_VALUE unwraps the literal to its raw text.
+                                   [{:select [[[:json_value :o.option_value]]]
+                                     :from [[(information-schema-table project-id dataset-id "TABLE_OPTIONS") :o]]
+                                     :where [:and
+                                             [:= :o.table_name :t.table_name]
+                                             [:= :o.option_name "description"]]}
+                                    :description]]
                           :from [[(information-schema-table project-id dataset-id "TABLES") :t]]}))
-        table-info (fn [dataset-id {table-name :table_name table-type :table_type require-partition-filter :require_partition_filter}]
-                     {:schema dataset-id
-                      :name table-name
-                      :database_require_filter
-                      (boolean (and
-                                ;; Materialized views can be partitioned, and whether the view require a filter or not is based
-                                ;; on the base table it selects from, without parsing the view query we can't find out the base table,
-                                ;; thus we can't know whether the view require a filter or not.
-                                ;; Maybe this is something we can do once we can parse sql
-                                (= "BASE TABLE" table-type)
-                                require-partition-filter))})]
+        table-info (fn [dataset-id {table-name :table_name
+                                    table-type :table_type
+                                    require-partition-filter :require_partition_filter
+                                    description :description}]
+                     (cond-> {:schema dataset-id
+                              :name table-name
+                              :database_require_filter
+                              (boolean (and
+                                        ;; Materialized views can be partitioned, and whether the view require a filter or not is based
+                                        ;; on the base table it selects from, without parsing the view query we can't find out the base table,
+                                        ;; thus we can't know whether the view require a filter or not.
+                                        ;; Maybe this is something we can do once we can parse sql
+                                        (= "BASE TABLE" table-type)
+                                        require-partition-filter))}
+                       (not (str/blank? description))
+                       (assoc :description description)))]
     (->> (list-datasets details :logging-schema-exclusions? true)
          (eduction (mapcat (fn [dataset-id] (eduction (map #(table-info dataset-id %)) (query-dataset dataset-id))))))))
 
@@ -374,7 +388,7 @@
   (let [results (try (query-honeysql
                       driver
                       database
-                      {:select [:table_name :column_name :data_type :field_path]
+                      {:select [:table_name :column_name :data_type :field_path :description]
                        :from [[(information-schema-table project-id dataset-id "COLUMN_FIELD_PATHS") :c]]
                        :where [:and
                                [:in :table_name table-names]
@@ -382,16 +396,21 @@
                                [:> [:strpos :field_path "."] 0]]})
                      (catch Throwable e
                        (log/warnf e "error in get-nested-columns-for-tables for dataset: %s" dataset-id)))
-        nested-column-info (fn [{data-type :data_type field-path-str :field_path table-name :table_name}]
+        nested-column-info (fn [{data-type :data_type
+                                 field-path-str :field_path
+                                 table-name :table_name
+                                 description :description}]
                              (let [field-path (str/split field-path-str #"\.")
                                    [database-type base-type] (raw-type->database+base-type data-type)]
                                (when-let [nfc-path (not-empty (pop field-path))]
-                                 {:name (peek field-path)
-                                  :table-name table-name
-                                  :table-schema dataset-id
-                                  :database-type database-type
-                                  :base-type base-type
-                                  :nfc-path nfc-path})))]
+                                 (cond-> {:name (peek field-path)
+                                          :table-name table-name
+                                          :table-schema dataset-id
+                                          :database-type database-type
+                                          :base-type base-type
+                                          :nfc-path nfc-path}
+                                   (not (str/blank? description))
+                                   (assoc :field-comment description)))))]
     (transduce
      (keep nested-column-info)
      (completing
@@ -416,18 +435,21 @@
      (fn [{column-name :column_name
            data-type :data_type
            database-position :ordinal_position
-           partitioned? :partitioned}]
+           partitioned? :partitioned
+           description :description}]
        (let [database-position (or (some-> database-position dec) max-position)
              [database-type base-type] (raw-type->database+base-type data-type)]
          (cond-> [(maybe-add-nested-fields
                    nested-column-lookup
-                   {:name column-name
-                    :table-name table-name
-                    :table-schema dataset-id
-                    :database-type database-type
-                    :base-type base-type
-                    :database-partitioned partitioned?
-                    :database-position database-position}
+                   (cond-> {:name column-name
+                            :table-name table-name
+                            :table-schema dataset-id
+                            :database-type database-type
+                            :base-type base-type
+                            :database-partitioned partitioned?
+                            :database-position database-position}
+                     (not (str/blank? description))
+                     (assoc :field-comment description))
                    nil
                    database-position)]
            ;; _PARTITIONDATE does not appear so add it in if we see _PARTITIONTIME
@@ -444,11 +466,21 @@
 (defn- describe-dataset-fields-reducible
   [driver database project-id dataset-id table-names]
   (assert (seq table-names))
-  (let [named-rows-query {:select [:table_name :column_name :data_type :ordinal_position
-                                   [[:= :is_partitioning_column "YES"] :partitioned]]
+  (let [named-rows-query {:select [:c.table_name :c.column_name :c.data_type :c.ordinal_position
+                                   [[:= :c.is_partitioning_column "YES"] :partitioned]
+                                   ;; Column descriptions live in INFORMATION_SCHEMA.COLUMN_FIELD_PATHS rather than
+                                   ;; COLUMNS, so we LEFT JOIN on (table, column, field_path = column) to fetch the
+                                   ;; top-level field description. Nested field descriptions are handled by
+                                   ;; get-nested-columns-for-tables.
+                                   :cfp.description]
                           :from [[(information-schema-table project-id dataset-id "COLUMNS") :c]]
-                          :where [:in :table_name table-names]
-                          :order-by [:table_name]}
+                          :left-join [[(information-schema-table project-id dataset-id "COLUMN_FIELD_PATHS") :cfp]
+                                      [:and
+                                       [:= :c.table_name :cfp.table_name]
+                                       [:= :c.column_name :cfp.column_name]
+                                       [:= :cfp.field_path :c.column_name]]]
+                          :where [:in :c.table_name table-names]
+                          :order-by [:c.table_name]}
         named-rows (try (query-honeysql driver database named-rows-query)
                         (catch Throwable e
                           (log/warnf e "error in describe-fields for dataset: %s" dataset-id)))

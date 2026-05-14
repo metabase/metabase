@@ -182,7 +182,7 @@
 (defn- field-definitions->Fields [field-definitions]
   (into
    []
-   (map (fn [{:keys [field-name base-type nested-fields collection-type]}]
+   (map (fn [{:keys [field-name base-type nested-fields collection-type field-comment]}]
           (let [field-type (or (some-> collection-type base-type->bigquery-type)
                                (base-type->bigquery-type base-type)
                                (let [message (format "Don't know what BigQuery type to use for base type: %s" base-type)]
@@ -193,27 +193,35 @@
                          (LegacySQLTypeName/valueOf (name field-type))
                          ^"[Lcom.google.cloud.bigquery.Field;" (into-array Field (field-definitions->Fields nested-fields)))]
             (cond-> builder
-              (isa? :type/Collection base-type) (.setMode Field$Mode/REPEATED)
-              :always (.build)))))
+              (isa? :type/Collection base-type)  (.setMode Field$Mode/REPEATED)
+              (not (str/blank? field-comment))   (.setDescription ^String field-comment)
+              :always                            (.build)))))
    field-definitions))
 
 (defn- create-table*!
-  [dataset-id table-id field-definitions]
-  (let [tbl-id (TableId/of dataset-id table-id)
-        schema (Schema/of (u/varargs Field (field-definitions->Fields (cons {:field-name "id"
-                                                                             :base-type :type/Integer}
-                                                                            field-definitions))))
-        tbl    (TableInfo/of tbl-id (StandardTableDefinition/of schema))]
-    (.create (bigquery) tbl (u/varargs BigQuery$TableOption))))
+  ([dataset-id table-id field-definitions]
+   (create-table*! dataset-id table-id field-definitions nil))
+  ([dataset-id table-id field-definitions table-comment]
+   (let [tbl-id              (TableId/of dataset-id table-id)
+         schema              (Schema/of (u/varargs Field (field-definitions->Fields (cons {:field-name "id"
+                                                                                           :base-type :type/Integer}
+                                                                                          field-definitions))))
+         ^TableInfo tbl-info (cond-> (TableInfo/newBuilder tbl-id (StandardTableDefinition/of schema))
+                               (not (str/blank? table-comment)) (.setDescription ^String table-comment)
+                               :always                          (.build))]
+     (.create (bigquery) tbl-info (u/varargs BigQuery$TableOption)))))
 
 (mu/defn- create-table!
-  [^String dataset-id :- ::lib.schema.common/non-blank-string
-   ^String table-id :- ::lib.schema.common/non-blank-string
-   field-definitions]
-  (create-table*! dataset-id table-id field-definitions)
-  ;; now verify that the Table was created
-  (.listTables (bigquery) dataset-id (u/varargs BigQuery$TableListOption))
-  (log/info (u/format-color 'blue "Created BigQuery table `%s.%s.%s`." (project-id) dataset-id table-id)))
+  ([dataset-id table-id field-definitions]
+   (create-table! dataset-id table-id field-definitions nil))
+  ([^String dataset-id :- ::lib.schema.common/non-blank-string
+    ^String table-id :- ::lib.schema.common/non-blank-string
+    field-definitions
+    table-comment]
+   (create-table*! dataset-id table-id field-definitions table-comment)
+   ;; now verify that the Table was created
+   (.listTables (bigquery) dataset-id (u/varargs BigQuery$TableListOption))
+   (log/info (u/format-color 'blue "Created BigQuery table `%s.%s.%s`." (project-id) dataset-id table-id))))
 
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
   (let [sql (format "SELECT count(*) FROM `%s.%s.%s`" (project-id) dataset-id table-id)]
@@ -321,9 +329,9 @@
       (assoc (zipmap field-names row)
              :id (inc i)))))
 
-(defn- load-tabledef! [dataset-id {:keys [table-name field-definitions], :as tabledef}]
+(defn- load-tabledef! [dataset-id {:keys [table-name field-definitions table-comment], :as tabledef}]
   (let [table-name (normalize-name table-name)]
-    (create-table! dataset-id table-name field-definitions)
+    (create-table! dataset-id table-name field-definitions table-comment)
     (when (seq (:rows tabledef))
       ;; retry the `insert-data!` step up to 5 times because it seems to fail silently a lot. Since each row is given a
       ;; unique key it shouldn't result in duplicates.
