@@ -594,3 +594,61 @@
         ;; exception middleware honours :status-code in ex-data.
         (throw (ex-info (ex-message e)
                         (assoc (ex-data e) :status-code 400)))))))
+
+(def ^:private IndexRequestBody
+  "Either `:statement` (raw SQL) or `:structured` (typed form) is required;
+  if both are present the structured form wins."
+  [:and
+   [:map
+    [:statement  {:optional true} :string]
+    [:structured {:optional true} IndexStructured]]
+   [:fn {:error/message "either :statement or :structured is required"}
+    (fn [{:keys [statement structured]}] (or statement structured))]])
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/:id/indexes"
+  "Queue a CREATE INDEX. Validates the statement, inserts an
+  `IndexRequest`, submits a quick-task. Returns the new row immediately;
+  the FE polls `GET /:id/indexes/requests/:request-id` for status."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query
+   body :- IndexRequestBody]
+  (api/check-superuser)
+  (let [table (api/check-404 (t2/select-one :model/Table :id id))]
+    (index-manager/submit-create! table body api/*current-user-id*)))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/:id/indexes/requests/:request-id"
+  "Poll the status of a queued index request."
+  [{:keys [id request-id]} :- [:map
+                               [:id ms/PositiveInt]
+                               [:request-id ms/PositiveInt]]]
+  (api/check-superuser)
+  (let [table (api/check-404 (t2/select-one :model/Table :id id))]
+    (api/check-404 (index-manager/get-request (:id table) request-id))))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :put "/:id/indexes/requests/:request-id"
+  "Edit a queued/completed index request. Drops the previous index (if it
+  was succeeded) and creates the new one in the same task. Returns 409
+  if the request is currently in flight."
+  [{:keys [id request-id]} :- [:map
+                               [:id ms/PositiveInt]
+                               [:request-id ms/PositiveInt]]
+   _query
+   body :- IndexRequestBody]
+  (api/check-superuser)
+  (let [table (api/check-404 (t2/select-one :model/Table :id id))]
+    (index-manager/submit-edit! table request-id body)))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :delete "/:id/indexes/requests/:request-id"
+  "Drop the index, then delete the request row so the (table, name)
+  slot is freed for a future re-create. Returns 409 if the request is
+  currently in flight."
+  [{:keys [id request-id]} :- [:map
+                               [:id ms/PositiveInt]
+                               [:request-id ms/PositiveInt]]]
+  (api/check-superuser)
+  (let [table (api/check-404 (t2/select-one :model/Table :id id))]
+    (index-manager/submit-drop! table request-id)))
