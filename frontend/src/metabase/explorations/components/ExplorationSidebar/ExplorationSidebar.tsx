@@ -92,7 +92,15 @@ export function ExplorationSidebar({
   }, [flatItems, selectedEntityId, setSelectedEntityId]);
 
   return (
-    <Stack h="100%" w="20%" flex="none" gap="lg" pt="3rem" mr="2rem">
+    <Stack
+      h="100%"
+      w="20%"
+      miw="20.5rem"
+      flex="none"
+      gap="lg"
+      pt="3rem"
+      mr="2rem"
+    >
       <Text size="xl" fw="bold" pl="0.75rem">
         {exploration.name}
       </Text>

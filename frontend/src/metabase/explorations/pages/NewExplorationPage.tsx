@@ -28,12 +28,18 @@ function NewExplorationPageInner() {
   }, [resetConversation]);
 
   return (
-    <Stack h="100%" gap={0} bg="background-primary">
+    <Stack h="100%" gap={0} bg="background-primary" miw="67.375rem">
       <Box pt="lg" pb="3rem" ta="center">
         <QuestionModeSwitcher value="research" />
       </Box>
       <Center px="3rem" pb="3rem" flex={1} mih={0}>
-        <Paper h="100%" w="100%" maw="70.5rem" bd="1px solid border">
+        <Paper
+          h="100%"
+          w="100%"
+          maw="93.75rem"
+          mah="62.5rem"
+          bd="1px solid border"
+        >
           <Group
             h="100%"
             w="100%"

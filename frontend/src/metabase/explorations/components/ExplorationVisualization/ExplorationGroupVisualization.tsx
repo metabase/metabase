@@ -64,7 +64,6 @@ export function ExplorationGroupVisualization(
         flex={1}
         mih={0}
         w="100%"
-        maw="70rem"
         bg="background-primary"
         bd="1px solid border"
         bdrs="md"
