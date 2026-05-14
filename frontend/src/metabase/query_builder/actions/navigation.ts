@@ -102,19 +102,26 @@ export const locationChanged =
   (location: Location, nextLocation: Location, nextParams: QueryParams) =>
   (dispatch: Dispatch) => {
     if (location !== nextLocation) {
+      const isExternalUrlChange = nextLocation.state === undefined;
+      const urlChanged =
+        getURL(nextLocation, { includeMode: true }) !==
+        getURL(location, { includeMode: true });
       if (nextLocation.action === "POP") {
-        if (
-          getURL(nextLocation, { includeMode: true }) !==
-          getURL(location, { includeMode: true })
-        ) {
+        if (urlChanged) {
           // the browser forward/back button was pressed
-
           dispatch(popState(nextLocation));
+          // POP without state means navigation to an externally-set URL (eg.
+          // typing into the address bar, or a hash-only navigation that the
+          // browser handled without a full page reload). Re-run init so the
+          // QB picks up the new query.
+          if (isExternalUrlChange) {
+            dispatch(initializeQB(nextLocation, nextParams));
+          }
         }
       } else if (
         (nextLocation.action === "PUSH" || nextLocation.action === "REPLACE") &&
         // ignore PUSH/REPLACE with `state` because they were initiated by the `updateUrl` action
-        nextLocation.state === undefined
+        isExternalUrlChange
       ) {
         // a link to a different qb url was clicked
         dispatch(initializeQB(nextLocation, nextParams));
