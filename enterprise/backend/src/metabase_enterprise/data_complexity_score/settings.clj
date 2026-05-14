@@ -4,14 +4,29 @@
    [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
-(defsetting data-complexity-scoring-enabled
-  (deferred-tru "Run the scheduled Data Complexity Score job (one node per cluster, daily).")
+(defsetting ^:deprecated data-complexity-scoring-enabled
+  (deferred-tru
+   (str "Deprecated: the :data-complexity-score premium feature token is the authoritative gate "
+        "for the scheduled scoring job. Retained as an env-var-only fallback (MB_DATA_COMPLEXITY_"
+        "SCORING_ENABLED) so existing dev/staging overrides keep working and the value stays "
+        "observable in stats."))
   :encryption :no
-  :visibility :admin
-  :default    false
+  :visibility :internal
+  :setter     :none
+  :deprecated "0.61.0"
   :type       :boolean
   :export?    false
   :doc        false)
+
+(defn scoring-active?
+  "Whether the scheduled Data Complexity Score runner is permitted to execute on this instance.
+  The `:data-complexity-score` premium feature token is authoritative; the deprecated
+  [[data-complexity-scoring-enabled]] setting is honored as a backward-compatible fallback so
+  existing self-hosted overrides (and the cloud-staging default) keep working until the setting
+  is removed."
+  []
+  (boolean (or (premium-features/enable-data-complexity-score?)
+               (data-complexity-scoring-enabled))))
 
 (defsetting data-complexity-scoring-last-fingerprint
   (deferred-tru "Internal bookkeeping: Fingerprint of last successful run, to prevent needless re-calculations.")
