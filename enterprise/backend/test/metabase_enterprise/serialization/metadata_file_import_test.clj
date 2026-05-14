@@ -268,4 +268,3 @@
           (is (some? leaf))
           (is (nil? (:parent_id leaf)))
           (is (= ["data" "user" "zip"] (:nfc_path leaf))))))))
-
