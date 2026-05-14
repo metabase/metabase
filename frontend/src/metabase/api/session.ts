@@ -33,6 +33,13 @@ export const sessionApi = Api.injectEndpoints({
         body: { email },
       }),
     }),
+    checkPassword: builder.mutation<void, { password: string }>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/session/password-check",
+        body,
+      }),
+    }),
     getSessionProperties: builder.query<EnterpriseSettings, void>({
       query: () => ({
         method: "GET",
@@ -60,6 +67,7 @@ export const sessionApi = Api.injectEndpoints({
 export const {
   useGetPasswordResetTokenStatusQuery,
   useForgotPasswordMutation,
+  useCheckPasswordMutation,
   useGetSessionPropertiesQuery,
 } = sessionApi;
 
