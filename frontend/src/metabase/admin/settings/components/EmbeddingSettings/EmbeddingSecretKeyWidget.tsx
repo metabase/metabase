@@ -2,10 +2,10 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { SetByEnvVarWrapper } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { useLazyGenerateRandomTokenQuery } from "metabase/api/util";
 import { useAdminSetting } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { CopyButton } from "metabase/common/components/CopyButton";
-import { UtilApi } from "metabase/services";
 import { Box, Button, Flex, TextInputBlurChange } from "metabase/ui";
 
 import { SettingHeader } from "../SettingHeader";
@@ -17,6 +17,7 @@ export const EmbeddingSecretKeyWidget = () => {
   const { value, updateSetting, settingDetails } = useAdminSetting(
     "embedding-secret-key",
   );
+  const [generateRandomToken] = useLazyGenerateRandomTokenQuery();
 
   const handleChange = async (newToken: string) => {
     updateSetting({
@@ -26,7 +27,7 @@ export const EmbeddingSecretKeyWidget = () => {
   };
 
   const generateToken = async () => {
-    const result = await UtilApi.random_token();
+    const result = await generateRandomToken().unwrap();
     handleChange(result.token);
   };
 
