@@ -12,6 +12,7 @@ import {
   ActionIcon,
   Box,
   Button,
+  Ellipsified,
   Group,
   Icon,
   Pill,
@@ -168,7 +169,13 @@ export function NewExplorationData({
 
   return (
     <>
-      <Stack gap={0} bg="background-secondary" w="28.75rem" h="100%">
+      <Stack
+        gap={0}
+        bg="background-secondary"
+        maw="50%"
+        miw="28.75rem"
+        h="100%"
+      >
         <Stack gap={0} flex={1} mih={0} style={{ overflowY: "auto" }}>
           <SectionHeader
             title={t`Data`}
@@ -315,7 +322,7 @@ function PillList({ items, onRemove }: PillListProps) {
 
   return (
     <ScrollArea mih="2rem" type="auto" offsetScrollbars="y">
-      <Group align="flex-start" gap="sm">
+      <Group align="flex-start" gap="sm" wrap="wrap">
         {items.map((item) => (
           <Pill
             key={item.id}
@@ -328,6 +335,7 @@ function PillList({ items, onRemove }: PillListProps) {
             pl="1.25rem"
             py="0.625rem"
             px="sm"
+            maw="100%"
             data-interestingness={formatInterestingness(item.interestingness)}
             removeButtonProps={{
               mr: 0,
@@ -335,7 +343,7 @@ function PillList({ items, onRemove }: PillListProps) {
               "aria-label": t`Remove`,
             }}
           >
-            {item.name}
+            <Ellipsified>{item.name}</Ellipsified>
           </Pill>
         ))}
       </Group>
@@ -396,8 +404,8 @@ function DimensionCategoryList({
           <Text size="md" c="text-primary" w="5.25rem" flex="none" pt="0.5rem">
             {category.label}
           </Text>
-          <Box flex={1} mih={0}>
-            <Group align="flex-start" gap="sm">
+          <Box flex={1} miw={0} mih={0} style={{ overflow: "hidden" }}>
+            <Group align="flex-start" gap="sm" wrap="wrap">
               {category.pillGroups.map((pill) => (
                 <Pill
                   key={pill.id}
@@ -410,6 +418,7 @@ function DimensionCategoryList({
                   pl="1.25rem"
                   py="0.625rem"
                   px="sm"
+                  maw="100%"
                   data-interestingness={formatInterestingness(
                     pickMaxInterestingness(pill.dimensions),
                   )}
@@ -419,7 +428,7 @@ function DimensionCategoryList({
                     "aria-label": t`Remove`,
                   }}
                 >
-                  {pill.name}
+                  <Ellipsified>{pill.name}</Ellipsified>
                 </Pill>
               ))}
             </Group>

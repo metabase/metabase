@@ -53,9 +53,7 @@ export function NewExplorationChat({
   const {
     prompt,
     setPrompt,
-    conversation,
     messages,
-    errorMessages,
     retryMessage,
     isDoingScience,
     activeToolCalls,
@@ -137,9 +135,7 @@ export function NewExplorationChat({
   );
 
   useEffect(() => {
-    // conversation.messages includes tool calls, which are filtered out of messages
-    const allMessages = conversation.messages;
-    if (nextUnprocessedMessageIndexRef.current > allMessages.length) {
+    if (nextUnprocessedMessageIndexRef.current > messages.length) {
       nextUnprocessedMessageIndexRef.current = 0;
     }
 
@@ -147,10 +143,10 @@ export function NewExplorationChat({
       return;
     }
 
-    const unprocessedMessages = allMessages.slice(
+    const unprocessedMessages = messages.slice(
       nextUnprocessedMessageIndexRef.current,
     );
-    nextUnprocessedMessageIndexRef.current = allMessages.length;
+    nextUnprocessedMessageIndexRef.current = messages.length;
 
     handleSelectExplorationMetricsToolCallMessages(
       unprocessedMessages.filter(isSelectExplorationMetricsToolCallMessage),
@@ -160,19 +156,19 @@ export function NewExplorationChat({
     );
   }, [
     isDoingScience,
-    conversation.messages,
     sendToast,
     dispatch,
     setMetrics,
     setDimensions,
     handleSelectExplorationMetricsToolCallMessages,
     handleSetExplorationNameToolCallMessages,
+    messages,
   ]);
 
   const hasMessages = messages.length > 0;
 
   return (
-    <Stack flex={1} mih={0} gap="md">
+    <Stack flex={2} mih={0} gap="md">
       {hasMessages ? (
         <Stack
           flex={1}
@@ -184,7 +180,6 @@ export function NewExplorationChat({
         >
           <Messages
             messages={messages}
-            errorMessages={errorMessages}
             onRetryMessage={retryMessage}
             isDoingScience={isDoingScience}
             debug={false}
