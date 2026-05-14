@@ -401,7 +401,9 @@ export function MetabotSetupInner({
         )}
 
         {match(provider)
-          .with("metabase", () => <MetabaseAIProviderSetup />)
+          .with("metabase", () => (
+            <MetabaseAIProviderSetup onConnect={onClose} />
+          ))
           .with(P.nonNullable, (selectedProvider) => (
             <AIProviderSetup
               selectedProvider={selectedProvider}
