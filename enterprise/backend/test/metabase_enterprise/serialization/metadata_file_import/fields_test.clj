@@ -373,6 +373,29 @@
       (is (zero? (t2/count :model/Field :table_id t-id :name "orphaned_child")))
       (finally (p/clear-staging-tables!)))))
 
+(deftest insert-new-keeps-row-whose-fk-target-was-dropped-test
+  (testing "a field whose FK target was dropped during merge — source_fk_target_id
+            set, target_fk_target_id never resolved — is still inserted, with
+            fk_target_field_id NULL. fk_target_field_id is a semantic annotation,
+            not structural like parent_id, so an unresolved FK degrades to no-FK
+            (mirroring null-orphan-fk-target-refs!) rather than dropping the field."
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :schema "PUBLIC" :name "t"}]
+      (try
+        (p/clear-staging-tables!)
+        ;; Field sits in a matched table (target_table_id set) and has an FK whose
+        ;; target was dropped: source_fk_target_id is set, target_fk_target_id NULL.
+        (insert-staging-field-row! 100 "user_id" :depth 1
+                                   :target_table_id t-id
+                                   :source_fk_target_id 999)
+        (p/insert-new-fields-at-depth! 1)
+        (let [inserted (t2/select-one :model/Field :table_id t-id :name "user_id")]
+          (is (some? inserted)
+              "field in a matched table is inserted even though its FK target didn't resolve")
+          (is (nil? (:fk_target_field_id inserted))
+              "the unresolved FK is stored as NULL, not the field dropped"))
+        (finally (p/clear-staging-tables!))))))
+
 ;;; ============================== merge-fields-by-depth (integration) ==============================
 
 (deftest merge-fields-by-depth-handles-flat-fields-test

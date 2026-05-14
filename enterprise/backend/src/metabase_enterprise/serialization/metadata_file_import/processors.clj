@@ -534,9 +534,8 @@
 (defn null-orphan-fk-target-refs!
   "Find staging rows whose `source_fk_target_id` points at a `source_id`
   not present in staging, and NULL the `source_fk_target_id` column on
-  those rows (and their corresponding `target_fk_target_id` for safety).
-  Returns `{:count N :sample [...]}` when at least one row was scrubbed,
-  `{:count 0}` otherwise.
+  those rows. Returns `{:count N :sample [...]}` when at least one row was
+  scrubbed, `{:count 0}` otherwise.
 
   Why NULL instead of abort: fk_target refs that cross a hidden/archived
   table boundary on the source side (the table is `active=false` or
@@ -552,8 +551,7 @@
       (let [sample (orphan-sample :source_fk_target_id)]
         (t2/query
          {:update :metabase_field_import
-          :set    {:source_fk_target_id nil
-                   :target_fk_target_id nil}
+          :set    {:source_fk_target_id nil}
           :where  (orphan-not-exists-predicate :source_fk_target_id)})
         {:count n :sample sample}))))
 
@@ -862,10 +860,7 @@
                [:not= :fi.target_table_id nil]
                [:or
                 [:= :fi.source_parent_id nil]
-                [:not= :fi.target_parent_id nil]]
-               [:or
-                [:= :fi.source_fk_target_id nil]
-                [:not= :fi.target_fk_target_id nil]]]}]}))
+                [:not= :fi.target_parent_id nil]]]}]}))
 
 (defn merge-fields-by-depth!
   "Walk staging from depth 0 to max-depth, merging each level's fields into
