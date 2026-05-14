@@ -1,14 +1,14 @@
 import type { State } from "metabase/redux/store";
 
+import type { slidesReducer } from "./slides.slice";
+
+type SlidesEditorState = ReturnType<typeof slidesReducer>;
+
 // The slides editor slice is registered into `commonReducers` as `slidesEditor`,
 // but the `State` type is derived from the static reducer map and doesn't know
 // about it. A small cast keeps the rest of the code typed.
-const getSlice = (state: State) =>
-  (state as unknown as {
-    slidesEditor: ReturnType<
-      typeof import("./slides.slice").slidesReducer
-    >;
-  }).slidesEditor;
+const getSlice = (state: State): SlidesEditorState =>
+  (state as unknown as { slidesEditor: SlidesEditorState }).slidesEditor;
 
 export const getSlides = (state: State) => getSlice(state).slides;
 export const getActiveSlideIndex = (state: State) =>

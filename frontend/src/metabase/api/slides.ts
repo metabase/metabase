@@ -7,7 +7,7 @@ import type {
   GenerateSlidesResponse,
   SlidesDeck,
   UpdateSlidesRequest,
-} from "./types";
+} from "metabase/slides/types";
 
 interface ListSlidesResponse {
   items: SlidesDeck[];

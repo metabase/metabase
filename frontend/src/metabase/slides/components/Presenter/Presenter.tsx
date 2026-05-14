@@ -20,7 +20,7 @@ const isInteractiveTarget = (el: EventTarget | null): boolean => {
   );
 };
 
-interface PresenterProps extends WithRouterProps<{ entityId: string }> {}
+type PresenterProps = WithRouterProps<{ entityId: string }>;
 
 export const Presenter = ({ params, router }: PresenterProps) => {
   const numericId = Number(params.entityId);

@@ -2063,17 +2063,11 @@
   slides
   {:team "UX West"
    :api  #{metabase.slides.api
-           metabase.slides.init
-           metabase.slides.models.slides}
+           metabase.slides.init}
    :uses #{api
-           app-db
            collections
-           dashboards
-           events
            llm
            models
-           queries
-           settings
            util}
    :model-exports #{:model/Slides}
    :model-imports #{:model/Card

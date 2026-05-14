@@ -22,14 +22,14 @@ import {
 } from "metabase/ui";
 
 import {
+  getDeckId,
+  getIsGenerateModalOpen,
+} from "../../selectors";
+import {
   closeGenerateModal,
   markClean,
   replaceSlides,
 } from "../../slides.slice";
-import {
-  getDeckId,
-  getIsGenerateModalOpen,
-} from "../../selectors";
 
 import S from "./GenerateModal.module.css";
 
@@ -142,7 +142,7 @@ export const GenerateModal = () => {
 
         <Box>
           <Text className={S.label}>
-            {t`Include these from Metabase (optional)`}
+            {t`Pick cards or dashboards to include (optional)`}
           </Text>
           {picked.length > 0 && (
             <Box className={S.selectedRow} mb={6}>

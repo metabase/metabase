@@ -19,6 +19,14 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Loader } from "metabase/ui";
 
 import {
+  getActiveSlide,
+  getActiveSlideIndex,
+  getDeckId,
+  getDeckName,
+  getIsDirty,
+  getSlides,
+} from "../../selectors";
+import {
   addSlide,
   loadDeck,
   markClean,
@@ -30,21 +38,13 @@ import {
   setName,
   setSlideContent,
 } from "../../slides.slice";
-import {
-  getActiveSlide,
-  getActiveSlideIndex,
-  getDeckId,
-  getDeckName,
-  getIsDirty,
-  getSlides,
-} from "../../selectors";
 import { GenerateModal } from "../GenerateModal/GenerateModal";
 import { SlideThumbnailList } from "../SlideThumbnailList/SlideThumbnailList";
 import { SlidesHeader } from "../SlidesHeader/SlidesHeader";
 
 import S from "./SlidesPage.module.css";
 
-interface SlidesPageProps extends WithRouterProps<{ entityId: string }> {}
+type SlidesPageProps = WithRouterProps<{ entityId: string }>;
 
 export const SlidesPage = ({ params, router }: SlidesPageProps) => {
   const dispatch = useDispatch();

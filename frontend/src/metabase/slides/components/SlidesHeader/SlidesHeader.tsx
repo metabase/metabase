@@ -1,4 +1,4 @@
-import { type ChangeEvent } from "react";
+import type { ChangeEvent } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -15,11 +15,19 @@ interface SlidesHeaderProps {
   saveStatus: "saved" | "saving" | "dirty" | "error";
 }
 
-const saveLabel: Record<SlidesHeaderProps["saveStatus"], string> = {
-  saved: t`Saved`,
-  saving: t`Saving…`,
-  dirty: t`Unsaved changes`,
-  error: t`Save failed`,
+const getSaveLabel = (
+  status: SlidesHeaderProps["saveStatus"],
+): string => {
+  switch (status) {
+    case "saved":
+      return t`Saved`;
+    case "saving":
+      return t`Saving…`;
+    case "dirty":
+      return t`Unsaved changes`;
+    case "error":
+      return t`Save failed`;
+  }
 };
 
 export const SlidesHeader = ({
@@ -47,7 +55,7 @@ export const SlidesHeader = ({
         placeholder={t`Untitled slides`}
         aria-label={t`Deck title`}
       />
-      <span className={S.saveIndicator}>{saveLabel[saveStatus]}</span>
+      <span className={S.saveIndicator}>{getSaveLabel(saveStatus)}</span>
       <Group gap="xs" className={S.actions}>
         <Button
           variant="subtle"
