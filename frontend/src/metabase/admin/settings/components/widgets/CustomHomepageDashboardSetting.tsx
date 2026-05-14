@@ -5,7 +5,7 @@ import { trackCustomHomepageDashboardEnabled } from "metabase/common/analytics";
 import { DashboardSelector } from "metabase/common/components/DashboardSelector";
 import { useDispatch } from "metabase/redux";
 import { refreshCurrentUser } from "metabase/redux/user";
-import { Stack } from "metabase/ui";
+import { Stack, Text } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
 import { SettingHeader } from "../SettingHeader";
@@ -21,6 +21,8 @@ export function CustomHomepageDashboardSetting() {
   const { value: customHomepageDashboardId } = useAdminSetting(
     "custom-homepage-dashboard",
   );
+  const { value: landingPage } = useAdminSetting("landing-page");
+  const isOverridden = Boolean(landingPage && landingPage !== "/");
   const dispatch = useDispatch();
 
   const handleDashboardChange = async (newDashboardId?: DashboardId) => {
@@ -69,20 +71,27 @@ export function CustomHomepageDashboardSetting() {
         title={t`Custom homepage`}
         description={description}
       />
-      <BasicAdminSettingInput
-        name="custom-homepage"
-        inputType="boolean"
-        value={customHomepage}
-        onChange={(newValue) => handleToggleChange(Boolean(newValue))}
-      />
-      {customHomepage && (
-        <div data-testid="custom-homepage-dashboard-setting">
-          <DashboardSelector
-            value={customHomepageDashboardId ?? undefined}
-            onChange={handleDashboardChange}
-          />
-        </div>
+      {isOverridden && (
+        <Text c="text-secondary" fs="italic" size="sm">
+          {t`Currently overridden by the Landing page setting below.`}
+        </Text>
       )}
+      <Stack opacity={isOverridden ? 0.5 : 1}>
+        <BasicAdminSettingInput
+          name="custom-homepage"
+          inputType="boolean"
+          value={customHomepage}
+          onChange={(newValue) => handleToggleChange(Boolean(newValue))}
+        />
+        {customHomepage && (
+          <div data-testid="custom-homepage-dashboard-setting">
+            <DashboardSelector
+              value={customHomepageDashboardId ?? undefined}
+              onChange={handleDashboardChange}
+            />
+          </div>
+        )}
+      </Stack>
     </Stack>
   );
 }

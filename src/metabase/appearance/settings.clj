@@ -57,7 +57,7 @@
     :else landing-page))
 
 (defsetting landing-page
-  (deferred-tru "Enter a URL of the landing page to show the user. This overrides the custom homepage setting above.")
+  (deferred-tru "Enter a relative URL like /dashboard/1 or /collection/2. When set, this overrides the Custom homepage above.")
   :encryption :no
   :visibility :public
   :export?    true

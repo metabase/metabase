@@ -54,7 +54,7 @@ export function LandingPageWidget() {
         id="landing-page"
         data-testid="landing-page"
         aria-label={t`Landing page custom destination`}
-        placeholder="/"
+        placeholder="/dashboard/1"
         error={error}
         value={String(inputValue ?? "")}
         onChange={(e) => {
