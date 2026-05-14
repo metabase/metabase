@@ -1,18 +1,18 @@
 import type { DocumentId, ExplorationId } from "metabase-types/api";
 
 export function newExploration(): string {
-  return "/explorations";
+  return "/question/research";
 }
 
 export function exploration(explorationId: ExplorationId): string {
-  return `/explorations/${explorationId}`;
+  return `/question/research/${explorationId}`;
 }
 
 export function explorationDocument(
   explorationId: ExplorationId,
   documentId: DocumentId,
 ): string {
-  return `/explorations/${explorationId}/document/${documentId}`;
+  return `/question/research/${explorationId}/document/${documentId}`;
 }
 
 export function explorationDocumentComments(

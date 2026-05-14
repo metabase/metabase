@@ -1,3 +1,8 @@
+.container {
+  flex-basis: max-content;
+  border-left: 1px solid var(--mb-color-border);
+}
+
 .sectionAddIcon {
   box-shadow: 0 1px 3px var(--mb-color-border);
 }

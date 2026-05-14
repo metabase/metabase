@@ -11,9 +11,11 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import { Box, Group } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type {
   DocumentId,
   Exploration,
+  ExplorationId,
   ExplorationQuery,
   ExplorationQueryGroup,
   ExplorationQueryGroupId,
@@ -118,9 +120,10 @@ export function ExplorationPage({
           ? encodeURIComponent(entityId.id)
           : entityId.id;
       const search = location.search ?? "";
+      const explorationId: ExplorationId = parseInt(params.id, 10);
       dispatch(
         push(
-          `/explorations/${params.id}/${entityId.type}/${idSegment}${search}`,
+          `${Urls.exploration(explorationId)}/${entityId.type}/${idSegment}${search}`,
         ),
       );
     },

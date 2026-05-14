@@ -122,12 +122,12 @@ export const NewItemMenuView = ({
     if (hasDataAccess) {
       items.push(
         <Menu.Item
-          key="exploration"
+          key="research"
           component={ForwardRefLink}
           to={Urls.newExploration()}
           leftSection={<Icon name="zoom_in" />}
         >
-          {t`Exploration`}
+          {t`Research`}
         </Menu.Item>,
       );
     }

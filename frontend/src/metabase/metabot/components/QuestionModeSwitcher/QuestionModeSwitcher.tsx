@@ -4,9 +4,7 @@ import { t } from "ttag";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useDispatch } from "metabase/redux";
 import { SegmentedControl } from "metabase/ui";
-
-const ASK_ROUTE = "/question/ask";
-const RESEARCH_ROUTE = "/explorations";
+import * as Urls from "metabase/urls";
 
 export type QuestionMode = "ask" | "research";
 
@@ -30,7 +28,13 @@ export function QuestionModeSwitcher({ value }: QuestionModeSwitcherProps) {
         if (next === value) {
           return;
         }
-        dispatch(push(next === "ask" ? ASK_ROUTE : RESEARCH_ROUTE));
+        dispatch(
+          push(
+            next === "ask"
+              ? Urls.newQuestion({ mode: "ask" })
+              : Urls.newExploration(),
+          ),
+        );
       }}
       data={[
         { value: "ask", label: t`Explore` },

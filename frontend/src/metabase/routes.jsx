@@ -275,6 +275,24 @@ export const getRoutes = (store) => {
             <IndexRoute component={QueryBuilder} />
             <Route path="notebook" component={QueryBuilder} />
             <Route path="ask" component={MetabotQueryBuilder} />
+            <Route path="research">
+              <IndexRoute component={NewExplorationPage} />
+              <Route path=":id" component={ExplorationPage} />
+              <Route
+                path=":id/:entityType/:entityId"
+                component={ExplorationPage}
+              >
+                <ModalRoute
+                  path="comments/:childTargetId"
+                  modal={CommentsSidesheet}
+                  noWrap
+                  modalProps={{
+                    enableTransition: false,
+                    closeOnClickOutside: false,
+                  }}
+                />
+              </Route>
+            </Route>
             <Route path=":slug" component={QueryBuilder} />
             <Route path=":slug/notebook" component={QueryBuilder} />
             <Route path=":slug/metabot" component={QueryBuilder} />
@@ -322,22 +340,6 @@ export const getRoutes = (store) => {
           </Route>
 
           <Route path="explore" component={MetricsViewerPage} />
-
-          <Route path="explorations">
-            <IndexRoute component={NewExplorationPage} />
-            <Route path=":id" component={ExplorationPage} />
-            <Route path=":id/:entityType/:entityId" component={ExplorationPage}>
-              <ModalRoute
-                path="comments/:childTargetId"
-                modal={CommentsSidesheet}
-                noWrap
-                modalProps={{
-                  enableTransition: false,
-                  closeOnClickOutside: false,
-                }}
-              />
-            </Route>
-          </Route>
 
           <Route path="table">
             <Route path=":tableId/detail/:rowId" component={TableDetailPage} />

@@ -1,6 +1,7 @@
 import type { Location } from "history";
 import { useEffect, useState } from "react";
 
+import CS from "metabase/css/core/index.css";
 import { QuestionModeSwitcher } from "metabase/metabot/components/QuestionModeSwitcher";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { Box, Center, Group, Paper, Stack } from "metabase/ui";
@@ -34,6 +35,7 @@ function NewExplorationPageInner() {
       </Box>
       <Center px="3rem" pb="3rem" flex={1} mih={0}>
         <Paper
+          className={CS.overflowHidden}
           h="100%"
           w="100%"
           maw="93.75rem"

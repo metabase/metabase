@@ -124,18 +124,10 @@ function ExplorationGroupVisualizationBody(
 
   if (queries.some((q) => !isSettledExplorationQueryStatus(q.status))) {
     return (
-      <>
-        <ExplorationVisualizationHeader name={groupName} />
-        <Stack gap="lg" h="100%">
-          {queries.map((query) => (
-            <ExplorationChartSkeleton
-              key={query.id}
-              name={query.name}
-              explorationQuery={query}
-            />
-          ))}
-        </Stack>
-      </>
+      <ExplorationChartSkeleton
+        name={groupName}
+        explorationQuery={queries[0]}
+      />
     );
   }
 

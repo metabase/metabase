@@ -20,6 +20,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type {
   CreateExplorationRequest,
   MetricDimension,
@@ -104,7 +105,7 @@ export function NewExplorationData({
       timelines,
     );
     const exploration = await createExploration(request).unwrap();
-    dispatch(push(`/explorations/${exploration.id}`));
+    dispatch(push(Urls.exploration(exploration.id)));
   }, [
     createExploration,
     dispatch,
@@ -170,15 +171,13 @@ export function NewExplorationData({
   return (
     <>
       <Stack
+        className={S.container}
         gap={0}
         bg="background-secondary"
         flex={0.68}
         maw="37.5rem"
         miw="28.75rem"
         h="100%"
-        style={{
-          flexBasis: "max-content",
-        }}
       >
         <Stack gap={0} flex={1} mih={0} style={{ overflowY: "auto" }}>
           <SectionHeader
