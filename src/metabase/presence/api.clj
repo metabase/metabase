@@ -20,6 +20,10 @@
 (def ^:private Models
   [:enum "card" "dashboard"])
 
+(def ^:private Parameters
+  [:maybe [:map-of :string [:or :string :int :double :boolean :nil
+                            [:sequential [:or :string :int :double :boolean]]]]])
+
 (defn- model->toucan
   [model]
   (case model
@@ -35,55 +39,64 @@
 
 (defn- upsert-presence!
   "Insert or update the caller's presence row for the given entity."
-  [user-id model model-id]
+  [user-id model model-id parameters]
   (app-db/update-or-insert! :model/UserPresence
                             {:user_id  user-id
                              :model    model
                              :model_id model-id}
                             (fn [_existing]
                               {:last_seen_at (now)
-                               :expires_at   (ttl-from-now)})))
+                               :expires_at   (ttl-from-now)
+                               :parameters   (or parameters {})})))
 
-(defn- live-viewer-ids
-  "Return user ids (other than `current-user-id`) with non-expired presence rows
-  for the given entity."
+(defn- live-viewers
+  "Return rows (other than `current-user-id`) with non-expired presence for
+  the given entity. Includes the viewer's last reported `:parameters`."
   [current-user-id model model-id]
-  (t2/select-fn-set :user_id
-                    :model/UserPresence
-                    {:select [:user_id]
-                     :from   [:user_presence]
-                     :where  [:and
-                              [:= :model model]
-                              [:= :model_id model-id]
-                              [:> :expires_at (now)]
-                              [:not= :user_id current-user-id]]}))
+  (t2/select [:model/UserPresence :user_id :parameters]
+             {:select [:user_id :parameters]
+              :from   [:user_presence]
+              :where  [:and
+                       [:= :model model]
+                       [:= :model_id model-id]
+                       [:> :expires_at (now)]
+                       [:not= :user_id current-user-id]]}))
 
-(defn- hydrate-users
-  [user-ids]
-  (when (seq user-ids)
-    (t2/select [:model/User :id :first_name :last_name :email]
-               :id [:in user-ids]
-               :is_active true)))
+(defn- hydrate-viewers
+  "Take the rows returned by [[live-viewers]] and join user info onto each."
+  [rows]
+  (when (seq rows)
+    (let [user-ids (into #{} (map :user_id) rows)
+          users    (t2/select-pk->fn identity
+                                     [:model/User :id :first_name :last_name :email]
+                                     :id        [:in user-ids]
+                                     :is_active true)]
+      (->> rows
+           (keep (fn [{:keys [user_id parameters]}]
+                   (when-let [u (get users user_id)]
+                     (assoc u :parameters (or parameters {})))))
+           vec))))
 
 ;; TODO (poc) please add a response schema to this API endpoint
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/ping"
   "Record that the current user is viewing the given entity. Returns the list
   of other users currently viewing it. Acts as both heartbeat (upsert) and
-  fetch (read) in a single round-trip."
+  fetch (read) in a single round-trip. The optional `parameters` map captures
+  the viewer's current URL query-string parameters so other viewers can see
+  which filter values are being looked at."
   [_route-params
    _query-params
-   {:keys [model model_id]} :- [:map
-                                [:model    Models]
-                                [:model_id ms/PositiveInt]]]
+   {:keys [model model_id parameters]} :- [:map
+                                           [:model      Models]
+                                           [:model_id   ms/PositiveInt]
+                                           [:parameters {:optional true} Parameters]]]
   (if-not (presence.settings/presence-enabled)
     {:viewers []}
     (do
       (api/read-check (model->toucan model) model_id)
-      (upsert-presence! api/*current-user-id* model model_id)
-      {:viewers (or (some-> (live-viewer-ids api/*current-user-id* model model_id)
-                            hydrate-users
-                            vec)
+      (upsert-presence! api/*current-user-id* model model_id parameters)
+      {:viewers (or (hydrate-viewers (live-viewers api/*current-user-id* model model_id))
                     [])})))
 
 ;; TODO (poc) please add a response schema to this API endpoint

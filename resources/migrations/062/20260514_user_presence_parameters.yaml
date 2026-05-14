@@ -1,0 +1,27 @@
+## Phase 2: Add a parameters JSON column to user_presence so each viewer can
+## report which filter values they're currently looking at. Stored as TEXT
+## (parsed as JSON on the way out).
+
+databaseChangeLog:
+  - logicalFilePath: migrations/062_update_migrations.yaml
+
+  - changeSet:
+      id: v62.2026-05-14T00:00:10
+      author: ybtan
+      comment: Add parameters JSON column to user_presence (POC)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: user_presence
+                columnName: parameters
+      changes:
+        - addColumn:
+            tableName: user_presence
+            columns:
+              - column:
+                  name: parameters
+                  type: ${text.type}
+                  remarks: JSON map of URL query-string parameters the viewer is currently looking at. Nullable.
+                  constraints:
+                    nullable: true

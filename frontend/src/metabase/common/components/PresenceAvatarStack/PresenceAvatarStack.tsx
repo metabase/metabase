@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import type { PresenceModel, PresenceViewer } from "metabase/api";
+import type {
+  PresenceModel,
+  PresenceParameters,
+  PresenceViewer,
+} from "metabase/api";
 import { usePresence } from "metabase/common/hooks/use-presence";
 import { Avatar, Box, Group, Popover, Stack, Text, Tooltip } from "metabase/ui";
 
@@ -44,6 +48,62 @@ type AvatarColor = (typeof AVATAR_COLORS)[number];
 /** Deterministic color choice keyed by user id. */
 function viewerColor(viewer: PresenceViewer): AvatarColor {
   return AVATAR_COLORS[viewer.id % AVATAR_COLORS.length];
+}
+
+/** Short, single-line summary of the viewer's URL parameters for the tooltip. */
+function summarizeParameters(params: PresenceParameters | undefined): string {
+  if (params == null) {
+    return "";
+  }
+  const entries = Object.entries(params);
+  if (entries.length === 0) {
+    return "";
+  }
+  return entries
+    .map(([key, value]) => {
+      const v = Array.isArray(value) ? value.join(", ") : String(value ?? "—");
+      return `${key}: ${v}`;
+    })
+    .join(" · ");
+}
+
+interface ViewerRowProps {
+  viewer: PresenceViewer;
+}
+
+function ViewerRow({ viewer }: ViewerRowProps) {
+  const params = viewer.parameters;
+  const paramEntries = params ? Object.entries(params) : [];
+  return (
+    <Group gap="sm" wrap="nowrap" align="flex-start">
+      <Avatar radius="xl" size="sm" color={viewerColor(viewer)}>
+        {viewerInitials(viewer)}
+      </Avatar>
+      <Stack gap={2} flex={1} miw={0}>
+        <Text size="sm" fw={600} truncate>
+          {viewerDisplayName(viewer)}
+        </Text>
+        <Text size="xs" c="text-tertiary" truncate>
+          {viewer.email}
+        </Text>
+        {paramEntries.length > 0 && (
+          <Stack gap={0} mt={4}>
+            <Text size="xs" c="text-tertiary" fw={600}>
+              {t`Filters`}
+            </Text>
+            {paramEntries.map(([key, value]) => (
+              <Text key={key} size="xs" c="text-secondary">
+                <Text component="span" c="text-tertiary">
+                  {key}:
+                </Text>{" "}
+                {Array.isArray(value) ? value.join(", ") : String(value ?? "—")}
+              </Text>
+            ))}
+          </Stack>
+        )}
+      </Stack>
+    </Group>
+  );
 }
 
 /**
@@ -97,13 +157,22 @@ export function PresenceAvatarStack({
             spacing="xs"
             aria-label={t`Users currently viewing this page`}
           >
-            {visible.map((viewer) => (
-              <Tooltip key={viewer.id} label={viewerDisplayName(viewer)}>
-                <Avatar radius="xl" size="md" color={viewerColor(viewer)}>
-                  {viewerInitials(viewer)}
-                </Avatar>
-              </Tooltip>
-            ))}
+            {visible.map((viewer) => {
+              const summary = summarizeParameters(viewer.parameters);
+              const name = viewerDisplayName(viewer);
+              return (
+                <Tooltip
+                  key={viewer.id}
+                  label={summary ? `${name} — ${summary}` : name}
+                  multiline
+                  maw={320}
+                >
+                  <Avatar radius="xl" size="md" color={viewerColor(viewer)}>
+                    {viewerInitials(viewer)}
+                  </Avatar>
+                </Tooltip>
+              );
+            })}
             {overflow > 0 && (
               <Tooltip
                 label={
@@ -127,21 +196,9 @@ export function PresenceAvatarStack({
               ? t`1 person viewing`
               : t`${viewers.length} people viewing`}
           </Text>
-          <Stack gap="xs" mah={360} style={{ overflowY: "auto" }}>
+          <Stack gap="md" mah={420} style={{ overflowY: "auto" }}>
             {viewers.map((viewer) => (
-              <Group key={viewer.id} gap="sm" wrap="nowrap" align="center">
-                <Avatar radius="xl" size="sm" color={viewerColor(viewer)}>
-                  {viewerInitials(viewer)}
-                </Avatar>
-                <Stack gap={0} flex={1} miw={0}>
-                  <Text size="sm" fw={600} truncate>
-                    {viewerDisplayName(viewer)}
-                  </Text>
-                  <Text size="xs" c="text-tertiary" truncate>
-                    {viewer.email}
-                  </Text>
-                </Stack>
-              </Group>
+              <ViewerRow key={viewer.id} viewer={viewer} />
             ))}
           </Stack>
         </Stack>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import {
   type PresenceModel,
+  type PresenceParameters,
   type PresenceViewer,
   useLeavePresenceMutation,
   usePingPresenceMutation,
@@ -11,6 +12,32 @@ import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 
 const POLL_INTERVAL_MS = 5_000;
+
+/**
+ * Read the current URL's query string into a plain map. Repeated keys (e.g.
+ * `?cat=a&cat=b`) collapse to an array. Stable order is preserved as the
+ * URLSearchParams iteration order.
+ */
+function readCurrentParameters(): PresenceParameters {
+  if (typeof window === "undefined") {
+    return {};
+  }
+  const params = new URLSearchParams(window.location.search);
+  const out: PresenceParameters = {};
+  for (const [key, value] of params.entries()) {
+    const existing = out[key];
+    if (existing == null) {
+      out[key] = value;
+    } else if (Array.isArray(existing)) {
+      existing.push(value);
+    } else if (typeof existing === "string") {
+      out[key] = [existing, value];
+    } else {
+      out[key] = [String(existing), value];
+    }
+  }
+  return out;
+}
 
 /**
  * Poll the presence endpoint while the user is on a question or dashboard page,
@@ -51,7 +78,11 @@ export function usePresence(
     const tick = async () => {
       try {
         const result = await pingRef
-          .current({ model, model_id: modelId })
+          .current({
+            model,
+            model_id: modelId,
+            parameters: readCurrentParameters(),
+          })
           .unwrap();
         if (!cancelled) {
           setViewers(result.viewers ?? []);

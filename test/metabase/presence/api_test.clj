@@ -69,6 +69,25 @@
       (is (not (contains? viewer-ids (mt/user->id :crowberto)))
           "expired row should not appear in the viewer list"))))
 
+(deftest parameters-round-trip-test
+  (mt/initialize-if-needed! :db)
+  (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Presence Dash 4"}]
+    (testing "Parameters supplied on ping are returned to other viewers"
+      (mt/user-http-request :rasta :post 200 "presence/ping"
+                            {:model      "dashboard"
+                             :model_id   dash-id
+                             :parameters {"date"     "past30days"
+                                          "category" "Widget"}})
+      (let [resp (mt/user-http-request :crowberto :post 200 "presence/ping"
+                                       {:model "dashboard" :model_id dash-id})
+            rasta (first (filter #(= (:id %) (mt/user->id :rasta))
+                                 (:viewers resp)))]
+        ;; The test helper re-keywordizes the response on parse, so we get
+        ;; keyword keys here even though the wire form (and the DB) keeps
+        ;; the slugs as strings.
+        (is (= {:date "past30days" :category "Widget"}
+               (:parameters rasta)))))))
+
 (deftest permission-required-test
   (mt/initialize-if-needed! :db)
   (testing "Pinging an entity in a collection without read access is forbidden"
