@@ -310,6 +310,17 @@
     opaque?   opaque-thinking-blocks
     :else     []))
 
+(defn- prompt-blocks
+  "Render the full prompt sent to the model as a level-4 sub-section followed by
+  blank-line-split paragraphs. Returns [] when `prompt` is blank."
+  [prompt]
+  (if (str/blank? prompt)
+    []
+    (into [{:type    "heading"
+            :attrs   {:level 4}
+            :content [{:type "text" :text "Prompt sent to model"}]}]
+          (reasoning-paragraphs prompt))))
+
 (defn- reasonings-blocks
   "Render a vector of reasoning-attempt entries as prose-mirror blocks.
   Single-attempt sequences are rendered flat; multi-attempt sequences use
@@ -359,7 +370,8 @@
   (let [p1-reasonings (:reasonings phase-1)
         p2-reasonings (:reasonings phase-2)
         rationale     (:rationale phase-1)
-        anything? (or (seq p1-reasonings) (seq p2-reasonings) (seq rationale))]
+        anything? (or (seq p1-reasonings) (seq p2-reasonings) (seq rationale)
+                      (:prompt phase-1) (:prompt phase-2))]
     (if-not anything?
       pm-doc
       (let [intro [{:type    "heading"
@@ -369,7 +381,7 @@
                     :content [{:type  "text"
                                :text  "Debug — the model's extended-thinking trace used to generate this document."
                                :marks [{:type "italic"}]}]}]
-            p1-blocks (when (or (seq p1-reasonings) (seq rationale))
+            p1-blocks (when (or (seq p1-reasonings) (seq rationale) (:prompt phase-1))
                         (concat
                          [{:type    "heading"
                            :attrs   {:level 3}
@@ -380,13 +392,15 @@
                                         :text  "Curator's rationale: "
                                         :marks [{:type "bold"}]}
                                        {:type "text" :text rationale}]}])
-                         (reasonings-blocks p1-reasonings)))
-            p2-blocks (when (seq p2-reasonings)
+                         (reasonings-blocks p1-reasonings)
+                         (prompt-blocks (:prompt phase-1))))
+            p2-blocks (when (or (seq p2-reasonings) (:prompt phase-2))
                         (concat
                          [{:type    "heading"
                            :attrs   {:level 3}
                            :content [{:type "text" :text "Phase 2 — Analysis"}]}]
-                         (reasonings-blocks p2-reasonings)))
+                         (reasonings-blocks p2-reasonings)
+                         (prompt-blocks (:prompt phase-2))))
             extra (vec (concat intro p1-blocks p2-blocks (repl-helpers-blocks thread-id)))]
         (update pm-doc :content (fnil into []) extra)))))
 
@@ -569,7 +583,8 @@
                         err-pm+ (append-reasoning-section
                                  err-pm
                                  {:phase-1   {:reasonings p1-reasonings
-                                              :rationale  (get-in p1 [:value :rationale])}
+                                              :rationale  (get-in p1 [:value :rationale])
+                                              :prompt     curation-prompt}
                                   :phase-2   {:reasonings []}
                                   :thread-id thread-id})
                         {:keys [document-id rendered-pm-doc]}
@@ -629,8 +644,10 @@
                             err-pm+ (append-reasoning-section
                                      err-pm
                                      {:phase-1   {:reasonings p1-reasonings
-                                                  :rationale  rationale}
-                                      :phase-2   {:reasonings p2-reasonings}
+                                                  :rationale  rationale
+                                                  :prompt     curation-prompt}
+                                      :phase-2   {:reasonings p2-reasonings
+                                                  :prompt     analysis-prompt}
                                       :thread-id thread-id})
                             {:keys [document-id rendered-pm-doc]}
                             (write-document! {:doc        placeholder-doc
@@ -652,8 +669,10 @@
                             pm-doc+ (append-reasoning-section
                                      pm-doc
                                      {:phase-1   {:reasonings p1-reasonings
-                                                  :rationale  rationale}
-                                      :phase-2   {:reasonings p2-reasonings}
+                                                  :rationale  rationale
+                                                  :prompt     curation-prompt}
+                                      :phase-2   {:reasonings p2-reasonings
+                                                  :prompt     analysis-prompt}
                                       :thread-id thread-id})
                             {:keys [document-id rendered-pm-doc]}
                             (write-document! {:doc        placeholder-doc
