@@ -2068,14 +2068,17 @@
    :uses #{api
            app-db
            collections
+           dashboards
            events
            llm
            models
            queries
+           settings
            util}
    :model-exports #{:model/Slides}
    :model-imports #{:model/Card
                     :model/Collection
+                    :model/Dashboard
                     :model/User}}
 
   source-swap
