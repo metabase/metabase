@@ -87,7 +87,14 @@
               [:or
                [:= [:field 1 nil] "toucan"]
                [:= [:field 2 nil] "threecan"]]))
-          ":or filters with no temporal filters should return nil"))))
+          ":or filters with no temporal filters should return nil"))
+    (testing :not
+      (is (= ["2015-10-04T00:00:00Z/2015-10-11T00:00:00Z"]
+             (filter-clause->intervals
+              [:not
+               [:or
+                [:< dt-field (str->absolute-dt "2015-10-04T00:00:00Z")]
+                [:>= dt-field (str->absolute-dt "2015-10-11T00:00:00Z")]]]))))))
 
 (defn- do-query->native [query]
   (driver/with-driver :druid
