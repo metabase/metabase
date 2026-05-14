@@ -5,7 +5,6 @@
    [clojure.set :as set]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql.normalize :as sql.normalize]
@@ -21,7 +20,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv]]
-   [potemkin :as p]))
+   [potemkin :as p]
+   [metabase.lib.core :as lib]))
 
 (comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
 
@@ -29,31 +29,31 @@
 
 (doseq [feature [:advanced-math-expressions
                  :binning
+                 :database-routing
+                 :dependencies/native
+                 :distinct-where
+                 :distinct-where
                  :expression-aggregations
                  :expressions
+                 :expressions/date
+                 :expressions/datetime
+                 :expressions/text
+                 :expressions/today
                  :full-join
                  :inner-join
                  :left-join
+                 :metadata/key-constraints
                  :native-parameters
+                 :native-temporal-units
                  :nested-queries
                  :parameterized-sql
+                 :parameters/table-reference
                  :percentile-aggregations
                  :regex
                  :right-join
                  :standard-deviation-aggregations
-                 :metadata/key-constraints
                  :window-functions/cumulative
-                 :window-functions/offset
-                 :distinct-where
-                 :native-temporal-units
-                 :expressions/datetime
-                 :expressions/date
-                 :expressions/text
-                 :expressions/today
-                 :distinct-where
-                 :database-routing
-                 :dependencies/native
-                 :parameters/table-reference]]
+                 :window-functions/offset]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
 
 (defmethod driver/database-supports? [:sql :persist-models-enabled]
@@ -75,7 +75,7 @@
   (let [params-map          (params.values/query->params-map inner-query)
         referenced-card-ids (params.values/referenced-card-ids params-map)
         [query params]      (-> query
-                                params.parse/parse
+                                lib/parse-parameters
                                 (sql.params.substitute/substitute params-map))]
     (cond-> (assoc inner-query
                    :query  query

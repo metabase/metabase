@@ -61,7 +61,7 @@
   ### Templates
 
   After spec validation, the config map is walked and `{{template}}` forms are expanded. This uses the same code used
-  to parse template tags in SQL queries, i.e. [[metabase.driver.common.parameters.parse]], which means that
+  to parse template tags in SQL queries, i.e. [[metabase.lib.parameters.parse]], which means that
   `[[optional {{templates}}]]` work as well, if there is some reason you might need them.
 
   A template form like `{{env MY_ENV_VAR}}` is wrapped in parens and parsed as EDN, and then the result is passed

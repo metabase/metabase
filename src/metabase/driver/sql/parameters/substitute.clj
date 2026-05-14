@@ -4,18 +4,20 @@
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
+   [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.performance :refer [not-empty]]))
+
+(set! *warn-on-reflection* true)
 
 (declare #^:private substitute*)
 
 (defn- substitute-field-param [[sql args missing] in-optional? k {:keys [_field value], :as v}]
-  (if (and (= params/no-value value) in-optional?)
+  (if (and (= value lib/parsed-param-no-value-placeholder) in-optional?)
     ;; no-value field filters inside optional clauses are ignored, and eventually emitted entirely
     [sql args (conj missing k)]
     ;; otherwise no values get replaced with `1 = 1` and other values get replaced normally
@@ -30,7 +32,7 @@
 
 (defn- substitute-native-query-snippet [param->value [sql args missing] in-optional? v]
   (let [{:keys [replacement-snippet]} (sql.params.substitution/->replacement-snippet-info driver/*driver* v)
-        [processed-snippet snippet-args snippet-missing] (substitute* param->value (params.parse/parse replacement-snippet) in-optional?)]
+        [processed-snippet snippet-args snippet-missing] (substitute* param->value (lib/parse-parameters replacement-snippet) in-optional?)]
     [(str sql processed-snippet)
      (not-empty (concat args snippet-args))
      (not-empty (concat missing snippet-missing))]))
@@ -40,18 +42,18 @@
     [sql args (conj missing k)]
     (let [v (get param->value k)]
       (cond
-        (or (params/FieldFilter? v)
-            (params/TemporalUnit? v))
+        (or (lib/parsed-field-filter-param? v)
+            (lib/parsed-temporal-unit-param? v))
         (substitute-field-param [sql args missing] in-optional? k v)
 
-        (or (params/ReferencedCardQuery? v)
-            (params/ReferencedTableQuery? v))
+        (or (lib/parsed-referenced-card-query-param? v)
+            (lib/parsed-referenced-table-query-param? v))
         (substitute-simple-query [sql args missing] v)
 
-        (params/ReferencedQuerySnippet? v)
+        (lib/parsed-referenced-query-snippet-param? v)
         (substitute-native-query-snippet param->value [sql args missing] in-optional? v)
 
-        (= params/no-value v)
+        (= v lib/parsed-param-no-value-placeholder)
         [sql args (conj missing k)]
 
         :else
@@ -65,20 +67,28 @@
       [sql args missing]
       [(str sql opt-sql) (concat args opt-args) missing])))
 
-(defn- substitute*
+(mu/defn- substitute* :- [:tuple
+                          #_sql     string?
+                          #_args    [:sequential any?]
+                          #_missing any?]
   "Returns a sequence of `[replaced-sql-string jdbc-args missing-parameters]`."
-  [param->value parsed in-optional?]
+  [param->value :- [:maybe [:map-of string? any?]]
+   parsed
+   in-optional?]
   (reduce
    (fn [[sql args missing] x]
      (cond
        (string? x)
        [(str sql x) args missing]
 
-       (params/Param? x)
+       (lib/parsed-param? x)
        (substitute-param param->value [sql args missing] in-optional? x)
 
-       (params/Optional? x)
-       (substitute-optional param->value [sql args missing] x)))
+       (lib/parsed-optional-param? x)
+       (substitute-optional param->value [sql args missing] x)
+
+       :else
+       (throw (ex-info (format "Unexpected parsed param ^%s %s" (some-> x class .getCanonicalName) (pr-str x)) {:x x}))))
    nil
    parsed))
 

@@ -1689,6 +1689,8 @@
 (shared.ns/import-fn metabase.lib.parameters.parse.types/temporal-unit?            parsed-temporal-unit-param?)
 (shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-card-query     parsed-referenced-card-query-param)
 (shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-card-query?    parsed-referenced-card-query-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-table-query    parsed-referenced-table-query-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-table-query?   parsed-referenced-table-query-param?)
 (shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-query-snippet  parsed-referenced-query-snippet-param)
 (shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-query-snippet? parsed-referenced-query-snippet-param?)
 (shared.ns/import-fn metabase.lib.parameters.parse.types/date                      parsed-date-param)
