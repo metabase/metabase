@@ -432,8 +432,8 @@
               (let [result      (-check-token token-checker token)
                     result-hash (hash-token-status result)
                     now         (t/instant)]
-                #_(write-cache-to-db! token-hash result-hash)
-                #_(update-locked-meters! result)
+                (write-cache-to-db! token-hash result-hash)
+                (update-locked-meters! result)
                 (swap! local-cache assoc token-hash {:result      result
                                                      :result-hash result-hash
                                                      :updated-at  now})
