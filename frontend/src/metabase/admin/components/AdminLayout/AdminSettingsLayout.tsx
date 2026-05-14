@@ -1,6 +1,5 @@
 import type React from "react";
 import { useEffect, useRef } from "react";
-import { useLatest } from "react-use";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { NotFound } from "metabase/common/components/ErrorPages";
@@ -8,7 +7,6 @@ import { useRouter } from "metabase/router/useRouter";
 import { Box } from "metabase/ui";
 
 import S from "./AdminSettingsLayout.module.css";
-import { isScrollToTopPrevented } from "./util";
 
 export const AdminSettingsLayout = ({
   sidebar,
@@ -51,12 +49,8 @@ export const AdminSettingsLayout = ({
 
 const useScrollToTop = (contentRef: React.RefObject<HTMLDivElement | null>) => {
   const { location } = useRouter();
-  const locationRef = useLatest(location);
 
   useEffect(() => {
-    if (isScrollToTopPrevented(locationRef.current)) {
-      return;
-    }
     contentRef.current?.scrollTo(0, 0);
-  }, [location?.pathname, contentRef, locationRef]);
+  }, [location?.pathname, contentRef]);
 };

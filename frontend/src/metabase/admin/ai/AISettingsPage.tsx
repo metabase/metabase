@@ -20,8 +20,6 @@ import {
 import { useRouter } from "metabase/router/useRouter";
 import { Divider, Flex, Stack, Switch, Tabs } from "metabase/ui";
 
-import { preventScrollToTop } from "../components/AdminLayout/util";
-
 import { EmbeddedMetabotUpsell } from "./EmbeddedMetabotUpsell";
 import { McpAppsSettings } from "./McpAppsSettings";
 import { MetabotSettingsPanel } from "./MetabotSettingsPanel";
@@ -276,10 +274,10 @@ function getSelectedMetabotId(metabotId: string | undefined): MetabotTabId {
 }
 
 function getMetabotTabPath(metabotId: MetabotTabId) {
-  return preventScrollToTop({
+  return {
     pathname: METABOT_SETTINGS_PATH,
     query: {
       [METABOT_ID_QUERY_PARAM]: String(metabotId),
     },
-  });
+  };
 }
