@@ -27,7 +27,7 @@ describe("AI Controls > Metabot access and customization", () => {
         "updatePermissions",
       );
 
-      cy.visit("/admin/metabot/1/usage-controls/ai-feature-access");
+      cy.visit("/admin/metabot/usage-controls/ai-feature-access");
 
       cy.wait("@getPermissions");
 
@@ -119,7 +119,7 @@ describe("AI Controls > Metabot access and customization", () => {
     it("should save a custom Metabot name", () => {
       cy.intercept("PUT", "/api/setting/metabot-name").as("saveName");
 
-      cy.visit("/admin/metabot/1/customization");
+      cy.visit("/admin/metabot/customization");
 
       cy.findByRole("heading", { name: "Customization", level: 1 }).should(
         "be.visible",
@@ -140,7 +140,7 @@ describe("AI Controls > Metabot access and customization", () => {
     it("should upload a custom Metabot icon and show the illustrations section", () => {
       cy.intercept("PUT", "/api/setting/metabot-icon").as("saveIcon");
 
-      cy.visit("/admin/metabot/1/customization");
+      cy.visit("/admin/metabot/customization");
 
       H.main().findByText("AI agent's icon").should("be.visible");
       cy.findByRole("button", { name: "Upload a custom icon" }).should(
@@ -187,7 +187,7 @@ describe("AI Controls > Metabot access and customization", () => {
         "saveIllustrations",
       );
 
-      cy.visit("/admin/metabot/1/customization");
+      cy.visit("/admin/metabot/customization");
 
       H.main().findByText("Metabot illustrations").should("be.visible");
 
@@ -259,7 +259,7 @@ describe("AI Controls > Metabot access and customization", () => {
         "savePrompt",
       );
 
-      cy.visit("/admin/metabot/1/system-prompts/metabot-chat");
+      cy.visit("/admin/metabot/system-prompts/metabot-chat");
 
       cy.findByRole("heading", {
         name: "AI chat prompt instructions",
@@ -285,7 +285,7 @@ describe("AI Controls > Metabot access and customization", () => {
         "saveSqlPrompt",
       );
 
-      cy.visit("/admin/metabot/1/system-prompts/sql-generation");
+      cy.visit("/admin/metabot/system-prompts/sql-generation");
 
       cy.findByRole("heading", {
         name: "SQL generation prompt instructions",
@@ -310,7 +310,7 @@ describe("AI Controls > Metabot access and customization", () => {
 });
 
 describe("AI controls > AI usage limits", () => {
-  const AI_USAGE_LIMITS_URL = "/admin/metabot/1/usage-controls/ai-usage-limits";
+  const AI_USAGE_LIMITS_URL = "/admin/metabot/usage-controls/ai-usage-limits";
 
   beforeEach(() => {
     H.restore();
@@ -655,7 +655,7 @@ describe("AI Controls > Tenant usage limits", () => {
   });
 
   it("should allow updating tenant limits when tenants are enabled", () => {
-    cy.visit("/admin/metabot/1/usage-controls/ai-usage-limits");
+    cy.visit("/admin/metabot/usage-controls/ai-usage-limits");
 
     cy.findByRole("tab", { name: "Specific tenants" }).click();
 
