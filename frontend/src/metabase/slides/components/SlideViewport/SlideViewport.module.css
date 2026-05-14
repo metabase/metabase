@@ -1,0 +1,25 @@
+/* Outer wrapper — fills whatever container it lives in (editor canvas card,
+ * presenter stage). */
+.viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Inner slide — ALWAYS 1280×720 in its own coordinate system. We scale it via
+ * inline transform from the React component so the visible pixel size matches
+ * the wrapper. */
+.canvas {
+  position: relative;
+  width: 1280px;
+  height: 720px;
+  flex: 0 0 auto;
+  transform-origin: center center;
+  /* So the slide's :before/:after watermarks etc. don't bleed past the rounded
+   * shell that wraps us. */
+  overflow: hidden;
+}

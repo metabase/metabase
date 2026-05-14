@@ -24,12 +24,15 @@
    [:archived {:optional true} [:maybe :boolean]]])
 
 (defn- default-blank-slides
-  "The single empty slide a brand-new deck ships with."
+  "The single empty slide a brand-new deck ships with. Uses the `cover` layout
+  so the FE renderer (which has no case for `default`) shows a usable empty
+  slide rather than the 'Unknown layout' fallback."
   []
   [{:id "slide-1"
-    :layout "default"
-    :doc {:type "doc"
-          :content [{:type "paragraph"}]}}])
+    :layout "cover"
+    :data {:title ""
+           :subtitle ""
+           :accent "violet"}}])
 
 (defn- get-deck [deck-id]
   (api/check-404

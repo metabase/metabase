@@ -40,6 +40,7 @@ import { GenerateModal } from "../GenerateModal/GenerateModal";
 import { SlideContent } from "../Layouts/Layouts";
 import { SlideDataPanel } from "../SlideDataPanel/SlideDataPanel";
 import { SlideThumbnailList } from "../SlideThumbnailList/SlideThumbnailList";
+import { SlideViewport } from "../SlideViewport/SlideViewport";
 import { SlidesHeader } from "../SlidesHeader/SlidesHeader";
 
 import S from "./SlidesPage.module.css";
@@ -199,7 +200,9 @@ export const SlidesPage = ({ params, router }: SlidesPageProps) => {
         <Box className={S.canvas}>
           {activeSlide && (
             <Box className={S.slideFrame}>
-              <SlideContent slide={activeSlide} />
+              <SlideViewport>
+                <SlideContent slide={activeSlide} />
+              </SlideViewport>
             </Box>
           )}
         </Box>

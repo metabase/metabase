@@ -23,8 +23,10 @@
   --pos: #10b981;
   --neg: #ef4444;
 
-  position: absolute;
-  inset: 0;
+  /* SlideViewport renders us inside a fixed 1280x720 box and scales as needed.
+   * We just need to fill that box. */
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;

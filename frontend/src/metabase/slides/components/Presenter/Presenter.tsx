@@ -8,6 +8,7 @@ import { Box, Icon, Loader } from "metabase/ui";
 
 import type { Slide } from "../../types";
 import { SlideContent } from "../Layouts/Layouts";
+import { SlideViewport } from "../SlideViewport/SlideViewport";
 
 import S from "./Presenter.module.css";
 
@@ -207,7 +208,9 @@ const PresenterStage = ({
 }) => {
   return (
     <Box className={cx(S.stage)} aria-hidden={!isActive}>
-      <SlideContent slide={slide} />
+      <SlideViewport>
+        <SlideContent slide={slide} />
+      </SlideViewport>
     </Box>
   );
 };

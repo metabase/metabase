@@ -1,0 +1,68 @@
+[
+  {
+    "text": "In my line of work, you need to know your numbers. This? This is Metabase. Beautiful.",
+    "precondition": {
+      "fetch": "/api/user/current",
+      "expect": "data && data.id",
+      "describe": "logged-in session is valid"
+    },
+    "durationMs": 7338
+  },
+  {
+    "text": "Sit down. We're gonna build something.",
+    "durationMs": 2635
+  },
+  {
+    "text": "Quarterly review. Numbers don't lie.",
+    "precondition": {
+      "fetch": "/api/dashboard/2",
+      "expect": "data && data.name === 'FY26 Q4 Board Review'",
+      "describe": "FY26 Q4 Board Review dashboard exists to anchor generation"
+    },
+    "durationMs": 2984
+  },
+  {
+    "text": "Patience. The machine is working. You know, in my time, we wrote this on a notepad. Numbers. Names. Territories. By hand. Now? It does it for you. It thinks. It writes. Beautiful machine.",
+    "durationMs": 16637
+  },
+  {
+    "text": "Up thirty-four percent. Good quarter. For most of us.",
+    "precondition": {
+      "fetch": "/api/card/40",
+      "expect": "data && data.name === 'Monthly revenue, FY26 vs. FY25'",
+      "describe": "monthly revenue card exists"
+    },
+    "durationMs": 4261
+  },
+  {
+    "text": "Cohibas are moving. Keep them stocked.",
+    "precondition": {
+      "fetch": "/api/card/41",
+      "expect": "data && data.name === 'Top 5 SKUs by Q4 revenue'",
+      "describe": "top SKUs card exists"
+    },
+    "durationMs": 3495
+  },
+  {
+    "text": "Now. New Jersey. Eighty-two percent. One name. Sal. We need to talk.",
+    "precondition": {
+      "fetch": "/api/card/42",
+      "expect": "data && data.name === 'Q4 revenue by region (by distributor)'",
+      "describe": "regional drill-target card exists"
+    },
+    "durationMs": 6049
+  },
+  {
+    "text": "Next year, we go to Sicily. Family business.",
+    "precondition": {
+      "fetch": "/api/card/43",
+      "expect": "data && data.name === 'FY27 projected revenue by region'",
+      "describe": "Sicily projection card exists"
+    },
+    "durationMs": 3622
+  },
+  {
+    "text": "This is how a family stays on top. Metabase. Tell 'em the Don sent you.",
+    "durationMs": 5283
+  }
+]
