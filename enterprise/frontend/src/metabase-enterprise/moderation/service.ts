@@ -2,10 +2,14 @@ import { c, t } from "ttag";
 import _ from "underscore";
 
 import { ModerationReviewApi } from "metabase/services";
-import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type Question from "metabase-lib/v1/Question";
-import type { BaseUser, ModerationReview, User } from "metabase-types/api";
+import type {
+  BaseUser,
+  IconName,
+  ModerationReview,
+  User,
+} from "metabase-types/api";
 
 import { MODERATION_STATUS_ICONS } from "./constants";
 

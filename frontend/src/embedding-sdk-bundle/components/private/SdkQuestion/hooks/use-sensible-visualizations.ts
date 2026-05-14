@@ -1,6 +1,6 @@
 import { useMemo, useRef } from "react";
 
-import { getSensibleVisualizations } from "metabase/query_builder/components/chart-type-selector";
+import { getSensibleVisualizations } from "metabase/visualizations/lib/sensibility";
 import type { CardDisplayType } from "metabase-types/api";
 
 import { useSdkQuestionContext } from "../context";

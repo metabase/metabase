@@ -418,18 +418,30 @@
    constraints                       :- [:maybe ::constraints]
    {:keys [original-field-id limit]} :- [:maybe ::options]]
   (log/tracef "Chain filter %s with constraints %s" (name-for-logging :model/Field field-id) (u/cprint-to-str constraints))
-  (let [database-id      (field/field-id->database-id field-id)
-        mp               (lib-be/application-database-metadata-provider database-id)
-        source-table-id  (field/field-id->table-id field-id)
-        joins            (find-all-joins source-table-id (cond-> (set (map :field-id constraints))
-                                                           original-field-id (conj original-field-id)))
-        joined-table-ids (set (map #(get-in % [:rhs :table]) joins))
-        field            (lib.metadata/field mp field-id)
-        original-field   (when original-field-id
-                           (let [original-table-id (field/field-id->table-id original-field-id)]
-                             (cond-> (lib.metadata/field mp original-field-id)
-                               (not= source-table-id original-table-id)
-                               (lib/with-join-alias (joined-table-alias original-table-id)))))]
+  (let [database-id       (field/field-id->database-id field-id)
+        mp                (lib-be/application-database-metadata-provider database-id)
+        field-table-id    (field/field-id->table-id field-id)
+        original-table-id (when original-field-id (field/field-id->table-id original-field-id))
+        ;; When the original (FK) field lives on a different table, reverse the join direction:
+        ;; make the original field's table the source and join the label table. The original table
+        ;; is typically the large fact table; putting it on the right side of a JOIN can OOM on
+        ;; engines like ClickHouse that materialize the right side in memory.
+        reversed?         (and original-table-id (not= original-table-id field-table-id))
+        source-table-id   (if reversed? original-table-id field-table-id)
+        joins             (find-all-joins source-table-id
+                                          (cond-> (set (map :field-id constraints))
+                                            reversed?       (conj field-id)
+                                            (not reversed?) (cond-> original-field-id (conj original-field-id))))
+        joined-table-ids  (set (map #(get-in % [:rhs :table]) joins))
+        field             (cond-> (lib.metadata/field mp field-id)
+                            reversed? (lib/with-join-alias (joined-table-alias field-table-id)))
+        original-field    (when original-field-id
+                            (if reversed?
+                              ;; reversed: original field is on the source table, no alias
+                              (lib.metadata/field mp original-field-id)
+                              (cond-> (lib.metadata/field mp original-field-id)
+                                (not= field-table-id original-table-id)
+                                (lib/with-join-alias (joined-table-alias original-table-id)))))]
     (when original-field-id
       (log/tracef "Finding values of %s, remapped from %s."
                   (name-for-logging :model/Field field-id)

@@ -6,6 +6,8 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { Api } from "metabase/api";
+import { listTag } from "metabase/api/tags";
 import { deletePermanently } from "metabase/archive/actions";
 import { getEntityTypeFromCardType } from "metabase/collections/utils";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
@@ -14,7 +16,6 @@ import { Toaster } from "metabase/common/components/Toaster";
 import { useSetCollection } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { Bookmarks } from "metabase/entities/bookmarks";
 import { Questions } from "metabase/entities/questions";
 import {
   rememberLastUsedDatabase,
@@ -300,7 +301,7 @@ const mapDispatchToProps = (dispatch) => ({
       Questions.actions.update({ id: question.id() }, { archived: false }),
     );
     await dispatch(setArchivedQuestion(question, false));
-    await dispatch(Bookmarks.actions.invalidateLists());
+    dispatch(Api.util.invalidateTags([listTag("bookmark")]));
   },
   onDeletePermanently: (id) => {
     const deleteAction = Questions.actions.delete({ id });

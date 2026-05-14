@@ -2,9 +2,9 @@ import fetchMock from "fetch-mock";
 import type { LocationDescriptorObject } from "history";
 
 import { createMockEntitiesState } from "__support__/store";
+import { snippetApi } from "metabase/api";
 import * as CardLib from "metabase/common/utils/card";
 import { Databases } from "metabase/entities/databases";
-import { Snippets } from "metabase/entities/snippets";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import * as sharedQB from "metabase/redux/query-builder";
@@ -83,7 +83,10 @@ async function baseSetup({
   const metadata = getMetadata(state);
   const getState = () => state;
 
-  const dispatch = jest.fn();
+  // Pass actions through verbatim so callers that capture the result of
+  // `dispatch(thunk)` (e.g. RTK Query's `endpoint.initiate(...)`) can still
+  // call methods on it in tests where the snippet endpoint is mocked.
+  const dispatch = jest.fn((action) => action);
   await initializeQB(location, params)(dispatch, getState);
   jest.runAllTimers();
 
@@ -601,7 +604,7 @@ describe("QB Actions > initializeQB", () => {
 
       type SnippetsSetupOpts = Omit<SetupOpts, "card"> & {
         hasDatabaseWritePermission?: boolean;
-        snippet?: unknown;
+        snippet?: { id: number; name: string };
       };
 
       function setupSnippets({
@@ -611,40 +614,46 @@ describe("QB Actions > initializeQB", () => {
       }: SnippetsSetupOpts) {
         const clone = { ...card };
 
-        Snippets.actions.fetchList = jest.fn();
-        Snippets.selectors.getList = jest
-          .fn()
-          .mockReturnValue(snippet ? [snippet] : []);
+        const initiateSpy = jest
+          .spyOn(snippetApi.endpoints.listSnippets, "initiate")
+          .mockReturnValue({
+            unwrap: () => Promise.resolve(snippet ? [snippet] : []),
+            unsubscribe: jest.fn(),
+            // RTK Query's internal action creator return shape — we only need
+            // `unwrap`/`unsubscribe` for the production code path.
+          } as any);
 
         return setup({
           card: clone,
           hasDataPermissions: hasDatabaseWritePermission,
           ...opts,
-        });
+        }).then((res) => ({ ...res, initiateSpy }));
       }
 
       describe(questionType, () => {
         it("loads snippets if have DB write permissions", async () => {
-          await setupSnippets({ hasDatabaseWritePermission: true });
-          expect(Snippets.actions.fetchList).toHaveBeenCalledTimes(1);
+          const { initiateSpy } = await setupSnippets({
+            hasDatabaseWritePermission: true,
+          });
+          expect(initiateSpy).toHaveBeenCalledTimes(1);
         });
 
         it("does not load snippets if missing DB write permissions", async () => {
           Databases.selectors.getObject = jest.fn().mockReturnValue({
             native_permissions: "none",
           });
-          Snippets.actions.fetchList = jest.fn();
-          Snippets.selectors.getList = jest.fn().mockReturnValue([SNIPPET]);
 
-          await setupSnippets({ hasDatabaseWritePermission: false });
+          const { initiateSpy } = await setupSnippets({
+            hasDatabaseWritePermission: false,
+          });
 
-          expect(Snippets.actions.fetchList).not.toHaveBeenCalled();
+          expect(initiateSpy).not.toHaveBeenCalled();
         });
 
         it("replaces snippet names with fresh ones from the backend", async () => {
           const { result, metadata } = await setupSnippets({
             snippet: {
-              id: SNIPPET["snippet-id"],
+              id: SNIPPET["snippet-id"] as number,
               name: "bar",
             },
           });

@@ -69,6 +69,7 @@ const elements = [
   createElement({ type: "shared", name: "data-studio", enforceOutgoing: true }),
   createElement({ type: "shared", name: "databases", enforceOutgoing: true }),
   createElement({ type: "shared", name: "detail-view", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "documents", enforceOutgoing: true }),
   createElement({ type: "shared", name: "forms", enforceOutgoing: true }),
   createElement({ type: "shared", name: "history", enforceOutgoing: true }),
   createElement({ type: "shared", name: "hoc", enforceOutgoing: true }),

@@ -4,10 +4,10 @@ import { t } from "ttag";
 
 import { isEmbedding } from "metabase/embedding/config";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import type { IconName } from "metabase/ui";
 import { Flex, Icon, UnstyledButton } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
+import type { IconName } from "metabase-types/api";
 
 import { NotebookCell } from "../NotebookCell";
 

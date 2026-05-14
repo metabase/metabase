@@ -12,7 +12,6 @@ import {
   type MetabotUserChatMessage,
   cancelInflightAgentRequests,
   getActiveToolCalls,
-  getAgentErrorMessages,
   getDebugMode,
   getIsLongMetabotConversation,
   getIsProcessing,
@@ -161,9 +160,6 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
       getMetabotConversation(state, agentId),
     ),
     messages: useSelector((state) => getMessages(state, agentId)),
-    errorMessages: useSelector((state) =>
-      getAgentErrorMessages(state, agentId),
-    ),
     isDoingScience: useSelector((state) => getIsProcessing(state, agentId)),
     isLongConversation: useSelector((state) =>
       getIsLongMetabotConversation(state, agentId),

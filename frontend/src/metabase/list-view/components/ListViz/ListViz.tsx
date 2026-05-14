@@ -8,7 +8,7 @@ import {
   getQuestion,
 } from "metabase/query_builder/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
-import { Box, type IconName } from "metabase/ui";
+import { Box } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 import { displayNameForColumn } from "metabase/utils/formatting";
 import type { OptionsType } from "metabase/utils/formatting/types";
@@ -33,7 +33,7 @@ import {
   isString,
   isURL,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, Series } from "metabase-types/api";
+import type { DatasetColumn, IconName, Series } from "metabase-types/api";
 
 import { ListView } from "../ListView/ListView";
 import { ListViewConfiguration } from "../ListView/ListViewConfiguration";
