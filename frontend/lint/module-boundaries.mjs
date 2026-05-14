@@ -73,6 +73,7 @@ const elements = [
   createElement({ type: "shared", name: "forms", enforceOutgoing: true }),
   createElement({ type: "shared", name: "history", enforceOutgoing: true }),
   createElement({ type: "shared", name: "hoc", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "home", enforceOutgoing: true }),
   createElement({ type: "shared", name: "hooks", enforceOutgoing: true }),
   createElement({ type: "shared", name: "i18n", enforceOutgoing: true }),
   createElement({ type: "shared", name: "metadata", enforceOutgoing: true }),
