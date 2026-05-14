@@ -163,11 +163,24 @@ function ExplorationTreeItem({
   onSelect,
   depth,
 }: TreeNodeProps<ExplorationTreeItem>) {
+  const itemRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    // if selected via keyboard shortcuts, scroll into view
+    // if selected by clicking, the item was already in view, so it's a no-op
+    if (isSelected) {
+      itemRef.current?.scrollIntoView({
+        block: "nearest",
+      });
+    }
+  }, [isSelected]);
+
   const iconProps =
     typeof item.icon === "string" ? { name: item.icon } : item.icon;
 
   return (
     <UnstyledButton
+      ref={itemRef}
       role="listitem"
       aria-pressed={isSelected}
       className={cx(S.treeRow, {
