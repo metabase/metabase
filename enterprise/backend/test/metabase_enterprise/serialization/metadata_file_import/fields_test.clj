@@ -374,11 +374,9 @@
       (finally (p/clear-staging-tables!)))))
 
 (deftest insert-new-keeps-row-whose-fk-target-was-dropped-test
-  (testing "a field whose FK target was dropped during merge — source_fk_target_id
-            set, target_fk_target_id never resolved — is still inserted, with
-            fk_target_field_id NULL. fk_target_field_id is a semantic annotation,
-            not structural like parent_id, so an unresolved FK degrades to no-FK
-            (mirroring null-orphan-fk-target-refs!) rather than dropping the field."
+  (testing "a field whose FK target was dropped during merge (source_fk_target_id
+            set, target_fk_target_id unresolved) is still inserted with
+            fk_target_field_id NULL — the FK is a semantic annotation, not structural."
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
                    :model/Table    {t-id :id}  {:db_id db-id :schema "PUBLIC" :name "t"}]
       (try
@@ -454,6 +452,31 @@
         (is (some? b))
         (is (= (:id a) (:fk_target_field_id b))))
       (finally (p/clear-staging-tables!)))))
+
+(deftest merge-fields-by-depth-reconciles-fk-on-matched-field-test
+  (testing "a matched field's fk_target_field_id is reconciled from the import
+            file, even when no other payload column differs — the FK isn't part
+            of the natural-key match, so it can drift independently of row identity."
+    (mt/with-temp [:model/Database {db-id :id}      {:engine :h2}
+                   :model/Table    {t-id :id}       {:db_id db-id :schema "PUBLIC" :name "t"}
+                   :model/Field    {id-field :id}   {:table_id t-id :name "id"
+                                                     :base_type :type/Integer :database_type "int"}
+                   :model/Field    {acct-field :id} {:table_id t-id :name "account_id"
+                                                     :base_type :type/Integer :database_type "int"}]
+      (try
+        (is (nil? (:fk_target_field_id (t2/select-one :model/Field :id acct-field)))
+            "fixture starts with account_id un-FK'd")
+        (p/clear-staging-tables!)
+        (insert-staging-table-row! 1 (:name (t2/select-one :model/Database :id db-id)) "t" :target_id t-id)
+        ;; Staging payloads are identical to the live rows except account_id now
+        ;; carries an FK pointing at id — so only the FK has drifted.
+        (insert-staging-field-row! 10 "id"         :depth 0 :target_table_id t-id)
+        (insert-staging-field-row! 11 "account_id" :depth 1 :target_table_id t-id
+                                   :source_fk_target_id 10)
+        (p/merge-fields-by-depth!)
+        (is (= id-field (:fk_target_field_id (t2/select-one :model/Field :id acct-field)))
+            "matched field's fk_target_field_id is reconciled from the file")
+        (finally (p/clear-staging-tables!))))))
 
 (deftest merge-fields-by-depth-is-idempotent-test
   (mt/with-temp [:model/Database {db-id :id} {:engine :h2}

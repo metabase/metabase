@@ -24,11 +24,11 @@
 (set! *warn-on-reflection* true)
 
 (def import-batch-size
-  "Row batch size shared by all processors. Larger batches make per-batch
-  INSERT cost super-linear (WAL/index overhead grows with batch size
-  against a filling staging table); smaller batches pay parser/handler-
-  dispatch overhead that swamps the per-row savings. 250 looked like a
-  sweet spot in local benchmarks."
+  "Row batch size shared by the drain and merge processors."
+  ;; 250 was the sweet spot in local benchmarks: larger batches make per-batch
+  ;; INSERT cost super-linear (WAL/index overhead grows against a filling
+  ;; staging table); smaller batches pay parser/handler-dispatch overhead that
+  ;; swamps the per-row savings.
   250)
 
 ;;; ============================== Validation ==============================
@@ -471,23 +471,20 @@
   10)
 
 (defn- orphan-not-exists-predicate
-  "WHERE-clause fragment matching rows whose `column-key` (a `:source_*_id`
-  column) is non-null but doesn't reference any other staging row's
-  `source_id`. Uses correlated NOT EXISTS rather than NOT IN — at 9M+
-  rows PG cannot plan `NOT IN (subquery)` well (NULL-semantics force
-  full-materialization of the inner set) and the query effectively
-  never terminates. NOT EXISTS resolves to a proper anti-join via the
-  PK index on `source_id`, O(N log N) instead of O(N²).
-
-  The inner FROM is a `(SELECT source_id FROM ...)` derived table so the
-  predicate stays valid when used inside an UPDATE on
-  `metabase_field_import` — MySQL forbids referencing the UPDATE's target
-  table directly in a subquery; the derived-table wrap defeats that
-  restriction. PG/H2 inline the wrap away."
+  "WHERE-clause fragment matching `metabase_field_import` rows whose
+  `column-key` (a `:source_*_id` column) is non-null but references no other
+  staging row's `source_id` — i.e. an orphan reference."
   [column-key]
-  ;; Inner subquery aliased as `:s` so the unqualified column-key in
-  ;; the inner WHERE has to qualify to the outer table — both tables
-  ;; have `source_parent_id` / `source_fk_target_id`.
+  ;; Correlated NOT EXISTS, not NOT IN: at 9M+ rows PG can't plan
+  ;; `NOT IN (subquery)` (NULL-semantics force full-materialization of the
+  ;; inner set) and it effectively never terminates. NOT EXISTS resolves to a
+  ;; proper anti-join via the PK index on `source_id` — O(N log N), not O(N²).
+  ;;
+  ;; The inner FROM is a `(SELECT source_id FROM ...)` derived table so the
+  ;; predicate stays valid inside an UPDATE on `metabase_field_import`: MySQL
+  ;; forbids referencing the UPDATE's target table directly in a subquery; the
+  ;; wrap defeats that, and PG/H2 inline it away. Aliased `:s` so the inner
+  ;; WHERE's unqualified column-key resolves to the outer table.
   (let [outer-col (keyword (str "metabase_field_import." (name column-key)))]
     [:and
      [:not= column-key nil]
@@ -558,11 +555,11 @@
 ;;; ============================== Depth tagging ==============================
 
 (def depth-iteration-cap
-  "Sentinel cap on the depth-tagging fixpoint loop. Field parent chains
-  are shallow in practice (a few levels at most), so 50 is a comfortable
-  safety belt — if a workload ever exceeds it, the algorithm itself is
-  the bug, not the data. Hitting the cap throws `:cycle_in_field_graph`
-  with the un-tagged sample for diagnostics."
+  "Iteration cap on the depth-tagging fixpoint loop; exceeding it throws
+  `:cycle_in_field_graph` with the un-tagged sample."
+  ;; Field parent chains are shallow in practice (a few levels at most), so 50
+  ;; is a comfortable safety belt — exceeding it means the algorithm is the
+  ;; bug, not the data.
   50)
 
 (defn- mark-roots-at-depth-zero!
@@ -671,44 +668,44 @@
 ;;; ============================== Per-depth field merge ==============================
 
 (def ^:private field-clobber-cols
-  "Columns clobbered on UPDATE in [[update-matched-fields-at-depth!]]. The
-  matched-row payload is overwritten regardless of whether values changed
-  (this import is an alternate sync). `parent_id` and `fk_target_field_id`
-  are not clobbered: they're part of the natural-key match (`parent_id`) or
-  inherent to the matched row already (`fk_target_field_id` — clobbered by
-  the FK-fill path below)."
+  "The field payload columns the importer owns: on a matched row they are
+  overwritten from the file's values (the import is an alternate sync)."
+  ;; Each is also its staging column name, so [[update-matched-fields-at-depth!]]
+  ;; can build the SET from identically-named correlated subqueries.
   [:base_type :database_type :description
    :effective_type :semantic_type :coercion_strategy :nfc_path])
 
 (defn- target-id-clobber-subquery
-  "Correlated subquery for a single clobber column. ORDER BY + LIMIT 1
-  keeps the subquery single-row when two staging rows resolve to the
-  same `target_id` (GHY-3549)."
-  [col]
-  {:select   [(keyword (str "fi." (name col)))]
+  "Correlated subquery yielding `staging-col`'s value from the staging row
+  that resolved to this `metabase_field`."
+  [staging-col]
+  {:select   [(keyword (str "fi." (name staging-col)))]
    :from     [[:metabase_field_import :fi]]
    :where    [:= :fi.target_id :metabase_field.id]
+   ;; ORDER BY + LIMIT 1: two staging rows can resolve to the same target_id
+   ;; (GHY-3549); pick one deterministically rather than erroring.
    :order-by [[:fi.source_id :asc]]
    :limit    1})
 
 (def ^:private field-payload-changed-predicate
-  "OR-block over the clobber-payload columns plus `active`. Used by the
-  skip-if-unchanged check on the merge UPDATE: if every observable column
-  already matches staging, no UPDATE fires (no dead tuple). Coalesce-with-
-  empty-string is the portable NULL-safe equivalent of `IS DISTINCT FROM`
-  (PG-only). For `effective_type` we coalesce against `base_type` on both
-  sides because the export omits `:effective_type` when it equals
-  `:base_type` and the application universally treats `effective_type IS
-  NULL` as 'use base_type'. `active` is checked against TRUE since SET sets
-  it to TRUE always."
+  "True when a matched `metabase_field` row's observable payload differs from
+  its staging row — the predicate behind the merge UPDATE's skip-if-unchanged
+  behavior."
+  ;; Coalesce-with-sentinel is the portable NULL-safe `IS DISTINCT FROM`:
+  ;; empty string for text columns, -1 (never a real id) for FK ids.
   [[:!= [:coalesce :metabase_field.base_type         [:inline ""]]   [:coalesce :fi.base_type         [:inline ""]]]
    [:!= [:coalesce :metabase_field.database_type     [:inline ""]]   [:coalesce :fi.database_type     [:inline ""]]]
    [:!= [:coalesce :metabase_field.description       [:inline ""]]   [:coalesce :fi.description       [:inline ""]]]
+   ;; `effective_type` coalesces against `base_type`: the export omits it when
+   ;; the two are equal, and the app reads NULL effective_type as base_type.
    [:!= [:coalesce :metabase_field.effective_type    :metabase_field.base_type]
     [:coalesce :fi.effective_type                :fi.base_type]]
    [:!= [:coalesce :metabase_field.semantic_type     [:inline ""]]   [:coalesce :fi.semantic_type     [:inline ""]]]
    [:!= [:coalesce :metabase_field.coercion_strategy [:inline ""]]   [:coalesce :fi.coercion_strategy [:inline ""]]]
    [:!= [:coalesce :metabase_field.nfc_path          [:inline ""]]   [:coalesce :fi.nfc_path          [:inline ""]]]
+   ;; staging's FK column is `target_fk_target_id`, not `fk_target_field_id`.
+   [:!= [:coalesce :metabase_field.fk_target_field_id [:inline -1]]  [:coalesce :fi.target_fk_target_id [:inline -1]]]
+   ;; `active` compares against TRUE — the merge SET always sets it TRUE.
    [:!= :metabase_field.active                       [:inline true]]])
 
 (defn resolve-target-table-ids-for-fields-in-staging!
@@ -801,30 +798,29 @@
              [:= :metabase_field_import.target_id nil]]}))
 
 (defn update-matched-fields-at-depth!
-  "Clobber-update `metabase_field` from staging rows at depth `d` whose
-  `target_id` is set (i.e., natural-key matched a live row). Each SET column
-  is a single-key lookup on `staging.target_id`. Skip-if-unchanged: the
-  EXISTS subquery additionally requires that at least one observable column
-  differs — a re-import with identical payload is a true no-op.
-
-  The `IN` predicate scopes the outer walk of `metabase_field` to just the
-  ~staging-row-count IDs at depth `d` rather than a full-table scan. Without
-  it, PG's planner starts from `metabase_field` and probes staging per row —
-  fine on a small appdb, but on an appdb with millions of unrelated field
-  rows the global scan dominates."
+  "Bring the live `metabase_field` rows that depth-`d` staging matched into
+  line with the file. Rows whose payload already matches staging are left
+  untouched."
   [d]
   (t2/query
    {:update :metabase_field
+    ;; `fk_target_field_id` reads staging's `target_fk_target_id` — it isn't
+    ;; part of the natural-key match, so a matched field's FK can drift.
     :set    (-> (into {} (map (fn [c] [c (target-id-clobber-subquery c)])) field-clobber-cols)
-                (assoc :active     [:inline true]
-                       :updated_at :%now))
+                (assoc :fk_target_field_id (target-id-clobber-subquery :target_fk_target_id)
+                       :active             [:inline true]
+                       :updated_at         :%now))
     :where  [:and
              [:= :metabase_field.is_defective_duplicate [:inline false]]
+             ;; Scope the outer walk to the ~staging-row-count IDs at depth `d`.
+             ;; Without this, PG starts from `metabase_field` and probes staging
+             ;; per row — a full scan on an appdb with millions of field rows.
              [:in :metabase_field.id {:select [:target_id]
                                       :from   [:metabase_field_import]
                                       :where  [:and
                                                [:= :depth d]
                                                [:not= :target_id nil]]}]
+             ;; Skip-if-unchanged: only touch rows whose payload actually differs.
              [:exists {:select [[[:inline 1]]]
                        :from   [[:metabase_field_import :fi]]
                        :where  [:and
