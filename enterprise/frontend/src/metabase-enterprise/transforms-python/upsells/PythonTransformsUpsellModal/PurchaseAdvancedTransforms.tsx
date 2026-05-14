@@ -14,7 +14,7 @@ import type { ICloudAddOnProduct } from "metabase-types/api/store";
 import { CAMPAIGN, LOCATION } from "./constants";
 
 type PurchaseAdvancedTransformsProps = {
-  handleModalClose: VoidFunction;
+  handleModalClose?: VoidFunction;
   addOn: ICloudAddOnProduct;
   freeUnitsIncluded: boolean;
 };
@@ -44,7 +44,7 @@ export const PurchaseAdvancedTransforms = ({
       );
     } finally {
       settingUpModalHandlers.close();
-      handleModalClose();
+      handleModalClose?.();
     }
   }, [
     handleModalClose,

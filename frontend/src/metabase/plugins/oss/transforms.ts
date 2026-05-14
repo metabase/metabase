@@ -49,6 +49,7 @@ export type PythonTransformSourceValidationResult = {
 
 export type PythonTransformsPlugin = {
   isEnabled: boolean;
+  shouldShowInspectorUpsell: boolean;
   getPythonTransformsRoutes: () => ReactNode;
   getInspectorRoutes: () => ReactNode;
   getPythonSourceValidationResult: (
@@ -71,14 +72,9 @@ export const PLUGIN_TRANSFORMS = getDefaultPluginTransforms();
 
 const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
   isEnabled: false,
+  shouldShowInspectorUpsell: false,
   getPythonTransformsRoutes: () => null,
-  getInspectorRoutes: () => {
-    const {
-      getDefaultInspectorRoutes,
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-    } = require("metabase/transforms/pages/TransformInspectorUpsellPage/routes");
-    return getDefaultInspectorRoutes();
-  },
+  getInspectorRoutes: () => null,
   getPythonSourceValidationResult: () => ({ isValid: true }),
   TransformEditor: PluginPlaceholder,
   SourceSection: PluginPlaceholder,

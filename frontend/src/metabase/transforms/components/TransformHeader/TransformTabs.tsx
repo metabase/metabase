@@ -35,13 +35,16 @@ function getTabs(id: TransformId): PaneHeaderTab[] {
       label: t`Settings`,
       to: Urls.transformSettings(id),
     },
-    {
+  ];
+
+  if (PLUGIN_TRANSFORMS_PYTHON.shouldShowInspectorUpsell) {
+    tabs.push({
       label: t`Inspect`,
       to: inspectUrl,
       isGated: !PLUGIN_TRANSFORMS_PYTHON.isEnabled,
       isSelected: (pathname: string) => pathname.startsWith(inspectUrl),
-    },
-  ];
+    });
+  }
 
   if (PLUGIN_DEPENDENCIES.isEnabled) {
     tabs.push({
