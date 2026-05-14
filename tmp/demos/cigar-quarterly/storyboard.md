@@ -14,13 +14,16 @@
 ## Beats
 
 0. **Cold open — over `/slides` browse page or Metabase home**
-   In my line of work, you need to know your numbers. This? This is Metabase. Beautiful.
+   My family's been in the cigar import business for fifty years. Tonight, I show you how we do the books now — Metabase Slides. Watch.
 
 1. **Open Slides app → create new deck → editor → click Generate**
    Sit down. We're gonna build something.
 
 2. **In modal: type prompt + pick "FY26 Q4 Board Review" dashboard → click Generate**
    Quarterly review. Numbers don't lie.
+
+   **Modal prompt text (typed on camera):**
+   > Quarterly sit-down for the family. Walk us through where the money came from — revenue trend, top earners, which territories delivered. Then tell us where we're going next year. Plain talk. Keep it tight.
 
 3. **Agent log streams (~30–60s wait)**
    Patience. The machine is working. You know — in my time, we wrote this on a notepad. Numbers. Names. Territories. By hand. Now? It does it for you. It thinks. It writes. Beautiful machine.

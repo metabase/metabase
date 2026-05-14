@@ -285,7 +285,8 @@
 .bullets {
   padding: 80px 100px;
   gap: 18px;
-  background:
+  background-color: #fff;
+  background-image:
     radial-gradient(ellipse 45% 70% at 0% 100%, #f3eeff 0%, transparent 65%),
     radial-gradient(ellipse 40% 60% at 100% 0%, #fff0fb 0%, transparent 70%);
 }
@@ -449,7 +450,8 @@
 .metricsGrid {
   padding: 60px 72px;
   gap: 26px;
-  background: radial-gradient(
+  background-color: #fff;
+  background-image: radial-gradient(
     ellipse 40% 60% at 100% 0%,
     #f7f1ff 0%,
     transparent 70%
@@ -620,7 +622,8 @@
 .titleMetricsChart {
   padding: 52px 64px 60px 72px;
   gap: 12px;
-  background: radial-gradient(
+  background-color: #fff;
+  background-image: radial-gradient(
     ellipse 45% 60% at 100% 100%,
     #f3eeff 0%,
     transparent 65%
@@ -723,7 +726,8 @@
 .twoColumn {
   padding: 60px 72px 60px 88px;
   gap: 18px;
-  background: radial-gradient(
+  background-color: #fff;
+  background-image: radial-gradient(
     ellipse 35% 60% at 0% 0%,
     #f7f1ff 0%,
     transparent 65%

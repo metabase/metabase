@@ -1,12 +1,12 @@
 [
   {
-    "text": "In my line of work, you need to know your numbers. This? This is Metabase. Beautiful.",
+    "text": "My family's been in the cigar import business for fifty years. Tonight, I show you how we do the books now — Metabase Slides. Watch.",
     "precondition": {
       "fetch": "/api/user/current",
       "expect": "data && data.id",
       "describe": "logged-in session is valid"
     },
-    "durationMs": 7338
+    "durationMs": 9172
   },
   {
     "text": "Sit down. We're gonna build something.",
@@ -22,8 +22,8 @@
     "durationMs": 2984
   },
   {
-    "text": "Patience. The machine is working. You know, in my time, we wrote this on a notepad. Numbers. Names. Territories. By hand. Now? It does it for you. It thinks. It writes. Beautiful machine.",
-    "durationMs": 16637
+    "text": "Patience. The machine is working. You know, in my time, we wrote this on a notepad. Numbers. Names. Territories. By hand. Now? It thinks. It writes. Look at it work. Every chart, every number — it understands what matters. It builds the story. The slides write themselves. Beautiful machine.",
+    "durationMs": 22902
   },
   {
     "text": "Up thirty-four percent. Good quarter. For most of us.",
