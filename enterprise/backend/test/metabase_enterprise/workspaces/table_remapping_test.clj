@@ -134,9 +134,8 @@
 (defn- with-provisioned-workspace-db-namespace!
   "Variant of `with-provisioned-workspace-db!` that takes a full
    `::table-namespace` map (`{:db ?, :schema ?}`) instead of just a schema
-   string. Used to exercise cross-DB workspaces (Snowflake / SQL Server /
-   BigQuery) where the to-side `:db` slot must flow through to the
-   `TableRemapping` row."
+   string. Used to exercise cross-DB workspaces (SQL Server / BigQuery) where
+   the to-side `:db` slot must flow through to the `TableRemapping` row."
   [db-id output-namespace f]
   (try
     (ws/set-instance-workspace! {:name "ws-3-slot"
@@ -148,12 +147,12 @@
 
 (deftest add-transform-target-mapping!-flows-both-slots-from-namespace-test
   (testing "When the workspace output namespace populates :db, both slots flow into the TableRemapping row"
-    ;; Requires the :snowflake driver class on the test classpath - same skip pattern as the
+    ;; Requires the :sqlserver driver class on the test classpath - same skip pattern as the
     ;; per-driver spec-for-table tests above. Run with:
-    ;;   ./bin/test-agent --drivers=snowflake,h2 :only '[...this test...]'
-    (when (workspaces.tu/driver-loadable? :snowflake)
+    ;;   ./bin/test-agent --drivers=sqlserver,h2 :only '[...this test...]'
+    (when (workspaces.tu/driver-loadable? :sqlserver)
       ;; Synthesize the canonical Database row's :engine after :model/Database is created
-      ;; so spec-for-table dispatches as Snowflake, populating :db on the from-side.
+      ;; so spec-for-table dispatches as SQL Server, populating :db on the from-side.
       (clean-db-fixture!
        (mt/id)
        (fn []
@@ -164,24 +163,24 @@
                                                     (= model :model/Database)
                                                     (= (:id row) (mt/id)))
                                              (-> row
-                                                 (assoc :engine :snowflake
-                                                        :details {:db "ANALYTICS"}))
+                                                 (assoc :engine :sqlserver
+                                                        :details {:db "AnalyticsDB"}))
                                              row))))]
            (with-provisioned-workspace-db-namespace!
-             (mt/id) {:db "WS_DB" :schema "WS_ALICE"}
+             (mt/id) {:db "WS_DB" :schema "ws_alice"}
              (fn []
                (let [to-spec (ws.table-remapping/add-transform-target-mapping!
-                              (mt/id) {:schema "PUBLIC" :name "ORDERS" :type :table})]
+                              (mt/id) {:schema "dbo" :name "orders" :type :table})]
                  (testing "to-side spec carries both :db and :schema from the workspace namespace"
                    (is (= "WS_DB" (:db to-spec)))
-                   (is (= "WS_ALICE" (:schema to-spec)))
-                   (is (= "PUBLIC__ORDERS" (:name to-spec))
+                   (is (= "ws_alice" (:schema to-spec)))
+                   (is (= "dbo__orders" (:name to-spec))
                        "table is renamed via remapped-table-name to avoid cross-schema collisions"))
                  (testing "TableRemapping row stores both slots, source-side too"
-                   (is (= {{:db "ANALYTICS" :schema "PUBLIC"   :table "ORDERS"}
-                           {:db "WS_DB"     :schema "WS_ALICE" :table "PUBLIC__ORDERS"}}
+                   (is (= {{:db "AnalyticsDB" :schema "dbo"      :table "orders"}
+                           {:db "WS_DB"       :schema "ws_alice" :table "dbo__orders"}}
                           (ws.table-remapping/all-mappings-for-db (mt/id)))
-                       "from_db = ANALYTICS (from spec-for-table on :snowflake), to_db = WS_DB (from workspace namespace)")))))))))))
+                       "from_db = AnalyticsDB (from spec-for-table on :sqlserver), to_db = WS_DB (from workspace namespace)")))))))))))
 
 (deftest workspace-remap-schema+name-redirects-sync-fetch-test
   (testing "sync's fetch-metadata hook returns [to-schema to-table-name] when a TableRemapping exists"
@@ -576,7 +575,6 @@
    [:h2                   [:schema]        {:name "mem:test"}                               {:schema "PUBLIC"  :name "ORDERS"} {:db ""              :schema "PUBLIC"   :table "ORDERS"}]
    [:mysql                [:db]            {:name "ignored" :details {:db "analytics"}}     {:schema nil      :name "orders"} {:db "analytics"     :schema ""         :table "orders"}]
    [:clickhouse           [:schema]        {:name "ignored"}                                {:schema "analytics" :name "events"} {:db ""              :schema "analytics" :table "events"}]
-   [:snowflake            [:db :schema]    {:name "ignored" :details {:db "ANALYTICS"}}     {:schema "PUBLIC" :name "ORDERS"} {:db "ANALYTICS"     :schema "PUBLIC"   :table "ORDERS"}]
    [:sqlserver            [:db :schema]    {:name "ignored" :details {:db "AnalyticsDB"}}   {:schema "dbo"    :name "orders"} {:db "AnalyticsDB"   :schema "dbo"      :table "orders"}]
    [:bigquery-cloud-sdk   [:db :schema]    {:name "ignored" :details {:project-id "metabase-prod"}} {:schema "core"   :name "orders"} {:db "metabase-prod" :schema "core"     :table "orders"}]])
 

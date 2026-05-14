@@ -37,7 +37,7 @@
    the SQL by string concatenation."
   [driver namespace-name]
   (case driver
-    (:postgres :redshift :snowflake :h2) (str \" namespace-name \")
+    (:postgres :redshift :h2) (str \" namespace-name \")
     :sqlserver                            (str \[ namespace-name \])
     (:mysql :clickhouse)                  (str \` namespace-name \`)))
 
@@ -46,18 +46,18 @@
    like MySQL/ClickHouse)."
   [driver namespace-name]
   (case driver
-    (:postgres :redshift :snowflake :h2) (str "CREATE SCHEMA " (quoted-namespace driver namespace-name))
+    (:postgres :redshift :h2) (str "CREATE SCHEMA " (quoted-namespace driver namespace-name))
     :sqlserver                            (str "CREATE SCHEMA " (quoted-namespace driver namespace-name))
     (:mysql :clickhouse)                  (str "CREATE DATABASE " (quoted-namespace driver namespace-name))))
 
 (defn- drop-namespace-sqls
   "DDL to drop the per-run namespace and any tables left in it. Schema'd
-   drivers with CASCADE (postgres/redshift/snowflake/h2) and database-as-namespace
+   drivers with CASCADE (postgres/redshift/h2) and database-as-namespace
    drivers (mysql/clickhouse) take a single statement; SQL Server has no DROP
    SCHEMA CASCADE so the source table has to be dropped explicitly first."
   [driver namespace-name table-name]
   (case driver
-    (:postgres :redshift :snowflake :h2) [(str "DROP SCHEMA " (quoted-namespace driver namespace-name) " CASCADE")]
+    (:postgres :redshift :h2) [(str "DROP SCHEMA " (quoted-namespace driver namespace-name) " CASCADE")]
     :sqlserver                            [(str "DROP TABLE " (quoted-namespace driver namespace-name) "." (quoted-namespace driver table-name))
                                            (str "DROP SCHEMA " (quoted-namespace driver namespace-name))]
     (:mysql :clickhouse)                  [(str "DROP DATABASE " (quoted-namespace driver namespace-name))]))

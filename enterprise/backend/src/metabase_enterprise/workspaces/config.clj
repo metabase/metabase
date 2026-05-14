@@ -12,7 +12,7 @@
 (defn- schema-filter-entries
   "Build sync-filter keys for the workspace's input scope. Per-engine:
 
-   - schema-having JDBC drivers (Postgres, Redshift, SQL Server, Snowflake)
+   - schema-having JDBC drivers (Postgres, Redshift, SQL Server)
      emit `:schema-filters-*` — `metabase.driver.sync` reads these to scope
      describe-database to the named schemas.
    - ClickHouse emits `:db-filters-*` — CH calls its top-level namespaces

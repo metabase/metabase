@@ -253,30 +253,12 @@
                                      :output_namespace "ws_alice"}}})
           (is (= {:db "ws_alice"} (ws/db-workspace-namespace db-id))))))))
 
-(deftest snowflake-3-slot-section-test
-  (testing "Snowflake workspace: catalog comes from Database.details, schema from output_namespace"
-    (let [section {:name "ws"
-                   :databases {:snowflake-prod {:input_schemas    ["PUBLIC"]
-                                                :output_namespace "WS_ALICE"}}}]
-      (is (true? (advanced-config.file.workspace/valid-workspace-section? section))))
-    (testing "loader expands stored output_namespace into {:db <details.db>, :schema <ns>}"
-      ;; `apply-workspace-section!` calls `engine-namespace-positions`, which routes
-      ;; through `driver/qualified-name-components` and triggers a driver-load. On the
-      ;; default Enterprise classpath the Snowflake driver isn't loaded; skip the
-      ;; round-trip half of this test when the driver isn't on the test classpath.
-      (when (workspaces.tu/driver-loadable? :snowflake)
-        (mt/with-empty-h2-app-db!
-          (mt/with-temp [:model/Database {db-id :id} {:name "snowflake-prod" :engine :snowflake :details {:db "ANALYTICS"}}]
-            (advanced-config.file.workspace/apply-workspace-section!
-             {:name "ws"
-              :databases {:snowflake-prod {:input_schemas    ["PUBLIC"]
-                                           :output_namespace "WS_ALICE"}}})
-            (is (= {:db "ANALYTICS" :schema "WS_ALICE"} (ws/db-workspace-namespace db-id))
-                "reader returns the full {:db, :schema} namespace; :db comes from details")))))))
-
 (deftest bigquery-3-slot-section-test
   (testing "BigQuery workspace: project from details, dataset from output_namespace"
-    ;; Same skip-rationale as snowflake-3-slot-section-test: driver-load required.
+    ;; `apply-workspace-section!` -> `expand-output` -> `engine-namespace-positions`
+    ;; -> `driver/qualified-name-components` triggers a driver-load. On the default
+    ;; Enterprise classpath BigQuery isn't loaded; skip the round-trip half of this
+    ;; test when the driver isn't on the test classpath.
     (when (workspaces.tu/driver-loadable? :bigquery-cloud-sdk)
       (mt/with-empty-h2-app-db!
         (mt/with-temp [:model/Database {db-id :id} {:name "bq-prod" :engine :bigquery-cloud-sdk :details {:project-id "metabase-prod"}}]
@@ -332,12 +314,6 @@
                 :input_schemas     ["prod_events"]
                 :output_namespace  "ws_alice"
                 :expanded-output   {:schema "ws_alice"}}
-   :snowflake  {:db-name           "test-data (snowflake)"
-                :engine            :snowflake
-                :details           {:db "ANALYTICS"}
-                :input_schemas     ["PUBLIC"]
-                :output_namespace  "WS_ALICE"
-                :expanded-output   {:db "ANALYTICS" :schema "WS_ALICE"}}
    :sqlserver  {:db-name           "test-data (sqlserver)"
                 :engine            :sqlserver
                 :details           {:db "AnalyticsDB"}
@@ -372,7 +348,7 @@
             ;; The round-trip step requires the driver to be loadable because
             ;; `apply-workspace-section!` -> `expand-output` -> `engine-namespace-positions`
             ;; -> `driver/qualified-name-components` triggers driver-load. Skip drivers
-            ;; absent from the current classpath (e.g. Snowflake/BigQuery on the
+            ;; absent from the current classpath (e.g. BigQuery on the
             ;; default Enterprise OSS run).
             (when (workspaces.tu/driver-loadable? (:engine expectations))
               (mt/with-empty-h2-app-db!

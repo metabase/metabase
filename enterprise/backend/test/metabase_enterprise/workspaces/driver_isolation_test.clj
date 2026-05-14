@@ -12,8 +12,8 @@
 
    Setup model: the test runs against the existing test database `(mt/db)` and
    creates a per-run uniquely-named source table inside its default input
-   schema. Rationale: cloud DWs (Redshift, Snowflake) don't support drop+create
-   of databases at will, but creating a per-run table inside a shared DB works
+   schema. Rationale: cloud DWs (Redshift) don't support drop+create of
+   databases at will, but creating a per-run table inside a shared DB works
    the same way everywhere.
 
    Cross-driver counterpart to the postgres-only
@@ -91,7 +91,7 @@
    a database for schema-less ones like MySQL/ClickHouse)."
   [driver namespace-name]
   (case driver
-    (:postgres :redshift :snowflake) (str "CREATE SCHEMA \"" namespace-name "\"")
+    (:postgres :redshift) (str "CREATE SCHEMA \"" namespace-name "\"")
     :sqlserver                       (str "CREATE SCHEMA [" namespace-name "]")
     (:mysql :clickhouse)             (str "CREATE DATABASE `" namespace-name "`")))
 
@@ -106,7 +106,7 @@
 
 (defn- drop-input-namespace-sqls
   "DDL to drop the per-run input namespace and any tables left in it. Schema'd
-   drivers with CASCADE (postgres/redshift/snowflake) and database-as-namespace
+   drivers with CASCADE (postgres/redshift) and database-as-namespace
    drivers (mysql/clickhouse) take a single statement; SQL Server has no DROP
    SCHEMA CASCADE so each source table has to be dropped explicitly first.
 
@@ -115,7 +115,7 @@
   [driver namespace-name table-names]
   (let [tables (if (sequential? table-names) table-names [table-names])]
     (case driver
-      (:postgres :redshift :snowflake) [(str "DROP SCHEMA \"" namespace-name "\" CASCADE")]
+      (:postgres :redshift) [(str "DROP SCHEMA \"" namespace-name "\" CASCADE")]
       :sqlserver                       (concat
                                         (for [t tables]
                                           (str "DROP TABLE [" namespace-name "].[" t "]"))
@@ -147,7 +147,7 @@
    in addition to data-level isolation."
   [driver]
   (case driver
-    (:postgres :redshift :snowflake :sqlserver :mysql)
+    (:postgres :redshift :sqlserver :mysql)
     "SELECT schema_name AS ns FROM information_schema.schemata"
 
     :clickhouse
@@ -160,7 +160,7 @@
    discover other workspaces' table names."
   [driver]
   (case driver
-    (:postgres :redshift :snowflake :sqlserver :mysql)
+    (:postgres :redshift :sqlserver :mysql)
     "SELECT table_schema AS ns, table_name AS tbl FROM information_schema.tables"
 
     :clickhouse
@@ -271,14 +271,6 @@
     :sqlserver  [[:create-user  (str "CREATE USER [" hacker-name "] WITHOUT LOGIN")]
                  [:create-role  (str "CREATE ROLE [" hacker-name "_r]")]
                  [:execute-as   "EXECUTE AS USER = 'dbo'"]]
-    :snowflake  [[:use-role     "USE ROLE ACCOUNTADMIN"]
-                 [:create-user  (str "CREATE USER \"" hacker-name "\" PASSWORD = 'Pass1234X'")]
-                 [:create-role  (str "CREATE ROLE \"" hacker-name "_r\"")]
-                 ;; Driver-specific quirk #11: workspace user has USAGE on its
-                 ;; granted warehouse only — switching context to another
-                 ;; warehouse must fail (no USAGE; or warehouse doesn't exist
-                 ;; at all). Both are acceptable denial signals.
-                 [:use-warehouse "USE WAREHOUSE \"NONEXISTENT_MB_ISO_WH\""]]
     :clickhouse [[:create-user  (str "CREATE USER `" hacker-name "` IDENTIFIED WITH plaintext_password BY 'Pass1234X'")]
                  [:create-role  (str "CREATE ROLE `" hacker-name "_r`")]]))
 
@@ -286,7 +278,7 @@
   "Per-driver SQL the workspace user attempts when renaming a granted input
    table — RENAME requires ALTER on the table, which the workspace user only
    has SELECT on. Engines spell rename three different ways: `ALTER TABLE …
-   RENAME TO …` (postgres / mysql / snowflake / redshift), `RENAME TABLE …
+   RENAME TO …` (postgres / mysql / redshift), `RENAME TABLE …
    TO …` (clickhouse), and `EXEC sp_rename '…', '…'` (sql server)."
   [driver schema src-name new-name]
   (case driver
@@ -308,13 +300,6 @@
    external-storage SQL surface) return an empty list."
   [driver hacker-name]
   (case driver
-    :snowflake [;; Internal Snowflake stage — needs CREATE STAGE on the schema,
-                ;; which `dataEditor`-equivalent grants don't include.
-                [:create-stage          (str "CREATE STAGE \"" hacker-name "_stage\"")]
-                ;; External stage referencing S3 — needs CREATE STAGE plus a
-                ;; STORAGE INTEGRATION the workspace user has USAGE on.
-                [:create-external-stage (str "CREATE STAGE \"" hacker-name "_s3_stage\" "
-                                             "URL='s3://nonexistent-mb-iso-bucket/'")]]
     :redshift  [;; COPY from S3 — needs S3 read perms via IAM_ROLE; workspace user
                 ;; has no IAM role assumption privilege.
                 [:copy-from-s3   (str "COPY \"" hacker-name "_tmp\" FROM 's3://nonexistent-mb-iso-bucket/data.csv' "
@@ -450,12 +435,12 @@
                 (doseq [[label sql] (escalation-attempt-sqls driver hacker-name)]
                   (expect-sql-denied! user-spec sql label))))
             (testing "workspace user cannot exfiltrate via storage/external escapes"
-              ;; Snowflake stages and Redshift COPY/UNLOAD are the SQL-level bridges
-              ;; to external object storage on those warehouses — high-value bypass
-              ;; paths because they let a sandboxed user pull data in (COPY) or push
-              ;; data out (UNLOAD) without going through grant-mediated tables. The
-              ;; other JDBC drivers (postgres / mysql / sqlserver / clickhouse) have
-              ;; no equivalent SQL surface and are no-ops here.
+              ;; Redshift COPY/UNLOAD is the SQL-level bridge to external object
+              ;; storage — high-value bypass path because it lets a sandboxed user
+              ;; pull data in (COPY) or push data out (UNLOAD) without going through
+              ;; grant-mediated tables. The other JDBC drivers (postgres / mysql /
+              ;; sqlserver / clickhouse) have no equivalent SQL surface and are
+              ;; no-ops here.
               (let [hacker-name (str "ws_iso_storage_" run-id)]
                 (doseq [[label sql] (storage-escape-sqls driver hacker-name)]
                   (expect-sql-denied! user-spec sql label))))
@@ -770,12 +755,12 @@
             (maybe-drop-input-namespace! admin-spec driver database in-schema [src-a-name src-b-name])))))))
 
 ;; --- cross-database isolation -----------------------------------------------
-;; Workspace tests above all live within a single `(mt/db)` database. Snowflake,
-;; SQL Server, and BigQuery host *many* databases/projects on one account/server,
-;; and a workspace user/SA could in principle reach another database it was
-;; never granted on. The drivers without a meaningful "outside-the-current-db"
-;; surface (postgres / mysql / clickhouse / redshift — they treat each database
-;; as a separate connection and the existing ungranted-namespace assertion in
+;; Workspace tests above all live within a single `(mt/db)` database. SQL Server
+;; and BigQuery host *many* databases/projects on one account/server, and a
+;; workspace user/SA could in principle reach another database it was never
+;; granted on. The drivers without a meaningful "outside-the-current-db" surface
+;; (postgres / mysql / clickhouse / redshift — they treat each database as a
+;; separate connection and the existing ungranted-namespace assertion in
 ;; `workspace-isolation-perms-test` already exercises the equivalent isolation)
 ;; are excluded from this fanout. BigQuery's "different project" requires
 ;; second-project billing setup we don't have in test infra, so it's deferred
@@ -784,33 +769,28 @@
 (defn- supports-cross-database-isolation-test?
   "True for drivers where a second database can be created in the test admin
    connection and the workspace user (created in the first DB) is naturally
-   excluded from it. Snowflake (DATABASE > SCHEMA hierarchy) and SQL Server
-   (separate user mappings per DB) qualify; the rest don't fit the shape."
+   excluded from it. SQL Server (separate user mappings per DB) qualifies; the
+   rest don't fit the shape."
   [driver]
-  (contains? #{:snowflake :sqlserver} driver))
+  (contains? #{:sqlserver} driver))
 
 (defn- create-second-db-sql
   "DDL the admin connection runs to create a second database used by the
-   cross-database test. Both supported engines accept a single `CREATE DATABASE`
-   statement, but identifier quoting differs."
+   cross-database test."
   [driver db-name]
   (case driver
-    :snowflake (str "CREATE DATABASE \"" db-name "\"")
     :sqlserver (str "CREATE DATABASE [" db-name "]")))
 
 (defn- drop-second-db-sql
   [driver db-name]
   (case driver
-    :snowflake (str "DROP DATABASE IF EXISTS \"" db-name "\"")
     :sqlserver (str "DROP DATABASE IF EXISTS [" db-name "]")))
 
 (defn- create-table-in-second-db-sqls
-  "DDL to create a `secret` table inside the second database. Snowflake's
-   default schema after CREATE DATABASE is `PUBLIC`; SQL Server's is `dbo`."
+  "DDL to create a `secret` table inside the second database. SQL Server's
+   default schema after CREATE DATABASE is `dbo`."
   [driver db-name table-name]
   (case driver
-    :snowflake [(str "CREATE TABLE \"" db-name "\".\"PUBLIC\".\"" table-name "\" (id INT, secret VARCHAR(64))")
-                (str "INSERT INTO \"" db-name "\".\"PUBLIC\".\"" table-name "\" VALUES (1, 'cross-db-secret')")]
     :sqlserver [(str "CREATE TABLE [" db-name "].dbo.[" table-name "] (id INT, secret VARCHAR(64))")
                 (str "INSERT INTO [" db-name "].dbo.[" table-name "] VALUES (1, 'cross-db-secret')")]))
 
@@ -819,7 +799,6 @@
    workspace user's denied SELECT."
   [driver db-name table-name]
   (case driver
-    :snowflake (str "\"" db-name "\".\"PUBLIC\".\"" table-name "\"")
     :sqlserver (str "[" db-name "].dbo.[" table-name "]")))
 
 (deftest ^:synchronized cross-database-isolation-test
@@ -881,57 +860,49 @@
 ;; --- PUBLIC / anonymous default-grant probes --------------------------------
 ;; Defense-in-depth tests for the original review's #10 concern: assert that
 ;; init+grant did not accidentally land any grant on a "default" principal
-;; (Snowflake's PUBLIC role, MySQL's anonymous `''@'%'` user). These are
-;; principals that all users implicitly inherit; a stray grant on them would
-;; break workspace isolation for every other connecting user.
+;; (MySQL's anonymous `''@'%'` user). These are principals that all users
+;; implicitly inherit; a stray grant on them would break workspace isolation
+;; for every other connecting user.
 ;;
 ;; Postgres / Redshift's `public` schema CREATE-grant case is already covered
 ;; in production by `assert-no-public-create-grant!`. ClickHouse / SQL Server
 ;; don't have an analogous default-principal threat that's tractable here.
 
 (defn- supports-public-default-grant-test?
-  "True for drivers with a meaningful default principal (PUBLIC role / anonymous
-   user) whose grants on workspace resources we want to verify are absent."
+  "True for drivers with a meaningful default principal (anonymous user) whose
+   grants on workspace resources we want to verify are absent."
   [driver]
-  (contains? #{:snowflake :mysql} driver))
+  (contains? #{:mysql} driver))
 
 (defn- public-grant-probe-sql
-  "Per-driver SQL that, run as admin, returns rows iff PUBLIC / the anonymous
-   user holds *any* grant whose target name contains `ws-fragment` (the
-   workspace's deterministic id-derived suffix). The workspace's role,
-   schema/database, and user names all embed `ws-fragment`, so a single LIKE
-   match catches every flavor.
+  "Per-driver SQL that, run as admin, returns rows iff the anonymous user holds
+   *any* grant whose target name contains `ws-fragment` (the workspace's
+   deterministic id-derived suffix). The workspace's role, schema/database, and
+   user names all embed `ws-fragment`, so a single LIKE match catches every
+   flavor.
 
-   Snowflake: `SHOW GRANTS TO ROLE PUBLIC` lists each grant the PUBLIC role
-   has been given; we filter into a temp result via RESULT_SCAN. Returning
-   `name` makes it easy to sanity-check failures.
    MySQL: `mysql.tables_priv` and `mysql.db` are the system tables that store
    per-table and per-database grants; filtering by `User = ''` finds anonymous-
    user grants. The anonymous user is often disabled on modern installs (no
    row exists), so the query returns 0 rows in the happy path."
   [driver ws-fragment]
   (case driver
-    :snowflake (str "SELECT \"name\" AS resource FROM TABLE(RESULT_SCAN(LAST_QUERY_ID())) "
-                    "WHERE \"name\" ILIKE '%" ws-fragment "%'")
     :mysql     (str "SELECT CONCAT(Db, '.', COALESCE(Table_name, '*')) AS resource "
                     "FROM mysql.tables_priv WHERE User = '' AND Db LIKE '%" ws-fragment "%' "
                     "UNION ALL "
                     "SELECT Db AS resource FROM mysql.db WHERE User = '' AND Db LIKE '%" ws-fragment "%'")))
 
 (defn- public-grant-pre-query-sql
-  "Some drivers need an introspection query run *before* the probe (e.g.,
-   Snowflake's `SHOW GRANTS` populates `RESULT_SCAN` for the next statement).
-   Returns nil for drivers that don't need a setup step."
-  [driver]
-  (case driver
-    :snowflake "SHOW GRANTS TO ROLE PUBLIC"
-    :mysql     nil))
+  "Some drivers need an introspection query run *before* the probe. Returns nil
+   for drivers that don't need a setup step."
+  [_driver]
+  nil)
 
 (deftest ^:synchronized no-public-default-grant-test
   ;; Verifies that after `init-workspace-isolation!` and
   ;; `grant-workspace-read-access!`, no grant has landed on a default principal
-  ;; (Snowflake's PUBLIC role, MySQL's anonymous `''@'%'` user). A stray grant
-  ;; on PUBLIC would silently leak the workspace's resources to every other
+  ;; (MySQL's anonymous `''@'%'` user). A stray grant on that principal would
+  ;; silently leak the workspace's resources to every other
   ;; user/role on the warehouse.
   ;;
   ;; The probe queries the warehouse's own grants catalog as admin, filtering

@@ -65,27 +65,27 @@
            "empty output_namespace, returns 0")))))
 
 (deftest three-slot-engine-test
-  (testing "clear-mappings-for-iso! matches the iso :db slot for 3-slot engines (Snowflake/SQL Server)"
+  (testing "clear-mappings-for-iso! matches the iso :db slot for 3-slot engines (SQL Server)"
     (clean-db-fixture!
      (mt/id)
      (fn []
        ;; Two workspaces on the same Metabase Database, different iso :db.
        (ws.table-remapping/add-mapping!
         (mt/id)
-        {:db "ANALYTICS" :schema "PUBLIC" :table "ORDERS"}
-        {:db "ANALYTICS" :schema "WS_A"   :table "ORDERS_COPY"})
+        {:db "AnalyticsDB" :schema "dbo" :table "orders"}
+        {:db "AnalyticsDB" :schema "ws_a" :table "orders_copy"})
        (ws.table-remapping/add-mapping!
         (mt/id)
-        {:db "ANALYTICS" :schema "PUBLIC" :table "PRODUCTS"}
-        {:db "ANALYTICS" :schema "WS_B"   :table "PRODUCTS_COPY"})
+        {:db "AnalyticsDB" :schema "dbo" :table "products"}
+        {:db "AnalyticsDB" :schema "ws_b" :table "products_copy"})
 
        (let [n (ws.remapping-cleanup/clear-mappings-for-iso!
-                {:engine :snowflake :details {:db "ANALYTICS"}}
+                {:engine :sqlserver :details {:db "AnalyticsDB"}}
                 (mt/id)
-                "WS_A")]
-         (is (= 1 n) "only WS_A's row deleted"))
+                "ws_a")]
+         (is (= 1 n) "only ws_a's row deleted"))
 
-       (is (= [{:to_schema "WS_B"}]
+       (is (= [{:to_schema "ws_b"}]
               (->> (t2/select :model/TableRemapping :database_id (mt/id))
                    (map #(select-keys % [:to_schema]))))
-           "WS_B's row survives")))))
+           "ws_b's row survives")))))

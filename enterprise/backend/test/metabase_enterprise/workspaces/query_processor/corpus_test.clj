@@ -145,7 +145,6 @@
 ;;;   - MySQL:      Magento (test) / Admin Assert        (screenshot 2026-04-28 #proj-table-remappings)
 ;;;   - ClickHouse: Metabase Cloud Storage / Pa Events   (screenshot 2026-04-28 #proj-table-remappings)
 ;;;   - BigQuery:   BigQuery Census (test) / Population By Zip 2010
-;;;   - Snowflake:  representative 3-part identifier shape (db.schema.table)
 ;;;
 ;;; Each test:
 ;;;   1. takes a canonical SQL string emitted by Metabase
@@ -193,7 +192,7 @@
       (is (not-any? #(= (:schema %) "db_c6633c128ed24e74") tables)
           (str "expected canonical db-name gone from parsed tables; got: " tables)))))
 
-;;; For 3-slot drivers (Snowflake, BigQuery), `referenced-tables-raw` returns 2-slot
+;;; For 3-slot drivers (SQL Server, BigQuery), `referenced-tables-raw` returns 2-slot
 ;;; specs (`{:schema, :table}`) -- it doesn't populate the `:db` slot even when the
 ;;; SQL has 3 levels. The `:db` rewrite still happens inside `replace-names` (the
 ;;; rewritten SQL string contains the right catalog name), the parser is just lossy.
@@ -223,29 +222,6 @@
         (is (not (re-find #"bigquery-public-data" from-text))
             (str "expected canonical project gone from FROM; got: " from-text))))))
 
-(deftest snowflake-rewriter-emission-snapshot-test
-  (testing "Snowflake: db.schema.table input gets all three slots rewritten"
-    (let [{:keys [tables rewritten]}
-          (rewrite-and-parse
-           :snowflake
-           "SELECT \"ANALYTICS\".\"PUBLIC\".\"ORDERS\".\"ID\" FROM \"ANALYTICS\".\"PUBLIC\".\"ORDERS\""
-           {(ws.table-remapping/prune-no-level {:db "ANALYTICS" :schema "PUBLIC" :table "ORDERS"})
-            (ws.table-remapping/prune-no-level {:db "WS_DB"     :schema "WS_ALICE" :table "ORDERS"})})]
-      ;; parsed table refs (no :db slot from the parser) -- confirms schema+table swapped:
-      (is (contains? tables {:schema "WS_ALICE" :table "ORDERS"})
-          (str "expected workspace schema+table in parsed refs; got: " tables
-               "\n  rewritten SQL: " rewritten))
-      (is (not-any? #(= (:schema %) "PUBLIC") tables)
-          (str "expected canonical schema gone from parsed refs; got: " tables))
-      ;; :db slot lives in the rewritten string only (parser doesn't return it).
-      ;; Asserting on FROM clause specifically -- SELECT-clause column refs intentionally
-      ;; keep canonical names because we only declared :tables replacements, not :columns.
-      (let [from-text (re-find #"(?i)\bFROM\b.*$" rewritten)]
-        (is (re-find #"WS_DB" from-text)
-            (str "expected workspace db in FROM; got: " from-text))
-        (is (not (re-find #"ANALYTICS" from-text))
-            (str "expected canonical db gone from FROM; got: " from-text))))))
-
 ;;; ----------------- Wire-format -> rewriter end-to-end -----------------
 ;;;
 ;;; This block closes the loop: it loads each per-driver fixture YAML through the real
@@ -273,9 +249,9 @@
 
 (def ^:private fixture-rewriter-test-cases
   "Per-driver chain test cases. The fixture YAML carries `:input_schemas` and
-   `:output_namespace`; the catalog (Snowflake/SQL Server/BigQuery) is pulled
-   from `Database.details`. Each test case adds the engine + details needed to
-   drive the loader's expansion path, plus the SQL the QP would emit for a
+   `:output_namespace`; the catalog (SQL Server/BigQuery) is pulled from
+   `Database.details`. Each test case adds the engine + details needed to drive
+   the loader's expansion path, plus the SQL the QP would emit for a
    representative source table."
   [{:fixture-driver :postgres
     :driver         :postgres
@@ -297,13 +273,6 @@
     :details        {}
     :source-table   "events"
     :canonical-sql  "SELECT `prod_events`.`events`.`tag` FROM `prod_events`.`events`"}
-
-   {:fixture-driver :snowflake
-    :driver         :snowflake
-    :engine         :snowflake
-    :details        {:db "ANALYTICS"}
-    :source-table   "ORDERS"
-    :canonical-sql  "SELECT \"ANALYTICS\".\"PUBLIC\".\"ORDERS\".\"ID\" FROM \"ANALYTICS\".\"PUBLIC\".\"ORDERS\""}
 
    {:fixture-driver :sqlserver
     :driver         :sqlserver

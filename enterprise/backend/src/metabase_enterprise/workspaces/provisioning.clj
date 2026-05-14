@@ -21,8 +21,8 @@
     "Create isolated schema + user. Returns {:schema ... :database_details ...}.")
   (grant!   [this driver database workspace schemas]
     "Grant read access on `schemas` to the workspace user/role. `schemas` is a
-     vector of driver-opaque schema-name strings. 3-slot drivers (Snowflake,
-     SQL Server, BigQuery) derive the catalog from `database.details`.")
+     vector of driver-opaque schema-name strings. 3-slot drivers (SQL Server,
+     BigQuery) derive the catalog from `database.details`.")
   (destroy! [this driver database workspace]
     "Tear down isolated schema + user. Should be idempotent."))
 

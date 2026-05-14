@@ -107,7 +107,7 @@
     deprovision leaves stale rows behind, this hook will still translate
     against them. See the deprovision-clears-remappings cleanup in
     `workspaces-v2.md` worklog.
-  - The H7 second half (cross-DB workspaces on Snowflake / BigQuery) needs
+  - The H7 second half (cross-DB workspaces on BigQuery) needs
     callers to thread `:db` through the spec end-to-end. Both this hook and
     `add-transform-target-mapping!` now carry the slot."
   metabase-enterprise.workspaces.table-remapping

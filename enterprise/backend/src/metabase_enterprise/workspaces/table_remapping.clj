@@ -28,7 +28,6 @@
    | Postgres / Redshift / H2            | \"\"        | schema       | table      |
    | MySQL                               | \"\"        | \"\"         | table      |
    | ClickHouse                          | \"\"        | db-name      | table      |
-   | Snowflake                           | database    | schema       | table      |
    | SQL Server                          | database    | schema       | table      |
    | BigQuery                            | project     | dataset      | table      |
    | Mongo                               | \"\"        | \"\"         | collection |
@@ -250,7 +249,7 @@
    The translation:
      - Our `:schema` -> SQLGlot's `:schema` (same name, same slot — unchanged).
      - Our `:db`     -> SQLGlot's `:catalog` *if* `:schema` is also populated
-                        (i.e. 3-part Snowflake/SQL Server/BigQuery shape),
+                        (i.e. 3-part SQL Server/BigQuery shape),
                         otherwise SQLGlot's `:schema` (the 2-part MySQL case
                         where our `:db` IS the leftmost qualifier in the SQL).
 
@@ -551,7 +550,7 @@
 (defn add-transform-target-mapping!
   "Register a remapping for a transform target on a workspaced database. The from-side spec
    is normalized via [[spec-for-table]] so it carries the right slots for the driver
-   (e.g., 3-slot for Snowflake/SQL Server/BigQuery, 2-slot for Postgres/ClickHouse,
+   (e.g., 3-slot for SQL Server/BigQuery, 2-slot for Postgres/ClickHouse,
    1-slot for MySQL). Delegates to [[add-mapping!]] (idempotent on the unique constraint).
 
    Inputs:
@@ -567,8 +566,8 @@
    - To-side: workspace output namespace comes from `ws/db-workspace-namespace`,
      a `{:db ?, :schema ?}` map sourced from `config.yml`. The `:db` and
      `:schema` slots both flow into the `TableRemapping` row's `to_db` /
-     `to_schema` columns - so cross-DB Snowflake / SQL Server / BigQuery
-     workspaces are now expressible end-to-end.
+     `to_schema` columns - so cross-DB SQL Server / BigQuery workspaces are
+     now expressible end-to-end.
 
    Returns the to-side as a denormalized `{:db :schema :name}` map (consumer
    shape: `nil` for slots the driver doesn't fill, string otherwise). The
@@ -594,7 +593,7 @@
           ;; name across different schemas (schemaA.orders vs schemaB.orders) land at
           ;; distinct warehouse identifiers in the single workspace namespace. Both :db
           ;; and :schema slots come from `db-workspace-namespace` so cross-DB workspaces
-          ;; (Snowflake / SQL Server / BigQuery) get full namespace remapping. Slots not
+          ;; (SQL Server / BigQuery) get full namespace remapping. Slots not
           ;; populated by the workspace config are normalized to "" via `normalize-level`
           ;; so the storage row's unique constraint stays enforceable.
           to-spec      (-> (remapped-table-name (:engine database) from-spec)

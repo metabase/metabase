@@ -14,7 +14,7 @@
    app-db `Table` rows nor `describe-database` should ever surface the
    isolation schema.
 
-   Driver branches: JDBC drivers (Postgres/MySQL/SQL Server/Snowflake/Redshift/
+   Driver branches: JDBC drivers (Postgres/MySQL/SQL Server/Redshift/
    ClickHouse) seed tables via `jdbc/execute!` and probe via `jdbc/query` against
    an `admin-spec` JDBC db-spec. BigQuery uses the BigQuery Java API via
    `metabase.driver.bigquery-cloud-sdk.workspace-test-util`, loaded at call time
@@ -74,7 +74,7 @@
   #{:postgres :sqlserver :clickhouse :mysql :redshift :bigquery-cloud-sdk})
 
 (defn- three-slot-driver?
-  "True when the driver emits `db.schema.table` (Snowflake / SQL Server / BigQuery).
+  "True when the driver emits `db.schema.table` (SQL Server / BigQuery).
    Drives whether the workspace input/output namespace map populates `:db`."
   [driver]
   (boolean (some #{:db} (driver/qualified-name-components driver))))
@@ -83,7 +83,7 @@
   "Canonical input schema string for `add-database!`. For 2-slot drivers (and
    ClickHouse) it's the schema name. For MySQL — which has no schema layer —
    the same string is interpreted as the database name. For 3-slot drivers
-   (Snowflake, SQL Server, BigQuery) the catalog is read from `Database.details`
+   (SQL Server, BigQuery) the catalog is read from `Database.details`
    inside the driver's `grant!` impl; only the schema is supplied here."
   [_driver _admin-details main-schema]
   main-schema)
@@ -471,12 +471,12 @@
                                   (testing "A table remapping record exists"
                                   ;; `:from_db` is the empty-string sentinel for 2-slot drivers (Postgres,
                                   ;; Redshift, ClickHouse) and the connection's bound DB for drivers whose
-                                  ;; `qualified-name-components` populates `:db` (Snowflake, SQL Server,
-                                  ;; BigQuery, MySQL).
+                                  ;; `qualified-name-components` populates `:db` (SQL Server, BigQuery,
+                                  ;; MySQL).
                                   ;;
                                   ;; `:to_db` equals `:from_db` for drivers whose iso namespace lives in
-                                  ;; the SAME DB as canonical (Postgres-family schema-based, Snowflake/SQL
-                                  ;; Server schema-based). On MySQL the iso namespace is a different
+                                  ;; the SAME DB as canonical (Postgres-family schema-based, SQL Server
+                                  ;; schema-based). On MySQL the iso namespace is a different
                                   ;; DATABASE, so `:to_db` is the iso DB name (= isolation-schema).
                                   ;;
                                   ;; `:from_schema` is the canonical schema name on schema-having drivers,

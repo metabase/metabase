@@ -30,7 +30,7 @@
 ;;; Wire format: every workspace-database carries `:input_schemas` (vec of plain
 ;;; schema-name strings) and `:output_namespace` (driver-opaque string —
 ;;; schema name on Postgres-shaped drivers, database name on MySQL). The
-;;; warehouse catalog (Snowflake/SQL Server/BigQuery) is derived from the
+;;; warehouse catalog (SQL Server/BigQuery) is derived from the
 ;;; canonical `Database.details` at boot, not duplicated on each row.
 
 (s/def ::non-blank-string
@@ -89,7 +89,7 @@
 
    The atom contract is map-shaped on purpose: doing this expansion once at
    boot lets the per-query hot path read both slots without re-running the
-   per-engine case. For 3-slot drivers (Snowflake, SQL Server, BigQuery) the
+   per-engine case. For 3-slot drivers (SQL Server, BigQuery) the
    `:db` slot is filled from `Database.details`. For 2-slot drivers the
    `output_namespace` string lands in the schema slot.
 

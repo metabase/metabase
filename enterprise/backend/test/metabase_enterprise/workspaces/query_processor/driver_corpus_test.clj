@@ -20,7 +20,6 @@
 (def ^:private dialect-for-file
   {"postgres.md"   :postgres
    "mysql.md"      :mysql
-   "snowflake.md"  :snowflake
    "redshift.md"   :redshift
    "sqlserver.md"  :sqlserver
    "clickhouse.md" :clickhouse
@@ -173,12 +172,11 @@
   ;;   dialect       passed/eligible   no-tables   source-parse-failed   errors
   ;;   postgres        1257/1260           124              3              0
   ;;   bigquery        1517/1520            38              3              0
-  ;;   snowflake       1501/1502            41              1              0
   ;;   redshift         303/305             12              2              0
   ;;   sqlserver       1243/1262            23             19              0
   ;;   mysql           3362/3364            78              2              0
   ;;   clickhouse      2894/2896            86              2              0
-  ;;   total          12077/12109          402             32              0
+  ;;   total          10576/10607          361             31              0
   ;;
   ;; "passed/eligible" excludes :no-tables (nothing to rewrite) and
   ;; :source-parse-failed (rewriter never invoked; production fail-closed catches these

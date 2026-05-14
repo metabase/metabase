@@ -52,25 +52,25 @@
                  (-> cfg :config :workspace :databases))))))))
 
 (deftest build-workspace-config-three-slot-engine-test
-  (when (workspaces.tu/driver-loadable? :snowflake)
-    (testing "Snowflake (3-slot, qualified-name-components=[:db :schema]) gets the :db slot populated from connection details"
+  (when (workspaces.tu/driver-loadable? :sqlserver)
+    (testing "SQL Server (3-slot, qualified-name-components=[:db :schema]) gets the :db slot populated from connection details"
       (mt/with-temp [:model/Database {db-id :id}
-                     {:name    "Snowflake DW"
-                      :engine  :snowflake
-                      :details {:db "ANALYTICS" :user "u" :password "p"}}
-                     :model/Workspace {ws-id :id} {:name       "snow"
+                     {:name    "MSSQL DW"
+                      :engine  :sqlserver
+                      :details {:db "AnalyticsDB" :user "u" :password "p"}}
+                     :model/Workspace {ws-id :id} {:name       "mssql"
                                                    :creator_id (mt/user->id :crowberto)}
                      :model/WorkspaceDatabase _
                      {:workspace_id     ws-id
                       :database_id      db-id
                       :database_details {}
-                      :output_namespace "WS_ALICE"
-                      :input_schemas    ["PUBLIC"]
+                      :output_namespace "ws_alice"
+                      :input_schemas    ["dbo"]
                       :status           :provisioned}]
-        (let [cfg (config/build-workspace-config ws-id)]
-          (is (= {"Snowflake DW"
-                  {:input_schemas    ["PUBLIC"]
-                   :output_namespace "WS_ALICE"}}
+        (let [cfg #p (config/build-workspace-config ws-id)]
+          (is (= {"MSSQL DW"
+                  {:input_schemas    ["dbo"]
+                   :output_namespace "ws_alice"}}
                  (-> cfg :config :workspace :databases))))))))
 
 (deftest build-workspace-config-joins-multiple-input-schemas-test
@@ -93,9 +93,16 @@
 (deftest build-workspace-config-bigquery-emits-dataset-filters-test
   (when (workspaces.tu/driver-loadable? :bigquery-cloud-sdk)
     (testing "BigQuery emits :dataset-filters-* (not :schema-filters-*); BQ's list-datasets reads dataset-filters"
+      ;; Stub `:service-account-json` so the resulting config :details has the same
+      ;; required shape a production BQ Database row would carry. The BQ driver's
+      ;; `database-details->client` (and therefore any downstream `can-connect?`)
+      ;; reads `:service-account-json` to mint credentials -- omitting it here
+      ;; would make this test pass while the generated config :details would fail
+      ;; the real wire-format consumer.
       (mt/with-temp [:model/Database {db-id :id}
                      {:name "BQ" :engine :bigquery-cloud-sdk
-                      :details {:project-id "metabase-prod"}}
+                      :details {:project-id          "metabase-prod"
+                                :service-account-json "{\"type\":\"service_account\",\"project_id\":\"metabase-prod\"}"}}
                      :model/Workspace {ws-id :id} {:name       "bq-ws"
                                                    :creator_id (mt/user->id :crowberto)}
                      :model/WorkspaceDatabase _
@@ -108,6 +115,8 @@
         (let [details (-> (config/build-workspace-config ws-id) :config :databases first :details)]
           (is (= "inclusion" (:dataset-filters-type details)))
           (is (= "core,warehouse" (:dataset-filters-patterns details)))
+          (is (some? (:service-account-json details))
+              "BigQuery config :details must carry :service-account-json -- the BQ driver requires it to mint credentials")
           (is (nil? (:schema-filters-type details))
               "BigQuery must NOT emit :schema-filters-* — those wire into describe-database which BQ doesn't use")
           (is (nil? (:schema-filters-patterns details))))))))

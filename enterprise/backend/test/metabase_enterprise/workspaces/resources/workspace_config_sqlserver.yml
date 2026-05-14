@@ -2,7 +2,7 @@
 #
 # SQL Server emits `database.schema.table` when crossing databases
 # (qualified-name-components is [:db :schema]). Same wire shape as
-# Snowflake / BigQuery; vocabulary differs (SQL Server calls them
+# BigQuery; vocabulary differs (SQL Server calls them
 # "database" and "schema" - matches our slot names directly).
 version: 1
 config:
