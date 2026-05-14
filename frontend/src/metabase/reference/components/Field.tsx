@@ -39,7 +39,6 @@ interface FieldProps {
   databaseId: DatabaseId;
   field: ApiField;
   url: string;
-  placeholder?: string;
   icon?: IconName;
   isEditing?: boolean;
   formField: FieldFormFields;

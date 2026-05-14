@@ -107,11 +107,6 @@ interface FieldDetailProps {
   isEditing?: boolean;
   startEditing: () => void;
   endEditing: () => void;
-  startLoading: () => void;
-  endLoading: () => void;
-  setError: (error: unknown) => void;
-
-  updateField: (...args: any[]) => any;
   loading?: boolean;
   loadingError?: unknown;
   metadata: Metadata;
@@ -166,7 +161,6 @@ const FieldDetail = (props: FieldDetailProps) => {
       )}
       <EditableReferenceHeader
         entity={entity}
-        table={table}
         type="field"
         headerIcon="field"
         name="Details"

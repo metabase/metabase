@@ -91,11 +91,6 @@ interface SegmentFieldDetailProps {
   isEditing?: boolean;
   startEditing: () => void;
   endEditing: () => void;
-  startLoading: () => void;
-  endLoading: () => void;
-  setError: (error: unknown) => void;
-
-  updateField: (...args: any[]) => any;
   loading?: boolean;
   loadingError?: unknown;
   metadata: Metadata;
@@ -150,7 +145,6 @@ const SegmentFieldDetail = (props: SegmentFieldDetailProps) => {
       )}
       <EditableReferenceHeader
         entity={entity}
-        table={table}
         headerIcon="field"
         name={t`Details`}
         type="field"

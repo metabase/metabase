@@ -32,7 +32,6 @@ const mapDispatchToProps = {
 };
 
 interface TableQuestionsContainerProps {
-  params: any;
   location: { pathname: string };
 
   database: any;

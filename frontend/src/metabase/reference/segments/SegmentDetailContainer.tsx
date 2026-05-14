@@ -32,9 +32,7 @@ const mapDispatchToProps = {
 };
 
 interface SegmentDetailContainerProps {
-  params: any;
   location: { pathname: string };
-  databaseId: number;
 
   user: any;
 

@@ -30,7 +30,6 @@ const mapDispatchToProps = {
 };
 
 interface TableDetailContainerProps {
-  params: any;
   location: { pathname: string };
 
   database: any;

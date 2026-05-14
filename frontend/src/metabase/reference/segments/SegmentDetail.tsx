@@ -102,13 +102,8 @@ interface SegmentDetailProps {
   isEditing?: boolean;
   startEditing: () => void;
   endEditing: () => void;
-  startLoading: () => void;
-  endLoading: () => void;
   expandFormula: () => void;
   collapseFormula: () => void;
-  setError: (error: unknown) => void;
-
-  updateField: (...args: any[]) => any;
   isFormulaExpanded?: boolean;
   loading?: boolean;
   loadingError?: unknown;
@@ -169,7 +164,6 @@ const SegmentDetail = (props: SegmentDetailProps) => {
       )}
       <EditableReferenceHeader
         entity={entity}
-        table={table}
         type="segment"
         headerIcon={modelIconMap.segment}
         headerLink={getQuestionUrl({

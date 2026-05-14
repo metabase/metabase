@@ -25,9 +25,7 @@ const mapDispatchToProps = {
 };
 
 interface SegmentFieldDetailContainerProps {
-  params: any;
   location: { pathname: string };
-  databaseId: number;
 
   segment: any;
   segmentId: number;

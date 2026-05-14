@@ -22,11 +22,7 @@ const mapDispatchToProps = {
 };
 
 interface DatabaseListContainerProps {
-  params: any;
   location: { pathname: string };
-
-  database?: any;
-  databaseId?: number;
 }
 
 class DatabaseListContainer extends Component<DatabaseListContainerProps> {

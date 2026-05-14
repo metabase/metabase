@@ -24,7 +24,6 @@ const mapDispatchToProps = {
 };
 
 interface DatabaseDetailContainerProps {
-  params: any;
   location: { pathname: string };
 
   database: any;

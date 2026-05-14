@@ -24,7 +24,6 @@ const mapDispatchToProps = {
 };
 
 interface TableListContainerProps {
-  params: any;
   location: { pathname: string };
 
   database: any;

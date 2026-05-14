@@ -30,7 +30,6 @@ const mapDispatchToProps = {
 };
 
 interface FieldListContainerProps {
-  params: any;
   location: { pathname: string };
 
   database: any;

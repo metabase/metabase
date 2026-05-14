@@ -19,7 +19,6 @@ import {
   getIsEditing,
   getIsFormulaExpanded,
   getLoading,
-  getTable,
   getUser,
 } from "../selectors";
 
@@ -29,7 +28,6 @@ const mapStateToProps = (state: any, props: any) => {
 
   return {
     entity,
-    table: getTable(state, props),
     metadataFields: fields,
     loading: getLoading(state),
     // naming this 'error' will conflict with redux form
@@ -52,17 +50,10 @@ interface DatabaseDetailProps {
 
   entity: any;
 
-  table?: any;
-
   user: any;
   isEditing?: boolean;
   startEditing: () => void;
   endEditing: () => void;
-  startLoading: () => void;
-  endLoading: () => void;
-  setError: (error: unknown) => void;
-
-  updateField: (...args: any[]) => any;
   loading?: boolean;
   loadingError?: unknown;
 
@@ -73,7 +64,6 @@ const DatabaseDetail = (props: DatabaseDetailProps) => {
   const {
     style,
     entity,
-    table,
     loadingError,
     loading,
     user,
@@ -115,7 +105,6 @@ const DatabaseDetail = (props: DatabaseDetailProps) => {
       )}
       <EditableReferenceHeader
         entity={entity}
-        table={table}
         type="database"
         name="Details"
         headerIcon="database"

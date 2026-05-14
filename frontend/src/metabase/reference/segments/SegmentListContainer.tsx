@@ -22,9 +22,7 @@ const mapDispatchToProps = {
 };
 
 interface SegmentListContainerProps {
-  params: any;
   location: { pathname: string };
-  databaseId: number;
   isEditing?: boolean;
 }
 

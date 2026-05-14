@@ -34,7 +34,6 @@ const mapDispatchToProps = {
 };
 
 interface FieldDetailContainerProps {
-  params: any;
   location: { pathname: string };
 
   database: any;
@@ -44,8 +43,6 @@ interface FieldDetailContainerProps {
 
   field: any;
   isEditing?: boolean;
-
-  metadata?: any;
 }
 
 class FieldDetailContainer extends Component<FieldDetailContainerProps> {

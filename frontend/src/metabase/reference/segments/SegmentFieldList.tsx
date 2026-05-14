@@ -61,11 +61,6 @@ interface SegmentFieldListProps {
   isEditing?: boolean;
   startEditing: () => void;
   endEditing: () => void;
-  startLoading: () => void;
-  endLoading: () => void;
-  setError: (error: unknown) => void;
-
-  updateField: (...args: any[]) => any;
 
   user: any;
 

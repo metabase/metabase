@@ -28,7 +28,6 @@ interface EditableReferenceHeaderUser {
 
 interface EditableReferenceHeaderProps {
   entity?: EditableReferenceHeaderEntity;
-  table?: unknown;
   type?: string;
   headerIcon?: IconName;
   headerLink?: string;

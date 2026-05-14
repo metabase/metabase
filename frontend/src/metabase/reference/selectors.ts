@@ -29,6 +29,10 @@ interface ReferenceSliceState {
   isFormulaExpanded: boolean;
 }
 
+// The `reference` and `revisions` slices are wired in via `reducers-main.ts`
+// but aren't declared on the global `State` type. Adding them centrally
+// triggers a TS2589 ("excessively deep") cascade in dashboard's reducers,
+// so we widen locally here instead.
 type StateWithReference = State & {
   reference: ReferenceSliceState;
   revisions?: Record<string, Record<string | number, unknown>>;

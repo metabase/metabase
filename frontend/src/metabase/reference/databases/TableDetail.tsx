@@ -89,13 +89,6 @@ interface TableDetailProps {
   isEditing?: boolean;
   startEditing: () => void;
   endEditing: () => void;
-  startLoading: () => void;
-  endLoading: () => void;
-  setError: (error: unknown) => void;
-
-  updateField: (...args: any[]) => any;
-
-  fields: any;
   hasSingleSchema?: boolean;
   loading?: boolean;
   loadingError?: unknown;
@@ -152,7 +145,6 @@ const TableDetail = (props: TableDetailProps) => {
       )}
       <EditableReferenceHeader
         entity={entity}
-        table={table}
         type="table"
         headerIcon="table2"
         headerLink={getQuestionUrl({
