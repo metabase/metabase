@@ -1283,7 +1283,7 @@
                     :model/User}}
 
   metrics
-  {:team "UX West"
+  {:team "Graphy"
    :api  #{metabase.metrics.api
            metabase.metrics.core}
    :uses #{api
@@ -1433,7 +1433,7 @@
 
   ;; TODO -- too many API namespaces
   parameters
-  {:team "Graphy"
+  {:team "Querying Platform"
    :api  #{metabase.parameters.chain-filter
            metabase.parameters.core
            metabase.parameters.custom-values
@@ -1805,7 +1805,7 @@
                     :model/Table}}
 
   remote-sync
-  {:team "UX West"
+  {:team "Graphy"
    :api  #{metabase.remote-sync.core
            metabase.remote-sync.init}
    :uses #{api
@@ -2255,7 +2255,7 @@
            util}}
 
   transforms
-  {:team "Graphy"
+  {:team "Gadget"
    :api  #{metabase.transforms.core
            metabase.transforms.feature-gating
            metabase.transforms.init
@@ -2299,7 +2299,7 @@
                     :model/User}}
 
   transforms-base
-  {:team "Graphy"
+  {:team "Gadget"
    :api  #{metabase.transforms-base.init
            metabase.transforms-base.interface
            metabase.transforms-base.util}
@@ -2478,7 +2478,7 @@
    :model-imports #{:model/Card :model/Dashboard :model/Table}}
 
   warehouse-schema
-  {:team "UX West"
+  {:team "Graphy"
    :api  #{metabase.warehouse-schema.field
            metabase.warehouse-schema.metadata-from-qp
            metabase.warehouse-schema.metadata-queries
@@ -2517,7 +2517,7 @@
                     :model/User}}
 
   warehouse-schema-rest
-  {:team "UX West"
+  {:team "Graphy"
    :api  #{metabase.warehouse-schema-rest.api}
    :uses #{analytics
            api
@@ -2604,7 +2604,7 @@
                     :model/Table}}
 
   xrays
-  {:team "Graphy"
+  {:team "Metabot"
    :api  #{metabase.xrays.api
            metabase.xrays.core
            metabase.xrays.init}
@@ -3050,7 +3050,7 @@
            util}}
 
   enterprise/impersonation
-  {:team "Graphy"
+  {:team "UX West"
    :api  #{metabase-enterprise.impersonation.api}
    :uses #{api
            audit-app
@@ -3136,7 +3136,7 @@
            util}}
 
   enterprise/remote-sync
-  {:team "UX West"
+  {:team "Graphy"
    :api  #{metabase-enterprise.remote-sync.api
            metabase-enterprise.remote-sync.core
            metabase-enterprise.remote-sync.init}
@@ -3403,7 +3403,7 @@
    :model-imports #{:model/Collection :model/User}}
 
   enterprise/transforms
-  {:team "Graphy"
+  {:team "Gadget"
    :api  #{metabase-enterprise.transforms.api}
    :uses #{premium-features
            enterprise/transforms-inspector}}
@@ -3430,7 +3430,7 @@
                     :model/Transform}}
 
   enterprise/transforms-python
-  {:team "Graphy"
+  {:team "Gadget"
    :api  #{metabase-enterprise.transforms-python.api
            metabase-enterprise.transforms-python.core
            metabase-enterprise.transforms-python.init}
@@ -3471,7 +3471,7 @@
    :uses #{premium-features}}
 
   enterprise/writable-connection
-  {:team "Graphy"
+  {:team "Gadget"
    :api  #{}
    :uses #{premium-features}}}
 
