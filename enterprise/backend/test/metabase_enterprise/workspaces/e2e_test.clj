@@ -312,6 +312,28 @@
                                       [[99 "pre-existing"]
                                        [98 "still-pre-existing"]])
 
+                ;; --- BQ diagnostic: surface what `can-connect?` swallows.
+                ;; BigQuery's `driver/can-connect?` catches every `Exception` from
+                ;; `list-datasets` and returns false (logging only). When `with-temp
+                ;; :model/Database` then trips its post-insert health check, the
+                ;; only thing test output shows is "Failed to connect to Database"
+                ;; -- the underlying BQ exception is hidden in the daemon thread's
+                ;; logger and never reaches the CI run summary. Hit `list-datasets`
+                ;; directly here, on the test thread, so any thrown exception
+                ;; (auth, quota, dataset filter mismatch, encryption round-trip)
+                ;; bubbles up into the test reporter.
+                (when (= admin-driver :bigquery-cloud-sdk)
+                  (let [list-datasets (requiring-resolve 'metabase.driver.bigquery-cloud-sdk/list-datasets)
+                        result (try {:ok (mapv str (list-datasets admin-details))}
+                                    (catch Throwable e
+                                      {:err  (.getName (class e))
+                                       :msg  (ex-message e)
+                                       :data (ex-data e)}))]
+                    (is (:ok result)
+                        (str "BQ list-datasets failed before with-temp; details="
+                             (pr-str (dissoc admin-details :service-account-json))
+                             " result=" (pr-str result)))))
+
                 ;; --- Setup: a Metabase Database row attached to the warehouse with admin
                 ;; creds. The config-loader path (below) will rewrite its `:details` with
                 ;; workspace user creds + schema-filters when `initialize!` runs the
