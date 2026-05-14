@@ -1193,6 +1193,40 @@
     (catch com.google.api.gax.rpc.NotFoundException _
       false)))
 
+(defn- ws-wait-for-service-account!
+  "Poll IAM until the SA created by `ws-create-service-account!` is visible.
+
+   GCP IAM is eventually consistent: `.createServiceAccount` returns once the
+   create request is accepted by the control plane, but the SA record then
+   propagates to read endpoints (`getServiceAccount`) and policy enforcement
+   (`setIamPolicy`) over the next few seconds. Subsequent grants in
+   `init-workspace-isolation!` reference this SA and fail with
+   `INVALID_ARGUMENT: ... does not exist` if they fire before the SA is
+   visible to those endpoints -- the failure mode that left workspace e2e
+   red on BigQuery before this wait existed.
+
+   `ws-service-account-exists?` already swallows `NotFoundException` and
+   returns false, so the loop just polls its boolean return."
+  [^IAMClient iam-client ^String project-id ^String sa-email
+   & {:keys [max-attempts interval-ms]
+      :or   {max-attempts 60
+             interval-ms  1000}}]
+  (log/infof "Waiting for service account %s to be visible to IAM..." sa-email)
+  (loop [attempt 1]
+    (cond
+      (ws-service-account-exists? iam-client project-id sa-email)
+      (log/infof "Service account %s is visible to IAM after %d attempt(s)" sa-email attempt)
+
+      (>= attempt max-attempts)
+      (throw (ex-info "Timeout waiting for service account to propagate"
+                      {:sa-email sa-email
+                       :attempts attempt}))
+
+      :else
+      (do
+        (Thread/sleep ^long interval-ms)
+        (recur (inc attempt))))))
+
 (defn- ws-create-service-account!
   "Create a service account for a workspace if it doesn't exist.
    Returns the service account email."
@@ -1421,6 +1455,13 @@
 
         (log/infof "Initializing BigQuery workspace isolation: dataset=%s, service-account=%s"
                    dataset-name ws-sa-email)
+
+        ;; Wait until the new SA is visible to IAM read + policy endpoints
+        ;; before we hand its email to any grant call -- without this the
+        ;; immediate `setIamPolicy` calls below race with GCP IAM's
+        ;; eventual-consistency propagation and throw
+        ;; `INVALID_ARGUMENT: ... does not exist`.
+        (ws-wait-for-service-account! iam-client project-id ws-sa-email)
 
         ;; Grant main SA permission to impersonate workspace SA
         (ws-grant-impersonation-permission! iam-client project-id main-sa-email ws-sa-email)
