@@ -1674,3 +1674,16 @@
   Prefer this over setting the `:case-sensitive false` option directly."
   [boolean-expression :- ::lib.schema.expression/boolean]
   (lib.options/update-options boolean-expression assoc :case-sensitive false))
+
+(mu/defn parse-parameters :- [:sequential ::lib.parameters.parse/parsed-token]
+  "Attempts to parse parameters in string `s`. Parses any optional clauses or parameters found, and returns a sequence
+   of non-parameter string fragments (possibly) interposed with `Param` or `Optional` instances.
+
+   If `handle-sql-comments` is true (default) then we make a best effort to ignore params in SQL comments.
+
+  **Code Health:** Healthy"
+  ([s :- :string]
+   (lib.parameters.parse/parse s))
+  ([s                   :- :string
+    handle-sql-comments :- :boolean]
+   (lib.parameters.parse/parse s handle-sql-comments)))

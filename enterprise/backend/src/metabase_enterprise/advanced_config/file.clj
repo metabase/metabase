@@ -101,19 +101,16 @@
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.file.settings]
    [metabase-enterprise.advanced-config.file.users]
-   ;; TODO (Cam 10/3/25) -- update this to use the Lib versions of these namespaces
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase.lib.core :as lib]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.yaml :as yaml]))
 
 (comment
-  ;; for parameter parsing
-  metabase.driver.common.parameters/keep-me
   ;; for `settings:` section code
   metabase-enterprise.advanced-config.file.settings/keep-me
   ;; for `databases:` section code
@@ -190,7 +187,7 @@
 
 (defmulti ^:private expand-template-str-part
   {:arglists '([part])}
-  type)
+  (some-fn :lib/type type))
 
 (defmethod expand-template-str-part String
   [s]
@@ -204,8 +201,8 @@
   (s/or :env (s/cat :template-type (s/and symbol? valid-template-type?)
                     :env-var-name  symbol?)))
 
-(defmethod expand-template-str-part metabase.driver.common.parameters.Param
-  [{s :k}]
+(mu/defmethod expand-template-str-part :metabase.lib.parameters.parse.types/param
+  [{s :k} :- :metabase.lib.parameters.parse.types/param]
   {:pre [(string? s)]}
   (when (seq s)
     (when-let [obj (try
@@ -216,16 +213,16 @@
       (s/assert* ::template-form obj)
       (expand-parsed-template-form obj))))
 
-(defmethod expand-template-str-part metabase.driver.common.parameters.Optional
-  [{:keys [args]}]
+(mu/defmethod expand-template-str-part :metabase.lib.parameters.parse.types/optional
+  [{:keys [args]} :- :metabase.lib.parameters.parse.types/optional]
   (let [parts (map expand-template-str-part args)]
     (when (every? seq parts)
       (str/join parts))))
 
 (defn- expand-templates-in-str [s]
-  (if-let [[_, raw-string] (re-matches #"\{\{\{(.+)\}\}\}" s)]
+  (if-let [[_ raw-string] (re-matches #"\{\{\{(.+)\}\}\}" s)]
     (str/trim raw-string)
-    (str/join (map expand-template-str-part (params.parse/parse s)))))
+    (str/join (map expand-template-str-part (lib/parse-parameters s)))))
 
 (defn- expand-templates [m]
   (walk/postwalk

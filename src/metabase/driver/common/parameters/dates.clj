@@ -49,7 +49,7 @@
   [{:parser #(= % "today")
     :range  (fn [_ dt]
               (let [dt-res (t/local-date dt)]
-                {:start dt-res,
+                {:start dt-res
                  :end   dt-res
                  :unit  :day}))
     :filter (fn [_ field-clause]

@@ -1,6 +1,7 @@
 (ns metabase.driver.common.parameters.parse
   "DEPRECATED: `driver.common.parameters.*` namespaces deal with legacy MBQL queries. Migrate to MBQL-5-friendly
-  replacement namespaces. The replacement for this namespace is [[metabase.lib.parameters.parse]]."
+  replacement namespaces. The replacement for this namespace is [[metabase.lib.parameters.parse]]
+  (aliased as [[metabase.lib.core/parse-parameters]])."
   {:deprecated "0.57.0"}
   (:require
    [clojure.string :as str]

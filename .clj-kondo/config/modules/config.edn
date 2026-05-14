@@ -2666,6 +2666,7 @@
            api-keys
            app-db
            driver
+           lib
            permissions
            premium-features
            settings
