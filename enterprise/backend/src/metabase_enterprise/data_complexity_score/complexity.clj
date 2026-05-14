@@ -485,8 +485,10 @@
                               to omit (the search-index path passes nil because its preprocessing
                               isn't a single named variant).
     `:metabot-scope`        — `{:verified-only? <bool> :collection-id <nil|Long>}` describing how
-                              the internal Metabot filters Cards."
-  [& {:keys [embedder embedding-model-meta text-variant metabot-scope]}]
+                              the internal Metabot filters Cards.
+    `:emit-snowplow?`       — whether to publish per-score Snowplow events. Defaults true."
+  [& {:keys [embedder embedding-model-meta text-variant metabot-scope emit-snowplow?]
+      :or {emit-snowplow? true}}]
   ;;; NOTE: we fully materialize vectors of the relevant entities.
   ;;; For very large instances that means holding large lists in memory, but each catalog is consumed
   ;;; by many sub-score functions that each walk the collection, so making this reducible would
@@ -513,11 +515,13 @@
         (log-scores! result)
         (let [published? (time-phase! "publish" "all"
                                       (fn []
-                                        (try
-                                          (emit-snowplow! result)
-                                          (catch Throwable t
-                                            (log/warn t "Failed to publish complexity score to Snowplow")
-                                            false))))]
+                                        (if emit-snowplow?
+                                          (try
+                                            (emit-snowplow! result)
+                                            (catch Throwable t
+                                              (log/warn t "Failed to publish complexity score to Snowplow")
+                                              false))
+                                          false)))]
           ;; `emit-snowplow!` returns true only when every event reached the tracker (false when
           ;; Snowplow is disabled or any emission failed) — scheduler/boot callers gate
           ;; `data-complexity-scoring-last-fingerprint` on this so a disabled collector or any

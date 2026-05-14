@@ -133,10 +133,14 @@
 (defn- run-appdb-mode!
   "Score against the live appdb the same way the cron does; optionally persist."
   [write?]
+  ;; Load driver init so setting :on-change watchers (e.g. report-timezone) have their event topics
+  ;; derived from :metabase/event before the settings cache is restored from the appdb.
+  (require 'metabase.driver.init)
   (mdb/setup-db-without-migrations!)
   (let [result (complexity/complexity-scores
                 (assoc (synonym-source/complexity-scores-opts)
-                       :metabot-scope (metabot-scope/internal-metabot-scope)))]
+                       :metabot-scope (metabot-scope/internal-metabot-scope)
+                       :emit-snowplow? false))]
     (when write?
       (let [fp (task.complexity-score/current-fingerprint)]
         (data-complexity-score/record-score! fp "appdb" result)
