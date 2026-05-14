@@ -86,10 +86,13 @@ Before you connect Metabase to your Git repository, create a new repository. Sup
 - [GitHub](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-new-repository)
 - [GitLab](https://docs.gitlab.com/user/project/index.html#create-a-blank-project)
 - [Bitbucket](https://support.atlassian.com/bitbucket-cloud/docs/create-a-repository/)
+- [Local repo](#local-file-repositories): a bare git repo on your own filesystem.
 
 Initialize the repo with a README.md.
 
 ### 2. Create a token for your read-and-write Metabase
+
+> Skip this step if you're using a [local repo](#local-file-repositories).
 
 Create a personal access token with read and write repository access. Copy the token immediately; you won't be able to see the token again.
 
@@ -189,8 +192,52 @@ To version your data transformation logic, you can sync your [Transforms](../dat
 
 - **Transform syncing is all or nothing**: Metabase will sync your entire transforms namespace. You can't selectively sync specific transform folders.
 - **This setting only determines whether Metabase pushes transforms from Read-write mode.** When you _pull_ from a repository, all content present in the repo is loaded—including any transforms—regardless of this setting. Think of it like pulling a repo that has a new collection you hadn't previously synced: the setting doesn't filter what comes in, only what goes out.
--**You can't edit transforms in read-only mode.**, even if you haven't explicitly turned on transform syncing. Keeping transforms read-only prevents unintended overwrites on subsequent pulls.
+- **You can't edit transforms in read-only mode**, even if you haven't explicitly turned on transform syncing. Keeping transforms read-only prevents unintended overwrites on subsequent pulls.
 - **Use different databases for dev and production**. If you use transforms with Remote Sync, your development and production Metabases should connect to separate databases that share _identical_ schemas. If you use the same database for both, dev transforms would also change production data.
+
+## Local file repositories
+
+Remote Sync can point at a bare git repo on the same filesystem as your Metabase process, via a `file://` URL. Local repos come in handy for local development, especially alongside the [file-based agent workflow](../ai/file-based-development.md).
+
+Create a bare git repo on the same filesystem as your Metabase process:
+
+```sh
+git init --bare /path/to/your-repo.git
+```
+
+A bare repo is required because Remote Sync pushes into it the same way it would push to a hosted remote. Non-bare repos refuse pushes to a checked-out branch.
+
+### Point Metabase to your local repo
+
+Use the `file://` scheme with an absolute path:
+
+```
+file:///absolute/path/to/your-repo
+```
+
+Note the three slashes: `file://` plus the leading `/` of the absolute path.
+
+Leave the access token field blank. Local `file://` repositories don't need one.
+
+If Metabase runs in Docker, you'll need to mount the directory as a volume and the **`file://` URL must use the container's path**, not the host path. Metabase's process runs inside the container and can only see paths visible from inside it.
+
+With `docker-compose.yml`:
+
+```yaml
+services:
+  metabase:
+    image: metabase/metabase
+    ports:
+      - "3000:3000"
+    volumes:
+      - /Users/you/local-repo:/Users/you/local-repo
+```
+
+Then in Metabase, you'd enter:
+
+```
+file:///Users/you/local-repo
+```
 
 ## An example dev-to-production workflow
 
