@@ -91,7 +91,7 @@ body::before {
   row-gap: 20px;
   max-width: var(--shell-max);
   margin: 0 auto;
-  padding: 24px var(--shell-padding-x) 64px;
+  padding: 0 var(--shell-padding-x) 64px;
 }
 .docs-shell > .docs-sidebar { grid-row: 1 / span 2; }
 .docs-shell > .docs-topbar { grid-column: 2 / 4; grid-row: 1; }
@@ -204,9 +204,11 @@ body::before {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding-bottom: 16px;
+  height: 57px;
+  padding: 8px 0;
+  box-sizing: border-box;
   margin-bottom: 16px;
-  border-bottom: 1px solid var(--neutral-90);
+  border-bottom: 1px solid var(--blue-90);
 }
 .docs-topbar-right {
   display: flex;
