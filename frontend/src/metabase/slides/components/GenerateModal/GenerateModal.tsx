@@ -105,6 +105,37 @@ const eventToLog = (event: AgentEvent): AgentLogEntry | null => {
   }
 };
 
+// Extract a human label from a tool_result so we can swap the "#42" placeholder
+// in the matching tool_call entry for something readable.
+const resultDetail = (
+  tool: string,
+  result: Record<string, unknown>,
+): string | undefined => {
+  if (!result) {
+    return undefined;
+  }
+  switch (tool) {
+    case "get_card": {
+      const name = (result as { name?: string }).name;
+      return name || undefined;
+    }
+    case "get_dashboard_cards": {
+      const dash = (result as { dashboard?: { name?: string } }).dashboard;
+      const cards = (result as { cards?: unknown[] }).cards;
+      if (dash?.name && cards) {
+        return t`${dash.name} — ${cards.length} cards`;
+      }
+      return dash?.name;
+    }
+    case "search_metabase": {
+      const results = (result as { results?: unknown[] }).results;
+      return results ? t`${results.length} results` : undefined;
+    }
+    default:
+      return undefined;
+  }
+};
+
 const summariseToolCall = (
   tool: string,
   input: Record<string, unknown>,
@@ -233,6 +264,20 @@ export const GenerateModal = () => {
         cardIds: picked.filter((p) => p.model === "card").map((p) => p.id),
         signal: ac.signal,
         onEvent: (event) => {
+          // Some events (tool_result) update an existing entry by id rather
+          // than appending a new line — that's how we replace "#15" with
+          // "Revenue per quarter" once we know the card name.
+          if (event.type === "tool_result") {
+            const detail = resultDetail(event.tool, event.result);
+            if (detail) {
+              setLog((l) =>
+                l.map((entry) =>
+                  entry.id === event.id ? { ...entry, detail } : entry,
+                ),
+              );
+            }
+            return;
+          }
           const entry = eventToLog(event);
           if (entry) {
             setLog((l) => [...l, entry]);
