@@ -1,4 +1,5 @@
 (ns metabase.parameters.dashboard-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.parameters.dashboard-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]

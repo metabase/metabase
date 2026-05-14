@@ -1,7 +1,7 @@
 import type { CSSProperties, ComponentType, ReactNode } from "react";
 
 import type { Dispatch, QueryBuilderMode } from "metabase/redux/store";
-import type { IconName, IconProps } from "metabase/ui";
+import type { IconProps } from "metabase/ui";
 import type { ColorGetter } from "metabase/ui/colors/types";
 import type { OptionsType } from "metabase/utils/formatting/types";
 import type {
@@ -24,6 +24,7 @@ import type {
   DashboardId,
   DatasetColumn,
   DatasetData,
+  IconName,
   RawSeries,
   RowValue,
   RowValues,
@@ -108,6 +109,7 @@ export type OnChangeCardAndRunOpts = {
   nextCard: Card;
   seriesIndex?: number;
   objectId?: number;
+  drillName?: string;
 };
 
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
@@ -325,7 +327,6 @@ export type VisualizationSettingDefinition<
       : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => boolean;
-  hidden?: boolean;
   getHidden?: (
     object: T,
     settings: T extends DatasetColumn
@@ -392,11 +393,12 @@ export type CompleteVisualizationSettingDefinition<
   TProps extends Record<string, unknown> = Record<string, unknown>,
 > = Omit<
   VisualizationSettingDefinition<T, TValue, TProps>,
-  "getProps" | "getWrapperStyle"
+  "getProps" | "getWrapperStyle" | "getHidden"
 > & {
   id: string;
   style?: CSSProperties;
   props: Partial<TProps>;
+  hidden: boolean;
 };
 
 export type DatasetColumnSettingDefinition<

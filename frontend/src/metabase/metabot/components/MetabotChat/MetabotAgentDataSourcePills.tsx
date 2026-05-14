@@ -24,7 +24,6 @@ import {
   Collapse,
   Flex,
   Icon,
-  type IconName,
   Skeleton,
   Text,
   Tooltip,
@@ -35,6 +34,7 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
   DatasetQuery,
+  IconName,
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
   MetabotSourceFeedback,

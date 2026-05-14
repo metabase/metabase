@@ -264,9 +264,7 @@
     (metabase.driver-api.core/replace-in)
     (metabase.query-processor.middleware.cache-backend.interface/with-cached-results)
     (metabase.util.regex/rx [opt])
-    (metabase.util/prog1 [<>])
-    (taoensso.nippy/extend-freeze)
-    (taoensso.nippy/extend-thaw)]}
+    (metabase.util/prog1 [<>])]}
 
   ;; TODO (Cam 8/22/25) -- what's the point of marking stuff deprecated if we don't have Kondo enforce it? We should
   ;; remove all of these and add individual ignores as needed.
@@ -689,7 +687,9 @@
    metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def
    metabase.util/case-enum                                                                                                   hooks.metabase.util/case-enum
    metabase.util/format-color                                                                                                hooks.metabase.util/format-color
-   metabase.xrays.api.automagic-dashboards-test/with-indexed-model!                                                          hooks.metabase.xrays.api.automagic-dashboards-test/with-indexed-model!}
+   metabase.xrays.api.automagic-dashboards-test/with-indexed-model!                                                          hooks.metabase.xrays.api.automagic-dashboards-test/with-indexed-model!
+   taoensso.nippy/extend-freeze                                                                                              hooks.taoensso.nippy/extend-freeze
+   taoensso.nippy/extend-thaw                                                                                                hooks.taoensso.nippy/extend-thaw}
 
   :macroexpand
   {clojurewerkz.quartzite.jobs/build                                                            macros.quartz/build-job

@@ -1,6 +1,8 @@
 (ns metabase.query-processor.middleware.remove-inactive-field-refs-test
   "See also [[metabase.query-processor.inactive-fields-test]] (for e2e tests related to inactive fields in other
   situations)."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.remove-inactive-field-refs-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.middleware.remove-inactive-field-refs-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]

@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.expressions-test
   "Tests for expressions (calculated columns)."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.expressions-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.expressions-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.dependencies.native-validation
   (:require
    [clojure.string :as str]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.lib.core :as lib]
@@ -22,9 +23,10 @@
   parameter substitution must happen INSIDE the *compile-with-inline-parameters* binding
   to produce inline literals instead of ? placeholders."
   [query :- ::lib.schema/query]
-  (let [with-params (lib/add-parameters-for-template-tags query)
-        compiled    (qp.compile/compile-with-inline-parameters with-params)]
-    (lib/native-query with-params (:query compiled))))
+  (database-routing/with-database-routing-off
+    (let [with-params (lib/add-parameters-for-template-tags query)
+          compiled    (qp.compile/compile-with-inline-parameters with-params)]
+      (lib/native-query with-params (:query compiled)))))
 
 (defn- has-substitutable-template-tags?
   "Returns true if the query has any card or table template tags that need

@@ -6,6 +6,7 @@ import type {
   DatabaseId,
   FieldId,
   FieldReference,
+  Measure,
   MeasureId,
   Metric,
   NativeQuerySnippet,
@@ -20,7 +21,6 @@ import type Question from "../Question";
 
 import type Database from "./Database";
 import type Field from "./Field";
-import type Measure from "./Measure";
 import type Schema from "./Schema";
 import type Table from "./Table";
 import { getUniqueFieldId } from "./utils/fields";

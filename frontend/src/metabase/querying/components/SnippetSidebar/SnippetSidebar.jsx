@@ -4,21 +4,24 @@ import * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useListCollectionItemsQuery } from "metabase/api";
+import {
+  useGetCollectionQuery,
+  useListCollectionItemsQuery,
+  useListCollectionsQuery,
+  useListSnippetsQuery,
+} from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { SidebarHeader } from "metabase/common/components/SidebarHeader";
 import CS from "metabase/css/core/index.css";
-import { SnippetCollections } from "metabase/entities/snippet-collections";
-import { Snippets } from "metabase/entities/snippets";
 import {
   PLUGIN_REMOTE_SYNC,
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
   PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
 } from "metabase/plugins";
-import { connect } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Button, Flex, Icon, Menu } from "metabase/ui";
 
 import { SnippetRow } from "./SnippetRow";
@@ -97,11 +100,22 @@ class SnippetSidebarInner extends React.Component {
       );
     }
 
+    const collectionsById = _.indexBy(snippetCollections, "id");
+    const snippetsById = _.indexBy(snippets, "id");
+    const hydrateSearchItem = (item) => {
+      const model = item.model || "snippet";
+      const full =
+        model === "collection"
+          ? collectionsById[item.id]
+          : snippetsById[item.id];
+      return full ? { ...full, model } : item;
+    };
+
     const displayedItems = showSearch
       ? snippets.filter((snippet) =>
           snippet.name.toLowerCase().includes(searchString.toLowerCase()),
         )
-      : _.sortBy(search, "model"); // relies on "collection" sorting before "snippet";
+      : _.sortBy(search, "model").map(hydrateSearchItem); // relies on "collection" sorting before "snippet";
 
     const onSnippetCollectionBack = () => {
       const parentCollectionId = snippetCollection.parent_id ?? "root";
@@ -267,18 +281,48 @@ function SnippetSidebarWithSearch(props) {
   );
 }
 
-export const SnippetSidebar = _.compose(
-  Snippets.loadList(),
-  SnippetCollections.loadList(),
-  SnippetCollections.load({
-    id: (state, props) =>
-      props.snippetCollectionId === null ? "root" : props.snippetCollectionId,
-    wrapped: true,
-  }),
-  connect((state, { list }) => ({
-    isRemoteSyncReadOnly: PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly(state),
-  })),
-)(SnippetSidebarWithSearch);
+export function SnippetSidebar(props) {
+  const dispatch = useDispatch();
+  const isRemoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
+  const collectionId =
+    props.snippetCollectionId === null ? "root" : props.snippetCollectionId;
+
+  const {
+    data: snippets,
+    isLoading: snippetsLoading,
+    error: snippetsError,
+  } = useListSnippetsQuery();
+  const {
+    data: snippetCollections,
+    isLoading: collectionsLoading,
+    error: collectionsError,
+  } = useListCollectionsQuery({ namespace: "snippets" });
+  const {
+    data: snippetCollection,
+    isLoading: collectionLoading,
+    error: collectionError,
+  } = useGetCollectionQuery({ id: collectionId, namespace: "snippets" });
+
+  const isLoading = snippetsLoading || collectionsLoading || collectionLoading;
+  const error = snippetsError || collectionsError || collectionError;
+
+  return (
+    <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
+      {snippets && snippetCollections && snippetCollection && (
+        <SnippetSidebarWithSearch
+          {...props}
+          snippets={snippets}
+          snippetCollections={snippetCollections}
+          snippetCollection={snippetCollection}
+          isRemoteSyncReadOnly={isRemoteSyncReadOnly}
+          dispatch={dispatch}
+        />
+      )}
+    </LoadingAndErrorWrapper>
+  );
+}
 
 function ArchivedSnippetsInner(props) {
   const {
@@ -324,15 +368,45 @@ function ArchivedSnippetsInner(props) {
   );
 }
 
-const ArchivedSnippets = _.compose(
-  SnippetCollections.loadList({ query: { archived: true }, wrapped: true }),
-  connect((state, { list }) => ({
-    isRemoteSyncReadOnly: PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly(state),
-    archivedSnippetCollections: list,
-  })),
-  SnippetCollections.loadList(),
-  Snippets.loadList({ query: { archived: true }, wrapped: true }),
-)(ArchivedSnippetsInner);
+function ArchivedSnippets(props) {
+  const isRemoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
+
+  const {
+    data: snippets,
+    isLoading: snippetsLoading,
+    error: snippetsError,
+  } = useListSnippetsQuery({ archived: true });
+  const {
+    data: snippetCollections,
+    isLoading: collectionsLoading,
+    error: collectionsError,
+  } = useListCollectionsQuery({ namespace: "snippets" });
+  const {
+    data: archivedSnippetCollections,
+    isLoading: archivedCollectionsLoading,
+    error: archivedCollectionsError,
+  } = useListCollectionsQuery({ namespace: "snippets", archived: true });
+
+  const isLoading =
+    snippetsLoading || collectionsLoading || archivedCollectionsLoading;
+  const error = snippetsError || collectionsError || archivedCollectionsError;
+
+  return (
+    <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
+      {snippets && snippetCollections && archivedSnippetCollections && (
+        <ArchivedSnippetsInner
+          {...props}
+          snippets={snippets}
+          snippetCollections={snippetCollections}
+          archivedSnippetCollections={archivedSnippetCollections}
+          isRemoteSyncReadOnly={isRemoteSyncReadOnly}
+        />
+      )}
+    </LoadingAndErrorWrapper>
+  );
+}
 
 function Row(props) {
   const Component = {

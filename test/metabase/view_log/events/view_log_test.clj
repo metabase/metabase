@@ -1,4 +1,5 @@
 (ns metabase.view-log.events.view-log-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.view-log.events.view-log-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]

@@ -103,7 +103,6 @@ export type EntitySelectors = {
   getFetched: EntitySelector;
   getError: EntitySelector;
   getListMetadata: EntitySelector;
-  getExpandedCollectionsById: EntitySelector;
 };
 
 /** Shape returned by createEntity */
@@ -973,7 +972,14 @@ type CombinedEntities = {
  * another entity's normalizr schema (e.g. measures inside a table's
  * `query_metadata` response).
  */
-const RETIRED_ENTITY_NAMES = ["metrics", "segments"];
+const RETIRED_ENTITY_NAMES = [
+  "collections",
+  "measures",
+  "metrics",
+  "schemas",
+  "segments",
+  "snippets",
+];
 
 export function combineEntities(entities: Entity[]): CombinedEntities {
   const entitiesMap: Record<string, Entity> = {};

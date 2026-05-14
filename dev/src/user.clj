@@ -18,20 +18,19 @@
 ;;   `#p`  - hashp's stock reader. Writes to *err* with color, suitable for
 ;;           live REPL inspection.
 ;;   `#d`  - our `dev.debug/d` reader. Writes to `DEV_DEBUG_LOG` (default
-;;           `/tmp/<cwd-basename>_debug.log`, so side-by-side checkouts
-;;           don't stomp the same file). Real source line numbers (captured
-;;           from `(meta form)` at read time, not the runtime JVM stack like
+;;           `/tmp/<cwd>_debug.log`). Real source line numbers (captured from
+;;           `(meta form)` at read time, not the runtime JVM stack like
 ;;           hashp does). Survives across threads and JVM processes
 ;;           (test-agent + REPL share the file).
 ;;
 ;; Use `#p` for live REPL inspection, `#d` for grep/tail-able output (test
 ;; runs, agent debugging, cross-thread tracing).
 ;;
-;; In-form commands (pass these as the value to `#d`):
-;;   `#d :clear`               — truncate the log + print the path
-;;   `#d :where`               — print the resolved log path
-;;   `#d :stack`               — log the current call stack
-;;   `#d [:set-file! "/p"]`    — redirect the log file at runtime
+;; REPL helpers in `dev.debug`:
+;;   `(dev.debug/clear!)`     — truncate the file
+;;   `(dev.debug/where)`      — print the current log path
+;;   `(dev.debug/stack!)`     — spit a filtered call stack
+;;   `(dev.debug/set-file! p)`— override the log path
 ;;
 ;; Watch the log live:
 ;;   tail -f $(echo /tmp/*_debug.log) | bat --paging=never -l edn

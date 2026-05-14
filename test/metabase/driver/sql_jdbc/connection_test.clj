@@ -2,7 +2,9 @@
   {:clj-kondo/config '{:linters
                        ;; allowing this for now since we sorta need to put real DBs in the app DB to test the DB ID
                        ;; -> connection pool stuff
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}
+                        :deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sql-jdbc.connection-test]}
+                                                   metabase.test.data/run-mbql-query {:namespaces [metabase.driver.sql-jdbc.connection-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]

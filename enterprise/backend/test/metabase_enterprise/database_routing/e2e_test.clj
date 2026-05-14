@@ -1,4 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.database-routing.e2e-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase-enterprise.database-routing.e2e-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase-enterprise.database-routing.e2e-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase-enterprise.database-routing.e2e-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
