@@ -28,7 +28,8 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
-   (com.google.cloud.bigquery BigQuery TableResult)))
+   (com.google.cloud.bigquery BigQuery TableResult)
+   (com.google.cloud.http HttpTransportOptions)))
 
 (set! *warn-on-reflection* true)
 
@@ -1324,7 +1325,7 @@
     (testing "Read timeout is configured as the query-timeout-ms setting"
       (let [^BigQuery client (#'bigquery/database-details->client (:details (mt/db)))
             options (.getOptions client)
-            transport-options (.getTransportOptions options)]
+            ^HttpTransportOptions transport-options (.getTransportOptions options)]
         (is (= driver.settings/*query-timeout-ms*
                (.getReadTimeout transport-options)))))))
 

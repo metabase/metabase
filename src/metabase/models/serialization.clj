@@ -337,7 +337,9 @@
 
 (defmethod generate-path :default [model-name entity]
   ;; This default works for most models, but needs overriding for those that don't rely on entity_id.
-  (maybe-labeled model-name entity :name))
+  (maybe-labeled model-name entity #(if (string? (:name %))
+                                      (:name %)
+                                      (:format-string (:name %)))))
 
 (defn log-path-str
   "Returns a string for logging from a serdes path sequence (i.e. in :serdes/meta)"
@@ -627,6 +629,36 @@
 
 (defmethod required :default [_ _]
   nil)
+
+;;; # Metadata Export
+
+(defmulti metadata-query
+  "Returns a reducible row stream for `model` for the metadata export endpoint.
+  `opts` carries caller context (e.g. `:user-info`, section flags, id allow-lists).
+  Implementations return rows with raw numeric ids — joins for portable identifiers
+  are intentionally avoided so the queries stay simple."
+  {:arglists '([model opts])}
+  (fn [model _opts] model))
+
+(defmulti metadata-query-filter
+  "Returns a HoneySQL where predicate that restricts rows of `model` qualified by
+  table `alias`. Used to compose `WHERE` and `JOIN ... ON` clauses across model
+  hierarchies (e.g. the field query reuses the database/table filters)."
+  {:arglists '([model alias opts])}
+  (fn [model _alias _opts] model))
+
+(defmulti metadata-query-format
+  "Reshapes a raw query row produced by [[metadata-query]] into the JSON shape emitted
+  by the metadata export endpoint. The default drops nil-valued keys via
+  [[metabase.util/remove-nils]]; overrides do JSON decoding or column-derived
+  adjustments and rely on the same nil-pruning to keep optional keys out of the
+  response."
+  {:arglists '([model row])}
+  (fn [model _row] model))
+
+(defmethod metadata-query-format :default
+  [_model row]
+  (u/remove-nils row))
 
 ;;; # Import Process
 ;;; Deserialization is split into two stages, mirroring serialization. They are called *ingestion* and *loading*.

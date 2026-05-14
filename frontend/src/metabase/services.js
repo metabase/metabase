@@ -51,6 +51,13 @@ async function handleQueryApiError(apiPromise) {
       error.status < 500 &&
       error.data
     ) {
+      // The QP returns a structured `{ error, error_type, ... }` body, but
+      // plainer endpoints (e.g. `/api/embed/*` API-level checks) return a
+      // plain-text body. Normalize so callers can rely on a `{ error, ... }`
+      // shape and don't fall through to the empty state (EMB-1659).
+      if (typeof error.data === "string") {
+        return { error: error.data, status: error.status };
+      }
       return error.data;
     }
     // For 5xx and other errors, re-throw

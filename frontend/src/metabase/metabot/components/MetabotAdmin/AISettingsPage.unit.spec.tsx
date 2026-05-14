@@ -29,20 +29,41 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
-import { AISettingsPage } from "./AISettingsPage";
+import { AISettingsPage, McpSettingsPage } from "./AISettingsPage";
 
 const defaultSeedCollections = [
   createMockCollection({ id: "root", name: "Our Analytics" }),
 ];
 
+type Page = "ai-features" | "mcp";
+
+function getPageRoute(page: Page) {
+  switch (page) {
+    case "mcp":
+      return <Route path="/admin/metabot/mcp" component={McpSettingsPage} />;
+    case "ai-features":
+      return <Route path="/admin/metabot*" component={AISettingsPage} />;
+  }
+}
+
+function getInitialRoute(page: Page) {
+  switch (page) {
+    case "mcp":
+      return "/admin/metabot/mcp";
+    case "ai-features":
+      return "/admin/metabot";
+  }
+}
+
 const setup = async ({
   aiFeaturesEnabled = true,
   enableEmbedding = false,
   contentVerification = false,
-  initialRoute = "/admin/metabot",
+  initialRoute,
   isConfigured = true,
   metabots = buildDefaultMetabots(),
   collections = defaultSeedCollections,
+  page = "ai-features",
 }: {
   aiFeaturesEnabled?: boolean;
   enableEmbedding?: boolean;
@@ -53,6 +74,7 @@ const setup = async ({
   collections?: Parameters<
     typeof setupCollectionByIdEndpoint
   >[0]["collections"];
+  page?: Page;
 } = {}) => {
   const tokenFeatures = createMockTokenFeatures({
     embedding_sdk: enableEmbedding,
@@ -111,18 +133,19 @@ const setup = async ({
     }),
   );
 
-  const view = renderWithProviders(
-    <Route path="/admin/metabot*" component={AISettingsPage} />,
-    {
-      withRouter: true,
-      initialRoute,
-      storeInitialState: {
-        settings: createMockSettingsState(settings),
-      },
+  const view = renderWithProviders(getPageRoute(page), {
+    withRouter: true,
+    initialRoute: initialRoute ?? getInitialRoute(page),
+    storeInitialState: {
+      settings: createMockSettingsState(settings),
     },
-  );
+  });
 
-  await screen.findByText("Disable all AI features");
+  if (page === "mcp") {
+    await screen.findByRole("switch", { name: "MCP server" });
+  } else {
+    await screen.findByText("Disable all AI features");
+  }
 
   return view;
 };
@@ -133,34 +156,24 @@ describe("AISettingsPage", () => {
     jest.restoreAllMocks();
   });
 
-  it("shows all sections on one page and disables non-connection sections until configured", async () => {
+  it("shows AI setup and metabot settings and disables metabot until configured", async () => {
     await setup({ isConfigured: false, enableEmbedding: true });
 
     expect(screen.getByText("Connect to an AI provider")).toBeInTheDocument();
     expect(screen.getByText("Metabot settings")).toBeInTheDocument();
     expect(screen.getByText("Enable Metabot")).toBeInTheDocument();
-    expect(screen.getByText("MCP server")).toBeInTheDocument();
-    expect(screen.getByText("Agent API")).toBeInTheDocument();
+    expect(screen.queryByText("MCP server")).not.toBeInTheDocument();
+    expect(screen.queryByText("Agent API")).not.toBeInTheDocument();
 
     expect(
       screen.getByText("Enable Metabot", {
         selector: '[aria-disabled="true"] *',
       }),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText("MCP server", {
-        selector: '[aria-disabled="true"] *',
-      }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText("Agent API", {
-        selector: '[aria-disabled="true"] *',
-      }),
-    ).not.toBeInTheDocument();
   });
 
-  it("shows docs links for MCP and Agent API", async () => {
-    await setup();
+  it("shows docs links on the MCP page", async () => {
+    await setup({ page: "mcp" });
 
     expect(
       screen
@@ -181,9 +194,25 @@ describe("AISettingsPage", () => {
       screen.queryByText("Connect to an AI provider"),
     ).not.toBeInTheDocument();
     expect(screen.queryByText("Metabot settings")).not.toBeInTheDocument();
-    expect(screen.queryByText("MCP server")).not.toBeInTheDocument();
-    expect(screen.queryByText("Agent API")).not.toBeInTheDocument();
     expect(screen.getByText("Disable all AI features")).toBeInTheDocument();
+  });
+
+  it("keeps MCP settings enabled when Metabot is not configured", async () => {
+    await setup({ page: "mcp", isConfigured: false });
+
+    expect(screen.getByRole("switch", { name: "MCP server" })).toBeEnabled();
+    expect(screen.getByRole("switch", { name: "Agent API" })).toBeEnabled();
+  });
+
+  it("disables MCP settings when all AI features are disabled", async () => {
+    await setup({ page: "mcp", aiFeaturesEnabled: false });
+
+    expect(
+      screen.getByText("MCP server", {
+        selector: '[aria-disabled="true"] *',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Agent API" })).toBeDisabled();
   });
 
   it("keeps the embedded deep link working by selecting the embedded tab", async () => {
