@@ -40,19 +40,23 @@ Beats 0 and 6 are voiceover over screen content (no Pacino on screen — we only
 
 ### Beats and narration
 
-All narration is in the **Godfather-Michael register**: cold, controlled, short sentences. *Not* Tony Montana. Cues stay ≤15 words for tight pacing.
+> **Revised 2026-05-14 (post-implementation discovery):** The Slides feature does NOT have a "Generate slides" button on the dashboard. Generation happens via a modal inside the Slides editor: navigate to `/slides`, create an empty deck, click **Generate** in the editor header, fill prompt + pick a dashboard anchor, click Generate, watch the streaming agent log, then enter presenter mode. The revised beat table below reflects the actual flow. The voice was also changed from Al Pacino (Godfather Michael) to Marlon Brando (Godfather Don Vito) at the user's request — narration register is now "quiet, gravelly, weary authority" rather than "cold and controlled."
+
+All narration is in the **Don Vito register**: quiet, gravelly, slow, weary authority. Cues stay ≤15 words for tight pacing — except Beat 3 which is intentionally longer to cover AI generation wait time (~30s).
 
 | # | On-screen action | Narration |
 |---|------------------|-----------|
-| 0 | Cold open — Metabase home, hover the "Q4 Board Review" dashboard | "In my line of work, you need to know your numbers. This? This is Metabase. Beautiful." |
-| 1 | Open dashboard "FY26 Q4 Board Review" → click "Generate slides" → presenter opens | "Sit down. We're gonna look at the numbers." |
-| 2 | Slide 2 — Monthly revenue, FY26 vs. FY25 | "Up thirty-four percent. It was a good quarter. For most of us." |
-| 3 | Slide 3 — Top 5 SKUs by Q4 revenue | "Cohibas are moving. The Behikes especially. Keep them stocked." |
-| 4 | Slide 4 — Regional revenue stacked by distributor → **click NJ bar → drill-through** → result shows Big Sal at 82% | "Now. New Jersey." *(beat)* "Eighty-two percent. One name." *(drill resolves)* "Sal. We need to talk." |
-| 5 | Slide 5 — FY27 projected revenue, Sicily as new entrant | "Next year, we go to Sicily. Family business." |
-| 6 | Closing — hold on final slide | "This is how a family stays on top. Metabase. Tell 'em the Don sent you." |
+| 0 | Cold open — over `/slides` Browse page or Metabase home | "In my line of work, you need to know your numbers. This? This is Metabase. Beautiful." |
+| 1 | Click "New deck" → empty editor → click **Generate** in header | "Sit down. We're gonna build something." |
+| 2 | Modal opens → type prompt → pick "FY26 Q4 Board Review" dashboard → click Generate | "Quarterly review. Numbers don't lie." |
+| 3 | **Streaming agent log** — Thinking → Inspecting dashboard → Drafting outline → Writing slides… (~30–60s wait) | "Patience. The machine works. In my time — we wrote this on a notepad. Now? It builds itself. Beautiful." |
+| 4 | Deck loaded → click **Present** → advance to revenue slide | "Up thirty-four percent. Good quarter. For most of us." |
+| 5 | Slide 3 — Top 5 SKUs by Q4 revenue | "Cohibas are moving. Keep them stocked." |
+| 6 | Slide 4 — Regional revenue stacked by distributor → **click NJ bar → drill-through** | "Now. New Jersey." *(beat)* "Eighty-two percent. One name." *(drill resolves)* "Sal. We need to talk." |
+| 7 | Slide 5 — FY27 projected revenue with Sicily as new entrant | "Next year, we go to Sicily. Family business." |
+| 8 | Closing — hold on final slide | "This is how a family stays on top. Metabase. Tell 'em the Don sent you." |
 
-Beat 4 is the only beat with both a click *and* a chart-state change. Every other beat is page-state or slide-advance.
+Beat 6 is the only beat with both a click *and* a chart-state change. Every other beat is navigation or slide-advance. Beat 3's wait is covered by narration so the viewer never sees dead air.
 
 ---
 
@@ -60,12 +64,13 @@ Beat 4 is the only beat with both a click *and* a chart-state change. Every othe
 
 ### Voice clone
 
-- New voice registered as `pacino` via the feature-demo voice registry, cloned through MiniMax.
-- Reference clip: 8–20s of clean *Godfather II* Michael Corleone dialogue. Mono, 22kHz. **One register only** — mixing Michael with Tony Montana ruins the clone.
-- Suggested clip source: a *Godfather II* scene with one continuous Michael monologue (no music underneath, no other voices).
-- Registration command (from the feature-demo skill):
+- New voice registered as `brando` via the feature-demo voice registry, cloned through MiniMax.
+- Reference clip: 12s sampled from `https://www.youtube.com/watch?v=4m8f8dLa_ig` (a Don Vito Corleone scene). Mono, 22kHz.
+- Source download: `yt-dlp -x --audio-format wav -o ~/tmp/brando-source.wav <url>`, then extract a 12s window with `ffmpeg -ss <start> -t 12 -ac 1 -ar 22050`.
+- Three candidate windows were extracted at `~/tmp/brando-cand-{A,B,C}.wav` (0:30, 2:00, 4:00). User picks the one with cleanest dialogue.
+- Registration:
   ```
-  node ~/work/internal-skills/metabase-feature-demo/references/voice-registry.mjs register pacino ~/tmp/pacino-ref.wav
+  node .claude/skills/metabase-feature-demo/references/voice-registry.mjs register brando ~/tmp/brando-ref.wav
   ```
 
 ### Presenter persona
@@ -73,13 +78,13 @@ Beat 4 is the only beat with both a click *and* a chart-state change. Every othe
 Registered alongside the voice:
 
 ```
-name:     pacino
-voice:    pacino
+name:     brando
+voice:    brando
 role:     Don, Corleone Cigars Imports
 audience: his capos (in-character) AND the viewer (for bookend beats)
-style:    first-person; Godfather-Michael register — cold, controlled,
-          short sentences, no profanity, no Tony Montana shouting;
-          cues ≤15 words for tight pacing; deadpan when addressing camera
+style:    first-person; Don Vito register — quiet, gravelly, slow, weary
+          authority; short sentences; no shouting; cues ≤15 words except
+          Beat 3 which covers AI generation wait; deadpan when addressing camera
 ```
 
 ---
