@@ -15,6 +15,7 @@ import {
   isValidCollectionId,
 } from "metabase/collections/utils";
 import { CollectionName } from "metabase/common/components/CollectionName";
+import { DashboardName } from "metabase/common/components/DashboardName";
 import { FormField } from "metabase/common/components/FormField";
 import type {
   EntityPickerOptions,
@@ -53,7 +54,7 @@ function ItemName({
     return (
       <Flex align="center" gap="sm">
         <Icon name="dashboard" c="brand" />
-        <Dashboards.Name id={dashboardId} />
+        <DashboardName id={dashboardId} />
       </Flex>
     );
   }
