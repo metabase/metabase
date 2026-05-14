@@ -120,6 +120,7 @@ export function ExplorationDocument({
               <Button
                 variant="filled"
                 onClick={() => handleSave()}
+                data-hide-on-print
               >{t`Save`}</Button>
             )}
           </Group>

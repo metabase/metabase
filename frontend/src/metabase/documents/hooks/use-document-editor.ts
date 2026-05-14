@@ -72,7 +72,7 @@ interface UseDocumentEditorResult {
   error: unknown;
   canWrite: boolean;
   documentTitle: string;
-  setDocumentTitle: Dispatch<SetStateAction<string>>;
+  setDocumentTitle: (title: string) => void;
   documentContent: JSONContent | null;
   setDocumentContent: (content: JSONContent | null) => void;
   updateCardEmbeds: (embeds: CardEmbedRef[]) => void;
@@ -165,17 +165,27 @@ export function useDocumentEditor({
   // minHeight, _id) and schema corrections (trailing paragraph). We capture the
   // editor's output after it settles and compare against that, not the raw API JSON.
   const settledContentRef = useRef<JSONContent | null>(null);
-  const isSettlingRef = useRef(true);
+  const isSettlingRef = useRef(false);
   const settlingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const prevDocumentIdRef = useRef(documentId);
-  if (documentId && documentId !== prevDocumentIdRef.current) {
+  // while the title doesn't have the same problem as content,
+  // when loading a new document, there is a render where the server state and local state are out of sync
+  const isTitleSettingRef = useRef(false);
+
+  const prevDocumentIdRef = useRef<DocumentId | "new" | undefined>(undefined);
+  if (
+    documentId &&
+    documentId !== prevDocumentIdRef.current &&
+    !isNewDocument
+  ) {
     prevDocumentIdRef.current = documentId;
     isSettlingRef.current = true;
+    isTitleSettingRef.current = true;
   }
 
   useEffect(() => {
     if (documentContent && !isNewDocument) {
+      isSettlingRef.current = true;
       dispatch(setHasUnsavedChanges(false));
     }
   }, [dispatch, documentContent, isNewDocument]);
@@ -189,16 +199,13 @@ export function useDocumentEditor({
   });
 
   const hasUnsavedChanges = useCallback(() => {
-    if (isSettlingRef.current) {
-      return false;
-    }
-
     const currentTitle = documentTitle.trim();
     const originalTitle = documentData?.name || "";
     // We call .trim() on documentTitle to ensure that no one can push the save button
     // with a document name that is all whitespace, the API will reject it. However,
     // when comparing saved with current titles, we need to use unmofidied values
-    const titleChanged = documentTitle !== originalTitle;
+    const titleChanged =
+      documentTitle !== originalTitle && !isTitleSettingRef.current;
 
     // Check if there are any draft cards
     const hasDraftCards = Object.keys(draftCards).length > 0;
@@ -221,6 +228,14 @@ export function useDocumentEditor({
   ]);
 
   const showSaveButton = hasUnsavedChanges() && canWrite && !isSaving;
+
+  const handleTitleChange = useCallback(
+    (title: string) => {
+      setDocumentTitle(title);
+      isTitleSettingRef.current = false;
+    },
+    [setDocumentTitle],
+  );
 
   const handleChange = useCallback(
     (content: JSONContent) => {
@@ -422,7 +437,7 @@ export function useDocumentEditor({
     error,
     canWrite,
     documentTitle,
-    setDocumentTitle,
+    setDocumentTitle: handleTitleChange,
     documentContent,
     setDocumentContent,
     updateCardEmbeds,
