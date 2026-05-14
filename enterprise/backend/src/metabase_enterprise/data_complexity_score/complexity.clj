@@ -515,13 +515,12 @@
         (log-scores! result)
         (let [published? (time-phase! "publish" "all"
                                       (fn []
-                                        (if emit-snowplow?
-                                          (try
-                                            (emit-snowplow! result)
-                                            (catch Throwable t
-                                              (log/warn t "Failed to publish complexity score to Snowplow")
-                                              false))
-                                          false)))]
+                                        (boolean
+                                         (when emit-snowplow?
+                                           (try
+                                             (emit-snowplow! result)
+                                             (catch Throwable t
+                                               (log/warn t "Failed to publish complexity score to Snowplow")))))))]
           ;; `emit-snowplow!` returns true only when every event reached the tracker (false when
           ;; Snowplow is disabled or any emission failed) — scheduler/boot callers gate
           ;; `data-complexity-scoring-last-fingerprint` on this so a disabled collector or any
