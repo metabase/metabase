@@ -6,12 +6,14 @@ import {
   getOSSVersion,
 } from "./version-helpers";
 
+type MilestoneState = "open" | "closed" | "all";
+
 export const getMilestones = async ({
   github,
   owner,
   repo,
-  state,
-}: GithubProps & { state?: "open" | "closed" }) => {
+  state = "all",
+}: GithubProps & { state?: MilestoneState }) => {
   const milestones = await github.paginate(github.rest.issues.listMilestones, {
     owner,
     repo,
@@ -27,7 +29,7 @@ export const findMilestone = async ({
   owner,
   repo,
   state,
-}: ReleaseProps & { state?: "open" | "closed" }) => {
+}: ReleaseProps & { state?: MilestoneState }) => {
   const milestones = await getMilestones({ github, owner, repo, state });
   const expectedMilestoneName = getMilestoneName(version);
 
@@ -90,7 +92,7 @@ export const getMilestoneIssues = async ({
   milestoneStatus,
 }: ReleaseProps & {
   state?: "closed" | "open";
-  milestoneStatus?: "open" | "closed";
+  milestoneStatus?: MilestoneState;
 }): Promise<Issue[]> => {
   const milestone = await findMilestone({
     version,

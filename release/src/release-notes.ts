@@ -303,31 +303,14 @@ export function getWebsiteChangelog({
 
 export async function getChangelog({
   version,
-  owner,
-  repo,
-  github,
 }: ReleaseProps) {
   if (!isValidVersionString(version)) {
     throw new Error(`Invalid version string: ${version}`);
   }
-  const isAlreadyReleased = await hasBeenReleased({
-    github,
-    owner,
-    repo,
-    version,
-  });
-
-  const issues = await getMilestoneIssues({
-    version,
-    github,
-    owner,
-    repo,
-    milestoneStatus: isAlreadyReleased ? "closed" : "open",
-  });
 
   return generateReleaseNotes({
     template: githubReleaseTemplate,
     version,
-    issues,
+    issues: [], // we don't post any issue in this template
   });
 }
