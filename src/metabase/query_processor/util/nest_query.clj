@@ -10,10 +10,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [select-keys some]]))
 
 ;; Mark all Fields at the new top level as `:qp/ignore-coercion` so QP implementations know not to apply coercion
@@ -22,7 +22,7 @@
 ;; fail, but it might still make sense. For example, #48721 would have been avoided by unconditional marking.
 
 (defn- contains-expression-refs? [location]
-  (lib.util.match/match-lite location [:expression & _] true))
+  (match/match-one location [:expression & _] true))
 
 (defn- should-nest-expressions? [query path]
   (and (lib.walk/apply-f-for-stage-at-path lib/mbql-stage? query path)

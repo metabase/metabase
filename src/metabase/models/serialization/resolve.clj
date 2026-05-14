@@ -8,9 +8,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -70,12 +70,12 @@
            (identity-hash? s))))
 
 ;;; ============================================================
-;;; import-mbql — depends only on protocols, lib.util.match, lib.schema.id
+;;; import-mbql — depends only on protocols, match, lib.schema.id
 ;;; ============================================================
 
 (defn- mbql-fully-qualified-names->ids*
   [resolver entity]
-  (lib.util.match/replace-lite entity
+  (match/replace entity
     [#{:field "field"} (opts :guard map?) (fully-qualified-name :guard vector?)]
     [:field (mbql-fully-qualified-names->ids* resolver opts)
      (import-field-fk resolver fully-qualified-name)]
@@ -186,7 +186,7 @@
 
 (defn- mbql-id->fully-qualified-name
   [resolver mbql]
-  (lib.util.match/replace-lite (normalize mbql)
+  (match/replace (normalize mbql)
     ;; `pos-int?` guard is here to make the operation idempotent
     [:field (opts :guard map?) (id :guard pos-int?)]
     [:field (mbql-id->fully-qualified-name resolver opts) (export-field-fk resolver id)]
@@ -224,7 +224,7 @@
   inside it into portable references."
   ([entity] (export-mbql *export-resolver* entity))
   ([resolver entity]
-   (lib.util.match/replace-lite entity
+   (match/replace entity
      (_ :guard mbql-clause-tag)
      (mbql-id->fully-qualified-name resolver &match)
 
