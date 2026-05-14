@@ -23,14 +23,14 @@ export const DevInstanceUpsell = UpsellWrapperDismissible(
         <Flex>
           <UpsellGem.New mt="0.125rem" />
           <Box ml="sm">
-            <Text fw="bold">{t`Need a dedicated sandbox?`}</Text>
+            <Text fw="bold">{t`Need a dedicated development environment?`}</Text>
             <Text lh="1.25rem">
-              {jt`We offer ${(
+              {jt`With ${(
                 <ExternalLink
                   key="link"
                   href={devInstanceDocsUrl}
                 >{t`Development instances`}</ExternalLink>
-              )}, which you can use for Remote Sync or any other kind of development. Build and test your changes in a safe, isolated environment before syncing to production.`}
+              )}, you can build and test your changes in a safe, isolated environment before syncing to production.`}
             </Text>
           </Box>
         </Flex>
