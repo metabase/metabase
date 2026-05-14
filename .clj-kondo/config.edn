@@ -899,7 +899,10 @@
 
     :deprecated-namespace
     {:exclude
-     [metabase.legacy-mbql.jvm-util
+     [metabase.driver.common.parameters.dates
+      metabase.driver.common.parameters.operators
+      metabase.driver.common.parameters.values
+      metabase.legacy-mbql.jvm-util
       metabase.legacy-mbql.normalize
       metabase.legacy-mbql.predicates
       metabase.legacy-mbql.schema
