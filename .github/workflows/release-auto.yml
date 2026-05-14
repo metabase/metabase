@@ -1,5 +1,5 @@
 name: Release 1b - Auto Release
-run-name: Auto ${{ inputs.kind || 'release' }} ${{ inputs.version }}
+run-name: Auto ${{ inputs.kind }} release for v${{ inputs.version }}
 
 on:
   workflow_dispatch:
@@ -20,20 +20,13 @@ on:
         type: string
         required: false
         default: ""
-  schedule:
-    - cron: "0 21 * * 1-5" # patch: every weekday at 21:00 UTC (4 pm EST / 5 pm EDT)
-    - cron: "0 13 * * 2"   # minor: every Tuesday at 13:00 UTC (8 am EST / 9 am EDT)
 
+# This workflow only runs on dispatch. Given a major version and a kind, it
+# infers the next patch or minor to cut and kicks off that release. Cron
+# scheduling lives in the schedule-* trigger workflows, which decide what to
+# release and when.
 jobs:
   auto-release-trigger:
-    # Forks never run on schedule. For scheduled runs, the matching kind's kill
-    # switch must be on.
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.repository == 'metabase/metabase' && (
-        (github.event.schedule == '0 21 * * 1-5' && vars.ENABLE_AUTO_PATCH == 'true') ||
-        (github.event.schedule == '0 13 * * 2'  && vars.ENABLE_AUTO_MINOR == 'true')
-      ))
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
@@ -58,17 +51,7 @@ jobs:
               sendAutoReleaseFailureMessage,
             } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            // Mirrors the cron strings in the schedule block above.
-            const SCHEDULE_KIND = {
-              '0 21 * * 1-5': 'patch',
-              '0 13 * * 2': 'minor',
-            };
-
-            const currentRelease = Number('${{ vars.CURRENT_VERSION }}');
-            const lastRelease = currentRelease - 1;
-            const AUTO_RELEASE_VERSIONS = [lastRelease, currentRelease];
-
-            async function release({ kind, majorVersion, overrideSha }) {
+            async function dispatchRelease({ kind, majorVersion, overrideSha }) {
               const nextVersion = await getNextVersion({
                 github,
                 owner: context.repo.owner,
@@ -128,37 +111,25 @@ jobs:
               }).catch(console.error);
             }
 
-            if (context.eventName === 'workflow_dispatch') {
-              const inputVersion = Number(context.payload.inputs.version);
-              const kind = String(context.payload.inputs.kind ?? '');
+            const inputVersion = Number(context.payload.inputs.version);
+            const kind = String(context.payload.inputs.kind ?? '');
 
-              if (Number.isNaN(inputVersion)) {
-                throw new Error(`Invalid version number: ${context.payload.inputs.version}`);
-              }
-              if (kind !== 'patch' && kind !== 'minor') {
-                throw new Error(`Invalid kind: ${kind}`);
-              }
-
-              const overrideSha = String(context.payload?.inputs?.override_sha ?? '').trim();
-              const isValidOverride = overrideSha.length === 40;
-
-              if (!isValidOverride && overrideSha.length > 0) {
-                throw new Error(`Invalid override SHA provided: ${overrideSha}`);
-              }
-
-              await release({
-                kind,
-                majorVersion: inputVersion,
-                overrideSha: isValidOverride ? overrideSha : undefined,
-              });
-            } else {
-              const kind = SCHEDULE_KIND[context.payload.schedule];
-              if (!kind) {
-                throw new Error(`Unrecognized schedule: ${context.payload.schedule}`);
-              }
-              await Promise.all(
-                AUTO_RELEASE_VERSIONS.map(majorVersion =>
-                  release({ kind, majorVersion })
-                )
-              );
+            if (Number.isNaN(inputVersion)) {
+              throw new Error(`Invalid version number: ${context.payload.inputs.version}`);
             }
+            if (kind !== 'patch' && kind !== 'minor') {
+              throw new Error(`Invalid kind: ${kind}`);
+            }
+
+            const overrideSha = String(context.payload?.inputs?.override_sha ?? '').trim();
+            const isValidOverride = overrideSha.length === 40;
+
+            if (!isValidOverride && overrideSha.length > 0) {
+              throw new Error(`Invalid override SHA provided: ${overrideSha}`);
+            }
+
+            await dispatchRelease({
+              kind,
+              majorVersion: inputVersion,
+              overrideSha: isValidOverride ? overrideSha : undefined,
+            });

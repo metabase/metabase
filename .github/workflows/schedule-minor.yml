@@ -1,0 +1,34 @@
+name: Schedule - Auto Minor
+
+on:
+  schedule:
+    - cron: "0 13 * * 2" # every Tuesday at 13:00 UTC (8 am EST / 9 am EDT)
+
+permissions:
+  actions: write
+
+jobs:
+  trigger:
+    # Never run on a fork's inherited cron; honor the kill switch.
+    if: ${{ github.repository == 'metabase/metabase' && vars.ENABLE_AUTO_MINOR == 'true' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - name: Dispatch minor release for the current major
+        uses: actions/github-script@v7
+        with:
+          script: | # js
+            // Minor releases only go out for the current major; the
+            // previous major gets patches only.
+            const currentRelease = Number('${{ vars.CURRENT_VERSION }}');
+
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'release-auto.yml',
+              ref: 'refs/heads/master',
+              inputs: {
+                version: String(currentRelease),
+                kind: 'minor',
+              },
+            }).catch(console.error);
