@@ -184,6 +184,15 @@
              [nil "--site-url URL" "Absolute site URL for canonical/sitemap"]]
    :task (task! (docs/build parsed))}
 
+  docs-preview
+  {:doc "Build the docs site with lazy regeneration and start the Astro preview server"
+   :examples [["./bin/mage docs-preview" "Lazy-regen build + preview server on the inferred base path"]
+              ["./bin/mage docs-preview --base-path /docs/v0.55" "Same, with an explicit base path"]]
+   :requires [[mage.docs :as docs]]
+   :options [[nil "--base-path PATH" "URL prefix (default: /docs/latest, or /docs/v0.NN inferred from a release-x.NN.x branch)"]
+             [nil "--site-url URL" "Absolute site URL for canonical/sitemap"]]
+   :task (task! (docs/preview parsed))}
+
   docs-build-branch
   {:doc "Build the docs site for an arbitrary git branch via a worktree"
    :examples [["./bin/mage docs-build-branch release-x.55.x" "Build v0.55 docs into build/docs/v0.55/"]
@@ -205,11 +214,11 @@
               ["./bin/mage docs-generate --api" "Regenerate only the REST API reference"]
               ["./bin/mage docs-generate --env-vars --config" "Regenerate env vars + config template"]]
    :requires [[mage.docs :as docs]]
-   :options [[nil "--env-vars" "Generate environment variables doc"]
-             [nil "--config" "Generate config template doc"]
-             [nil "--api" "Generate REST API doc"]
-             [nil "--commands" "Generate CLI command doc"]
-             [nil "--analytics" "Generate usage analytics doc"]]
+   :options [[nil "--env-vars" "Generate env vars doc -> docs/configuring-metabase/environment-variables.md"]
+             [nil "--config"   "Generate config template doc -> docs/configuring-metabase/config-template.md"]
+             [nil "--api"      "Generate REST API doc -> docs/api.json"]
+             [nil "--commands" "Generate CLI command doc -> docs/installation-and-operation/commands.md"]
+             [nil "--analytics" "Generate usage analytics doc -> docs/usage-and-performance-tools/usage-analytics-reference.md"]]
    :task (task! (docs/generate parsed))}
 
   docs-generate-embedding
@@ -222,9 +231,19 @@
 
   docs-ensure-generated
   {:doc "Lazily generate the docs artifacts that the Astro build depends on (typedoc snippets, OpenAPI spec)"
-   :examples [["./bin/mage docs-ensure-generated" "Generate missing artifacts; skip ones already present"]]
+   :examples [["./bin/mage docs-ensure-generated" "Generate missing artifacts; skip ones already present"]
+              ["./bin/mage docs-ensure-generated --verbose" "Print the stale source path + mtime that triggered each regen"]]
    :requires [[mage.docs :as docs]]
+   :options [[nil "--verbose" "Print which source file (and its mtime) made each artifact stale"]]
    :task (task! (docs/ensure-generated parsed))}
+
+  docs-clean-worktrees
+  {:doc "List or remove leftover __worktrees/docs-* directories from docs-build-branch runs"
+   :examples [["./bin/mage docs-clean-worktrees" "List leftover worktrees (dry-run)"]
+              ["./bin/mage docs-clean-worktrees --force" "Remove all leftover worktrees"]]
+   :requires [[mage.docs :as docs]]
+   :options [[nil "--force" "Actually remove the worktrees (default: list only)"]]
+   :task (task! (docs/clean-worktrees parsed))}
 
   jar-download
   {:doc "Download (and optionally run) jar for a metabase version or branch"

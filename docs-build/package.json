@@ -8,7 +8,7 @@
     "dev:clean": "pkill -f 'docs-build/node_modules/.bin/astro' || true",
     "build": "astro build",
     "preview": "astro preview",
-    "check": "astro check",
+    "check": "node scripts/validate-nav.mjs && astro check",
     "test": "node --test 'src/plugins/**/*.test.mjs'"
   },
   "dependencies": {
@@ -26,6 +26,7 @@
     "unist-util-visit": "^5.0.0"
   },
   "devDependencies": {
-    "@types/js-yaml": "^4.0.9"
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.8.0"
   }
 }
