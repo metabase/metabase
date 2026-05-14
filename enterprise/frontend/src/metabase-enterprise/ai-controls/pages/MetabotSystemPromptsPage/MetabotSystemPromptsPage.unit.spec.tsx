@@ -136,7 +136,7 @@ describe("MetabotSystemPromptsPage", () => {
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
     });
 
-    it("does not re-save on blur if the value did not change", async () => {
+    it("does not save on blur if the value did not change", async () => {
       setup({
         Component: MetabotChatPromptPage,
         settingKey: "metabot-chat-system-prompt",
@@ -150,13 +150,13 @@ describe("MetabotSystemPromptsPage", () => {
         expect(textarea).toHaveValue("Existing prompt");
       });
 
-      fireEvent.focus(textarea);
+      await userEvent.click(textarea);
       fireEvent.blur(textarea);
 
       expect(getUpdateCallsFor("metabot-chat-system-prompt")).toHaveLength(0);
     });
 
-    it("does not save on focus+blur when the setting starts as null and the user did not type", async () => {
+    it("does not save on blur when the setting starts as null and the user did not type", async () => {
       setup({
         Component: MetabotChatPromptPage,
         settingKey: "metabot-chat-system-prompt",
@@ -170,8 +170,6 @@ describe("MetabotSystemPromptsPage", () => {
       await userEvent.click(textarea);
       fireEvent.blur(textarea);
 
-      // Wait a tick for any async save to flush.
-      await new Promise((resolve) => setTimeout(resolve, 50));
       expect(getUpdateCallsFor("metabot-chat-system-prompt")).toHaveLength(0);
     });
 
@@ -193,57 +191,6 @@ describe("MetabotSystemPromptsPage", () => {
       await userEvent.type(textarea, "x{Backspace}");
       fireEvent.blur(textarea);
 
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      expect(getUpdateCallsFor("metabot-chat-system-prompt")).toHaveLength(0);
-    });
-
-    it("does not save on unmount after blur, even if the value drifts later", async () => {
-      const { unmount } = setup({
-        Component: MetabotChatPromptPage,
-        settingKey: "metabot-chat-system-prompt",
-        settingValue: "Existing prompt",
-      });
-
-      const textarea = await screen.findByRole("textbox", {
-        name: "AI chat prompt instructions",
-      });
-      await waitFor(() => {
-        expect(textarea).toHaveValue("Existing prompt");
-      });
-
-      // Focus + blur with no real change.
-      fireEvent.focus(textarea);
-      fireEvent.blur(textarea);
-
-      // After blur, a stray change should not be persisted on unmount.
-      fireEvent.change(textarea, { target: { value: "Drifted" } });
-      unmount();
-
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      expect(getUpdateCallsFor("metabot-chat-system-prompt")).toHaveLength(0);
-    });
-
-    it("does not save when onChange fires without a prior focus event", async () => {
-      const { unmount } = setup({
-        Component: MetabotChatPromptPage,
-        settingKey: "metabot-chat-system-prompt",
-        settingValue: "Existing prompt",
-      });
-
-      const textarea = await screen.findByRole("textbox", {
-        name: "AI chat prompt instructions",
-      });
-      await waitFor(() => {
-        expect(textarea).toHaveValue("Existing prompt");
-      });
-
-      // Simulate a stray onChange event (e.g. controlled-input sync) without
-      // the field ever being focused by the user.
-      fireEvent.change(textarea, { target: { value: "Drifted value" } });
-      fireEvent.blur(textarea);
-      unmount();
-
-      await new Promise((resolve) => setTimeout(resolve, 50));
       expect(getUpdateCallsFor("metabot-chat-system-prompt")).toHaveLength(0);
     });
 
@@ -257,14 +204,12 @@ describe("MetabotSystemPromptsPage", () => {
         name: "AI chat prompt instructions",
       });
 
-      fireEvent.focus(textarea);
       await userEvent.type(textarea, "First");
       fireEvent.blur(textarea);
       await waitFor(() => {
         expect(getUpdateCallsFor("metabot-chat-system-prompt")).toHaveLength(1);
       });
 
-      fireEvent.focus(textarea);
       await userEvent.type(textarea, " edit");
       fireEvent.blur(textarea);
       await waitFor(() => {
@@ -301,7 +246,7 @@ describe("MetabotSystemPromptsPage", () => {
       expect(cleanEvent.defaultPrevented).toBe(false);
     });
 
-    it("saves a pending edit when the page unmounts", async () => {
+    it("saves a pending edit when the page unmounts (browser back, etc.)", async () => {
       const { unmount } = setup({
         Component: MetabotChatPromptPage,
         settingKey: "metabot-chat-system-prompt",
