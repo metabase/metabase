@@ -5,7 +5,7 @@ import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getUserPersonalCollectionId } from "metabase/selectors/user";
+import { getUser, getUserPersonalCollectionId } from "metabase/selectors/user";
 import * as Urls from "metabase/urls/collections";
 import type { Collection, CollectionId } from "metabase-types/api";
 
@@ -49,9 +49,10 @@ export function useInitialCollectionId({
   );
 
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
-  const { data: rootCollection } = useGetCollectionQuery({
-    id: ROOT_COLLECTION.id,
-  });
+  const isAuthenticated = useSelector(getUser) != null;
+  const { data: rootCollection } = useGetCollectionQuery(
+    isAuthenticated ? { id: ROOT_COLLECTION.id } : skipToken,
+  );
 
   return useMemo(() => {
     const candidates = [
