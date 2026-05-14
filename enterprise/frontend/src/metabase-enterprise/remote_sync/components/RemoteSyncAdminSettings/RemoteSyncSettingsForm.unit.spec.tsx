@@ -728,7 +728,7 @@ describe("RemoteSyncSettingsForm", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText("Need a dedicated sandbox?"),
+          screen.getByText("Need a dedicated development environment?"),
         ).toBeInTheDocument();
       });
     });
@@ -741,7 +741,7 @@ describe("RemoteSyncSettingsForm", () => {
       });
 
       expect(
-        screen.queryByText("Need a dedicated sandbox?"),
+        screen.queryByText("Need a dedicated development environment?"),
       ).not.toBeInTheDocument();
     });
 
@@ -753,7 +753,7 @@ describe("RemoteSyncSettingsForm", () => {
       });
 
       expect(
-        screen.queryByText("Need a dedicated sandbox?"),
+        screen.queryByText("Need a dedicated development environment?"),
       ).not.toBeInTheDocument();
     });
   });
