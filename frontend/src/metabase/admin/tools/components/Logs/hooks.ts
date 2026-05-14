@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useMount, useUnmount } from "react-use";
 import { t } from "ttag";
 
-import { UtilApi } from "metabase/services";
+import { useLazyListLogsQuery } from "metabase/api/logger";
 import type { Log } from "metabase-types/api";
 
 import { maybeMergeLogs } from "./utils";
@@ -12,6 +12,8 @@ export function usePollingLogsQuery(pollingDurationMs: number) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<any>(null);
   const [logs, setLogs] = useState<Log[]>([]);
+
+  const [listLogs] = useLazyListLogsQuery();
 
   const isMountedRef = useRef(false);
   const isFetchingRef = useRef(false);
@@ -24,7 +26,7 @@ export function usePollingLogsQuery(pollingDurationMs: number) {
 
     try {
       isFetchingRef.current = true;
-      const newLogs: Log[] = await UtilApi.logs();
+      const newLogs = await listLogs().unwrap();
       if (isMountedRef.current) {
         setLoaded(true);
         setError(null);
