@@ -128,7 +128,7 @@
     {:results
      (cond-> []
        (accepted "card")
-       (into (->> (t2/select [:model/Card :id :name :description :display :collection_id :card_schema]
+       (into (->> (t2/select [:model/Card :id :name :description :display :collection_id :archived :card_schema]
                              {:where [:and
                                       [:= :archived false]
                                       [:or
@@ -159,7 +159,7 @@
                           (keep :card_id)
                           distinct)
             cards    (when (seq card-ids)
-                       (->> (t2/select [:model/Card :id :name :description :display :card_schema]
+                       (->> (t2/select [:model/Card :id :name :description :display :collection_id :archived :card_schema]
                                        :id [:in card-ids] :archived false)
                             (filter (fn [c] (try (api/read-check c) true (catch Exception _ false))))
                             (map card-summary)))]
@@ -168,7 +168,7 @@
 
 (defmethod run-tool "get_card"
   [_ {:keys [card_id]}]
-  (let [card (t2/select-one [:model/Card :id :name :description :display :result_metadata :card_schema]
+  (let [card (t2/select-one [:model/Card :id :name :description :display :collection_id :archived :result_metadata :card_schema]
                             :id card_id :archived false)]
     (if (or (nil? card) (try (api/read-check card) false (catch Exception _ true)))
       {:error "card not found or not readable"}
