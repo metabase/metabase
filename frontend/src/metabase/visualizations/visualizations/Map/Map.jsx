@@ -61,7 +61,7 @@ export class Map extends Component {
   static hasEmptyState = true;
 
   static settings = {
-    ...columnSettings({ hidden: true }),
+    ...columnSettings({ getHidden: () => true }),
     "map.type": {
       get title() {
         return t`Map type`;

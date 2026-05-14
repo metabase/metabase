@@ -390,6 +390,7 @@
   Returns false when tracking is disabled or any emission failed."
   [{:keys [library universe metabot meta]}]
   (let [base   {:event           :data_complexity_scoring
+                :batch_id        (str (random-uuid))
                 :formula_version (:formula-version meta)
                 :parameters      (parameters-map meta)}
         events (for [[catalog result] [[:library library] [:universe universe] [:metabot metabot]]

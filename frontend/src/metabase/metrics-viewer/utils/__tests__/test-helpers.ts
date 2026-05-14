@@ -2,7 +2,6 @@ import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
-import Metric from "metabase-lib/v1/metadata/Metric";
 import type { NormalizedMetric } from "metabase-types/api";
 import { createMockMeasure } from "metabase-types/api/mocks/measure";
 import {
@@ -112,11 +111,9 @@ export const GEO_DIM_IDX = {
 
 export function createMetricMetadata(metrics: NormalizedMetric[]): Metadata {
   const metadata = new Metadata();
-  metadata.metrics = {};
   for (const metric of metrics) {
-    const instance = new Metric(metric);
-    instance.metadata = metadata;
-    metadata.metrics[metric.id] = instance;
+    const { collection: _normalizedCollectionId, ...rest } = metric;
+    metadata.metrics[metric.id] = { ...rest, collection: null };
   }
   return metadata;
 }

@@ -5,11 +5,11 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
+import { isDefaultGroup } from "metabase/admin/utils/groups";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import CS from "metabase/css/core/index.css";
 import { FormSwitch } from "metabase/forms";
 import { Icon, Tooltip } from "metabase/ui";
-import { isDefaultGroup } from "metabase/utils/groups";
 import type { GroupId, GroupInfo } from "metabase-types/api";
 
 import AddMappingRow from "./AddMappingRow";

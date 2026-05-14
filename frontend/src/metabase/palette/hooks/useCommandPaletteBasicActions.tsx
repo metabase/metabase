@@ -5,11 +5,9 @@ import { push } from "react-router-redux";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import { skipToken, useSearchQuery } from "metabase/api";
 import { useInitialCollectionId } from "metabase/collections/hooks";
-import {
-  useDatabaseListQuery,
-  useSearchListQuery,
-} from "metabase/common/hooks";
+import { useDatabaseListQuery } from "metabase/common/hooks";
 import { trackMetricCreateStarted } from "metabase/data-studio/analytics";
 import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -66,10 +64,10 @@ export const useCommandPaletteBasicActions = ({
   const { data: databases = [] } = useDatabaseListQuery({
     enabled: isLoggedIn,
   });
-  const { data: models = [] } = useSearchListQuery({
-    query: { models: ["dataset"], limit: 1 },
-    enabled: isLoggedIn,
-  });
+  const { data: searchResults } = useSearchQuery(
+    isLoggedIn ? { models: ["dataset"], limit: 1 } : skipToken,
+  );
+  const hasModels = (searchResults?.data?.length ?? 0) > 0;
 
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
   const isAdmin = useSelector(getUserIsAdmin);
@@ -79,7 +77,6 @@ export const useCommandPaletteBasicActions = ({
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const hasDatabaseWithActionsEnabled =
     getHasDatabaseWithActionsEnabled(databases);
-  const hasModels = models.length > 0;
 
   const openNewModal = useCallback(
     (modalId: ModalName) => {
@@ -248,6 +245,8 @@ export const useCommandPaletteBasicActions = ({
     actions.push(
       {
         id: "navigate-user-settings",
+        section: "basic",
+        icon: "person",
         perform: () => dispatch(push("/account/profile")),
       },
       {
@@ -256,6 +255,8 @@ export const useCommandPaletteBasicActions = ({
       },
       {
         id: "navigate-home",
+        section: "basic",
+        icon: "home",
         perform: () => dispatch(push("/")),
       },
     );
@@ -263,6 +264,8 @@ export const useCommandPaletteBasicActions = ({
     if (hasDataStudioAccess) {
       actions.push({
         id: "navigate-data-studio",
+        section: "basic",
+        icon: "table",
         perform: () => dispatch(push("/data-studio")),
       });
     }
@@ -318,6 +321,7 @@ export const useCommandPaletteBasicActions = ({
     openActionModal.push({
       id: "create-action",
       name: t`New action`,
+      keywords: t`add action, create action`,
       section: "basic",
       icon: "bolt",
       perform: () => {

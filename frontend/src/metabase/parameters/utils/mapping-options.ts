@@ -4,7 +4,6 @@ import _ from "underscore";
 import { tag_names } from "cljs/metabase.parameters.shared";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
-import type { IconName } from "metabase/ui";
 import {
   isActionDashCard,
   isQuestionDashCard,
@@ -32,6 +31,7 @@ import type {
   BaseDashboardCard,
   Card,
   DimensionReference,
+  IconName,
   NativeParameterDimensionTarget,
   Parameter,
   ParameterTarget,

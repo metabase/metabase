@@ -35,7 +35,7 @@ Test and dev namespaces are available on the classpath — no manual setup neede
 
 ### Common Gotchas
 
-**Card creation**: Never use `t2/insert-returning-instance!` for `:model/Card` — it silently returns `nil` when internal pMBQL validation rejects the query format. Always use `./bin/mage -bot-api-call` or `mt/user-http-request` which give clear error messages on schema violations.
+**Card creation**: Never use `t2/insert-returning-instance!` for `:model/Card` — it silently returns `nil` when internal MBQL 5 validation rejects the query format. Always use `./bin/mage -bot-api-call` or `mt/user-http-request` which give clear error messages on schema violations.
 
 **Feature flag toggle**: `(t2/update! :model/Setting :key "enable-pivoted-filters" {:value "true"})` — may return `0` even when successful. Always verify with `(t2/select-one :model/Setting :key "enable-pivoted-filters")`.
 

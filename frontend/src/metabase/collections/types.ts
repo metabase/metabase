@@ -1,5 +1,4 @@
 import type { UploadMode } from "metabase/redux/store/upload";
-import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type {
   BookmarkId,
@@ -11,6 +10,7 @@ import type {
   CollectionItem,
   CollectionType,
   Dashboard,
+  IconName,
   TableId,
 } from "metabase-types/api";
 

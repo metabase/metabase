@@ -1,0 +1,1 @@
+export { CollectionPermissionsModal } from "./CollectionPermissionsModal";

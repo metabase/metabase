@@ -2,7 +2,8 @@ import cx from "classnames";
 import { Link } from "react-router";
 
 import CS from "metabase/css/core/index.css";
-import { Box, FixedSizeIcon, Group, type IconName } from "metabase/ui";
+import { Box, FixedSizeIcon, Group } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./GraphLink.module.css";
 

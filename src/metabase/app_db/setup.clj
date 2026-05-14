@@ -159,9 +159,10 @@
          (not (pos? (compare ((juxt :major :minor :patch) required-version)
                              [major minor patch]))))))
 
-(mu/defn- verify-db-connection
+(mu/defn verify-db-connection
   "Test connection to application database with `data-source` and throw an exception if we have any troubles
-  connecting."
+  connecting. Public so [[metabase.app-db.core/verify-application-db-connection!]] can call it from outside this
+  namespace; most callers should use that wrapper instead of invoking this directly."
   [db-type     :- :keyword
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   (log/info (u/format-color 'cyan "Verifying %s Database Connection ..." (name db-type)))

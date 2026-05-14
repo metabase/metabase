@@ -163,6 +163,25 @@ export const getEventDimensions = (
     });
   }
 
+  // Include any other breakout column whose value is present at this data point but isn't yet
+  // captured as a dimension — e.g. a scatterplot whose categorical breakout is not bound to the
+  // series/color in viz settings would otherwise drop that filter from "See these records" (#73803).
+  const alreadyAddedColumns = new Set(
+    dimensions.map((dimension) => dimension.column),
+  );
+  for (const dataKey of sameCardDataKeys) {
+    const column = chartModel.columnByDataKey[dataKey];
+    if (
+      column != null &&
+      column.source === "breakout" &&
+      !alreadyAddedColumns.has(column) &&
+      dataKey in datum
+    ) {
+      dimensions.push({ column, value: datum[dataKey] });
+      alreadyAddedColumns.add(column);
+    }
+  }
+
   return dimensions.filter(
     (dimension) => dimension.column.source !== "query-transform",
   );
@@ -842,10 +861,28 @@ export const getOtherSeriesTooltipModel = (
   };
 };
 
+const isMouseEventWithXAxis = (
+  event: EChartsSeriesMouseEvent,
+): event is EChartsSeriesMouseEvent<{ xAxis: string }> => {
+  return (
+    typeof event.data === "object" &&
+    event.data !== null &&
+    "xAxis" in event.data &&
+    typeof event.data.xAxis === "string" &&
+    event.data.xAxis.length > 0
+  );
+};
+
 export const getTimelineEventsForEvent = (
   timelineEventsModel: TimelineEventsModel,
   event: EChartsSeriesMouseEvent,
 ) => {
+  if (isMouseEventWithXAxis(event)) {
+    return timelineEventsModel.find(
+      (timelineEvents) => timelineEvents.date === event.data.xAxis,
+    )?.events;
+  }
+
   return timelineEventsModel.find(
     (timelineEvents) => timelineEvents.date === event.value,
   )?.events;

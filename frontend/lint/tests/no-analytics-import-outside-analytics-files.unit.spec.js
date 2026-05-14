@@ -10,7 +10,8 @@ const ruleTester = new RuleTester({
   },
 });
 
-const errorMessage = /is only allowed in files named "analytics"/;
+const errorMessage =
+  /is only allowed in files named "analytics" or inside an "analytics\/" directory/;
 
 const VALID_CASES = [
   // Non-restricted specifiers may be imported from the barrel anywhere.
@@ -42,6 +43,19 @@ const VALID_CASES = [
   {
     code: `import { trackSchemaEvent } from "metabase/analytics";`,
     filename: "/path/to/analytics.jsx",
+  },
+  // Restricted specifiers are fine in files inside an analytics/ directory.
+  {
+    code: `import { trackSchemaEvent } from "metabase/analytics";`,
+    filename: "frontend/src/metabase/common/analytics/homepage.ts",
+  },
+  {
+    code: `import { trackSimpleEvent } from "metabase/analytics";`,
+    filename: "frontend/src/metabase/common/analytics/index.ts",
+  },
+  {
+    code: `import { trackSchemaEvent } from "metabase/analytics";`,
+    filename: "frontend/src/metabase/common/analytics/subdir/file.ts",
   },
   // Imports of other modules are unaffected.
   {
