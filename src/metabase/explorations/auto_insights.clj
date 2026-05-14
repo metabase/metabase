@@ -183,17 +183,19 @@
 
 (defn create-placeholder-doc!
   "Insert a fresh `Automatic Insights` document on `thread-id` owned by
-  `creator-id`, populated with the `Analysis underway…` placeholder. Caller
-  must establish a current-user binding. The doc is created up-front by the
-  exploration POST endpoint so the FE sidebar shows it immediately; the
-  later `write-document!` in this namespace updates it in place."
-  [thread-id creator-id]
+  `creator-id`, populated with the `Analysis underway…` placeholder. The doc's
+  `collection_id` mirrors the parent Exploration's so perms stay aligned.
+  Caller must establish a current-user binding. The doc is created up-front
+  by the exploration POST endpoint so the FE sidebar shows it immediately;
+  the later `write-document!` in this namespace updates it in place."
+  [thread-id creator-id collection-id]
   (let [doc (first
              (t2/insert-returning-instances! :model/Document
                                              {:name                  auto-doc-name
                                               :document              (placeholder-pm-doc)
                                               :content_type          prose-mirror/prose-mirror-content-type
                                               :creator_id            creator-id
+                                              :collection_id         collection-id
                                               :exploration_thread_id thread-id}))]
     (t2/update! :model/ExplorationThread thread-id
                 {:auto_insights_document_id (:id doc)})
@@ -511,7 +513,7 @@
                                   :id thread-id)]
         (if (nil? thread)
           (do (log/warnf "Thread %d not found" thread-id) nil)
-          (let [exploration  (t2/select-one [:model/Exploration :creator_id]
+          (let [exploration  (t2/select-one [:model/Exploration :creator_id :collection_id]
                                             :id (:exploration_id thread))
                 done-queries (->> (t2/hydrate
                                    (t2/select :model/ExplorationQuery
@@ -557,9 +559,10 @@
               ;; before the endpoint started pre-creating it, fall back to
               ;; creating one here so old data still works.
               (let [creator-id (:creator_id exploration)
+                    coll-id    (:collection_id exploration)
                     placeholder-doc (or (find-placeholder-doc thread-id)
                                         (request/with-current-user creator-id
-                                          (create-placeholder-doc! thread-id creator-id)))
+                                          (create-placeholder-doc! thread-id creator-id coll-id)))
                     curation-prompt (phase1/build-curation-prompt
                                      {:thread-prompt     (:prompt thread)
                                       :selections        selections

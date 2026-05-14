@@ -100,6 +100,31 @@
                      (set (map :id (:data archived-results))))
                   "User with write permissions should see archived documents in accessible collections"))))))))
 
+(deftest thread-attached-document-search-exclusion-test
+  (testing "Documents attached to an exploration thread are excluded from search"
+    (let [tag (mt/random-name)]
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/User u {}
+                       :model/Exploration       e   {:name "expl" :creator_id (:id u)}
+                       :model/ExplorationThread th  {:exploration_id (:id e) :position 0}
+                       :model/Document          thread-doc {:name (str tag "-thread")
+                                                            :document (text->prose-mirror-ast "")
+                                                            :creator_id (:id u)
+                                                            :exploration_thread_id (:id th)}
+                       :model/Document          standalone {:name (str tag "-standalone")
+                                                            :document (text->prose-mirror-ast "")
+                                                            :creator_id (:id u)}]
+          (let [results (mt/user-http-request :crowberto :get 200 "search" :q tag :models "document")
+                ids    (set (map :id (:data results)))]
+            (is (contains? ids (u/the-id standalone))
+                "Standalone document should appear")
+            (is (not (contains? ids (u/the-id thread-doc)))
+                "Thread-attached document should NOT appear"))
+          (testing "result rows don't leak the internal :exploration_thread_id column"
+            (let [results (mt/user-http-request :crowberto :get 200 "search" :q tag :models "document")]
+              (is (every? (complement #(contains? % :exploration_thread_id))
+                          (:data results))))))))))
+
 (deftest document-view-tracking-integration-test
   (testing "Document view tracking integrates with search"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Viewed Document"

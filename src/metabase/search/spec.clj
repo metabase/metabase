@@ -93,6 +93,7 @@
    :dashboard-id            :int
    :dashboardcard-count     :int
    :database-id             :pk
+   :exploration-thread-id   :int
    :id                      :text
    :last-edited-at          :timestamp
    :last-editor-id          :pk
@@ -126,6 +127,7 @@
          :official-collection
          :dashboard-id
          :dashboardcard-count
+         :exploration-thread-id
          :last-viewed-at
          :pinned
          :verified                                          ;;  in addition to being a filter, this is also a ranker

@@ -129,6 +129,7 @@
    :attrs {:archived true
            :collection-id :collection_id
            :creator-id :creator_id
+           :exploration-thread-id :exploration_thread_id
            :view-count :view_count
            :created-at :created_at
            :updated-at :updated_at

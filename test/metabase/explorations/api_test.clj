@@ -1224,70 +1224,75 @@
             (is (= 0.4 (-> scores first :interestingness_score)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                       PUT /api/exploration/:id (publish/move)                                  |
+;;; |                                       PUT /api/exploration/:id (move)                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest exploration-put-updates-metadata-test
-  (testing "PUT /:id updates name/description/archived for the creator"
+  (testing "PUT /:id updates name/description for the creator"
     (mt/with-temp [:model/Exploration e {:name "old" :creator_id (mt/user->id :rasta)}]
       (let [resp (mt/user-http-request :rasta :put 200 (format "exploration/%d" (:id e))
                                        {:name "new" :description "yo"})]
         (is (= "new" (:name resp)))
-        (is (= "yo"  (:description resp)))
-        (is (false? (:is_published resp)))))))
+        (is (= "yo"  (:description resp)))))))
 
-(deftest exploration-put-publish-to-collection-test
-  (testing "PUT /:id can publish an unpublished exploration to a collection the caller can write"
+(deftest exploration-put-move-to-collection-test
+  (testing "PUT /:id can move an exploration into a collection the caller can write"
     (mt/with-temp [:model/Collection c {}
-                   :model/Exploration e {:name "to-publish" :creator_id (mt/user->id :rasta)}]
+                   :model/Exploration e {:name "to-move" :creator_id (mt/user->id :rasta)}]
       (mt/with-non-admin-groups-no-collection-perms (:id c)
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) c)
         (let [resp (mt/user-http-request :rasta :put 200 (format "exploration/%d" (:id e))
-                                         {:collection_id (:id c) :is_published true})]
-          (is (true? (:is_published resp)))
+                                         {:collection_id (:id c)})]
           (is (= (:id c) (:collection_id resp))))))))
 
-(deftest exploration-put-publish-requires-write-on-destination-test
-  (testing "PUT /:id publish refuses when caller lacks write on the destination collection"
+(deftest exploration-put-move-requires-write-on-destination-test
+  (testing "PUT /:id move refuses when caller lacks write on the destination collection"
     (mt/with-temp [:model/Collection c {}
                    :model/Exploration e {:name "no-dest" :creator_id (mt/user->id :rasta)}]
       (mt/with-non-admin-groups-no-collection-perms (:id c)
         (mt/user-http-request :rasta :put 403 (format "exploration/%d" (:id e))
-                              {:collection_id (:id c) :is_published true})))))
+                              {:collection_id (:id c)})))))
 
 (deftest exploration-put-move-requires-write-on-source-collection-test
-  (testing "Moving a published exploration requires the caller to write the source collection."
+  (testing "Moving an exploration in a shared collection requires write on the source collection."
     (mt/with-temp [:model/Collection src  {}
                    :model/Collection dest {}
                    :model/Exploration e   {:name          "needs-src"
                                            :creator_id    (mt/user->id :rasta)
-                                           :collection_id (:id src)
-                                           :is_published  true}]
+                                           :collection_id (:id src)}]
       (mt/with-non-admin-groups-no-collection-perms (:id src)
         (mt/with-non-admin-groups-no-collection-perms (:id dest)
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest)
-          ;; user has dest write but no src perms — write-check on the published exploration
+          ;; user has dest write but no src perms — write-check on the exploration
           ;; (which goes through src collection perms) fails first.
           (mt/user-http-request :rasta :put 403 (format "exploration/%d" (:id e))
                                 {:collection_id (:id dest)}))))))
 
-(deftest exploration-put-unpublish-test
-  (testing "PUT /:id with is_published=false reverts the exploration to creator-only access."
-    ;; Use crowberto (admin) as the unpublisher so the test is decoupled from the
-    ;; "published-exploration writes go through collection perms" behavior.
-    (mt/with-temp [:model/Collection c   {}
-                   :model/Exploration e  {:name          "unpub"
-                                          :creator_id    (mt/user->id :crowberto)
-                                          :collection_id (:id c)
-                                          :is_published  true}]
-      (mt/with-non-admin-groups-no-collection-perms (:id c)
-        (perms/grant-collection-read-permissions! (perms-group/all-users) c)
-        (testing "before unpublish, rasta (collection-read) can see the exploration"
-          (mt/user-http-request :rasta :get 200 (format "exploration/%d" (:id e))))
-        (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
-                              {:is_published false})
-        (testing "after unpublish, rasta (non-creator) gets 403"
-          (mt/user-http-request :rasta :get 403 (format "exploration/%d" (:id e))))))))
+(deftest exploration-put-cascades-collection-id-to-thread-documents-test
+  (testing "Moving an exploration rewrites :collection_id on every doc attached to its threads."
+    (mt/with-temp [:model/Collection src  {}
+                   :model/Collection dest {}
+                   :model/Exploration e   {:name          "cascade"
+                                           :creator_id    (mt/user->id :crowberto)
+                                           :collection_id (:id src)}
+                   :model/ExplorationThread t1 {:exploration_id (:id e) :position 0}
+                   :model/ExplorationThread t2 {:exploration_id (:id e) :position 1}
+                   :model/Document d1 {:name "doc-on-t1"
+                                       :document {:type "doc" :content []}
+                                       :content_type "application/json+vnd.prose-mirror"
+                                       :creator_id (mt/user->id :crowberto)
+                                       :collection_id (:id src)
+                                       :exploration_thread_id (:id t1)}
+                   :model/Document d2 {:name "doc-on-t2"
+                                       :document {:type "doc" :content []}
+                                       :content_type "application/json+vnd.prose-mirror"
+                                       :creator_id (mt/user->id :crowberto)
+                                       :collection_id (:id src)
+                                       :exploration_thread_id (:id t2)}]
+      (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
+                            {:collection_id (:id dest)})
+      (is (= (:id dest) (t2/select-one-fn :collection_id :model/Document :id (:id d1))))
+      (is (= (:id dest) (t2/select-one-fn :collection_id :model/Document :id (:id d2)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Routed-database creation block                                          |

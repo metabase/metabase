@@ -1,6 +1,7 @@
 (ns metabase.explorations.models.exploration
   (:require
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.search.spec :as search.spec]
    [methodical.core :as methodical]
@@ -10,35 +11,20 @@
 
 (doto :model/Exploration
   (derive :metabase/model)
-  ;; When `is_published` is true, read/write are granted via the parent collection's perms (with
-  ;; `collection_id = NULL` meaning the root collection). When false, the exploration is private
-  ;; to its creator and `mi/can-read?` / `mi/can-write?` short-circuit to `mine?` below.
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(defn- mine?
-  [{:keys [creator_id]}]
-  (or api/*is-superuser?*
-      (= creator_id api/*current-user-id*)))
-
-(defmethod mi/can-read? :model/Exploration
-  ([{:keys [is_published] :as instance}]
-   (if is_published
-     (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :read))
-     (mine? instance)))
-  ([_model pk]
-   (when-let [expl (t2/select-one [:model/Exploration :creator_id :collection_id :is_published] :id pk)]
-     (mi/can-read? expl))))
-
-(defmethod mi/can-write? :model/Exploration
-  ([{:keys [is_published] :as instance}]
-   (if is_published
-     (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))
-     (mine? instance)))
-  ([_model pk]
-   (when-let [expl (t2/select-one [:model/Exploration :creator_id :collection_id :is_published] :id pk)]
-     (mi/can-write? expl))))
+(t2/define-before-insert :model/Exploration
+  [exploration]
+  ;; Default collection_id to the creator's Personal Collection so a brand-new
+  ;; exploration is private to its creator. Callers may pass a `:collection_id`
+  ;; explicitly (including `nil` for the root collection) to override.
+  (cond-> exploration
+    (not (contains? exploration :collection_id))
+    (assoc :collection_id (some-> (or (:creator_id exploration) api/*current-user-id*)
+                                  collection/user->personal-collection
+                                  :id))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Exploration :creator]
   [_model k explorations]
@@ -69,7 +55,6 @@
            :creator-id :creator_id
            :created-at :created_at
            :updated-at :updated_at
-           :is-published :is_published
            :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
    :search-terms [:name :description]
    :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}

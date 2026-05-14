@@ -1,7 +1,7 @@
 (ns metabase.explorations.models.exploration-test
   (:require
    [clojure.test :refer :all]
-   [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -16,35 +16,50 @@
       (is (some? (:created_at e)))
       (is (some? (:updated_at e))))))
 
-(deftest exploration-can-read-write-test
-  (mt/with-temp [:model/User owner {}
-                 :model/User other {}
-                 :model/Exploration e {:name "x" :creator_id (:id owner)}]
-    (testing "owner can read and write"
-      (binding [api/*current-user-id* (:id owner) api/*is-superuser?* false]
-        (is (true? (mi/can-read?  :model/Exploration (:id e))))
-        (is (true? (mi/can-write? :model/Exploration (:id e))))))
-    (testing "other user cannot read or write"
-      (binding [api/*current-user-id* (:id other) api/*is-superuser?* false]
-        (is (false? (mi/can-read?  :model/Exploration (:id e))))
-        (is (false? (mi/can-write? :model/Exploration (:id e))))))
-    (testing "superuser can read and write"
-      (binding [api/*current-user-id* (:id other) api/*is-superuser?* true]
-        (is (true? (mi/can-read?  :model/Exploration (:id e))))
-        (is (true? (mi/can-write? :model/Exploration (:id e))))))))
+(deftest exploration-defaults-collection-id-to-personal-collection-test
+  (testing "before-insert hook defaults :collection_id to the creator's Personal Collection"
+    (mt/with-temp [:model/User u {}
+                   :model/Exploration e {:name "x" :creator_id (:id u)}]
+      (is (= (:id (collection/user->personal-collection (:id u)))
+             (:collection_id e)))))
+  (testing "explicit :collection_id is respected (including nil for root)"
+    (mt/with-temp [:model/User       u {}
+                   :model/Collection c {}
+                   :model/Exploration explicit  {:name "y" :creator_id (:id u) :collection_id (:id c)}
+                   :model/Exploration root-expl {:name "z" :creator_id (:id u) :collection_id nil}]
+      (is (= (:id c) (:collection_id explicit)))
+      (is (nil? (:collection_id root-expl))))))
+
+(deftest exploration-in-personal-collection-is-creator-only-test
+  (testing "default-placed exploration (creator's Personal Collection) is private to creator + admins"
+    (mt/with-temp [:model/User owner {}
+                   :model/User other {}
+                   :model/Exploration e {:name "x" :creator_id (:id owner)}]
+      (testing "owner can read and write"
+        (mt/with-current-user (:id owner)
+          (is (true? (mi/can-read?  :model/Exploration (:id e))))
+          (is (true? (mi/can-write? :model/Exploration (:id e))))))
+      (testing "other user cannot read or write"
+        (mt/with-current-user (:id other)
+          (is (false? (mi/can-read?  :model/Exploration (:id e))))
+          (is (false? (mi/can-write? :model/Exploration (:id e))))))
+      (testing "superuser can read and write"
+        (mt/with-test-user :crowberto
+          (is (true? (mi/can-read?  :model/Exploration (:id e))))
+          (is (true? (mi/can-write? :model/Exploration (:id e)))))))))
 
 (deftest exploration-thread-perms-delegate-to-exploration-test
   (mt/with-temp [:model/User owner {}
                  :model/User other {}
                  :model/Exploration e {:name "x" :creator_id (:id owner)}
                  :model/ExplorationThread t {:exploration_id (:id e)}]
-    (binding [api/*current-user-id* (:id owner) api/*is-superuser?* false]
+    (mt/with-current-user (:id owner)
       (is (true? (mi/can-read? :model/ExplorationThread (:id t)))))
-    (binding [api/*current-user-id* (:id other) api/*is-superuser?* false]
+    (mt/with-current-user (:id other)
       (is (false? (mi/can-read? :model/ExplorationThread (:id t)))))))
 
-(deftest published-exploration-uses-collection-perms-test
-  (testing "When is_published is true, can-read?/can-write? defer to the parent collection's perms."
+(deftest exploration-in-shared-collection-uses-collection-perms-test
+  (testing "When an exploration lives in a shared collection, can-read?/can-write? use that collection's perms."
     (mt/with-temp [:model/User       owner    {}
                    :model/Card       card     {:type          :metric
                                                :creator_id    (:id owner)
@@ -52,8 +67,7 @@
                    :model/Collection coll     {}
                    :model/Exploration e       {:name          "shared"
                                                :creator_id    (:id owner)
-                                               :collection_id (:id coll)
-                                               :is_published  true}
+                                               :collection_id (:id coll)}
                    :model/ExplorationThread t {:exploration_id (:id e)}
                    :model/ExplorationQuery  q {:exploration_thread_id (:id t)
                                                :card_id      (:id card)
@@ -81,31 +95,12 @@
             (is (true? (mi/can-write? :model/ExplorationThread (:id t))))
             (is (true? (mi/can-write? :model/ExplorationQuery (:id q))))))))))
 
-(deftest unpublished-exploration-stays-creator-only-test
-  (testing "is_published=false ignores collection_id and stays creator/admin only."
-    (mt/with-temp [:model/User       owner {}
-                   :model/Collection coll  {}
-                   :model/Exploration e   {:name          "private"
-                                           :creator_id    (:id owner)
-                                           :collection_id (:id coll)
-                                           :is_published  false}]
-      (mt/with-non-admin-groups-no-collection-perms (:id coll)
-        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll)
-        (binding [api/*current-user-id* (:id owner) api/*is-superuser?* false]
-          (is (true? (mi/can-read?  :model/Exploration (:id e))))
-          (is (true? (mi/can-write? :model/Exploration (:id e)))))
-        (testing "rasta has full collection perms but still cannot read — exploration is unpublished"
-          (mt/with-test-user :rasta
-            (is (false? (mi/can-read?  :model/Exploration (:id e))))
-            (is (false? (mi/can-write? :model/Exploration (:id e))))))))))
-
-(deftest published-exploration-in-root-collection-uses-root-perms-test
-  (testing "is_published=true + collection_id=NULL → root collection perms apply."
+(deftest exploration-in-root-collection-uses-root-perms-test
+  (testing "collection_id=NULL → root collection perms apply."
     (mt/with-temp [:model/User       owner {}
                    :model/Exploration e   {:name          "root-shared"
                                            :creator_id    (:id owner)
-                                           :collection_id nil
-                                           :is_published  true}]
+                                           :collection_id nil}]
       (mt/with-non-admin-groups-no-root-collection-perms
         (testing "no root perms → cannot read"
           (mt/with-test-user :rasta

@@ -33,25 +33,30 @@
 (defn- get-exploration-or-404 [id]
   (api/check-404 (t2/select-one :model/Exploration :id id)))
 
-(defn- check-publish-perms!
-  "When `updates` publishes the exploration or moves it to a different collection, verify the
-  current user has write perms on the destination (collection or root). Source-side perms are
-  already enforced by the parent `api/write-check` against the exploration itself, which —
-  via `:perms/use-parent-collection-perms` — requires write on the source collection when the
-  exploration is currently published."
-  [{old-published :is_published old-coll :collection_id} updates]
-  (let [coll-changing? (contains? updates :collection_id)
-        new-coll       (if coll-changing? (:collection_id updates) old-coll)
-        new-published  (if (contains? updates :is_published)
-                         (:is_published updates)
-                         old-published)
-        publishing?    (and new-published (or (not old-published) coll-changing?))]
-    (when publishing?
+(defn- check-destination-collection-perms!
+  "When `updates` moves the exploration to a different `collection_id`, verify the current
+  user has write perms on the destination (collection or root). Source-side perms are already
+  enforced by the parent `api/write-check` against the exploration itself, which via
+  `:perms/use-parent-collection-perms` requires write on the source collection."
+  [{old-coll :collection_id} updates]
+  (when (and (contains? updates :collection_id)
+             (not= old-coll (:collection_id updates)))
+    (let [new-coll (:collection_id updates)]
       (when new-coll
         (api/check-400 (t2/exists? :model/Collection :id new-coll :archived false)))
       (if new-coll
         (api/write-check :model/Collection new-coll)
         (api/write-check collection/root-collection)))))
+
+(defn- cascade-collection-id-to-thread-documents!
+  "Propagate an Exploration's new `collection_id` to all documents attached to its threads.
+  Mirrors the dashboard-question cascade in `dashboards_rest/api.clj`."
+  [exploration-id new-coll-id]
+  (t2/update! :model/Document
+              :exploration_thread_id [:in {:select [:id]
+                                           :from   [:exploration_thread]
+                                           :where  [:= :exploration_id exploration-id]}]
+              {:collection_id new-coll-id}))
 
 (defn- find-dimension-target
   "Look up the MBQL `target` for a dimension by ID inside a metric's snapshotted dimension_mappings."
@@ -392,7 +397,6 @@
    [:creator_id    ms/PositiveInt]
    [:creator       {:optional true} [:maybe :map]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-   [:is_published  :boolean]
    [:archived      {:optional true} :boolean]
    [:threads       {:optional true} [:maybe [:sequential ::HydratedThread]]]
    [:created_at    {:optional true} [:maybe :any]]
@@ -410,14 +414,12 @@
 (def ^:private UpdateExploration
   "Body schema for `PUT /api/exploration/:id`. All fields are optional; only the keys the client
   actually includes are forwarded to the underlying `t2/update!`. `collection_id` may be `nil`
-  to publish to the root collection. Setting `is_published` to false reverts the exploration to
-  creator-only access."
+  to move the exploration to the root collection (\"Our Analytics\")."
   [:map
    [:name          {:optional true} ms/NonBlankString]
    [:description   {:optional true} [:maybe :string]]
    [:archived      {:optional true} :boolean]
-   [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-   [:is_published  {:optional true} :boolean]])
+   [:collection_id {:optional true} [:maybe ms/PositiveInt]]])
 
 ;;; ----------------------------------------- /dimensions schemas + helpers -----------------------------------------
 
@@ -466,6 +468,7 @@
                                                              {:name        name
                                                               :description description
                                                               :creator_id  api/*current-user-id*}))
+          coll-id     (:collection_id exploration)
           thread      (first (t2/insert-returning-instances! :model/ExplorationThread
                                                              {:exploration_id (:id exploration)
                                                               :prompt         prompt
@@ -476,8 +479,9 @@
                                    :document              {:type "doc" :content []}
                                    :content_type          documents/prose-mirror-content-type
                                    :creator_id            api/*current-user-id*
+                                   :collection_id         coll-id
                                    :exploration_thread_id tid})
-          _           (auto-insights/create-placeholder-doc! tid api/*current-user-id*)
+          _           (auto-insights/create-placeholder-doc! tid api/*current-user-id* coll-id)
           metric-rows (when (seq metrics)
                         (t2/insert-returning-instances!
                          :model/ExplorationThreadMetric
@@ -519,25 +523,28 @@
     (hydrate-exploration expl)))
 
 (api.macros/defendpoint :put "/:id" :- ::HydratedExploration
-  "Update an exploration's metadata, archive state, or publish/move it to a collection.
+  "Update an exploration's metadata, archive state, or move it to a different collection.
 
-  Publish semantics:
-    - `is_published=true` + `collection_id=N`     → published in collection N
-    - `is_published=true` + `collection_id=null`  → published in the root collection
-    - `is_published=false`                        → unpublished (creator-only)
+  When `collection_id` changes, the caller must have write perms on the destination collection
+  (or the root collection when `collection_id` is nil). Source perms are enforced by
+  `api/write-check` against the exploration itself via `:perms/use-parent-collection-perms`.
 
-  When publishing or moving, the caller must have write perms on the destination collection
-  (or the root collection). Source perms are enforced by `api/write-check` against the
-  exploration itself."
+  Moving an exploration cascades the new `collection_id` onto every document attached to its
+  threads, keeping doc permissions in sync with the parent exploration's."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    updates :- UpdateExploration]
   (let [existing (get-exploration-or-404 id)
-        updates' (api/updates-with-archived-directly existing updates)]
+        updates' (api/updates-with-archived-directly existing updates)
+        moving?  (and (contains? updates' :collection_id)
+                      (not= (:collection_id existing) (:collection_id updates')))]
     (api/write-check existing)
-    (check-publish-perms! existing updates')
-    (when (seq updates')
-      (t2/update! :model/Exploration id updates'))
+    (check-destination-collection-perms! existing updates')
+    (t2/with-transaction [_]
+      (when (seq updates')
+        (t2/update! :model/Exploration id updates'))
+      (when moving?
+        (cascade-collection-id-to-thread-documents! id (:collection_id updates'))))
     (hydrate-exploration (t2/select-one :model/Exploration :id id))))
 
 (def ^:private query-summary-columns

@@ -39,16 +39,9 @@ databaseChangeLog:
               - column:
                   name: collection_id
                   type: int
-                  remarks: Collection this exploration is published to. NULL means unpublished, or — when is_published is true — the root collection.
+                  remarks: Collection this exploration lives in. NULL means the root collection ("Our Analytics"). New explorations default to their creator's Personal Collection.
                   constraints:
                     nullable: true
-              - column:
-                  name: is_published
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  remarks: When true, the exploration is shared via collection permissions. When false, only the creator (or admins) can read/write it.
-                  constraints:
-                    nullable: false
               - column:
                   name: archived
                   type: ${boolean.type}

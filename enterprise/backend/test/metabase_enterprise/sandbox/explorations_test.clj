@@ -1,8 +1,8 @@
 (ns metabase-enterprise.sandbox.explorations-test
   "Tests that the result-access gate on `GET /api/exploration/query/:id` correctly blocks
-  cached-blob streaming for sandboxed, impersonated, and data-perm-deficient viewers of a
-  published exploration. Metadata access (via collection perms) stays open in the same
-  scenarios."
+  cached-blob streaming for sandboxed, impersonated, and data-perm-deficient viewers of an
+  exploration in a shared collection. Metadata access (via collection perms) stays open in
+  the same scenarios."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
@@ -13,11 +13,10 @@
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
-(defn- with-published-exploration!
-  "Create a published exploration with one pending ExplorationQuery against the venues table,
-  inside a collection, and call `f` with `{:exploration ... :query ... :collection ...}`. The
-  query is left in `status=\"pending\"` and has no cached `result_data` row, so the API
-  returns:
+(defn- with-shared-exploration!
+  "Create an exploration in a shared collection with one pending ExplorationQuery against the
+  venues table, and call `f` with `{:exploration ... :query ... :collection ...}`. The query
+  is left in `status=\"pending\"` and has no cached `result_data` row, so the API returns:
     - 403 when the result-access gate denies (sandbox, impersonation, or missing data perms)
     - 409 (pending status payload) when the gate allows
   This makes the per-scenario assertions straightforward."
@@ -31,8 +30,7 @@
                                            :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
                  :model/Exploration e   {:name          "shared"
                                          :creator_id    (:id owner)
-                                         :collection_id (:id coll)
-                                         :is_published  true}
+                                         :collection_id (:id coll)}
                  :model/ExplorationThread th {:exploration_id (:id e)}
                  :model/ExplorationQuery  q  {:exploration_thread_id (:id th)
                                               :card_id      (:id metric)
@@ -42,7 +40,7 @@
     (f {:exploration e :query q :collection coll :owner owner})))
 
 (deftest sandboxed-viewer-blocked-from-cached-result-test
-  (with-published-exploration!
+  (with-shared-exploration!
     (fn [{:keys [exploration query collection]}]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
       (met/with-gtaps-for-user! :rasta {:gtaps {:venues {}}}
@@ -52,7 +50,7 @@
           (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query))))))))
 
 (deftest impersonated-viewer-blocked-from-cached-result-test
-  (with-published-exploration!
+  (with-shared-exploration!
     (fn [{:keys [exploration query collection]}]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
       ;; Impersonation is only "enforced" for a user when they don't ALSO have non-impersonated
@@ -70,7 +68,7 @@
             (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query)))))))))
 
 (deftest viewer-without-data-perms-blocked-from-cached-result-test
-  (with-published-exploration!
+  (with-shared-exploration!
     (fn [{:keys [exploration query collection]}]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
       (mt/with-no-data-perms-for-all-users!
@@ -80,7 +78,7 @@
           (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query))))))))
 
 (deftest viewer-with-perms-and-no-sandbox-passes-gate-test
-  (with-published-exploration!
+  (with-shared-exploration!
     (fn [{:keys [query collection]}]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
       (testing "no sandbox + has data perms → gate passes; pending query returns 409 status"

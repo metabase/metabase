@@ -448,7 +448,10 @@
                  [:and
                   [:= :document.collection_id (:id collection)]
                   [:= :document.archived_directly false]])
-               [:= :document.archived (boolean archived?)]]}
+               [:= :document.archived (boolean archived?)]
+               ;; Hide thread-attached documents - similar to Dashboard Questions, they're not visible in the
+               ;; collection, but only through the Exploration they're in.
+               [:= :document.exploration_thread_id nil]]}
       (sql.helpers/where (pinned-state->clause pinned-state :document.collection_position))))
 
 (defmethod ^:private post-process-collection-children :exploration
@@ -481,8 +484,7 @@
                  [:and
                   [:= :exploration.collection_id (:id collection)]
                   [:= :exploration.archived_directly false]])
-               [:= :exploration.archived (boolean archived?)]
-               [:= :exploration.is_published true]]}
+               [:= :exploration.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state :exploration.collection_position))))
 
 (defmethod collection-children-query :pulse
