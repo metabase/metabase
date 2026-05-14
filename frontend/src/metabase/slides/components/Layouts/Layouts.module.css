@@ -1,82 +1,96 @@
+/* Inter is required — Metabase doesn't ship it by default. */
+@import "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap";
+
 /* ──────────────────────────────────────────────────────────────────────────
-   Shared canvas + accent palettes
+   Design tokens — every layout reads from these vars so future themes are a
+   one-file change.
    ────────────────────────────────────────────────────────────────────────── */
 
 .canvas {
+  --slide-font-family:
+    Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --slide-ink: #0b0d12;
+  --slide-ink-soft: #475569;
+  --slide-ink-mute: #94a3b8;
+  --slide-bg: #fff;
+  --slide-card: #fff;
+  --slide-stroke: #e2e8f0;
+  --slide-accent-1: #6f43ff;
+  --slide-accent-2: #b042ff;
+  --slide-accent-soft: #f3eeff;
+
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  color: #0f172a;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
-}
-
-.eyebrow {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: #64748b;
+  font-family: var(--slide-font-family);
+  font-feature-settings:
+    "ss01" on,
+    "cv11" on;
+  color: var(--slide-ink);
+  letter-spacing: -0.005em;
+  background: var(--slide-bg);
 }
 
 .title {
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.05;
   margin: 0;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  line-height: 1.04;
+  color: var(--slide-ink);
 }
 
 .subtitle {
-  color: #475569;
-  line-height: 1.35;
   margin: 0;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--slide-ink-soft);
 }
 
-/* Caption under a chart */
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--slide-accent-1);
+}
+
 .caption {
-  color: #475569;
-  font-size: 15px;
+  color: var(--slide-ink-soft);
+  font-size: 14.5px;
+  font-weight: 400;
   line-height: 1.5;
   max-width: 78ch;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
-   Cover layout
+   Cover
    ────────────────────────────────────────────────────────────────────────── */
 
 .cover {
+  --slide-ink: #fff;
+  --slide-ink-soft: rgba(255, 255, 255, 0.86);
+
+  padding: 88px 96px;
   align-items: flex-start;
   justify-content: center;
-  padding: 80px 96px;
-  color: white;
 }
 
 .cover .title {
-  color: white;
-  font-size: 92px;
-  text-shadow: 0 4px 32px rgba(0, 0, 0, 0.18);
+  font-size: 96px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
   max-width: 18ch;
+  text-shadow: 0 4px 36px rgba(0, 0, 0, 0.16);
 }
 
 .cover .subtitle {
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 28px;
-  margin-top: 32px;
+  font-size: 26px;
+  font-weight: 500;
+  margin-top: 28px;
   max-width: 36ch;
-}
-
-.coverDecoration {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.cover > * {
-  position: relative;
-  z-index: 1;
 }
 
 .accentViolet {
@@ -108,55 +122,58 @@
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
-   Closing layout
+   Closing
    ────────────────────────────────────────────────────────────────────────── */
 
 .closing {
+  --slide-ink: #fff;
+  --slide-ink-soft: rgba(255, 255, 255, 0.68);
+
+  background: radial-gradient(
+    ellipse at center,
+    #1b2030 0%,
+    #0d1019 70%,
+    #050608 100%
+  );
   align-items: center;
   justify-content: center;
   text-align: center;
   padding: 96px;
-  background: radial-gradient(
-    ellipse at center,
-    #20253a 0%,
-    #0d1019 80%,
-    #050608 100%
-  );
-  color: white;
 }
 
 .closing .title {
-  color: white;
-  font-size: 84px;
+  font-size: 82px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
   max-width: 22ch;
 }
 
 .closing .subtitle {
-  color: rgba(255, 255, 255, 0.65);
-  font-size: 26px;
-  margin-top: 24px;
+  font-size: 25px;
+  margin-top: 26px;
   max-width: 40ch;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
-   Bullets layout
+   Bullets
    ────────────────────────────────────────────────────────────────────────── */
 
 .bullets {
   padding: 88px 112px;
-  gap: 24px;
-  background: linear-gradient(180deg, #fff 0%, #fafafe 100%);
+  gap: 20px;
+  background:
+    radial-gradient(ellipse at top left, #f3eeff 0%, transparent 55%), #fff;
 }
 
 .bullets .title {
-  font-size: 64px;
+  font-size: 60px;
   max-width: 20ch;
 }
 
 .bulletsList {
   list-style: none;
   padding: 0;
-  margin: 24px 0 0;
+  margin: 28px 0 0;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -165,19 +182,25 @@
 .bulletsItem {
   display: flex;
   align-items: flex-start;
-  gap: 16px;
-  font-size: 26px;
+  gap: 18px;
+  font-size: 25px;
+  font-weight: 400;
   line-height: 1.45;
-  color: #1f2937;
+  color: var(--slide-ink);
   max-width: 36ch;
+  letter-spacing: -0.005em;
 }
 
 .bulletsBullet {
-  flex: 0 0 12px;
-  height: 12px;
-  width: 12px;
+  flex: 0 0 10px;
+  height: 10px;
+  width: 10px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #6f43ff, #c084fc);
+  background: linear-gradient(
+    135deg,
+    var(--slide-accent-1),
+    var(--slide-accent-2)
+  );
   margin-top: 14px;
 }
 
@@ -189,33 +212,35 @@
   align-items: center;
   justify-content: center;
   padding: 96px;
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
   text-align: center;
+  background: linear-gradient(135deg, #fff7ed 0%, #fde68a 100%);
 }
 
 .bigQuoteMark {
-  font-size: 96px;
+  font-size: 110px;
   line-height: 0.5;
   color: #b45309;
   margin-bottom: 32px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
 }
 
 .bigQuoteText {
-  font-size: 48px;
+  margin: 0;
+  font-size: 46px;
   font-weight: 600;
   line-height: 1.2;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.018em;
   color: #422006;
   max-width: 20ch;
-  margin: 0;
 }
 
 .bigQuoteAttribution {
   margin-top: 32px;
-  font-size: 18px;
+  font-size: 13px;
   color: #78350f;
-  font-weight: 500;
-  letter-spacing: 0.06em;
+  font-weight: 600;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
@@ -225,17 +250,14 @@
 
 .chartHero {
   padding: 56px 72px 48px;
-  gap: 12px;
-  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+  gap: 18px;
+  background: linear-gradient(180deg, #fff 0%, #fafaff 100%);
 }
 
 .chartHero .title {
   font-size: 38px;
-  letter-spacing: -0.015em;
-}
-
-.chartHero .caption {
-  font-size: 17px;
+  letter-spacing: -0.02em;
+  max-width: 24ch;
 }
 
 .chartHeroChart {
@@ -243,9 +265,13 @@
   min-height: 0;
   border-radius: 14px;
   overflow: hidden;
-  background: white;
-  border: 1px solid #e2e8f0;
-  padding: 12px;
+  background: var(--slide-card);
+  border: 1px solid var(--slide-stroke);
+  padding: 14px;
+}
+
+.chartHero .caption {
+  margin-top: 4px;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -253,21 +279,22 @@
    ────────────────────────────────────────────────────────────────────────── */
 
 .metricsGrid {
-  padding: 72px 96px;
-  gap: 32px;
-  background: linear-gradient(180deg, #fdfcff 0%, #f4f0ff 100%);
+  padding: 64px 80px;
+  gap: 28px;
+  background:
+    radial-gradient(ellipse at top right, #f7f1ff 0%, transparent 55%), #fff;
 }
 
 .metricsGrid .title {
-  font-size: 48px;
-  letter-spacing: -0.02em;
+  font-size: 44px;
+  letter-spacing: -0.025em;
 }
 
 .metricsGridList {
   flex: 1;
   min-height: 0;
   display: grid;
-  gap: 20px;
+  gap: 18px;
 }
 
 .metricsGridList[data-count="2"] {
@@ -288,45 +315,76 @@
   grid-template-columns: repeat(3, 1fr);
 }
 
+/* Alternating two-tone metric cards (Presenton trick) */
 .metricCard {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 28px;
+  padding: 28px 30px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 14px;
   min-width: 0;
+  min-height: 152px;
   overflow: hidden;
 }
 
+.metricCard:nth-child(odd) {
+  background: var(--slide-accent-soft);
+}
+
+.metricCard:nth-child(odd) .metricCardValue {
+  color: var(--slide-accent-1);
+}
+
+.metricCard:nth-child(odd) .metricCardLabel,
+.metricCard:nth-child(odd) .metricCardSubtext {
+  color: var(--slide-accent-1);
+}
+
+.metricCard:nth-child(even) {
+  background: var(--slide-accent-1);
+  color: white;
+}
+
+.metricCard:nth-child(even) .metricCardValue {
+  color: white;
+}
+
+.metricCard:nth-child(even) .metricCardLabel,
+.metricCard:nth-child(even) .metricCardSubtext {
+  color: rgba(255, 255, 255, 0.85);
+}
+
 .metricCard.withChart {
-  padding: 18px;
+  padding: 16px;
+  background: var(--slide-card);
+  border: 1px solid var(--slide-stroke);
+}
+
+.metricCard.withChart .metricCardLabel {
+  color: var(--slide-ink-soft);
+}
+
+.metricCard.withChart .metricCardSubtext {
+  color: var(--slide-ink-mute);
 }
 
 .metricCardValue {
   font-size: 56px;
-  font-weight: 700;
-  letter-spacing: -0.025em;
+  font-weight: 800;
+  letter-spacing: -0.03em;
   line-height: 1;
-  color: #4c1d95;
-  background: linear-gradient(135deg, #6f43ff 0%, #b042ff 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
 .metricCardLabel {
   font-size: 16px;
-  font-weight: 600;
-  color: #1f2937;
-  margin-top: 4px;
+  font-weight: 500;
+  margin-top: 6px;
 }
 
 .metricCardSubtext {
-  font-size: 13px;
-  color: #64748b;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .metricCardChart {
@@ -336,37 +394,39 @@
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
-   Title + metrics with chart (Presenton-style 60/40)
+   Title + metrics with chart (Presenton 45/55 split)
    ────────────────────────────────────────────────────────────────────────── */
 
 .titleMetricsChart {
-  padding: 56px 72px 56px 80px;
+  padding: 56px 64px 56px 72px;
   gap: 14px;
-  background: linear-gradient(180deg, #fff 0%, #f7f5fb 100%);
+  background: linear-gradient(180deg, #fff 0%, #fafaff 100%);
 }
 
 .titleMetricsChart .title {
   font-size: 40px;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.022em;
+  max-width: 20ch;
 }
 
 .titleMetricsChart .subtitle {
-  font-size: 16px;
+  font-size: 15.5px;
+  max-width: 60ch;
 }
 
 .titleMetricsChartBody {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr);
-  gap: 32px;
-  margin-top: 16px;
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 1fr);
+  gap: 28px;
+  margin-top: 20px;
 }
 
 .titleMetricsChartLeft {
-  border-radius: 16px;
-  background: white;
-  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: var(--slide-card);
+  border: 1px solid var(--slide-stroke);
   padding: 16px;
   display: flex;
   min-height: 0;
@@ -376,55 +436,69 @@
 .titleMetricsChartRight {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   min-height: 0;
   overflow: auto;
 }
 
 .sidebarMetric {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 16px 18px;
+  background: var(--slide-accent-soft);
+  border-radius: 12px;
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
+.sidebarMetric:nth-child(even) {
+  background: var(--slide-accent-1);
+  color: white;
+}
+
+.sidebarMetric:nth-child(even) .sidebarMetricValue,
+.sidebarMetric:nth-child(even) .sidebarMetricLabel {
+  color: white;
+}
+
 .sidebarMetricValue {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-  color: #4c1d95;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--slide-accent-1);
+  line-height: 1.05;
 }
 
 .sidebarMetricLabel {
   font-size: 13px;
-  color: #475569;
   font-weight: 500;
+  color: var(--slide-accent-1);
+  margin-top: 2px;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
-   Two-column (bullets + chart)
+   Two-column (bullets + chart, 40/60)
    ────────────────────────────────────────────────────────────────────────── */
 
 .twoColumn {
   padding: 64px 80px;
   gap: 20px;
-  background: linear-gradient(180deg, #fff 0%, #fafafe 100%);
+  background:
+    radial-gradient(ellipse at top left, #f7f1ff 0%, transparent 50%), #fff;
 }
 
 .twoColumn .title {
-  font-size: 44px;
-  letter-spacing: -0.015em;
+  font-size: 42px;
+  letter-spacing: -0.022em;
+  max-width: 24ch;
 }
 
 .twoColumnBody {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(0, 1.4fr);
-  gap: 40px;
+  grid-template-columns: minmax(260px, 0.7fr) minmax(0, 1.3fr);
+  gap: 36px;
+  margin-top: 12px;
 }
 
 .twoColumnLeft {
@@ -447,9 +521,9 @@
   display: flex;
   align-items: flex-start;
   gap: 14px;
-  font-size: 20px;
-  line-height: 1.4;
-  color: #1f2937;
+  font-size: 19px;
+  line-height: 1.45;
+  color: var(--slide-ink);
 }
 
 .twoColumnBullet {
@@ -457,14 +531,18 @@
   height: 8px;
   width: 8px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #6f43ff, #c084fc);
+  background: linear-gradient(
+    135deg,
+    var(--slide-accent-1),
+    var(--slide-accent-2)
+  );
   margin-top: 10px;
 }
 
 .twoColumnRight {
-  border-radius: 16px;
-  background: white;
-  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: var(--slide-card);
+  border: 1px solid var(--slide-stroke);
   padding: 16px;
   display: flex;
   min-height: 0;
@@ -472,7 +550,7 @@
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
-   Fallback (unknown layout)
+   Fallback
    ────────────────────────────────────────────────────────────────────────── */
 
 .fallback {
@@ -481,5 +559,5 @@
   justify-content: center;
   background: #f5f5f7;
   text-align: center;
-  color: #475569;
+  color: var(--slide-ink-soft);
 }

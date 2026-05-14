@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useSearchQuery } from "metabase/api";
@@ -189,6 +189,16 @@ export const GenerateModal = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [log, setLog] = useState<AgentLogEntry[]>([]);
   const abortRef = useRef<AbortController | null>(null);
+  const streamRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-scroll the agent log to the bottom whenever a new event lands so the
+  // active step stays visible without the user having to scroll manually.
+  useEffect(() => {
+    const el = streamRef.current;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, [log.length]);
 
   const handleClose = () => {
     if (isStreaming) {
@@ -386,7 +396,7 @@ export const GenerateModal = () => {
         </Stack>
       ) : (
         <Stack className={S.body}>
-          <Box className={S.stream}>
+          <Box className={S.stream} ref={streamRef}>
             {log.map((entry) => (
               <Box
                 key={entry.id}
