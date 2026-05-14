@@ -1,6 +1,6 @@
 ---
 title: SQL editor
-redirect-from:
+redirect_from:
   - /docs/latest/users-guide/writing-sql
   - /docs/latest/questions/native-editor
 ---

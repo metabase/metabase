@@ -3,9 +3,9 @@
 // "<NN>-stable" for a released version, "master" for an unreleased / latest
 // build without release info.
 //
-// Replaces Jekyll's `{{ page.version | remove: "v0." }}-stable`. The version is
-// derived from DOCS_BASE_PATH (set by `./bin/mage docs-build`: /docs/latest,
-// /docs/v0.NN, or /docs/master), falling back to GITHUB_REF_NAME for "latest".
+// The version is derived from DOCS_BASE_PATH (set by `./bin/mage docs-build`:
+// /docs/latest, /docs/v0.NN, or /docs/master), falling back to GITHUB_REF_NAME
+// for "latest" builds running off a release branch.
 
 import { visit } from "unist-util-visit";
 

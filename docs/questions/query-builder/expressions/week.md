@@ -1,6 +1,6 @@
 ---
 title: Week of year
-description: In Metabase, you can group by week of year in the query builder, or extract the week of year from a date column using a custom expression. Metabase supports multiple algorithms for determining the first week of the year.
+summary: In Metabase, you can group by week of year in the query builder, or extract the week of year from a date column using a custom expression. Metabase supports multiple algorithms for determining the first week of the year.
 ---
 
 # Week of year

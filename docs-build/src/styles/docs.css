@@ -53,7 +53,11 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
-html { scroll-padding-top: 5rem; }
+/* Paint the canvas (viewport surface outside body's border box) white so the
+ * body's --neutral-98 tint doesn't propagate there. Without this, the 50px
+ * bottom margin on .footer-logo-container escapes through .body-footer and
+ * .footer-wrap and shows up as a tinted strip below the footer. */
+html { scroll-padding-top: 5rem; background: var(--white); }
 
 body {
   font-family: var(--font-body);
@@ -74,8 +78,24 @@ body::before {
   bottom: 0;
   width: calc(max(0px, (100vw - var(--shell-max)) / 2) + var(--shell-padding-x) + var(--sidebar-width));
   background: var(--white);
-  z-index: -1;
+  /* z-index: auto (default). With html having an explicit background, body's
+   * --neutral-98 no longer propagates to the canvas, so body paints its own
+   * box. We need to land *above* body's bg (else it gets hidden) but below
+   * the sticky sidebar/header (which use higher z-index). Document order does
+   * this for us: this pseudo-element comes before all body children, so the
+   * sidebar/header still paint on top where they overlap. */
   pointer-events: none;
+}
+
+/* The fixed body::before sidebar overlay extends from the top to the bottom
+ * of the viewport. When the user scrolls to the footer, the overlay would
+ * otherwise sit *above* the in-flow footer (positioned descendants paint
+ * after in-flow ones), clipping the left columns of the footer's link grid.
+ * Lift the footer into a positive-z-index layer so it always paints above
+ * the overlay where they overlap. */
+.footer-wrap {
+  position: relative;
+  z-index: 1;
 }
 
 @media (max-width: 991px) {

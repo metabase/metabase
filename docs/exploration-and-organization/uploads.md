@@ -1,6 +1,6 @@
 ---
 title: Uploading data
-description: Upload CSV files to Metabase to create models. Requires uploads enabled by an admin, data permissions on the upload schema, and Curate access to the target collection.
+summary: Upload CSV files to Metabase to create models. Requires uploads enabled by an admin, data permissions on the upload schema, and Curate access to the target collection.
 ---
 
 # Uploading data

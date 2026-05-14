@@ -1,10 +1,12 @@
 // Expands `{% include_file "path" [snippet="NAME"] %}` transclusion tags.
 //
-// This is the one piece of the old Jekyll layer that earns its keep: the SDK
-// docs pull example code straight out of committed, type-checked source files
-// (docs/embedding/sdk/snippets/**.tsx) and prop tables out of generated typedoc
-// output (docs/embedding/sdk/api/snippets/*.md, docs/embedding/eajs/snippets/*.md),
-// so the docs can't drift from the real types/examples.
+// The SDK docs pull example code straight out of committed, type-checked
+// source files (docs/embedding/sdk/snippets/**.tsx) and prop tables out of
+// generated typedoc output (docs/embedding/sdk/api/snippets/*.md,
+// docs/embedding/eajs/snippets/*.md), so the docs can't drift from the
+// real types/examples. `include_file` is the only build-time tag the
+// markdown layer understands — `scripts/validate-liquid.mjs` enforces that
+// nothing else slips through.
 //
 // Two shapes are handled (an audit of docs/ shows every `include_file` is one
 // of these — nothing inline in prose / lists / tables):
@@ -17,13 +19,11 @@
 //      → for a source-code target: a single fenced `code` node (Shiki then
 //        highlights it), language inferred from the extension, dedented.
 //
-//   2. A fenced code block containing one or more tags (Jekyll expanded
-//      includes before markdown parsed, so file contents landed inside the
-//      fence). Each tag is replaced with the snippet's raw text; the author's
-//      chosen fence language is kept.
+//   2. A fenced code block containing one or more tags. Each tag is replaced
+//      with the snippet's raw text; the author's chosen fence language is kept.
 //
-// `{{ dirname }}` in a path resolves to the directory of the consuming markdown
-// file (matching jekyll_include_plugin semantics).
+// `{{ dirname }}` in a path resolves to the directory of the consuming
+// markdown file.
 //
 // Snippet markers in source files:
 //   .md          : <!-- [<snippet NAME>] --> … <!-- [<endsnippet NAME>] -->

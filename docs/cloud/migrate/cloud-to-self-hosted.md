@@ -1,12 +1,5 @@
 ---
 title: "Migrate from Metabase Cloud to a self-hosted Metabase"
-version: latest
-has_magic_breadcrumbs: true
-show_category_breadcrumb: true
-show_title_breadcrumb: true
-category: "Cloud"
-layout: new-docs
-section: Migrate
 ---
 
 # Migrate from Metabase Cloud to a self-hosted Metabase

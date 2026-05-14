@@ -47,7 +47,7 @@ To get all the features available when upgrading to a _self-hosted_ [Pro or Ente
 Assuming you've been using a [production application database](../installation-and-operation/configuring-application-database.md), you'll want to:
 
 1. [Back up your application database](./backing-up-metabase-application-data.md).
-2. Download the Enterprise Edition version that corresponds with your current Metabase version. So if you're running the Docker image for {{site.latest_version}}, you should switch to the Docker image for {{site.latest_enterprise}}. To see a list of available versions for both the Open Source and Enterprise Editions, check out [Metabase releases](https://github.com/metabase/metabase/releases).
+2. Download the Enterprise Edition version that corresponds with your current Metabase version. If you're running the Docker image `metabase/metabase:v0.XX.X`, switch to `metabase/metabase-enterprise:v1.XX.X` (same `XX.X` point version, with the major version flipped from `v0` to `v1`). To see a list of available versions for both the Open Source and Enterprise Editions, check out [Metabase releases](https://github.com/metabase/metabase/releases).
 3. Stop your current Metabase Open Source edition.
 4. Swap in the Enterprise Edition Docker image or jar that you downloaded.
 5. Start your Metabase like you normally would using the new Enterprise Edition image or jar. You don't need to do anything with your application database (which you've backed up in step one, right?).

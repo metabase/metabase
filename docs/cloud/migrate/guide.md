@@ -1,12 +1,5 @@
 ---
 title: "Migrate to Metabase Cloud"
-version: latest
-has_magic_breadcrumbs: true
-show_category_breadcrumb: true
-show_title_breadcrumb: true
-category: "Cloud"
-layout: new-docs
-section: Migrate
 redirect_from:
   - /migrate/guide
   - /migrate/post-signup-guide

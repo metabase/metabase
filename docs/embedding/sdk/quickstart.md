@@ -1,6 +1,6 @@
 ---
 title: Modular embedding SDK - quickstart
-description: "This guide walks you through how to set up the modular embedding SDK in your application with your Metabase."
+summary: "This guide walks you through how to set up the modular embedding SDK in your application with your Metabase."
 ---
 
 # Modular embedding SDK - quickstart

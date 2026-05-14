@@ -1,6 +1,6 @@
 ---
 title: Amazon Redshift
-description: Connect Metabase to Amazon Redshift data warehouses to run queries and create dashboards.
+summary: Connect Metabase to Amazon Redshift data warehouses to run queries and create dashboards.
 redirect_from:
   - /docs/latest/administration-guide/databases/redshift
 ---

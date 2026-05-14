@@ -3,13 +3,10 @@
 // section reference) artifacts for the current build's version, writing
 // them next to the Astro output in docs-build/dist/.
 //
-// Near-mechanical port of the Jekyll plugin
-// docs.metabase.github.io/_plugins/jekyll_generate_llms_files_plugin.rb.
-//
-// One key difference: the Jekyll plugin iterated over every checked-in doc
-// version. The Astro build produces a single version per run (controlled by
-// DOCS_BASE_PATH, e.g. /docs/latest or /docs/v0.58), so this script writes
-// one set of files per build.
+// One version per run: DOCS_BASE_PATH (set by `./bin/mage docs-build`,
+// e.g. /docs/latest or /docs/v0.58) determines which version's files are
+// emitted. Multi-version coverage comes from running docs-build per release
+// branch, not from a single multi-version pass.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -51,11 +48,10 @@ const INCLUDED_PATHS = [
 const EXCLUDED_PATHS = ["embedding/sdk/api/snippets"];
 
 const FRONTMATTER_RE = /^---\s*\n([\s\S]*?)\n---\s*\n/;
-// Strip `{% include_file ... %}` transclusion tags — the docs are otherwise
-// plain markdown now. (We don't expand them here; like before, the included
-// example code isn't carried into the llms.txt bundle. Note: we deliberately
-// do NOT strip `{{ ... }}` — those are now literal content, e.g. SQL parameter
-// examples like `{{category}}`.)
+// Strip `{% include_file ... %}` transclusion tags — the included example
+// code isn't carried into the llms.txt bundle. Note: we deliberately do NOT
+// strip `{{ ... }}` — those are literal content (e.g. SQL parameter examples
+// like `{{category}}`).
 const INCLUDE_FILE_TAG_RE = /\{%[\s\S]*?%\}/g;
 const FRONTMATTER_TITLE_RE = /^title\s*:\s*(.+?)\s*$/m;
 const H1_RE = /^#\s+(.+)$/m;

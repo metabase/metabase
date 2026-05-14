@@ -1,10 +1,5 @@
 ---
 title: Metabase Cloud
-version: latest
-has_magic_breadcrumbs: true
-show_category_breadcrumb: true
-show_title_breadcrumb: false
-category: "Cloud"
 redirect_from:
   - /cloud/docs
 ---
