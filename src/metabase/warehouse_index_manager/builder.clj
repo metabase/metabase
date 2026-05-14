@@ -1,6 +1,5 @@
 (ns metabase.warehouse-index-manager.builder
-  "Render a structured index definition into a CREATE INDEX statement
-  via HoneySQL.
+  "Render a structured index definition into a CREATE INDEX statement.
 
   The structured form covers the common case: regular btree (or
   gin/gist/…) indexes on one or more columns of a single table, optional
@@ -12,18 +11,19 @@
 
   Pipeline:
 
-    `structured` → HoneySQL map → `sql/format` → SQL string
+    `structured` → tagged hiccup tree → SQL string
 
-  HoneySQL handles identifier quoting (via the `:ansi` dialect with
-  `:quoted true`) and assembles the basic shape. Postgres' INCLUDE
-  clause isn't native to HoneySQL's `:create-index`, so we register a
-  custom `::include` clause that appears after `:create-index` in the
-  formatter order.
+  We render ourselves instead of leaning on HoneySQL's `:create-index`
+  because HoneySQL's clause emits all pre-options (UNIQUE *and*
+  CONCURRENTLY) before the `INDEX` keyword, which is wrong: Postgres
+  wants `CREATE [UNIQUE] INDEX [CONCURRENTLY] [IF NOT EXISTS] …`.
+  HoneySQL has no extension point that lets us inject between `INDEX`
+  and the index name.
 
-  Postgres-only today."
+  Identifiers are quoted Postgres-style (double quotes, with embedded
+  `\"` doubled). Postgres-only today."
   (:require
-   [clojure.string :as str]
-   [honey.sql :as sql]))
+   [clojure.string :as str]))
 
 (set! *warn-on-reflection* true)
 
@@ -32,16 +32,6 @@
   #{:btree :hash :gin :gist :brin :spgist})
 
 (def valid-directions #{:asc :desc})
-
-;;; ---------------------------------------------------------------------------
-;;; ::include — HoneySQL extension for Postgres INCLUDE columns
-
-(defn- format-include [_clause cols]
-  [(str "INCLUDE ("
-        (str/join ", " (map (comp sql/format-entity keyword) cols))
-        ")")])
-
-(sql/register-clause! ::include #'format-include nil)
 
 ;;; ---------------------------------------------------------------------------
 ;;; Validation
@@ -76,37 +66,70 @@
     (check-known-column! known-columns col-name :include)))
 
 ;;; ---------------------------------------------------------------------------
-;;; structured → HoneySQL
+;;; structured → hiccup
 
-(defn- column->order-spec
-  "HoneySQL's `:create-index` uses ORDER BY-style syntax for the column
-  list. `:colname` → `\"colname\"`, `[:colname :asc]` → `\"colname\" ASC`."
-  [{col-name :name dir :direction}]
-  (let [col-kw (keyword col-name)]
-    (if dir
-      [col-kw (keyword (str/upper-case (name dir)))]
-      col-kw)))
-
-(defn- structured->honey
+(defn- structured->hiccup
+  "Lift a validated `structured` request + target into a tag-prefixed
+  data tree. Defaults are baked in here so the renderer never sees nil
+  for a toggle."
   [{:keys [schema table]}
    {:keys [index_name columns include unique concurrent if_not_exists method]
     :or   {unique false, concurrent true, if_not_exists true, method :btree}}]
-  (let [index-spec (vec (concat
-                         (when unique     [:unique])
-                         (when concurrent [:concurrently])
-                         [(keyword index_name)]
-                         (when if_not_exists [:if-not-exists])))
-        method-kw  (when (not= (keyword method) :btree)
-                     ;; HoneySQL's create-index recognises `:using-<method>`
-                     ;; as a single ident slot between the table and the
-                     ;; column list.
-                     (keyword (str "using-" (name method))))
-        table-kw   (keyword (str schema "." table))
-        on-clause  (vec (concat [table-kw]
-                                (when method-kw [method-kw])
-                                (map column->order-spec columns)))]
-    (cond-> {:create-index [index-spec on-clause]}
-      (seq include) (assoc ::include include))))
+  [:create-index
+   {:unique?        (boolean unique)
+    :concurrent?    (boolean concurrent)
+    :if-not-exists? (boolean if_not_exists)
+    :method         (keyword method)}
+   [:ident index_name]
+   [:qualified-ident schema table]
+   (into [:key-columns] (for [{col-name :name dir :direction} columns]
+                          [:column col-name (some-> dir keyword)]))
+   (when (seq include)
+     (into [:include] (for [c include] [:ident c])))])
+
+;;; ---------------------------------------------------------------------------
+;;; hiccup → string
+
+(defn- quote-ident [ident]
+  (str \" (str/replace (str ident) "\"" "\"\"") \"))
+
+(defmulti ^:private render-node first)
+
+(defmethod render-node :ident [[_ ident]]
+  (quote-ident ident))
+
+(defmethod render-node :qualified-ident [[_ schema table]]
+  (str (quote-ident schema) "." (quote-ident table)))
+
+(defmethod render-node :column [[_ col-name dir]]
+  (str/join " "
+            (keep identity
+                  [(quote-ident col-name)
+                   (some-> dir name str/upper-case)])))
+
+(defmethod render-node :key-columns [[_ & cols]]
+  (str "(" (str/join ", " (map render-node cols)) ")"))
+
+(defmethod render-node :include [[_ & cols]]
+  (str "INCLUDE (" (str/join ", " (map render-node cols)) ")"))
+
+(defmethod render-node :create-index
+  [[_ {:keys [unique? concurrent? if-not-exists? method]}
+    name-node target-node cols-node include-node]]
+  (str/join " "
+            (keep identity
+                  ["CREATE"
+                   (when unique?         "UNIQUE")
+                   "INDEX"
+                   (when concurrent?     "CONCURRENTLY")
+                   (when if-not-exists?  "IF NOT EXISTS")
+                   (render-node name-node)
+                   "ON"
+                   (render-node target-node)
+                   (when (not= method :btree)
+                     (str "USING " (name method)))
+                   (render-node cols-node)
+                   (when include-node (render-node include-node))])))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Public API
@@ -123,10 +146,10 @@
   turned it off)."
   [target {:keys [concurrent] :or {concurrent true} :as structured} known-columns]
   (validate! structured known-columns)
-  (let [honey       (structured->honey target structured)
-        [statement] (sql/format honey {:dialect :ansi :quoted true})
-        warnings    (cond-> []
-                      (not concurrent)
-                      (conj "CONCURRENTLY is recommended to avoid taking an ACCESS EXCLUSIVE lock on the table"))]
+  (let [hiccup    (structured->hiccup target structured)
+        statement (render-node hiccup)
+        warnings  (cond-> []
+                    (not concurrent)
+                    (conj "CONCURRENTLY is recommended to avoid taking an ACCESS EXCLUSIVE lock on the table"))]
     {:statement statement
      :warnings  warnings}))

@@ -168,7 +168,6 @@
                          :detail     (:detail parsed)
                          :status-code 400})))
       {:statement  statement
-       :index_name (:name parsed)
        :structured nil})
 
     :else
@@ -176,10 +175,18 @@
                     {:reason :missing-body :status-code 400}))))
 
 (defn- parsed-index-name
-  "Statement → name. Statement here has already been validated."
+  "Statement → name. Throws if the statement (which has supposedly been
+  validated already) can't be re-parsed — that means we have a bug in
+  the builder or upstream validation."
   [table statement]
-  (-> (ddl-parse/parse statement #{[(:schema table) (:name table)]})
-      :name))
+  (let [parsed (ddl-parse/parse statement #{[(:schema table) (:name table)]})]
+    (when-not (:ok? parsed)
+      (throw (ex-info "Could not extract index name from CREATE INDEX statement"
+                      {:reason     :unparseable-statement
+                       :detail     (:detail parsed)
+                       :statement  statement
+                       :status-code 400})))
+    (:name parsed)))
 
 (defn- drop-statement
   "DROP INDEX CONCURRENTLY IF EXISTS for an index on `schema`."
@@ -251,13 +258,21 @@
                     {:reason :in-flight :status-code 409})))
   request)
 
+(defn- unique-violation? [^Throwable e]
+  (let [msg (str (ex-message e)
+                 \space
+                 (some-> e ex-cause ex-message))]
+    (or (str/includes? msg "duplicate key")
+        (str/includes? msg "unique constraint")
+        (str/includes? msg "Unique index or primary key violation"))))
+
 (defn submit-create!
   "Validate body, insert IndexRequest, queue the create. Returns the new
   row. Maps UNIQUE constraint violations to 409."
   [table body user-id]
   (let [{:keys [database driver-kw]} (ensure-manageable! table)
-        {:keys [statement structured index_name]} (resolve-statement table body)
-        idx-name (or index_name (parsed-index-name table statement))
+        {:keys [statement structured]} (resolve-statement table body)
+        idx-name (parsed-index-name table statement)
         row      (try
                    (t2/insert-returning-instance!
                     :model/IndexRequest
@@ -269,9 +284,11 @@
                      :status        :pending
                      :created_by_id user-id})
                    (catch Exception e
-                     (throw (ex-info (str "An index named " idx-name " already exists for this table")
-                                     {:reason :duplicate-index-name :status-code 409}
-                                     e))))]
+                     (if (unique-violation? e)
+                       (throw (ex-info (str "An index named " idx-name " already exists for this table")
+                                       {:reason :duplicate-index-name :status-code 409}
+                                       e))
+                       (throw e))))]
     (quick-task/submit-task!
      #(run-create! (:id row) driver-kw database statement))
     row))
@@ -291,8 +308,8 @@
              (or (get-request (:id table) request-id)
                  (throw (ex-info "Request not found"
                                  {:reason :not-found :status-code 404}))))
-        {:keys [statement structured index_name]} (resolve-statement table body)
-        new-name (or index_name (parsed-index-name table statement))
+        {:keys [statement structured]} (resolve-statement table body)
+        new-name (parsed-index-name table statement)
         old-state {:old-index-name        (:index_name old)
                    :old-schema            (:schema table)
                    :previously-succeeded? (= :succeeded (:status old))}]
@@ -304,9 +321,11 @@
                    :status     :pending
                    :error_message nil})
       (catch Exception e
-        (throw (ex-info (str "An index named " new-name " already exists for this table")
-                        {:reason :duplicate-index-name :status-code 409}
-                        e))))
+        (if (unique-violation? e)
+          (throw (ex-info (str "An index named " new-name " already exists for this table")
+                          {:reason :duplicate-index-name :status-code 409}
+                          e))
+          (throw e))))
     (quick-task/submit-task!
      #(run-edit! request-id driver-kw database old-state statement))
     (t2/select-one :model/IndexRequest :id request-id)))
