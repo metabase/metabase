@@ -53,20 +53,24 @@
   (subs (str (random-uuid)) 0 8))
 
 (def workspaces-supported-drivers
-  "Drivers covered by the full e2e. JDBC drivers go through `jdbc/execute!`+
-   `jdbc/query`; `:bigquery-cloud-sdk` goes through the BQ Java API via
-   `metabase.driver.bigquery-cloud-sdk.workspace-test-util` (loaded lazily via
-   `requiring-resolve`). Each helper below dispatches on driver.
+  "Drivers covered by the full e2e. Mirror the set of drivers that declare
+   `:workspace true` in their `database-supports?` map -- update both when
+   adding a workspace-supported driver.
+
+   JDBC drivers go through `jdbc/execute!`+`jdbc/query`; `:bigquery-cloud-sdk`
+   goes through the BQ Java API via
+   `metabase.driver.bigquery-cloud-sdk.workspace-test-util` (loaded lazily
+   via `requiring-resolve`). Each helper below dispatches on driver.
 
    The `workspace-full-e2e-test` exercises this whole set. The smaller
-   `native-transform-references-prior-canonical-output-test` deliberately runs on
-   `#{:postgres :mysql}` only -- not because Redshift/Snowflake/etc. aren't
-   workspace-supported, but because that test depends on workspace-user
-   `describe-database` returning the source table, and on Redshift the
-   workspace user's `describe-database` returns `{:tables #{}}` even when
-   USAGE/SELECT grants are intact (root cause pending investigation; see
-   that test's docstring). Don't add drivers to the smaller test without
-   first fixing the underlying sync visibility."
+   `native-transform-references-prior-canonical-output-test` deliberately
+   runs on `#{:postgres :mysql}` only -- not because Redshift/Snowflake/etc.
+   aren't workspace-supported, but because that test depends on
+   workspace-user `describe-database` returning the source table, and
+   on Redshift the workspace user's `describe-database` returns
+   `{:tables #{}}` even when USAGE/SELECT grants are intact (root cause
+   pending investigation; see that test's docstring). Don't add drivers
+   to the smaller test without first fixing the underlying sync visibility."
   #{:postgres :sqlserver :clickhouse :mysql :redshift :snowflake :bigquery-cloud-sdk})
 
 (defn- three-slot-driver?
@@ -311,28 +315,6 @@
                 (create-output-table! admin-driver admin-spec admin-details main-schema output-table-name
                                       [[99 "pre-existing"]
                                        [98 "still-pre-existing"]])
-
-                ;; --- BQ diagnostic: surface what `can-connect?` swallows.
-                ;; BigQuery's `driver/can-connect?` catches every `Exception` from
-                ;; `list-datasets` and returns false (logging only). When `with-temp
-                ;; :model/Database` then trips its post-insert health check, the
-                ;; only thing test output shows is "Failed to connect to Database"
-                ;; -- the underlying BQ exception is hidden in the daemon thread's
-                ;; logger and never reaches the CI run summary. Hit `list-datasets`
-                ;; directly here, on the test thread, so any thrown exception
-                ;; (auth, quota, dataset filter mismatch, encryption round-trip)
-                ;; bubbles up into the test reporter.
-                (when (= admin-driver :bigquery-cloud-sdk)
-                  (let [list-datasets (requiring-resolve 'metabase.driver.bigquery-cloud-sdk/list-datasets)
-                        result (try {:ok (mapv str (list-datasets admin-details))}
-                                    (catch Throwable e
-                                      {:err  (.getName (class e))
-                                       :msg  (ex-message e)
-                                       :data (ex-data e)}))]
-                    (is (:ok result)
-                        (str "BQ list-datasets failed before with-temp; details="
-                             (pr-str (dissoc admin-details :service-account-json))
-                             " result=" (pr-str result)))))
 
                 ;; --- Setup: a Metabase Database row attached to the warehouse with admin
                 ;; creds. The config-loader path (below) will rewrite its `:details` with

@@ -93,8 +93,9 @@
         ;; ImpersonatedCredentials automatically refreshes tokens before expiration,
         ;; so the 1-hour lifetime is just the initial token validity period.
         ;; Each query creates a fresh client, and the credentials handle refresh internally.
-        final-creds  (if-let [target-sa (:impersonate-service-account details)]
-                       (do
+        impersonating? (some? (:impersonate-service-account details))
+        final-creds  (if impersonating?
+                       (let [target-sa (:impersonate-service-account details)]
                          (log/debugf "Creating impersonated credentials for service account: %s" target-sa)
                          (ImpersonatedCredentials/create
                           (.createScoped base-creds bigquery-scopes)
@@ -116,6 +117,16 @@
                        (.setCredentials final-creds)
                        (.setHeaderProvider header-provider)
                        (.setTransportOptions transport-options))]
+    ;; `ImpersonatedCredentials` doesn't carry a project id (it derives identity
+    ;; from the impersonation target SA, not from a key file), so the Google SDK
+    ;; would throw "A project ID is required for this service but could not be
+    ;; determined from the builder or the environment" when building the client.
+    ;; Fall back to the base SA's project id, which is what every non-impersonated
+    ;; call site is implicitly relying on through `getOptions.getProjectId`.
+    (when impersonating?
+      (when-let [pid (or (:project-id details)
+                         (.getProjectId base-creds))]
+        (.setProjectId bq-bldr ^String pid)))
     (when-let [host (not-empty (:host details))]
       (.setHost bq-bldr host))
     (.. bq-bldr build getService)))
@@ -1491,6 +1502,77 @@
       (finally
         (.close iam-client)))))
 
+(defn- ws-wait-for-dataset-visible-via-impersonation!
+  "Poll until the impersonated workspace SA can see `target-dataset` from
+   BOTH `getDataset` AND `listDatasets`. BigQuery dataset ACL updates are
+   eventually consistent and the two endpoints sync independently:
+   `getDataset` typically picks up a dataViewer grant within ~1s, but
+   `listDatasets` (which `can-connect-with-details?` uses) can lag tens
+   of seconds behind. Returning from the wait when only `getDataset` agrees
+   leaves the next `can-connect-with-details?` call hitting `listDatasets`
+   with the still-stale cache, which throws `Looks like we cannot find any
+   matching datasets` and surfaces as `Failed to connect to Database` in
+   `init-from-config-file!`.
+
+   Gate on the `listDatasets` outcome so the wait returns only once the
+   exact endpoint can-connect uses agrees. Each iteration builds a fresh
+   impersonated client to avoid carrying token / negative-cache state."
+  [details ^String target-sa-email ^String project-id ^String target-dataset
+   & {:keys [max-attempts interval-ms]
+      :or   {max-attempts 90
+             interval-ms  1000}}]
+  (log/infof "Waiting for dataset %s to be visible to %s via listDatasets..."
+             target-dataset target-sa-email)
+  (loop [attempt 1]
+    (let [outcome (try
+                    (let [base-creds   (.createScoped (ws-service-account-credentials details)
+                                                      (doto (java.util.ArrayList.)
+                                                        (.add "https://www.googleapis.com/auth/bigquery")))
+                          impersonated (ImpersonatedCredentials/create
+                                        base-creds
+                                        target-sa-email
+                                        nil
+                                        (doto (java.util.ArrayList.)
+                                          (.add "https://www.googleapis.com/auth/bigquery"))
+                                        3600)
+                          client       (-> (BigQueryOptions/newBuilder)
+                                           ^BigQueryOptions$Builder (.setCredentials impersonated)
+                                           ^BigQueryOptions$Builder (.setProjectId project-id)
+                                           ^BigQueryOptions (.build)
+                                           ^BigQuery (.getService))
+                          ;; Fast-path probe: if `getDataset` doesn't even see the dataset,
+                          ;; `listDatasets` certainly won't, and we can skip the more expensive
+                          ;; pagination this iteration.
+                          single-ok?   (some? (try (.getDataset client (DatasetId/of project-id target-dataset)
+                                                                (into-array BigQuery$DatasetOption []))
+                                                   (catch Exception _ nil)))
+                          datasets     (when single-ok?
+                                         (.listDatasets client project-id
+                                                        (into-array BigQuery$DatasetListOption [])))
+                          listed-ok?   (boolean
+                                        (when datasets
+                                          (some (fn [^Dataset d] (= target-dataset (.. d getDatasetId getDataset)))
+                                                (.iterateAll datasets))))]
+                      (if listed-ok? :ready :not-yet))
+                    (catch Exception e
+                      (log/debugf "Unexpected error checking dataset visibility: %s" (ex-message e))
+                      :not-yet))]
+      (cond
+        (= outcome :ready)
+        (log/infof "Dataset %s is visible to %s via listDatasets after %d attempt(s)"
+                   target-dataset target-sa-email attempt)
+
+        (>= attempt max-attempts)
+        (throw (ex-info "Timeout waiting for dataset ACL grant to propagate to listDatasets"
+                        {:target-sa       target-sa-email
+                         :target-dataset  target-dataset
+                         :attempts        attempt}))
+
+        :else
+        (do
+          (Thread/sleep ^long interval-ms)
+          (recur (inc attempt)))))))
+
 (defmethod driver/grant-workspace-read-access! :bigquery-cloud-sdk
   [_driver database workspace schemas]
   ;; `schemas` is a vector of BigQuery dataset names. The project comes from the
@@ -1501,11 +1583,17 @@
         details     (driver.conn/effective-details database)
         client      (ws-database-details->client details)
         project-id  (get-project-id details)]
-    (log/debugf "Granting dataset-level read access to %d datasets for %s"
-                (count schemas) ws-sa-email)
+    (log/infof "Granting dataset-level read access on %d dataset(s) %s to %s"
+               (count schemas) (pr-str (vec schemas)) ws-sa-email)
     (doseq [dataset schemas
             :let [dataset-id (DatasetId/of project-id dataset)]]
-      (ws-grant-dataset-acl! client dataset-id ws-sa-email "roles/bigquery.dataViewer"))))
+      (log/infof "Granting dataViewer on %s/%s to %s" project-id dataset ws-sa-email)
+      (ws-grant-dataset-acl! client dataset-id ws-sa-email "roles/bigquery.dataViewer")
+      ;; Wait for the grant to propagate to the impersonated read path. Without
+      ;; this, the next `can-connect-with-details?` running under the workspace
+      ;; SA filters `listDatasets` by this dataset name, sees an empty list,
+      ;; and throws `Looks like we cannot find any matching datasets`.
+      (ws-wait-for-dataset-visible-via-impersonation! details ws-sa-email project-id dataset))))
 
 (def ^:private perm-check-workspace-id "00000000-0000-0000-0000-000000000000")
 
