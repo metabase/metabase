@@ -2,7 +2,6 @@
   "Schemas and helper functions for various PARSED parameter maps. These are created from the `:parameters` passed in
   with a query."
   (:require
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
