@@ -2169,7 +2169,8 @@
 (deftest canceled-query-no-stacktrace-test
   (mt/test-driver :postgres
     (letfn [(catch-exceptions [run]
-              (let [query    (merge {:type :query, :database 1} {})
+              (let [query    (cond-> {:type :query, :database 1}
+                               (= driver/*driver* :postgres-mbql5) (lib.convert/->mbql5))
                     metadata {}
                     rows     []
                     qp       (fn [query rff]
@@ -2178,7 +2179,7 @@
                                                                  (respond metadata rows))]
                                  (qp.pipeline/*run* query rff)))
                     qp       (catch-exceptions/catch-exceptions qp)
-                    result   (driver/with-driver :h2
+                    result   (driver/with-driver driver/*driver*
                                (qp (qp/userland-query query) qp.reducible/default-rff))]
                 (cond-> result
                   (map? result) (update :data dissoc :rows))))
