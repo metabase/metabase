@@ -15,8 +15,11 @@
   (:import
    (jakarta.servlet AsyncContext)
    (jakarta.servlet.http HttpServletRequest HttpServletResponse)
-   (org.eclipse.jetty.ee9.nested Request)
+   (java.time Duration)
+   (org.eclipse.jetty.ee9.nested Request Response)
    (org.eclipse.jetty.ee9.servlet ServletContextHandler ServletHandler)
+   (org.eclipse.jetty.ee9.websocket.server JettyWebSocketServerContainer)
+   (org.eclipse.jetty.ee9.websocket.server.config JettyWebSocketServletContainerInitializer)
    (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
@@ -72,6 +75,26 @@
   (when-let [^Server server (instance)]
     (.. server getURI getPort)))
 
+(defn- websocket-response?
+  "Recognise responses produced by `metabase.presence.ws/handle` (and any
+  future module that wants WS support) so the async-proxy-handler can upgrade
+  the connection instead of writing a normal HTTP response. We don't require
+  ring-websocket here — staying loose lets the producing module decide its
+  own listener shape."
+  [response-map]
+  (and (map? response-map)
+       (some? (:metabase/websocket-listener response-map))))
+
+(defn- upgrade-to-websocket!
+  [^HttpServletRequest request ^Response response response-map]
+  (let [context   (.getServletContext request)
+        container (JettyWebSocketServerContainer/getContainer context)
+        creator   (:metabase/websocket-listener response-map)]
+    (doto container
+      (.setIdleTimeout (Duration/ofMillis 60000))
+      (.setMaxTextMessageSize 65536))
+    (.upgrade container creator request response)))
+
 (defn- async-proxy-handler ^ServletHandler [handler timeout]
   (proxy [ServletHandler] []
     (doHandle [_ ^Request base-request ^HttpServletRequest request ^HttpServletResponse response]
@@ -89,11 +112,17 @@
           (handler
            request-map
            (fn [response-map]
-             (server.protocols/respond (:body response-map) {:request       request
-                                                             :request-map   request-map
-                                                             :async-context context
-                                                             :response      response
-                                                             :response-map  response-map}))
+             (if (websocket-response? response-map)
+               (try
+                 (upgrade-to-websocket! request response response-map)
+                 (.complete context)
+                 (catch Throwable e
+                   (raise e)))
+               (server.protocols/respond (:body response-map) {:request       request
+                                                               :request-map   request-map
+                                                               :async-context context
+                                                               :response      response
+                                                               :response-map  response-map})))
            raise)
           (catch Throwable e
             (log/error e "Unexpected Exception in API request handler")
@@ -114,7 +143,11 @@
         servlet-handler (doto (ServletContextHandler.)
                           (.setAllowNullPathInfo true)
                           (.insertHandler (statistics-handler/new-handler))
-                          (.setServletHandler handler))]
+                          (.setServletHandler handler)
+                          ;; Install the WebSocket server container on the servlet context so
+                          ;; that any Ring handler returning `{:metabase/websocket-listener ...}`
+                          ;; can have its request upgraded by `async-proxy-handler` above.
+                          (JettyWebSocketServletContainerInitializer/configure nil))]
     (doto ^Server (#'ring-jetty/create-server (assoc options :async? true))
       (.setHandler servlet-handler))))
 

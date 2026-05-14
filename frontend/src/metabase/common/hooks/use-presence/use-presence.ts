@@ -1,23 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 
-import {
-  type PresenceModel,
-  type PresenceParameters,
-  type PresenceViewer,
-  useLeavePresenceMutation,
-  usePingPresenceMutation,
+import type {
+  PresenceModel,
+  PresenceParameters,
+  PresenceViewer,
 } from "metabase/api";
 import { useSetting } from "metabase/common/hooks/use-setting";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 
-const POLL_INTERVAL_MS = 5_000;
+const HEARTBEAT_INTERVAL_MS = 10_000;
+const RECONNECT_BASE_DELAY_MS = 1_000;
+const RECONNECT_MAX_DELAY_MS = 15_000;
 
-/**
- * Read the current URL's query string into a plain map. Repeated keys (e.g.
- * `?cat=a&cat=b`) collapse to an array. Stable order is preserved as the
- * URLSearchParams iteration order.
- */
+/** Read the current URL's query string into a plain map. Repeated keys collapse to an array. */
 function readCurrentParameters(): PresenceParameters {
   if (typeof window === "undefined") {
     return {};
@@ -39,13 +35,23 @@ function readCurrentParameters(): PresenceParameters {
   return out;
 }
 
+function wsUrl(model: PresenceModel, modelId: number): string {
+  const { protocol, host } = window.location;
+  const wsProto = protocol === "https:" ? "wss:" : "ws:";
+  return `${wsProto}//${host}/api/presence-ws?model=${encodeURIComponent(
+    model,
+  )}&id=${modelId}`;
+}
+
 /**
- * Poll the presence endpoint while the user is on a question or dashboard page,
- * pausing while the tab is hidden. Returns the list of *other* users currently
- * viewing the same entity.
+ * Maintain a WebSocket connection to the presence service while the user is on
+ * a question or dashboard page. Pauses while the tab is hidden, reconnects
+ * with exponential backoff on disconnect. Returns the list of *other* users
+ * currently viewing the same entity.
  *
- * POC: no instance-toggle UI, no per-user hide, no embedding gate beyond the
- * structural one (this hook is only mounted from the authenticated app shell).
+ * The same hook used to short-poll over HTTP — Phase 3 moves it to a
+ * server-pushed channel so avatar updates land in milliseconds rather than
+ * waiting out a poll cycle.
  */
 export function usePresence(
   model: PresenceModel,
@@ -53,18 +59,15 @@ export function usePresence(
 ): PresenceViewer[] {
   const currentUser = useSelector(getUser);
   const presenceEnabled = useSetting("presence-enabled");
-  const [pingPresence] = usePingPresenceMutation();
-  const [leavePresence] = useLeavePresenceMutation();
   const [viewers, setViewers] = useState<PresenceViewer[]>([]);
-
-  // Stable refs so we don't re-create the interval when callbacks change.
-  const pingRef = useRef(pingPresence);
-  const leaveRef = useRef(leavePresence);
-  pingRef.current = pingPresence;
-  leaveRef.current = leavePresence;
 
   const enabled =
     presenceEnabled !== false && currentUser != null && modelId != null;
+
+  // Stable callback refs so we don't re-create the WS just because a parent
+  // re-rendered with new function identities.
+  const viewersRef = useRef(viewers);
+  viewersRef.current = viewers;
 
   useEffect(() => {
     if (!enabled || modelId == null) {
@@ -73,59 +76,114 @@ export function usePresence(
     }
 
     let cancelled = false;
-    let intervalId: ReturnType<typeof setInterval> | undefined;
+    let ws: WebSocket | null = null;
+    let heartbeatId: ReturnType<typeof setInterval> | undefined;
+    let reconnectId: ReturnType<typeof setTimeout> | undefined;
+    let backoff = RECONNECT_BASE_DELAY_MS;
 
-    const tick = async () => {
-      try {
-        const result = await pingRef
-          .current({
-            model,
-            model_id: modelId,
+    const sendHeartbeat = () => {
+      if (ws?.readyState === WebSocket.OPEN) {
+        ws.send(
+          JSON.stringify({
+            type: "heartbeat",
             parameters: readCurrentParameters(),
-          })
-          .unwrap();
-        if (!cancelled) {
-          setViewers(result.viewers ?? []);
-        }
-      } catch {
-        // Swallow — presence is best-effort.
+          }),
+        );
       }
     };
 
-    const start = () => {
-      if (intervalId != null) {
+    const clearHeartbeat = () => {
+      if (heartbeatId != null) {
+        clearInterval(heartbeatId);
+        heartbeatId = undefined;
+      }
+    };
+
+    const connect = () => {
+      if (cancelled || document.hidden) {
         return;
       }
-      void tick();
-      intervalId = setInterval(tick, POLL_INTERVAL_MS);
+      try {
+        ws = new WebSocket(wsUrl(model, modelId));
+      } catch (e) {
+        scheduleReconnect();
+        return;
+      }
+      ws.onopen = () => {
+        backoff = RECONNECT_BASE_DELAY_MS;
+        sendHeartbeat();
+        heartbeatId = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
+      };
+      ws.onmessage = (ev) => {
+        try {
+          const msg = JSON.parse(ev.data);
+          if (msg && Array.isArray(msg.viewers)) {
+            if (!cancelled) {
+              setViewers(msg.viewers);
+            }
+          }
+        } catch {
+          // ignore non-JSON frames
+        }
+      };
+      ws.onclose = () => {
+        clearHeartbeat();
+        ws = null;
+        if (!cancelled && !document.hidden) {
+          scheduleReconnect();
+        }
+      };
+      ws.onerror = () => {
+        // onclose will fire right after; reconnect happens there.
+      };
     };
 
-    const stop = () => {
-      if (intervalId != null) {
-        clearInterval(intervalId);
-        intervalId = undefined;
+    const scheduleReconnect = () => {
+      if (cancelled || reconnectId != null) {
+        return;
+      }
+      const delay = backoff;
+      backoff = Math.min(backoff * 2, RECONNECT_MAX_DELAY_MS);
+      reconnectId = setTimeout(() => {
+        reconnectId = undefined;
+        connect();
+      }, delay);
+    };
+
+    const close = () => {
+      clearHeartbeat();
+      if (ws != null) {
+        try {
+          ws.close(1000, "page-closed");
+        } catch {}
+        ws = null;
       }
     };
 
     const handleVisibility = () => {
       if (document.hidden) {
-        stop();
-      } else {
-        start();
+        close();
+      } else if (ws == null) {
+        backoff = RECONNECT_BASE_DELAY_MS;
+        connect();
       }
     };
 
     if (!document.hidden) {
-      start();
+      connect();
     }
     document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
       cancelled = true;
-      stop();
+      if (reconnectId != null) {
+        clearTimeout(reconnectId);
+      }
+      close();
       document.removeEventListener("visibilitychange", handleVisibility);
-      // Best-effort leave so the avatar disappears for others without waiting for TTL.
-      void leaveRef.current({ model, model_id: modelId }).catch(() => {});
+      // Drop the viewer list locally so a stale stack doesn't survive a
+      // navigation back to the same page.
+      setViewers([]);
     };
   }, [enabled, model, modelId]);
 

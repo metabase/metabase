@@ -1546,14 +1546,19 @@
   presence
   {:team "UX West"
    :api  #{metabase.presence.api
-           metabase.presence.settings}
+           metabase.presence.settings
+           metabase.presence.ws}
    :uses #{api
            app-db
+           models
+           request
+           session
            settings
            util}
    :model-exports #{:model/UserPresence}
    :model-imports #{:model/Card
                     :model/Dashboard
+                    :model/Session
                     :model/User}}
 
   product-feedback

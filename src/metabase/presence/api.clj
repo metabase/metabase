@@ -2,13 +2,19 @@
   "POC: 'currently viewing' presence indicator. The frontend POSTs to
   `/api/presence/ping` every few seconds while a user has a question or
   dashboard page open; the response is the list of *other* users currently
-  viewing the same entity. Rows are short-lived and filtered by `expires_at`."
+  viewing the same entity. Rows are short-lived and filtered by `expires_at`.
+
+  Phase 3 added `metabase.presence.ws` as the primary transport; this
+  HTTP endpoint stays as a thin fallback. Each HTTP upsert here also
+  triggers a WS broadcast so users on the WS channel see HTTP-driven
+  changes instantly."
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
    [metabase.presence.models.user-presence]
    [metabase.presence.settings :as presence.settings]
+   [metabase.presence.ws :as presence.ws]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
@@ -96,6 +102,8 @@
     (do
       (api/read-check (model->toucan model) model_id)
       (upsert-presence! api/*current-user-id* model model_id parameters)
+      ;; Phase 3: keep WS-connected viewers in sync when the HTTP fallback mutates state.
+      (presence.ws/broadcast! model model_id)
       {:viewers (or (hydrate-viewers (live-viewers api/*current-user-id* model model_id))
                     [])})))
 
@@ -113,4 +121,5 @@
               :user_id  api/*current-user-id*
               :model    model
               :model_id model_id)
+  (presence.ws/broadcast! model model_id)
   api/generic-204-no-content)
