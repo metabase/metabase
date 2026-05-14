@@ -9,12 +9,17 @@ import {
   useGetEmbeddingThemeQuery,
   useUpdateEmbeddingThemeMutation,
 } from "metabase/api/embedding-theme";
-import { useToast } from "metabase/common/hooks";
+import { useSetting, useToast } from "metabase/common/hooks";
 import type {
+  ChartColor,
   MetabaseColor,
   MetabaseTheme,
 } from "metabase/embedding-sdk/theme";
+import { useDispatch } from "metabase/redux";
+import { addUndo } from "metabase/redux/undo";
+import { suggestHarmonyColors } from "metabase/ui/colors/harmonies";
 import type { EmbeddingTheme } from "metabase-types/api";
+import type { ColorSettings } from "metabase-types/api/settings";
 
 interface ThemeEditorState {
   name: string;
@@ -23,26 +28,86 @@ interface ThemeEditorState {
 
 export type ThemeEditorId = number | "new";
 
-/** Color keys that belong to the "additional colors" section. */
-const ADDITIONAL_COLOR_KEYS: Exclude<MetabaseColor, "charts">[] = [
-  "text-secondary",
-  "text-tertiary",
-  "border",
-  "background-secondary",
-  "filter",
-  "summarize",
-  "positive",
-  "negative",
-  "shadow",
-];
-
 const PRIMARY_COLORS_KEYS: Exclude<MetabaseColor, "charts">[] = [
   "brand",
   "background",
   "text-primary",
 ];
 
+const chartBase = (c: ChartColor): string =>
+  typeof c === "string" ? c : c.base;
+
+const eqColor = (a: string | undefined, b: string | undefined) =>
+  (a ?? "").toLowerCase() === (b ?? "").toLowerCase();
+
+/**
+ * Returns a copy of `settings` with `filter` / `summarize` / `positive` /
+ * `negative` / `charts` overwritten by the values that the harmony would
+ * derive from the brand color. If there is no brand color, returns the
+ * settings unchanged.
+ *
+ * Used by the regenerate-from-brand button: the user is explicitly asking
+ * to overwrite every harmony-managed color, so whitelabel customizations
+ * are not respected here.
+ */
+const withBrandHarmony = (settings: MetabaseTheme): MetabaseTheme => {
+  const brand = settings.colors?.brand;
+  if (!brand) {
+    return settings;
+  }
+  const harmony = suggestHarmonyColors(brand);
+  return {
+    ...settings,
+    colors: {
+      ...settings.colors,
+      filter: harmony.filter,
+      summarize: harmony.summarize,
+      positive: harmony.positive,
+      negative: harmony.negative,
+      charts: harmony.charts,
+    },
+  };
+};
+
+/**
+ * Seed for a fresh draft: fills harmony-managed colors with brand-derived
+ * values *only when* the corresponding whitelabel key is not set. This keeps
+ * a fresh draft in-sync with the harmony when no customizations exist (so
+ * the regenerate button stays hidden), while still honoring any
+ * `application-colors` overrides the admin has configured.
+ */
+const seedDraftFromHarmony = (
+  settings: MetabaseTheme,
+  whitelabelColors: ColorSettings,
+): MetabaseTheme => {
+  const brand = settings.colors?.brand;
+  if (!brand) {
+    return settings;
+  }
+  const harmony = suggestHarmonyColors(brand);
+  const existingCharts = settings.colors?.charts ?? [];
+  const charts: ChartColor[] = harmony.charts.map((harmonyChart, i) => {
+    const accentKey = `accent${i}` as keyof ColorSettings;
+    if (whitelabelColors[accentKey] !== undefined) {
+      return existingCharts[i] ?? harmonyChart;
+    }
+    return harmonyChart;
+  });
+  return {
+    ...settings,
+    colors: {
+      ...settings.colors,
+      filter: whitelabelColors.filter ?? harmony.filter,
+      summarize: whitelabelColors.summarize ?? harmony.summarize,
+      positive: whitelabelColors.success ?? harmony.positive,
+      negative: whitelabelColors.danger ?? harmony.negative,
+      charts,
+    },
+  };
+};
+
 export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
+  const dispatch = useDispatch();
   const isDraft = themeId === "new";
   const {
     data: serverTheme,
@@ -53,11 +118,20 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
   const [updateTheme] = useUpdateEmbeddingThemeMutation();
   const [sendToast] = useToast();
   const defaultThemeSettings = useDefaultEmbeddingThemeSettings();
+  const whitelabelColors = useSetting("application-colors") ?? {};
 
-  // Seed once on mount when in draft mode so the baseline is stable across renders.
+  // Seed once on mount when in draft mode so the baseline is stable across
+  // renders. Harmony-managed colors are pre-derived from the brand, with any
+  // whitelabel overrides preserved.
   const [draftInitial] = useState<ThemeEditorState | null>(() =>
     isDraft
-      ? { name: t`Untitled theme`, settings: defaultThemeSettings }
+      ? {
+          name: t`Untitled theme`,
+          settings: seedDraftFromHarmony(
+            defaultThemeSettings,
+            whitelabelColors,
+          ),
+        }
       : null,
   );
 
@@ -94,13 +168,20 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
   );
   const canSave = isDraft || isDirty;
 
-  const updateSettings = useCallback(
-    (updater: (settings: MetabaseTheme) => Partial<MetabaseTheme>) => {
+  const setName = useCallback((name: string) => {
+    setCurrentTheme((prev) => (prev ? { ...prev, name } : prev));
+  }, []);
+
+  const setColor = useCallback(
+    (key: Exclude<MetabaseColor, "charts">, value: string) => {
       setCurrentTheme((prev) =>
         prev
           ? {
               ...prev,
-              settings: { ...prev.settings, ...updater(prev.settings) },
+              settings: {
+                ...prev.settings,
+                colors: { ...prev.settings.colors, [key]: value.toLowerCase() },
+              },
             }
           : prev,
       );
@@ -108,29 +189,22 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
     [],
   );
 
-  const setName = useCallback((name: string) => {
-    setCurrentTheme((prev) => (prev ? { ...prev, name } : prev));
+  const setChartColor = useCallback((index: number, value: string) => {
+    setCurrentTheme((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const charts = [...(prev.settings.colors?.charts ?? [])];
+      charts[index] = value.toLowerCase();
+      return {
+        ...prev,
+        settings: {
+          ...prev.settings,
+          colors: { ...prev.settings.colors, charts },
+        },
+      };
+    });
   }, []);
-
-  const setColor = useCallback(
-    (key: Exclude<MetabaseColor, "charts">, value: string) => {
-      updateSettings((s) => ({
-        colors: { ...s.colors, [key]: value.toLowerCase() },
-      }));
-    },
-    [updateSettings],
-  );
-
-  const setChartColor = useCallback(
-    (index: number, value: string) => {
-      updateSettings((s) => {
-        const charts = [...(s.colors?.charts ?? [])];
-        charts[index] = value.toLowerCase();
-        return { colors: { ...s.colors, charts } };
-      });
-    },
-    [updateSettings],
-  );
 
   const setFontFamily = useCallback((family: string) => {
     setCurrentTheme((prev) => {
@@ -158,67 +232,86 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
     });
   }, []);
 
-  const hasAdditionalColorChanges = useMemo(() => {
-    if (!currentTheme) {
-      return false;
-    }
-
-    const colors = currentTheme.settings.colors ?? {};
-    const defaultColors = defaultThemeSettings.colors ?? {};
-
-    for (const key of ADDITIONAL_COLOR_KEYS) {
-      if ((colors[key] ?? "") !== ((defaultColors[key] as string) ?? "")) {
-        return true;
-      }
-    }
-
-    return !isEqual(colors.charts ?? [], defaultColors.charts ?? []);
-  }, [currentTheme, defaultThemeSettings]);
-
   const hasMainColorChanges = useMemo(() => {
     if (!currentTheme) {
       return false;
     }
-
     const colors = currentTheme.settings.colors ?? {};
     const defaultColors = defaultThemeSettings.colors ?? {};
-
-    for (const key of PRIMARY_COLORS_KEYS) {
-      if ((colors[key] ?? "") !== ((defaultColors[key] as string) ?? "")) {
-        return true;
-      }
-    }
-
-    return !isEqual(colors.charts ?? [], defaultColors.charts ?? []);
+    return PRIMARY_COLORS_KEYS.some(
+      (key) => (colors[key] ?? "") !== ((defaultColors[key] as string) ?? ""),
+    );
   }, [currentTheme, defaultThemeSettings]);
 
-  const resetAdditionalColors = useCallback(() => {
-    updateSettings((s) => {
-      const defaultColors = defaultThemeSettings.colors ?? {};
-      const updatedColors = { ...s.colors };
+  /**
+   * True when the current filter / summarize / positive / negative / chart colors differ
+   * from what would be generated from the current brand color via the color harmony.
+   * Drives the regenerate button visibility.
+   */
+  const hasOutOfSyncAdditionalColors = useMemo(() => {
+    if (!currentTheme) {
+      return false;
+    }
+    const colors = currentTheme.settings.colors ?? {};
+    const brand = colors.brand;
+    if (!brand) {
+      return false;
+    }
+    const expected = suggestHarmonyColors(brand);
+    if (!eqColor(colors.filter, expected.filter)) {
+      return true;
+    }
+    if (!eqColor(colors.summarize, expected.summarize)) {
+      return true;
+    }
+    if (!eqColor(colors.positive, expected.positive)) {
+      return true;
+    }
+    if (!eqColor(colors.negative, expected.negative)) {
+      return true;
+    }
+    const currentCharts = (colors.charts ?? []).map(chartBase);
+    return expected.charts.some((c, i) => !eqColor(currentCharts[i], c));
+  }, [currentTheme]);
 
-      for (const key of ADDITIONAL_COLOR_KEYS) {
-        updatedColors[key] = (defaultColors[key] as string) ?? "";
-      }
-
-      updatedColors.charts = defaultColors.charts ?? [];
-
-      return { colors: updatedColors };
+  const regenerateAdditionalColorsFromBrand = useCallback(() => {
+    if (!currentTheme?.settings.colors?.brand) {
+      return;
+    }
+    setCurrentTheme({
+      ...currentTheme,
+      settings: withBrandHarmony(currentTheme.settings),
     });
-  }, [updateSettings, defaultThemeSettings]);
+    dispatch(
+      addUndo({
+        message: t`Filter, summarize, positive, negative, and chart colors regenerated from the brand color.`,
+        actionLabel: t`Undo`,
+        actions: [() => setCurrentTheme(currentTheme)],
+      }),
+    );
+  }, [currentTheme, dispatch]);
 
   const resetMainColors = useCallback(() => {
-    updateSettings((s) => {
-      const defaultColors = defaultThemeSettings.colors ?? {};
-      const updatedColors = { ...s.colors };
-
-      for (const key of PRIMARY_COLORS_KEYS) {
-        updatedColors[key] = (defaultColors[key] as string) ?? "";
-      }
-
-      return { colors: updatedColors };
+    if (!currentTheme) {
+      return;
+    }
+    const defaultColors = defaultThemeSettings.colors ?? {};
+    const updatedColors = { ...currentTheme.settings.colors };
+    for (const key of PRIMARY_COLORS_KEYS) {
+      updatedColors[key] = (defaultColors[key] as string) ?? "";
+    }
+    setCurrentTheme({
+      ...currentTheme,
+      settings: { ...currentTheme.settings, colors: updatedColors },
     });
-  }, [updateSettings, defaultThemeSettings]);
+    dispatch(
+      addUndo({
+        message: t`Main colors reset to defaults.`,
+        actionLabel: t`Undo`,
+        actions: [() => setCurrentTheme(currentTheme)],
+      }),
+    );
+  }, [currentTheme, defaultThemeSettings, dispatch]);
 
   const handleSave = useCallback(async (): Promise<EmbeddingTheme | null> => {
     if (!currentTheme) {
@@ -263,8 +356,8 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
     setChartColor,
     hasMainColorChanges,
     resetMainColors,
-    hasAdditionalColorChanges,
-    resetAdditionalColors,
+    hasOutOfSyncAdditionalColors,
+    regenerateAdditionalColorsFromBrand,
     setFontFamily,
     setFontSize,
     handleSave,

@@ -177,6 +177,13 @@
                                                       :return_to default-redirect-uri)]
             (is (not (sso.test-setup/successful-login? response)))))
 
+        (testing "with SAML and JWT configured, a POST without jwt in JSON body dispatches to SAML (not JWT login)"
+          (let [response (client/client-real-response :post 401 "/auth/sso"
+                                                      {:request-options {:redirect-strategy :none}}
+                                                      {}
+                                                      :return_to default-redirect-uri)]
+            (is (not (sso.test-setup/successful-login? response)))))
+
         (testing "with SAML and JWT configured, a GET request with preferred_method=jwt should sign in via JWT"
           (let [response (client/client-real-response :get 302 "/auth/sso"
                                                       {:request-options {:redirect-strategy :none}}
@@ -226,6 +233,33 @@
                                                     :exp        (+ (buddy-util/now) 3600)
                                                     :iat        (buddy-util/now)}
                                                    default-jwt-secret))]
+        (is (sso.test-setup/successful-login? response))
+        (testing "redirect URI"
+          (is
+           (= default-redirect-uri
+              (get-in response [:headers "Location"]))))
+        (testing "login attributes"
+          (is
+           (= {"extra" "keypairs", "are" "also present"}
+              (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))))))
+
+(deftest post-jwt-body-happy-path-test
+  (testing "Happy path login via POST /auth/sso with JSON body {:jwt ...}, same behavior as GET with query param"
+    (with-jwt-default-setup!
+      (let [jwt-payload (jwt/sign
+                         {:email      "rasta@metabase.com"
+                          :first_name "Rasta"
+                          :last_name  "Toucan"
+                          :extra      "keypairs"
+                          :are        "also present"
+                          :iss        "issuer"
+                          :exp        (+ (buddy-util/now) 3600)
+                          :iat        (buddy-util/now)}
+                         default-jwt-secret)
+            response    (client/client-real-response :post 302 "/auth/sso"
+                                                     {:request-options {:redirect-strategy :none}}
+                                                     {:jwt jwt-payload}
+                                                     :return_to default-redirect-uri)]
         (is (sso.test-setup/successful-login? response))
         (testing "redirect URI"
           (is
@@ -898,7 +932,7 @@
                                               default-jwt-secret))))))))
 
 (deftest non-string-jwt-claims-dropped-test
-  (testing "JWT claims with non-string values are dropped and warning is logged"
+  (testing "JWT claims are stringified or joined as appropriate; unstringable values are dropped (UXW-3921)"
     (with-jwt-default-setup!
       (mt/with-log-messages-for-level [jwt-log-messages [metabase-enterprise :warn]]
         (let [response (client/client-full-response :get 302 "/auth/sso"
@@ -919,14 +953,14 @@
                                                      default-jwt-secret))]
           (is (sso.test-setup/successful-login? response))
 
-          (testing "only string attributes are saved to jwt_attributes"
+          (testing "scalar attributes are stringified, array attributes are joined with commas, unstringable values dropped"
             (is (= {"string_attr" "valid-string"
                     "number_attr" "42"
-                    "boolean_attr" "false"}
+                    "boolean_attr" "false"
+                    "array_attr" "item1,item2"}
                    (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))
 
           (testing "warning messages are logged for non-stringable values"
-            (is (some #(re-find #"Dropping attribute 'array_attr' with non-stringable value: \[\"item1\" \"item2\"\]" %) (map :message (jwt-log-messages))))
             (is (some #(re-find #"Dropping attribute 'object_attr' with non-stringable value: \{:nested \"value\"\}" %) (map :message (jwt-log-messages))))
             (is (some #(re-find #"Dropping attribute 'null_attr' with non-stringable value: null" %) (map :message (jwt-log-messages)))))
           (testing "warning messages are logged for `@`-prefixed keys"
@@ -974,7 +1008,14 @@
           (testing "with hash header (legacy usage)"
             (is (=? expected-body
                     (:body (do-request {"x-metabase-client" "embedding-sdk-react"
-                                        "x-metabase-sdk-jwt-hash" (token-utils/generate-token)}))))))))))
+                                        "x-metabase-sdk-jwt-hash" (token-utils/generate-token)})))))
+          (testing "POST /auth/sso with jwt in JSON body matches GET behavior"
+            (let [do-post (fn [headers]
+                            (client/client-real-response :post 200 "/auth/sso"
+                                                         {:request-options {:headers headers}}
+                                                         {:jwt jwt-payload}))]
+              (is (=? expected-body
+                      (:body (do-post {"x-metabase-client" "embedding-sdk-react"})))))))))))
 
 (deftest jwt-token-not-configured-test
   (testing "should not return a session token when jwt is not configured"

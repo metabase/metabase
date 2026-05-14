@@ -160,15 +160,21 @@
    :uses    #{agent-lib
               api
               auth-identity
+              dashboards
+              events
               lib
               llm
               metabot
+              queries
               query-processor
               request
               server
               settings
               util}
-   :model-imports #{:model/User}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/User}}
 
   agent-lib
   {:team "Metabot"
@@ -181,6 +187,7 @@
    :api  #{metabase.analytics.api
            metabase.analytics.core
            metabase.analytics.init
+           metabase.analytics.settings
            metabase.analytics.snowplow}
    :uses #{analytics-interface
            api
@@ -194,6 +201,7 @@
            models
            permissions
            premium-features
+           request
            session
            settings
            sso
@@ -204,6 +212,7 @@
    :model-imports #{:model/CacheConfig
                     :model/Card
                     :model/Collection
+                    :model/CustomVizPlugin
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Database
@@ -354,6 +363,7 @@
                     :model/Channel
                     :model/Collection
                     :model/Comment
+                    :model/CustomVizPlugin
                     :model/Dashboard
                     :model/Database
                     :model/Document
@@ -1018,6 +1028,11 @@
    :api  #{metabase.initialization-status.core}
    :uses #{}}
 
+  interestingness
+  {:team "UX West"
+   :api  #{metabase.interestingness.core}
+   :uses #{util}}
+
   internal-stats
   {:team "UX West"
    :api  #{metabase.internal-stats.core}
@@ -1046,6 +1061,7 @@
            metabase.lib.init
            metabase.lib.metadata
            metabase.lib.metadata.protocols
+           metabase.lib.options
            metabase.lib.schema
            metabase.lib.schema.actions
            metabase.lib.schema.aggregation
@@ -1069,8 +1085,7 @@
            metabase.lib.schema.util
            metabase.lib.schema.validate
            metabase.lib.types.isa
-           metabase.lib.util
-           metabase.lib.util.match}
+           metabase.lib.util}
    :uses #{config
            graph
            legacy-mbql
@@ -1081,8 +1096,7 @@
               lib-be              ;; BE-specific extension of lib; tight coupling is acceptable.
               query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
               source-swap         ;; Manipulates MBQL queries; tight coupling with lib is expected.
-              enterprise/sandbox  ;; Really part of the QP, though its lives in the enterprise/ tree.
-              }}
+              enterprise/sandbox}}  ;; Really part of the QP, though its lives in the enterprise/ tree.
 
   lib-be
   {:team "Querying Platform"
@@ -1135,7 +1149,7 @@
            sync
            util
            warehouse-schema}
-   :model-imports #{:model/Database :model/Field :model/Table}}
+   :model-imports #{:model/Card :model/Database :model/Field :model/Table}}
 
   logger
   {:team "DevEx"
@@ -1207,6 +1221,7 @@
               metabase.metabot.settings}
    :friends #{agent-api
               enterprise/metabot
+              enterprise/metabot-analytics
               slackbot}
    :uses    #{activity-feed
               agent-lib
@@ -1221,6 +1236,7 @@
               config
               documents
               driver
+              interestingness
               legacy-mbql
               lib
               lib-be
@@ -1239,7 +1255,6 @@
               settings
               slackbot
               sql-tools
-              store-api
               sync
               system
               task
@@ -1247,7 +1262,11 @@
               transforms-base
               util
               warehouses}
-   :model-exports #{:model/AiUsageLog :model/Metabot :model/MetabotMessage}
+   :model-exports #{:model/AiUsageLog
+                    :model/Metabot
+                    :model/MetabotConversation
+                    :model/MetabotFeedback
+                    :model/MetabotMessage}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -1497,7 +1516,6 @@
   {:team "DevEx"
    :api  #{metabase.plugins.core}
    :uses #{classloader
-           config
            driver
            util}}
 
@@ -1740,6 +1758,7 @@
               metabase.query-processor.streaming.interface
               metabase.query-processor.timezone
               metabase.query-processor.util
+              metabase.query-processor.util.add-alias-info
               metabase.query-processor.util.persisted-cache}
    :uses #{analytics
            analytics-interface
@@ -1793,8 +1812,10 @@
   request
   {:team "UX West"
    :api  #{metabase.request.core
+           metabase.request.current
            metabase.request.init
-           metabase.request.schema}
+           metabase.request.schema
+           metabase.request.user-agent}
    :uses #{analytics-interface
            api
            config
@@ -2018,7 +2039,6 @@
               analytics-interface
               api
               channel
-              config
               formatter
               lib
               metabot
@@ -2034,8 +2054,7 @@
    :model-imports #{:model/AuthIdentity
                     :model/Card
                     :model/Database
-                    :model/MetabotMessage
-                    :model/User}}
+                    :model/MetabotMessage}}
 
   source-swap
   {:team "Graphy"
@@ -2115,6 +2134,7 @@
            database-routing
            driver
            events
+           interestingness
            lib
            models
            premium-features
@@ -2181,13 +2201,19 @@
            config
            lib
            lib-be
+           permissions
            premium-features
            search
            util}
    :model-imports #{:model/AiUsageLog
                     :model/Card
                     :model/Dashboard
-                    :model/SecurityAdvisory}}
+                    :model/MetabotConversation
+                    :model/MetabotMessage
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/SecurityAdvisory
+                    :model/User}}
 
   tiles
   {:team "UX West"
@@ -2254,8 +2280,7 @@
            task-history
            tracing
            transforms-base
-           util
-           warehouse-schema}
+           util}
    :friends #{models
               enterprise/transforms-python}
    :model-exports #{:model/Transform
@@ -2288,8 +2313,7 @@
            lib-be
            query-processor
            sync
-           util
-           warehouse-schema}
+           util}
    :friends #{transforms
               enterprise/transforms-python}}
 
@@ -2463,6 +2487,7 @@
            api
            app-db
            audit-app
+           collections
            driver
            lib
            lib-be
@@ -2561,7 +2586,6 @@
            request
            sample-data
            secrets
-           server
            settings
            sync
            upload
@@ -2573,7 +2597,6 @@
                     :model/Collection
                     :model/Database
                     :model/Field
-                    :model/FieldValues
                     :model/Table}}
 
   xrays
@@ -2827,6 +2850,20 @@
    :api  #{metabase-enterprise.core.init}
    :uses :any}
 
+  enterprise/custom-viz-plugin
+  {:team "Gadget"
+   :api  #{metabase-enterprise.custom-viz-plugin.api
+           metabase-enterprise.custom-viz-plugin.init}
+   :uses #{api
+           config
+           events
+           models
+           premium-features
+           server
+           settings
+           util}
+   :model-exports #{:model/CustomVizPlugin}}
+
   enterprise/dashboard-subscription-filters
   {:team "Graphy"
    :api  #{}
@@ -2844,11 +2881,13 @@
            collections
            config
            metabot
+           models
            premium-features
            settings
            startup
            task
            util
+           enterprise/embeddings
            enterprise/semantic-search}
    :model-imports #{:model/Card
                     :model/Collection
@@ -2915,6 +2954,7 @@
            api
            app-db
            collections
+           database-routing
            documents
            driver
            events
@@ -2976,6 +3016,14 @@
                     :model/Sandbox
                     :model/Table
                     :model/Tenant}}
+
+  enterprise/embeddings
+  {:team "Metabot"
+   :api  #{metabase-enterprise.embeddings.client}
+   ;; Temporary: the impl currently delegates back into semantic-search until
+   ;; embeddings.client/get-embeddings-batch's TODO is executed (move impl + settings here,
+   ;; make token tracking a hook). Drop this dep once the relocation lands.
+   :uses #{enterprise/semantic-search}}
 
   enterprise/gsheets
   {:team "Cloud"
@@ -3042,6 +3090,7 @@
               permissions
               premium-features
               settings
+              task
               util
               enterprise/dependencies
               enterprise/transforms-python}
@@ -3050,6 +3099,20 @@
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
                     :model/Transform}}
+
+  enterprise/metabot-analytics
+  {:team "Metabot"
+   :api  #{metabase-enterprise.metabot-analytics.api}
+   :uses #{api
+           driver
+           metabot
+           permissions
+           query-processor
+           request
+           slackbot
+           sql-tools
+           util}
+   :model-imports #{:model/MetabotConversation :model/MetabotFeedback :model/MetabotMessage}}
 
   enterprise/permission-debug
   {:team "UX West"
@@ -3344,7 +3407,8 @@
   enterprise/transforms-inspector
   {:team "Gadget"
    :api  #{metabase-enterprise.transforms-inspector.api}
-   :uses #{api
+   :uses #{analytics-interface
+           api
            driver
            events
            lib
@@ -3352,6 +3416,7 @@
            query-processor
            server
            sql-tools
+           tracing
            transforms
            transforms-base
            util}

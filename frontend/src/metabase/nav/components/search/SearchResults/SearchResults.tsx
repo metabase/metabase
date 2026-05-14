@@ -3,10 +3,9 @@ import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
+import { skipToken, useSearchQuery } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { useSearchListQuery } from "metabase/common/hooks";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
-import { Search } from "metabase/entities/search";
 import {
   EmptyStateContainer,
   ResultsContainer,
@@ -18,14 +17,15 @@ import { SearchResult } from "metabase/search/components/SearchResult/SearchResu
 import { SearchContextTypes } from "metabase/search/constants";
 import type { SearchFilters } from "metabase/search/types";
 import { Loader } from "metabase/ui";
+import { modelToUrl } from "metabase/urls";
 import {
   DEFAULT_SEARCH_LIMIT,
   SEARCH_DEBOUNCE_DURATION,
 } from "metabase/utils/constants";
-import { modelToUrl } from "metabase/utils/urls";
 import type {
   CollectionItem,
   SearchModel,
+  SearchResult as SearchResultType,
   SearchResponse as SearchResultsType,
 } from "metabase-types/api";
 
@@ -94,15 +94,18 @@ export const SearchResults = ({
     query.context = SearchContextTypes.SEARCH_BAR;
   }
 
-  const {
-    data: list = [],
-    metadata,
-    isLoading,
-  } = useSearchListQuery({
-    query,
-    reload: true,
-    enabled: !!debouncedSearchText,
-  });
+  const { data: response, isLoading } = useSearchQuery(
+    debouncedSearchText ? query : skipToken,
+    { refetchOnMountOrArgChange: true },
+  );
+  const list = useMemo(() => response?.data ?? [], [response?.data]);
+  const metadata = useMemo<Omit<SearchResultsType, "data"> | undefined>(() => {
+    if (!response) {
+      return undefined;
+    }
+    const { data: _data, ...rest } = response;
+    return rest;
+  }, [response]);
 
   const hasResults = list.length > 0;
   const showFooter = hasResults && footerComponent && metadata;
@@ -111,14 +114,19 @@ export const SearchResults = ({
     return showFooter ? [...list, footerComponent] : list;
   }, [footerComponent, list, showFooter]);
 
-  const onEnterSelect = (item?: CollectionItem | SearchResultsFooter) => {
+  type ItemType =
+    | CollectionItem
+    | SearchResultsProps["footerComponent"]
+    | SearchResultType;
+
+  const onEnterSelect = (item?: ItemType) => {
     if (showFooter && cursorIndex === dropdownItemList.length - 1) {
       onFooterSelect?.();
     }
 
     if (item && typeof item !== "function") {
       if (onEntitySelect) {
-        onEntitySelect(Search.wrapEntity(item, dispatch));
+        onEntitySelect(item);
       } else if (item && modelToUrl(item)) {
         dispatch(push(modelToUrl(item)));
       }
@@ -126,7 +134,7 @@ export const SearchResults = ({
   };
 
   const { reset, getRef, cursorIndex } = useListKeyboardNavigation<
-    CollectionItem | SearchResultsProps["footerComponent"],
+    ItemType,
     HTMLLIElement
   >({
     list: dropdownItemList,
@@ -152,12 +160,11 @@ export const SearchResults = ({
               ? onEntitySelect
               : undefined;
           const ref = getRef(item);
-          const wrappedResult = Search.wrapEntity(item, dispatch);
 
           return (
             <li key={`${item.model}:${item.id}`} ref={ref}>
               <SearchResult
-                result={wrappedResult}
+                result={item}
                 compact={true}
                 showDescription={true}
                 isSelected={cursorIndex === index}

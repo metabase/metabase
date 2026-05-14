@@ -705,7 +705,7 @@
         (if (and (driver-api/json-field? stored-field)
                  (or (::sql.qp/forced-alias opts)
                      (= source-table driver-api/qp.add.source)))
-          (keyword source-alias)
+          (h2x/identifier :field-alias source-alias)
           result)))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :relative-datetime]

@@ -2,7 +2,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor, within } from "__support__/ui";
+import { act, screen, waitFor, within } from "__support__/ui";
 import { logout } from "metabase/auth/actions";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { metabotActions } from "metabase/metabot/state";
@@ -89,7 +89,9 @@ describe("metabot > ui", () => {
       fetchMock.delete(`path:/api/session`, 200);
 
       await assertVisible();
-      store.dispatch(logout(undefined) as any);
+      act(() => {
+        store.dispatch(logout(undefined) as any);
+      });
       await assertNotVisible();
     } finally {
       (domModule.reload as any).mockRestore();
@@ -236,7 +238,7 @@ describe("metabot > ui", () => {
     expect(afterMessages).toHaveTextContent(/The answer is always you./);
   });
 
-  it("should not show retry option for error messages", async () => {
+  it("should show retry option for error messages", async () => {
     setup();
 
     mockAgentEndpoint({
@@ -249,12 +251,10 @@ describe("metabot > ui", () => {
     await enterChatMessage("Who is your favorite?");
 
     const lastMessage = await lastChatMessage();
-    expect(lastMessage).toHaveTextContent(
-      /Anthropic API key expired or invalid/,
-    );
+    expect(lastMessage).toHaveTextContent(/Something went wrong/);
     expect(
-      within(lastMessage!).queryByTestId("metabot-chat-message-retry"),
-    ).not.toBeInTheDocument();
+      within(lastMessage!).getByTestId("metabot-chat-message-retry"),
+    ).toBeInTheDocument();
   });
 
   it("should be able to set the prompt input's value from anywhere in the app", async () => {

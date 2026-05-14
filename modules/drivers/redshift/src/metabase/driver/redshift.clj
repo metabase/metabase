@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.postgres :as driver.postgres]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -16,7 +17,6 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.driver.sql.query-processor.like-escape-char-built-in :as-alias like-escape-char-built-in]
    [metabase.driver.sync :as driver.s]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -36,8 +36,9 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :redshift, :parent #{:postgres
-                                       ::like-escape-char-built-in/like-escape-char-built-in})
+;; `::like-escape-char-built-in/like-escape-char-built-in` is inherited transitively via
+;; `:postgres` (see `metabase.driver.postgres`).
+(driver/register! :redshift, :parent :postgres)
 
 (doseq [[feature supported?] {:atomic-renames                   true
                               :connection-impersonation         true
@@ -550,7 +551,7 @@
                 (if (contains? param :name)
                   [(:name param) (:value param)]
 
-                  (when-let [field-id (driver-api/match-lite param
+                  (when-let [field-id (driver-api/match-one param
                                         [:field (field-id :guard integer?) _]
                                         (when (perf/some #{:dimension} &parents)
                                           field-id))]
@@ -656,13 +657,13 @@
 
 ;;; ----------------------------------------------- Connection Impersonation ------------------------------------------
 
-(defmethod driver.sql/set-role-statement :redshift
-  [_ role]
+(defmethod sql-jdbc/set-role-statement :redshift
+  [driver conn role]
   (let [special-chars-pattern #"[^a-zA-Z0-9_]"
-        needs-quote           (re-find special-chars-pattern role)]
-    (if needs-quote
-      (format "SET SESSION AUTHORIZATION \"%s\";" role)
-      (format "SET SESSION AUTHORIZATION %s;" role))))
+        needs-quote?          (re-find special-chars-pattern role)
+        quoted-role           (cond->> role
+                                needs-quote? (driver.postgres/memoized-quote-identifier driver conn))]
+    (format "SET SESSION AUTHORIZATION %s;" quoted-role)))
 
 (defmethod driver.sql/default-database-role :redshift
   [_ _]

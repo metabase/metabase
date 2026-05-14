@@ -33,6 +33,7 @@
     :model/CommentReaction                   metabase.comments.models.comment-reaction
     :model/ConnectionImpersonation           metabase-enterprise.impersonation.models
     :model/ContentTranslation                metabase.content-translation.models
+    :model/CustomVizPlugin                   metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
     :model/Dashboard                         metabase.dashboards.models.dashboard
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
     :model/DashboardCard                     metabase.dashboards.models.dashboard-card
@@ -58,8 +59,11 @@
     :model/Measure                           metabase.measures.models.measure
     :model/Metabot                           metabase.metabot.models.metabot
     :model/MetabotConversation               metabase.metabot.models.metabot-conversation
+    :model/MetabotFeedback                   metabase.metabot.models.metabot-feedback
     :model/MetabotMessage                    metabase.metabot.models.metabot-message
+    :model/MetabotSourceFeedback             metabase.metabot.models.metabot-source-feedback
     :model/AiUsageLog                        metabase.metabot.models.ai-usage-log
+    :model/DataComplexityScore               metabase-enterprise.data-complexity-score.models.data-complexity-score
     :model/MetabotGroupLimit                 metabase-enterprise.metabot.models.metabot-group-limit
     :model/MetabotInstanceLimit              metabase-enterprise.metabot.models.metabot-instance-limit
     :model/MetabotPermissions                metabase-enterprise.metabot.models.metabot-permissions

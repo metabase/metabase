@@ -43,8 +43,8 @@ import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { State } from "metabase/redux/store";
 import { Box } from "metabase/ui";
-import { extractEntityId } from "metabase/utils/urls";
-import * as Urls from "metabase/utils/urls";
+import { extractEntityId } from "metabase/urls";
+import * as Urls from "metabase/urls";
 import type {
   Card,
   CollectionId,
@@ -578,6 +578,10 @@ export const DocumentPage = ({
               title={t`Where should we save this document?`}
               onClose={() => setCollectionPickerMode(null)}
               entityType="document"
+              value={{
+                id: documentData?.collection_id ?? "root",
+                model: "collection",
+              }}
               onChange={(collection) => {
                 if (collectionPickerMode === "save") {
                   handleSave(canonicalCollectionId(collection.id));

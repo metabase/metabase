@@ -3,7 +3,7 @@ import type {
   Collection,
   CollectionItem,
   CollectionItemModel,
-  CollectionNamespace,
+  Table,
 } from "metabase-types/api";
 
 export type LibrarySectionType = "data" | "metrics" | "snippets";
@@ -16,6 +16,28 @@ export type EmptyStateData = {
   actionUrl?: string;
 };
 
+export type CollectionItemData = Pick<CollectionItem, "model" | "name"> &
+  Partial<
+    Pick<
+      CollectionItem,
+      | "id"
+      | "description"
+      | "collection_id"
+      | "archived"
+      | "collection_position"
+      | "last-edit-info"
+      | "namespace"
+    >
+  >;
+
+export type CollectionData = Collection & {
+  model: "collection";
+};
+
+export type TableData = Table & {
+  model: "table";
+};
+
 export type TreeItemModel = CollectionItemModel | "empty-state";
 
 export type TreeItem = {
@@ -24,11 +46,8 @@ export type TreeItem = {
   icon: IconName;
   updatedAt?: string;
   model: TreeItemModel;
-  data:
-    | ((Collection | Omit<CollectionItem, "getUrl">) & {
-        model: CollectionItem["model"];
-        namespace?: CollectionNamespace | null;
-      })
-    | EmptyStateData;
+  parentCollectionName?: string;
+  data: CollectionItemData | CollectionData | TableData | EmptyStateData;
   children?: TreeItem[];
+  childrenLoaded?: boolean;
 };

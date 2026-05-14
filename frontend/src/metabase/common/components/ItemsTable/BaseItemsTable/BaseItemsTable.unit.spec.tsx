@@ -2,6 +2,8 @@ import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 import { Route } from "react-router";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { DEFAULT_VISIBLE_COLUMNS_LIST } from "metabase/collections/components/CollectionContent";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
@@ -12,7 +14,10 @@ import {
   DEFAULT_TIME_STYLE,
 } from "metabase/utils/formatting/datetime-utils";
 import type { CollectionItem } from "metabase-types/api";
-import { createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
 import type { BaseItemsTableProps } from "./BaseItemsTable";
 import { BaseItemsTable } from "./BaseItemsTable";
@@ -132,6 +137,31 @@ describe("BaseItemsTable", () => {
     });
 
     expect(screen.queryByLabelText("Select all items")).not.toBeInTheDocument();
+  });
+
+  describe("library collections", () => {
+    beforeEach(() => {
+      mockSettings({
+        "token-features": createMockTokenFeatures({ library: true }),
+      });
+      setupEnterpriseOnlyPlugin("library");
+    });
+
+    it("does not display select all checkbox for library collections", () => {
+      setup({
+        hasUnselected: true,
+        onSelectAll: jest.fn(),
+        onToggleSelected: jest.fn(),
+        collection: createMockCollection({
+          can_write: true,
+          type: "library",
+        }),
+      });
+
+      expect(
+        screen.queryByLabelText("Select all items"),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("description", () => {

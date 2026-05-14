@@ -120,29 +120,18 @@ export const SdkQuestionDefaultView = ({
     question && shouldRunCardQuery({ question, isGuestEmbed }) && !queryResults;
 
   useEffect(() => {
-    const isNewQuestion = originalId === "new" || originalId === "new-native";
-    const isExistingQuestion =
-      question &&
+    if (
       !isQuestionLoading &&
       question?.isSaved() &&
-      !isNewQuestion &&
-      queryResults;
-
-    const onNavigate = onNavigateBack ?? onReset ?? undefined;
-
-    if (isNewQuestion) {
-      reportLocation({
-        type: "question",
-        id: originalId,
-        name: "New question",
-        onNavigate,
-      });
-    } else if (isExistingQuestion) {
+      originalId !== "new" &&
+      originalId !== "new-native" &&
+      queryResults
+    ) {
       reportLocation({
         type: "question",
         id: question.id(),
         name: question.displayName() || "Question",
-        onNavigate,
+        onNavigate: onNavigateBack ?? onReset ?? undefined,
       });
     }
   }, [

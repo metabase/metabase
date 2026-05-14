@@ -279,9 +279,18 @@ describe(
         cy.log("Unmounting");
         cy.mount(<></>);
 
-        cy.log("Checking METABASE_PROVIDER_PROPS_STORE cleaned up");
+        cy.log("Checking METABASE_PROVIDER_PROPS_STORE state was reset");
+        // cleanup() resets the props store state in place rather than dropping
+        // the singleton (EMB-1684 — dropping the singleton orphaned consumers
+        // that outlive a provider unmount). The store object stays on
+        // `window`, but its state should be back to initial (no props, no
+        // redux store).
         cy.window().should((win) => {
-          expect((win as any).METABASE_PROVIDER_PROPS_STORE).to.be.undefined;
+          const store = (win as any).METABASE_PROVIDER_PROPS_STORE;
+          expect(store, "store singleton persists").to.exist;
+          const state = store.getState();
+          expect(state.props, "props reset").to.be.null;
+          expect(state.internalProps.reduxStore, "reduxStore reset").to.be.null;
         });
       });
 

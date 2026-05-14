@@ -27,7 +27,10 @@ export interface RowChartViewProps<TDatum> {
   yScale: ScaleBand<StringLike>;
   xScale: ScaleContinuousNumeric<number, number, never>;
   seriesData: SeriesData<TDatum, SeriesInfo>[];
-  labelsFormatter: (value: NumberLike) => string;
+  labelsFormatter: (
+    value: NumberLike,
+    bar?: BarData<TDatum, SeriesInfo>,
+  ) => string;
   yTickFormatter: (value: StringLike) => string;
   xTickFormatter: (value: NumberLike) => string;
   xTicks: number[];
@@ -206,7 +209,7 @@ const RowChartView = <TDatum,>({
                     y={y + height / 2}
                     verticalAnchor="middle"
                   >
-                    {labelsFormatter(label)}
+                    {labelsFormatter(label, bar)}
                   </Text>
                 )}
               </React.Fragment>

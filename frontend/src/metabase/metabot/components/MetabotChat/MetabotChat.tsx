@@ -51,8 +51,7 @@ export const MetabotChat = ({
   const metabotName = useMetabotName();
   const showIllustrations = useSetting("metabot-show-illustrations");
 
-  const hasMessages =
-    metabot.messages.length > 0 || metabot.errorMessages.length > 0;
+  const hasMessages = metabot.messages.length > 0;
 
   const { scrollContainerRef, headerRef, fillerRef } =
     useScrollManager(hasMessages);
@@ -127,7 +126,9 @@ export const MetabotChat = ({
               )}
               <Text c="text-tertiary" maw="12rem" ta="center" lh="lg">
                 {config.emptyText ??
-                  t`I can help you explore your metrics and models.`}
+                  (showIllustrations
+                    ? t`I can help you explore your metrics and models.`
+                    : t`Explore your metrics and models with AI.`)}
               </Text>
             </Flex>
             {!config.hideSuggestedPrompts && (
@@ -163,11 +164,11 @@ export const MetabotChat = ({
             {/* conversation messages */}
             <Messages
               messages={metabot.messages}
-              errorMessages={metabot.errorMessages}
               onRetryMessage={
                 config.preventRetryMessage ? undefined : metabot.retryMessage
               }
               isDoingScience={metabot.isDoingScience}
+              debug={metabot.debugMode}
               showFeedbackButtons={isHosted}
             />
             {/* loading */}

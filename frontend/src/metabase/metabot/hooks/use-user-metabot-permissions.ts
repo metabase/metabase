@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 
 import { useGetUserMetabotPermissionsQuery } from "metabase/api";
+import { useSelector } from "metabase/redux";
+import { getUser } from "metabase/selectors/user";
 
 import { useMetabotEnabledEmbeddingAware } from "./use-metabot-embedding-aware-enabled";
 
@@ -9,9 +11,10 @@ import { useMetabotEnabledEmbeddingAware } from "./use-metabot-embedding-aware-e
  * Returns all false while loading or on error. */
 export const useUserMetabotPermissions = () => {
   const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
+  const isAuthenticated = !!useSelector(getUser);
   const { data, isLoading, isError } = useGetUserMetabotPermissionsQuery(
     undefined,
-    { skip: !isMetabotEnabled },
+    { skip: !isMetabotEnabled || !isAuthenticated },
   );
 
   const perms = data?.permissions;

@@ -7,10 +7,10 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.performance :as perf :refer [select-keys some empty? not-empty]]))
 
 (defn- filters->condition
@@ -137,12 +137,12 @@
   (if-let [aggregations (lib/aggregations query stage-number)]
     (let [columns (lib/visible-columns query stage-number)]
       (assoc-in query [:stages stage-number :aggregation]
-                (lib.util.match/replace-lite aggregations
+                (match/replace aggregations
                   [:metric _ metric-id]
                   (if-let [{replacement :aggregation} (get lookup metric-id)]
                     ;; We have to replace references from the source-metric with references appropriate for
                     ;; this stage (expression/aggregation -> field, field-id to string)
-                    (let [replacement (lib.util.match/replace-lite replacement
+                    (let [replacement (match/replace replacement
                                         [#{:expression :field :aggregation} _ _]
                                         (if-let [col (lib/find-matching-column &match columns)]
                                           (lib/ref col)
@@ -160,7 +160,7 @@
 
 (defn- find-metric-ids
   [x]
-  (lib.util.match/match-many x
+  (match/match-many x
     [:metric _ (id :guard pos-int?)]
     id))
 
@@ -228,7 +228,7 @@
 
 (defn- add-join-aliases
   [x source-field->join-alias]
-  (lib.util.match/replace-lite x
+  (match/replace x
     [:field (opts :guard (and (source-field->join-alias (:source-field opts)) (not (:join-alias opts)))) _]
     (assoc-in &match [1 :join-alias] (-> opts :source-field source-field->join-alias))))
 

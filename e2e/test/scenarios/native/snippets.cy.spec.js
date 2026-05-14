@@ -261,10 +261,8 @@ describe("scenarios > question > snippets (EE)", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     H.popover().within(() => cy.findByText("New folder").click());
     H.modal().within(() => {
-      cy.findByText("Create your new folder");
-      cy.findByLabelText("Give your folder a name").type(
-        "my favorite snippets",
-      );
+      cy.findByText("New collection");
+      cy.findByLabelText("Name").type("my favorite snippets");
       cy.findByText("Create").click();
     });
 

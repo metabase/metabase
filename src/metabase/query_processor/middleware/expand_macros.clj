@@ -10,7 +10,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
@@ -18,6 +17,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [mapv not-empty get-in]]))
 
 ;;; "legacy macro" as used below means legacy Segment.
@@ -43,7 +43,7 @@
     (lib.walk/walk-stages
      query
      (fn [_query _path stage]
-       (lib.util.match/match-many stage
+       (match/match-many stage
          [#{macro-type} _opts (id :guard pos-int?)]
          (conj! ids id))
        nil))
@@ -95,7 +95,7 @@
   [_macro-type        :- [:= :segment]
    stage              :- ::lib.schema/stage
    id->legacy-segment :- ::id->legacy-macro]
-  (-> (lib.util.match/replace-lite stage
+  (-> (match/replace stage
         [:segment _opts (id :guard pos-int?)]
         (let [legacy-segment (get id->legacy-segment id)
               filter-clauses (legacy-macro-filters legacy-segment)]

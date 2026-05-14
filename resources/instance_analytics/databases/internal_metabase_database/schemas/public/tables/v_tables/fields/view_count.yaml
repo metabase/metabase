@@ -6,6 +6,7 @@ table_id: [Internal Metabase Database, public, v_tables]
 database_type: int4
 base_type: type/Integer
 effective_type: type/Integer
+semantic_type: type/Quantity
 dimensions: []
 position: 14
 custom_position: 0

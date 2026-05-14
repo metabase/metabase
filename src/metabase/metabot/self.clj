@@ -160,35 +160,41 @@
   (let [start-ms      (u/start-timer)]
     (map (fn [part]
            (when (= (:type part) :usage)
-             (let [usage      (:usage part)
-                   model      (or model (:model part) "unknown")
-                   prompt     (:promptTokens usage 0)
-                   completion (:completionTokens usage 0)]
+             (let [usage           (:usage part)
+                   model           (or model (:model part) "unknown")
+                   prompt          (:promptTokens usage 0)
+                   completion      (:completionTokens usage 0)
+                   cache-creation  (:cacheCreationTokens usage 0)
+                   cache-read      (:cacheReadTokens usage 0)]
                (analytics.core/track-token-usage!
                 ;; The caller can omit request-id (and other snowplow opts) to skip snowplow tracking.
-                {:prometheus          true
-                 :snowplow            (some? request-id)
-                 :profile             (some-> profile-id name)
-                 :model-id            model
-                 :prompt-tokens       prompt
-                 :completion-tokens   completion
-                 :total-tokens        (+ prompt completion)
-                 :estimated-costs-usd 0.0
-                 :duration-ms         (long (u/since-ms start-ms))
-                 :user-id             api/*current-user-id*
-                 :request-id          (some-> request-id analytics.core/uuid->ai-service-hex-uuid)
-                 :session-id          session-id
-                 :source              source
-                 :tag                 tag})
+                {:prometheus            true
+                 :snowplow              (some? request-id)
+                 :profile               (some-> profile-id name)
+                 :model-id              model
+                 :prompt-tokens         prompt
+                 :completion-tokens     completion
+                 :cache-creation-tokens cache-creation
+                 :cache-read-tokens     cache-read
+                 :total-tokens          (+ prompt completion)
+                 :estimated-costs-usd   0.0
+                 :duration-ms           (long (u/since-ms start-ms))
+                 :user-id               api/*current-user-id*
+                 :request-id            (some-> request-id analytics.core/uuid->ai-service-hex-uuid)
+                 :session-id            session-id
+                 :source                source
+                 :tag                   tag})
                (usage/log-ai-usage!
-                {:source            (or tag source "unknown")
-                 :model             model
-                 :prompt-tokens     prompt
-                 :completion-tokens completion
-                 :conversation-id   session-id
-                 :profile-id        profile-id
-                 :request-id        request-id
-                 :ai-proxied        (boolean ai-proxy?)})))
+                {:source                (or source tag "unknown")
+                 :model                 model
+                 :prompt-tokens         prompt
+                 :completion-tokens     completion
+                 :cache-creation-tokens cache-creation
+                 :cache-read-tokens     cache-read
+                 :conversation-id       session-id
+                 :profile-id            profile-id
+                 :request-id            request-id
+                 :ai-proxied            (boolean ai-proxy?)})))
            part))))
 
 (defn- report-tool-usage-xf
@@ -273,7 +279,7 @@
    (if-let [limit-msg (usage/check-usage-limits!)]
      (reify clojure.lang.IReduceInit
        (reduce [_ rf init]
-         (rf init {:type :text :text limit-msg})))
+         (rf init {:type :error :error {:message limit-msg :error-code "ai_usage_limit_reached"}})))
      (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)]
        (log/info "Calling LLM" {:provider    provider :model model :parts (count parts) :tools (count tools)
                                 :tool-choice tool-choice :ai-proxy? ai-proxy?})

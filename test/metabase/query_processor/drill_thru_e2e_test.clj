@@ -6,6 +6,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
@@ -142,3 +143,56 @@
                     ["Organic" 738]
                     ["Twitter" 795]]
                    (mt/formatted-rows [str int] (qp/process-query query'))))))))))
+
+(deftest ^:parallel nested-custom-column-pivot-drill-thru-test
+  (testing "Drill-through on pivot table with nested custom column should not error (#64985)"
+    ;; Reproduces a bug where drilling through a pivot table breaks with "Column not found"
+    ;; when the breakout is a custom column (expression) defined after an aggregation stage.
+    ;; The drill produced a WHERE clause referencing "source.test" but "test" is a computed
+    ;; expression (CONCAT), not a real column in the source subquery.
+    (mt/dataset test-data
+      (qp.store/with-metadata-provider (mt/id)
+        (let [mp (qp.store/metadata-provider)
+              products   (lib.metadata/table mp (mt/id :products))
+              price      (lib.metadata/field mp (mt/id :products :price))
+              category   (lib.metadata/field mp (mt/id :products :category))
+              base-query (-> (lib/query mp products)
+                             (lib/aggregate (lib/count))
+                             (lib/aggregate (lib/sum price))
+                             (lib/breakout category)
+                             (lib/append-stage))
+              base-cols (lib/returned-columns base-query)
+              cat-col    (lib.tu.notebook/find-col-with-spec base-query base-cols {} {:display-name "Category"})
+              sum-col    (lib.tu.notebook/find-col-with-spec base-query base-cols {} {:display-name "Sum of Price"})
+              with-expr  (lib/expression base-query "test" (lib/concat (lib/ref cat-col) ""))
+              breakout-cols (lib/breakoutable-columns with-expr)
+              test-col-b (lib.tu.notebook/find-col-with-spec with-expr breakout-cols {} {:display-name "test"})
+              query      (-> with-expr
+                             (lib/aggregate (lib/count))
+                             (lib/aggregate (lib/sum sum-col))
+                             (lib/breakout test-col-b))
+              ;; Simulate pivot cell click on "Gizmo" row
+              ret-cols    (lib/returned-columns query)
+              test-col    (lib.tu.notebook/find-col-with-spec query ret-cols {} {:display-name "test"})
+              count-col   (lib.tu.notebook/find-col-with-spec query ret-cols {} {:display-name "Count"})
+              sum-sum-col (lib.tu.notebook/find-col-with-spec query ret-cols {} {:display-name "Sum of Sum of Price"})
+              context     {:column     count-col
+                           :column-ref (lib.ref/ref count-col)
+                           :value      1
+                           :row        [{:column     test-col
+                                         :column-ref (lib.ref/ref test-col)
+                                         :value      "Gizmo"}
+                                        {:column     count-col
+                                         :column-ref (lib.ref/ref count-col)
+                                         :value      1}
+                                        {:column     sum-sum-col
+                                         :column-ref (lib.ref/ref sum-sum-col)
+                                         :value      1}]
+                           :dimensions [{:column     test-col
+                                         :column-ref (lib.ref/ref test-col)
+                                         :value      "Gizmo"}]}
+              ur-drill    (m/find-first #(= (:type %) :drill-thru/underlying-records) (lib/available-drill-thrus query context))
+              drill-query      (lib/drill-thru query ur-drill)]
+          (mt/with-native-query-testing-context drill-query
+            (is (= [["Gizmo" 51 2834.88 "Gizmo"]]
+                   (mt/formatted-rows [str int 2.0 str] (qp/process-query drill-query))))))))))
