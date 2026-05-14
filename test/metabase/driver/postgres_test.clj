@@ -448,7 +448,7 @@
   (mt/test-driver :postgres
     (testing "Deal with complicated identifier (#22967)"
       (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                        {:database (assoc meta/database :engine :postgres, :id 1)
+                                        {:database (assoc meta/database :engine driver/*driver*, :id 1)
                                          :tables   [(merge (meta/table-metadata :venues)
                                                            {:id     1
                                                             :db-id  1
@@ -459,15 +459,18 @@
                                                             :table-id      1
                                                             :nfc-path      ["jsons" "values" "qty"]
                                                             :database-type "integer"})]})
-        (let [field-clause [:field {:binning
-                                    {:strategy  :num-bins
-                                     :num-bins  100
-                                     :min-value 0.75
-                                     :max-value 54.0
-                                     :bin-width 0.75}} 1]]
+        (let [field-clause (sql.qp/mbql-clause-with-opts driver/*driver*
+                                                         :field
+                                                         {:binning
+                                                          {:strategy  :num-bins
+                                                           :num-bins  100
+                                                           :min-value 0.75
+                                                           :max-value 54.0
+                                                           :bin-width 0.75}}
+                                                         1)]
           (is (= ["((FLOOR((((complicated_identifiers.jsons#>> (array[?, ?]::text[]))::integer - 0.75) / 0.75)) * 0.75) + 0.75)"
                   "values" "qty"]
-                 (sql/format-expr (sql.qp/->honeysql :postgres field-clause) {:nested true}))))))))
+                 (sql/format-expr (sql.qp/->honeysql driver/*driver* field-clause) {:nested true}))))))))
 
 (def ^:private json-alias-mock-metadata-provider
   (lib.tu/mock-metadata-provider
