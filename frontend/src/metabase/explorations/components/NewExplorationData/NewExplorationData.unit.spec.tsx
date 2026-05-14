@@ -95,7 +95,7 @@ describe("NewExplorationData", () => {
       dimensions: [createdAtMonth, createdAtQuarter, plan],
     });
 
-    expect(screen.getByText("Orders - Created At")).toBeInTheDocument();
+    expect(screen.getByText("Orders → Created At")).toBeInTheDocument();
 
     await userEvent.click(screen.getAllByRole("button", { name: "Remove" })[0]);
 
@@ -243,7 +243,7 @@ describe("NewExplorationData", () => {
       // Pills inside the expanded sub-panels — proves both panels
       // start expanded.
       expect(screen.getByText("Revenue")).toBeInTheDocument();
-      expect(screen.getByText("Orders - Created At")).toBeInTheDocument();
+      expect(screen.getByText("Orders → Created At")).toBeInTheDocument();
       // The empty-state description is gone.
       expect(
         screen.queryByText(/Add metrics and dimensions you'd like to see/),

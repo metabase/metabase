@@ -6,7 +6,8 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useListCollectionItemsQuery } from "metabase/api";
+import { Api, useListCollectionItemsQuery } from "metabase/api";
+import { listTag } from "metabase/api/tags";
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import { trackCollectionBookmarked } from "metabase/collections/analytics";
@@ -36,7 +37,6 @@ import {
   useToast,
 } from "metabase/common/hooks";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
-import { Bookmarks } from "metabase/entities/bookmarks";
 import { Collections } from "metabase/entities/collections";
 import { useDispatch } from "metabase/redux";
 import { MAX_UPLOAD_SIZE, MAX_UPLOAD_STRING } from "metabase/redux/uploads";
@@ -266,7 +266,7 @@ export const CollectionContentView = ({
           canDelete={collection.can_delete}
           onUnarchive={async () => {
             await archive({ id: collectionId, model: "collection" }, false);
-            await dispatch(Bookmarks.actions.invalidateLists());
+            dispatch(Api.util.invalidateTags([listTag("bookmark")]));
           }}
           onMove={({ id }) =>
             setCollection({ model: "collection", id: collectionId }, { id })

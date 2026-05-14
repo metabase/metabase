@@ -130,7 +130,7 @@ describe("FixSqlQueryButton", () => {
       meta: { requestStatus: "fulfilled", requestId: "1" },
       payload: {
         success: false,
-        errorMessage: {
+        error: {
           type: "locked",
           message: "unused",
         },
@@ -158,8 +158,8 @@ describe("FixSqlQueryButton", () => {
       meta: { requestStatus: "fulfilled", requestId: "1" },
       payload: {
         success: false,
-        errorMessage: {
-          type: "alert",
+        error: {
+          type: "message",
           message: "Something went wrong",
         },
       },

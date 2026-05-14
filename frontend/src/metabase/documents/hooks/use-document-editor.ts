@@ -168,10 +168,14 @@ export function useDocumentEditor({
   const isSettlingRef = useRef(true);
   const settlingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const prevDocumentIdRef = useRef(documentId);
+  if (documentId && documentId !== prevDocumentIdRef.current) {
+    prevDocumentIdRef.current = documentId;
+    isSettlingRef.current = true;
+  }
+
   useEffect(() => {
     if (documentContent && !isNewDocument) {
-      isSettlingRef.current = true;
-      settledContentRef.current = null;
       dispatch(setHasUnsavedChanges(false));
     }
   }, [dispatch, documentContent, isNewDocument]);
@@ -185,6 +189,10 @@ export function useDocumentEditor({
   });
 
   const hasUnsavedChanges = useCallback(() => {
+    if (isSettlingRef.current) {
+      return false;
+    }
+
     const currentTitle = documentTitle.trim();
     const originalTitle = documentData?.name || "";
     // We call .trim() on documentTitle to ensure that no one can push the save button

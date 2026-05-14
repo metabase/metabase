@@ -28,7 +28,7 @@ import type { Dispatch, State } from "metabase/redux/store";
 import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
 import { getTokenFeature } from "metabase/setup/selectors";
 import { getFont } from "metabase/styled-components/selectors";
-import type { IconName, IconProps } from "metabase/ui";
+import type { IconProps } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
 import { memoizeClass } from "metabase/utils/memoize";
 import {
@@ -73,6 +73,7 @@ import type {
   CardId,
   Dashboard,
   DashboardCard,
+  IconName,
   RawSeries,
   Series,
   SingleSeries,
@@ -115,6 +116,7 @@ type OnChangeCardAndRunOpts = {
   nextCard: Card;
   previousCard: Card;
   objectId?: number;
+  drillName?: string;
 };
 
 type VisualizationOwnProps = {
@@ -602,7 +604,8 @@ class Visualization extends PureComponent<
   handleOnChangeCardAndRun = ({
     nextCard,
     objectId,
-  }: Pick<OnChangeCardAndRunOpts, "nextCard" | "objectId">) => {
+    drillName,
+  }: Pick<OnChangeCardAndRunOpts, "nextCard" | "objectId" | "drillName">) => {
     const { dashcard, rawSeries, visualizerRawSeries, onChangeCardAndRun } =
       this.props;
 
@@ -615,6 +618,7 @@ class Visualization extends PureComponent<
       ),
       nextCard,
       objectId,
+      drillName,
     });
   };
 

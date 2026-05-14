@@ -1,10 +1,13 @@
 import type { LocationDescriptor } from "history";
 import { memo, useCallback, useMemo, useState } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
 import {
   useGetCollectionQuery,
+  useListBookmarksQuery,
   useListCollectionsTreeQuery,
+  useReorderBookmarksMutation,
 } from "metabase/api";
 import { logout } from "metabase/auth/actions";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
@@ -13,7 +16,6 @@ import {
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
 import { Modal } from "metabase/common/components/Modal";
-import { Bookmarks, getOrderedBookmarks } from "metabase/entities/bookmarks";
 import type { CollectionTreeItem } from "metabase/entities/collections";
 import {
   Collections,
@@ -23,8 +25,9 @@ import {
 } from "metabase/entities/collections";
 import { Databases } from "metabase/entities/databases";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import { connect, useSelector } from "metabase/redux";
+import { connect, useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import { addUndo } from "metabase/redux/undo";
 import {
   getIsTenantUser,
   getUser,
@@ -32,7 +35,7 @@ import {
 } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { Bookmark, Collection, User } from "metabase-types/api";
+import type { Collection, User } from "metabase-types/api";
 
 import { NavbarErrorView } from "../NavbarErrorView";
 import { NavbarLoadingView } from "../NavbarLoadingView";
@@ -42,30 +45,26 @@ import { MainNavbarView } from "./MainNavbarView";
 
 type NavbarModal = "MODAL_NEW_COLLECTION" | null;
 
-function mapStateToProps(state: State, { databases = [] }: DatabaseProps) {
+function mapStateToProps(_state: State, { databases = [] }: DatabaseProps) {
   return {
-    currentUser: getUser(state),
+    currentUser: getUser(_state),
     hasDataAccess: databases.length > 0,
-    bookmarks: getOrderedBookmarks(state),
   };
 }
 
 const mapDispatchToProps = {
   logout,
-  onReorderBookmarks: Bookmarks.actions.reorder,
 };
 
 interface Props extends MainNavbarProps {
   currentUser: User;
   databases: Database[];
   selectedItems: SelectedItem[];
-  bookmarks: Bookmark[];
   rootCollection: Collection;
   hasDataAccess: boolean;
   allError: boolean;
   allFetched: boolean;
   logout: () => void;
-  onReorderBookmarks: (bookmarks: Bookmark[]) => Promise<any>;
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
@@ -74,7 +73,6 @@ interface DatabaseProps {
 }
 
 function MainNavbarContainer({
-  bookmarks,
   selectedItems,
   isOpen,
   currentUser,
@@ -86,12 +84,15 @@ function MainNavbarContainer({
   closeNavbar,
   logout,
   onChangeLocation,
-  onReorderBookmarks,
   ...props
 }: Props) {
   const [modal, setModal] = useState<NavbarModal>(null);
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
   const isTenantUser = useSelector(getIsTenantUser);
+  const dispatch = useDispatch();
+
+  const { data: bookmarks = [] } = useListBookmarksQuery();
+  const [reorderBookmarksMutation] = useReorderBookmarksMutation();
 
   const {
     data: trashCollection,
@@ -161,9 +162,24 @@ function MainNavbarContainer({
       newBookmarks.splice(oldIndex, 1);
       newBookmarks.splice(newIndex, 0, movedBookmark);
 
-      await onReorderBookmarks(newBookmarks);
+      const orderings = newBookmarks.map(({ type, item_id }) => ({
+        type,
+        item_id,
+      }));
+
+      try {
+        await reorderBookmarksMutation({ orderings }).unwrap();
+      } catch (e) {
+        dispatch(
+          addUndo({
+            icon: "warning",
+            toastColor: "error",
+            message: t`Something went wrong`,
+          }),
+        );
+      }
     },
-    [bookmarks, onReorderBookmarks],
+    [bookmarks, reorderBookmarksMutation, dispatch],
   );
 
   const onCreateNewCollection = useCallback(() => {
@@ -223,9 +239,6 @@ function MainNavbarContainer({
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
-  Bookmarks.loadList({
-    loadingAndErrorWrapper: false,
-  }),
   Collections.load({
     id: ROOT_COLLECTION.id,
     entityAlias: "rootCollection",

@@ -30,7 +30,11 @@ import { EXPLORATIONS_AGENT_ID } from "../NewExplorationChat/NewExplorationChat"
 import { AddMetricsModal } from "./AddMetricsModal";
 import { AddTimelinesModal } from "./AddTimelinesModal";
 import S from "./NewExplorationData.module.css";
-import { groupDimensionsBySource, removeMetricFromSelection } from "./utils";
+import {
+  type DimensionPillGroup,
+  groupDimensionsByCategory,
+  removeMetricFromSelection,
+} from "./utils";
 
 export interface NewExplorationDataProps {
   metrics: ExplorationMetric[];
@@ -112,8 +116,8 @@ export function NewExplorationData({
 
   const canStart = metrics.length > 0 && dimensions.length > 0;
 
-  const groupedDimensions = useMemo(
-    () => groupDimensionsBySource(dimensions),
+  const dimensionCategories = useMemo(
+    () => groupDimensionsByCategory(dimensions),
     [dimensions],
   );
 
@@ -145,20 +149,14 @@ export function NewExplorationData({
     [metrics, dimensions, setMetrics, setDimensions],
   );
 
-  const handleRemoveDimensionGroup = useCallback(
-    (groupId: number | string) => {
-      const group = groupedDimensions.find((g) => g.id === groupId);
-      if (!group) {
-        return;
-      }
-      const dimensionsToRemove = new Set(
-        group.dimensions.map((dimension) => dimension.id),
-      );
+  const handleRemoveDimensionPill = useCallback(
+    (pill: DimensionPillGroup) => {
+      const dimensionsToRemove = new Set(pill.dimensions.map((d) => d.id));
       setDimensions(
         dimensions.filter((dimension) => !dimensionsToRemove.has(dimension.id)),
       );
     },
-    [groupedDimensions, dimensions, setDimensions],
+    [dimensions, setDimensions],
   );
 
   const handleRemoveTimeline = useCallback(
@@ -170,13 +168,13 @@ export function NewExplorationData({
 
   return (
     <>
-      <Stack w="28.75rem" h="100%" gap={0} bg="background-secondary">
-        <SectionHeader
-          title={t`Data`}
-          ariaLabel={t`Add metrics and dimensions`}
-          onAdd={handleOpenMetricsModal}
-        />
-        <Box flex={4} mih="18rem" style={{ overflowY: "auto" }}>
+      <Stack gap={0} bg="background-secondary" w="28.75rem" h="100%">
+        <Stack gap={0} flex={1} mih={0} style={{ overflowY: "auto" }}>
+          <SectionHeader
+            title={t`Data`}
+            ariaLabel={t`Add metrics and dimensions`}
+            onAdd={handleOpenMetricsModal}
+          />
           {hasMetricsOrDimensions ? (
             <Accordion
               multiple
@@ -198,7 +196,7 @@ export function NewExplorationData({
                   {metrics.length > 0 ? (
                     <PillList items={metrics} onRemove={handleRemoveMetric} />
                   ) : (
-                    <Text size="sm" c="text-secondary">
+                    <Text size="md" c="text-secondary">
                       {t`No metrics yet. Click + to add some.`}
                     </Text>
                   )}
@@ -207,13 +205,15 @@ export function NewExplorationData({
               <Accordion.Item value="dimensions">
                 <Accordion.Control>{t`Dimensions`}</Accordion.Control>
                 <Accordion.Panel>
-                  {groupedDimensions.length > 0 ? (
-                    <PillList
-                      items={groupedDimensions}
-                      onRemove={handleRemoveDimensionGroup}
-                    />
+                  {dimensionCategories.length > 0 ? (
+                    <Box pl="0.25rem">
+                      <DimensionCategoryList
+                        categories={dimensionCategories}
+                        onRemove={handleRemoveDimensionPill}
+                      />
+                    </Box>
                   ) : (
-                    <Text size="sm" c="text-secondary">
+                    <Text size="md" c="text-secondary">
                       {t`No dimensions yet. Click + to add some.`}
                     </Text>
                   )}
@@ -221,63 +221,28 @@ export function NewExplorationData({
               </Accordion.Item>
             </Accordion>
           ) : (
-            <Box px="xl" pb="md">
+            <Box px="xl" pb="md" flex={1}>
               <Text size="md" c="text-secondary" lh="1.25rem" w="18rem">
                 {t`Add metrics and dimensions you'd like to see specifically or have the agent help you assemble.`}
               </Text>
             </Box>
           )}
-        </Box>
 
-        <Box flex={1} mih={0} style={{ overflowY: "auto" }}>
-          {hasTimelines ? (
-            <Accordion
-              defaultValue="timelines"
-              chevronPosition="left"
-              classNames={{
-                root: S.accordionRoot,
-                item: S.accordionItem,
-                control: S.accordionControl,
-                content: S.accordionContent,
-                panel: S.accordionPanel,
-                label: S.accordionLabel,
-                chevron: S.accordionChevron,
-              }}
-            >
-              <Accordion.Item value="timelines">
-                <Accordion.Control>
-                  <Group justify="space-between" wrap="nowrap" w="100%">
-                    <Text fw="bold">{t`Timelines`}</Text>
-                    <ActionIcon
-                      component="div"
-                      role="button"
-                      aria-label={t`Add timelines`}
-                      onClick={handleOpenTimelinesModal}
-                    >
-                      <Icon name="add" c="icon-primary" />
-                    </ActionIcon>
-                  </Group>
-                </Accordion.Control>
-                <Accordion.Panel>
-                  <PillList items={timelines} onRemove={handleRemoveTimeline} />
-                </Accordion.Panel>
-              </Accordion.Item>
-            </Accordion>
-          ) : (
-            <>
-              <SectionHeader
-                title={t`Timelines`}
-                ariaLabel={t`Add timelines`}
-                onAdd={handleOpenTimelinesModal}
-              />
-              <Box px="xl" pb="md" lh="1.25rem">
-                <Text size="md" c="text-secondary" lh="1.25rem" w="18rem">
-                  {t`Add timelines to see if events shed light on data movement.`}
-                </Text>
-              </Box>
-            </>
-          )}
-        </Box>
+          <SectionHeader
+            title={t`Timelines`}
+            ariaLabel={t`Add timelines`}
+            onAdd={handleOpenTimelinesModal}
+          />
+          <Box mih={0} px="xl">
+            {hasTimelines ? (
+              <PillList items={timelines} onRemove={handleRemoveTimeline} />
+            ) : (
+              <Text size="md" pb="md" c="text-secondary" lh="1.25rem" w="18rem">
+                {t`Add timelines to see if events shed light on data movement.`}
+              </Text>
+            )}
+          </Box>
+        </Stack>
         <Button
           flex="none"
           mx="xl"
@@ -335,6 +300,7 @@ function SectionHeader({ title, ariaLabel, onAdd }: SectionHeaderProps) {
 interface PillItem {
   id: number | string;
   name: string;
+  interestingness?: number | null;
 }
 
 interface PillListProps {
@@ -357,9 +323,12 @@ function PillList({ items, onRemove }: PillListProps) {
             onRemove={() => onRemove(item.id)}
             bdrs="xl"
             bg="background-primary"
+            bd="1px solid border"
             fw="normal"
+            pl="1.25rem"
+            py="0.625rem"
             px="sm"
-            py="xs"
+            data-interestingness={formatInterestingness(item.interestingness)}
             removeButtonProps={{
               mr: 0,
               "aria-hidden": false,
@@ -371,5 +340,92 @@ function PillList({ items, onRemove }: PillListProps) {
         ))}
       </Group>
     </ScrollArea>
+  );
+}
+
+function formatInterestingness(score: number | null | undefined): string {
+  return score == null ? "null" : String(score);
+}
+
+function pickMaxInterestingness(dimensions: MetricDimension[]): number | null {
+  let max: number | null = null;
+  for (const dimension of dimensions) {
+    const score = dimension.dimension_interestingness;
+    if (score == null) {
+      continue;
+    }
+    if (max == null || score > max) {
+      max = score;
+    }
+  }
+  return max;
+}
+
+interface DimensionCategoryListProps {
+  categories: Array<{
+    key: string;
+    label: string;
+    pillGroups: DimensionPillGroup[];
+  }>;
+  onRemove: (pill: DimensionPillGroup) => void;
+}
+
+function DimensionCategoryList({
+  categories,
+  onRemove,
+}: DimensionCategoryListProps) {
+  const visibleCategories = categories.filter(
+    (category) => category.pillGroups.length > 0,
+  );
+
+  if (visibleCategories.length === 0) {
+    return null;
+  }
+
+  return (
+    <Stack gap="lg">
+      {visibleCategories.map((category) => (
+        <Group
+          key={category.key}
+          align="flex-start"
+          wrap="nowrap"
+          gap="md"
+          role="group"
+          aria-label={category.label}
+        >
+          <Text size="md" c="text-primary" w="5.25rem" flex="none" pt="0.5rem">
+            {category.label}
+          </Text>
+          <Box flex={1} mih={0}>
+            <Group align="flex-start" gap="sm">
+              {category.pillGroups.map((pill) => (
+                <Pill
+                  key={pill.id}
+                  withRemoveButton
+                  onRemove={() => onRemove(pill)}
+                  bdrs="xl"
+                  bg="background-primary"
+                  bd="1px solid border"
+                  fw="normal"
+                  pl="1.25rem"
+                  py="0.625rem"
+                  px="sm"
+                  data-interestingness={formatInterestingness(
+                    pickMaxInterestingness(pill.dimensions),
+                  )}
+                  removeButtonProps={{
+                    mr: 0,
+                    "aria-hidden": false,
+                    "aria-label": t`Remove`,
+                  }}
+                >
+                  {pill.name}
+                </Pill>
+              ))}
+            </Group>
+          </Box>
+        </Group>
+      ))}
+    </Stack>
   );
 }

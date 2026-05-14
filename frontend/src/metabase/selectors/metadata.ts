@@ -8,7 +8,7 @@ import Database from "metabase-lib/v1/metadata/Database";
 import Field from "metabase-lib/v1/metadata/Field";
 import ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
-import Schema from "metabase-lib/v1/metadata/Schema";
+import type Schema from "metabase-lib/v1/metadata/Schema";
 import Table from "metabase-lib/v1/metadata/Table";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
@@ -170,7 +170,7 @@ export const getMetadata: (
       database.tables = hydrateDatabaseTables(database, metadata);
     });
     Object.values(metadata.schemas).forEach((schema) => {
-      schema.database = hydrateSchemaDatabase(schema, metadata);
+      schema.database = hydrateSchemaDatabase(schemas[schema.id], metadata);
     });
     Object.values(metadata.tables).forEach((table) => {
       table.db = hydrateTableDatabase(table, metadata);
@@ -185,7 +185,7 @@ export const getMetadata: (
       database.schemas = hydrateDatabaseSchemas(database, metadata);
     });
     Object.values(metadata.schemas).forEach((schema) => {
-      schema.tables = hydrateSchemaTables(schema, metadata);
+      schema.tables = hydrateSchemaTables(schema, schemas[schema.id], metadata);
     });
     Object.values(metadata.measures).forEach((measure) => {
       measure.table = hydrateMeasureTable(measure, tables);
@@ -234,9 +234,8 @@ function createDatabase(
 }
 
 function createSchema(schema: NormalizedSchema, metadata: Metadata): Schema {
-  const instance = new Schema(schema);
-  instance.metadata = metadata;
-  return instance;
+  const { database: _database, tables: _tables, ...rest } = schema;
+  return { ...rest, metadata };
 }
 
 function createTable(table: NormalizedTable, metadata: Metadata): Table {
@@ -314,15 +313,18 @@ function hydrateDatabaseSchemas(
 }
 
 function hydrateSchemaDatabase(
-  schema: Schema,
+  normalized: NormalizedSchema,
   metadata: Metadata,
 ): Database | undefined {
-  const databaseId = schema.getPlainObject().database;
-  return metadata.database(databaseId) ?? undefined;
+  return metadata.database(normalized.database) ?? undefined;
 }
 
-function hydrateSchemaTables(schema: Schema, metadata: Metadata): Table[] {
-  const tableIds = schema.getPlainObject().tables;
+function hydrateSchemaTables(
+  schema: Schema,
+  normalized: NormalizedSchema,
+  metadata: Metadata,
+): Table[] {
+  const tableIds = normalized.tables;
   if (tableIds) {
     return tableIds.map((table) => metadata.table(table)).filter(isNotNull);
   } else if (schema.database && schema.database.getTables().length > 0) {

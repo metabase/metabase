@@ -11,8 +11,9 @@ import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useSetting } from "metabase/common/hooks";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
-import { useDispatch } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { useRouter } from "metabase/router";
+import { getSettingsLoading } from "metabase/selectors/settings";
 import {
   ActionIcon,
   Box,
@@ -25,6 +26,7 @@ import {
 import * as Urls from "metabase/urls";
 
 import { useMetabotAgent, useUserMetabotPermissions } from "../../hooks";
+import { QuestionModeSwitcher } from "../QuestionModeSwitcher";
 
 import S from "./MetabotQueryBuilder.module.css";
 
@@ -169,6 +171,9 @@ const MetabotQueryBuilderInner = () => {
 
   return (
     <Box className={S.page}>
+      <Box className={S.modeSwitcher}>
+        <QuestionModeSwitcher value="ask" />
+      </Box>
       <Box className={S.centeredContainer}>
         <Box className={S.greeting}>
           {showIllustrations && <MetabotLogo className={S.greetingIcon} />}
@@ -251,7 +256,14 @@ const MetabotQueryBuilderInner = () => {
 export const MetabotQueryBuilder = (
   props: React.ComponentProps<typeof QueryBuilder>,
 ) => {
-  const { canUseNlq } = useUserMetabotPermissions();
+  const { canUseNlq, isLoading } = useUserMetabotPermissions();
+  const areSettingsLoading = useSelector(getSettingsLoading);
+  // Wait until settings and metabot permissions are both resolved before
+  // deciding which view to render. Otherwise QueryBuilder may mount briefly
+  // and rewrite the URL away from /question/ask, racing the metabot view.
+  if (areSettingsLoading || isLoading) {
+    return null;
+  }
   if (!canUseNlq) {
     return <QueryBuilder {...props} />;
   }

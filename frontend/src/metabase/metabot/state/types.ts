@@ -16,6 +16,12 @@ export type MetabotDataPartMetadata = {
   suggestionId?: string;
 };
 
+export type MetabotAgentTurnError = {
+  message?: string;
+  type?: string;
+  data?: unknown;
+};
+
 export type MetabotUserTextChatMessage = {
   id: string;
   role: "user";
@@ -59,10 +65,33 @@ export type MetabotDebugToolCallMessage = {
   is_error?: boolean;
 };
 
+export type MetabotAgentTurnAbortedMessage = {
+  id: string;
+  role: "agent";
+  type: "turn_aborted";
+  externalId?: string;
+};
+
+export type MetabotAgentTurnDisplayError = {
+  type: "alert" | "locked" | "message";
+  message: string;
+};
+
+export type MetabotAgentTurnErroredMessage = {
+  id: string;
+  role: "agent";
+  type: "turn_errored";
+  error: MetabotAgentTurnError;
+  display?: MetabotAgentTurnDisplayError;
+  externalId?: string;
+};
+
 export type MetabotAgentChatMessage =
   | MetabotAgentTextChatMessage
   | MetabotAgentDataPartMessage
-  | MetabotDebugToolCallMessage;
+  | MetabotDebugToolCallMessage
+  | MetabotAgentTurnAbortedMessage
+  | MetabotAgentTurnErroredMessage;
 
 export type MetabotUserChatMessage =
   | MetabotUserTextChatMessage
@@ -74,16 +103,6 @@ export type MetabotChatMessage =
   | MetabotUserChatMessage
   | MetabotAgentChatMessage
   | MetabotDebugChatMessage;
-
-export type MetabotErrorMessage =
-  | {
-      type: "message" | "alert";
-      message: string;
-    }
-  | {
-      type: "locked";
-      message: string;
-    };
 
 export type MetabotToolCall = {
   id: string;
@@ -104,7 +123,6 @@ export interface MetabotConverstationState {
   conversationId: string;
   isProcessing: boolean;
   messages: MetabotChatMessage[];
-  errorMessages: MetabotErrorMessage[];
   visible: boolean;
   history: MetabotHistory;
   state: any;

@@ -1,7 +1,7 @@
 import type { MouseEventHandler } from "react";
 
-import { Icon, type IconName, Menu } from "metabase/ui";
-
+import { Icon, Menu } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 type CommonNotificationsMenuItemProps = {
   iconName: IconName;
   title: string;

@@ -153,31 +153,79 @@ export function groupDimensionsBySemanticType(
  * also, should we be reaching into MetricDimension internals like this?
  */
 export function groupDimensionsBySource(dimensions: MetricDimension[]) {
-  const fieldIdToDimensions: Record<number, MetricDimension[]> = {};
+  const fieldIdToDimensions = new Map<number, MetricDimension[]>();
 
   for (const dimension of dimensions) {
     const fieldId = dimension.sources?.[0]?.["field-id"];
     if (!fieldId) {
       continue;
     }
-    const dimensions = fieldIdToDimensions[fieldId];
-    if (dimensions) {
-      dimensions.push(dimension);
+    const existing = fieldIdToDimensions.get(fieldId);
+    if (existing) {
+      existing.push(dimension);
     } else {
-      fieldIdToDimensions[fieldId] = [dimension];
+      fieldIdToDimensions.set(fieldId, [dimension]);
     }
   }
 
-  return Object.values(fieldIdToDimensions).map((dimensions) => {
+  return Array.from(fieldIdToDimensions.values()).map((dimensions) => {
     const head = dimensions[0];
     return {
       id: head.id,
       name: head.group?.display_name
-        ? `${head.group.display_name} - ${head.display_name}`
+        ? `${head.group.display_name} → ${head.display_name}`
         : head.display_name,
       dimensions,
     };
   });
+}
+
+export interface DimensionPillGroup {
+  id: DimensionId;
+  name: string;
+  dimensions: MetricDimension[];
+}
+
+export interface DimensionCategoryGroup {
+  key: DimensionGroupKey;
+  label: string;
+  pillGroups: DimensionPillGroup[];
+}
+
+export function groupDimensionsByCategory(
+  dimensions: MetricDimension[],
+): DimensionCategoryGroup[] {
+  if (dimensions.length === 0) {
+    return [];
+  }
+
+  const sortedDimensions = [...dimensions].sort(
+    (a, b) =>
+      (b.dimension_interestingness ?? 0) - (a.dimension_interestingness ?? 0),
+  );
+
+  const buckets: Array<{
+    key: DimensionGroupKey;
+    label: string;
+    dimensions: MetricDimension[];
+  }> = [];
+  for (const row of groupDimensionsBySemanticType(sortedDimensions)) {
+    if (row.type === "header") {
+      buckets.push({
+        key: row.key,
+        label: getDimensionGroupLabel(row.key),
+        dimensions: [],
+      });
+    } else {
+      buckets[buckets.length - 1].dimensions.push(row.dimension);
+    }
+  }
+
+  return buckets.map(({ key, label, dimensions }) => ({
+    key,
+    label,
+    pillGroups: groupDimensionsBySource(dimensions),
+  }));
 }
 
 export function removeMetricFromSelection(

@@ -89,6 +89,7 @@
    "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
+   "McpQueryHandle"
    "MetabotConversation"
    "MetabotFeedback"
    "MetabotGroupLimit"

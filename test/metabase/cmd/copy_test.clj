@@ -40,13 +40,14 @@
     :model/DependencyStatus
     :model/ExplorationQueryResult
     :model/ExplorationQueryTimelineInterestingness
+    :model/McpQueryHandle
     :model/MetabotConversation
     :model/MetabotGroupLimit
     :model/MetabotInstanceLimit
     :model/MetabotMessage
     :model/MetabotPermissions
-    :model/PythonLibrary
     :model/PremiumFeaturesCache
+    :model/PythonLibrary
     :model/Query
     :model/QueryCache
     :model/QueryExecution

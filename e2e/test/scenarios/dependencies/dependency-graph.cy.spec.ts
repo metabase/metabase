@@ -6,7 +6,6 @@ import {
   FIRST_COLLECTION_ID,
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import type { IconName } from "metabase/ui";
 import type {
   CardId,
   CardType,
@@ -14,6 +13,7 @@ import type {
   DashboardId,
   DependencyId,
   DependencyType,
+  IconName,
   MeasureId,
   NativeQuerySnippetId,
   SegmentId,

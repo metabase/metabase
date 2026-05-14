@@ -8,9 +8,12 @@ import { uuid } from "metabase/utils/uuid";
 
 import type {
   MetabotAgentId,
+  MetabotAgentTurnDisplayError,
+  MetabotAgentTurnError,
   MetabotConverstationState,
   MetabotState,
 } from "./types";
+import { createMessageId } from "./utils";
 
 export type ConvoPayloadAction<
   Value extends Record<string, any> = Record<string, any>,
@@ -58,7 +61,6 @@ export const createConversation = (
   return {
     isProcessing: false,
     messages: [],
-    errorMessages: [],
     visible: false,
     history: [],
     state: {},
@@ -122,6 +124,32 @@ export const convoReducer =
       state,
     );
   };
+
+export const appendAgentTurnAborted = (
+  convo: WritableDraft<MetabotConverstationState>,
+) => {
+  convo.messages.push({
+    id: createMessageId(),
+    role: "agent",
+    type: "turn_aborted",
+    externalId: convo.pendingMessageExternalId,
+  });
+};
+
+export const appendAgentTurnErrored = (
+  convo: WritableDraft<MetabotConverstationState>,
+  error: MetabotAgentTurnError,
+  display?: MetabotAgentTurnDisplayError,
+) => {
+  convo.messages.push({
+    id: createMessageId(),
+    role: "agent",
+    type: "turn_errored",
+    error,
+    display,
+    externalId: convo.pendingMessageExternalId,
+  });
+};
 
 export const getMetabotInitialState = (): MetabotState => {
   return {
