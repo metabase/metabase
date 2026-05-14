@@ -2405,20 +2405,20 @@
 
 (search.spec/define-spec "collection"
   {:model        :model/Collection
-   :attrs        {:collection-id :id
-                  :creator-id    false
-                  :database-id   false
-                  :archived      true
-                  :created-at    true
+   :attrs        {:collection-id   :id
+                  :creator-id      false
+                  :database-id     false
+                  :archived        true
+                  :created-at      true
                   ;; intentionally not tracked
-                  :updated-at    false}
+                  :updated-at      false
+                  :collection-type :type}
    :search-terms [:name]
    :render-terms {:archived-directly          true
                   ;; Why not make this a search term? I suspect it was just overlooked before.
                   :description                true
                   :collection_authority_level :authority_level
                   :collection_name            :name
-                  :collection_type            :type
                   :location                   true}
    :where [:or [:= :namespace nil]
            [:= :namespace "analytics"]

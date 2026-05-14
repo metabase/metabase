@@ -173,11 +173,13 @@
                                :index_metadata/table_name)]
               (is (=? #{"archived"
                         "collection_id"
+                        "collection_type"
                         "content"
                         "created_at"
                         "creator_id"
                         "dashboardcard_count"
                         "database_id"
+                        "data_layer"
                         "display_type"
                         "embedding"
                         "id"

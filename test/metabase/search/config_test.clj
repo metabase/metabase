@@ -22,3 +22,22 @@
            (search.config/filter-default :search.engine/in-place :command-palette :filter-items-in-personal-collection)))
     (is (= "exclude-others"
            (search.config/filter-default :search.engine/in-place :search-app :filter-items-in-personal-collection)))))
+
+(deftest metabot-weights-test
+  (testing "the :metabot context returns the tuned curation tier weights"
+    (let [w (search.config/weights {:context :metabot})]
+      (is (= 100 (:library w)))
+      (is (= 80  (:official-collection w)))
+      (is (= 80  (:verified w)))
+      (is (= 33  (:final w)))
+      (is (= 10  (:internal w)))
+      (is (= 1   (:hidden w)))))
+  (testing "the :metabot context still inherits :default scorers it doesn't override"
+    (let [defaults (search.config/weights {:context :default})
+          metabot  (search.config/weights {:context :metabot})]
+      (doseq [k [:text :exact :rrf :model :view-count :recency]]
+        (is (= (get defaults k) (get metabot k))
+            (str "Inherited " k " from :default")))))
+  (testing "request-level :weights override beats :metabot static weights"
+    (is (= 7 (-> (search.config/weights {:context :metabot :weights {:library 7}})
+                 :library)))))

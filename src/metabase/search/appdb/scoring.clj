@@ -62,7 +62,16 @@
      :prefix       (if search-string
                      ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
                      (search.scoring/prefix [:lower :search_index.name] (u/lower-case-en search-string))
-                     [:inline 0])}))
+                     [:inline 0])
+     :library      [:case
+                    [:or [:= :search_index.collection_type [:inline "library"]]
+                     [:= :search_index.collection_type [:inline "library-data"]]
+                     [:= :search_index.collection_type [:inline "library-metrics"]]]
+                    [:inline 1]
+                    :else [:inline 0]]
+     :final        (search.scoring/equal :search_index.data_layer [:inline "final"])
+     :internal     (search.scoring/equal :search_index.data_layer [:inline "internal"])
+     :hidden       (search.scoring/equal :search_index.data_layer [:inline "hidden"])}))
 
 (defenterprise scorers
   "Return the select-item expressions used to calculate the score for each search result."

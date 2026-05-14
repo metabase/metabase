@@ -1463,6 +1463,7 @@
                   :created-at           true
                   :updated-at           true
                   :display-type         :this.display
+                  :collection-type      :collection.type
                   :temporal-info        {:fn       extract-temporal-info
                                          :fields   [:dataset_query :query_type]
                                          :provides [:has-temporal-dim :non-temporal-dim-ids]}}
@@ -1473,7 +1474,6 @@
                   :collection-name            :collection.name
                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
                   :collection-position        true
-                  :collection-type            :collection.type
                   ;; This field can become stale, unless we change to calculate it just-in-time.
                   :display                    true
                   :moderated-status           :mr.status}

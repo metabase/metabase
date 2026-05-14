@@ -107,7 +107,14 @@
    {:model/table    1
     :model/dataset  1
     :model/metric   1
-    :model/question 0}})
+    :model/question 0}
+   :metabot
+   {:library             100
+    :official-collection 80
+    :verified            80
+    :final               33
+    :internal            10
+    :hidden              1}})
 
 (def ^:private FilterDef
   "A relaxed definition, capturing how we can write the filter - with some fields omitted."

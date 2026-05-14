@@ -108,7 +108,9 @@
    :temporal-info           nil
    :display-type            :text
    :is-published            :boolean
-   :source-type             :text})
+   :source-type             :text
+   :collection-type         :text
+   :data-layer              :text})
 
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
@@ -132,7 +134,9 @@
          :updated-at
          :temporal-info
          :is-published
-         :source-type])
+         :source-type
+         :collection-type                                   ;;  indexed for :library scorer (collection.type ∈ library/library-data/library-metrics)
+         :data-layer])                                      ;;  indexed for :final/:internal/:hidden scorers (table.data_layer)
        distinct
        vec))
 

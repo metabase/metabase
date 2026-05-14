@@ -316,3 +316,50 @@
       (is (= [["card" 2 "this card is aerie mon"]
               ["card" 1 "crow's fly card"]]
              (search-results :mine "card" {:current-user-id rasta}))))))
+
+(deftest ^:parallel library-test
+  (testing "Cards in library collections rank above non-library cards"
+    (with-index-contents
+      [{:model "card" :id 1 :name "card plain"      :collection_type nil}
+       {:model "card" :id 2 :name "card in library" :collection_type "library"}
+       {:model "card" :id 3 :name "card in library-data"    :collection_type "library-data"}
+       {:model "card" :id 4 :name "card in library-metrics" :collection_type "library-metrics"}
+       {:model "card" :id 5 :name "card in trash"   :collection_type "trash"}]
+      (let [ids-with-library    (->> (with-weights {:library 1} (search-results* "card"))
+                                     (filter (fn [[_ id _]] (#{2 3 4} id)))
+                                     (map second)
+                                     set)
+            ids-without-library (->> (with-weights {:library -1} (search-results* "card"))
+                                     (filter (fn [[_ id _]] (#{2 3 4} id)))
+                                     (map second)
+                                     set)]
+        (testing "All three library variants get the boost"
+          (is (= #{2 3 4} ids-with-library))
+          (is (= #{2 3 4} ids-without-library))))
+      (testing "Library cards lead with positive :library weight"
+        (let [results (with-weights {:library 1} (search-results* "card"))
+              first-three-ids (set (map second (take 3 results)))]
+          (is (= #{2 3 4} first-three-ids)))))))
+
+(deftest ^:parallel data-layer-test
+  (testing ":final, :internal, and :hidden each boost the matching data_layer value"
+    (with-index-contents
+      [{:model "table" :id 1 :name "table no layer"}
+       {:model "table" :id 2 :name "table final"    :data_layer "final"}
+       {:model "table" :id 3 :name "table internal" :data_layer "internal"}
+       {:model "table" :id 4 :name "table hidden"   :data_layer "hidden"}]
+      (testing "final tables lead when :final weight is set"
+        (is (= 2 (-> (with-weights {:final 1} (search-results* "table")) first second))))
+      (testing "internal tables lead when :internal weight is set"
+        (is (= 3 (-> (with-weights {:internal 1} (search-results* "table")) first second))))
+      (testing "hidden tables lead when :hidden weight is set"
+        (is (= 4 (-> (with-weights {:hidden 1} (search-results* "table")) first second))))))
+  (testing "Metabot tier ordering: final > internal > hidden when all weights active"
+    (with-index-contents
+      [{:model "table" :id 1 :name "metabot table final"    :data_layer "final"}
+       {:model "table" :id 2 :name "metabot table internal" :data_layer "internal"}
+       {:model "table" :id 3 :name "metabot table hidden"   :data_layer "hidden"}]
+      (is (= [1 2 3]
+             (->> (with-weights {:final 33 :internal 10 :hidden 1}
+                    (search-results* "metabot table"))
+                  (map second)))))))

@@ -482,14 +482,14 @@
                   :verified       [:= "verified" :mr.status]
                   :view-count     true
                   :created-at     true
-                  :updated-at     true}
+                  :updated-at     true
+                  :collection-type :collection.type}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
                   :collection-name            :collection.name
                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
                   :collection-position        true
-                  :collection-type            :collection.type
                   :moderated-status           :mr.status}
    :where        []
    :bookmark     [:model/DashboardBookmark [:and
