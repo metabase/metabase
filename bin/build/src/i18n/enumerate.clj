@@ -29,6 +29,7 @@
                             "/modules/drivers/sparksql/src"
                             "/modules/drivers/sqlite/src"
                             "/modules/drivers/sqlserver/src"
+                            "/modules/drivers/teradata/src"
                             "/modules/drivers/vertica/src"]))
 
 (def overrides

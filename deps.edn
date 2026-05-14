@@ -423,6 +423,7 @@
   {:extra-paths ["enterprise/backend/src"]
    ;; make sure these stay in lockstep with their respective modules
    :extra-deps {com.oracle.database.jdbc/ojdbc17 {:mvn/version "23.9.0.25.07"}
+                com.teradata.jdbc/terajdbc {:mvn/version "20.00.00.46"}
                 com.vertica.jdbc/vertica-jdbc
                 ^:antq/exclude  {:mvn/version "23.4.0-0"}}}
 
@@ -508,6 +509,7 @@
     "modules/drivers/sqlite/test"
     "modules/drivers/sqlserver/test"
     "modules/drivers/starburst/test"
+    "modules/drivers/teradata/test"
     "modules/drivers/vertica/test"]}
 
 ;;; Linters
@@ -582,6 +584,8 @@
     "modules/drivers/sqlserver/test"
     "modules/drivers/starburst/src"
     "modules/drivers/starburst/test"
+    "modules/drivers/teradata/src"
+    "modules/drivers/teradata/test"
     "modules/drivers/vertica/src"
     "modules/drivers/vertica/test"]}
 
@@ -611,6 +615,7 @@
                 "modules/drivers/sqlite/src"
                 "modules/drivers/sqlserver/src"
                 "modules/drivers/starburst/src"
+                "modules/drivers/teradata/src"
                 "modules/drivers/vertica/src"]
    :jvm-opts   ["-Dclojure.main.report=stderr"]}
 
@@ -637,6 +642,7 @@
                                  "modules/drivers/sqlite/src"
                                  "modules/drivers/sqlserver/src"
                                  "modules/drivers/starburst/src"
+                                 "modules/drivers/teradata/src"
                                  "modules/drivers/vertica/src"]
                :exclude-linters [;; Turn this off temporarily until we finish removing
                                  ;; self-deprecated functions & macros
