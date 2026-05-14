@@ -1,6 +1,6 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
 
-import { updateDashboard } from "metabase/api";
+import { updateDashboard } from "metabase/api/dashboard";
 import { CLOSE_QB_NEWB_MODAL } from "metabase/redux/query-builder";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { UserApi } from "metabase/services";
