@@ -1,10 +1,12 @@
 import { push } from "react-router-redux";
 
-import { skipToken, useListCollectionTimelinesQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCollectionQuery,
+  useListCollectionTimelinesQuery,
+} from "metabase/api";
 import { useSetArchive } from "metabase/common/hooks";
-import { Collections } from "metabase/entities/collections";
 import { useDispatch } from "metabase/redux";
-import type { State } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
 import type { Collection, Timeline } from "metabase-types/api";
 
@@ -14,15 +16,8 @@ import type { ModalParams } from "../../types";
 
 interface TimelineListArchiveModalContainerProps {
   params: ModalParams;
-  collection: Collection;
   onClose?: () => void;
 }
-
-const collectionProps = {
-  id: (state: State, props: TimelineListArchiveModalContainerProps) =>
-    Urls.extractCollectionId(props.params.slug),
-  LoadingAndErrorWrapper,
-};
 
 function TimelineListArchiveModalContainer({
   params,
@@ -33,15 +28,25 @@ function TimelineListArchiveModalContainer({
   const collectionId = Urls.extractCollectionId(params.slug);
   const {
     data: timelines = [],
-    isLoading,
-    error,
+    isLoading: isTimelinesLoading,
+    error: timelinesError,
   } = useListCollectionTimelinesQuery(
     collectionId != null
       ? { id: collectionId, include: "events", archived: true }
       : skipToken,
   );
+  const {
+    data: collection,
+    isLoading: isCollectionLoading,
+    error: collectionError,
+  } = useGetCollectionQuery(
+    collectionId != null ? { id: collectionId } : skipToken,
+  );
 
-  if (isLoading || error) {
+  const isLoading = isTimelinesLoading || isCollectionLoading;
+  const error = timelinesError ?? collectionError;
+
+  if (isLoading || error || !collection) {
     return (
       <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
     );
@@ -57,6 +62,7 @@ function TimelineListArchiveModalContainer({
   return (
     <TimelineListModal
       {...props}
+      collection={collection}
       timelines={timelines}
       isArchive
       onUnarchive={onUnarchive}
@@ -66,6 +72,4 @@ function TimelineListArchiveModalContainer({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Collections.load(collectionProps)(
-  TimelineListArchiveModalContainer,
-);
+export default TimelineListArchiveModalContainer;

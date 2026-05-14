@@ -6,6 +6,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
 import { TableBrowser } from "./TableBrowser";
 
@@ -45,5 +46,34 @@ describe("TableBrowser", () => {
       { timeout: 3000 },
     );
     await waitForLoaderToBeRemoved();
+  });
+
+  it("loads database metadata for schema-less databases (#73928)", async () => {
+    const table = createMockTable({
+      id: 123,
+      name: "foo",
+      display_name: "foo",
+      initial_sync_status: "complete",
+    });
+    const database = createMockDatabase({
+      id: 1,
+      tables: [table],
+    });
+    fetchMock.get(`path:/api/database/${database.id}`, database);
+    fetchMock.get(`path:/api/database/${database.id}/metadata`, database);
+    fetchMock.get(`path:/api/database/${database.id}/schema/`, [table]);
+
+    renderWithProviders(<TableBrowser dbId={1} schemaName="" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("foo")).toBeInTheDocument();
+    });
+
+    expect(
+      fetchMock.callHistory.calls("path:/api/database/1/metadata"),
+    ).toHaveLength(1);
+    expect(
+      fetchMock.callHistory.calls("path:/api/database/1/schema/"),
+    ).toHaveLength(0);
   });
 });

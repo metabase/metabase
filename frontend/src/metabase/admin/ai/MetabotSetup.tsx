@@ -16,6 +16,7 @@ import _ from "underscore";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { SetByEnvVar } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import {
+  skipToken,
   useGetMetabotSettingsQuery,
   useUpdateMetabotSettingsMutation,
   useUpdateSettingsMutation,
@@ -137,6 +138,13 @@ export function MetabotSetup({ id }: { id?: string }) {
   );
   const isConfigured = !!useSetting("llm-metabot-configured?");
   const connectedProvider = isConfigured ? config?.provider : undefined;
+  const connectedProviderSettingsQuery = useGetMetabotSettingsQuery(
+    connectedProvider && connectedProvider !== "metabase"
+      ? { provider: connectedProvider }
+      : skipToken,
+  );
+  const hasApiKeyError =
+    !!connectedProviderSettingsQuery.currentData?.["api-key-error"];
 
   return (
     <SettingsSection
@@ -144,13 +152,31 @@ export function MetabotSetup({ id }: { id?: string }) {
       title={
         <Flex justify="space-between" align="center">
           <Group gap="xs" wrap="nowrap">
-            {isConfigured ? (
-              <Badge circle size="12" bg="success" mr="sm" />
-            ) : null}
+            {connectedProvider && (
+              <Badge
+                circle
+                size="12"
+                bg={hasApiKeyError ? "error" : "success"}
+                mr="sm"
+              />
+            )}
             <div>
-              {connectedProvider
-                ? t`Connected to ${getProviderOptions(offerMetabaseAiManaged)[connectedProvider]?.label}`
-                : t`Connect to an AI provider`}
+              {match({ connectedProvider, hasApiKeyError })
+                .with(
+                  { connectedProvider: P.nonNullable, hasApiKeyError: true },
+                  ({ connectedProvider }) =>
+                    t`Error connecting to ${getProviderOptions(offerMetabaseAiManaged)[connectedProvider]?.label}`,
+                )
+                .with(
+                  { connectedProvider: P.nonNullable },
+                  ({ connectedProvider }) =>
+                    t`Connected to ${getProviderOptions(offerMetabaseAiManaged)[connectedProvider]?.label}`,
+                )
+                .with(
+                  { connectedProvider: P.nullish },
+                  () => t`Connect to an AI provider`,
+                )
+                .exhaustive()}
             </div>
           </Group>
         </Flex>
@@ -489,6 +515,9 @@ const AIProviderSetup = ({
   const selectedApiKeySetting =
     providerApiKeyDetails[API_KEY_SETTING_BY_PROVIDER[selectedProvider]];
   const selectedApiKeyValue = String(selectedApiKeySetting?.value ?? "");
+  const apiKeyEnvSettingName = selectedApiKeySetting?.is_env_setting
+    ? selectedApiKeySetting.env_name
+    : undefined;
   const needsApiKey = !hasConfiguredSettingValue(selectedApiKeySetting);
 
   const metabotSettingsQuery = useGetMetabotSettingsQuery(
@@ -507,6 +536,9 @@ const AIProviderSetup = ({
     metabotSettingsQuery.error,
     selectedProvider,
   );
+  const apiKeyError = hasDirtyApiKey
+    ? undefined
+    : (metabotSettingsQuery.currentData?.["api-key-error"] ?? undefined);
 
   const displayApiKeyValue = apiKeyLocalValue ?? selectedApiKeyValue;
 
@@ -557,16 +589,17 @@ const AIProviderSetup = ({
           selectedProviderDetails.apiKey?.placeholder ?? t`Enter your API key`
         }
         value={displayApiKeyValue}
+        error={apiKeyError}
         onChange={handleApiKeyChange}
-        disabled={isLoading || isEnvSetting}
+        disabled={isLoading || isEnvSetting || !!apiKeyEnvSettingName}
         w="100%"
       />
 
-      {isEnvSetting && selectedApiKeySetting?.env_name ? (
-        <SetByEnvVar varName={selectedApiKeySetting.env_name} />
+      {apiKeyEnvSettingName ? (
+        <SetByEnvVar varName={apiKeyEnvSettingName} />
       ) : null}
 
-      {!needsApiKey && (
+      {!needsApiKey && !apiKeyError && (
         <Select
           label={t`Model`}
           placeholder={

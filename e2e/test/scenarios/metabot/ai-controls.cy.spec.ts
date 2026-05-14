@@ -269,7 +269,8 @@ describe("AI Controls > Metabot access and customization", () => {
       cy.findByRole("textbox", { name: /AI chat prompt instructions/ })
         .should("be.visible")
         .click()
-        .type("Be concise and helpful.");
+        .type("Be concise and helpful.")
+        .blur();
 
       cy.wait("@savePrompt").its("response.statusCode").should("eq", 204);
 
@@ -297,7 +298,8 @@ describe("AI Controls > Metabot access and customization", () => {
       })
         .should("be.visible")
         .click()
-        .type("Always use uppercase SQL keywords.");
+        .type("Always use uppercase SQL keywords.")
+        .blur();
 
       cy.wait("@saveSqlPrompt").its("response.statusCode").should("eq", 204);
 

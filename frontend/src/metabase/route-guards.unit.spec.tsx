@@ -1,12 +1,17 @@
 import { type Context, createContext } from "react";
+import { Route } from "react-router";
 import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { metabaseReduxContext } from "metabase/redux/context";
 import { createMockState } from "metabase/redux/store/mocks";
 
-import { isBackendOnlyPath } from "./route-guards";
+import {
+  IsAuthenticated,
+  IsNotAuthenticated,
+  isBackendOnlyPath,
+} from "./route-guards";
 
 describe("route-guards", () => {
   describe("patched redux-auth-wrapper", () => {
@@ -62,6 +67,47 @@ describe("route-guards", () => {
 
       expect(selectorState.auth.VAL_ONLY_IN_THIS_CTX).toBe(false);
       expect(screen.queryByText(text)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("redirect-after-login flow (UXW-3939)", () => {
+    it("UserIsAuthenticated should preserve original path as ?redirect= when sending logged-out user to /auth/login", async () => {
+      const settings = {
+        "has-user-setup": true,
+      } as any;
+      const state = createMockState({
+        currentUser: undefined,
+        settings: { values: settings } as any,
+      });
+
+      const Dashboard = () => <div>protected dashboard</div>;
+      const LoginPage = () => <div>login page</div>;
+
+      const { history } = renderWithProviders(
+        <>
+          <Route component={IsAuthenticated}>
+            <Route path="/dashboard/:slug" component={Dashboard} />
+          </Route>
+          <Route component={IsNotAuthenticated}>
+            <Route path="/auth/login" component={LoginPage} />
+          </Route>
+        </>,
+        {
+          storeInitialState: state,
+          withRouter: true,
+          initialRoute: "/dashboard/123",
+        },
+      );
+
+      await waitFor(() => {
+        expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+      });
+
+      const location = history!.getCurrentLocation();
+      expect(location.query).toEqual(
+        expect.objectContaining({ redirect: "/dashboard/123" }),
+      );
+      expect(location.search).toContain("redirect");
     });
   });
 

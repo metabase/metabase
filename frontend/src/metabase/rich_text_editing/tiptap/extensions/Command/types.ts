@@ -1,8 +1,7 @@
 import type { Editor } from "@tiptap/core";
 
 import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
-import type { IconName } from "metabase/ui";
-
+import type { IconName } from "metabase-types/api";
 export interface CommandOption {
   icon?: IconName;
   text?: string;

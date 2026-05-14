@@ -40,6 +40,15 @@
                         :weights           complexity/weights}
                        (synonym-source/fingerprint-fragment)))))
 
+(defn maybe-advance-last-fingerprint!
+  "Advance [[settings/data-complexity-scoring-last-fingerprint]] only if Snowplow accepted the publish.
+  On failure we leave it untouched so the next boot or cron retries.
+  Shared by the cron, API recompute, and CLI appdb paths to keep all persisters in lockstep."
+  [fingerprint result]
+  (if (::complexity/snowplow-published? (meta result))
+    (settings/data-complexity-scoring-last-fingerprint! fingerprint)
+    (log/warn "Data Complexity Score: Snowplow publish failed; leaving fingerprint unchanged so the next boot or cron retries")))
+
 (defn- run-scoring!
   "One scoring pass. Gated by [[settings/data-complexity-scoring-enabled]] so admins can silence
   scoring without unscheduling the job.
@@ -59,10 +68,8 @@
                     (assoc (synonym-source/complexity-scores-opts)
                            :metabot-scope (metabot-scope/internal-metabot-scope)))]
         (try
-          (data-complexity-score/record-score! claim-fingerprint result)
-          (if (::complexity/snowplow-published? (meta result))
-            (settings/data-complexity-scoring-last-fingerprint! claim-fingerprint)
-            (log/warn "Data Complexity Score: Snowplow publish failed; leaving fingerprint unchanged so the next boot or cron retries"))
+          (data-complexity-score/record-score! claim-fingerprint "appdb" result)
+          (maybe-advance-last-fingerprint! claim-fingerprint result)
           (catch Throwable t
             (log/warn t "Data Complexity Score: failed to persist score snapshot; leaving fingerprint unchanged so the next boot or cron retries")))
         result)

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Route } from "react-router";
 import { useAsync } from "react-use";
 
+import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
 import {
   skipToken,
   useGetDatabaseMetadataQuery,
@@ -11,7 +12,6 @@ import { Databases } from "metabase/entities/databases";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Center, Loader } from "metabase/ui";
-import { isAdminGroup, isDefaultGroup } from "metabase/utils/groups";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId, GroupInfo } from "metabase-types/api";
 

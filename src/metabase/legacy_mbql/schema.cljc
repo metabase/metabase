@@ -38,10 +38,10 @@
    [metabase.lib.schema.settings :as lib.schema.settings]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [every? select-keys #?(:clj doseq) some mapv update-keys empty? not-empty]]
    [metabase.util.time :as u.time]))
 
@@ -947,7 +947,7 @@
 (defn- replace-exclude-date-filters
   "Replaces legacy exclude date filter clauses that rely on temporal bucketing with `:temporal-extract` function calls."
   [filter-clause]
-  (lib.util.match/replace-lite filter-clause
+  (match/replace filter-clause
     [:!=
      [:field id-or-name (opts :guard (= (:temporal-unit opts) :hour-of-day))]
      & (args :guard (every? number? args))]
@@ -1011,7 +1011,7 @@
   expression and convert it to a `:relative-time-interval` call, honoring the original user intent. See #46211 and
   #46438 for details."
   [clause]
-  (lib.util.match/replace-lite clause
+  (match/replace clause
     [:between
      [:+
       field

@@ -11,13 +11,14 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { EventSandbox } from "metabase/common/components/EventSandbox";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { Flex, type IconName, Skeleton, Tooltip } from "metabase/ui";
+import { Flex, Skeleton, Tooltip } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
   Collection,
   CollectionItem,
+  IconName,
   RecentCollectionItem,
 } from "metabase-types/api";
 

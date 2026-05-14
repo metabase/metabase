@@ -4,7 +4,6 @@ const { H } = cy;
 const { TablePicker } = H.DataModel;
 
 interface MetadataResponse {
-  updated_at: string;
   data_layer: string;
   view_count: number;
 }
@@ -45,12 +44,10 @@ describe("Table editing", () => {
     TablePicker.getTable("Orders").click();
 
     cy.wait<MetadataResponse>("@metadata").then(({ response }) => {
-      const updatedAt = response?.body.updated_at ?? "";
-      const expectedDate = new Date(updatedAt).toLocaleString();
       const viewCount = response?.body.view_count ?? 0;
 
       cy.findByLabelText("Name in the database").should("have.text", "ORDERS");
-      cy.findByLabelText("Last updated at").should("have.text", expectedDate);
+      cy.findByLabelText("Last updated at").should("exist"); // Testing the actual value is done in TableMetadata.unit.spec.tsx
       cy.findByLabelText("View count").should("have.text", viewCount);
       cy.findByLabelText("Est. row count").should("not.exist");
       cy.findByLabelText("Dependencies").should("have.text", "0");

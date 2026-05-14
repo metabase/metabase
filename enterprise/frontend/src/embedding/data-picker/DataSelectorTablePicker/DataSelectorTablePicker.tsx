@@ -20,6 +20,7 @@ import { isNotNull } from "metabase/utils/types";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type Table from "metabase-lib/v1/metadata/Table";
+import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 
 import DataSelectorSectionHeader from "../DataSelectorSectionHeader";
 import { CONTAINER_WIDTH } from "../constants";
@@ -205,7 +206,7 @@ const Header = ({
             /
           </Box>
           <Box component="span" data-testid="source-schema" c="text-secondary">
-            {tc(selectedSchema.displayName())}
+            {tc(getSchemaDisplayName(selectedSchema.name))}
           </Box>
         </>
       )}

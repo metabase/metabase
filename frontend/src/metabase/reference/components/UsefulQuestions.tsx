@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { QueryButton } from "metabase/common/components/QueryButton";
 import D from "metabase/reference/components/Detail.module.css";
-import type { IconName } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./UsefulQuestions.module.css";
 

@@ -781,6 +781,27 @@
                                                               (update :id boolean)
                                                               (update :timestamp boolean)))))))))))))))))
 
+(deftest create-a-card-with-result-metadata-updates-recents-test
+  (testing "POST /api/card adds user-created questions to recents (UXW-3171)"
+    (mt/with-full-data-perms-for-all-users!
+      (mt/with-model-cleanup [:model/Card]
+        (t2/delete! :model/RecentViews :user_id (mt/user->id :rasta))
+        (let [card    (assoc (card-with-name-and-query) :result_metadata [])
+              card-id (:id (mt/user-http-request :rasta :post 200 "card" card))]
+          (is (= {:user_id  (mt/user->id :rasta)
+                  :model    "card"
+                  :model_id card-id}
+                 (t2/select-one [:model/RecentViews :user_id :model :model_id]
+                                :user_id  (mt/user->id :rasta)
+                                :model_id card-id
+                                :model    "card"))))
+        (testing "Cards saved without result metadata are not treated as viewed"
+          (let [card-id (:id (mt/user-http-request :rasta :post 200 "card" (card-with-name-and-query)))]
+            (is (nil? (t2/select-one :model/RecentViews
+                                     :user_id  (mt/user->id :rasta)
+                                     :model_id card-id
+                                     :model    "card")))))))))
+
 (deftest ^:parallel create-card-validation-test
   (testing "POST /api/card"
     (is (=? {:errors {:name                   "value must be a non-blank string."

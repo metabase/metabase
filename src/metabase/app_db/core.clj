@@ -100,6 +100,31 @@
   []
   (reset! (:status (mc/current (mdb.connection/application-db-handle))) ::setup-finished))
 
+(defn verify-application-db-connection!
+  "Open a connection to the bound application DB and check its server version. Throws on failure.
+  Does *not* run migrations or any encryption checks — use [[setup-db!]] for the full bootstrap.
+  This is the public, no-argument hook for tools that need to confirm appdb connectivity without
+  modifying the schema."
+  []
+  (mdb.setup/verify-db-connection (mdb.connection/db-type) (mdb.connection/data-source)))
+
+(defn setup-db-without-migrations!
+  "Like [[setup-db!]] but never runs migrations or mutates the schema. Idempotent: no-ops if the
+  DB is already set up. Verifies connectivity, then marks the DB ready.
+
+  For read-only tools (e.g. Data Complexity CLI) that need to query Toucan models against a live
+  appdb without modifying it. Any schema mismatch surfaces as a runtime error at query time
+  rather than during setup.
+
+  Skips:
+  - Liquibase migrations.
+  - [[metabase.app-db.setup/check-encryption]], whose auto-encrypt branch can silently rewrite
+    every encrypted `setting` row when an encryption key is configured."
+  []
+  (when-not (db-is-set-up?)
+    (verify-application-db-connection!)
+    (finish-db-setup!)))
+
 (defn app-db
   "The Application database. A record, but use accessors [[db-type]], [[data-source]], etc to access. Also
   implements [[javax.sql.DataSource]] directly, so you can call [[.getConnection]] on it directly."

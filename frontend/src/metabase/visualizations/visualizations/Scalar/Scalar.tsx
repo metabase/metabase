@@ -119,12 +119,12 @@ export class Scalar extends Component<
     }),
     // used by metrics viewer
     "scalar.label": {
-      hidden: true,
+      getHidden: () => true,
       getDefault: () => undefined,
     },
     // used by metrics viewer
     "scalar.sublabel": {
-      hidden: true,
+      getHidden: () => true,
       getDefault: () => undefined,
     },
     // LEGACY scalar settings, now handled by column level settings

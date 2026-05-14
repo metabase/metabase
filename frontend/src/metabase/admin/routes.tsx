@@ -66,7 +66,7 @@ import {
 import type { State } from "metabase/redux/store";
 import { getTokenFeature } from "metabase/setup";
 
-import { AISettingsPage } from "./ai/AISettingsPage";
+import { AISettingsPage, McpSettingsPage } from "./ai/AISettingsPage";
 import { MetabotAdminLayout } from "./ai/MetabotAdminLayout";
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
@@ -271,6 +271,7 @@ export const getRoutes = (
           {PLUGIN_AUDIT.getAiAnalyticsRoutes()}
           <Route key="index-layout" component={MetabotAdminLayout}>
             <IndexRoute key="index" component={AISettingsPage} />
+            <Route key="mcp" path="mcp" component={McpSettingsPage} />
             <Route key="metabot" path=":metabotId" component={AISettingsPage} />
           </Route>
           <Route
