@@ -1,6 +1,5 @@
 (ns metabase-enterprise.data-complexity-score.cli-test
   (:require
-   [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.data-complexity-score.cli :as cli]
@@ -13,7 +12,8 @@
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -89,16 +89,16 @@
       (is (= 2 (:field-count events))
           "events Table should have exactly 2 fields — the side-car must not be counted"))))
 
-(deftest ^:sequential run-cli-writes-readable-edn-to-output-file-test
+(deftest ^:sequential run-cli-writes-readable-json-to-output-file-test
   ;; Not ^:parallel: calls `cli/write-result!`, which kondo flags as a destructive function in
   ;; parallel tests. The temp file we hand it is unique-per-call so the write is safe in
   ;; principle, but the lint flag is the right default — drop it instead of whitelisting.
-  (testing "--output path gets a readable EDN dump of the same result"
-    (let [tmp (doto (java.io.File/createTempFile "complexity-cli-output-" ".edn") .deleteOnExit)]
+  (testing "--output path gets a JSON dump of the same result"
+    (let [tmp (doto (java.io.File/createTempFile "complexity-cli-output-" ".json") .deleteOnExit)]
       ;; Call internals instead of -main, which terminates the JVM via System/exit.
       (#'cli/write-result! (#'cli/run-cli {:representation-dir representation-fixture-dir})
                            (.getAbsolutePath tmp))
-      (is (= 215 (-> (slurp tmp) edn/read-string :library :total))))))
+      (is (= 215 (-> (slurp tmp) (json/decode true) :library :total))))))
 
 ;;; ------------------------------------- pure embedder/scoring tests -------------------------------------
 
