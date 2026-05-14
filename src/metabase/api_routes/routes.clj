@@ -54,6 +54,7 @@
    [metabase.session.api]
    [metabase.settings-rest.api]
    [metabase.setup-rest.api]
+   [metabase.slides.api]
    [metabase.sso.api]
    [metabase.sync.api]
    [metabase.task-history.api]
@@ -108,6 +109,7 @@
          metabase.segments.api/keep-me
          metabase.settings-rest.api/keep-me
          metabase.setup-rest.api/keep-me
+         metabase.slides.api/keep-me
          metabase.task-history.api/keep-me
          metabase.testing-api.api/keep-me
          metabase.tiles.api/keep-me
@@ -214,6 +216,7 @@
    "/setting"              (+auth 'metabase.settings-rest.api)
    "/setup"                'metabase.setup-rest.api
    "/slack"                (+auth metabase.channel.api/slack-routes)
+   "/slides"               (+auth metabase.slides.api/routes)
    "/table"                (+auth metabase.warehouse-schema-rest.api/table-routes)
    "/task"                 (+auth 'metabase.task-history.api)
    "/testing"              (if metabase.testing-api.core/enable-testing-routes? 'metabase.testing-api.api pass-thru-handler)

@@ -1,0 +1,142 @@
+## Stores slide decks for the Metabase Slides feature (Gamma-style presentations
+## with embedded interactive Metabase charts). Each row is a deck; the `slides`
+## column is a JSON array of slide objects, each with its own TipTap document.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/062_update_migrations.yaml
+  - changeSet:
+      id: v62.2026-05-14T00:00:00
+      author: ngoc
+      comment: Create slides table for Metabase Slides feature
+      changes:
+        - createTable:
+            tableName: slides
+            remarks: Slide decks (Gamma-style presentations with live Metabase charts)
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Unique ID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: Deck name
+                  constraints:
+                    nullable: false
+              - column:
+                  name: slides
+                  type: ${text.type}
+                  remarks: JSON array of slide objects ([{id, doc, layout}, ...])
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: User who created this deck
+                  constraints:
+                    nullable: false
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: Collection this deck lives in; null means the root collection
+                  constraints:
+                    nullable: true
+              - column:
+                  name: archived
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Has this deck been archived?
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: slides
+
+  - changeSet:
+      id: v62.2026-05-14T00:00:01
+      author: ngoc
+      comment: Index slides.creator_id
+      changes:
+        - createIndex:
+            tableName: slides
+            indexName: idx_slides_creator_id
+            columns:
+              - column:
+                  name: creator_id
+      rollback:
+        - dropIndex:
+            tableName: slides
+            indexName: idx_slides_creator_id
+
+  - changeSet:
+      id: v62.2026-05-14T00:00:02
+      author: ngoc
+      comment: Index slides.collection_id
+      changes:
+        - createIndex:
+            tableName: slides
+            indexName: idx_slides_collection_id
+            columns:
+              - column:
+                  name: collection_id
+      rollback:
+        - dropIndex:
+            tableName: slides
+            indexName: idx_slides_collection_id
+
+  - changeSet:
+      id: v62.2026-05-14T00:00:03
+      author: ngoc
+      comment: FK slides.creator_id -> core_user.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: slides
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_slides_ref_creator
+            onDelete: RESTRICT
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: slides
+            constraintName: fk_slides_ref_creator
+
+  - changeSet:
+      id: v62.2026-05-14T00:00:04
+      author: ngoc
+      comment: FK slides.collection_id -> collection.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: slides
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_slides_ref_collection
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: slides
+            constraintName: fk_slides_ref_collection

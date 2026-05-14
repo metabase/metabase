@@ -2060,6 +2060,24 @@
                     :model/Database
                     :model/MetabotMessage}}
 
+  slides
+  {:team "UX West"
+   :api  #{metabase.slides.api
+           metabase.slides.init
+           metabase.slides.models.slides}
+   :uses #{api
+           app-db
+           collections
+           events
+           llm
+           models
+           queries
+           util}
+   :model-exports #{:model/Slides}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/User}}
+
   source-swap
   {:team "Graphy"
    :api  #{metabase.source-swap.core
