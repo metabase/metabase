@@ -67,7 +67,7 @@
                       :output_namespace "ws_alice"
                       :input_schemas    ["dbo"]
                       :status           :provisioned}]
-        (let [cfg #p (config/build-workspace-config ws-id)]
+        (let [cfg (config/build-workspace-config ws-id)]
           (is (= {"MSSQL DW"
                   {:input_schemas    ["dbo"]
                    :output_namespace "ws_alice"}}
