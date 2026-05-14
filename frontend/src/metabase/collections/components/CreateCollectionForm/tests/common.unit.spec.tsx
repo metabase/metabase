@@ -5,7 +5,7 @@ import { screen } from "__support__/ui";
 import { setup } from "./setup";
 
 describe("CreateCollectionForm", () => {
-  it("displays correct blank state", () => {
+  it("displays correct blank state", async () => {
     setup();
 
     expect(screen.getByLabelText("Name")).toBeInTheDocument();
@@ -15,7 +15,7 @@ describe("CreateCollectionForm", () => {
     expect(screen.getByLabelText("Description")).toHaveValue("");
 
     expect(screen.getByText(/Collection it's saved in/i)).toBeInTheDocument();
-    expect(screen.getByText("Our analytics")).toBeInTheDocument();
+    expect(await screen.findByText("Our analytics")).toBeInTheDocument();
 
     expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create" })).toBeInTheDocument();
