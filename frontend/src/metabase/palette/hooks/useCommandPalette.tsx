@@ -9,9 +9,8 @@ import { getCollection } from "metabase/collections/utils";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { useSetting } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
-import { Search } from "metabase/entities/search";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useSelector } from "metabase/redux";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
   getDocsSearchUrl,
@@ -43,7 +42,6 @@ export const useCommandPalette = ({
   locationQuery: Query;
 }) => {
   const getIcon = useGetIcon();
-  const dispatch = useDispatch();
   const docsUrl = useSelector((state) => getDocsUrl(state, {}));
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const { isVisible } = useKBar((s) => ({
@@ -115,7 +113,8 @@ export const useCommandPalette = ({
           ? t`Search documentation for "${debouncedSearchText}"`
           : t`View documentation`,
         section: "docs",
-        keywords: debouncedSearchText, // Always match the debouncedSearchText string
+        // Include search query in keywords so kbar always shows it
+        keywords: trimmedQuery,
         icon: "document",
         extra: {
           href: link,
@@ -123,7 +122,7 @@ export const useCommandPalette = ({
       },
     ];
     return ret;
-  }, [debouncedSearchText, docsUrl]);
+  }, [debouncedSearchText, docsUrl, trimmedQuery]);
 
   const showDocsAction = showMetabaseLinks && hasQuery && !disabled;
 
@@ -150,7 +149,7 @@ export const useCommandPalette = ({
           id: `search-without-typeahead`,
           name: t`View search results for "${debouncedSearchText}"`,
           section: "search",
-          keywords: debouncedSearchText,
+          keywords: trimmedQuery,
           icon: "link" as const,
           priority: Priority.HIGH,
           extra: {
@@ -163,7 +162,7 @@ export const useCommandPalette = ({
         {
           id: "search-is-loading",
           name: t`Loading...`,
-          keywords: searchQuery,
+          keywords: trimmedQuery,
           section: "search",
           disabled: true,
         },
@@ -180,8 +179,7 @@ export const useCommandPalette = ({
     } else if (debouncedSearchText) {
       if (searchResults?.data.length) {
         return searchResults.data.map((result, index) => {
-          const wrappedResult = Search.wrapEntity(result, dispatch);
-          const icon = getIcon(wrappedResult);
+          const icon = getIcon(result);
           return {
             id: `search-result-${result.model}-${result.id}`,
             name: result.name,
@@ -189,7 +187,7 @@ export const useCommandPalette = ({
             icon: icon.name,
             iconUrl: icon.iconUrl,
             section: "search",
-            keywords: debouncedSearchText,
+            keywords: trimmedQuery,
             priority: Priority.NORMAL - index,
             perform: () => {
               trackSearchClick({
@@ -205,9 +203,9 @@ export const useCommandPalette = ({
             },
             extra: {
               moderatedStatus: result.moderated_status,
-              href: modelToUrl(wrappedResult),
+              href: modelToUrl(result),
               iconColor: icon.color,
-              subtext: getSearchResultSubtext(wrappedResult),
+              subtext: getSearchResultSubtext(result),
             },
           };
         });
@@ -216,7 +214,7 @@ export const useCommandPalette = ({
           {
             id: "no-search-results",
             name: t`No results for “${debouncedSearchText}”`,
-            keywords: debouncedSearchText,
+            keywords: trimmedQuery,
             section: "search",
             disabled: true,
           },
@@ -226,9 +224,8 @@ export const useCommandPalette = ({
     return [];
   }, [
     disabled,
-    dispatch,
     debouncedSearchText,
-    searchQuery,
+    trimmedQuery,
     isSearchLoading,
     searchError,
     searchResults,
@@ -310,7 +307,8 @@ export const useCommandPalette = ({
   return {
     searchRequestId,
     searchResults,
-    searchTerm: debouncedSearchText,
+    liveSearchTerm: trimmedQuery,
+    debouncedSearchTerm: debouncedSearchText,
   };
 };
 

@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.driver.mongo-test
   "Tests for Mongo driver."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.mongo-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.mongo-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -16,7 +18,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -26,6 +27,7 @@
    [metabase.test.data.mongo :as tdm]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [metabase.xrays.automagic-dashboards.core :as magic]
    [taoensso.nippy :as nippy]
    [toucan2.core :as t2])
@@ -674,7 +676,7 @@
   (mt/test-driver :mongo
     (testing "make sure x-rays don't use features that the driver doesn't support"
       (is (nil?
-           (lib.util.match/match-lite
+           (match/match-one
              (->> (magic/automagic-analysis (t2/select-one :model/Field :id (mt/id :venues :price)) {})
                   :dashcards
                   (mapcat (comp :breakout :query :dataset_query :card)))

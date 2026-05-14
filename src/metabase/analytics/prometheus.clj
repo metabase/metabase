@@ -614,6 +614,12 @@
    (prometheus/counter :metabase-metabot/llm-output-tokens
                        {:description "LLM output tokens"
                         :labels [:model :source]})
+   (prometheus/counter :metabase-metabot/llm-cache-creation-tokens
+                       {:description "LLM cache creation input tokens (Anthropic prompt caching)"
+                        :labels [:model :source]})
+   (prometheus/counter :metabase-metabot/llm-cache-read-tokens
+                       {:description "LLM cache read input tokens (Anthropic prompt caching)"
+                        :labels [:model :source]})
    (prometheus/histogram :metabase-metabot/llm-tokens-per-call
                          {:description "Tokens per LLM call"
                           :labels [:model :source]
@@ -638,6 +644,9 @@
                           :labels [:profile-id]
                           ;; 1KB -> 5MB
                           :buckets [1000 5000 10000 50000 100000 500000 1000000 5000000]})
+   (prometheus/counter :metabase-metabot/turn-started
+                       {:description "A metabot turn was started (user row + assistant placeholder inserted)"
+                        :labels [:profile-id]})
 
    ;; release dashboard metrics
    (prometheus/counter :metabase-sync/failures

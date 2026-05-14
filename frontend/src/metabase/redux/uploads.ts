@@ -1,8 +1,8 @@
 import { assocIn, dissocIn, updateIn } from "icepick";
 import { t } from "ttag";
 
-import { cardApi } from "metabase/api";
-import { Collections } from "metabase/entities/collections";
+import { Api, cardApi } from "metabase/api";
+import { listTag } from "metabase/api/tags";
 import { entityCompatibleQuery } from "metabase/entities/utils";
 import type { Dispatch, State } from "metabase/redux/store";
 import type { FileUploadState } from "metabase/redux/store/upload";
@@ -122,7 +122,12 @@ export const uploadFile = createThunkAction(
         if (tableId && onUploadComplete) {
           onUploadComplete();
         } else if (collectionId) {
-          dispatch(Collections.actions.invalidateLists());
+          dispatch(
+            Api.util.invalidateTags([
+              listTag("collection"),
+              listTag("collection-tree"),
+            ]),
+          );
         }
 
         clear();

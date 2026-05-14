@@ -8,6 +8,7 @@ import type {
   LoadSdkQuestionParams,
   MetabaseQuestion,
   SdkQuestionId,
+  SqlParameterChangePayload,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types/question";
 import type {
@@ -20,7 +21,7 @@ import type {
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
-import type { CardDisplayType, DashboardId } from "metabase-types/api";
+import type { Card, CardDisplayType, DashboardId } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
 type SdkQuestionConfig = {
@@ -40,9 +41,36 @@ type SdkQuestionConfig = {
   isSaveEnabled?: boolean;
 
   /**
-   * Initial values for the SQL parameters.
+   * Initial values for SQL parameters, slug-keyed. Applied once on mount; user widget edits afterwards are not reflected back to the host.
+   * <br/>
+   * For each parameter:
+   * <br/>
+   * - set to a value: that value is applied.
+   * <br/>
+   * - set to `null`: strictly cleared, ignoring the parameter's default.
+   * <br/>
+   * - omitted (or set to `undefined`): falls back to the parameter's default (or `null` if it has no default).
    **/
   initialSqlParameters?: SqlParameterValues;
+
+  /**
+   * Controlled SQL parameter values, slug-keyed. On every render, this object replaces the question's parameter values:
+   * <br/>
+   * - a parameter set to a value uses that value.
+   * <br/>
+   * - a parameter set to `null` is cleared, even if it has a default.
+   * <br/>
+   * - a parameter omitted from the object (or set to `undefined`) uses its default (or `null` if it has no default).
+   * <br/>
+   * <br/>
+   * Pair with `onSqlParametersChange` to stay in sync with user edits.
+   **/
+  sqlParameters?: SqlParameterValues;
+
+  /**
+   * Fires on SQL parameters change. The payload's `source` distinguishes the initial state on load (`'initial-state'`), user edits in the UI (`'manual-change'`), and auto-updates (`'auto-change'`).
+   **/
+  onSqlParametersChange?: (payload: SqlParameterChangePayload) => void;
 
   /**
    * A list of parameters to hide.
@@ -141,6 +169,21 @@ export type SdkQuestionProviderProps = PropsWithChildren<
        * @internal
        */
       navigateToNewCard?: Nullable<LoadQuestionHookResult["navigateToNewCard"]>;
+
+      /**
+       * Called when a drill-through action is about to navigate to a new card.
+       * Receives the navigation params and a `defaultNavigate` callback.
+       * Call `defaultNavigate()` to allow normal navigation, or omit it to intercept.
+       *
+       * @internal
+       */
+      onDrillThrough?: (
+        params: {
+          drillName: string | undefined;
+          nextCard: Card;
+        },
+        defaultNavigate: () => Promise<void>,
+      ) => Promise<void>;
     }
 >;
 

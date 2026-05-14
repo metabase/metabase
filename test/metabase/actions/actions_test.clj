@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.actions.actions-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.actions.actions-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.actions.actions-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]

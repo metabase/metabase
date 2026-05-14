@@ -28,7 +28,6 @@
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.logger.core :as logger]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
@@ -56,6 +55,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.system.core :as system]
    [metabase.upload.db :as upload.db]
+   [metabase.util.match :as match]
    [metabase.warehouse-schema.models.table :as table]
    [potemkin :as p]))
 
@@ -102,12 +102,9 @@
  lib.schema.common/instance-of-class
  lib.schema.temporal-bucketing/date-bucketing-units
  lib.types.isa/temporal?
- lib.util.match/match
- lib.util.match/match-one
- lib.util.match/match-lite
- lib.util.match/match-many
- lib.util.match/replace
- lib.util.match/replace-lite
+ match/match-one
+ match/match-many
+ match/replace
  lib/truncate-alias
  lib/->legacy-MBQL
  lib/->metadata-provider
@@ -170,8 +167,8 @@
  qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation
  qp.util/default-query->remark
  qp.util/query->remark
- qp.wrap-value-literals/unwrap-value-literal
  qp.wrap-value-literals/wrap-value-literals-in-mbql
+ qp.wrap-value-literals/wrap-value-literals-in-mbql5
  qp.writeback/execute-write-sql!
  qp/process-query
  secrets/clean-secret-properties-from-details

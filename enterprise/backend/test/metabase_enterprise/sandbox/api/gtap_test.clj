@@ -1,4 +1,5 @@
 (ns metabase-enterprise.sandbox.api.gtap-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.sandbox.api.gtap-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]

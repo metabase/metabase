@@ -7,12 +7,12 @@ import type {
 } from "metabase/metabot/state/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { Dispatch, GetState } from "metabase/redux/store";
-import type { IconName } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type {
   Card,
   Dashboard,
   Database as DatabaseType,
+  IconName,
 } from "metabase-types/api";
 
 export type MetabotSlashCommandHandler = (args: {

@@ -7,7 +7,6 @@ import type {
   ExpressionMetricSource,
   MetricDimensionItem,
 } from "metabase/metrics-viewer/components/DimensionPillBar";
-import type { IconName } from "metabase/ui";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { isNotNull } from "metabase/utils/types";
 import {
@@ -24,6 +23,7 @@ import type {
   DatasetColumn,
   DatasetData,
   DimensionId,
+  IconName,
   MetricBreakoutValuesResponse,
   RowValue,
   RowValues,

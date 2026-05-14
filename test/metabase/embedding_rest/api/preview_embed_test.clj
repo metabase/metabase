@@ -1,4 +1,7 @@
 (ns ^:mb/driver-tests metabase.embedding-rest.api.preview-embed-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.embedding-rest.api.preview-embed-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.embedding-rest.api.preview-embed-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.embedding-rest.api.preview-embed-test]}}}}}}
   (:require
    [buddy.sign.jwt :as jwt]
    [clojure.test :refer :all]

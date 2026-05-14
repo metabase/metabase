@@ -7,9 +7,9 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.match :as match])
   (:import
    (metabase.driver.common.parameters Optional FunctionParam Param)))
 
@@ -23,7 +23,7 @@
    (lib.schema.common/instance-of-class Optional)])
 
 (defn- ->param [value]
-  (lib.util.match/match-lite value
+  (match/match-one value
     (s :guard string?)
     s
 

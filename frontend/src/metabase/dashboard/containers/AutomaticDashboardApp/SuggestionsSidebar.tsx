@@ -6,9 +6,9 @@ import _ from "underscore";
 import { Card } from "metabase/common/components/Card";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { Box, Flex, Icon, type IconName, Title, Tooltip } from "metabase/ui";
+import { Box, Flex, Icon, Title, Tooltip } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
-import type { RelatedDashboardXRays } from "metabase-types/api";
+import type { IconName, RelatedDashboardXRays } from "metabase-types/api";
 
 import S from "./AutomaticDashboardApp.module.css";
 import { trackSuggestedXRayClicked } from "./analytics";

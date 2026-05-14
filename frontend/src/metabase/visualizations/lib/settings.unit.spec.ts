@@ -102,10 +102,10 @@ describe("settings framework", () => {
       ]);
     });
 
-    it("should return hidden widget when `hidden` is true", () => {
+    it("should ignore provided `hidden`", () => {
       const defs = { foo: { widget: "input", hidden: true } };
       const widgets = getSettingsWidgets(defs, {}, {}, mockObject, () => {});
-      expect(widgets[0].hidden).toEqual(true);
+      expect(widgets[0].hidden).toEqual(false);
     });
 
     it("should return hidden widget when `getHidden` returns true", () => {

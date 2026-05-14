@@ -1,4 +1,5 @@
 (ns metabase.documents.models.document-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.documents.models.document-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]

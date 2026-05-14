@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
 import { fireEvent, getIcon, screen } from "__support__/ui";
-import type { IconName } from "metabase/ui";
 import { METAKEY } from "metabase/utils/browser";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -12,7 +11,7 @@ import {
   columnFinder,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type { CardType } from "metabase-types/api";
+import type { CardType, IconName } from "metabase-types/api";
 import {
   ORDERS_ID,
   SAMPLE_DB_ID,

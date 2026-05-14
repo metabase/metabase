@@ -2,14 +2,12 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useDeleteActionMutation, useListActionsQuery } from "metabase/api";
 import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
 import { useSetArchive } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { Actions } from "metabase/entities/actions";
 import { Databases } from "metabase/entities/databases";
-import { connect } from "metabase/redux";
-import type { Dispatch, State } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type Question from "metabase-lib/v1/Question";
@@ -36,45 +34,28 @@ import {
   Root,
 } from "./ModelActionDetails.styled";
 import ModelActionListItem from "./ModelActionListItem";
+import { useEnableImplicitActionsForModel } from "./useEnableImplicitActionsForModel";
 
 interface OwnProps {
   model: Question;
-}
-
-interface DispatchProps {
-  onEnableImplicitActions: () => void;
-  onDeleteAction: (action: WritebackAction) => void;
-}
-
-interface ActionsLoaderProps {
-  actions: WritebackAction[];
 }
 
 interface DatabaseLoaderProps {
   databases: Database[];
 }
 
-type Props = OwnProps &
-  DispatchProps &
-  ActionsLoaderProps &
-  DatabaseLoaderProps;
+type Props = OwnProps & DatabaseLoaderProps;
 
-function mapDispatchToProps(dispatch: Dispatch, { model }: OwnProps) {
-  return {
-    onEnableImplicitActions: () =>
-      dispatch(Actions.actions.enableImplicitActionsForModel(model.id())),
-    onDeleteAction: (action: WritebackAction) =>
-      dispatch(Actions.actions.delete(action.id)),
-  };
-}
-
-function ModelActionDetails({
-  model,
-  actions,
-  databases,
-  onEnableImplicitActions,
-  onDeleteAction,
-}: Props) {
+function ModelActionDetails({ model, databases }: Props) {
+  const { data: actions = [] } = useListActionsQuery({
+    "model-id": model.id(),
+  });
+  const [deleteAction] = useDeleteActionMutation();
+  const onEnableImplicitActions = useEnableImplicitActionsForModel(model.id());
+  const onDeleteAction = useCallback(
+    (action: WritebackAction) => deleteAction(action.id),
+    [deleteAction],
+  );
   const archive = useSetArchive();
   const onArchiveAction = useCallback(
     (action: WritebackAction) =>
@@ -223,12 +204,4 @@ function mostRecentFirst(action: WritebackAction) {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Actions.loadList({
-    query: (state: State, { model }: OwnProps) => ({
-      "model-id": model.id(),
-    }),
-  }),
-  Databases.loadList(),
-  connect(null, mapDispatchToProps),
-)(ModelActionDetails);
+export default _.compose(Databases.loadList())(ModelActionDetails);

@@ -33,6 +33,7 @@
    [metabase.logger.api]
    [metabase.login-history.api]
    [metabase.mcp.api]
+   [metabase.mcp.callback-api]
    [metabase.measures.api]
    [metabase.metabot.api]
    [metabase.metabot.api.entity-analysis]
@@ -94,6 +95,7 @@
          metabase.logger.api/keep-me
          metabase.login-history.api/keep-me
          metabase.mcp.api/keep-me
+         metabase.mcp.callback-api/keep-me
          metabase.measures.api/keep-me
          metabase.metrics.api/keep-me
          metabase.model-persistence.api/keep-me
@@ -179,6 +181,7 @@
    "/eid-translation"      (+auth 'metabase.eid-translation.api)
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
+   "/embed-mcp"            (+auth metabase.mcp.callback-api/routes)
    "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
    "/frontend-errors"      metabase.frontend-errors.api/routes
