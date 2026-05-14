@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.embedding-rest.api.embed-test
   "Tests for /api/embed endpoints."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.embedding-rest.api.embed-test]}}}}}}
   (:require
    [buddy.sign.jwt :as jwt]
    [buddy.sign.util :as buddy-util]
@@ -178,8 +179,8 @@
   (with-embedding-enabled-and-new-secret-key!
     (let [card-url (str "embed/card/" (sign {:resource {:question "8"}
                                              :params   {}}))]
-      (is #(re-matches #"Invalid input:.+value must be an integer greater than zero.+got.+8"
-                       (client/client :get 400 card-url))))))
+      (is (re-find #"Invalid input:.+value must be an integer greater than zero.+got.+8"
+                   (client/client :get 400 card-url))))))
 
 (deftest check-that-the-endpoint-doesn-t-work-if-embedding-isn-t-enabled
   (mt/with-temporary-setting-values [enable-embedding false]

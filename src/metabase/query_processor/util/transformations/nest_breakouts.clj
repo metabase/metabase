@@ -10,13 +10,13 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [mapv select-keys some not-empty]]))
 
 (defn- stage-has-window-aggregation? [stage]
-  (lib.util.match/match-lite (:aggregation stage)
+  (match/match-one (:aggregation stage)
     [#{:cum-sum :cum-count :offset} & _] true))
 
 (defn- stage-has-breakout? [stage]
@@ -32,7 +32,7 @@
                          [tag
                           (select-keys opts [:join-alias :temporal-unit :bucketing])
                           id-or-name]))
-        (lib.util.match/match-many (concat (:breakout stage) (:aggregation stage) (:expressions stage))
+        (match/match-many (concat (:breakout stage) (:aggregation stage) (:expressions stage))
           [#{:field :expression} & _] &match)))
 
 (mu/defn- new-first-stage :- ::lib.schema/stage
@@ -57,7 +57,7 @@
 (mu/defn- update-second-stage-refs :- ::lib.schema/stage
   [stage            :- ::lib.schema/stage
    first-stage-cols :- [:sequential ::lib.schema.metadata/column]]
-  (lib.util.match/replace-lite stage
+  (match/replace stage
     [#{:field :expression} & _]
     (if-let [col (when-not (some #{:expressions} &parents)
                    (lib.equality/find-matching-column &match first-stage-cols))]

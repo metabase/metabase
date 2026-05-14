@@ -1,4 +1,3 @@
-import type { IconName } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import type {
   AnalysisFindingError,
@@ -7,6 +6,7 @@ import type {
   DependencyGroupType,
   DependencyNode,
   DependencyType,
+  IconName,
 } from "metabase-types/api";
 import {
   createMockAnalysisFindingError,

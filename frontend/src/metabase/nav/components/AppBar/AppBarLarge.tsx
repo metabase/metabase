@@ -35,6 +35,7 @@ export interface AppBarLargeProps {
   isAppSwitcherVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
+  isMetricsViewer?: boolean;
   onToggleNavbar: () => void;
 }
 
@@ -53,13 +54,15 @@ const AppBarLarge = ({
   isAppSwitcherVisible,
   isCollectionPathVisible,
   isQuestionLineageVisible,
+  isMetricsViewer,
   onToggleNavbar,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
   const { isVisible: isGitSyncVisible } =
     PLUGIN_REMOTE_SYNC.useGitSyncVisible();
 
-  const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
+  const { hasMetabotAccess: isMetabotVisibleToUser } =
+    useUserMetabotPermissions();
 
   return (
     <AppBarRoot
@@ -67,7 +70,8 @@ const AppBarLarge = ({
         isNavBarVisible ||
         isMetabotVisible ||
         isDocumentSidebarOpen ||
-        isCommentSidebarOpen
+        isCommentSidebarOpen ||
+        isMetricsViewer
       }
     >
       <Flex align="center" miw="5rem" flex="1 1 auto">
@@ -101,7 +105,7 @@ const AppBarLarge = ({
       {(isSearchVisible ||
         isNewButtonVisible ||
         isAppSwitcherVisible ||
-        isMetabotEnabled) && (
+        isMetabotVisibleToUser) && (
         <Flex
           align="center"
           gap="sm"

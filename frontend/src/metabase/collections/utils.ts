@@ -3,9 +3,10 @@ import { t } from "ttag";
 import {
   canPlaceEntityInCollection as canPlaceEntityInCollectionImpl,
   canPlaceEntityInCollectionOrDescendants as canPlaceEntityInCollectionOrDescendantsImpl,
-  getLibraryCollectionType,
 } from "metabase/data-studio/utils";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+// Importing from collections/constants to break import cycle
+import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
+import { PLUGIN_COLLECTIONS, PLUGIN_LIBRARY } from "metabase/plugins";
 import {
   type CardType,
   type Collection,
@@ -39,7 +40,7 @@ export function nonPersonalOrArchivedCollection(
 }
 
 export function isRootPersonalCollection(
-  collection: Partial<Collection> | CollectionItem,
+  collection: Pick<Collection, "personal_owner_id">,
 ): boolean {
   return typeof collection.personal_owner_id === "number";
 }
@@ -128,7 +129,7 @@ export function isSyncedCollection(collection: Partial<Collection>): boolean {
 export function isLibraryCollection(
   collection: Pick<Collection, "type">,
 ): boolean {
-  return getLibraryCollectionType(collection.type) != null;
+  return PLUGIN_LIBRARY.isLibraryCollectionType(collection.type);
 }
 
 export function isExamplesCollection(collection: Collection): boolean {
@@ -181,6 +182,24 @@ export function isRootCollection(collection: Pick<Collection, "id">): boolean {
   return canonicalCollectionId(collection?.id) === null;
 }
 
+export function normalizedCollection<
+  CollectionType extends Pick<Collection, "id"> = Collection,
+>(collection: CollectionType | null | undefined) {
+  return !collection || isRootCollection(collection)
+    ? ROOT_COLLECTION
+    : collection;
+}
+
+export type ItemWithCollection<CollectionType = Collection> = {
+  collection?: CollectionType;
+};
+
+export function getCollection<
+  CollectionType extends Pick<Collection, "id"> = Collection,
+>(item: ItemWithCollection<CollectionType> | null | undefined) {
+  return normalizedCollection(item?.collection);
+}
+
 export function isItemPinned(item: CollectionItem) {
   return item.collection_position != null;
 }
@@ -224,26 +243,12 @@ export function canBookmarkItem({ model, type, archived }: CollectionItem) {
   }
 }
 
-export function canPinItem(item: CollectionItem, collection?: Collection) {
-  return collection?.can_write && item.setPinned != null && !item.archived;
-}
-
 export function canPreviewItem(item: CollectionItem, collection?: Collection) {
   return (
     collection?.can_write &&
     isItemPinned(item) &&
     (isItemQuestion(item) || isItemMetric(item)) &&
     !item.archived
-  );
-}
-
-export function canMoveItem(item: CollectionItem, collection?: Collection) {
-  return (
-    (collection?.can_write || isRootTrashCollection(collection)) &&
-    !isReadOnlyCollection(item) &&
-    item.setCollection != null &&
-    !(isItemCollection(item) && isRootPersonalCollection(item)) &&
-    !isLibraryCollection(item as Pick<Collection, "type">)
   );
 }
 
@@ -262,7 +267,9 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
 }
 
 export function canCopyItem(item: CollectionItem) {
-  return item.copy && !item.archived;
+  return (
+    (item.model === "dashboard" || item.model === "document") && !item.archived
+  );
 }
 
 export function canPlaceEntityInCollection(
@@ -368,3 +375,8 @@ export const getCollectionPathAsString = (collection: CollectionEssentials) => {
 };
 
 export const collectionPathSeparator = "/";
+
+export const getCollectionPathAsArray = (collection: Collection): string[] => {
+  const parentIds = (collection.location ?? "").split("/").filter(Boolean);
+  return [...parentIds, String(collection.id)];
+};

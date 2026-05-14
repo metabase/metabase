@@ -1,5 +1,6 @@
 (ns metabase-enterprise.sandbox.api.field-test
   "Tests for special behavior of `/api/metabase/field` endpoints in the Metabase Enterprise Edition."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.sandbox.api.field-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.test-util :as mt.tu]

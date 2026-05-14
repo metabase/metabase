@@ -6,9 +6,8 @@ import {
   getEventCount,
   getTimelineName,
 } from "metabase/common/utils/timelines";
-import type { IconName } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
-import type { Timeline } from "metabase-types/api";
+import * as Urls from "metabase/urls";
+import type { IconName, Timeline } from "metabase-types/api";
 
 import {
   CardBody,

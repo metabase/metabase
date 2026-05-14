@@ -139,6 +139,19 @@ jobs:
           || (echo "Commit not found in correct release branch" && exit 1)
         git checkout -
 
+  manage-milestones:
+    # Close the milestone we're about to ship and open the next one BEFORE tagging,
+    # so any PRs that merge while the release is in flight are tagged with the next
+    # milestone (not the one about to be released). Gated on the preflight checks
+    # so a bad version/commit input doesn't rotate the milestone spuriously.
+    needs: [check-version, check-commit]
+    permissions:
+      contents: read
+      issues: write
+    uses: ./.github/workflows/release-milestone-manage.yml
+    with:
+      version: ${{ inputs.version }}
+
   tag-uberjar-for-release:
     needs: [check-version, check-commit]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -255,6 +268,3 @@ jobs:
       version: ${{ inputs.version }}
       commit: ${{ inputs.commit }}
       auto: ${{ inputs.auto }}
-      # for now don't auto-set release channel because we don't want to have
-      # multiple nightlies due to race conditions
-      release-channel: none

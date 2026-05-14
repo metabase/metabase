@@ -1,4 +1,5 @@
 (ns metabase-enterprise.impersonation.cache-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.impersonation.cache-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer [deftest testing is]]

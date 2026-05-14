@@ -7,11 +7,20 @@ import {
   PLUGIN_AUDIT,
 } from "metabase/plugins";
 import { Menu } from "metabase/ui";
-import { isInternalUser } from "metabase/utils/urls";
+import { isInternalUser } from "metabase/urls";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { InsightsLink } from "./components/InsightsLink";
 import { InsightsMenuItem } from "./components/InsightsMenuItem";
+import {
+  getMetabotAnalyticsNavItems,
+  getMetabotAnalyticsUpsellNavItems,
+} from "./metabot-analytics/nav";
+import {
+  getAiAnalyticsRoutes,
+  getAiAnalyticsUpsellRoutes,
+} from "./metabot-analytics/routes";
+import { handleMetabotSlashCommand } from "./metabot-analytics/slash-commands";
 import { getUserMenuRotes } from "./routes";
 import { isAuditDb } from "./utils";
 
@@ -41,5 +50,15 @@ export function initializePlugin() {
     PLUGIN_AUDIT.isAuditDb = isAuditDb;
     PLUGIN_AUDIT.InsightsLink = InsightsLink;
     PLUGIN_AUDIT.InsightsMenuItem = InsightsMenuItem;
+    if (hasPremiumFeature("ai_controls")) {
+      PLUGIN_AUDIT.getMetabotAnalyticsNavItems = getMetabotAnalyticsNavItems;
+      PLUGIN_AUDIT.getAiAnalyticsRoutes = getAiAnalyticsRoutes;
+    } else {
+      PLUGIN_AUDIT.getMetabotAnalyticsNavItems =
+        getMetabotAnalyticsUpsellNavItems;
+      PLUGIN_AUDIT.getAiAnalyticsRoutes = getAiAnalyticsUpsellRoutes;
+    }
+
+    PLUGIN_AUDIT.handleMetabotSlashCommand = handleMetabotSlashCommand;
   }
 }

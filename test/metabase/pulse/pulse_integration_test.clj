@@ -3,6 +3,7 @@
 
   These tests should build content then mock out distrubution by usual channels (e.g. email) and check the results of
   the distributed content for correctness."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.pulse.pulse-integration-test]}}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.string :as str]

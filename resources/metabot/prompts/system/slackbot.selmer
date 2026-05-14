@@ -339,8 +339,6 @@ The following tools have specific behavioral requirements that you must follow:
 <environment>
 # Environment Integration
 
-Current date and time: {{ current_time }}
-
 <technical_integration>
 ## Technical Integration
 
@@ -433,3 +431,9 @@ Where:
 
 </csv_uploads>
 {% endif %}
+
+<<<METABOT_CACHE_BREAKPOINT>>>
+
+# Runtime Context
+
+Current date and time: {{ current_time }}

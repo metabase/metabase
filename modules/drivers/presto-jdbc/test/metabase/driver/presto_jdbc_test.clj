@@ -1,4 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.presto-jdbc-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.presto-jdbc-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

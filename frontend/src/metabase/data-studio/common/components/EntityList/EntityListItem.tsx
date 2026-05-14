@@ -1,8 +1,8 @@
 import { Link } from "react-router";
 
-import type { IconName } from "metabase/ui";
 import { Card, Ellipsified, Flex, Icon, Stack, Text } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
+import type { IconName } from "metabase-types/api";
 
 import S from "./EntityListItem.module.css";
 

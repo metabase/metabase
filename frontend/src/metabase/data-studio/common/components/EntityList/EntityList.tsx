@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import type { IconName } from "metabase/ui";
 import { Button, Group, Icon, Stack, Title } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 type EntityListEmptyState = {
   icon: IconName;

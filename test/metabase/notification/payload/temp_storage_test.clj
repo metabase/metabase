@@ -1,4 +1,5 @@
 (ns metabase.notification.payload.temp-storage-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.notification.payload.temp-storage-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.notification.payload.temp-storage :as temp-storage]

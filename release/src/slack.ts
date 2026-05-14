@@ -279,6 +279,86 @@ export function githubRunLink(
   );
 }
 
+export type AutoPatchSkipReason =
+  | "no-next-patch"
+  | "no-green-commit"
+  | "already-released";
+
+type AutoPatchSkipArgs = {
+  majorVersion: number;
+  reason: AutoPatchSkipReason;
+  runId: string;
+  owner: string;
+  repo: string;
+};
+
+export function buildAutoPatchSkipMessage({
+  majorVersion,
+  reason,
+  runId,
+  owner,
+  repo,
+}: AutoPatchSkipArgs): string {
+  const runLink = githubRunLink("workflow run", runId, owner, repo);
+
+  const messageByReason: Record<AutoPatchSkipReason, string> = {
+    "no-green-commit": `:x: Auto-patch for *v${majorVersion}* skipped: no commit found suitable for the release. ${runLink}`,
+    "no-next-patch": `:x: Auto-patch for *v${majorVersion}* skipped: could not determine next patch version. ${runLink}`,
+    "already-released": `:information_source: Auto-patch for *v${majorVersion}* skipped: latest green commit has already been released — nothing new to patch. ${runLink}`,
+  };
+
+  return messageByReason[reason];
+}
+
+export async function sendAutoPatchFailureMessage(
+  args: AutoPatchSkipArgs & { channelName: string },
+) {
+  return sendSlackMessage({
+    channelName: args.channelName,
+    message: buildAutoPatchSkipMessage(args),
+  });
+}
+
+export type AutoMinorSkipReason =
+  | "no-next-minor"
+  | "no-green-commit"
+  | "already-released";
+
+type AutoMinorSkipArgs = {
+  majorVersion: number;
+  reason: AutoMinorSkipReason;
+  runId: string;
+  owner: string;
+  repo: string;
+};
+
+export function buildAutoMinorSkipMessage({
+  majorVersion,
+  reason,
+  runId,
+  owner,
+  repo,
+}: AutoMinorSkipArgs): string {
+  const runLink = githubRunLink("workflow run", runId, owner, repo);
+
+  const messageByReason: Record<AutoMinorSkipReason, string> = {
+    "no-green-commit": `:x: Auto-minor for *v${majorVersion}* skipped: no commit found suitable for the release. ${runLink}`,
+    "no-next-minor": `:information_source: Auto-minor for *v${majorVersion}* skipped: no gold release yet — cut it manually. ${runLink}`,
+    "already-released": `:information_source: Auto-minor for *v${majorVersion}* skipped: latest green commit has already been released — nothing new to ship. ${runLink}`,
+  };
+
+  return messageByReason[reason];
+}
+
+export async function sendAutoMinorFailureMessage(
+  args: AutoMinorSkipArgs & { channelName: string },
+) {
+  return sendSlackMessage({
+    channelName: args.channelName,
+    message: buildAutoMinorSkipMessage(args),
+  });
+}
+
 export async function sendPreReleaseMessage({
   github,
   owner,
@@ -458,7 +538,7 @@ export async function sendFlakeStatusReport({
  * 2) make an http POST request to that url with the file
  * 3) make an api call to "complete" the upload and post it somewhere in slack
  */
-async function uploadFileToSlack({
+export async function uploadFileToSlack({
   channelName,
   thread_ts,
   fileName,

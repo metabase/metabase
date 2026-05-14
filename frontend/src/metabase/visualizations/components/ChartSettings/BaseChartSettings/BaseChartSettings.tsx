@@ -42,7 +42,7 @@ export const BaseChartSettings = ({
   const {
     chartSettingCurrentSection,
     currentSectionHasColumnSettings,
-    sectionNames,
+    orderedSectionNames,
     setCurrentSection,
     showSectionPicker,
     visibleWidgets,
@@ -206,7 +206,7 @@ export const BaseChartSettings = ({
             <Radio
               value={chartSettingCurrentSection ?? undefined}
               onChange={handleShowSection}
-              options={sectionNames}
+              options={orderedSectionNames}
               optionNameFn={(v) => v}
               optionValueFn={(v) => v}
               optionKeyFn={(v) => v}

@@ -36,19 +36,30 @@
   (let [dataset-query (if (and (map? query) (:lib/type query))
                         (lib/->legacy-MBQL query)
                         query)]
-    (-> {:dataset_query dataset-query}
+    (-> {:dataset_query          dataset-query
+         :type                   "question"
+         :visualization_settings {}}
         json/encode
         (.getBytes "UTF-8")
         codecs/bytes->b64-str)))
 
 (defn pseudo-card->link
-  "Convert map with relevant card keys into a link. Relevant keys are e.g. dataset_query, display, displayIsLocked."
+  "Convert map with relevant card keys into a link. Relevant keys are e.g. dataset_query, display, displayIsLocked.
+  `:visualization_settings` defaults to `{}` so the frontend always gets a populated map to read chart settings from."
   [pc]
   (str "/question#"
-       (-> pc
+       (-> (merge {:visualization_settings {}} pc)
            json/encode
            (.getBytes "UTF-8")
            codecs/bytes->b64-str)))
+
+(defn query-and-viz-link
+  "Generate a question link for query and chart type. Chart type"
+  [query chart-type]
+  (pseudo-card->link
+   {:dataset_query query
+    :displayIsLocked true
+    :display (keyword chart-type)}))
 
 (defn- resolve-query-link
   "Resolve a metabase://query/{id} link to a /question# URL."
@@ -67,14 +78,11 @@
   (handles LLM mistakes where it uses chart/ instead of query/)."
   [chart-id charts-state queries-state]
   (if-let [chart (get charts-state chart-id)]
-    ;; Chart has a query-id that points to the actual query
-    (let [query-id (:query-id chart)]
-      (if-let [query (get queries-state query-id)]
-        (str "/question#" (query->url-hash query))
-        (do
-          (log/warn "Query not found for chart" {:chart-id chart-id
-                                                 :query-id query-id})
-          nil)))
+    (let [{[query] :queries
+           {:keys [chart_type]} :visualization_settings} chart]
+      (if (nil? query)
+        (log/warn "Query not found for chart" {:chart-id chart-id})
+        (query-and-viz-link query chart_type)))
     ;; Chart not found - fall back to checking if it's actually a query ID
     ;; (LLM sometimes uses metabase://chart/ when it should use metabase://query/)
     (if-let [query (get queries-state chart-id)]

@@ -71,6 +71,27 @@ Maximum number of rows to return for aggregated queries via the API.
 
 Must be less than 1048575. See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.
 
+### `MB_AI_FEATURES_ENABLED`
+
+- Type: boolean
+- Default: `true`
+- [Exported as](../installation-and-operation/serialization.md): `ai-features-enabled`.
+- [Configuration file name](./config-file.md): `ai-features-enabled`
+
+Whether AI features are enabled.
+
+### `MB_AI_USAGE_MAX_RETENTION_DAYS`
+
+- Type: string
+- Default: `null`
+
+Number of days to retain rows in the ai_usage_log table. Minimum value is 30; set to 0 to retain data indefinitely.
+
+Sets the maximum number of days Metabase preserves rows in the `ai_usage_log` table.
+
+Once a day, Metabase deletes rows older than this threshold. The minimum value is 30 days (Metabase will treat entered values of 1 to 29 the same as 30).
+If set to 0, Metabase will keep all rows.
+
 ### `MB_ALLOWED_IFRAME_HOSTS`
 
 - Type: string
@@ -101,13 +122,24 @@ x.com`
 
 Allowed iframe hosts.
 
+### `MB_ANALYTICS_PII_RETENTION_ENABLED`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `analytics-pii-retention-enabled`.
+- [Configuration file name](./config-file.md): `analytics-pii-retention-enabled`
+
+Enable logging of embed path, query parameters, user agent, IP address, and Metabot conversation metadata for users of your internal data and embeds. This information will be shown in your usage analytics.
+
 ### `MB_ANON_TRACKING_ENABLED`
 
 - Type: boolean
 - Default: `true`
 - [Configuration file name](./config-file.md): `anon-tracking-enabled`
 
-Enable the collection of anonymous usage data in order to help us improve.
+Enable the collection of anonymous usage data in order to help Metabase improve..
 
 ### `MB_API_KEY`
 
@@ -370,6 +402,17 @@ Pick one of your dashboards to serve as homepage. Users without dashboard access
 
 ID of dashboard to use as a homepage.
 
+### `MB_CUSTOM_VIZ_ENABLED`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `custom-viz-enabled`.
+- [Configuration file name](./config-file.md): `custom-viz-enabled`
+
+Should custom visualizations be enabled for this instance?
+
 ### `MB_DASHBOARDS_SAVE_LAST_USED_PARAMETERS`
 
 - Type: boolean
@@ -564,6 +607,15 @@ SMTP username.
 - [Configuration file name](./config-file.md): `email-smtp-username-override`
 
 Custom SMTP server username.
+
+### `MB_EMBEDDED_METABOT_ENABLED`
+
+- Type: boolean
+- Default: `true`
+- [Exported as](../installation-and-operation/serialization.md): `embedded-metabot-enabled`.
+- [Configuration file name](./config-file.md): `embedded-metabot-enabled`
+
+Whether Metabot is enabled for embedding.
 
 ### `MB_EMBEDDING_APP_ORIGIN [DEPRECATED]`
 
@@ -1152,6 +1204,22 @@ When set to `true`, users who log in via LDAP will automatically get a Metabase 
 
 The array of last two ISO8601 dates when an admin dismissed the license token missing banner.
 
+### `MB_LLM_ANTHROPIC_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-anthropic-api-key`
+
+The Anthropic API Key.
+
+### `MB_LLM_METABOT_PROVIDER`
+
+- Type: string
+- Default: `anthropic/claude-sonnet-4-6`
+- [Configuration file name](./config-file.md): `llm-metabot-provider`
+
+The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-4.1-mini`, `openrouter/anthropic/claude-haiku-4-5`.
+
 ### `MB_LOAD_ANALYTICS_CONTENT`
 
 - Type: boolean
@@ -1218,6 +1286,15 @@ Custom CORS origins for self-hosted MCP clients, space-separated.
 - [Configuration file name](./config-file.md): `mcp-apps-cors-enabled-clients`
 
 Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).
+
+### `MB_METABOT_ENABLED`
+
+- Type: boolean
+- Default: `true`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-enabled`.
+- [Configuration file name](./config-file.md): `metabot-enabled`
+
+Whether Metabot is enabled for regular usage.
 
 ### `MB_METABOT_SLACK_SIGNING_SECRET`
 
@@ -1438,6 +1515,14 @@ Whether to automatically import from the remote git repository. Only applies if 
 
 If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.
 
+### `MB_REMOTE_SYNC_BRANCH`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `remote-sync-branch`
+
+The remote branch to sync with, e.g. `main`.
+
 ### `MB_REMOTE_SYNC_CHECK_CHANGES_CACHE_TTL_SECONDS`
 
 - Type: integer
@@ -1454,6 +1539,14 @@ Time-to-live in seconds for the remote changes check cache. Default is 60 second
 
 The maximum amount of time a remote sync task will be given to complete.
 
+### `MB_REMOTE_SYNC_TOKEN`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `remote-sync-token`
+
+An Authorization Bearer token allowing access to the git repo over HTTP.
+
 ### `MB_REMOTE_SYNC_TRANSFORMS`
 
 - Type: boolean
@@ -1461,6 +1554,22 @@ The maximum amount of time a remote sync task will be given to complete.
 - [Configuration file name](./config-file.md): `remote-sync-transforms`
 
 Whether to sync transforms via remote-sync. When enabled, all transforms, transform tags, and transform jobs are synced as a single unit (all-or-nothing).
+
+### `MB_REMOTE_SYNC_TYPE`
+
+- Type: keyword
+- Default: `read-only`
+- [Configuration file name](./config-file.md): `remote-sync-type`
+
+Git synchronization type - :read-write or :read-only.
+
+### `MB_REMOTE_SYNC_URL`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `remote-sync-url`
+
+The location of your git repository, e.g. https://github.com/acme-inco/metabase.git.
 
 ### `MB_REPORT_TIMEZONE`
 
@@ -1949,6 +2058,13 @@ Client Secret for your Slack app.
 
 Is Slack Connect authentication configured and enabled?
 
+### `MB_SLACK_CONNECT_SIGNING_SECRET_VERSION`
+
+- Type: integer
+- Default: `0`
+
+Monotonically increasing version number for the Slack signing secret. Incremented each time the signing secret is rotated. Slack-connect auth identities are stamped with this version and only valid when it matches the current value. Legacy identities without a version are treated as version 0 for backwards compatibility.
+
 ### `MB_SLACK_CONNECT_USER_PROVISIONING_ENABLED`
 
 - Type: boolean
@@ -2165,6 +2281,26 @@ Use [MB_SESSION_COOKIES](#mb_session_cookies) to also expire sessions, when brow
 
 Also see the [Changing session expiration](../people-and-groups/changing-session-expiration.md) documentation page.
 
+### `MB_APPLICATION_DB_IDLE_CONNECTION_TEST_PERIOD_SECONDS`
+
+Type: integer<br>
+Default: `60`<br>
+Since: v62.0
+
+How often, in seconds, to test idle connections in the application database pool. Set to `0` to disable idle connection testing.
+
+### `MB_APPLICATION_DB_MAX_CONNECTION_AGE_SECONDS`
+
+Type: integer<br>
+Default: `3600`<br>
+Since: v62.0
+
+Maximum lifetime, in seconds, of a connection in the application database pool. After this duration the connection is closed and a new one is opened. Set to `0` to keep connections until the database closes them.
+
+The default of one hour is set primarily to limit memory growth (especially on PostgreSQL).
+
+If you are connecting with a short-lived credential (e.g. an AWS RDS IAM auth token) baked into the URL or password at startup, setting this to `0` is a partial workaround — eventual reconnects from the database or the network will still fail. Prefer [MB_DB_AWS_IAM](#mb_db_aws_iam) (AWS RDS / Aurora) or [MB_DB_AZURE_MANAGED_IDENTITY_CLIENT_ID](#mb_db_azure_managed_identity_client_id) (Azure).
+
 ### `MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE`
 
 Type: integer<br>
@@ -2178,6 +2314,30 @@ Change this to a higher value if you notice that regular usage consumes all or c
 To see how many connections are being used, check the Metabase logs and look for lines that contains the following: `… App DB connections: 12/15 …`. In this example, 12 out of 15 available connections are being used.
 
 See [MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE](#mb_jdbc_data_warehouse_max_connection_pool_size) for setting maximum connections to the databases connected to Metabase.
+
+### `MB_APPLICATION_DB_MAX_IDLE_TIME_EXCESS_CONNECTIONS_SECONDS`
+
+Type: integer<br>
+Default: `600`<br>
+Since: v62.0
+
+How long, in seconds, an idle connection beyond the minimum pool size may stay open before being culled. Set to `0` to never cull excess idle connections.
+
+### `MB_APPLICATION_DB_TEST_CONNECTION_ON_CHECKOUT`
+
+Type: boolean<br>
+Default: `false`<br>
+Since: v62.0
+
+When `true`, each connection is validated when checked out of the pool. Adds latency to every checkout. Useful when credentials may invalidate connections behind the pool's back.
+
+### `MB_APPLICATION_DB_UNRETURNED_CONNECTION_TIMEOUT_SECONDS`
+
+Type: integer<br>
+Default: `3600`<br>
+Since: v62.0
+
+How long, in seconds, before a checked-out but unreturned connection is forcibly reclaimed. The legacy name `MB_APPLICATION_DB_UNRETURNED_CONNECTION_TIMEOUT` continues to work; the suffixed form is preferred.
 
 ### `MB_ASYNC_QUERY_THREAD_POOL_SIZE`
 
@@ -2207,6 +2367,28 @@ Type: boolean<br>
 Default: `true`
 
 When set to `false`, Metabase will print migrations needed to be done in the application database and exit. Those migrations need to be applied manually. When `true`, Metabase will automatically make changes to the application database. This is not related to migrating away from H2.
+
+### `MB_DB_AWS_IAM`
+
+Type: boolean<br>
+Default: `false`<br>
+Since: v0.58.0
+
+When `true`, authenticate to the application database (PostgreSQL or MySQL/MariaDB on AWS RDS or Aurora) using AWS IAM instead of a password. Omit [MB_DB_PASS](#mb_db_pass). Auth tokens are refreshed automatically.
+
+Requires that AWS credentials are available via the standard credential chain (e.g. EKS IRSA, EC2 instance profile, ECS task role, or `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`), that the credentials hold the `rds-db:connect` permission for your database user, and that the DB user is set up for IAM authentication.
+
+For MySQL/MariaDB, also set [MB_DB_SSL_CERT](#mb_db_ssl_cert), or pass the SSL parameters in [MB_DB_CONNECTION_URI](#mb_db_connection_uri).
+
+### `MB_DB_AZURE_MANAGED_IDENTITY_CLIENT_ID`
+
+Type: string<br>
+Default: `null`<br>
+Since: v0.51.0
+
+Authenticate to a PostgreSQL or MySQL application database using an Azure Managed Identity instead of a password. Set this to the client ID of a user-assigned Managed Identity attached to your compute resource. Omit [MB_DB_PASS](#mb_db_pass). Access tokens are refreshed automatically.
+
+Requires the Database authentication providers Pro/Enterprise feature.
 
 ### `MB_DB_CONNECTION_URI`
 
@@ -2270,6 +2452,17 @@ Type: integer<br>
 Default: `null`
 
 The port for [MB_DB_HOST](#mb_db_host).
+
+### `MB_DB_SSL_CERT`
+
+Type: string<br>
+Default: `null`<br>
+Since: v0.58.0
+
+SSL configuration for the application database. Used with [MB_DB_AWS_IAM](#mb_db_aws_iam) on MySQL/MariaDB, where SSL is required.
+
+- `"trust"` — trust the server certificate without validation.
+- A filesystem path to a PEM file — validate against the supplied CA certificate.
 
 ### `MB_DB_TYPE`
 
@@ -2549,6 +2742,15 @@ Default: `"plugins"`
 Path of the "plugins" directory, which is used to store the Metabase database drivers. The user who is running Metabase should have permission to write to the directory. When running the JAR, the default directory is `plugins`, created in the same location as the JAR file. When running Docker, the default directory is `/plugins`.
 
 The location is where custom third-party drivers should be added. Then Metabase will load the driver on startup, which can be verified in the log.
+
+### `MB_PROMETHEUS_SERVER_PORT`
+
+Type: integer<br>
+Default: `null`
+
+Port to serve Prometheus metrics from. If set, Prometheus collectors are registered and served from `localhost:<port>/metrics`.
+
+See [Observability with Prometheus](../installation-and-operation/observability-with-prometheus.md).
 
 ### `MB_QP_CACHE_BACKEND`
 

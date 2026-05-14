@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-temporal-bucketing-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.clickhouse-temporal-bucketing-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.clickhouse-temporal-bucketing-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]))

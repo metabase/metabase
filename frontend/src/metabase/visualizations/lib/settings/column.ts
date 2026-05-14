@@ -9,9 +9,6 @@ import {
   getCurrencyNarrowSymbol,
   getCurrencyStyleOptions,
   getCurrencySymbol,
-  getDateFormatFromStyle,
-  getDateStyleOptionsForUnit,
-  getTimeStyleOptions,
   numberFormatterForOptions,
 } from "metabase/utils/formatting";
 import { hasHour } from "metabase/utils/formatting/datetime-utils";
@@ -19,6 +16,11 @@ import MetabaseSettings from "metabase/utils/settings";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { ChartNestedSettingColumns } from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
 import { ChartSettingTableColumns } from "metabase/visualizations/components/settings/ChartSettingTableColumns";
+import {
+  getDateFormatFromStyle,
+  getDateStyleOptionsForUnit,
+  getTimeStyleOptions,
+} from "metabase/visualizations/lib/formatting";
 import { getDeduplicatedTableColumnSettings } from "metabase/visualizations/lib/settings/utils";
 import {
   getDefaultCurrency,
@@ -66,14 +68,13 @@ const DEFAULT_GET_COLUMNS: GetColumnsFn = (series, _vizSettings) =>
 
 export interface ColumnSettingsOptions {
   getColumns?: GetColumnsFn;
-  hidden?: boolean;
+  getHidden?: (series: Series, settings: VisualizationSettings) => boolean;
   section?: string;
   readDependencies?: string[];
 }
 
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
-  hidden,
   ...def
 }: ColumnSettingsOptions = {}) {
   return nestedSettings<"column_settings", DatasetColumn>("column_settings", {
@@ -86,7 +87,6 @@ export function columnSettings({
     component: ChartNestedSettingColumns,
     getInheritedSettingsForObject: getInheritedSettingsForColumn,
     useRawSeries: true,
-    hidden,
     ...def,
   });
 }

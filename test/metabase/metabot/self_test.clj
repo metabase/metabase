@@ -4,7 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.core :as self.core]
@@ -405,9 +405,28 @@
            (self.core/format-data-line {:data-type "navigate_to" :data {:url "/question/123"}})))))
 
 (deftest format-error-line-test
-  (testing "formats error message as JSON string with 3: prefix"
+  (testing "formats plain error message as a JSON string with 3: prefix"
     (is (= "3:\"Something went wrong\"" (self.core/format-error-line {:error {:message "Something went wrong"}})))
-    (is (= "3:\"Unknown error\"" (self.core/format-error-line {:error "Unknown error"})))))
+    (is (= "3:\"Unknown error\"" (self.core/format-error-line {:error "Unknown error"}))))
+  (testing "formats structured error with error-code as a JSON object"
+    (let [line   (self.core/format-error-line {:error {:message    "You've used all of your included AI service tokens."
+                                                       :error-code "metabase_ai_managed_locked"}})
+          parsed (json/decode+kw (subs line 2))]
+      (is (str/starts-with? line "3:"))
+      (is (= "You've used all of your included AI service tokens." (:message parsed)))
+      (is (= "metabase_ai_managed_locked" (:error-code parsed)))))
+  (testing "formats ai_usage_limit_reached error-code as a JSON object"
+    (let [line   (self.core/format-error-line {:error {:message    "You have reached your AI usage limit."
+                                                       :error-code "ai_usage_limit_reached"}})
+          parsed (json/decode+kw (subs line 2))]
+      (is (str/starts-with? line "3:"))
+      (is (= "You have reached your AI usage limit." (:message parsed)))
+      (is (= "ai_usage_limit_reached" (:error-code parsed)))))
+  (testing "coerces keyword error-code to string"
+    (let [line   (self.core/format-error-line {:error {:message    "Usage limit reached"
+                                                       :error-code :metabase_ai_managed_locked}})
+          parsed (json/decode+kw (subs line 2))]
+      (is (= "metabase_ai_managed_locked" (:error-code parsed))))))
 
 (deftest format-tool-call-line-test
   (testing "formats tool call with toolCallId, toolName, and args"
@@ -492,7 +511,14 @@
                #"d:.*"]
               lines))
       (is (=? {:usage {:promptTokens 10 :completionTokens 5}}
-              (-> (last lines) (subs 2) (json/decode+kw)))))))
+              (-> (last lines) (subs 2) (json/decode+kw))))))
+
+  (testing ":external-id overrides the messageId on the start line"
+    (let [parts [{:type :start :id "provider-id" :messageId "provider-msg-id"}
+                 {:type :text :text "hi"}]
+          lines (into [] (self.core/aisdk-line-xf {:external-id "override-id"}) parts)]
+      (is (= "override-id"
+             (-> (first lines) (subs 2) (json/decode+kw) :messageId))))))
 
 ;;; ===================== Retry Logic Tests =====================
 
@@ -580,10 +606,10 @@
 (deftest call-llm-prometheus-test
   (mt/with-prometheus-system! [_ system]
     (with-redefs [self/retry-delay-ms (constantly 0)]
-      (let [labels {:model "openrouter/test-model" :source "agent"}]
+      (let [labels {:model "openrouter/test-model" :source "metabot_agent"}]
         (testing "increments llm-requests and observes duration on success"
           (with-redefs [openrouter/openrouter (constantly (test-util/mock-llm-response [{:type :start :id "m1"}]))]
-            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "agent"})))
+            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
           (is (== 0 (mt/metric-value system :metabase-metabot/llm-retries labels)))
           (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
@@ -591,8 +617,8 @@
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
 
         ;; mt/with-prometheus-system! is slow, so clear! metrics between tests rather than creating a fresh system
-        (prometheus/clear! :metabase-metabot/llm-requests)
-        (prometheus/clear! :metabase-metabot/llm-duration-ms)
+        (analytics/clear! :metabase-metabot/llm-requests)
+        (analytics/clear! :metabase-metabot/llm-duration-ms)
 
         (testing "increments llm-retries on transient failures, no errors on eventual success"
           (let [calls (atom 0)]
@@ -604,16 +630,16 @@
                                   (if (< (swap! calls inc) 3)
                                     (throw (ex-info "rate limited" {:status 429}))
                                     (reduce rf init (test-util/mock-llm-response [{:type :start :id "m1"}]))))))]
-                (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "agent"}))))
+                (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"}))))
             (is (== 3 (mt/metric-value system :metabase-metabot/llm-requests labels)))
             (is (== 2 (mt/metric-value system :metabase-metabot/llm-retries labels)))
             (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
                                        (assoc labels :error-type "ExceptionInfo"))))
             (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels))))))
 
-        (prometheus/clear! :metabase-metabot/llm-requests)
-        (prometheus/clear! :metabase-metabot/llm-retries)
-        (prometheus/clear! :metabase-metabot/llm-duration-ms)
+        (analytics/clear! :metabase-metabot/llm-requests)
+        (analytics/clear! :metabase-metabot/llm-retries)
+        (analytics/clear! :metabase-metabot/llm-duration-ms)
 
         (testing "increments llm-errors on non-retryable failure, no retries"
           (with-redefs [openrouter/openrouter
@@ -621,21 +647,21 @@
                           (reify clojure.lang.IReduceInit
                             (reduce [_ _rf _init]
                               (throw (ex-info "unauthorized" {:status 401})))))]
-            (is (thrown? Exception (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "agent"})))))
+            (is (thrown? Exception (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))))
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
           (is (== 0 (mt/metric-value system :metabase-metabot/llm-retries labels)))
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
                                      (assoc labels :error-type "ExceptionInfo"))))
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
 
-        (prometheus/clear! :metabase-metabot/llm-requests)
-        (prometheus/clear! :metabase-metabot/llm-errors)
-        (prometheus/clear! :metabase-metabot/llm-duration-ms)
+        (analytics/clear! :metabase-metabot/llm-requests)
+        (analytics/clear! :metabase-metabot/llm-errors)
+        (analytics/clear! :metabase-metabot/llm-duration-ms)
 
         (testing "increments llm-errors with :error-type llm-sse-error on inline SSE errors"
           (with-redefs [openrouter/openrouter
                         (constantly (test-util/mock-llm-response [{:type :error :errorText "content policy violation"}]))]
-            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "agent"})))
+            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
                                      (assoc labels :error-type "llm-sse-error")))))
@@ -648,15 +674,51 @@
                                       {:type  :usage
                                        :usage {:promptTokens 100 :completionTokens 25}
                                        :model "test-model"}]))]
-            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "agent"})))
+            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
           (is (== 100 (mt/metric-value system :metabase-metabot/llm-input-tokens labels)))
           (is (==  25 (mt/metric-value system :metabase-metabot/llm-output-tokens labels)))
-          (is (== 125 (:sum (mt/metric-value system :metabase-metabot/llm-tokens-per-call labels)))))))))
+          (is (== 125 (:sum (mt/metric-value system :metabase-metabot/llm-tokens-per-call labels)))))
+
+        (analytics/clear! :metabase-metabot/llm-input-tokens)
+        (analytics/clear! :metabase-metabot/llm-output-tokens)
+        (analytics/clear! :metabase-metabot/llm-cache-creation-tokens)
+        (analytics/clear! :metabase-metabot/llm-cache-read-tokens)
+
+        (testing "increments cache token counters when the :usage part carries cache fields"
+          ;; :promptTokens is the pre-summed total input (40 fresh + 300 cache_creation + 1200 cache_read = 1540).
+          (with-redefs [openrouter/openrouter
+                        (constantly (test-util/mock-llm-response
+                                     [{:type  :start :id "m1"}
+                                      {:type  :usage
+                                       :usage {:promptTokens        1540
+                                               :completionTokens    10
+                                               :cacheCreationTokens 300
+                                               :cacheReadTokens     1200}
+                                       :model "test-model"}]))]
+            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
+          (is (==  300 (mt/metric-value system :metabase-metabot/llm-cache-creation-tokens labels)))
+          (is (== 1200 (mt/metric-value system :metabase-metabot/llm-cache-read-tokens labels))))
+
+        (analytics/clear! :metabase-metabot/llm-input-tokens)
+        (analytics/clear! :metabase-metabot/llm-output-tokens)
+        (analytics/clear! :metabase-metabot/llm-cache-creation-tokens)
+        (analytics/clear! :metabase-metabot/llm-cache-read-tokens)
+
+        (testing "does not increment cache counters when cache fields are absent or zero"
+          (with-redefs [openrouter/openrouter
+                        (constantly (test-util/mock-llm-response
+                                     [{:type  :start :id "m1"}
+                                      {:type  :usage
+                                       :usage {:promptTokens 10 :completionTokens 5}
+                                       :model "test-model"}]))]
+            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
+          (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-creation-tokens labels)))
+          (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-read-tokens labels))))))))
 
 (deftest call-llm-structured-prometheus-test
   (mt/with-prometheus-system! [_ system]
     (with-redefs [self/retry-delay-ms (constantly 0)]
-      (let [labels        {:model "openrouter/test-model" :source "agent"}
+      (let [labels        {:model "openrouter/test-model" :source "metabot_agent"}
             success-mock  (test-util/mock-llm-response
                            [{:type :start :id "m1"}
                             {:type :tool-input :id "call-1" :function "json"
@@ -665,7 +727,7 @@
                                "openrouter/test-model"
                                [{:role "user" :content "test"}]
                                {:type "object" :properties {:answer {:type "string"}}}
-                               0.3 1024 {:tag "agent"})]
+                               0.3 1024 {:tag "metabot_agent"})]
         (testing "increments llm-requests and observes duration on success"
           (with-redefs [openrouter/openrouter (constantly success-mock)]
             (call-structured!))
@@ -675,8 +737,8 @@
                                      (assoc labels :error-type "ExceptionInfo"))))
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
 
-        (prometheus/clear! :metabase-metabot/llm-requests)
-        (prometheus/clear! :metabase-metabot/llm-duration-ms)
+        (analytics/clear! :metabase-metabot/llm-requests)
+        (analytics/clear! :metabase-metabot/llm-duration-ms)
 
         (testing "increments llm-retries on transient failures, no errors on eventual success"
           (let [calls (atom 0)]
@@ -693,9 +755,9 @@
                                      (assoc labels :error-type "ExceptionInfo"))))
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
 
-        (prometheus/clear! :metabase-metabot/llm-requests)
-        (prometheus/clear! :metabase-metabot/llm-retries)
-        (prometheus/clear! :metabase-metabot/llm-duration-ms)
+        (analytics/clear! :metabase-metabot/llm-requests)
+        (analytics/clear! :metabase-metabot/llm-retries)
+        (analytics/clear! :metabase-metabot/llm-duration-ms)
 
         (testing "increments llm-errors on non-retryable failure, no retries"
           (with-redefs [openrouter/openrouter
@@ -707,9 +769,9 @@
                                      (assoc labels :error-type "ExceptionInfo"))))
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
 
-        (prometheus/clear! :metabase-metabot/llm-requests)
-        (prometheus/clear! :metabase-metabot/llm-errors)
-        (prometheus/clear! :metabase-metabot/llm-duration-ms)
+        (analytics/clear! :metabase-metabot/llm-requests)
+        (analytics/clear! :metabase-metabot/llm-errors)
+        (analytics/clear! :metabase-metabot/llm-duration-ms)
 
         (testing "increments llm-errors with :error-type llm-sse-error on inline SSE errors"
           (with-redefs [openrouter/openrouter
@@ -738,18 +800,24 @@
 (def ^:private snowplow-tracking-opts
   {:request-id "00000000-0000-0000-0000-000000000001"
    :session-id "00000000-0000-0000-0000-000000000002"
-   :source     "test-source"
+   :source     "metabot_agent"
    :tag        "test-tag"})
 
 (deftest call-llm-snowplow-test
   (testing "fires :snowplow/token_usage and :snowplow/ai_service_event for call-llm with a tool call"
     (let [rasta-id (mt/user->id :rasta)]
+      ;; The adapter pre-sums input + cache_creation + cache_read into :promptTokens,
+      ;; so the mock supplies the already-summed value (950 = 100 fresh + 50 cache_creation + 800 cache_read).
+      ;; total_tokens reverts to prompt + completion = 950 + 20 = 970.
       (with-redefs [openrouter/openrouter
                     (constantly (test-util/mock-llm-response
                                  [{:type :start :id "msg-1"}
                                   {:type :tool-input :id "call-1" :function "get-time"
                                    :arguments {:tz "UTC"}}
-                                  {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                                  {:type :usage :usage {:promptTokens        950
+                                                        :completionTokens    20
+                                                        :cacheCreationTokens 50
+                                                        :cacheReadTokens     800}
                                    :model "test-model" :id "msg-1"}]))]
         (mt/with-current-user rasta-id
           (snowplow-test/with-fake-snowplow-collector
@@ -758,19 +826,21 @@
                   token-events (filter #(contains? (:data %) "total_tokens") events)
                   tool-events  (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
               (is (=? [{:user-id (str rasta-id)
-                        :data    {"model_id"            "openrouter/test-model"
-                                  "total_tokens"         120
-                                  "prompt_tokens"        100
-                                  "completion_tokens"    20
-                                  "estimated_costs_usd"  0.0
-                                  "duration_ms"          nat-int?
-                                  "source"               "test-source"
-                                  "tag"                  "test-tag"
-                                  "session_id"           "00000000-0000-0000-0000-000000000002"}}]
+                        :data    {"model_id"              "openrouter/test-model"
+                                  "total_tokens"           970
+                                  "prompt_tokens"          950
+                                  "completion_tokens"      20
+                                  "cache_creation_tokens"  50
+                                  "cache_read_tokens"      800
+                                  "estimated_costs_usd"    0.0
+                                  "duration_ms"            nat-int?
+                                  "source"                 "metabot_agent"
+                                  "tag"                    "test-tag"
+                                  "session_id"             "00000000-0000-0000-0000-000000000002"}}]
                       token-events))
               (is (=? [{:user-id (str rasta-id)
                         :data    {"event"         "agent_used_tool"
-                                  "source"        "test-source"
+                                  "source"        "metabot_agent"
                                   "result"        "success"
                                   "duration_ms"   nat-int?
                                   "session_id"    "00000000-0000-0000-0000-000000000002"
@@ -804,7 +874,7 @@
                                   "completion_tokens"    10
                                   "estimated_costs_usd"  0.0
                                   "duration_ms"          nat-int?
-                                  "source"               "test-source"
+                                  "source"               "metabot_agent"
                                   "tag"                  "test-tag"
                                   "session_id"           "00000000-0000-0000-0000-000000000002"}}]
                       token-events)))))))))

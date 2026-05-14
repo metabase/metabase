@@ -1,15 +1,11 @@
-import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
-  setupWorkspaceCheckoutEndpoint,
-  setupWorkspacesEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { Transform } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -17,14 +13,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { PythonTransformTopBar } from "./PythonTransformTopBar";
-
-jest.mock("metabase-enterprise/settings", () => ({
-  hasPremiumFeature: jest.fn(),
-}));
-
-const mockHasPremiumFeature = hasPremiumFeature as jest.MockedFunction<
-  typeof hasPremiumFeature
->;
 
 const DATABASE_ID = 1;
 const mockDatabase = createMockDatabase({
@@ -59,8 +47,6 @@ function setup({
 
   setupDatabasesEndpoints([mockDatabase]);
   setupSearchEndpoints([]);
-  setupWorkspacesEndpoint([]);
-  setupWorkspaceCheckoutEndpoint({});
 
   renderWithProviders(
     <Route
@@ -85,34 +71,12 @@ function setup({
 }
 
 describe("PythonTransformTopBar", () => {
-  beforeEach(() => {
-    mockHasPremiumFeature.mockReturnValue(false);
-  });
-
   describe("view mode (not editing)", () => {
-    it("should render EditDefinitionButton when not in edit mode and workspaces feature is disabled", () => {
-      mockHasPremiumFeature.mockReturnValue(false);
+    it("should render EditDefinitionButton when not in edit mode", () => {
       setup({ isEditMode: false, transform: mockPythonTransform });
       expect(
         screen.getByRole("link", { name: /edit definition/i }),
       ).toBeInTheDocument();
-    });
-
-    it("should render EditTransformMenu when not in edit mode and workspaces feature is enabled", async () => {
-      mockHasPremiumFeature.mockImplementation(
-        (feature) => feature === "workspaces",
-      );
-      setup({ isEditMode: false, transform: mockPythonTransform });
-
-      const editButton = await screen.findByRole("button", { name: /Edit/i });
-      await waitFor(() => {
-        expect(editButton).not.toHaveAttribute("data-loading", "true");
-      });
-
-      await userEvent.click(editButton);
-
-      expect(screen.getByText("Edit definition")).toBeInTheDocument();
-      expect(screen.getByText("Add to workspace")).toBeInTheDocument();
     });
 
     it("should not render edit button when transform is not provided", () => {

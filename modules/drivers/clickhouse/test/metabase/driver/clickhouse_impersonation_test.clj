@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-impersonation-test
   "SET ROLE (connection impersonation feature) tests with single node or on-premise cluster setups."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.clickhouse-impersonation-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.impersonation.util-test :as impersonation.tu]
@@ -47,11 +48,11 @@
            (driver/set-role! :clickhouse conn default-role)
            (with-open [stmt (.prepareStatement conn "SELECT * FROM `metabase_test_role_db`.`some_table` ORDER BY i ASC;")
                        rset (.executeQuery stmt)]
-             (is (.next rset) true)
-             (is (.getInt rset 1) 42)
-             (is (.next rset) true)
-             (is (.getInt rset 1) 144)
-             (is (.next rset) false)))))
+             (is (true? (.next rset)))
+             (is (= 42 (.getInt rset 1)))
+             (is (true? (.next rset)))
+             (is (= 144 (.getInt rset 1)))
+             (is (false? (.next rset)))))))
       (is true))))
 
 (defn- set-role-throws-test!
@@ -166,7 +167,6 @@
         (ctd/exec-statements grant-statements  cluster-port {"wait_end_of_query" "1"})
         (t2.with-temp/with-temp [:model/Database db cluster-details]
           (mt/with-db db (sync.core/sync-database! db)
-
             (letfn [(check-impersonation! [roles expected]
                       (impersonation.tu/with-impersonations!
                         {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
@@ -176,13 +176,11 @@
                                    mt/native-query
                                    mt/process-query
                                    mt/rows)))))]
-
               (is (= [["a"] ["b"] ["c"]]
                      (-> {:query select-query}
                          mt/native-query
                          mt/process-query
                          mt/rows)))
-
               (check-impersonation! "row_a" [["a"]])
               (check-impersonation! "row_b" [["b"]])
               (check-impersonation! "row_c" [["c"]])

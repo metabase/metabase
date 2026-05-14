@@ -1,38 +1,50 @@
 import { push } from "react-router-redux";
-import _ from "underscore";
 
-import { Collections } from "metabase/entities/collections";
-import { Timelines } from "metabase/entities/timelines";
-import type { State } from "metabase/redux/store";
+import {
+  skipToken,
+  useCreateTimelineMutation,
+  useGetCollectionQuery,
+} from "metabase/api";
+import { useDispatch } from "metabase/redux";
 import NewTimelineModal from "metabase/timelines/common/components/NewTimelineModal";
-import { connect } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
-import type { Timeline } from "metabase-types/api";
+import * as Urls from "metabase/urls";
+import type { CreateTimelineRequest, Timeline } from "metabase-types/api";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import type { ModalParams } from "../../types";
 
-interface NewTimelineModalProps {
+interface NewTimelineModalContainerProps {
   params: ModalParams;
+  onClose?: () => void;
 }
 
-const collectionProps = {
-  id: (state: State, props: NewTimelineModalProps) =>
-    Urls.extractCollectionId(props.params.slug),
-  LoadingAndErrorWrapper,
-};
+function NewTimelineModalContainer(props: NewTimelineModalContainerProps) {
+  const dispatch = useDispatch();
+  const [createTimeline] = useCreateTimelineMutation();
+  const collectionId = Urls.extractCollectionId(props.params.slug);
+  const {
+    data: collection,
+    isLoading,
+    error,
+  } = useGetCollectionQuery(
+    collectionId != null ? { id: collectionId } : skipToken,
+  );
 
-const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (values: Partial<Timeline>) => {
-    const action = Timelines.actions.create(values);
-    const response = await dispatch(action);
-    const timeline = Timelines.HACK_getObjectFromAction(response);
+  const onSubmit = async (values: Partial<Timeline>) => {
+    const timeline = await createTimeline(
+      values as CreateTimelineRequest,
+    ).unwrap();
     dispatch(push(Urls.timelineInCollection(timeline)));
-  },
-});
+  };
+
+  if (isLoading || error || !collection) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return (
+    <NewTimelineModal {...props} collection={collection} onSubmit={onSubmit} />
+  );
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Collections.load(collectionProps),
-  connect(null, mapDispatchToProps),
-)(NewTimelineModal);
+export default NewTimelineModalContainer;

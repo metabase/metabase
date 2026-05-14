@@ -1,5 +1,6 @@
 (ns metabase.measures.api-test
   "Tests for /api/measure endpoints."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.measures.api-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]

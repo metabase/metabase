@@ -1,4 +1,6 @@
 import type { Location } from "history";
+import { getIn } from "icepick";
+import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import type { SelectedTabId } from "metabase/redux/store";
@@ -26,18 +28,19 @@ import type {
   CacheableDashboard,
   Card,
   CardId,
+  ClickBehavior,
+  ColumnSettings,
   DashCardDataMap,
   Dashboard,
   DashboardCard,
-  DashboardCardLayoutAttrs,
   Database,
   Dataset,
+  DatasetQuery,
   EmbedDataset,
   Parameter,
   ParameterId,
   QuestionDashboardCard,
   VirtualCard,
-  VirtualCardDisplay,
   VirtualDashboardCard,
 } from "metabase-types/api";
 
@@ -256,17 +259,21 @@ export function isDashcardLoading(
   return cardData.length === 0 || cardData.some((data) => data == null);
 }
 
-export function getDashcardResultsError(
-  datasets: Dataset[],
-  isGuestEmbed: boolean,
+export function isDashcardAccessRestricted(
+  datasets: ReadonlyArray<Pick<Dataset, "error" | "error_type">>,
 ) {
-  const isAccessRestricted = datasets.some(
+  return datasets.some(
     (s) =>
       s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
       (typeof s.error === "object" && s.error?.status === 403),
   );
+}
 
-  if (isAccessRestricted) {
+export function getDashcardResultsError(
+  datasets: Dataset[],
+  isGuestEmbed: boolean,
+) {
+  if (isDashcardAccessRestricted(datasets)) {
     return {
       message: getPermissionErrorMessage(),
       icon: "key" as const,
@@ -384,44 +391,12 @@ export const getActionIsEnabledInDatabase = (
 export const calculateDashCardRowAfterUndo = (originalRow: number) =>
   originalRow - 0.1;
 
-let tempId = -1;
-
-export function generateTemporaryDashcardId() {
-  return tempId--;
-}
-
-export type NewDashboardCard = Omit<
-  DashboardCard,
-  "entity_id" | "created_at" | "updated_at"
->;
-
-type MandatoryDashboardCardAttrs = Pick<
-  DashboardCard,
-  "dashboard_id" | "card"
-> &
-  DashboardCardLayoutAttrs;
-
-export function createDashCard(
-  attrs: Partial<NewDashboardCard> & MandatoryDashboardCardAttrs,
-): NewDashboardCard {
-  return {
-    id: generateTemporaryDashcardId(),
-    dashboard_tab_id: null,
-    card_id: null,
-    parameter_mappings: [],
-    visualization_settings: {},
-    ...attrs,
-  };
-}
-
-export function createVirtualCard(display: VirtualCardDisplay): VirtualCard {
-  return {
-    name: null,
-    display,
-    visualization_settings: {},
-    archived: false,
-  };
-}
+export {
+  createDashCard,
+  createVirtualCard,
+  generateTemporaryDashcardId,
+  type NewDashboardCard,
+} from "metabase/common/utils/dashboard";
 
 export const isDashboardCacheable = (
   dashboard: Dashboard,
@@ -522,4 +497,73 @@ export function setDashboardHeaderParameterIndex(
 
   result.splice(targetIndex, 0, movedParam);
   return result;
+}
+
+export function getClickBehaviorDescription(dashcard: DashboardCard) {
+  const noBehaviorMessage = hasActionsMenu(dashcard)
+    ? t`Open the drill-through menu`
+    : t`Do nothing`;
+  if (isTableDisplay(dashcard)) {
+    const columnSettings: Record<string, ColumnSettings> =
+      getIn(dashcard, ["visualization_settings", "column_settings"]) || {};
+
+    const count = Object.values(columnSettings).filter(
+      (settings) => settings.click_behavior != null,
+    ).length;
+
+    if (count === 0) {
+      return noBehaviorMessage;
+    }
+    return ngettext(
+      msgid`${count} column has custom behavior`,
+      `${count} columns have custom behavior`,
+      count,
+    );
+  }
+
+  if (
+    dashcard.visualization_settings == null ||
+    dashcard.visualization_settings.click_behavior == null
+  ) {
+    return noBehaviorMessage;
+  }
+
+  const clickBehavior = dashcard.visualization_settings
+    .click_behavior as ClickBehavior;
+
+  if (clickBehavior.type === "link") {
+    const { linkType } = clickBehavior;
+    return linkType == null
+      ? t`Go to...`
+      : linkType === "dashboard"
+        ? t`Go to dashboard`
+        : linkType === "question"
+          ? t`Go to question`
+          : t`Go to url`;
+  }
+
+  return t`Filter this dashboard`;
+}
+
+function isEmptyDatasetQuery(
+  datasetQuery: DatasetQuery | Record<string, never> | undefined | null,
+): datasetQuery is Record<string, never> | undefined {
+  return datasetQuery == null || Object.keys(datasetQuery).length === 0;
+}
+
+export function hasActionsMenu(dashcard: DashboardCard) {
+  if (isEmptyDatasetQuery(dashcard.card.dataset_query)) {
+    return false;
+  }
+
+  // This seems to work, but it isn't the right logic.
+  // The right thing to do would be to check for any drills. However, we'd need a "clicked" object for that.
+  const question = Question.create({
+    dataset_query: dashcard.card.dataset_query,
+  });
+  return !question.isNative();
+}
+
+export function isTableDisplay(dashcard: DashboardCard) {
+  return dashcard?.card?.display === "table";
 }

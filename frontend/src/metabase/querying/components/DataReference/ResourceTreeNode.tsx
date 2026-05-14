@@ -1,5 +1,5 @@
 import type { TreeNodeProps } from "metabase/common/components/tree/types";
-import type { IconName } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import {
   NodeListItemIcon,
@@ -9,7 +9,7 @@ import {
 } from "./NodeList";
 import S from "./ResourceTreeNode.module.css";
 
-export const ResourceTreeNode = <TData = unknown,>({
+export const ResourceTreeNode = <TData = unknown>({
   item,
   depth,
   isExpanded,

@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { Api, skipToken, useGetCardQuery } from "metabase/api";
 import { useGetTableQuery } from "metabase/api/table";
 import type { TagType } from "metabase/api/tags";
+import { useDispatch } from "metabase/redux";
 import StatusLarge from "metabase/status/components/StatusLarge";
 import StatusSmall from "metabase/status/components/StatusSmall";
 import {
@@ -11,8 +12,6 @@ import {
   isSpinnerVisible,
 } from "metabase/status/components/utils/status";
 import useStatusVisibility from "metabase/status/hooks/use-status-visibility";
-import type { IconName } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import visualizations from "metabase/visualizations";
 import {
   useGetSourceReplacementRunQuery,
@@ -20,6 +19,7 @@ import {
 } from "metabase-enterprise/api/replacement";
 import type {
   Card,
+  IconName,
   LongTaskStatus,
   SourceReplacementRun,
   SourceReplacementRunId,

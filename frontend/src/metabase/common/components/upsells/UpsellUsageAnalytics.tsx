@@ -2,9 +2,9 @@ import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { Box, type BoxProps, Text } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 
 import { UpsellCard, type UpsellCardProps } from "./UpsellCard";
 import { UPGRADE_URL } from "./constants";
@@ -42,13 +42,16 @@ export const UpsellUsageAnalytics = (
       lh="1.5rem"
       onClick={triggerUpsellFlow}
       buttonStyle={{
-        marginInlineStart: "2rem",
+        marginInlineStart: "var(--mantine-spacing-xl)",
         width: "10rem",
         maxWidth: "100%",
       }}
       {...props}
     >
-      <Text lh="1.5rem" style={{ paddingInlineStart: "2rem" }}>
+      <Text
+        lh="1.5rem"
+        styles={{ root: { paddingInlineStart: "var(--mantine-spacing-xl)" } }}
+      >
         {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Pro, only visible to admins */}
         {t`Get detailed reports for tracking Metabase content usage, performance, and configuration changes.`}{" "}
         <ExternalLink href={usageAnalyticsUrl}>{t`Learn more`}</ExternalLink>

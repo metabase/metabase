@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.sqlserver-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sqlserver-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.sqlserver-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -10,8 +12,10 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sqlserver :as sqlserver]
    [metabase.lib.core :as lib]
@@ -25,6 +29,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [metabase.test.util.timezone :as test.tz]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [next.jdbc]
@@ -883,3 +888,38 @@
       (is (= ["INSERT INTO \"PRODUCTS_COPY\" SELECT * FROM products" nil]
              (driver/compile-insert :sqlserver {:query {:query "SELECT * FROM products"}
                                                 :output-table "PRODUCTS_COPY"}))))))
+
+(deftest table-privileges-test
+  (mt/test-driver :sqlserver
+    (testing "`current-user-table-privileges` returns correct structure and privileges"
+      (sql-jdbc.execute/do-with-connection-with-options
+       :sqlserver (mt/db) nil
+       (fn [conn]
+         (let [privileges (sql-jdbc.sync/current-user-table-privileges :sqlserver {:connection conn})]
+           (is (seq privileges) "Should return at least one table")
+           (doseq [priv privileges]
+             (is (= #{:role :schema :table :select :update :insert :delete}
+                    (set (keys priv)))
+                 "Should have all required keys")
+             (is (nil? (:role priv)))
+             (is (string? (:schema priv)))
+             (is (string? (:table priv)))
+             (is (boolean? (:select priv)))
+             (is (boolean? (:update priv)))
+             (is (boolean? (:insert priv)))
+             (is (boolean? (:delete priv))))
+           (testing "Test tables should appear with at least SELECT privilege"
+             (let [dbo-orders (filter (fn [priv]
+                                        (and (= "dbo" (:schema priv))
+                                             (= "ORDERS" (u/upper-case-en (:table priv)))))
+                                      privileges)]
+               (when (seq dbo-orders)
+                 (is (every? :select dbo-orders)))))))))))
+
+(deftest ^:parallel set-role-statement-escape-quotes-test
+  (mt/test-driver :sqlserver
+    (is (= "REVERT; EXECUTE AS USER = 'role''; SELECT sleep(10); --';"
+           (sql-jdbc.execute/do-with-connection-with-options
+            :sqlserver (mt/id) nil
+            (fn [conn]
+              (driver.sql-jdbc/set-role-statement :sqlserver conn "role'; SELECT sleep(10); --")))))))

@@ -13,6 +13,7 @@ import { QuestionVisualization } from "embedding-sdk-bundle/components/private/S
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { QuestionAlertsButton } from "embedding-sdk-bundle/components/public/notifications/QuestionAlertsButton";
 import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collection-data";
+import { useMobileLayout } from "embedding-sdk-bundle/hooks/private/use-mobile-layout";
 import { useQuestionEditorSync } from "embedding-sdk-bundle/hooks/private/use-question-editor-sync";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
@@ -65,6 +66,11 @@ export interface SdkQuestionDefaultViewProps extends FlexibleSizeProps {
    * Determines whether the chart type selector and corresponding settings button are shown. Only relevant when using the default layout.
    */
   withChartTypeSelector?: boolean;
+
+  /**
+   * Determines whether the editor button is shown. Only relevant when using the default layout.
+   */
+  withEditorButton?: boolean;
 }
 
 export const SdkQuestionDefaultView = ({
@@ -74,6 +80,7 @@ export const SdkQuestionDefaultView = ({
   style,
   title,
   withChartTypeSelector,
+  withEditorButton = true,
 }: SdkQuestionDefaultViewProps): ReactElement => {
   const { isLocaleLoading } = useLocale();
   const {
@@ -119,29 +126,18 @@ export const SdkQuestionDefaultView = ({
     question && shouldRunCardQuery({ question, isGuestEmbed }) && !queryResults;
 
   useEffect(() => {
-    const isNewQuestion = originalId === "new" || originalId === "new-native";
-    const isExistingQuestion =
-      question &&
+    if (
       !isQuestionLoading &&
       question?.isSaved() &&
-      !isNewQuestion &&
-      queryResults;
-
-    const onNavigate = onNavigateBack ?? onReset ?? undefined;
-
-    if (isNewQuestion) {
-      reportLocation({
-        type: "question",
-        id: originalId,
-        name: "New question",
-        onNavigate,
-      });
-    } else if (isExistingQuestion) {
+      originalId !== "new" &&
+      originalId !== "new-native" &&
+      queryResults
+    ) {
       reportLocation({
         type: "question",
         id: question.id(),
         name: question.displayName() || "Question",
-        onNavigate,
+        onNavigate: onNavigateBack ?? onReset ?? undefined,
       });
     }
   }, [
@@ -158,6 +154,8 @@ export const SdkQuestionDefaultView = ({
     targetCollection,
     { skipCollectionFetching: !isSaveEnabled },
   );
+
+  const { ref: containerRef, isMobile } = useMobileLayout();
 
   if (
     !isEditorOpen &&
@@ -183,6 +181,7 @@ export const SdkQuestionDefaultView = ({
 
   return (
     <FlexibleSizeComponent
+      ref={containerRef}
       height={height}
       width={width}
       className={cx(InteractiveQuestionS.Container, className)}
@@ -232,7 +231,7 @@ export const SdkQuestionDefaultView = ({
                         <QuestionSettingsDropdown />
                       </Button.Group>
 
-                      {!isNativeQuestion && (
+                      {!isNativeQuestion && !isMobile && (
                         <Divider
                           mx="xs"
                           orientation="vertical"
@@ -244,7 +243,7 @@ export const SdkQuestionDefaultView = ({
                     </>
                   )}
 
-                  {!isNativeQuestion && (
+                  {!isNativeQuestion && !isMobile && (
                     <>
                       <FilterDropdown />
                       <SummarizeDropdown />
@@ -255,13 +254,15 @@ export const SdkQuestionDefaultView = ({
               )}
             </RenderIfHasContent>
             <RenderIfHasContent component={Group} gap="sm" ml="auto">
-              {!isEditorOpen && (
+              {!isEditorOpen && !isMobile && (
                 <>
                   <DownloadWidgetDropdown />
                   <QuestionAlertsButton />
                 </>
               )}
-              <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
+              {withEditorButton && (
+                <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
+              )}
             </RenderIfHasContent>
           </RenderIfHasContent>
         )}

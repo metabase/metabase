@@ -558,6 +558,7 @@
   or to this set, so that [[every-feature-is-accounted-for-test]] passes."
   #{:audit-app ;; tracked under :mb-analytics
     :collection-cleanup
+    :data-complexity-score
     :development-mode
     :library
     :embedding
@@ -570,6 +571,7 @@
     :offer-metabase-ai-managed
     :query-reference-validation
     :metabase-ai-managed
+    :metabot-v3
     :cloud-custom-smtp
     :session-timeout-config
     :sso-oidc

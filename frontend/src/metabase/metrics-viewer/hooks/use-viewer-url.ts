@@ -4,8 +4,8 @@ import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
-import { useDispatch } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
+import { useDispatch } from "metabase/redux";
+import * as Urls from "metabase/urls";
 import type { MeasureId } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
@@ -55,9 +55,13 @@ export function useViewerUrl(
       if (!hash) {
         const params = new URLSearchParams(location.search);
         const metricId = params.get("metricId");
-        if (metricId) {
+        const measureId = params.get("measureId");
+        if (metricId || measureId) {
+          const entity = metricId
+            ? { type: "metric" as const, id: parseInt(metricId, 10) }
+            : { type: "measure" as const, id: parseInt(measureId!, 10) };
           serializedState = {
-            formulaEntities: [{ type: "metric", id: parseInt(metricId, 10) }],
+            formulaEntities: [entity],
             tabs: [],
             selectedTabId: null,
           };

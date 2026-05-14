@@ -1,0 +1,131 @@
+name: Automatically set milestone
+run-name: Set milestone for ${{ github.event.head_commit.message || inputs.version }}
+
+on:
+  push:
+    branches:
+      - release-x.**
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Major version number  (e.g. 52, 78, 109)'
+        type: number
+        required: true
+
+jobs:
+  set-milestone:
+    name: Automatically set milestone
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 30
+    permissions:
+      pull-requests: write
+      issues: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            release
+            .github
+          # Single-commit path only needs 3 commits; both backfill paths need
+          # full history to compute the merge-base with master.
+          fetch-depth: ${{ (github.event_name == 'push' && github.event.created != true) && 3 || 0 }}
+          ref: master # we want the logic from master, even though we're triggering on a release branch
+
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+
+      # Resolve the major version we're operating on. For workflow_dispatch
+      # it comes straight from inputs.version; for a push it's parsed from
+      # the branch ref (refs/heads/release-x.{N}.x).
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            MAJOR="${{ inputs.version }}"
+          else
+            REF="${{ github.ref_name }}"
+            MAJOR="${REF#release-x.}"
+            MAJOR="${MAJOR%.x}"
+          fi
+          echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
+
+      # Backport push to an existing release branch: milestone the single
+      # commit that was just pushed.
+      #
+      # `github.event.created` is a documented top-level field on the push
+      # webhook payload (true iff the push created the ref). See:
+      # https://docs.github.com/en/webhooks/webhook-events-and-payloads#push
+      - uses: actions/github-script@v7
+        if: ${{ github.event_name == 'push' && github.event.created != true }}
+        name: Set milestone for single commit
+        with:
+          script: | # js
+            const { setMilestoneForCommits } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const branchName = `${{ github.ref }}`;
+            const commitMessage = context?.payload?.head_commit?.message ?? '';
+
+            await setMilestoneForCommits({
+              github,
+              owner,
+              repo,
+              branchName,
+              commitMessages: [commitMessage],
+            });
+
+      # Full backfill — assigns milestone 0.{major} to every PR/issue whose
+      # commit landed on master between the previous release branch forking
+      # point and this branch. Fires for:
+      #   - Fresh-cut pushes (the canonical signal of a new release branch)
+      #   - Manual workflow_dispatch (ad-hoc re-runs to pick up misses)
+      - name: Get commit messages for release branch
+        if: ${{ (github.event_name == 'push' && github.event.created == true) || github.event_name == 'workflow_dispatch' }}
+        run: |
+          npm i -g tsx
+          tsx release/src/release-branch-commits.ts ${{ steps.version.outputs.major }} > commit-messages.json
+
+      - uses: actions/github-script@v7
+        if: ${{ (github.event_name == 'push' && github.event.created == true) || github.event_name == 'workflow_dispatch' }}
+        name: Backfill milestones for release branch
+        env:
+          # this token has a higher rate limit than the default token, and
+          # we will need it for this workflow to work
+          GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        with:
+          script: | # js
+            const { setMilestoneForCommits } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const commitMessages = require('${{ github.workspace }}/commit-messages.json');
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const versionNumber = '${{ steps.version.outputs.major }}';
+            const branchName = `release-x.${versionNumber}.x`;
+
+            console.log(`Found ${commitMessages.length} new commits for ${branchName}`);
+
+            await setMilestoneForCommits({
+              github,
+              owner,
+              repo,
+              branchName,
+              commitMessages: commitMessages,
+              ignoreExistingMilestones: true,
+            });
+
+      # Fresh-cut only: now that the milestone is populated, dispatch
+      # release-notes-preview to post the markdown to #writing.
+      # Manual workflow_dispatch backfills skip this — they're for catching
+      # missed commits, not for pinging writers again.
+      - name: Trigger release notes preview for the writing team
+        if: ${{ github.event_name == 'push' && github.event.created == true }}
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: |
+          gh workflow run release-notes-preview.yml \
+            -f version=v0.${{ steps.version.outputs.major }}.0 \
+            -f slackChannel=writing \
+            --repo "${{ github.repository }}"

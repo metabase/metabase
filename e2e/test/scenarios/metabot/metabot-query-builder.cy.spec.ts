@@ -21,16 +21,21 @@ describe("Metabot Query Builder", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
     cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
   });
 
-  it("should redirect to notebook when llm-metabot-configured? is false", () => {
+  it("should show setup guidance when llm-metabot-configured? is false", () => {
     H.updateSetting("llm-anthropic-api-key", "");
     cy.visit("/question/ask");
-    cy.url().should("include", "/question#");
-    cy.findByTestId("metabot-send-message").should("not.exist");
+    cy.url().should("include", "/question/ask");
+    cy.get("main")
+      .findByText("To use AI exploration, please", { exact: false })
+      .should("be.visible");
+    cy.findByRole("button", { name: "connect to a model" }).click();
+    cy.findByTestId("ai-provider-configuration-modal").should("be.visible");
+    cy.findByTestId("metabot-send-message").should("be.disabled");
   });
 
   it("should redirect to notebook when metabot-enabled? is false", () => {
