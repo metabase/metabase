@@ -4,6 +4,8 @@
    [java-time.api :as t]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.hash :as lib-be.hash]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.usage-metadata.batch :as usage-metadata.batch]
@@ -31,19 +33,30 @@
    :context      :ad-hoc})
 
 (defn- orders-query []
-  (mt/mbql-query orders
-    {:filter      [:= $orders.product_id 1]
-     :aggregation [[:sum $orders.subtotal]]
-     :breakout    [!month.orders.created_at
-                   $orders.user_id]}))
+  (let [mp         (lib-be/application-database-metadata-provider (mt/id))
+        orders     (lib.metadata/table mp (mt/id :orders))
+        product-id (lib.metadata/field mp (mt/id :orders :product_id))
+        subtotal   (lib.metadata/field mp (mt/id :orders :subtotal))
+        created-at (lib.metadata/field mp (mt/id :orders :created_at))
+        user-id    (lib.metadata/field mp (mt/id :orders :user_id))]
+    (-> (lib/query mp orders)
+        (lib/filter (lib/= product-id 1))
+        (lib/aggregate (lib/sum subtotal))
+        (lib/breakout (lib/with-temporal-bucket created-at :month))
+        (lib/breakout user-id))))
 
 (defn- cross-source-query []
-  (mt/mbql-query venues
-    {:joins   [{:source-table $$categories
-                :alias        "Cat"
-                :condition    [:= $venues.category_id [:field %categories.id {:join-alias "Cat"}]]}]
-     :filter  [:= $venues.category_id [:field %categories.id {:join-alias "Cat"}]]
-     :breakout [$venues.price]}))
+  (let [mp          (lib-be/application-database-metadata-provider (mt/id))
+        venues      (lib.metadata/table mp (mt/id :venues))
+        categories  (lib.metadata/table mp (mt/id :categories))
+        venues-cat  (lib.metadata/field mp (mt/id :venues :category_id))
+        cat-id      (lib.metadata/field mp (mt/id :categories :id))
+        cat-id-join (lib/with-join-alias cat-id "Cat")]
+    (-> (lib/query mp venues)
+        (lib/join (-> (lib/join-clause categories [(lib/= venues-cat cat-id-join)])
+                      (lib/with-join-alias "Cat")))
+        (lib/filter (lib/= venues-cat cat-id-join))
+        (lib/breakout (lib.metadata/field mp (mt/id :venues :price))))))
 
 (defn- native-query []
   {:database (mt/id)

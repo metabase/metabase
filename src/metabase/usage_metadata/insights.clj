@@ -218,7 +218,7 @@
 
 (defn- existing-metric-signatures*
   []
-  (let [cards (t2/select [:model/Card :id :database_id :dataset_query]
+  (let [cards (t2/select [:model/Card :id :database_id :dataset_query :card_schema]
                          :type "metric"
                          :archived false)]
     (lib-be/with-metadata-provider-cache
