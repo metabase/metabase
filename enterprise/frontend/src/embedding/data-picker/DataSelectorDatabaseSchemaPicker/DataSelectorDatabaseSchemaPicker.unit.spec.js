@@ -3,6 +3,7 @@ import { render, renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
+import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 import { createMockDatabase, createMockSchema } from "metabase-types/api/mocks";
 
 import DataSelectorDatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
@@ -45,12 +46,8 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
           id: 1,
           name: databaseName,
           getSchemas: () => [
-            {
-              displayName: () => schemaName,
-            },
-            {
-              displayName: () => "another schema name",
-            },
+            { name: schemaName },
+            { name: "another schema name" },
           ],
         },
       ];
@@ -58,7 +55,9 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
       render(<DataSelectorDatabaseSchemaPicker databases={databases} />);
 
       expect(screen.getByText(databaseName)).toBeInTheDocument();
-      expect(screen.getByText(schemaName)).toBeInTheDocument();
+      expect(
+        screen.getByText(getSchemaDisplayName(schemaName)),
+      ).toBeInTheDocument();
     });
 
     it("displays Saved Questions if it's about saved questions", () => {
@@ -71,12 +70,8 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
           is_saved_questions: true,
           name: databaseName,
           getSchemas: () => [
-            {
-              displayName: () => schemaName,
-            },
-            {
-              displayName: () => "another schema name",
-            },
+            { name: schemaName },
+            { name: "another schema name" },
           ],
         },
       ];

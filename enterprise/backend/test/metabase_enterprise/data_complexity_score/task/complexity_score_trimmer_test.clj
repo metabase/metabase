@@ -27,6 +27,7 @@
   [label created-at]
   (t2/insert! :model/DataComplexityScore
               {:fingerprint (str fingerprint-prefix label)
+               :source      "appdb"
                :score_data  {:label label}
                :created_at  created-at}))
 

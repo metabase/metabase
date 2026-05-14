@@ -1,4 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.timezones-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.query-processor.timezones-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.query-processor.timezones-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.timezones-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]

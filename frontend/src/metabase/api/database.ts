@@ -1,5 +1,11 @@
 import { updateMetadata } from "metabase/redux/metadata";
-import { DatabaseSchema, FieldSchema, TableSchema } from "metabase/schema";
+import {
+  DatabaseSchema,
+  FieldSchema,
+  SchemaSchema,
+  TableSchema,
+} from "metabase/schema";
+import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   AutocompleteRequest,
   AutocompleteSuggestion,
@@ -37,6 +43,13 @@ import {
   tag,
 } from "./tags";
 import { handleQueryFulfilled } from "./utils/lifecycle";
+
+const toNormalizedSchemas = (dbId: DatabaseId, schemaNames: SchemaName[]) =>
+  schemaNames.map((schemaName) => ({
+    id: generateSchemaId(dbId, schemaName),
+    name: schemaName,
+    database: { id: dbId },
+  }));
 
 export const databaseApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -116,6 +129,14 @@ export const databaseApi = Api.injectEndpoints({
         listTag("schema"),
         ...schemas.map((schema) => idTag("schema", schema)),
       ],
+      onQueryStarted: ({ id }, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (schemaNames) =>
+          dispatch(
+            updateMetadata(toNormalizedSchemas(id, schemaNames), [
+              SchemaSchema,
+            ]),
+          ),
+        ),
     }),
     listSyncableDatabaseSchemas: builder.query<SchemaName[], DatabaseId>({
       query: (id) => ({
@@ -126,6 +147,14 @@ export const databaseApi = Api.injectEndpoints({
         listTag("schema"),
         ...schemas.map((schema) => idTag("schema", schema)),
       ],
+      onQueryStarted: (id, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (schemaNames) =>
+          dispatch(
+            updateMetadata(toNormalizedSchemas(id, schemaNames), [
+              SchemaSchema,
+            ]),
+          ),
+        ),
     }),
     listDatabaseSchemaTables: builder.query<
       Table[],

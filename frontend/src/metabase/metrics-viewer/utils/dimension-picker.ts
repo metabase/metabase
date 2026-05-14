@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
-import type { IconName } from "metabase/ui";
 import type {
   DimensionGroup,
   DimensionMetadata,
   MetricDefinition,
 } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
+import type { IconName } from "metabase-types/api";
 
 import type {
   MetricSourceId,

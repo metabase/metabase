@@ -1,6 +1,5 @@
-import type { IconName } from "metabase/ui";
 import { Flex, Icon, Loader, Tooltip, UnstyledButton } from "metabase/ui";
-import type { InitialSyncStatus } from "metabase-types/api";
+import type { IconName, InitialSyncStatus } from "metabase-types/api";
 
 import Styles from "./StatusSmall.module.css";
 

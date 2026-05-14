@@ -1,5 +1,6 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  setupCollectionByIdEndpoint,
   setupDatabaseListEndpoint,
   setupGdriveGetFolderEndpoint,
   setupGdrivePostFolderEndpoint,
@@ -101,6 +102,7 @@ export const setup = ({
   setupTokenStatusEndpoint({ valid: true });
 
   setupDatabaseListEndpoint(databases);
+  setupCollectionByIdEndpoint({ collections });
 
   if (enableGoogleSheets) {
     setupGdrivePostFolderEndpoint();

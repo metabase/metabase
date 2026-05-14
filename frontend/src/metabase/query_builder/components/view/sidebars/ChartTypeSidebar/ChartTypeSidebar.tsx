@@ -9,9 +9,7 @@ import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { updateQuestion } from "metabase/query_builder/actions";
 import {
   ChartTypeSettings,
-  type GetSensibleVisualizationsProps,
   type UseQuestionVisualizationStateProps,
-  getSensibleVisualizations,
   useQuestionVisualizationState,
 } from "metabase/query_builder/components/chart-type-selector";
 import { useDispatch } from "metabase/redux";
@@ -20,6 +18,10 @@ import {
   onOpenChartSettings,
   setUIControls,
 } from "metabase/redux/query-builder";
+import {
+  type GetSensibleVisualizationsProps,
+  getSensibleVisualizations,
+} from "metabase/visualizations/lib/sensibility";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { VisualizationDisplay } from "metabase-types/api";

@@ -5,7 +5,8 @@ import { useListDatabasesQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
-import { Box, Icon, type IconName, Modal, Tabs } from "metabase/ui";
+import { Box, Icon, Modal, Tabs } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./AddDataModal.module.css";
 import { CSVPanel } from "./Panels/CSVPanel";

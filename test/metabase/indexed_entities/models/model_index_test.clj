@@ -1,4 +1,5 @@
 (ns ^:mb/driver-tests metabase.indexed-entities.models.model-index-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.indexed-entities.models.model-index-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]

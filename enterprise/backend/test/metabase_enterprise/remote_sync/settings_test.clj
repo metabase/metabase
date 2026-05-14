@@ -137,6 +137,42 @@
 
 ;;; ------------------------------------------------- Root Collection Remote Sync -------------------------------------------------
 
+(deftest check-and-update-remote-settings-env-var-aware-test
+  (testing "Settings sourced from env vars are not overwritten by check-and-update-remote-settings!"
+    (with-redefs [settings/check-git-settings! (constantly true)]
+      (mt/with-temp-env-var-value! [mb-remote-sync-url "file://env/url.git"
+                                    mb-remote-sync-token "env-token"
+                                    mb-remote-sync-branch "env-branch"]
+        (testing "Updating URL, token, and branch via API has no effect when sourced from env"
+          (settings/check-and-update-remote-settings!
+           {:remote-sync-url    "file://api/url.git"
+            :remote-sync-token  "api-token"
+            :remote-sync-branch "api-branch"
+            :remote-sync-type   :read-only})
+          (is (= "file://env/url.git" (settings/remote-sync-url)))
+          (is (= "env-token" (settings/remote-sync-token)))
+          (is (= "env-branch" (settings/remote-sync-branch))))
+        (testing "Clearing URL (blank) does not wipe env-backed URL/token/branch"
+          (settings/check-and-update-remote-settings! {:remote-sync-url ""})
+          (is (= "file://env/url.git" (settings/remote-sync-url)))
+          (is (= "env-token" (settings/remote-sync-token)))
+          (is (= "env-branch" (settings/remote-sync-branch)))))))
+
+  (testing "Non-env-sourced settings are still updated normally"
+    (with-redefs [settings/check-git-settings! (constantly true)]
+      (mt/with-temporary-setting-values [:remote-sync-url nil
+                                         :remote-sync-token nil
+                                         :remote-sync-branch nil
+                                         :remote-sync-type nil]
+        (settings/check-and-update-remote-settings!
+         {:remote-sync-url    "file://api/url.git"
+          :remote-sync-token  "api-token"
+          :remote-sync-branch "api-branch"
+          :remote-sync-type   :read-only})
+        (is (= "file://api/url.git" (settings/remote-sync-url)))
+        (is (= "api-token" (settings/remote-sync-token)))
+        (is (= "api-branch" (settings/remote-sync-branch)))))))
+
 (deftest root-collection-is-not-remote-synced-test
   (testing "Root collection for shared-tenant-collection namespace is never remote-synced (individual children can be toggled)"
     (let [root-coll (collection.root/root-collection-with-ui-details :shared-tenant-collection)]

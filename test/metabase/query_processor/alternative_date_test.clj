@@ -1,6 +1,8 @@
 (ns ^:mb/driver-tests metabase.query-processor.alternative-date-test
   "Tests for columns that mimic dates: integral types as UNIX timestamps and string columns as ISO8601DateTimeString and
   related types."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.alternative-date-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.alternative-date-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]

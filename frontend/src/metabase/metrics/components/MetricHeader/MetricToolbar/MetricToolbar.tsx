@@ -9,6 +9,7 @@ import {
   useListNotificationsQuery,
 } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/data-studio/selectors";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
@@ -18,7 +19,6 @@ import {
   PLUGIN_LIBRARY,
   PLUGIN_MODERATION,
 } from "metabase/plugins";
-import { AddToDashSelectDashModal } from "metabase/query_builder/components/AddToDashSelectDashModal";
 import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
 import { CardCopyModal } from "metabase/questions/components/CardCopyModal";
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";

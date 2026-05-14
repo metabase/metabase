@@ -22,8 +22,8 @@ import {
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/admin/utils/groups";
+import { collectionApi } from "metabase/api";
 import {
-  Collections,
   ROOT_COLLECTION,
   getCollectionIcon,
 } from "metabase/entities/collections";
@@ -39,11 +39,10 @@ import type {
 } from "metabase-types/api";
 
 export const tenantCollectionsQuery = {
-  tree: true,
   "exclude-other-user-collections": true,
   "exclude-archived": true,
   namespace: "shared-tenant-collection",
-};
+} as const;
 
 export const getIsTenantDirty = createSelector(
   (state: State) => state.admin.permissions.tenantCollectionPermissions,
@@ -77,10 +76,12 @@ const getTenantRootCollectionTreeItem = () => {
   };
 };
 
-const getTenantCollections = (state: State) =>
-  Collections.selectors.getList(state, {
-    entityQuery: tenantCollectionsQuery,
-  }) ?? [];
+const getTenantCollections = (state: State) => {
+  const queryState = collectionApi.endpoints.listCollectionsTree.select(
+    tenantCollectionsQuery,
+  )(state);
+  return queryState?.data ?? [];
+};
 
 const getTenantCollectionsTree = createSelector(
   [getTenantCollections],
@@ -132,7 +133,7 @@ const findCollection = (
 
 const getTenantCollection = createSelector(
   [getCurrentTenantCollectionId, getTenantCollections],
-  (collectionId, collections) => {
+  (collectionId, collections): Collection | null => {
     if (collectionId == null) {
       return null;
     }
@@ -142,7 +143,7 @@ const getTenantCollection = createSelector(
         ...ROOT_COLLECTION,
         name: t`Root shared collection`,
         children: collections,
-      };
+      } as unknown as Collection;
     }
 
     return findCollection(collections, collectionId);
@@ -171,7 +172,7 @@ export const getTenantCollectionsPermissionEditor = createSelector(
       return null;
     }
 
-    const hasChildren = collection.children?.length > 0;
+    const hasChildren = (collection.children?.length ?? 0) > 0;
     const toggleLabel = hasChildren ? t`Also change sub-collections` : null;
 
     const entities = groups

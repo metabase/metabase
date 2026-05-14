@@ -1,5 +1,4 @@
-import type { IconName } from "metabase/ui";
-
+import type { IconName } from "metabase-types/api";
 export type PaneHeaderTab = {
   label: string;
   to: string;

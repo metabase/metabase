@@ -177,6 +177,13 @@
                                                       :return_to default-redirect-uri)]
             (is (not (sso.test-setup/successful-login? response)))))
 
+        (testing "with SAML and JWT configured, a POST without jwt in JSON body dispatches to SAML (not JWT login)"
+          (let [response (client/client-real-response :post 401 "/auth/sso"
+                                                      {:request-options {:redirect-strategy :none}}
+                                                      {}
+                                                      :return_to default-redirect-uri)]
+            (is (not (sso.test-setup/successful-login? response)))))
+
         (testing "with SAML and JWT configured, a GET request with preferred_method=jwt should sign in via JWT"
           (let [response (client/client-real-response :get 302 "/auth/sso"
                                                       {:request-options {:redirect-strategy :none}}
@@ -226,6 +233,33 @@
                                                     :exp        (+ (buddy-util/now) 3600)
                                                     :iat        (buddy-util/now)}
                                                    default-jwt-secret))]
+        (is (sso.test-setup/successful-login? response))
+        (testing "redirect URI"
+          (is
+           (= default-redirect-uri
+              (get-in response [:headers "Location"]))))
+        (testing "login attributes"
+          (is
+           (= {"extra" "keypairs", "are" "also present"}
+              (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))))))
+
+(deftest post-jwt-body-happy-path-test
+  (testing "Happy path login via POST /auth/sso with JSON body {:jwt ...}, same behavior as GET with query param"
+    (with-jwt-default-setup!
+      (let [jwt-payload (jwt/sign
+                         {:email      "rasta@metabase.com"
+                          :first_name "Rasta"
+                          :last_name  "Toucan"
+                          :extra      "keypairs"
+                          :are        "also present"
+                          :iss        "issuer"
+                          :exp        (+ (buddy-util/now) 3600)
+                          :iat        (buddy-util/now)}
+                         default-jwt-secret)
+            response    (client/client-real-response :post 302 "/auth/sso"
+                                                     {:request-options {:redirect-strategy :none}}
+                                                     {:jwt jwt-payload}
+                                                     :return_to default-redirect-uri)]
         (is (sso.test-setup/successful-login? response))
         (testing "redirect URI"
           (is
@@ -974,7 +1008,14 @@
           (testing "with hash header (legacy usage)"
             (is (=? expected-body
                     (:body (do-request {"x-metabase-client" "embedding-sdk-react"
-                                        "x-metabase-sdk-jwt-hash" (token-utils/generate-token)}))))))))))
+                                        "x-metabase-sdk-jwt-hash" (token-utils/generate-token)})))))
+          (testing "POST /auth/sso with jwt in JSON body matches GET behavior"
+            (let [do-post (fn [headers]
+                            (client/client-real-response :post 200 "/auth/sso"
+                                                         {:request-options {:headers headers}}
+                                                         {:jwt jwt-payload}))]
+              (is (=? expected-body
+                      (:body (do-post {"x-metabase-client" "embedding-sdk-react"})))))))))))
 
 (deftest jwt-token-not-configured-test
   (testing "should not return a session token when jwt is not configured"
