@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { isTableDisplay } from "metabase/dashboard/utils";
-import type { IconName } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   ArbitraryCustomDestinationClickBehavior,
@@ -12,6 +11,7 @@ import type {
   CustomDestinationClickBehavior,
   CustomDestinationClickBehaviorLinkType,
   DashboardCard,
+  IconName,
 } from "metabase-types/api";
 
 import { SidebarContent } from "../ClickBehaviorSidebarComponents";

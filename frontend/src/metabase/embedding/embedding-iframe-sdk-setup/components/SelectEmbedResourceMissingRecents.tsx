@@ -1,7 +1,8 @@
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
-import { Anchor, Icon, type IconName, Stack, Text } from "metabase/ui";
+import { Anchor, Icon, Stack, Text } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import type { SdkIframeEmbedSetupExperience } from "../types";
 

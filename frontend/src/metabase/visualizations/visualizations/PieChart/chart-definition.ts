@@ -97,9 +97,9 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       showColumnSetting: true,
       getDefault: (rawSeries) => getDefaultPieColumns(rawSeries).metric,
     }),
-    ...columnSettings({ hidden: true }),
+    ...columnSettings({ getHidden: () => true }),
     ...dimensionSetting("pie.dimension", {
-      hidden: true,
+      getHidden: () => true,
       get title() {
         return t`Dimension`;
       },
@@ -107,7 +107,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       getDefault: (rawSeries) => getDefaultPieColumns(rawSeries).dimension,
     }),
     "pie.rows": {
-      hidden: true,
+      getHidden: () => true,
       getValue: _.memoize(
         (series, settings) => {
           return getPieRows(series, settings, (value, options) =>
@@ -136,7 +136,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       readDependencies: ["pie.sort_rows", "pie.dimension"],
     },
     "pie.sort_rows": {
-      hidden: true,
+      getHidden: () => true,
       getDefault: getDefaultSortRows,
     },
     ...nestedSettings<

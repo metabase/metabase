@@ -1,13 +1,13 @@
 import { push } from "react-router-redux";
 
 import {
+  skipToken,
   useCreateTimelineEventMutation,
   useCreateTimelineMutation,
+  useGetCollectionQuery,
 } from "metabase/api";
 import { getDefaultTimeline } from "metabase/common/utils/timelines";
-import { Collections } from "metabase/entities/collections";
 import { useDispatch } from "metabase/redux";
-import type { State } from "metabase/redux/store";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
 import * as Urls from "metabase/urls";
 import type {
@@ -25,18 +25,20 @@ interface NewEventWithTimelineModalContainerProps {
   onClose?: () => void;
 }
 
-const collectionProps = {
-  id: (state: State, props: NewEventWithTimelineModalContainerProps) =>
-    Urls.extractCollectionId(props.params.slug),
-  LoadingAndErrorWrapper,
-};
-
 function NewEventWithTimelineModalContainer(
   props: NewEventWithTimelineModalContainerProps,
 ) {
   const dispatch = useDispatch();
   const [createTimeline] = useCreateTimelineMutation();
   const [createTimelineEvent] = useCreateTimelineEventMutation();
+  const collectionId = Urls.extractCollectionId(props.params.slug);
+  const {
+    data: collection,
+    isLoading,
+    error,
+  } = useGetCollectionQuery(
+    collectionId != null ? { id: collectionId } : skipToken,
+  );
 
   const onSubmit = async (
     values: Partial<TimelineEvent>,
@@ -55,10 +57,19 @@ function NewEventWithTimelineModalContainer(
     dispatch(push(Urls.timelinesInCollection(collection)));
   };
 
-  return <NewEventModal {...props} source="collections" onSubmit={onSubmit} />;
+  if (isLoading || error || !collection) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return (
+    <NewEventModal
+      {...props}
+      source="collections"
+      collection={collection}
+      onSubmit={onSubmit}
+    />
+  );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Collections.load(collectionProps)(
-  NewEventWithTimelineModalContainer,
-);
+export default NewEventWithTimelineModalContainer;

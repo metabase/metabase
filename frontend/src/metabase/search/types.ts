@@ -2,8 +2,7 @@ import type { Location } from "history";
 import type { ComponentType } from "react";
 
 import type { SearchFilterKeys } from "metabase/search/constants";
-import type { IconName } from "metabase/ui";
-import type { EnabledSearchModel, UserId } from "metabase-types/api";
+import type { EnabledSearchModel, IconName, UserId } from "metabase-types/api";
 
 export type TypeFilterProps = EnabledSearchModel[];
 export type CreatedByFilterProps = UserId[];

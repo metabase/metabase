@@ -30,13 +30,12 @@ import {
   FixedSizeIcon,
   Flex,
   Icon,
-  type IconName,
   Menu,
   Repeat,
   Skeleton,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { SortingOptions } from "metabase-types/api";
+import type { IconName, SortingOptions } from "metabase-types/api";
 
 import BrowseTableS from "../components/BrowseTable.module.css";
 

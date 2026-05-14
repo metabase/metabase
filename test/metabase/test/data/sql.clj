@@ -1,5 +1,6 @@
 (ns metabase.test.data.sql
   "Common test extension functionality for all SQL drivers."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.test.data.sql]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]

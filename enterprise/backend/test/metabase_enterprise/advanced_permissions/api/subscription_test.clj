@@ -1,5 +1,6 @@
 (ns metabase-enterprise.advanced-permissions.api.subscription-test
   "Permissions tests for API that needs to be enforced by Application Permissions to create and edit alerts/subscriptions."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.advanced-permissions.api.subscription-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.notification.test-util :as notification.tu]

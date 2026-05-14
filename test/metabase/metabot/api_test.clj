@@ -1,6 +1,7 @@
 (ns metabase.metabot.api-test
   (:require
    [clj-http.client :as http]
+   [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [compojure.response]
@@ -12,6 +13,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.llm.settings :as llm.settings]
+   [metabase.metabot.agent.core :as agent]
    [metabase.metabot.api :as api]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
@@ -90,115 +92,162 @@
   (str "data: " (json/encode data) "\n\n"))
 
 (deftest closing-connection-native-agent-test
-  (testing "When the client closes a native-agent streaming connection,
-            the pipeline stops and store-parts! is still called."
+  (testing "When the client closes a native-agent streaming connection, the
+            pipeline tears down and the partial turn is persisted as aborted."
     ;; We set up a fake OpenRouter-compatible (Chat Completions) SSE server that
-    ;; streams many text-delta events slowly. The Metabase server connects to it
-    ;; via the full native-agent pipeline:
+    ;; streams text-delta events. The Metabase server connects to it via the
+    ;; full native-agent pipeline:
     ;;   openrouter-raw → sse-reducible → openrouter->aisdk-chunks-xf → tool-executor-xf
     ;;   → lite-aisdk-xf → agent loop → aisdk-line-xf → streaming-writer-rf → client
-    ;; Then the test client reads one byte and closes the connection.
-    ;; We assert that store-parts! is called with a partial result.
-    (let [total-chunks 30
-          cnt          (atom total-chunks)
-          stored-parts (atom nil)
-          chat-id      (str "chatcmpl-" (random-uuid))
-          ;; Fake OpenRouter API: streams Chat Completions SSE text deltas slowly
+    ;; The test client reads one byte and closes. The streaming-writer-rf's poll
+    ;; of `canceled-chan` flips the `canceled?` volatile and returns `reduced`,
+    ;; the agent loop unwinds, and `finalize-assistant-turn!` is called from the
+    ;; `finally` with `:finished? false`, UPDATEing the placeholder row inserted
+    ;; by `start-turn!`.
+    (let [total-chunks  30
+          cnt           (atom total-chunks)
+          stored-parts  (atom nil)
+          stored-kwargs (atom nil)
+          chat-id       (str "chatcmpl-" (random-uuid))
+          ;; Fake OpenRouter API: streams Chat Completions SSE text deltas.
           llm-handler
           (fn [req respond _raise]
             (respond
              (compojure.response/render
-              (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os _canceled-chan]
+              (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os llm-canceled-chan]
                 (try
-                  (let [write! (fn [^String s]
-                                 (.write os (.getBytes s "UTF-8"))
-                                 (.flush os))]
+                  (let [write!    (fn [^String s]
+                                    (.write os (.getBytes s "UTF-8"))
+                                    (.flush os))
+                        canceled? #(some? (a/poll! llm-canceled-chan))]
                     ;; First chunk: role assignment (empty content to establish assistant role)
                     (write! (sse-event {:id      chat-id
                                         :model   "anthropic/claude-haiku-4-5"
                                         :choices [{:index         0
                                                    :delta         {:role "assistant" :content ""}
                                                    :finish_reason nil}]}))
-                    ;; Stream text content chunks slowly
+                    ;; Stream text content chunks slowly, stop early if the consumer disconnects
                     (loop []
-                      (when (pos? @cnt)
+                      (when (and (pos? @cnt) (not (canceled?)))
                         (write! (sse-event {:id      chat-id
                                             :model   "anthropic/claude-haiku-4-5"
                                             :choices [{:index         0
-                                                       :delta         {:content (str "chunk-" @cnt " ")}
+                                                       ;; pad past Jetty's 8 KB buffer so .flush reaches the client mid-stream
+                                                       :delta         {:content (str "chunk-" @cnt " " (apply str (repeat 512 \x)))}
                                                        :finish_reason nil}]}))
                         (swap! cnt dec)
                         (Thread/sleep 10)
                         (recur)))
-                    ;; Finish reason
-                    (write! (sse-event {:id      chat-id
-                                        :model   "anthropic/claude-haiku-4-5"
-                                        :choices [{:index         0
-                                                   :delta         {}
-                                                   :finish_reason "stop"}]}))
-                    ;; Usage (separate final chunk, as OpenRouter does)
-                    (write! (sse-event {:id      chat-id
-                                        :model   "anthropic/claude-haiku-4-5"
-                                        :choices []
-                                        :usage   {:prompt_tokens     10
-                                                  :completion_tokens 50}}))
-                    (write! "data: [DONE]\n\n"))
+                    (when-not (canceled?)
+                      ;; Finish reason
+                      (write! (sse-event {:id      chat-id
+                                          :model   "anthropic/claude-haiku-4-5"
+                                          :choices [{:index         0
+                                                     :delta         {}
+                                                     :finish_reason "stop"}]}))
+                      ;; Usage (separate final chunk, as OpenRouter does)
+                      (write! (sse-event {:id      chat-id
+                                          :model   "anthropic/claude-haiku-4-5"
+                                          :choices []
+                                          :usage   {:prompt_tokens     10
+                                                    :completion_tokens 50}}))
+                      (write! "data: [DONE]\n\n")))
                   (catch Exception _e nil)))
               req)))
           llm-server
           (doto (server.instance/create-server llm-handler {:port 0 :join? false})
             .start)
-          llm-url      (str "http://localhost:" (.. llm-server getURI getPort))]
+          llm-url       (str "http://localhost:" (.. llm-server getURI getPort))]
       (try
         (mt/test-helpers-set-global-values!
           (search.tu/with-index-disabled
-            (let [real-http-post http/post]
-              (with-redefs [llm.settings/llm-openrouter-api-key      (constantly "fake-key")
-                            llm.settings/llm-openrouter-api-base-url (constantly llm-url)
-                            scope/resolve-user-permissions           (constantly scope/all-yes-permissions)
-                            ;; The fake LLM server doesn't gzip, but clj-http wraps with
-                            ;; GZIPInputStream by default. Closing mid-stream causes ZLIB errors.
-                            http/post                                (fn [url opts]
-                                                                       (real-http-post url (assoc opts :decompress-body false)))
-                            metabot.context/create-context           (fn [ctx & _] ctx)
-                            metabot.persistence/store-native-parts!  (fn [_conv-id _prof-id parts & _kwargs]
-                                                                       (reset! stored-parts parts))
-                            sr/async-cancellation-poll-interval-ms   5]
-                (testing "Closing stream body will drop connection to LLM"
-                  (reset! cnt total-chunks)
-                  (reset! stored-parts nil)
-                  (let [body (mt/user-real-request :rasta :post 202 "metabot/agent-streaming"
-                                                   {:request-options {:as              :stream
-                                                                      :decompress-body false}}
-                                                   {:message         "Test closure"
-                                                    :context         {}
-                                                    :conversation_id (str (random-uuid))
-                                                    :history         []
-                                                    :state           {}})]
-                    (.read ^java.io.InputStream body) ;; start the handler
-                    (.close ^java.io.Closeable body)
-                    (u/poll {:thunk       #(deref stored-parts)
-                             :done?       some?
-                             :interval-ms 10
-                             :timeout-ms  3000})
-                    (is (some? @stored-parts) "store-parts! was called even though client disconnected")
-                    (testing "LLM server stopped writing when connection was dropped"
-                      (is (< 10 @cnt) "Server should not have written all chunks"))
-                    ;; The stored parts should contain partial data — not all 30 chunks.
-                    ;; Text chunks are combined by combine-text-parts-xf, so we check
-                    ;; that the concatenated text is shorter than it would be if all
-                    ;; 30 chunks were processed.
-                    (let [stored-text (->> @stored-parts
-                                           (filter #(= :text (:type %)))
-                                           (map :text)
-                                           (str/join ""))]
-                      (is (< (count stored-text)
-                             ;; Each chunk is "chunk-NN " (~10 chars). If all 30 were
-                             ;; processed, that's ~300 chars. We should have far fewer.
-                             (* 10 total-chunks))
-                          "Only a fraction of the text chunks were processed before disconnect"))))))))
+            (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
+              (let [real-http-post http/post]
+                (with-redefs [llm.settings/llm-openrouter-api-key            (constantly "fake-key")
+                              llm.settings/llm-openrouter-api-base-url       (constantly llm-url)
+                              scope/resolve-user-permissions                 (constantly scope/all-yes-permissions)
+                              ;; The fake LLM server doesn't gzip, but clj-http wraps with
+                              ;; GZIPInputStream by default. Closing mid-stream causes ZLIB errors.
+                              http/post                                      (fn [url opts]
+                                                                               (real-http-post url (assoc opts :decompress-body false)))
+                              metabot.context/create-context                 (fn [ctx & _] ctx)
+                              metabot.persistence/finalize-assistant-turn!   (fn [_conv-id _pk parts & kwargs]
+                                                                               (reset! stored-parts parts)
+                                                                               (reset! stored-kwargs (apply hash-map kwargs)))
+                              sr/async-cancellation-poll-interval-ms         5]
+                  (testing "Closing stream body tears down the pipeline and persists the aborted turn"
+                    (reset! cnt total-chunks)
+                    (reset! stored-parts nil)
+                    (reset! stored-kwargs nil)
+                    (mt/with-model-cleanup [:model/MetabotMessage
+                                            [:model/MetabotConversation :created_at]]
+                      (let [conversation-id (str (random-uuid))
+                            body (mt/user-real-request :rasta :post 202 "metabot/agent-streaming"
+                                                       {:request-options {:as              :stream
+                                                                          :decompress-body false}}
+                                                       {:message         "Test closure"
+                                                        :context         {}
+                                                        :conversation_id conversation-id
+                                                        :history         []
+                                                        :state           {}})]
+                        (.read ^java.io.InputStream body) ;; start the handler
+                        (.close ^java.io.Closeable body)
+                        (u/poll {:thunk       #(deref stored-parts)
+                                 :done?       some?
+                                 :interval-ms 10
+                                 :timeout-ms  3000})
+                        (is (some? @stored-parts)
+                            "finalize-assistant-turn! was called even though the client disconnected")
+                        (is (false? (:finished? @stored-kwargs))
+                            "the finalized turn is marked :finished? false — the cancel was detected")
+                        (is (= 2 (count (t2/select :model/MetabotMessage
+                                                   :conversation_id conversation-id)))
+                            "start-turn! inserted exactly user + placeholder; no extra row from finalize")))))))))
         (finally
           (.stop llm-server))))))
+
+(deftest thrown-during-agent-setup-persists-as-errored-test
+  (testing "A throwable escaping the agent loop (e.g. permission/setup throw before
+            the reducible is constructed) finalizes the placeholder with
+            :finished? true + a structured :error payload — distinguishable from
+            both a successful turn (error nil) and a client abort (finished false)."
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (let [stored-parts  (atom nil)
+              stored-kwargs (atom nil)]
+          (with-redefs [;; Pre-reducible throw: this is the exact escape path the new
+                        ;; catch covers. The agent loop's own (catch Exception) is
+                        ;; inside the reify, so a throw from `run-agent-loop` itself
+                        ;; bypasses it entirely.
+                        agent/run-agent-loop
+                        (fn [_opts]
+                          (throw (ex-info "agent setup exploded"
+                                          {:status 503 :provider :test})))
+                        metabot.persistence/finalize-assistant-turn!
+                        (fn [_conv-id _pk parts & kwargs]
+                          (reset! stored-parts parts)
+                          (reset! stored-kwargs (apply hash-map kwargs)))]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                    {:message         "go"
+                                     :context         {}
+                                     :conversation_id (str (random-uuid))
+                                     :history         []
+                                     :state           {}})
+              (u/poll {:thunk       #(deref stored-kwargs)
+                       :done?       some?
+                       :interval-ms 10
+                       :timeout-ms  3000})
+              (is (some? @stored-kwargs)
+                  "finalize-assistant-turn! is called from the finally even when setup threw")
+              (is (true? (:finished? @stored-kwargs))
+                  "a thrown turn is :finished? true — `finished=false` is reserved for client aborts")
+              (is (=? {:message #"(?i)agent setup exploded"
+                       :type    "clojure.lang.ExceptionInfo"
+                       :data    {:status 503 :provider :test}}
+                      (:error @stored-kwargs))
+                  "the throwable becomes a structured error payload"))))))))
 
 (deftest settings-get-returns-live-models-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
@@ -712,73 +761,79 @@
            (into [] (metabot.persistence/combine-text-parts-xf)
                  [{:type :text, :text "solo"}])))))
 
-(defn- store-and-check!
-  "Helper: call store-native-parts! with the given provider setting, return the stored message."
+(defn- start-and-finalize-with-provider!
+  "Helper: run start-turn! + finalize-assistant-turn! under `provider`, return the
+  finalized assistant row."
   [provider]
   (binding [mb.api/*current-user-id* (mt/user->id :crowberto)]
     (let [conv-id (str (random-uuid))]
       (try
         (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider provider]
-          (metabot.persistence/store-native-parts!
-           conv-id "internal"
-           [{:type :start :id "msg-1"}
-            {:type :text :text "Hello"}
-            ;; SSE usage parts carry bare model names (from provider API response)
-            {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 100 :completionTokens 50}}
-            {:type :data :data-type "state" :data {:step 1}}
-            {:type :finish}]
-           :external-id (str (random-uuid)))
-          (t2/select-one :model/MetabotMessage :conversation_id conv-id))
+          (let [{:keys [assistant-msg-id]} (metabot.persistence/start-turn!
+                                            conv-id "internal"
+                                            {:role "user" :content "hi"})]
+            (metabot.persistence/finalize-assistant-turn!
+             conv-id assistant-msg-id
+             [{:type :start :id "msg-1"}
+              {:type :text :text "Hello"}
+              ;; SSE usage parts carry bare model names (from provider API response)
+              {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 100 :completionTokens 50}}
+              {:type :data :data-type "state" :data {:step 1}}
+              {:type :finish}])
+            (t2/select-one :model/MetabotMessage assistant-msg-id)))
         (finally
           (t2/delete! :model/MetabotMessage :conversation_id conv-id)
           (t2/delete! :model/MetabotConversation :id conv-id))))))
 
-(deftest store-native-parts-ai-proxy-test
+(deftest start-turn-ai-proxy-test
   (testing "metabase/ provider prefix sets ai_proxied true and stores bare model names"
-    (let [msg (store-and-check! "metabase/anthropic/claude-sonnet-4-6")]
+    (let [msg (start-and-finalize-with-provider! "metabase/anthropic/claude-sonnet-4-6")]
       (is (true? (:ai_proxied msg)))
       (is (= {:claude-sonnet-4-6 {:prompt 100 :completion 50}}
              (:usage msg))
           "usage keys should be bare model names, not metabase/anthropic/...")))
 
   (testing "BYOK provider (no metabase/ prefix) sets ai_proxied false"
-    (let [msg (store-and-check! "anthropic/claude-sonnet-4-6")]
+    (let [msg (start-and-finalize-with-provider! "anthropic/claude-sonnet-4-6")]
       (is (false? (:ai_proxied msg)))
       (is (= {:claude-sonnet-4-6 {:prompt 100 :completion 50}}
              (:usage msg))))))
 
-(deftest store-native-parts-data-part-filtering-test
+(deftest finalize-assistant-turn-data-part-filtering-test
   (testing "persistable data parts land in MetabotMessage.data; state is salvaged to conversation and excluded from data"
     (binding [mb.api/*current-user-id* (mt/user->id :crowberto)]
       (let [conv-id (str (random-uuid))]
         (try
           (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-sonnet-4-6"]
-            (metabot.persistence/store-native-parts!
-             conv-id "internal"
-             [{:type :start :id "msg-1"}
-              {:type :text :text "Hi"}
-              {:type :data :data-type "navigate_to" :data "/question/1"}
-              {:type :data :data-type "todo_list" :version 1 :data [{:id "1" :content "x" :status "pending" :priority "low"}]}
-              {:type :data :data-type "code_edit" :version 1 :data {:buffer_id "b" :value "v"}}
-              {:type :data :data-type "transform_suggestion" :version 1 :data {}}
-              {:type :data :data-type "adhoc_viz" :version 1 :data {:query {} :link "/q"}}
-              {:type :data :data-type "static_viz" :version 1 :data {:entity_id 1}}
-              {:type :data :data-type "state" :data {:step 1}}
-              {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 1 :completionTokens 1}}
-              {:type :finish}])
-            (let [msg        (t2/select-one :model/MetabotMessage :conversation_id conv-id)
-                  conv       (t2/select-one :model/MetabotConversation :id conv-id)
-                  data-types (into #{} (keep :data-type) (:data msg))
-                  part-types (into #{} (map :type) (:data msg))]
-              (is (= #{"navigate_to" "todo_list" "code_edit" "transform_suggestion" "adhoc_viz" "static_viz"}
-                     data-types)
-                  "all persistable data parts (not state) should be in :data")
-              (is (contains? part-types "text")
-                  "text parts survive")
-              (is (not-any? part-types #{"start" "usage" "finish"})
-                  "stream metadata is dropped")
-              (is (= {:step 1} (:state conv))
-                  "state value is salvaged to MetabotConversation.state")))
+            (let [{:keys [assistant-msg-id]} (metabot.persistence/start-turn!
+                                              conv-id "internal"
+                                              {:role "user" :content "hi"})]
+              (metabot.persistence/finalize-assistant-turn!
+               conv-id assistant-msg-id
+               [{:type :start :id "msg-1"}
+                {:type :text :text "Hi"}
+                {:type :data :data-type "navigate_to" :data "/question/1"}
+                {:type :data :data-type "todo_list" :version 1 :data [{:id "1" :content "x" :status "pending" :priority "low"}]}
+                {:type :data :data-type "code_edit" :version 1 :data {:buffer_id "b" :value "v"}}
+                {:type :data :data-type "transform_suggestion" :version 1 :data {}}
+                {:type :data :data-type "adhoc_viz" :version 1 :data {:query {} :link "/q"}}
+                {:type :data :data-type "static_viz" :version 1 :data {:entity_id 1}}
+                {:type :data :data-type "state" :data {:step 1}}
+                {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 1 :completionTokens 1}}
+                {:type :finish}])
+              (let [msg        (t2/select-one :model/MetabotMessage assistant-msg-id)
+                    conv       (t2/select-one :model/MetabotConversation :id conv-id)
+                    data-types (into #{} (keep :data-type) (:data msg))
+                    part-types (into #{} (map :type) (:data msg))]
+                (is (= #{"navigate_to" "todo_list" "code_edit" "transform_suggestion" "adhoc_viz" "static_viz"}
+                       data-types)
+                    "all persistable data parts (not state) should be in :data")
+                (is (contains? part-types "text")
+                    "text parts survive")
+                (is (not-any? part-types #{"start" "usage" "finish"})
+                    "stream metadata is dropped")
+                (is (= {:step 1} (:state conv))
+                    "state value is salvaged to MetabotConversation.state"))))
           (finally
             (t2/delete! :model/MetabotMessage :conversation_id conv-id)
             (t2/delete! :model/MetabotConversation :id conv-id)))))))
@@ -913,7 +968,9 @@
           test-metabot-id metabot.config/embedded-metabot-id]
       (with-redefs [metabot.config/check-metabot-enabled! (constantly nil)
                     api/check-conversation-access!        (constantly nil)
-                    api/store-aiservice-messages!         (constantly nil)
+                    metabot.persistence/start-turn!       (fn [& _]
+                                                            {:assistant-msg-id 1
+                                                             :assistant-external-id "ext-id"})
                     api/native-agent-streaming-request    (fn [args]
                                                             (reset! captured-args args)
                                                             ;; Return a minimal streaming response
@@ -1111,7 +1168,7 @@
     (with-redefs [premium-features/token-status             (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens {:meter-value 1000000
                                                                                                                        :is-locked   true}}})
                   metabot.config/check-metabot-enabled!     (constantly nil)
-                  api/store-aiservice-messages!             (fn [& _]
+                  metabot.persistence/start-turn!           (fn [& _]
                                                               (throw (ex-info "should not store messages" {})))
                   api/native-agent-streaming-request        (fn [& _]
                                                               (throw (ex-info "should not call agent" {})))]

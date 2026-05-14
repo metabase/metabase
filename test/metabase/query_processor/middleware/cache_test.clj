@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor.middleware.cache-test
   "Tests for the Query Processor cache."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.cache-test]}}}}}}
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.core.async :as a]

@@ -1,5 +1,6 @@
 (ns metabase.tiles.api-test
   "Tests for `/api/tiles` endpoints."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.tiles.api-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]

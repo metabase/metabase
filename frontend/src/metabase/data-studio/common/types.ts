@@ -1,8 +1,8 @@
-import type { IconName } from "metabase/ui";
 import type {
   Collection,
   CollectionItem,
   CollectionItemModel,
+  IconName,
   Table,
 } from "metabase-types/api";
 
