@@ -87,6 +87,13 @@ export function getMostInterestingTimelineId(
   queries: ExplorationQuery[],
   availableTimelineIds: ReadonlySet<TimelineId>,
 ): TimelineId | null {
+  if (availableTimelineIds.size === 1) {
+    const id = availableTimelineIds.values().next().value;
+    if (id) {
+      return id;
+    }
+  }
+
   let best: { id: TimelineId; score: number } | null = null;
   for (const [id, score] of getMaxTimelineInterestingness(queries)) {
     if (!availableTimelineIds.has(id)) {

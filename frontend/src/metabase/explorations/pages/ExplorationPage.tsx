@@ -420,6 +420,7 @@ export function ExplorationPage({
       )}
       {selectedDocument && (
         <ExplorationDocumentComponent
+          explorationId={exploration.id}
           document={selectedDocument}
           isCommentsSidebarOpen={isCommentsSidebarOpen}
           childTargetId={params.childTargetId}

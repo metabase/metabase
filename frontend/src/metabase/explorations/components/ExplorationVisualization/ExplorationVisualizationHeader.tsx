@@ -51,7 +51,7 @@ export function ExplorationVisualizationHeader({
     groupQueries?.length === 1;
 
   return (
-    <Group h="2rem" justify="space-between">
+    <Group h="2rem" justify="space-between" style={{ flexShrink: 0 }}>
       <Text fw="bold" size="lg">
         {name}
       </Text>

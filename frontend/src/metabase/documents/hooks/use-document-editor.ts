@@ -72,7 +72,7 @@ interface UseDocumentEditorResult {
   error: unknown;
   canWrite: boolean;
   documentTitle: string;
-  setDocumentTitle: Dispatch<SetStateAction<string>>;
+  setDocumentTitle: (title: string) => void;
   documentContent: JSONContent | null;
   setDocumentContent: (content: JSONContent | null) => void;
   updateCardEmbeds: (embeds: CardEmbedRef[]) => void;
@@ -165,20 +165,34 @@ export function useDocumentEditor({
   // minHeight, _id) and schema corrections (trailing paragraph). We capture the
   // editor's output after it settles and compare against that, not the raw API JSON.
   const settledContentRef = useRef<JSONContent | null>(null);
-  const isSettlingRef = useRef(true);
-  const settlingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const prevDocumentIdRef = useRef(documentId);
-  if (documentId && documentId !== prevDocumentIdRef.current) {
+  // while the title doesn't have the same problem as content,
+  // when loading a new document, there is a render where the server state and local state are out of sync
+  const isTitleSettlingRef = useRef(false);
+
+  const prevDocumentIdRef = useRef<DocumentId | "new" | undefined>(undefined);
+  if (
+    documentId &&
+    documentId !== prevDocumentIdRef.current &&
+    !isNewDocument
+  ) {
     prevDocumentIdRef.current = documentId;
-    isSettlingRef.current = true;
+    settledContentRef.current = null;
+    isTitleSettlingRef.current = true;
   }
 
   useEffect(() => {
     if (documentContent && !isNewDocument) {
+      settledContentRef.current = null;
+      setTimeout(() => {
+        const content = editorInstance?.getJSON();
+        if (content) {
+          settledContentRef.current = content;
+        }
+      }, 0);
       dispatch(setHasUnsavedChanges(false));
     }
-  }, [dispatch, documentContent, isNewDocument]);
+  }, [dispatch, documentContent, isNewDocument, editorInstance]);
 
   // Scroll to anchor block when navigating with URL hash
   const blockId = location.hash ? location.hash.slice(1) : null;
@@ -189,16 +203,13 @@ export function useDocumentEditor({
   });
 
   const hasUnsavedChanges = useCallback(() => {
-    if (isSettlingRef.current) {
-      return false;
-    }
-
     const currentTitle = documentTitle.trim();
     const originalTitle = documentData?.name || "";
     // We call .trim() on documentTitle to ensure that no one can push the save button
     // with a document name that is all whitespace, the API will reject it. However,
     // when comparing saved with current titles, we need to use unmofidied values
-    const titleChanged = documentTitle !== originalTitle;
+    const titleChanged =
+      documentTitle !== originalTitle && !isTitleSettlingRef.current;
 
     // Check if there are any draft cards
     const hasDraftCards = Object.keys(draftCards).length > 0;
@@ -222,6 +233,14 @@ export function useDocumentEditor({
 
   const showSaveButton = hasUnsavedChanges() && canWrite && !isSaving;
 
+  const handleTitleChange = useCallback(
+    (title: string) => {
+      setDocumentTitle(title);
+      isTitleSettlingRef.current = false;
+    },
+    [setDocumentTitle],
+  );
+
   const handleChange = useCallback(
     (content: JSONContent) => {
       // For new documents, any content means changes
@@ -230,23 +249,6 @@ export function useDocumentEditor({
         dispatch(
           setHasUnsavedChanges(!!editorInstance && !editorInstance.isEmpty),
         );
-        return;
-      }
-
-      // While the editor is settling (applying defaults, schema corrections),
-      // capture each intermediate output as the baseline without marking dirty.
-      // A short timer ensures we wait for multi-step settling (e.g. trailing
-      // paragraph added in a subsequent transaction).
-      if (isSettlingRef.current) {
-        settledContentRef.current = content;
-        if (settlingTimerRef.current) {
-          clearTimeout(settlingTimerRef.current);
-        }
-        settlingTimerRef.current = setTimeout(() => {
-          isSettlingRef.current = false;
-          settlingTimerRef.current = null;
-        }, 100);
-        dispatch(setHasUnsavedChanges(false));
         return;
       }
 
@@ -422,7 +424,7 @@ export function useDocumentEditor({
     error,
     canWrite,
     documentTitle,
-    setDocumentTitle,
+    setDocumentTitle: handleTitleChange,
     documentContent,
     setDocumentContent,
     updateCardEmbeds,
