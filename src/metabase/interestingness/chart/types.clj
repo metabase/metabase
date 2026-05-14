@@ -305,4 +305,5 @@
    [:stats ::chart-stats]
    [:title {:optional true} [:maybe :string]]
    [:display-type {:optional true} [:maybe :string]]
-   [:timeline-events {:optional true} [:maybe [:sequential ::timeline-event]]]])
+   [:timeline-events {:optional true} [:maybe [:sequential ::timeline-event]]]
+   [:omit-temporal-context? {:optional true} [:maybe :boolean]]])

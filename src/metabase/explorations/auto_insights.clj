@@ -58,17 +58,22 @@
   100)
 
 (defn- load-result-rows
-  "Returns `{exploration_query_id {:result_data bytes :chart_stats m}}` for the
-  given ids. `chart_stats` is the cached deep-stats blob written by the runner
-  alongside the result; we read it directly instead of recomputing."
+  "Returns `{exploration_query_id {:result_data bytes :chart_stats m :metric_description s
+   :chart_description s}}` for the given ids. `chart_stats` is the cached deep-stats blob
+  written by the runner alongside the result; descriptions are LLM-generated during
+  contextual scoring (see [[metabase.explorations.task.runner]])."
   [query-ids]
   (when (seq query-ids)
     (into {}
-          (map (fn [{:keys [exploration_query_id result_data chart_stats]}]
-                 [exploration_query_id {:result_data result_data
-                                        :chart_stats chart_stats}]))
+          (map (fn [{:keys [exploration_query_id result_data chart_stats
+                            metric_description chart_description]}]
+                 [exploration_query_id {:result_data        result_data
+                                        :chart_stats        chart_stats
+                                        :metric_description metric_description
+                                        :chart_description  chart_description}]))
           (t2/select [:model/ExplorationQueryResult
-                      :exploration_query_id :result_data :chart_stats]
+                      :exploration_query_id :result_data :chart_stats
+                      :metric_description :chart_description]
                      :exploration_query_id [:in query-ids]))))
 
 (defn- load-timeline-events
@@ -504,8 +509,14 @@
                 pool-queries (vec (take max-charts-in-pool done-queries))
                 result-rows  (load-result-rows (map :id pool-queries))
                 prepped      (vec (keep (fn [q]
-                                          (let [{:keys [result_data chart_stats]} (get result-rows (:id q))]
-                                            (common/prep-chart q result_data chart_stats)))
+                                          (let [{:keys [result_data chart_stats
+                                                        metric_description chart_description]}
+                                                (get result-rows (:id q))]
+                                            (common/prep-chart q
+                                                               {:result-data        result_data
+                                                                :chart-stats        chart_stats
+                                                                :metric-description metric_description
+                                                                :chart-description  chart_description})))
                                         pool-queries))
                 prepped-by-id (into {} (map (juxt :exploration-query-id identity)) prepped)
                 pool-ids     (mapv :exploration-query-id prepped)

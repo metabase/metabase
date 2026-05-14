@@ -1129,3 +1129,24 @@ databaseChangeLog:
                   remarks: JSON-encoded visualization_settings for this query's static chart embed
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v62.qresdesc
+      author: nvoxland
+      comment: Add metric_description + chart_description columns to exploration_query_result
+      changes:
+        - addColumn:
+            tableName: exploration_query_result
+            columns:
+              - column:
+                  name: metric_description
+                  type: ${text.type}
+                  remarks: Description of the underlying metric in business terms
+                  constraints:
+                    nullable: true
+              - column:
+                  name: chart_description
+                  type: ${text.type}
+                  remarks: Description of the metric+dimension combination
+                  constraints:
+                    nullable: true

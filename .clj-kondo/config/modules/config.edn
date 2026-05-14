@@ -669,6 +669,7 @@
    :api  #{metabase.contextual-interestingness.core}
    :uses #{interestingness
            metabot
+           query-processor
            util}}
 
   core

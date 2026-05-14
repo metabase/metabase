@@ -139,12 +139,18 @@
    :thinking-config {:type "adaptive" :effort "high"}})
 
 (defn slim-block
-  "Awareness-tier rendering: title + metric/dim detail + summary line +
-  key-points. No stats Markdown, no verbatim data points dump. The model
-  knows the chart exists and the gist, but won't cite values from it."
-  [{:keys [exploration-query-id name summary-line dim-detail metric-detail cfg stats]}]
+  "Awareness-tier rendering: title + (optional) chart description + (optional) metric
+  description + metric/dim column detail + summary line + key-points. No stats Markdown, no
+  verbatim data points dump. The model knows the chart exists and the gist, but won't cite
+  values from it."
+  [{:keys [exploration-query-id name summary-line dim-detail metric-detail
+           metric-description chart-description cfg stats]}]
   (let [key-pts (render-key-points-section cfg stats)]
     (str "### exploration_query_id " exploration-query-id " — " name "\n\n"
+         (when chart-description
+           (str "- **chart**: " chart-description "\n"))
+         (when metric-description
+           (str "- **metric description**: " metric-description "\n"))
          "- **metric**: " (or metric-detail "(unknown)") "\n"
          "- **dim**: " (or dim-detail "(unknown)") "\n"
          "- **summary**: " summary-line "\n\n"
@@ -154,18 +160,24 @@
          "exploration` instead._")))
 
 (defn full-block
-  "Top-tier rendering: title + metric/dim detail + full chart Markdown
-  representation, pre-computed key points, AND the verbatim (x, y) data
-  points list the model must ground citations against."
-  [{:keys [exploration-query-id name cfg stats dim-detail metric-detail]}]
+  "Top-tier rendering: title + (optional) chart description + (optional) metric description +
+  metric/dim column detail + full chart Markdown representation, pre-computed key points, AND
+  the verbatim (x, y) data points list the model must ground citations against."
+  [{:keys [exploration-query-id name cfg stats dim-detail metric-detail
+           metric-description chart-description]}]
   (let [repr    (interestingness/generate-representation
-                 {:title        (:title cfg)
-                  :display-type (:display_type cfg)
-                  :stats        stats})
+                 {:title                  (:title cfg)
+                  :display-type           (:display_type cfg)
+                  :stats                  stats
+                  :omit-temporal-context? true})
         key-pts (render-key-points-section cfg stats)
         points  (render-data-points cfg)
         extras  (str/join "\n\n" (remove nil? [key-pts points]))]
     (str "### exploration_query_id " exploration-query-id " — " name "\n\n"
+         (when chart-description
+           (str "- **chart**: " chart-description "\n"))
+         (when metric-description
+           (str "- **metric description**: " metric-description "\n"))
          "- **metric**: " (or metric-detail "(unknown)") "\n"
          "- **dim**: " (or dim-detail "(unknown)") "\n\n"
          "When referencing this chart in a `staticCardEmbed` node, use "
@@ -200,7 +212,8 @@
            total-chart-count pool-size]}]
   (prompts/render
    "phase2_analysis.selmer"
-   {:thread_prompt         (when-not (str/blank? thread-prompt) thread-prompt)
+   {:temporal_context      (interestingness/temporal-context)
+    :thread_prompt         (when-not (str/blank? thread-prompt) thread-prompt)
     :selections            (when (seq selections) (str/join "\n" selections))
     :curation_rationale    (when-not (str/blank? curation-rationale) curation-rationale)
     :timeline_md           (common/format-timeline-events timelines)

@@ -19,9 +19,11 @@
 (defn- quarter-of-year [^LocalDate date]
   (inc (quot (dec (.getMonthValue date)) 3)))
 
-(defn- generate-temporal-context
+(defn temporal-context
   "Generate temporal context string for the current date.
-  Helps the LLM understand recency of data points."
+  Helps the LLM understand recency of data points. Callers that build a multi-chart prompt
+  should include this once at the prompt level and pass `:omit-temporal-context? true` to
+  [[generate-representation]] so it isn't repeated per chart."
   []
   (let [now (LocalDate/now)
         day-name (.getDisplayName (.getDayOfWeek now) TextStyle/FULL (Locale/getDefault))
@@ -425,11 +427,14 @@
 
 (mu/defn generate-representation :- :string
   "Generate markdown representation for chart statistics.
-  Dispatches based on chart type."
-  [{:keys [stats] :as context} :- ::stats.types/generate-repr-context]
+  Dispatches based on chart type. Pass `:omit-temporal-context? true` in `context` to skip
+  the per-chart temporal header for time-series charts (useful when a caller embeds many
+  charts in one prompt and prepends [[temporal-context]] once instead)."
+  [{:keys [stats omit-temporal-context?] :as context} :- ::stats.types/generate-repr-context]
   (case (:chart-type stats)
     :time-series  (generate-chart-representation context "Time Series" render-time-series
-                                                 [(generate-temporal-context)])
+                                                 (when-not omit-temporal-context?
+                                                   [(temporal-context)]))
     :categorical  (generate-chart-representation context "Categorical" render-categorical-series nil)
     :scatter      (generate-chart-representation context "Scatter" render-scatter-series nil)
     :histogram    (generate-chart-representation context "Histogram" render-histogram-series nil)

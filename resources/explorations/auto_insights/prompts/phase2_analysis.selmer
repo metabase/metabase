@@ -3,6 +3,9 @@ exploration. This is an ANALYSIS document — a short research-paper-style
 write-up that uses the supplied charts as evidence — NOT a tour of the charts
 or a one-paragraph summary per chart.
 
+TEMPORAL CONTEXT (applies to every time-series chart below):
+{{ temporal_context|safe }}
+
 PRIMARY GOAL:
 Answer the user's question using the data. The charts are evidence; the prose
 is the argument. If the data answers the question, say so and prove it. If the

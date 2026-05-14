@@ -211,17 +211,37 @@
                                  (:visualization_settings src-card)
                                  {})}))
 
-(defn- safe-contextual-score
-  "Best-effort contextual interestingness score against the thread's `prompt`.
-  Returns nil whenever scoring isn't applicable (no prompt, no chart-config) or anything throws,
-  so a scoring failure can never break the query lifecycle. Same fail-soft contract as
-  `safe-score`."
+(defn- safe-score+describe
+  "Best-effort combined contextual scorer + describer for one chart. Threads the source
+  Card's description (when present), the compiled SQL of the dataset_query, and the thread
+  prompt into a single Haiku call that returns
+
+      {:score :chart-description :metric-description}
+
+  `:metric-description` is always the *effective* description — Card-authored when the Card
+  has one (the LLM is told not to regenerate it; we substitute the authored text), otherwise
+  the LLM-generated one. Downstream consumers can read this directly without caring about
+  the source.
+
+  Returns nil-map (all three nil) whenever scoring isn't applicable (no prompt, no
+  chart-config) or anything throws — so a scoring failure can never break the query
+  lifecycle. Same fail-soft contract as `safe-score`."
   [exploration-query chart-config]
   (try
     (when-let [thread-id (:exploration_thread_id exploration-query)]
-      (let [prompt (:prompt (t2/select-one [:model/ExplorationThread :prompt] :id thread-id))]
+      (let [prompt           (:prompt (t2/select-one [:model/ExplorationThread :prompt] :id thread-id))
+            card-description (when-let [card-id (:card_id exploration-query)]
+                               (some-> (:description (t2/select-one [:model/Card :description] :id card-id))
+                                       str/trim
+                                       not-empty))
+            sql              (contextual-interestingness/dataset-query->sql (:dataset_query exploration-query))]
         (when (and chart-config (not (str/blank? prompt)))
-          (contextual-interestingness/contextual-chart-interestingness chart-config prompt))))
+          (some-> (contextual-interestingness/score-and-describe-chart
+                   {:chart-config     chart-config
+                    :card-description card-description
+                    :sql              sql
+                    :context-string   prompt})
+                  (update :metric-description #(or card-description %))))))
     (catch Throwable e
       (log/warnf e "Failed to compute contextual interestingness for ExplorationQuery %d"
                  (:id exploration-query))
@@ -250,14 +270,16 @@
                   chart-config (safe-chart-config row qp-result)
                   stats        (safe-deep-stats row chart-config)
                   score        (safe-score row chart-config stats)
-                  ctx-score    (safe-contextual-score row chart-config)
+                  ctx          (safe-score+describe row chart-config)
                   viz          (pick-display+viz-settings row chart-config)]
               (t2/insert! :model/ExplorationQueryResult
                           {:exploration_query_id             (:id row)
                            :result_data                      bytes
                            :chart_stats                      stats
                            :interestingness_score            score
-                           :contextual_interestingness_score ctx-score
+                           :contextual_interestingness_score (:score ctx)
+                           :metric_description               (:metric-description ctx)
+                           :chart_description                (:chart-description ctx)
                            :display                          (:display viz)
                            :visualization_settings           (:visualization_settings viz)})
               (t2/update! :model/ExplorationQuery (:id row)

@@ -31,10 +31,15 @@
   "Phase-1 entry for one chart. Multi-line so the curator can tell apart
   charts that share a title but differ on dimension granularity, FK source,
   or aggregation type. Built from a `common/prep-chart` record."
-  [{:keys [exploration-query-id name score summary-line dim-detail metric-detail]}]
+  [{:keys [exploration-query-id name score summary-line dim-detail metric-detail
+           metric-description chart-description]}]
   (str "- id=" exploration-query-id
        " score=" (format "%.2f" (double (or score 0.0)))
        " | " name "\n"
+       (when chart-description
+         (str "  chart:  " chart-description "\n"))
+       (when metric-description
+         (str "  metric description: " metric-description "\n"))
        "  metric: " (or metric-detail "(unknown)") "\n"
        "  dim:    " (or dim-detail "(unknown)") "\n"
        "  data:   " summary-line))

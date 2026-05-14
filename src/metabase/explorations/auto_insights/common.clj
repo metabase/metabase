@@ -210,19 +210,25 @@
 (defn prep-chart
   "Compute the rich per-chart record both phases consume.
 
-  Returns nil when the cached stats are missing (chart-config couldn't be
-  built at execution time) or anything throws. The same prepped record is
-  reused for the Phase-1 index entry, the slim Phase-2 awareness block, and
-  the full Phase-2 top-tier block — only the rendering differs.
+  Returns nil when the cached stats are missing (chart-config couldn't be built at execution
+  time) or anything throws. The same prepped record is reused for the Phase-1 index entry,
+  the slim Phase-2 awareness block, and the full Phase-2 top-tier block — only the
+  rendering differs.
 
-  Beyond `cfg` (used for stats / data-point rendering), we also capture
-  `:dim-detail` and `:metric-detail` — short strings derived from the raw
-  QP-result column metadata. The query's own `:name` (e.g. `Revenue by
-  Created At`) is not always enough to distinguish charts: multiple queries
-  can share that title but differ on temporal bucket, FK source, or
-  aggregation type. These fields surface the disambiguating detail so the
-  curator (and the analyst) can tell them apart."
-  [query result-data chart-stats]
+  Beyond `cfg` (used for stats / data-point rendering), the record carries:
+   - `:metric-description` / `:chart-description` — the effective descriptions persisted on
+     the `exploration_query_result` row. The runner already substitutes the Card's authored
+     description into `metric_description` when present, so consumers read these verbatim
+     without needing to know the source.
+   - `:dim-detail` / `:metric-detail` — short strings derived from the raw QP-result column
+     metadata, used to disambiguate charts that share a title but differ on temporal bucket,
+     FK source, or aggregation type.
+
+  Arguments:
+   - `query`     — the `:model/ExplorationQuery` row.
+   - `persisted` — `{:result-data :chart-stats :metric-description :chart-description}` from
+                   the matching `exploration_query_result` row (see `load-result-rows`)."
+  [query {:keys [result-data chart-stats metric-description chart-description]}]
   (try
     (when (and result-data chart-stats)
       (let [qp-result (deserialize-result result-data)
@@ -248,7 +254,9 @@
              :stats                chart-stats
              :summary-line         (chart-summary-line cfg chart-stats)
              :dim-detail           (column-detail dim-col)
-             :metric-detail        (column-detail metric-col)}))))
+             :metric-detail        (column-detail metric-col)
+             :metric-description   (some-> metric-description str/trim not-empty)
+             :chart-description    (some-> chart-description str/trim not-empty)}))))
     (catch Throwable e
       (log/warnf e "Could not prep chart for ExplorationQuery %d" (:id query))
       nil)))
