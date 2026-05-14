@@ -85,13 +85,14 @@ describe("TransformHeader", () => {
   });
 
   describe("inspect tab upsell", () => {
-    it("should always render the Inspect tab", () => {
+    it("should not render the Inspect tab for oss", () => {
       setup();
 
-      expect(screen.getByText("Inspect")).toBeInTheDocument();
+      expect(screen.queryByText("Inspect")).not.toBeInTheDocument();
     });
 
     it("should show upsell gem when transforms-python is not enabled", () => {
+      setupEnterprisePlugins();
       setup();
 
       const inspectLink = screen.getByRole("link", { name: /Inspect/ });

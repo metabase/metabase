@@ -37,7 +37,7 @@ function getTabs(id: TransformId): PaneHeaderTab[] {
     },
   ];
 
-  if (PLUGIN_TRANSFORMS_PYTHON.shouldShowInspectorUpsell) {
+  if (PLUGIN_TRANSFORMS_PYTHON.shouldShowInspectTab) {
     tabs.push({
       label: t`Inspect`,
       to: inspectUrl,
