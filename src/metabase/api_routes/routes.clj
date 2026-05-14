@@ -43,6 +43,7 @@
    [metabase.notification.api]
    [metabase.permissions-rest.api]
    [metabase.premium-features.api]
+   [metabase.presence.api]
    [metabase.product-feedback.api]
    [metabase.public-sharing-rest.api]
    [metabase.pulse.api]
@@ -203,6 +204,7 @@
    "/permissions"          (+auth 'metabase.permissions-rest.api)
    "/persist"              (+auth 'metabase.model-persistence.api)
    "/premium-features"     (+auth metabase.premium-features.api/routes)
+   "/presence"             (+auth 'metabase.presence.api)
    "/preview_embed"        (+auth metabase.embedding-rest.api/preview-embedding-routes)
    "/product-feedback"     'metabase.product-feedback.api
    "/public"               (+public-exceptions metabase.public-sharing-rest.api/routes)

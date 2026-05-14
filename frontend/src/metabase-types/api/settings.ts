@@ -481,6 +481,7 @@ interface InstanceSettings {
   "uploads-settings": UploadsSettings;
   "user-visibility": string | null;
   "query-analysis-enabled": boolean;
+  "presence-enabled": boolean;
 }
 
 export type EmbeddingHomepageDismissReason =

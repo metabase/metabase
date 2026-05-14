@@ -428,6 +428,7 @@ export const createMockSettings = (
   "default-embedding-themes-seeded": true,
   "notebook-native-preview-sidebar-width": null,
   "query-analysis-enabled": false,
+  "presence-enabled": true,
   "check-for-updates": true,
   "trial-banner-dismissal-timestamp": null,
   "license-token-missing-banner-dismissal-timestamp": [],

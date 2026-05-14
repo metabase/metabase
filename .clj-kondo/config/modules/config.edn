@@ -1543,6 +1543,19 @@
            util}
    :model-imports #{:model/User}}
 
+  presence
+  {:team "UX West"
+   :api  #{metabase.presence.api
+           metabase.presence.settings}
+   :uses #{api
+           app-db
+           settings
+           util}
+   :model-exports #{:model/UserPresence}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/User}}
+
   product-feedback
   {:team "UX West"
    :api  #{metabase.product-feedback.api

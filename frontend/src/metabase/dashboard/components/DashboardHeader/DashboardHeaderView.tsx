@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { EditBar } from "metabase/common/components/EditBar";
 import { LastEditInfoLabel } from "metabase/common/components/LastEditInfoLabel";
+import { PresenceAvatarStack } from "metabase/common/components/PresenceAvatarStack";
 import { SIDEBAR_WIDTH } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
 import {
@@ -173,7 +174,19 @@ export function DashboardHeaderView({
                 </Box>
               )}
 
-              <Flex className={S.HeaderButtonsContainer}>{_headerButtons}</Flex>
+              <Flex
+                className={S.HeaderButtonsContainer}
+                align="center"
+                gap="sm"
+              >
+                <PresenceAvatarStack
+                  model="dashboard"
+                  modelId={
+                    typeof dashboard?.id === "number" ? dashboard.id : undefined
+                  }
+                />
+                {_headerButtons}
+              </Flex>
             </FixedWidthContainer>
           </FullWidthContainer>
         )}

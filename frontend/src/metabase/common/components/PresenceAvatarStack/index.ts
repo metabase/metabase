@@ -1,0 +1,1 @@
+export { PresenceAvatarStack } from "./PresenceAvatarStack";

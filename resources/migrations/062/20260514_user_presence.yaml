@@ -1,0 +1,120 @@
+## Create user_presence table to power the "currently viewing" indicator on
+## question and dashboard pages. Rows are ephemeral and short-lived; the
+## frontend pings every few seconds while a user is on the page, and rows are
+## filtered out by expires_at on read.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/062_update_migrations.yaml
+
+  - changeSet:
+      id: v62.2026-05-14T00:00:00
+      author: ybtan
+      comment: Create user_presence table for the "currently viewing" indicator (POC)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: user_presence
+      changes:
+        - createTable:
+            tableName: user_presence
+            remarks: Ephemeral presence rows recording which users are currently viewing which entities (POC).
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: Foreign key to core_user.id
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model
+                  type: varchar(16)
+                  remarks: The kind of entity being viewed - "card" or "dashboard"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  remarks: The id of the entity being viewed
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_seen_at
+                  type: ${timestamp_type}
+                  remarks: Updated on every ping
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: ${timestamp_type}
+                  remarks: Computed last_seen_at + TTL; rows with expires_at <= now() are stale
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v62.2026-05-14T00:00:01
+      author: ybtan
+      comment: Add FK from user_presence.user_id to core_user.id (POC)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_user_presence_user_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: user_presence
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_user_presence_user_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v62.2026-05-14T00:00:02
+      author: ybtan
+      comment: Unique index on user_presence (user_id, model, model_id) for upsert (POC)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_user_presence_unique
+      changes:
+        - createIndex:
+            tableName: user_presence
+            indexName: idx_user_presence_unique
+            unique: true
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: model
+              - column:
+                  name: model_id
+
+  - changeSet:
+      id: v62.2026-05-14T00:00:03
+      author: ybtan
+      comment: Lookup index on user_presence (model, model_id, expires_at) (POC)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_user_presence_lookup
+      changes:
+        - createIndex:
+            tableName: user_presence
+            indexName: idx_user_presence_lookup
+            columns:
+              - column:
+                  name: model
+              - column:
+                  name: model_id
+              - column:
+                  name: expires_at

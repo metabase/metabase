@@ -35,6 +35,7 @@ export * from "./parameters";
 export * from "./permission";
 export * from "./persist";
 export * from "./premium-features";
+export * from "./presence";
 export * from "./revision";
 export * from "./search";
 export * from "./security-center";

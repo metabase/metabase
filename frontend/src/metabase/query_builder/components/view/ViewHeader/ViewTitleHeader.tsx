@@ -3,6 +3,7 @@ import type React from "react";
 import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
+import { PresenceAvatarStack } from "metabase/common/components/PresenceAvatarStack";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import type { QueryModalType } from "metabase/querying/constants";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
@@ -176,35 +177,40 @@ export function ViewTitleHeader({
             />
           )}
         </Flex>
-        <ViewTitleHeaderRightSide
-          question={question}
-          result={result}
-          queryBuilderMode={queryBuilderMode}
-          isBookmarked={isBookmarked}
-          isRunnable={isRunnable}
-          isRunning={isRunning}
-          isNativeEditorOpen={isNativeEditorOpen}
-          isShowingSummarySidebar={isShowingSummarySidebar}
-          isDirty={isDirty}
-          isResultDirty={isResultDirty}
-          isActionListVisible={isActionListVisible}
-          runQuestionQuery={runQuestionQuery}
-          cancelQuery={cancelQuery}
-          onOpenModal={onOpenModal}
-          editSummary={editSummary}
-          onCloseSummary={onCloseSummary}
-          setQueryBuilderMode={setQueryBuilderMode}
-          toggleBookmark={toggleBookmark}
-          onOpenQuestionInfo={onOpenQuestionInfo}
-          onCloseQuestionInfo={onCloseQuestionInfo}
-          isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
-          isObjectDetail={isObjectDetail}
-          isSaved={isSaved}
-          isModelOrMetric={isModelOrMetric}
-          areFiltersExpanded={areFiltersExpanded}
-          onExpandFilters={expandFilters}
-          onCollapseFilters={collapseFilters}
-        />
+        <Flex align="center" gap="sm">
+          {isSaved && (
+            <PresenceAvatarStack model="card" modelId={question.id()} />
+          )}
+          <ViewTitleHeaderRightSide
+            question={question}
+            result={result}
+            queryBuilderMode={queryBuilderMode}
+            isBookmarked={isBookmarked}
+            isRunnable={isRunnable}
+            isRunning={isRunning}
+            isNativeEditorOpen={isNativeEditorOpen}
+            isShowingSummarySidebar={isShowingSummarySidebar}
+            isDirty={isDirty}
+            isResultDirty={isResultDirty}
+            isActionListVisible={isActionListVisible}
+            runQuestionQuery={runQuestionQuery}
+            cancelQuery={cancelQuery}
+            onOpenModal={onOpenModal}
+            editSummary={editSummary}
+            onCloseSummary={onCloseSummary}
+            setQueryBuilderMode={setQueryBuilderMode}
+            toggleBookmark={toggleBookmark}
+            onOpenQuestionInfo={onOpenQuestionInfo}
+            onCloseQuestionInfo={onCloseQuestionInfo}
+            isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
+            isObjectDetail={isObjectDetail}
+            isSaved={isSaved}
+            isModelOrMetric={isModelOrMetric}
+            areFiltersExpanded={areFiltersExpanded}
+            onExpandFilters={expandFilters}
+            onCollapseFilters={collapseFilters}
+          />
+        </Flex>
       </ViewSection>
 
       {QuestionFiltersHeader.shouldRender({
