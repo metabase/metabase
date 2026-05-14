@@ -466,10 +466,18 @@ export function getAvailableAdditionalColumns(
   }
 
   getCardsColumns(rawSeries, settings).forEach((cardColumns) => {
-    alreadyIncludedColumns.add(cardColumns.dimension.column);
+    // Descriptors can be undefined when stored column names don't resolve
+    // against the current series cols (e.g. dashcard data not yet loaded).
+    if (cardColumns.dimension != null) {
+      alreadyIncludedColumns.add(cardColumns.dimension.column);
+    }
     if ("breakout" in cardColumns) {
-      alreadyIncludedColumns.add(cardColumns.breakout.column);
-      alreadyIncludedColumns.add(cardColumns.metric.column);
+      if (cardColumns.breakout != null) {
+        alreadyIncludedColumns.add(cardColumns.breakout.column);
+      }
+      if (cardColumns.metric != null) {
+        alreadyIncludedColumns.add(cardColumns.metric.column);
+      }
     } else {
       cardColumns.metrics.forEach((columnDescriptor) =>
         alreadyIncludedColumns.add(columnDescriptor.column),

@@ -1,4 +1,6 @@
 import {
+  getAvailableAdditionalColumns,
+  getComputedAdditionalColumnsValue,
   getDefaultBoxplotDimensions,
   getDefaultColumns,
   getDefaultDimensions,
@@ -235,6 +237,111 @@ describe("getDefaultColumns", () => {
       dimensions: ["QUANTITY"],
       metrics: ["count"],
     });
+  });
+});
+
+describe("getAvailableAdditionalColumns", () => {
+  // Regression test for UXW-4069: when dashcard data has not loaded yet,
+  // `sanitizeSeriesData` produces an empty `cols: []` placeholder.
+  // `getCartesianChartColumns` then returns an object where `dimension` is
+  // `undefined` (because the stored dimension name can't be resolved), and
+  // `getAvailableAdditionalColumns` previously threw
+  // `TypeError: Cannot read properties of undefined (reading 'column')`,
+  // flooding the browser console via the settings framework's try/catch.
+  it("does not throw when series cols are empty but dimensions/metrics settings exist", () => {
+    const series = [
+      {
+        card: createMockCard({ display: "bar" }),
+        data: createMockDatasetData({ cols: [], rows: [] }),
+      },
+    ];
+    const settings = {
+      "graph.dimensions": ["Date"],
+      "graph.metrics": ["Count"],
+    };
+
+    expect(() => getAvailableAdditionalColumns(series, settings)).not.toThrow();
+    expect(getAvailableAdditionalColumns(series, settings)).toEqual([]);
+  });
+
+  it("does not throw when stored dimension column is missing from data", () => {
+    const cols = [
+      createMockColumn({
+        name: "count",
+        display_name: "Count",
+        base_type: "type/Integer",
+        source: "aggregation",
+      }),
+    ];
+    const series = [
+      {
+        card: createMockCard({ display: "bar" }),
+        data: createMockDatasetData({ cols, rows: [[1]] }),
+      },
+    ];
+    const settings = {
+      "graph.dimensions": ["missing_dimension"],
+      "graph.metrics": ["count"],
+    };
+
+    expect(() => getAvailableAdditionalColumns(series, settings)).not.toThrow();
+  });
+
+  it("returns available columns normally when dimension and metric are present", () => {
+    const dimCol = createMockColumn({
+      name: "created_at",
+      display_name: "Created At",
+      source: "breakout",
+    });
+    const metricCol = createMockColumn({
+      name: "count",
+      display_name: "Count",
+      base_type: "type/Integer",
+      source: "aggregation",
+    });
+    const extraCol = createMockColumn({
+      name: "extra",
+      display_name: "Extra",
+      source: "fields",
+    });
+
+    const series = [
+      {
+        card: createMockCard({ display: "bar" }),
+        data: createMockDatasetData({
+          cols: [dimCol, metricCol, extraCol],
+          rows: [["2024", 1, "x"]],
+        }),
+      },
+    ];
+    const settings = {
+      "graph.dimensions": ["created_at"],
+      "graph.metrics": ["count"],
+    };
+
+    expect(getAvailableAdditionalColumns(series, settings)).toEqual([extraCol]);
+  });
+});
+
+describe("getComputedAdditionalColumnsValue", () => {
+  // Regression test for UXW-4069: ensure the `getValue` callback for
+  // `graph.tooltip_columns` does not throw when series data has not loaded.
+  it("does not throw when series cols are empty", () => {
+    const series = [
+      {
+        card: createMockCard({ display: "bar" }),
+        data: createMockDatasetData({ cols: [], rows: [] }),
+      },
+    ];
+    const settings = {
+      "graph.dimensions": ["Date"],
+      "graph.metrics": ["Count"],
+      "graph.tooltip_columns": [],
+    };
+
+    expect(() =>
+      getComputedAdditionalColumnsValue(series, settings),
+    ).not.toThrow();
   });
 });
 
