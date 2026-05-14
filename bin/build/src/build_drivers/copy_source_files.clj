@@ -21,16 +21,30 @@
               (.mkdirs (.getParentFile target-file))
               (Files/copy (.toPath file) (.toPath target-file) ^"[Ljava.nio.file.CopyOption;" (into-array java.nio.file.CopyOption [])))))))))
 
+(defn- copy-plugin-manifest-to-root!
+  "Plugin JARs loaded from the `./plugins` directory need `metabase-plugin.yaml` at the JAR root so
+  the plugin loader can find it. The resource directory stores it under
+  `metabase/<driver>/metabase-plugin.yaml`, so after the normal copy we duplicate it to the root of
+  the target directory."
+  [driver target-dir]
+  (let [nested (io/file target-dir "metabase" (name driver) "metabase-plugin.yaml")
+        root   (io/file target-dir "metabase-plugin.yaml")]
+    (when (and (.exists nested) (not (.exists root)))
+      (u/announce "Copying %s -> %s" (str nested) (str root))
+      (Files/copy (.toPath nested) (.toPath root) ^"[Ljava.nio.file.CopyOption;" (into-array java.nio.file.CopyOption [])))))
+
 (defn copy-source-files!
   "Copy source files into the build driver JAR."
   [driver edition]
   (u/step (format "Copy %s source files" driver)
-    (let [timer (u/start-timer)
-          dirs  (:paths (c/driver-edn driver edition))]
+    (let [timer      (u/start-timer)
+          dirs       (:paths (c/driver-edn driver edition))
+          target-dir (c/compiled-source-target-dir driver)]
       (assert (every? u/absolute? dirs)
               (format "All dirs should be absolute, got: %s" (pr-str dirs)))
       (u/announce "Copying files in %s" (pr-str dirs))
-      (copy-files dirs (c/compiled-source-target-dir driver))
+      (copy-files dirs target-dir)
+      (copy-plugin-manifest-to-root! driver target-dir)
       (u/announce "Copied files in %d directories in %d ms."
                   (count dirs)
                   (u/since-ms timer)))))

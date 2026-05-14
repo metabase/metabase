@@ -23,4 +23,5 @@
   metabase/sqlite             {:local/root "sqlite"}
   metabase/sqlserver          {:local/root "sqlserver"}
   metabase/starburst          {:local/root "starburst"}
+  metabase/teradata           {:local/root "teradata"}
   metabase/vertica            {:local/root "vertica"}}}

@@ -1,0 +1,48 @@
+info:
+  name: Metabase Teradata Driver
+  # also replace the version in deps.edn if you change the metabase version here
+  version: 1.1.18-metabase-v0.50.31-teradata-jdbc-20.00
+  description: Allows Metabase to connect to Teradata databases. Community Supported driver.
+dependencies:
+  - class: com.teradata.jdbc.TeraDriver
+    message: >
+      Metabase requires the Teradata terajdbc4.jar in order to be able to connect to Teradata databases.
+driver:
+  name: teradata
+  display-name: Teradata
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - host
+    - merge:
+        - port
+        - default: 1025
+    - name: dbnames
+      display-name: Database name(s) (case sensitive)
+      placeholder: Comma-separated list of database names
+    - user
+    - password
+    - ssl
+    - name: encrypt-data
+      display-name: Encrypt data
+      default: true
+      type: boolean
+    - advanced-options-start
+    - name: tmode
+      display-name: Transaction mode
+      default: ANSI
+      visible-if:
+        advanced-options: true
+    - merge:
+        - additional-options
+        - placeholder: e.g. COPLAST=OFF
+    # required in order that `Choose when syncs and scans happen` shows up in database options afterwards
+    # (during first time setup, you only see `Periodically refingerprint tables` in metabase v0.54.4
+    # the option `Choose when syncs and scans happen` only shows up later in admin -> Database -> advanced options)
+    - default-advanced-options
+  connection-properties-include-tunnel-config: false
+init:
+  - step: load-namespace
+    namespace: metabase.driver.teradata
+  - step: register-jdbc-driver
+    class: com.teradata.jdbc.TeraDriver
