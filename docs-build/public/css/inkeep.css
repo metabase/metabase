@@ -11,6 +11,9 @@ inkeep-portal {
   z-index: 100000;
 }
 
+/* `--navigation-header-height` isn't set anywhere in the docs build, so the
+   77px fallback is the effective value. The variable name is kept for parity
+   with the marketing-site stylesheet this file is vendored from. */
 .ikp-modal__content {
   margin-top: var(--navigation-header-height, 77px);
 }

@@ -120,17 +120,26 @@
     (println (str "→ " missing-msg))
     (generate-fn)))
 
+(def ^:private generated-artifacts
+  "Files the docs build expects to find on disk, paired with the command that
+  regenerates them. Used by `docs-ensure-generated` as a lazy pre-flight:
+  anything missing here gets generated before the build. Add new
+  auto-generated artifacts here so the pre-flight stays in sync."
+  [{:path        "docs/embedding/sdk/api/snippets/index.md"
+    :missing-msg "embedding docs missing, generating (typedoc --pure)..."
+    :regen       #(run-generate-embedding! true)}
+   {:path        "docs-build/public/embedding/sdk/api/index.html"
+    :missing-msg "embedding HTML API reference missing, generating..."
+    :regen       #(shell/sh {:dir u/project-root-directory}
+                            "bun" "run" "embedding-sdk:docs:generate:html:pure")}
+   {:path        "docs/api.json"
+    :missing-msg "OpenAPI spec missing, generating..."
+    :regen       #(run-generate! #{:api})}])
+
 (defn ensure-generated [_parsed]
   (let [root u/project-root-directory]
-    (ensure-file! (str root "/docs/embedding/sdk/api/snippets/index.md")
-                  "embedding docs missing, generating (typedoc --pure)..."
-                  #(run-generate-embedding! true))
-    (ensure-file! (str root "/docs-build/public/embedding/sdk/api/index.html")
-                  "embedding HTML API reference missing, generating..."
-                  #(shell/sh {:dir root} "bun" "run" "embedding-sdk:docs:generate:html:pure"))
-    (ensure-file! (str root "/docs/api.json")
-                  "OpenAPI spec missing, generating..."
-                  #(run-generate! #{:api}))))
+    (doseq [{:keys [path missing-msg regen]} generated-artifacts]
+      (ensure-file! (str root "/" path) missing-msg regen))))
 
 ;; ---------------------------------------------------------------------------
 ;; docs-build
