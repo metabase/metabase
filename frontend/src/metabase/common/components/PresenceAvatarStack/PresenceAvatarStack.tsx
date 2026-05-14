@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import type {
   PresenceModel,
+  PresenceParameterValue,
   PresenceParameters,
   PresenceViewer,
 } from "metabase/api";
@@ -50,12 +51,35 @@ function viewerColor(viewer: PresenceViewer): AvatarColor {
   return AVATAR_COLORS[viewer.id % AVATAR_COLORS.length];
 }
 
+/**
+ * Filter out parameter entries whose value is missing or an empty string —
+ * Metabase's dashboard URL state tends to include every declared filter
+ * (even ones the user hasn't picked a value for) with empty strings, which
+ * would otherwise show up as confusing "key:" rows in the popover.
+ */
+function nonEmptyParameterEntries(
+  params: PresenceParameters | undefined,
+): Array<[string, PresenceParameterValue]> {
+  if (params == null) {
+    return [];
+  }
+  return Object.entries(params).filter(([, value]) => {
+    if (value == null) {
+      return false;
+    }
+    if (typeof value === "string") {
+      return value.length > 0;
+    }
+    if (Array.isArray(value)) {
+      return value.length > 0;
+    }
+    return true;
+  });
+}
+
 /** Short, single-line summary of the viewer's URL parameters for the tooltip. */
 function summarizeParameters(params: PresenceParameters | undefined): string {
-  if (params == null) {
-    return "";
-  }
-  const entries = Object.entries(params);
+  const entries = nonEmptyParameterEntries(params);
   if (entries.length === 0) {
     return "";
   }
@@ -72,8 +96,7 @@ interface ViewerRowProps {
 }
 
 function ViewerRow({ viewer }: ViewerRowProps) {
-  const params = viewer.parameters;
-  const paramEntries = params ? Object.entries(params) : [];
+  const paramEntries = nonEmptyParameterEntries(viewer.parameters);
   return (
     <Group gap="sm" wrap="nowrap" align="flex-start">
       <Avatar radius="xl" size="sm" color={viewerColor(viewer)}>
