@@ -1,6 +1,6 @@
 ---
 title: Starburst
-description: Learn how to connect Metabase to your Starburst or Trino database, including connection settings, SSL configuration, and database sync options.
+summary: Learn how to connect Metabase to your Starburst or Trino database, including connection settings, SSL configuration, and database sync options.
 ---
 
 # Starburst

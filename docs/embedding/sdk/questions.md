@@ -1,6 +1,6 @@
 ---
 title: "Modular embedding SDK - questions"
-description: How to embed charts in your app with the Modular embedding SDK.
+summary: How to embed charts in your app with the Modular embedding SDK.
 ---
 
 # Modular embedding SDK - questions

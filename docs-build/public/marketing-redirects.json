@@ -1,0 +1,52 @@
+[
+  {
+    "from": "/cloud/docs/custom-domain",
+    "to": "/docs/latest/cloud/custom-domain",
+    "source": "cloud/custom-domain.md"
+  },
+  {
+    "from": "/pricing/how-billing-works",
+    "to": "/docs/latest/cloud/how-billing-works",
+    "source": "cloud/how-billing-works.md"
+  },
+  {
+    "from": "/cloud/docs/ip-addresses-to-whitelist",
+    "to": "/docs/latest/cloud/ip-addresses-to-whitelist",
+    "source": "cloud/ip-addresses-to-whitelist.md"
+  },
+  {
+    "from": "/cloud/docs/limitations",
+    "to": "/docs/latest/cloud/limitations",
+    "source": "cloud/limitations.md"
+  },
+  {
+    "from": "/migrate/guide",
+    "to": "/docs/latest/cloud/migrate/guide",
+    "source": "cloud/migrate/guide.md"
+  },
+  {
+    "from": "/migrate/post-signup-guide",
+    "to": "/docs/latest/cloud/migrate/guide",
+    "source": "cloud/migrate/guide.md"
+  },
+  {
+    "from": "/blog/migrating-to-metabase-cloud",
+    "to": "/docs/latest/cloud/migrate/guide",
+    "source": "cloud/migrate/guide.md"
+  },
+  {
+    "from": "/cloud/docs/migrate/guide",
+    "to": "/docs/latest/cloud/migrate/guide",
+    "source": "cloud/migrate/guide.md"
+  },
+  {
+    "from": "/cloud/docs/migrate/heroku",
+    "to": "/docs/latest/cloud/migrate/heroku",
+    "source": "cloud/migrate/heroku.md"
+  },
+  {
+    "from": "/cloud/docs",
+    "to": "/docs/latest/cloud/start",
+    "source": "cloud/start.md"
+  }
+]

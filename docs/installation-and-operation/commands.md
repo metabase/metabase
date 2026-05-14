@@ -1,6 +1,6 @@
 ---
 title: Metabase CLI
-description: CLI commands for managing your Metabase instance, including database migrations, serialization, and administrative tasks.
+summary: CLI commands for managing your Metabase instance, including database migrations, serialization, and administrative tasks.
 ---
 
 # Metabase CLI

@@ -1,6 +1,6 @@
 ---
 title: ClickHouse
-description: Learn how to connect Metabase to your ClickHouse database, including connection settings, database selection, and SSL configuration.
+summary: Learn how to connect Metabase to your ClickHouse database, including connection settings, database selection, and SSL configuration.
 ---
 
 # ClickHouse

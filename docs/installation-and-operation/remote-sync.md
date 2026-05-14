@@ -1,6 +1,6 @@
 ---
 title: Remote sync
-description: Version control your dashboards, questions, and transforms. Sync your Library and other collections between development and production.
+summary: Version control your dashboards, questions, and transforms. Sync your Library and other collections between development and production.
 ---
 
 # Remote sync

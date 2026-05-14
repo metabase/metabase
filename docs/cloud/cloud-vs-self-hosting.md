@@ -1,11 +1,5 @@
 ---
 title: "Metabase Cloud versus self-hosting"
-version: latest
-has_magic_breadcrumbs: true
-show_category_breadcrumb: true
-show_title_breadcrumb: true
-category: "Cloud"
-layout: new-docs
 ---
 
 # Metabase Cloud versus self-hosting
