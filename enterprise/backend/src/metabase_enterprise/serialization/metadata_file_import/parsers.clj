@@ -28,7 +28,8 @@
 
 (defn stream-array-batches!
   "Stream `file`'s named array (string or keyword `array-key`) through `process-batch!`.
-  Format is auto-detected from the extension. Caller's responsibility to ensure the
+  Format is auto-detected from the extension; an unrecognized extension throws
+  `ex-info` with `:kind :unknown_format`. Caller's responsibility to ensure the
   file exists and is readable; opening errors propagate."
   [^File file array-key batch-size process-batch!]
   (let [parser-fn (case (detect-format file)
@@ -42,8 +43,9 @@
   "Single-pass walk of `file`'s top-level object/mapping, dispatching arrays to
   per-key handlers. `handlers` is a map of keyword → fn-of-batch (each batch
   is a vector of `[line-num row]` tuples, up to `batch-size`). Format is
-  auto-detected from the extension; arrays for keys not in `handlers` are
-  skipped without materialization."
+  auto-detected from the extension; an unrecognized extension throws `ex-info`
+  with `:kind :unknown_format`. Arrays for keys not in `handlers` are skipped
+  without materialization."
   [^File file batch-size handlers]
   (let [parser-fn (case (detect-format file)
                     :json json/stream-keyed-arrays!

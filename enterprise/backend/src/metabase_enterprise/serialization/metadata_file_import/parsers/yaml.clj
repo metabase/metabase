@@ -1,9 +1,8 @@
 (ns metabase-enterprise.serialization.metadata-file-import.parsers.yaml
   "Streaming YAML parser for the metadata file importer. Walks SnakeYAML's
   event iterator (`Yaml.parse(reader)`), advances to a named array, and emits
-  its items in batches via a callback. Items are built with a small recursive
-  descent over events; memory bounded by the in-flight item plus the current
-  batch buffer.
+  its items in batches via a callback. Memory bounded by the in-flight item
+  plus the current batch buffer.
 
   Mirrors the public shape of [[metabase-enterprise.serialization.metadata-file-import.parsers.json]].
   Aliases (`*name`) and tagged scalars are not supported — the export side
@@ -105,7 +104,6 @@
   doesn't begin with a mapping or the value at `target-key` isn't a sequence;
   throws `:missing_key` if the key is absent."
   [^Iterator iter ^String target-key]
-  ;; consume StreamStart, DocumentStart, top-level MappingStart
   (let [e1 (.next iter)]
     (when-not (instance? StreamStartEvent e1)
       (throw (ex-info "Malformed YAML: expected StreamStartEvent"
@@ -198,7 +196,6 @@
   known key's value isn't a sequence. Missing keys are silently OK."
   [^Reader reader batch-size handlers]
   (let [iter (.iterator (.parse (Yaml.) reader))]
-    ;; consume StreamStart, DocumentStart, top-level MappingStart
     (let [e1 (.next iter)]
       (when-not (instance? StreamStartEvent e1)
         (throw (ex-info "Malformed YAML: expected StreamStartEvent"

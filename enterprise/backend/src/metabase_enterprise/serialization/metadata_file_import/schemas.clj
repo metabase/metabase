@@ -45,8 +45,7 @@
 
 (mr/def ::field-info
   "Field row. Five required keys + several optional, per the export's
-  `metadata-query-format :model/Field` (which selects 12 columns and runs them
-  through `u/remove-nils`)."
+  `metadata-query-format :model/Field`."
   [:map
    [:id :int]
    [:table_id :int]
