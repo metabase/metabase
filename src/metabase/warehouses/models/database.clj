@@ -562,8 +562,13 @@
   ;; TODO - do we want to include tables that should be `:hidden`?
   (t2/select :model/Table :db_id id :active true {:order-by [[:%lower.display_name :asc]]}))
 
+(def ^:dynamic *hydrate-inactive-tables*
+  "Bind this to true to make the `:tables` hydration below include inactive tables."
+  false)
+
 (methodical/defmethod t2/batched-hydrate [:model/Database :tables]
-  "Batch hydrate `Tables` for the given `Database`."
+  "Batch hydrate `Tables` for the given `Database`. Inactive tables are excluded by default, but they will be
+  included if [[*hydrate-inactive-tables*]] is set to true."
   [_model k databases]
   (mi/instances-with-hydrated-data
    databases k
@@ -571,8 +576,10 @@
               ;; TODO - do we want to include tables that should be `:hidden`?
               (t2/select :model/Table
                          :db_id  [:in (map :id databases)]
-                         :active true
-                         {:order-by [[:db_id :asc] [:%lower.display_name :asc]]}))
+                         {:where    (if *hydrate-inactive-tables*
+                                      [:= [:inline 1] [:inline 1]]
+                                      [:= :active true])
+                          :order-by [[:db_id :asc] [:%lower.display_name :asc]]}))
    :id
    {:default []}))
 
