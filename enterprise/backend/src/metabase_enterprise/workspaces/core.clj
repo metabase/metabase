@@ -69,8 +69,6 @@
                   :schema nil}
 
      ;; 3-slot
-     :snowflake  {:db (:db (:details database))
-                  :schema (:schema table)}
      :sqlserver  {:db (:db (:details database))
                   :schema (:schema table)}
      :bigquery-cloud-sdk
@@ -107,7 +105,7 @@
                  ...}}
 
   `:input_schemas` is a vector of driver-opaque schema strings. For 3-slot
-  drivers (Snowflake, SQL Server, BigQuery) the warehouse catalog/project is
+  drivers (SQL Server, BigQuery) the warehouse catalog/project is
   derived from the canonical `Database.details` at use time, not duplicated
   on each row.
 

@@ -16,7 +16,7 @@
 
      1. Records a `TableRemapping` from the canonical `(schema, name)` to the workspace's
         `(workspace-schema, remapped-name)` via [[ws.table-remapping/add-transform-target-mapping!]].
-        The remap is normalized per-driver (3-slot for Snowflake/SQL Server/BigQuery,
+        The remap is normalized per-driver (3-slot for SQL Server/BigQuery,
         2-slot for Postgres/ClickHouse, 1-slot for MySQL). The remapped table name is
         derived deterministically from the canonical `(schema, name)` so that two source
         tables sharing a name across different schemas land at distinct warehouse

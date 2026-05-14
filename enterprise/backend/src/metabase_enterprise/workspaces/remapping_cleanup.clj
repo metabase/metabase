@@ -26,8 +26,8 @@
    For 3-slot engines, pulls from `Database.details`."
   [database]
   (or (case (:engine database)
-        (:mysql :snowflake :sqlserver) (:db (:details database))
-        :bigquery-cloud-sdk            (:project-id (:details database))
+        (:mysql :sqlserver)  (:db (:details database))
+        :bigquery-cloud-sdk  (:project-id (:details database))
         nil)
       ""))
 
