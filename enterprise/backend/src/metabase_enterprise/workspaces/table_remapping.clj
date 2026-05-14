@@ -50,6 +50,7 @@
    [metabase-enterprise.workspaces.models.table-remapping]
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.sql-tools.core :as sql-tools]
@@ -403,6 +404,54 @@
                          (all-mappings-for-db db-id))
           extras   (into #{} (keep from->to) schema-names)]
       (vec (distinct (concat schema-names extras))))))
+
+(defn- iso-db-swap-maps-for-fk-probe
+  "Return a seq of swap-maps to apply per `describe-fks` invocation. Each entry is
+   either `{:db <iso-db>}` (run describe-fks with the JDBC connection pointed at
+   that iso DB) or nil (run with no swap, against the canonical connection).
+
+   When the database has any active remap rows whose `to_db` differs from the
+   canonical bound database (today: MySQL workspaces with cross-DB swaps), return
+   only the iso swap-maps -- on a workspace child the canonical DB holds no real
+   tables, so probing it would waste a round-trip and the rows it returns wouldn't
+   correspond to any `:model/Table`. Otherwise return a single nil entry so the
+   probe runs once against the canonical connection, preserving non-workspace
+   behavior.
+
+   3-slot engines (BigQuery, SQL Server) populate `:db` on both sides of the
+   remap row but the canonical `:db` already routes through the existing
+   connection, so the iso `:db` matches canonical and this collapses to the
+   single-canonical-run path."
+  [db-id]
+  (let [database     (t2/select-one :model/Database :id db-id)
+        canonical-db (-> database :details :db)
+        iso-dbs      (into #{}
+                           (comp (map (comp denormalize-level :db second))
+                                 (remove nil?)
+                                 (remove #(= % canonical-db)))
+                           (all-mappings-for-db db-id))]
+    (if (seq iso-dbs)
+      (map (fn [iso-db] {:db iso-db}) iso-dbs)
+      [nil])))
+
+(defenterprise call-with-fk-probe-iso-dbs
+  "Enterprise impl: invoke `f` once for the canonical bound DB, then once for each
+   distinct iso `:db` differing from the canonical, each iteration inside a
+   `with-swapped-connection-details` scope. Returns a vector of `f`'s results so
+   the caller can concatenate row batches before back-translation.
+
+   Cross-DB MySQL workspaces store the iso table in a different bound database
+   than the canonical one. Without a per-iso-DB describe-fks call, the JDBC
+   connection only ever talks to the canonical DB and the iso DB's FK rows go
+   undiscovered."
+  :feature :none
+  [db-id f]
+  (mapv (fn [swap-map]
+          (if swap-map
+            (driver.conn/with-swapped-connection-details db-id swap-map
+              (f))
+            (f)))
+        (iso-db-swap-maps-for-fk-probe db-id)))
 
 (defenterprise inject-workspace-canonical-tuples
   "Enterprise impl: augment a `describe-database` result with synthetic

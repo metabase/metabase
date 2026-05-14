@@ -82,6 +82,22 @@
   [& body]
   `(call-with-display-context (fn [] ~@body)))
 
+(defenterprise call-with-fk-probe-iso-dbs
+  "Invoke `f` once per iso-`:db` slot the FK probe needs to visit on a workspaced
+  database. `f` is called with no arguments inside a `with-swapped-connection-details`
+  scope (or no swap if iso-`:db` equals the canonical bound `:db`). Callers collect
+  results across invocations and merge.
+
+  On MySQL workspaces with a cross-DB swap, the iso table lives in a different
+  bound database than the canonical one; describe-fks must run with the JDBC
+  connection pointed at the iso DB to discover its FKs.
+
+  OSS fallback: just calls `f` once with no swap -- the warehouse FK probe runs
+  against the canonical connection only."
+  metabase-enterprise.workspaces.table-remapping
+  [_db-id f]
+  [(f)])
+
 (defenterprise canonical-schema+name
   "Inverse of `workspace-remap-schema+name`. Given an isolation-side
   `to-spec` (`{:db :schema :name}` for the workspace destination), return a

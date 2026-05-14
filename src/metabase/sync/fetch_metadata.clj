@@ -169,9 +169,16 @@
                                 ;; In version 52 we'll remove [[driver/describe-table-fks]]
                                 ;; and we'll just use [[driver/describe-fks]] here
                                 describe-fks-using-describe-table-fks)
-              ;; Realize the driver result so we can back-translate it as a batch (the
-              ;; EE impl builds a per-DB lookup map once per call).
-              raw-rows       (vec (describe-fks-fn driver database expanded-args))
+              ;; Workspace cross-DB swaps (today: MySQL whose iso table lives in a
+              ;; *different* bound database than the canonical) need describe-fks to
+              ;; run with the JDBC connection pointed at the iso DB. Loop per iso-DB
+              ;; via the workspace hook and concatenate row results. OSS fallback
+              ;; calls the thunk once with no swap, preserving today's behavior.
+              row-batches    (ws.table-remapping/call-with-fk-probe-iso-dbs
+                              db-id
+                              (fn []
+                                (vec (describe-fks-fn driver database expanded-args))))
+              raw-rows       (vec (mapcat identity row-batches))
               rewritten-rows (ws.table-remapping/rewrite-fk-result-canonical raw-rows db-id)]
           (cond->> rewritten-rows
             ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet

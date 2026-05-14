@@ -9,6 +9,7 @@
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.driver :as driver]
+   [metabase.driver.connection.workspaces :as driver.conn.w]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
@@ -196,6 +197,43 @@
          (is (= {:db nil :schema "mb_iso_ws" :name "orders_copy"}
                 (ws.table-remapping/workspace-remap-schema+name db-id {:schema "PUBLIC" :name "ORDERS"}))
              "with a remapping, the hook returns the isolated warehouse location so sync asks the driver there"))))))
+
+(deftest fk-metadata-mysql-swaps-connection-to-iso-db-test
+  (testing "fk-metadata on a MySQL workspace with a :db swap must run describe-fks under the iso DB.
+            Bug GHY-3599: fk-metadata didn't wrap its describe-fks call in with-swapped-connection-details,
+            so the JDBC connection talked to the canonical bound DB instead of the iso DB, missing every FK
+            that lives in the iso DB."
+    (mt/with-model-cleanup [:model/Database]
+      (let [db-id          (:id (t2/insert-returning-instance!
+                                 :model/Database
+                                 {:engine  :mysql
+                                  :name    "mysql-fk-fixture"
+                                  :details {:db "appdata"}}))
+            ;; Capture both the swap-state and what schema-names the driver call received.
+            describe-calls (atom [])]
+        (try
+          (ws.table-remapping/clear-mappings-for-db! db-id)
+          (ws.table-remapping/add-mapping! db-id
+                                           {:db "appdata" :schema nil :table "orders"}
+                                           {:db "appdata_ws" :schema nil :table "orders_copy"})
+          (with-redefs [driver/database-supports?      (constantly true)
+                        driver/describe-fks            (fn [_driver _db & {:keys [schema-names]}]
+                                                         (swap! describe-calls conj
+                                                                {:swap-active?  (driver.conn.w/has-connection-swap? db-id)
+                                                                 :schema-names  schema-names})
+                                                         [])]
+            (let [db (t2/select-one :model/Database :id db-id)]
+              ;; Sync FK probe runs with the canonical input-schema patterns. On MySQL `:schema` is
+              ;; never populated, so the iso DB swap is the only way the probe reaches `appdata_ws`.
+              (doall (fetch-metadata/fk-metadata db :schema-names ["appdata"]))))
+          (is (seq @describe-calls)
+              "describe-fks should be called at least once during fk-metadata")
+          (is (every? :swap-active? @describe-calls)
+              (str "MySQL fk-metadata must wrap describe-fks in with-swapped-connection-details "
+                   "so JDBC connections target the iso DB. Captured calls: "
+                   (pr-str @describe-calls)))
+          (finally
+            (ws.table-remapping/clear-mappings-for-db! db-id)))))))
 
 (deftest workspace-remap-schema+name-mysql-fills-db-slot-test
   (testing "MySQL: hook receives `{:schema nil :name X}` from sync but must still match a remap row
