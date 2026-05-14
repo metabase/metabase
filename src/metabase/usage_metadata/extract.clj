@@ -142,6 +142,31 @@
         (mapcat (partial segment-facts-for-clause query stage-number))
         (or (lib/filters query stage-number) [])))
 
+;; Allowlist of primitive aggregation operators we will record. Sourced from
+;; `metabase.lib.schema.aggregation` (see `::aggregation-clause-tag`).
+;; Composite aggregations (`:-`, `:+`, `:case`, etc.) and references to
+;; saved Metrics (`:metric`, `:measure`, `:aggregation`) are intentionally
+;; excluded — for the implicit-metric discovery use case those are either
+;; already explicit-by-construction or out of scope.
+(def ^:private primitive-aggregation-operators
+  #{:avg
+    :count
+    :cum-count
+    :count-where
+    :distinct
+    :distinct-where
+    :max
+    :median
+    :min
+    :offset
+    :percentile
+    :share
+    :stddev
+    :sum
+    :cum-sum
+    :sum-where
+    :var})
+
 (defn- metric-bases
   [query stage-number aggregation]
   (let [root-owner (query-source-table-or-card query)
@@ -150,6 +175,11 @@
         field-refs (participants-from-parts root-owner parts)
         owners     (set (map :owner field-refs))]
     (cond
+      ;; Skip composite aggregations and saved-metric references — only record
+      ;; primitive aggregations like sum/count/avg/etc.
+      (not (contains? primitive-aggregation-operators agg-type))
+      []
+
       (empty? field-refs)
       [{:source-type     (:source-type root-owner)
         :source-id       (:source-id root-owner)

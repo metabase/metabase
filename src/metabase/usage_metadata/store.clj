@@ -6,6 +6,17 @@
    [metabase.usage-metadata.models.source-segment-daily]
    [toucan2.core :as t2]))
 
+(def ^:private insert-chunk-size
+  "Chunk size for bulk inserts. Keeps us under the Postgres ~65535 bind-parameter
+  cap even for wide rows."
+  1000)
+
+(defn- chunked-insert!
+  [model rows]
+  (when (seq rows)
+    (doseq [chunk (partition-all insert-chunk-size rows)]
+      (t2/insert! model chunk))))
+
 (defn delete-day!
   "Delete all rollup rows for `bucket-date` across the usage metadata daily tables."
   [bucket-date]
@@ -18,29 +29,25 @@
 (defn insert-segment-rollups!
   "Insert daily segment rollup rows."
   [rows]
-  (when (seq rows)
-    (t2/insert! :model/SourceSegmentDaily rows))
+  (chunked-insert! :model/SourceSegmentDaily rows)
   nil)
 
 (defn insert-metric-rollups!
   "Insert daily metric rollup rows."
   [rows]
-  (when (seq rows)
-    (t2/insert! :model/SourceMetricDaily rows))
+  (chunked-insert! :model/SourceMetricDaily rows)
   nil)
 
 (defn insert-dimension-rollups!
   "Insert daily dimension rollup rows."
   [rows]
-  (when (seq rows)
-    (t2/insert! :model/SourceDimensionDaily rows))
+  (chunked-insert! :model/SourceDimensionDaily rows)
   nil)
 
 (defn insert-dimension-profile-rollups!
   "Insert daily dimension profile observation rows."
   [rows]
-  (when (seq rows)
-    (t2/insert! :model/SourceDimensionProfileDaily rows))
+  (chunked-insert! :model/SourceDimensionProfileDaily rows)
   nil)
 
 (defn replace-day!
