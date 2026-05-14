@@ -102,6 +102,10 @@
   opacity: 1;
 }
 
+.messageContainerAgent + .messageContainerAgent {
+  margin-top: var(--mantine-spacing-md);
+}
+
 .promptSuggestionsContainer {
   /* height if there's 3 single-line suggestions
    * this prevents a jump once suggestions have loaded in most cases */

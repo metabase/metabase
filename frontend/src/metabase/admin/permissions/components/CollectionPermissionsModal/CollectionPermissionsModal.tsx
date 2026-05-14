@@ -2,12 +2,12 @@ import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useListCollectionsTreeQuery } from "metabase/api";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
 import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import CS from "metabase/css/core/index.css";
-import { Collections } from "metabase/entities/collections";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
@@ -56,9 +56,6 @@ const mapStateToProps = (
       params: { collectionId },
       namespace: props.namespace,
     }),
-    collectionsList: Collections.selectors.getList(state, {
-      entityQuery: { tree: true },
-    }),
     isDirty: getIsDirty(state),
   };
 };
@@ -75,7 +72,6 @@ interface CollectionPermissionsModalProps {
   onClose: () => void;
   namespace: CollectionNamespace;
   collection?: Collection;
-  collectionsList?: Collection[];
   initialize: (namespace: CollectionNamespace) => void;
   updateCollectionPermission: (
     params: UpdateCollectionPermissionParams,
@@ -89,12 +85,14 @@ const CollectionPermissionsModal = ({
   onClose,
   namespace,
   collection,
-  collectionsList,
 
   initialize,
   updateCollectionPermission,
   saveCollectionPermissions,
 }: CollectionPermissionsModalProps) => {
+  const { data: collectionsList } =
+    useListCollectionsTreeQuery(collectionsQuery);
+
   const originalPermissionsState = useSelector(
     ({ admin }) => admin.permissions.originalCollectionPermissions,
   );
@@ -180,9 +178,6 @@ const CollectionPermissionsModal = ({
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Collections.loadList({
-    entityQuery: collectionsQuery,
-  }),
-  connect(mapStateToProps, mapDispatchToProps),
-)(CollectionPermissionsModal);
+export default _.compose(connect(mapStateToProps, mapDispatchToProps))(
+  CollectionPermissionsModal,
+);

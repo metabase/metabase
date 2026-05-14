@@ -1,15 +1,15 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import * as Yup from "yup";
 
+import { useListCollectionsQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { Button } from "metabase/common/components/Button";
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormInput } from "metabase/common/components/FormInput";
 import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { FormTextArea } from "metabase/common/components/FormTextArea";
-import { SnippetCollections } from "metabase/entities/snippet-collections";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Form, FormProvider } from "metabase/forms";
 import { Flex } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
@@ -136,6 +136,18 @@ function SnippetFormInner({
   );
 }
 
-export const SnippetForm = _.compose(SnippetCollections.loadList())(
-  SnippetFormInner,
-);
+export function SnippetForm(props: SnippetFormOwnProps) {
+  const {
+    data: snippetCollections,
+    isLoading,
+    error,
+  } = useListCollectionsQuery({ namespace: "snippets" });
+  return (
+    <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
+      <SnippetFormInner
+        {...props}
+        snippetCollections={snippetCollections ?? []}
+      />
+    </LoadingAndErrorWrapper>
+  );
+}

@@ -123,19 +123,6 @@ if (isCI) {
     );
   });
 
-  // Fast failure notifications
-  afterEach(() => {
-    const testInfo = Cypress.mocha.getRunner().suite.ctx.currentTest;
-    const isLastRetry = testInfo.currentRetry() === testInfo.retries();
-
-    if (testInfo.state === "failed" && isLastRetry) {
-      cy.task("reportCIFailure", {
-        spec: Cypress.spec,
-        test: Cypress.currentTest,
-      });
-    }
-  });
-
   const options = {
     collectTypes: [
       "cons:log",

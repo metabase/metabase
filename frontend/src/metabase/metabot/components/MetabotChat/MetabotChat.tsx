@@ -51,8 +51,7 @@ export const MetabotChat = ({
   const metabotName = useMetabotName();
   const showIllustrations = useSetting("metabot-show-illustrations");
 
-  const hasMessages =
-    metabot.messages.length > 0 || metabot.errorMessages.length > 0;
+  const hasMessages = metabot.messages.length > 0;
 
   const { scrollContainerRef, headerRef, fillerRef } =
     useScrollManager(hasMessages);
@@ -165,7 +164,6 @@ export const MetabotChat = ({
             {/* conversation messages */}
             <Messages
               messages={metabot.messages}
-              errorMessages={metabot.errorMessages}
               onRetryMessage={
                 config.preventRetryMessage ? undefined : metabot.retryMessage
               }

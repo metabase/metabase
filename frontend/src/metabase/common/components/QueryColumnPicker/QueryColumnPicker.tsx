@@ -18,12 +18,12 @@ import {
   clausesForMode,
   getClauseDefinition,
 } from "metabase/querying/expressions";
-import type { IconName } from "metabase/ui";
 import { DelayGroup, Icon } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
+import type { IconName } from "metabase-types/api";
 
 import { ColumnBucketPickerPopover } from "./ColumnBucketPickerPopover";
 import S from "./QueryColumnPicker.module.css";

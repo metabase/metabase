@@ -7,7 +7,7 @@ import { Select as MantineSelect } from "@mantine/core";
 import mergeRefs from "merge-refs";
 import { type Ref, forwardRef, useCallback, useMemo, useRef } from "react";
 
-import type { IconName } from "../../icons";
+import type { IconName } from "metabase-types/api";
 
 export type { DataAttributes, InputDescriptionProps } from "@mantine/core";
 export * from "./SelectItem";

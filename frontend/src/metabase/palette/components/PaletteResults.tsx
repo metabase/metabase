@@ -33,12 +33,12 @@ const PAGE_SIZE = 4;
 const FullSearchCTA = ({
   locationQuery,
   searchResults,
-  searchTerm,
+  debouncedSearchTerm,
   onClick,
 }: {
   locationQuery: Query;
   searchResults: SearchResponse;
-  searchTerm: string;
+  debouncedSearchTerm: string;
   onClick: () => void;
 }) => {
   const showOtherUsersCollections = useShowOtherUsersCollections();
@@ -59,7 +59,7 @@ const FullSearchCTA = ({
         pathname: "search",
         query: {
           ...locationQuery,
-          q: searchTerm,
+          q: debouncedSearchTerm,
         },
       }}
       className={S.viewAndFilterResults}
@@ -81,14 +81,16 @@ type Props = Omit<StackProps, "children"> & {
   locationQuery: Query;
   searchRequestId?: string;
   searchResults?: SearchResponse;
-  searchTerm: string;
+  liveSearchTerm: string;
+  debouncedSearchTerm: string;
 };
 
 export const PaletteResults = ({
   locationQuery,
   searchRequestId,
   searchResults,
-  searchTerm,
+  liveSearchTerm,
+  debouncedSearchTerm,
   ...props
 }: Props) => {
   // Used for finding actions within the list
@@ -97,8 +99,12 @@ export const PaletteResults = ({
   const { results } = useMatches();
 
   const processedResults = useMemo(
-    () => processResults(results as (PaletteActionImpl | string)[], searchTerm),
-    [results, searchTerm],
+    () =>
+      processResults(
+        results as (PaletteActionImpl | string)[],
+        liveSearchTerm.length !== 0,
+      ),
+    [results, liveSearchTerm],
   );
 
   useEffect(() => {
@@ -129,11 +135,11 @@ export const PaletteResults = ({
     );
   });
 
-  if (processedResults.length === 0 && searchTerm.length === 0) {
+  if (processedResults.length === 0 && liveSearchTerm.length === 0) {
     return <PaletteEmptyState />;
   }
 
-  if (processedResults.length === 0 && searchTerm.length > 0) {
+  if (processedResults.length === 0 && liveSearchTerm.length > 0) {
     return <PaletteResultsSkeleton />;
   }
 
@@ -142,7 +148,8 @@ export const PaletteResults = ({
       <PaletteResultList
         items={processedResults} // items needs to be a stable reference, otherwise the activeIndex will constantly be hijacked
         maxHeight={530}
-        minHeight={searchTerm.length === 0 ? 280 : 0}
+        minHeight={liveSearchTerm.length === 0 ? 280 : 0}
+        liveSearchTerm={liveSearchTerm}
         renderItem={({ item, active }) => {
           const isFirst = processedResults[0] === item;
 
@@ -164,7 +171,7 @@ export const PaletteResults = ({
                     <FullSearchCTA
                       locationQuery={locationQuery}
                       searchResults={searchResults}
-                      searchTerm={searchTerm}
+                      debouncedSearchTerm={debouncedSearchTerm}
                       onClick={() => {
                         query.setVisualState(VisualState.hidden);
 
@@ -176,7 +183,7 @@ export const PaletteResults = ({
                           requestId: searchRequestId,
                           entityModel: null,
                           entityId: null,
-                          searchTerm,
+                          searchTerm: debouncedSearchTerm,
                         });
                       }}
                     />

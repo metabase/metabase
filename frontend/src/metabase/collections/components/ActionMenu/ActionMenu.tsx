@@ -2,8 +2,9 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
-import { Api } from "metabase/api";
+import { Api, collectionApi } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { HACK_getParentCollectionFromEntityUpdateAction } from "metabase/archive/utils";
 import { trackCollectionItemBookmarked } from "metabase/collections/analytics";
@@ -150,6 +151,26 @@ function ActionMenu({
   }, [item, setCollectionPreview]);
 
   const handleRestore = useCallback(async () => {
+    if (item.model === "collection") {
+      const collection = await dispatch(
+        collectionApi.endpoints.updateCollection.initiate({
+          id: item.id,
+          archived: false,
+        }),
+      ).unwrap();
+      dispatch(Api.util.invalidateTags([listTag("bookmark")]));
+
+      const parentCollection = _.last(collection.effective_ancestors ?? []);
+      const redirect = getParentEntityLink(collection, parentCollection);
+
+      sendToast({
+        message: t`${item.name} has been restored.`,
+        actionLabel: t`View`,
+        action: () => dispatch(push(redirect)),
+      });
+      return;
+    }
+
     const Entity = entityForObject(item);
     const result = await dispatch(
       Entity.actions.update({ id: item.id, archived: false }),
@@ -171,6 +192,13 @@ function ActionMenu({
   }, [item, dispatch, sendToast]);
 
   const handleDeletePermanently = useCallback(() => {
+    if (item.model === "collection") {
+      dispatch(
+        collectionApi.endpoints.deleteCollection.initiate({ id: item.id }),
+      );
+      sendToast({ message: t`This item has been permanently deleted.` });
+      return;
+    }
     const Entity = entityForObject(item);
     dispatch(Entity.actions.delete(item));
     sendToast({ message: t`This item has been permanently deleted.` });

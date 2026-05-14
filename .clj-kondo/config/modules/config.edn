@@ -1180,16 +1180,18 @@
   mcp
   {:team "Metabot"
    :api  #{metabase.mcp.api
+           metabase.mcp.callback-api
            metabase.mcp.core
            metabase.mcp.init}
    :uses #{agent-api
            api
-           api-scope
+           app-db
            config
            llm
            oauth-server
            request
            server
+           session
            settings
            system
            util}}
@@ -1255,6 +1257,7 @@
               settings
               slackbot
               sql-tools
+              store-api
               sync
               system
               task
@@ -1419,6 +1422,7 @@
            metabase.oauth-server.init}
    :uses #{api
            appearance
+           mcp
            models
            request
            settings

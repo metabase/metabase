@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import _ from "underscore";
 
-import type { IconName } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import {
   ItemIcon,

@@ -4,8 +4,9 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
 
-import type { IconName, IconProps } from "metabase/ui";
+import type { IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 type HeaderContainerProps = HTMLAttributes<HTMLDivElement> & {
   hasRightAction?: boolean;
