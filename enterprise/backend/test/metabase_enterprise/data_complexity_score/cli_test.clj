@@ -89,16 +89,21 @@
       (is (= 2 (:field-count events))
           "events Table should have exactly 2 fields — the side-car must not be counted"))))
 
-(deftest ^:sequential run-cli-writes-readable-json-to-output-file-test
+(deftest ^:sequential run-cli-writes-readable-json-test
   ;; Not ^:parallel: calls `cli/write-result!`, which kondo flags as a destructive function in
   ;; parallel tests. The temp file we hand it is unique-per-call so the write is safe in
   ;; principle, but the lint flag is the right default — drop it instead of whitelisting.
-  (testing "--output path gets a JSON dump of the same result"
-    (let [tmp (doto (java.io.File/createTempFile "complexity-cli-output-" ".json") .deleteOnExit)]
-      ;; Call internals instead of -main, which terminates the JVM via System/exit.
-      (#'cli/write-result! (#'cli/run-cli {:representation-dir representation-fixture-dir})
-                           (.getAbsolutePath tmp))
-      (is (= 215 (-> (slurp tmp) (json/decode true) :library :total))))))
+  ;; Call internals instead of -main, which terminates the JVM via System/exit.
+  (let [result (#'cli/run-cli {:representation-dir representation-fixture-dir})]
+    (testing "without --output, stdout gets single-line JSON"
+      (let [stdout (with-out-str (#'cli/write-result! result nil))]
+        (is (= 215 (-> stdout (json/decode true) :library :total)))
+        (is (not (re-find #"\n.+" stdout)) "stdout JSON should be single-line")))
+    (testing "with --output, the file gets pretty JSON and stdout stays silent"
+      (let [tmp    (doto (java.io.File/createTempFile "complexity-cli-output-" ".json") .deleteOnExit)
+            stdout (with-out-str (#'cli/write-result! result (.getAbsolutePath tmp)))]
+        (is (= "" stdout))
+        (is (= 215 (-> (slurp tmp) (json/decode true) :library :total)))))))
 
 ;;; ------------------------------------- pure embedder/scoring tests -------------------------------------
 
