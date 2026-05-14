@@ -83,7 +83,7 @@ export const popState = createThunkAction(
       );
     }
 
-    if (location.state.objectId) {
+    if (location.state?.objectId) {
       await dispatch(zoomInRow({ objectId: location.state.objectId }));
     }
   },
