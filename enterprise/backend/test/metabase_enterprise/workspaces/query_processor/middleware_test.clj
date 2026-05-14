@@ -6,6 +6,7 @@
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
@@ -49,16 +50,22 @@
   (testing "Phase 1 passes through when no remappings exist"
     (mt/with-premium-features #{:workspaces}
       (binding [ws.remapping/*remapping-store* (ws.remapping/map-store {})]
-        (let [query (mt/mbql-query venues)]
-          (is (= query (#'ws.middleware/apply-workspace-remapping query))))))))
+        (qp.store/with-metadata-provider (mt/id)
+          (let [venues-table (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))
+                query (-> (lib/query (qp.store/metadata-provider) venues-table)
+                          (assoc :database (mt/id)))]
+            (is (= query (#'ws.middleware/apply-workspace-remapping query)))))))))
 
 (deftest phase-1-skip-dynamic-var-test
   (testing "Phase 1 passes through when *skip-remapping?* is true"
     (mt/with-premium-features #{:workspaces}
       (with-remappings (mt/id) {["PUBLIC" "VENUES"] ["mb_iso_abc" "VENUES"]}
         (binding [ws.remapping/*skip-remapping?* true]
-          (let [query (mt/mbql-query venues)]
-            (is (= query (#'ws.middleware/apply-workspace-remapping query)))))))))
+          (qp.store/with-metadata-provider (mt/id)
+            (let [venues-table (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))
+                  query (-> (lib/query (qp.store/metadata-provider) venues-table)
+                            (assoc :database (mt/id)))]
+              (is (= query (#'ws.middleware/apply-workspace-remapping query))))))))))
 
 (deftest phase-1-mbql-table-metadata-swap-test
   (testing "Phase 1 swaps table metadata for MBQL queries"
@@ -502,8 +509,10 @@
       (qp.store/with-metadata-provider (mt/id)
         (let [venues          (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))
               original-schema (:schema venues)
-              original-name   (:name venues)]
-          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)
+              original-name   (:name venues)
+              venues-query    (lib.convert/->legacy-MBQL
+                               (lib/query (qp.store/metadata-provider) venues))]
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query venues-query
                                                     :database_id   (mt/id)}]
             (with-remappings (mt/id) {[original-schema original-name] ["ws_alice" "venues_workspace"]}
               (let [card        (t2/select-one :model/Card :id card-id)
@@ -530,37 +539,43 @@
     (mt/with-premium-features #{:workspaces}
       (qp.store/with-metadata-provider (mt/id)
         ;; One card targets a remapped table (VENUES), the other a non-remapped table (CHECKINS).
-        (mt/with-temp [:model/Dashboard {dash-id :id} {}
-                       :model/Card {venues-card-id :id} {:dataset_query (mt/mbql-query venues)
-                                                         :database_id   (mt/id)}
-                       :model/Card {checkins-card-id :id} {:dataset_query (mt/mbql-query checkins)
+        (let [venues-query   (lib.convert/->legacy-MBQL
+                              (lib/query (qp.store/metadata-provider)
+                                         (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))))
+              checkins-query (lib.convert/->legacy-MBQL
+                              (lib/query (qp.store/metadata-provider)
+                                         (lib.metadata/table (qp.store/metadata-provider) (mt/id :checkins))))]
+          (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                         :model/Card {venues-card-id :id} {:dataset_query venues-query
                                                            :database_id   (mt/id)}
-                       :model/DashboardCard _ {:dashboard_id dash-id :card_id venues-card-id}
-                       :model/DashboardCard _ {:dashboard_id dash-id :card_id checkins-card-id}]
-          (with-remappings (mt/id) {["PUBLIC" "VENUES"] ["ws_alice" "venues_workspace"]}
-            (let [compile-card-sql
-                  (fn [card-id]
-                    (let [card     (t2/select-one :model/Card :id card-id)
-                          query    (-> (:dataset_query card)
-                                       (assoc :lib/metadata (qp.store/metadata-provider)))
-                          pre      (qp.preprocess/preprocess query)
-                          compiled (qp.compile/compile pre)]
-                      (binding [driver/*driver* :h2]
-                        (let [captured (atom nil)
-                              mock-qp  (fn [q _rff] (reset! captured q) :ok)
-                              wrapped  (#'ws.middleware/apply-workspace-sql-remapping mock-qp)]
-                          (wrapped (assoc pre :database (mt/id) :qp/compiled compiled) identity)
-                          (get-in @captured [:qp/compiled :query])))))]
-              (testing "the remapped card is rewritten"
-                (let [sql (compile-card-sql venues-card-id)]
-                  (is (re-find #"(?i)ws_alice|venues_workspace" sql)
-                      "venues card targets ws_alice schema after Phase 2")))
-              (testing "the non-remapped card passes through canonical"
-                (let [sql (compile-card-sql checkins-card-id)]
-                  (is (re-find #"(?i)CHECKINS" sql)
-                      "checkins card keeps its canonical reference")
-                  (is (not (re-find #"(?i)ws_alice" sql))
-                      "the workspace schema does not appear in the non-remapped card"))))))))))
+                         :model/Card {checkins-card-id :id} {:dataset_query checkins-query
+                                                             :database_id   (mt/id)}
+                         :model/DashboardCard _ {:dashboard_id dash-id :card_id venues-card-id}
+                         :model/DashboardCard _ {:dashboard_id dash-id :card_id checkins-card-id}]
+            (with-remappings (mt/id) {["PUBLIC" "VENUES"] ["ws_alice" "venues_workspace"]}
+              (let [compile-card-sql
+                    (fn [card-id]
+                      (let [card     (t2/select-one :model/Card :id card-id)
+                            query    (-> (:dataset_query card)
+                                         (assoc :lib/metadata (qp.store/metadata-provider)))
+                            pre      (qp.preprocess/preprocess query)
+                            compiled (qp.compile/compile pre)]
+                        (binding [driver/*driver* :h2]
+                          (let [captured (atom nil)
+                                mock-qp  (fn [q _rff] (reset! captured q) :ok)
+                                wrapped  (#'ws.middleware/apply-workspace-sql-remapping mock-qp)]
+                            (wrapped (assoc pre :database (mt/id) :qp/compiled compiled) identity)
+                            (get-in @captured [:qp/compiled :query])))))]
+                (testing "the remapped card is rewritten"
+                  (let [sql (compile-card-sql venues-card-id)]
+                    (is (re-find #"(?i)ws_alice|venues_workspace" sql)
+                        "venues card targets ws_alice schema after Phase 2")))
+                (testing "the non-remapped card passes through canonical"
+                  (let [sql (compile-card-sql checkins-card-id)]
+                    (is (re-find #"(?i)CHECKINS" sql)
+                        "checkins card keeps its canonical reference")
+                    (is (not (re-find #"(?i)ws_alice" sql))
+                        "the workspace schema does not appear in the non-remapped card")))))))))))
 
 ;;; ====================================== Cross-cardinality SQL rewrites =========================================
 ;;;
