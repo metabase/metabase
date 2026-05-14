@@ -1,27 +1,13 @@
-{
- :paths [
-         ; in case you get the error `All dirs should be absolute`, you forgot to define an absolute project-dir like so:
-         ; clojure -X:build :project-dir "\"$(pwd)\""
-         "src"
-         "resources"
-         ]
+{:paths
+ ["src" "resources"]
 
- :deps { org.clojure/core.logic {:mvn/version "1.0.1"}
-         com.github.seancorfield/honeysql {:mvn/version "2.5.1103"}
-        }
+ :deps
+ {}
 
- ;; These are needed for the Athena and Redshift drivers in order to build them. Maven repos from subprojects do not
- ;; get copied over -- see
- ;; https://ask.clojure.org/index.php/10726/deps-manifest-dependencies-respect-repos-dependent-project
- :mvn/repos
- {"athena"   {:url "https://s3.amazonaws.com/maven-athena"}
-  "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}}
-
- ; build the driver with `clojure -X:build :project-dir "\"$(pwd)\""`
  :aliases
-    {:dev
-            {:extra-deps
-             { io.github.metabase/metabase { :git/tag "v0.50.31", :git/sha "1a8c47" } }
-            }
-    }
-}
+ {:oss
+  ;; JDBC driver isn't GPL-compatible
+  {}
+
+  :ee
+  {:extra-deps {com.teradata.jdbc/terajdbc {:mvn/version "20.00.00.46"}}}}}
