@@ -14,9 +14,11 @@ import { MetabotAppBarButton } from "./MetabotAppBarButton";
 
 function setup({
   isMetabotEnabled = true,
+  isConfigured = true,
   permissionOverrides,
 }: {
   isMetabotEnabled?: boolean;
+  isConfigured?: boolean;
   permissionOverrides?: Partial<UserMetabotPermissions>;
 } = {}) {
   fetchMock.get(
@@ -25,7 +27,7 @@ function setup({
   );
 
   const settings = mockSettings({
-    "llm-metabot-configured?": true,
+    "llm-metabot-configured?": isConfigured,
     "metabot-enabled?": isMetabotEnabled,
   });
   setupEnterprisePlugins();
@@ -47,6 +49,13 @@ function setup({
 describe("MetabotAppBarButton", () => {
   it("should render the button when metabot is enabled", async () => {
     setup({ isMetabotEnabled: true });
+    expect(
+      await screen.findByRole("button", { name: /Chat with Metabot/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("should render the button when metabot is enabled but not configured", async () => {
+    setup({ isConfigured: false, isMetabotEnabled: true });
     expect(
       await screen.findByRole("button", { name: /Chat with Metabot/ }),
     ).toBeInTheDocument();

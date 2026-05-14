@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import { Route } from "react-router";
 
+import { setupBookmarksEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
@@ -39,8 +40,12 @@ function setup({
   suggestedPrompts = [],
 }: SetupOptions = {}) {
   jest.mocked(useUserMetabotPermissions).mockReturnValue({
+    hasNlqAccess: true,
     canUseNlq: true,
   } as any);
+
+  setupBookmarksEndpoints([]);
+
   jest.mocked(useMetabotAgent).mockReturnValue({
     setVisible: jest.fn(),
     resetConversation: jest.fn(),
