@@ -54,17 +54,18 @@ export const indexManagerApi = Api.injectEndpoints({
       },
     ),
 
-    getTableIndexRequest: builder.query<IndexRequestDetails, GetIndexRequestArgs>(
-      {
-        query: ({ tableId, requestId }) => ({
-          method: "GET",
-          url: `/api/table/${tableId}/indexes/requests/${requestId}`,
-        }),
-        providesTags: (_response, _error, { requestId }) => [
-          idTag("index-request", requestId),
-        ],
-      },
-    ),
+    getTableIndexRequest: builder.query<
+      IndexRequestDetails,
+      GetIndexRequestArgs
+    >({
+      query: ({ tableId, requestId }) => ({
+        method: "GET",
+        url: `/api/table/${tableId}/indexes/requests/${requestId}`,
+      }),
+      providesTags: (_response, _error, { requestId }) => [
+        idTag("index-request", requestId),
+      ],
+    }),
 
     updateTableIndexRequest: builder.mutation<
       CreateIndexResponse,

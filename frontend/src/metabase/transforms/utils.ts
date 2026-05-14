@@ -142,7 +142,9 @@ export function formatTransformDuration(durationMs: number): string {
   const totalMinutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   if (totalMinutes < 60) {
-    return seconds === 0 ? t`${totalMinutes}m` : t`${totalMinutes}m ${seconds}s`;
+    return seconds === 0
+      ? t`${totalMinutes}m`
+      : t`${totalMinutes}m ${seconds}s`;
   }
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;

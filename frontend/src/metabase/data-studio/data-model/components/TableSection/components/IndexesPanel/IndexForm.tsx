@@ -18,11 +18,7 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import type {
-  Database,
-  IndexAccessMethod,
-  Table,
-} from "metabase-types/api";
+import type { Database, IndexAccessMethod, Table } from "metabase-types/api";
 
 import { ColumnsPicker } from "./ColumnsPicker";
 import S from "./IndexForm.module.css";
@@ -72,12 +68,20 @@ export function IndexForm({
 
   // Auto-name suggestion when the user hasn't picked a name yet.
   const autoName = useMemo(
-    () => defaultIndexName(table, state.columns.map((c) => c.name)),
+    () =>
+      defaultIndexName(
+        table,
+        state.columns.map((c) => c.name),
+      ),
     [table, state.columns],
   );
 
   useEffect(() => {
-    if (mode.kind === "create" && state.name === "" && state.columns.length > 0) {
+    if (
+      mode.kind === "create" &&
+      state.name === "" &&
+      state.columns.length > 0
+    ) {
       setState((prev) => ({ ...prev, name: autoName }));
     }
   }, [autoName, mode.kind, state.name, state.columns.length]);
@@ -103,7 +107,9 @@ export function IndexForm({
         .catch((err) => {
           const message =
             (err && typeof err === "object" && "data" in err
-              ? String((err as { data?: { message?: string } }).data?.message ?? "")
+              ? String(
+                  (err as { data?: { message?: string } }).data?.message ?? "",
+                )
               : "") || t`Couldn't generate preview.`;
           setPreviewError(message);
         });
@@ -157,7 +163,9 @@ export function IndexForm({
       <Box>
         <Text c="text-secondary" size="sm">
           {mode.kind === "edit" ? t`Editing index on table` : t`On table`}{" "}
-          <span className={S.tableLink}>{table.display_name || table.name}</span>
+          <span className={S.tableLink}>
+            {table.display_name || table.name}
+          </span>
         </Text>
       </Box>
 

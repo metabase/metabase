@@ -7,15 +7,7 @@ import {
   Sortable,
   SortableList,
 } from "metabase/common/components/Sortable";
-import {
-  ActionIcon,
-  Box,
-  Group,
-  Icon,
-  Select,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { ActionIcon, Box, Group, Icon, Select, Stack, Text } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 
 import S from "./ColumnsPicker.module.css";
@@ -72,10 +64,7 @@ export function ColumnsPicker({ fields, columns, onChange }: Props) {
     if (!name) {
       return;
     }
-    onChange([
-      ...columns,
-      { id: nextColumnId(), name, direction: "asc" },
-    ]);
+    onChange([...columns, { id: nextColumnId(), name, direction: "asc" }]);
   };
 
   const addOptions = availableFields.map((field) => ({

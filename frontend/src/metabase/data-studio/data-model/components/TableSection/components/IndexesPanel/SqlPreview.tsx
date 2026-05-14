@@ -1,13 +1,6 @@
 import { t } from "ttag";
 
-import {
-  ActionIcon,
-  Box,
-  Icon,
-  Loader,
-  Textarea,
-  Tooltip,
-} from "metabase/ui";
+import { ActionIcon, Box, Icon, Loader, Textarea, Tooltip } from "metabase/ui";
 
 import S from "./SqlPreview.module.css";
 

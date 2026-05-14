@@ -1,8 +1,4 @@
-import type {
-  IndexInfo,
-  IndexStructured,
-  Table,
-} from "metabase-types/api";
+import type { IndexInfo, IndexStructured, Table } from "metabase-types/api";
 
 import type { IndexFormColumn, IndexFormState } from "./types";
 
@@ -13,7 +9,10 @@ export function nextColumnId(): string {
   return `col-${nextColumnIdCounter}`;
 }
 
-export function defaultIndexName(table: Pick<Table, "name">, columnNames: string[]): string {
+export function defaultIndexName(
+  table: Pick<Table, "name">,
+  columnNames: string[],
+): string {
   const base = `idx_${table.name}`;
   const suffix = columnNames.length > 0 ? `_${columnNames.join("_")}` : "";
   return (base + suffix).toLowerCase().slice(0, 63);

@@ -123,9 +123,7 @@ export function IndexesPanel({ table }: Props) {
       <Box className={S.header}>
         <Box className={S.headerTitle}>
           <Text className={S.title}>{t`Indexes`}</Text>
-          <Text className={S.subtitle}>
-            {t`Manage indexes on this table.`}
-          </Text>
+          <Text className={S.subtitle}>{t`Manage indexes on this table.`}</Text>
         </Box>
         {canManage && (
           <Button
