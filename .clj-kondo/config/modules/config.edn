@@ -2495,6 +2495,18 @@
    :model-exports #{:model/ViewLog}
    :model-imports #{:model/Card :model/Dashboard :model/Table}}
 
+  warehouse-index-manager
+  {:team "Gadget"
+   :api  #{metabase.warehouse-index-manager.init
+           metabase.warehouse-index-manager.models.index-request}
+   :uses #{driver
+           models
+           util}
+   :model-exports #{:model/IndexRequest}
+   :model-imports #{:model/Database
+                    :model/Table
+                    :model/Transform}}
+
   warehouse-schema
   {:team "UX West"
    :api  #{metabase.warehouse-schema.field
