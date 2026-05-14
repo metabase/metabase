@@ -116,11 +116,14 @@
           (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :read))
           (is (= :unrestricted (data-perms/table-permission-for-groups #{group-id} :perms/view-data database-id (:id view-table))))
           (is (= :query-builder (data-perms/table-permission-for-groups #{group-id} :perms/create-queries database-id (:id view-table)))))
-        (testing "Unable to update instance analytics to writable"
-          (is (thrown-with-msg?
-               Exception
-               #"Unable to make audit collections writable."
-               (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :write)))))))))
+        (testing "Setting audit collection to :write downgrades to :read instead of throwing (#71300)"
+          (update-graph! (assoc-in (graph :clear-revisions? true :collections [collection] :groups [group-id])
+                                   [:groups group-id (:id collection)] :write))
+          (is (= :read (get-in (graph :clear-revisions? true :collections [collection] :groups [group-id])
+                               [:groups group-id (:id collection)]))
+              "Audit collection permission should be stored as :read, not :write")
+          (is (= :unrestricted (data-perms/table-permission-for-groups #{group-id} :perms/view-data database-id (:id view-table))))
+          (is (= :query-builder (data-perms/table-permission-for-groups #{group-id} :perms/create-queries database-id (:id view-table)))))))))
 
 ;; TODO: re-enable these tests once they're no longer flaky
 (defn install-audit-db-if-needed!
