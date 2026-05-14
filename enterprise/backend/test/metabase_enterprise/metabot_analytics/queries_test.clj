@@ -232,7 +232,7 @@
           (is (= [] rows)))))))
 
 (deftest slackbot-native-shape-blocks-are-extracted-test
-  (testing "going-forward slackbot rows are persisted via store-native-parts!, so they carry
+  (testing "going-forward slackbot rows are persisted via finalize-assistant-turn!, so they carry
             the same :type 'tool-input'/'tool-output' block shape as in-app rows and the
             analytics extractor handles them identically"
     (with-stubbed-tables! ["orders"]

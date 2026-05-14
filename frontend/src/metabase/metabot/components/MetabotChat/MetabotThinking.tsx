@@ -57,7 +57,7 @@ export const MetabotThinking = ({
   }, [toolCalls]);
 
   return (
-    <Stack gap="xs">
+    <Stack gap="xs" mt="md">
       <ThoughtProcess toolCalls={toolCallsWithMsgs} />
       <Loader
         color="brand"
