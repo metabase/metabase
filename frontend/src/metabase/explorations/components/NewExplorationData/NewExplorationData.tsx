@@ -172,9 +172,13 @@ export function NewExplorationData({
       <Stack
         gap={0}
         bg="background-secondary"
-        maw="50%"
+        flex={0.68}
+        maw="37.5rem"
         miw="28.75rem"
         h="100%"
+        style={{
+          flexBasis: "max-content",
+        }}
       >
         <Stack gap={0} flex={1} mih={0} style={{ overflowY: "auto" }}>
           <SectionHeader

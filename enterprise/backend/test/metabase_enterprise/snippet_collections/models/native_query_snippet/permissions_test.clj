@@ -1,4 +1,5 @@
 (ns metabase-enterprise.snippet-collections.models.native-query-snippet.permissions-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.snippet-collections.models.native-query-snippet.permissions-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]

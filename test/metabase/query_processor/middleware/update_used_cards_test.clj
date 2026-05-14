@@ -1,7 +1,8 @@
 (ns metabase.query-processor.middleware.update-used-cards-test
   {:clj-kondo/config '{:linters
                        ;; allowing `with-temp` here since this actually tests what we persist to the app DB
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}
+                        :deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.update-used-cards-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]

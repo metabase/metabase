@@ -1,4 +1,5 @@
 (ns metabase.notification.payload.execute-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.notification.payload.execute-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.notification.payload.execute :as notification.payload.execute]

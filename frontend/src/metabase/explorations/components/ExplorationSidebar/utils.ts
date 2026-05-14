@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import type {
@@ -116,22 +116,24 @@ function getExplorationQueryTree(
       const groupQueries = group.query_ids
         .map((id) => queriesById.get(id))
         .filter((q) => q != null);
-      // TODO delete me - this is a hack and won't work with translations
-      const dimensionName = group.name.split(" by ")[1];
-      heading.children.push({
-        id: group.id,
-        name: dimensionName ? `By ${dimensionName}` : group.name,
-        icon: "lineandbar",
-        data: {
-          type: "group",
-          group_id: group.id,
-          query_ids: group.query_ids,
-          status: getExplorationQueryGroupStatus(groupQueries),
-          interestingness_score:
-            getExplorationQueryGroupInterestingness(groupQueries),
-          parent_id: group.parent_group_id,
-        },
-      });
+      if (groupQueries.length > 0) {
+        const dimensionName = groupQueries[0].dimension_name;
+        heading.children.push({
+          id: group.id,
+          name: c("${0} indicates the chart's dimension")
+            .t`By ${dimensionName}`,
+          icon: "lineandbar",
+          data: {
+            type: "group",
+            group_id: group.id,
+            query_ids: group.query_ids,
+            status: getExplorationQueryGroupStatus(groupQueries),
+            interestingness_score:
+              getExplorationQueryGroupInterestingness(groupQueries),
+            parent_id: group.parent_group_id,
+          },
+        });
+      }
     }
   }
 

@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.snowflake-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.snowflake-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.snowflake-test]}}}}}}
   (:require
    [clojure.data :as data]
    [clojure.java.jdbc :as jdbc]

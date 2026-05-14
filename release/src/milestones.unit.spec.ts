@@ -1,4 +1,4 @@
-import { getNextMilestone } from "./milestones";
+import { getNextMilestone, setMilestoneForCommits } from "./milestones";
 import type { Milestone } from "./types";
 
 describe('milestones', () => {
@@ -69,6 +69,33 @@ describe('milestones', () => {
         openMilestones: testMilestones,
         majorVersion: 61,
       })?.number).toBe(612);
+    });
+  });
+
+  describe('setMilestoneForCommits', () => {
+    const buildGithub = () => ({
+      paginate: jest.fn().mockResolvedValue(testMilestones),
+      rest: {
+        issues: {
+          listMilestones: jest.fn(),
+          update: jest.fn(),
+        },
+      },
+    });
+
+    it('is a no-op when no commit messages reference a PR', async () => {
+      const github = buildGithub();
+
+      // e.g. the version-bump commit created when cutting a release branch
+      await expect(setMilestoneForCommits({
+        github: github as any,
+        owner: 'metabase',
+        repo: 'metabase',
+        branchName: 'release-x.57.x',
+        commitMessages: ['Bump version to v0.57'],
+      })).resolves.toBeUndefined();
+
+      expect(github.rest.issues.update).not.toHaveBeenCalled();
     });
   });
 });

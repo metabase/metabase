@@ -128,7 +128,6 @@ export function ExplorationDocument({
         <Stack
           flex={1}
           w="100%"
-          maw="70rem"
           bg="background-primary"
           bd="1px solid border"
           bdrs="md"
@@ -158,7 +157,6 @@ export function ExplorationDocument({
               <Tooltip label={t`Show all comments`}>
                 <Box>
                   <ActionIcon
-                    className={S.commentsIcon}
                     component={Link}
                     to={Urls.explorationDocumentComments(
                       explorationId,
@@ -186,7 +184,7 @@ export function ExplorationDocument({
               }}
             />
           </Group>
-          <Box w="100%">
+          <Box w="100%" maw="42.5rem" mx="auto">
             <Editor
               // avoid sharing state like undo/redo history between documents
               key={documentData?.id}

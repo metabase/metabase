@@ -16,12 +16,10 @@ import {
   getRemappings,
 } from "metabase-lib/v1/queries/utils/field";
 import type {
-  Collection as ApiCollection,
   Table as ApiTable,
   Card,
   Measure,
   Metric,
-  NormalizedCollection,
   NormalizedDatabase,
   NormalizedField,
   NormalizedForeignKey,
@@ -97,7 +95,6 @@ const getNormalizedMeasures = (state: State) => state.entities.measures ?? {};
 const getNormalizedMetrics = (state: State) => state.entities.metrics ?? {};
 const getNormalizedQuestions = (state: State) => state.entities.questions;
 const getNormalizedSnippets = (state: State) => state.entities.snippets;
-const getNormalizedCollections = (state: State) => state.entities.collections;
 
 export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;
@@ -118,7 +115,6 @@ export const getMetadata: (
     getNormalizedMetrics,
     getNormalizedQuestions,
     getNormalizedSnippets,
-    getNormalizedCollections,
     getSettings,
   ],
   (
@@ -131,7 +127,6 @@ export const getMetadata: (
     metrics,
     questions,
     snippets,
-    collections,
     settings,
   ) => {
     const metadata = new Metadata({ settings });
@@ -189,9 +184,6 @@ export const getMetadata: (
     });
     Object.values(metadata.measures).forEach((measure) => {
       measure.table = hydrateMeasureTable(measure, tables);
-    });
-    Object.values(metadata.metrics).forEach((metric) => {
-      metric.collection = hydrateMetricCollection(metric, collections);
     });
     Object.values(metadata.fields).forEach((field) => {
       hydrateField(field, metadata);
@@ -448,19 +440,4 @@ function hydrateMeasureTable(
     ...rest
   } = normalized;
   return { ...rest, schema: schema_name ?? "" };
-}
-
-function hydrateMetricCollection(
-  metric: Metric,
-  collections: Record<string, NormalizedCollection>,
-): ApiCollection | null {
-  if (metric.collection_id == null) {
-    return null;
-  }
-  const normalized = collections[metric.collection_id];
-  if (!normalized) {
-    return null;
-  }
-  const { items: _items, ...rest } = normalized;
-  return rest;
 }

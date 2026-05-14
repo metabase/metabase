@@ -168,7 +168,7 @@ export function NewExplorationChat({
   const hasMessages = messages.length > 0;
 
   return (
-    <Stack flex={2} mih={0} gap="md">
+    <Stack flex={1} mih={0} gap="md">
       {hasMessages ? (
         <Stack
           flex={1}

@@ -1,4 +1,7 @@
 (ns ^:mb/driver-tests metabase.driver.bigquery-cloud-sdk-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.driver.bigquery-cloud-sdk-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.driver.bigquery-cloud-sdk-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.bigquery-cloud-sdk-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -1381,4 +1384,3 @@
       (is (= ["INSERT INTO `PRODUCTS_COPY` SELECT * FROM products" nil]
              (driver/compile-insert :bigquery-cloud-sdk {:query {:query "SELECT * FROM products"}
                                                          :output-table :PRODUCTS_COPY}))))))
-

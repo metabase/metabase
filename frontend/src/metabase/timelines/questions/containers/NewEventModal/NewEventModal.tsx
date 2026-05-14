@@ -3,16 +3,17 @@ import { t } from "ttag";
 import {
   useCreateTimelineEventMutation,
   useCreateTimelineMutation,
+  useGetCollectionQuery,
   useListTimelinesQuery,
 } from "metabase/api";
 import { getDefaultTimeline } from "metabase/common/utils/timelines";
-import { Collections, ROOT_COLLECTION } from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { useDispatch } from "metabase/redux";
-import type { State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
 import type {
   Collection,
+  CollectionId,
   CreateTimelineEventRequest,
   CreateTimelineRequest,
   TimelineEvent,
@@ -20,25 +21,21 @@ import type {
 
 interface NewEventModalContainerProps {
   cardId?: number;
-  collectionId?: number;
+  collectionId?: CollectionId | null;
   onClose?: () => void;
-  collection?: Collection;
 }
 
-const collectionProps = {
-  id: (state: State, props: NewEventModalContainerProps) => {
-    return props.collectionId ?? ROOT_COLLECTION.id;
-  },
-};
-
 function NewEventModalContainer({
+  collectionId,
   onClose,
-  collection,
 }: NewEventModalContainerProps) {
   const dispatch = useDispatch();
   const [createTimeline] = useCreateTimelineMutation();
   const [createTimelineEvent] = useCreateTimelineEventMutation();
   const { data: timelines = [] } = useListTimelinesQuery({ include: "events" });
+  const { data: collection } = useGetCollectionQuery({
+    id: collectionId == null ? ROOT_COLLECTION.id : collectionId,
+  });
 
   const onSubmit = async (
     values: Partial<TimelineEvent>,
@@ -71,4 +68,4 @@ function NewEventModalContainer({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Collections.load(collectionProps)(NewEventModalContainer);
+export default NewEventModalContainer;
