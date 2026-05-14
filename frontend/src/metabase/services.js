@@ -1,4 +1,4 @@
-import api, { DELETE, GET, POST, PUT } from "metabase/api/legacy-client";
+import { DELETE, GET, POST, PUT } from "metabase/api/legacy-client";
 import { isNative } from "metabase/common/utils/card";
 import { isEmbedPreview } from "metabase/embedding/config";
 import Question from "metabase-lib/v1/Question";
@@ -356,22 +356,6 @@ export const UserApi = {
   list: GET("/api/user/recipients"),
   current: GET("/api/user/current"),
   update_qbnewb: PUT("/api/user/:id/modal/qbnewb"),
-};
-
-// TODO: move to all functions to RTK (metabase/api/util.ts)
-export const UtilApi = {
-  password_check: POST("/api/session/password-check"),
-  random_token: GET("/api/util/random_token"),
-  logs: GET("/api/logger/logs"),
-  bug_report_details: GET("/api/bug-reporting/details"),
-  get_connection_pool_details_url: () => {
-    // this one does not need an HTTP verb because it's opened as an external link
-    // and it can be deployed at subpath
-    const path = "/api/bug-reporting/connection-pool-details";
-    const { href } = new URL(api.basename + path, location.origin);
-
-    return href;
-  },
 };
 
 export const FrontendErrorsApi = {
