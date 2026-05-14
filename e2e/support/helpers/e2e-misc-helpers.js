@@ -214,7 +214,7 @@ function visitDashboardById(dashboard_id, config) {
     if (canViewDashboard && validQuestions) {
       // If dashboard has valid questions (GUI or native),
       // we need to alias each request and wait for their reponses
-      const aliases = validQuestions.map(
+      const dashcardAliases = validQuestions.map(
         ({ id, card_id, card: { display } }) => {
           const baseUrl =
             display === "pivot"
@@ -236,7 +236,10 @@ function visitDashboardById(dashboard_id, config) {
         qs: config.params,
       });
 
-      cy.wait(aliases);
+      // Wait for the dashboard itself to load before waiting on dashcard queries
+      cy.wait(`@${dashboardAlias}`);
+
+      cy.wait(dashcardAliases);
     } else {
       // For a dashboard:
       //  - without questions (can be empty or markdown only) or
