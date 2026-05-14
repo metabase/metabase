@@ -165,12 +165,10 @@ export function useDocumentEditor({
   // minHeight, _id) and schema corrections (trailing paragraph). We capture the
   // editor's output after it settles and compare against that, not the raw API JSON.
   const settledContentRef = useRef<JSONContent | null>(null);
-  const isSettlingRef = useRef(false);
-  const settlingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // while the title doesn't have the same problem as content,
   // when loading a new document, there is a render where the server state and local state are out of sync
-  const isTitleSettingRef = useRef(false);
+  const isTitleSettlingRef = useRef(false);
 
   const prevDocumentIdRef = useRef<DocumentId | "new" | undefined>(undefined);
   if (
@@ -179,16 +177,22 @@ export function useDocumentEditor({
     !isNewDocument
   ) {
     prevDocumentIdRef.current = documentId;
-    isSettlingRef.current = true;
-    isTitleSettingRef.current = true;
+    settledContentRef.current = null;
+    isTitleSettlingRef.current = true;
   }
 
   useEffect(() => {
     if (documentContent && !isNewDocument) {
-      isSettlingRef.current = true;
+      settledContentRef.current = null;
+      setTimeout(() => {
+        const content = editorInstance?.getJSON();
+        if (content) {
+          settledContentRef.current = content;
+        }
+      }, 0);
       dispatch(setHasUnsavedChanges(false));
     }
-  }, [dispatch, documentContent, isNewDocument]);
+  }, [dispatch, documentContent, isNewDocument, editorInstance]);
 
   // Scroll to anchor block when navigating with URL hash
   const blockId = location.hash ? location.hash.slice(1) : null;
@@ -205,7 +209,7 @@ export function useDocumentEditor({
     // with a document name that is all whitespace, the API will reject it. However,
     // when comparing saved with current titles, we need to use unmofidied values
     const titleChanged =
-      documentTitle !== originalTitle && !isTitleSettingRef.current;
+      documentTitle !== originalTitle && !isTitleSettlingRef.current;
 
     // Check if there are any draft cards
     const hasDraftCards = Object.keys(draftCards).length > 0;
@@ -232,7 +236,7 @@ export function useDocumentEditor({
   const handleTitleChange = useCallback(
     (title: string) => {
       setDocumentTitle(title);
-      isTitleSettingRef.current = false;
+      isTitleSettlingRef.current = false;
     },
     [setDocumentTitle],
   );
@@ -245,23 +249,6 @@ export function useDocumentEditor({
         dispatch(
           setHasUnsavedChanges(!!editorInstance && !editorInstance.isEmpty),
         );
-        return;
-      }
-
-      // While the editor is settling (applying defaults, schema corrections),
-      // capture each intermediate output as the baseline without marking dirty.
-      // A short timer ensures we wait for multi-step settling (e.g. trailing
-      // paragraph added in a subsequent transaction).
-      if (isSettlingRef.current) {
-        settledContentRef.current = content;
-        if (settlingTimerRef.current) {
-          clearTimeout(settlingTimerRef.current);
-        }
-        settlingTimerRef.current = setTimeout(() => {
-          isSettlingRef.current = false;
-          settlingTimerRef.current = null;
-        }, 100);
-        dispatch(setHasUnsavedChanges(false));
         return;
       }
 

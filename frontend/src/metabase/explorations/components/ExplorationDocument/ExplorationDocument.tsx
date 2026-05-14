@@ -1,26 +1,42 @@
-import { useEffect } from "react";
-import type { Route } from "react-router";
+import { useCallback, useEffect } from "react";
+import { Link, type Route } from "react-router";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useListCommentsQuery } from "metabase/api";
 import { EditableText } from "metabase/common/components/EditableText";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DocumentMenu } from "metabase/documents/components/DocumentMenu";
+import { DocumentRevisionHistorySidebar } from "metabase/documents/components/DocumentRevisionHistorySidebar";
 import { Editor } from "metabase/documents/components/Editor";
 import { EmbedQuestionSettingsSidebar } from "metabase/documents/components/EmbedQuestionSettingsSidebar";
 import { TimelineEventsSidebar } from "metabase/documents/components/TimelineEventsSidebar";
 import {
   setChildTargetId,
   setDocumentHost,
+  setIsHistorySidebarOpen,
 } from "metabase/documents/documents.slice";
 import { useDocumentEditor } from "metabase/documents/hooks/use-document-editor";
 import {
+  getIsHistorySidebarOpen,
   getSelectedEmbedIndex,
   getSelectedQuestionId,
   getSidebarMode,
 } from "metabase/documents/selectors";
+import { getListCommentsQuery } from "metabase/documents/utils/api";
 import { useDispatch, useSelector } from "metabase/redux";
-import { Box, Button, Group, Stack } from "metabase/ui";
-import type { ExplorationDocument } from "metabase-types/api";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Group,
+  Icon,
+  Stack,
+  Tooltip,
+} from "metabase/ui";
+import * as Urls from "metabase/urls";
+import type { ExplorationDocument, ExplorationId } from "metabase-types/api";
 
 import S from "./ExplorationDocument.module.css";
 
@@ -29,6 +45,7 @@ export type ExplorationDocumentWithIsAutoInsights = ExplorationDocument & {
 };
 
 interface ExplorationDocumentProps {
+  explorationId: ExplorationId;
   document: ExplorationDocumentWithIsAutoInsights;
   isCommentsSidebarOpen: boolean;
   childTargetId?: string;
@@ -36,6 +53,7 @@ interface ExplorationDocumentProps {
 }
 
 export function ExplorationDocument({
+  explorationId,
   document,
   isCommentsSidebarOpen,
   childTargetId,
@@ -48,9 +66,7 @@ export function ExplorationDocument({
   }, [dispatch]);
 
   useEffect(() => {
-    if (childTargetId) {
-      dispatch(setChildTargetId(childTargetId));
-    }
+    dispatch(setChildTargetId(childTargetId));
   }, [childTargetId, dispatch]);
 
   const {
@@ -69,14 +85,29 @@ export function ExplorationDocument({
     handleChange,
     showSaveButton,
     handleSave,
+    handleUpdate,
     handleQuestionSelect,
   } = useDocumentEditor({
     documentId: document.id,
   });
 
+  const { hasComments } = useListCommentsQuery(
+    getListCommentsQuery(documentData),
+    {
+      selectFromResult: ({ data }) => ({
+        hasComments: !!data?.comments?.length,
+      }),
+    },
+  );
+
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
   const sidebarMode = useSelector(getSidebarMode);
+  const isHistorySidebarOpen = useSelector(getIsHistorySidebarOpen);
+
+  const handleShowHistory = useCallback(() => {
+    dispatch(setIsHistorySidebarOpen(true));
+  }, [dispatch]);
 
   if (isDocumentLoading || error) {
     return <LoadingAndErrorWrapper loading={isDocumentLoading} error={error} />;
@@ -123,6 +154,37 @@ export function ExplorationDocument({
                 data-hide-on-print
               >{t`Save`}</Button>
             )}
+            {hasComments && (
+              <Tooltip label={t`Show all comments`}>
+                <Box>
+                  <ActionIcon
+                    className={S.commentsIcon}
+                    component={Link}
+                    to={Urls.explorationDocumentComments(
+                      explorationId,
+                      document.id,
+                    )}
+                    size="md"
+                    aria-label={t`Show all comments`}
+                    data-hide-on-print
+                  >
+                    <Icon name="comment" />
+                  </ActionIcon>
+                </Box>
+              </Tooltip>
+            )}
+            <DocumentMenu
+              document={documentData}
+              canWrite={canWrite}
+              disablePrint={true}
+              onShowHistory={handleShowHistory}
+              onArchive={() => {
+                handleUpdate({ archived: true });
+                // navigate back to the exploration page
+                // otherwise nothing will be appearing on the page
+                dispatch(push(Urls.exploration(explorationId)));
+              }}
+            />
           </Group>
           <Box w="100%">
             <Editor
@@ -175,6 +237,15 @@ export function ExplorationDocument({
         isEnabled={showSaveButton}
         route={route}
       />
+
+      {isHistorySidebarOpen && documentData && (
+        <Box className={S.sidebar} data-testid="document-history-sidebar">
+          <DocumentRevisionHistorySidebar
+            document={documentData}
+            onClose={() => dispatch(setIsHistorySidebarOpen(false))}
+          />
+        </Box>
+      )}
     </>
   );
 }
