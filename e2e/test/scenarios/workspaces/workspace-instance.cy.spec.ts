@@ -154,24 +154,27 @@ function createAndRunTransform({
     name: sourceTable,
     schema: sourceSchema ?? undefined,
   }).then((sourceTableId) => {
-    H.createTransform({
-      name: "Workspace transform",
-      source: {
-        type: "query",
-        query: {
-          database: WRITABLE_DB_ID,
-          type: "query",
-          query: { "source-table": sourceTableId, limit: 5 },
+    H.createTestQuery({
+      database: WRITABLE_DB_ID,
+      stages: [
+        {
+          source: { type: "table", id: sourceTableId },
+          limit: 5,
         },
-      },
-      target: {
-        type: "table",
-        database: WRITABLE_DB_ID,
-        name: targetTable,
-        schema: targetSchema,
-      },
-    }).then(({ body: transform }) => {
-      H.runTransformAndWaitForSuccess(transform.id);
+      ],
+    }).then((query) => {
+      H.createTransform({
+        name: "Workspace transform",
+        source: { type: "query", query },
+        target: {
+          type: "table",
+          database: WRITABLE_DB_ID,
+          name: targetTable,
+          schema: targetSchema,
+        },
+      }).then(({ body: transform }) => {
+        H.runTransformAndWaitForSuccess(transform.id);
+      });
     });
   });
 }
