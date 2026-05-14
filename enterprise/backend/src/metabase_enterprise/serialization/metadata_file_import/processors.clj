@@ -1,13 +1,8 @@
 (ns metabase-enterprise.serialization.metadata-file-import.processors
   "SQL building blocks for the metadata file importer's drain-then-merge flow.
 
-  Driver-blind: every SQL statement goes through `t2/query` with a HoneySQL
-  map; correlated subqueries instead of `UPDATE … FROM` for cross-dialect
-  portability.
-
   Errors propagate as `ex-info` with `:kind` for typed failure handling
-  (`:invalid_input`, `:file_incomplete`, `:cycle_in_field_graph`,
-  `:depth_tagging_cap_exceeded`)."
+  (`:invalid_input`, `:file_incomplete`, `:cycle_in_field_graph`, `:depth_tagging_cap_exceeded`)."
   (:require
    [malli.error :as me]
    [metabase-enterprise.serialization.metadata-file-import.schemas :as schemas]
@@ -25,18 +20,15 @@
 
 (def import-batch-size
   "Row batch size shared by the drain and merge processors."
-  ;; 250 was the sweet spot in local benchmarks: larger batches make per-batch
-  ;; INSERT cost super-linear (WAL/index overhead grows against a filling
-  ;; staging table); smaller batches pay parser/handler-dispatch overhead that
-  ;; swamps the per-row savings.
+  ;; 250 was the sweet spot in local benchmarks
   250)
 
 ;;; ============================== Validation ==============================
 
 (defn- validate-line!
-  "Validate `line` against the registered Malli `schema-ref`. On failure
-  throws `ex-info` with `:kind :invalid_input`, `:line`, a humanized
-  `:detail`, and `extras` merged into the ex-data."
+  "Validate `line` against the registered Malli `schema-ref`.
+  On failure throws `ex-info` with `:kind :invalid_input`, `:line`, a humanized `:detail`,
+  and `extras` merged into the ex-data."
   [schema-ref line-num line extras]
   (when-not (mr/validate schema-ref line)
     (let [humanized (me/humanize (mr/explain schema-ref line))]
@@ -52,25 +44,15 @@
   "Empty `metabase_table_import` and `metabase_field_import`."
   []
   ;; TRUNCATE (not DELETE) so multiple imports in one process lifetime don't
-  ;; accumulate dead tuples in staging — autovacuum won't fire mid-import.
-  ;; HoneySQL's :truncate compiles to TRUNCATE TABLE on PG, H2, and MySQL.
+  ;; accumulate dead tuples in staging.
   ;; Called outside any outer transaction, so MySQL's implicit-commit-on-
   ;; TRUNCATE doesn't break composition.
   (t2/query {:truncate :metabase_table_import})
   (t2/query {:truncate :metabase_field_import}))
 
 (defn analyze-staging-tables!
-  "Refresh planner statistics on `metabase_table_import` and
-  `metabase_field_import`."
+  "Refresh planner statistics on `metabase_table_import` and `metabase_field_import`."
   []
-  ;; Autovacuum's stats refresh won't fire mid-import; without explicit
-  ;; ANALYZE, PG's planner falls back to default selectivity and picks
-  ;; plans that scan far more pages than needed.
-  ;;
-  ;; Driver-conditional: ANALYZE syntax differs (PG: `ANALYZE name`,
-  ;; MySQL: `ANALYZE TABLE name`, H2: whole-DB `ANALYZE`). H2 is dev/test
-  ;; only and analyzing the whole DB is cheap; PG is where the win
-  ;; matters in practice.
   (case (mdb/db-type)
     :postgres
     (do (t2/query "ANALYZE metabase_table_import")
@@ -82,8 +64,7 @@
     (t2/query "ANALYZE")))
 
 (defmacro with-staging-tables
-  "Run `body` with staging cleared on entry and on exit (try/finally,
-  so a thrown exception from `body` still wipes staging)."
+  "Run `body` with staging tables cleared on entry and on exit."
   [& body]
   `(do (clear-staging-tables!)
        (try ~@body
@@ -149,9 +130,7 @@
 ;;; ============================== tables — drain + merge ==============================
 
 (defn- encode-path-or-nil
-  "Encode an `:nfc_path` coll as a JSON string, matching the
-  `metabase_field.nfc_path` storage convention. NULL for empty/nil;
-  JSON-encoded array string otherwise."
+  "Encode an `:nfc_path` coll as a JSON string. NULL for empty/nil."
   [coll]
   (when (seq coll) (json/encode (vec coll))))
 
@@ -164,13 +143,10 @@
 
 (defn tables-insert-sql
   "Parameterized INSERT for `metabase_table_import`. Column order matches the
-  `set*-batch!` parameter-binding order in [[drain-tables-batch-jdbc!]].
-
-  `schema` is a reserved word in MySQL/MariaDB; dialect-quoted via
-  `mdb/quote-for-application-db` so the same SQL builder works on PG / H2 /
-  MySQL."
+  `set*-batch!` parameter-binding order in [[drain-tables-batch-jdbc!]]."
   []
   (str "INSERT INTO metabase_table_import"
+       ;; `schema` is a reserved word in MySQL/MariaDB
        " (source_id, source_db_id, db_name, " (mdb/quote-for-application-db "schema")
        ", name, description, display_name)"
        " VALUES (?, ?, ?, ?, ?, ?, ?)"))
@@ -365,9 +341,7 @@
 ;; UPDATE before INSERT: on a clean-schema import the UPDATE matches nothing
 ;; (fast no-op) and the INSERT then writes each row exactly once.
 ;;
-;; Returns the INSERTed source_ids rather than using `INSERT ... RETURNING`
-;; (vanilla MySQL has none). Callers re-run
-;; [[resolve-target-table-ids-in-staging!]] and pass the set to
+;; Callers re-run [[resolve-target-table-ids-in-staging!]] and pass the set to
 ;; [[new-target-tables-from-staging]] to read back the freshly-created rows.
 (defn merge-tables!
   "Merge `metabase_table_import` into `metabase_table` atomically: UPDATE the
@@ -438,8 +412,7 @@
   [[merge-tables!]]. `insert-source-ids` is the set returned by
   [[merge-tables!]]. Pre-condition:
   [[resolve-target-table-ids-in-staging!]] has run since the INSERT, so
-  staging's `target_id` is populated for these rows. Portable across PG /
-  H2 / MySQL (no `RETURNING`)."
+  staging's `target_id` is populated for these rows."
   [insert-source-ids]
   (when (seq insert-source-ids)
     (t2/query {:select [:t.id :t.db_id :t.schema]
@@ -450,15 +423,13 @@
 ;;; ============================== Pre-flight orphan check ==============================
 
 (def ^:private orphan-sample-cap
-  "How many orphan rows to surface in the error data when bailing out. Enough
-  to give the operator a starting point for tracing back to the source file
-  without ballooning the exception payload."
+  "How many orphan rows to surface in the error data when bailing out. Visibility
+  without exploding the exception payload."
   10)
 
 (defn- orphan-not-exists-predicate
-  "WHERE-clause fragment matching `metabase_field_import` rows whose
-  `column-key` (a `:source_*_id` column) is non-null but references no other
-  staging row's `source_id` — i.e. an orphan reference."
+  "WHERE-clause fragment matching `metabase_field_import` rows whose `column-key` (a `:source_*_id` column)
+  is non-null but references no other staging row's `source_id` — i.e. an orphan reference."
   [column-key]
   ;; Correlated NOT EXISTS, not NOT IN: at 9M+ rows PG can't plan
   ;; `NOT IN (subquery)` (NULL-semantics force full-materialization of the
@@ -517,16 +488,15 @@
   "Find staging rows whose `source_fk_target_id` points at a `source_id`
   not present in staging, and NULL the `source_fk_target_id` column on
   those rows. Returns `{:count N :sample [...]}` when at least one row was
-  scrubbed, `{:count 0}` otherwise.
-
-  Why NULL instead of abort: fk_target refs that cross a hidden/archived
-  table boundary on the source side (the table is `active=false` or
-  `visibility_type='hidden'`) survive in `metabase_field` but get filtered
-  out by the export's table-visibility join. The exported file then contains
-  fk_target refs whose targets aren't emitted — a real-data shape we observe
-  in production appdbs. Treating these as fatal would block legitimate
-  imports; treating them as no-fk is the lossless choice for the importer."
+  scrubbed, `{:count 0}` otherwise."
   []
+  ;; Why NULL instead of abort: fk_target refs that cross a hidden/archived
+  ;; table boundary on the source side (the table is `active=false` or
+  ;; `visibility_type='hidden'`) survive in `metabase_field` but get filtered
+  ;; out by the export's table-visibility join. The exported file then contains
+  ;; fk_target refs whose targets aren't emitted — a real-data shape we observe
+  ;; in production appdbs. Treating these as fatal would block legitimate
+  ;; imports; treating them as no-fk is the lossless choice for the importer.
   (let [n (orphan-count :source_fk_target_id)]
     (if (zero? n)
       {:count 0}
@@ -753,15 +723,13 @@
                [:not= :metabase_field_import.source_fk_target_id nil]]})))
 
 (defn resolve-target-field-ids-at-depth!
-  "Set `target_id` for depth-`d` staging rows by natural-key match against
-  `metabase_field`. Matches by `(target_table_id, name, target_parent_id)`
-  with NULL-safe parent comparison (a staging row with no parent matches
-  only against `metabase_field.parent_id IS NULL`). Skips defective
-  duplicates on the target side.
+  "Set `target_id` for depth-`d` staging rows by natural-key match against `metabase_field`. Matches
+  by `(target_table_id, name, target_parent_id)` with NULL-safe parent comparison (a staging row with
+  no parent matches only against `metabase_field.parent_id IS NULL`). Skips defective duplicates on
+  the target side.
 
-  Run twice per depth — once before the UPDATE/INSERT step (to identify
-  matches for the clobber path) and once after (to capture INSERT ids so
-  higher-depth rows can find them as parents/FK targets)."
+  Run twice per depth — once before the UPDATE/INSERT step (to identify matches for the clobber path)
+  and once after (to capture INSERT ids so higher-depth rows can find them as parents/FK targets)."
   [d]
   (t2/query
    {:update :metabase_field_import
@@ -783,9 +751,8 @@
              [:= :metabase_field_import.target_id nil]]}))
 
 (defn update-matched-fields-at-depth!
-  "Bring the live `metabase_field` rows that depth-`d` staging matched into
-  line with the file. Rows whose payload already matches staging are left
-  untouched."
+  "Bring the live `metabase_field` rows that depth-`d` staging matched into line with the file. Rows
+  whose payload already matches staging are left untouched."
   [d]
   (t2/query
    {:update :metabase_field
