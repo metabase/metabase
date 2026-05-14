@@ -36,7 +36,8 @@
    [metabase-enterprise.data-complexity-score.models.data-complexity-score :as data-complexity-score]
    [metabase-enterprise.data-complexity-score.representation :as representation]
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
-   [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]))
+   [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
+   [metabase.app-db.core :as mdb]))
 
 (set! *warn-on-reflection* true)
 
@@ -108,20 +109,6 @@
       (print (pretty result))
       (flush))))
 
-(defn- bootstrap-appdb!
-  "Verify the appdb connection and mark it ready — never run migrations or mutate the schema in any way.
-  The scorer reads a small, slow-changing slice of Toucan models, so we proceed against any appdb version.
-  Any schema mismatch surfaces as a runtime error caught by [[entrypoint]]; the DB itself is never touched.
-  We deliberately skip [[metabase.app-db.setup/check-encryption]] because its auto-encrypt branch can rewrite
-  every encrypted `setting` row — exactly the kind of silent side effect we're avoiding."
-  []
-  (let [verify!    (requiring-resolve 'metabase.app-db.core/verify-application-db-connection!)
-        finish!    (requiring-resolve 'metabase.app-db.core/finish-db-setup!)
-        is-set-up? (requiring-resolve 'metabase.app-db.core/db-is-set-up?)]
-    (when-not (is-set-up?)
-      (verify!)
-      (finish!))))
-
 (defn- resolve-write?
   "Apply the source-driven default for `--write-to-appdb` when it wasn't passed explicitly."
   [{:keys [write-to-appdb]} appdb-source?]
@@ -146,7 +133,7 @@
 (defn- run-appdb-mode!
   "Score against the live appdb the same way the cron does; optionally persist."
   [write?]
-  (bootstrap-appdb!)
+  (mdb/setup-db-without-migrations!)
   (let [result (complexity/complexity-scores
                 (assoc (synonym-source/complexity-scores-opts)
                        :metabot-scope (metabot-scope/internal-metabot-scope)))]
@@ -160,7 +147,7 @@
   "Score against an on-disk serdes export; optionally persist with `source` = `representation:<digest>`."
   [{:keys [representation-dir embeddings]} write?]
   (when write?
-    (bootstrap-appdb!))
+    (mdb/setup-db-without-migrations!))
   (let [{:keys [library universe embedder digest]} (representation/load-dir representation-dir
                                                                             :embeddings-path embeddings)
         result                                     (complexity/score-from-entities library universe embedder {})]

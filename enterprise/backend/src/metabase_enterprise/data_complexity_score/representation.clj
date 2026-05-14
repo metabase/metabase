@@ -219,10 +219,10 @@
   (make-array OpenOption 0))
 
 (defn- sha256-file-hex
-  "SHA-256 of a file's bytes, streamed in 8 KiB chunks to keep large exports off the heap."
+  "SHA-256 of a file's bytes, streamed in 64 KiB chunks to keep large exports off the heap."
   [^File f]
   (let [md  (MessageDigest/getInstance "SHA-256")
-        buf (byte-array 8192)]
+        buf (byte-array 65536)]
     (with-open [^DigestInputStream is (DigestInputStream. (Files/newInputStream (.toPath f) no-open-options) md)]
       (while (not= -1 (.read is buf))))
     (hex (.digest md))))

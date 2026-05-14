@@ -11,6 +11,7 @@
    [metabase-enterprise.data-complexity-score.representation :as representation]
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
+   [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -303,7 +304,7 @@
     (let [persisted?     (atom false)
           bootstrapped?  (atom false)]
       (mt/with-dynamic-fn-redefs [data-complexity-score/record-score! (fn [& _] (reset! persisted? true))
-                                  cli/bootstrap-appdb!                (fn [] (reset! bootstrapped? true))]
+                                  mdb/setup-db-without-migrations!    (fn [] (reset! bootstrapped? true))]
         (#'cli/run-cli {:representation-dir representation-fixture-dir})
         (is (false? @persisted?)   "representation+no-write must not persist anything")
         (is (false? @bootstrapped?) "representation+no-write must not boot the appdb at all")))))
@@ -312,7 +313,7 @@
   (testing "representation + --write-to-appdb true persists a row stamped 'representation:<digest>' and does not advance the cron fingerprint"
     (let [calls          (atom [])
           advance-calls  (atom 0)]
-      (mt/with-dynamic-fn-redefs [cli/bootstrap-appdb!                            (fn [])
+      (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!                (fn [])
                                   task.complexity-score/current-fingerprint       (constantly "test-fp")
                                   task.complexity-score/maybe-advance-last-fingerprint! (fn [& _]
                                                                                           (swap! advance-calls inc))
@@ -332,7 +333,7 @@
   (testing "appdb mode with no --write-to-appdb flag defaults to writing (true)"
     (let [calls         (atom [])
           advance-calls (atom [])]
-      (mt/with-dynamic-fn-redefs [cli/bootstrap-appdb!                            (fn [])
+      (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!                (fn [])
                                   complexity/complexity-scores                    (fn [& _] {:meta {}})
                                   synonym-source/complexity-scores-opts           (constantly {})
                                   metabot-scope/internal-metabot-scope            (constantly {})
@@ -351,7 +352,7 @@
   (testing "appdb + --write-to-appdb false scores but never persists or advances the fingerprint"
     (let [persisted?    (atom false)
           advance-calls (atom 0)]
-      (mt/with-dynamic-fn-redefs [cli/bootstrap-appdb!                            (fn [])
+      (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!                (fn [])
                                   complexity/complexity-scores                    (fn [& _] {:meta {}})
                                   synonym-source/complexity-scores-opts           (constantly {})
                                   metabot-scope/internal-metabot-scope            (constantly {})
