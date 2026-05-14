@@ -1,0 +1,102 @@
+.panel {
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.85);
+  border-left: 1px solid var(--mb-color-border);
+  padding: 24px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  backdrop-filter: blur(6px);
+  font-size: 13px;
+}
+
+.layoutBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--mb-color-bg-light);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-family: var(
+    --mb-default-monospace-font-family,
+    ui-monospace,
+    Menlo,
+    monospace
+  );
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--mb-color-brand);
+  align-self: flex-start;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mb-color-text-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.bulletsList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bulletRow {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.bulletRow > input,
+.bulletRow > textarea {
+  flex: 1;
+}
+
+.removeBulletBtn {
+  flex: 0 0 28px;
+  background: var(--mb-color-bg-light);
+  border: 1px solid var(--mb-color-border);
+  border-radius: 6px;
+  color: var(--mb-color-text-light);
+  cursor: pointer;
+}
+
+.removeBulletBtn:hover {
+  color: var(--mb-color-error);
+}
+
+.metricsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.metricRow {
+  border: 1px solid var(--mb-color-border);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--mb-color-bg-white);
+}
+
+.metricRowHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--mb-color-text-medium);
+}

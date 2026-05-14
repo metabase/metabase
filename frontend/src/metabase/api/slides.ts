@@ -2,8 +2,6 @@ import { Api } from "metabase/api/api";
 import { idTag, listTag } from "metabase/api/tags";
 import type {
   CreateSlidesRequest,
-  GenerateSlidesRequest,
-  GenerateSlidesResponse,
   SlidesDeck,
   UpdateSlidesRequest,
 } from "metabase/slides/types";
@@ -56,16 +54,6 @@ export const slidesApi = Api.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         !error ? [listTag("slides"), idTag("slides", id)] : [],
     }),
-    generateSlides: builder.mutation<
-      GenerateSlidesResponse,
-      GenerateSlidesRequest
-    >({
-      query: (body) => ({
-        method: "POST",
-        url: "/api/slides/generate",
-        body,
-      }),
-    }),
   }),
 });
 
@@ -75,5 +63,4 @@ export const {
   useCreateSlidesMutation,
   useUpdateSlidesMutation,
   useDeleteSlidesMutation,
-  useGenerateSlidesMutation,
 } = slidesApi;

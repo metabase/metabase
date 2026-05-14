@@ -5,7 +5,6 @@ import { t } from "ttag";
 import { Icon } from "metabase/ui";
 
 import type { Slide } from "../../types";
-import { previewSlide } from "../../utils/extractText";
 
 import S from "./SlideThumbnail.module.css";
 
@@ -17,11 +16,40 @@ interface SlideThumbnailProps {
   menu?: ReactNode;
 }
 
+// Pull a one-line preview from the slide data (no chart embed for cost).
+const previewTitle = (slide: Slide): string => {
+  switch (slide.layout) {
+    case "cover":
+    case "closing":
+    case "bullets":
+    case "chart_hero":
+    case "metrics_grid":
+    case "title_metrics_with_chart":
+    case "two_column":
+      return slide.data.title ?? t`Untitled`;
+    case "big_quote":
+      return slide.data.quote;
+    default:
+      return t`Untitled`;
+  }
+};
+
+const hasChart = (slide: Slide): boolean => {
+  switch (slide.layout) {
+    case "chart_hero":
+    case "title_metrics_with_chart":
+    case "two_column":
+      return Boolean(slide.data.card_id);
+    case "metrics_grid":
+      return slide.data.metrics.some((m) => m.card_id);
+    default:
+      return false;
+  }
+};
+
 export const SlideThumbnail = forwardRef<HTMLDivElement, SlideThumbnailProps>(
   function SlideThumbnail({ slide, index, active, onClick, menu }, ref) {
-    const preview = previewSlide(slide.doc);
     const isCover = slide.layout === "cover";
-
     const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
       if ((e.target as HTMLElement).closest("[data-thumbnail-menu]")) {
         return;
@@ -43,20 +71,12 @@ export const SlideThumbnail = forwardRef<HTMLDivElement, SlideThumbnailProps>(
             aria-label={t`Go to slide ${index + 1}`}
             aria-current={active ? "page" : undefined}
           >
-            {preview.heading ? (
-              <div className={S.heading}>{preview.heading}</div>
-            ) : (
-              <div className={S.heading} style={{ opacity: 0.4 }}>
-                {t`Untitled slide`}
-              </div>
-            )}
-            {preview.body && <div className={S.body}>{preview.body}</div>}
-            {preview.hasChart && (
+            <div className={S.heading}>{previewTitle(slide)}</div>
+            <div className={S.body}>{layoutPreview(slide)}</div>
+            {hasChart(slide) && (
               <div className={S.chartTag}>
                 <Icon name="line" size={10} />
-                {preview.chartCount > 1
-                  ? t`${preview.chartCount} charts`
-                  : t`Chart`}
+                {t`Chart`}
               </div>
             )}
             {menu && (
@@ -70,3 +90,29 @@ export const SlideThumbnail = forwardRef<HTMLDivElement, SlideThumbnailProps>(
     );
   },
 );
+
+const layoutPreview = (slide: Slide): string => {
+  switch (slide.layout) {
+    case "bullets":
+      return slide.data.bullets[0] ?? "";
+    case "chart_hero":
+      return slide.data.caption ?? "";
+    case "two_column":
+      return slide.data.bullets[0] ?? "";
+    case "metrics_grid":
+      return slide.data.metrics
+        .map((m) => `${m.value} ${m.label}`)
+        .slice(0, 2)
+        .join(" · ");
+    case "title_metrics_with_chart":
+      return slide.data.description ?? "";
+    case "closing":
+      return slide.data.subtitle ?? "";
+    case "cover":
+      return slide.data.subtitle ?? "";
+    case "big_quote":
+      return slide.data.attribution ?? "";
+    default:
+      return "";
+  }
+};

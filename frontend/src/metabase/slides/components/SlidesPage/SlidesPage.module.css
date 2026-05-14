@@ -1,7 +1,3 @@
-/* ------------------------------------------------------------------------- */
-/* Layout                                                                    */
-/* ------------------------------------------------------------------------- */
-
 .page {
   display: flex;
   flex-direction: column;
@@ -13,7 +9,7 @@
 .body {
   flex: 1;
   display: grid;
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: 240px 1fr 320px;
   overflow: hidden;
   min-height: 0;
 }
@@ -31,9 +27,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 32px 48px;
+  padding: 32px 36px;
   overflow: hidden;
   min-height: 0;
+}
+
+.inspector {
+  border-left: 1px solid var(--mb-color-border);
+  background: var(--mb-color-bg-white);
+  overflow: hidden;
+  min-height: 0;
+  display: flex;
 }
 
 .slideFrame {
@@ -46,18 +50,6 @@
     0 1px 2px rgba(15, 15, 25, 0.04),
     0 30px 80px rgba(15, 15, 25, 0.12);
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.editorViewport {
-  flex: 1;
-  position: relative;
-  overflow: hidden;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
 }
 
 .empty {
@@ -66,285 +58,4 @@
   justify-content: center;
   height: 100%;
   color: var(--mb-color-text-light);
-}
-
-/* ------------------------------------------------------------------------- */
-/* Layout-specific padding wrappers                                          */
-/* ------------------------------------------------------------------------- */
-
-/* Shared "stage" styling for any slide */
-.editorPadding,
-.coverPadding,
-.closingPadding,
-.bigNumberPadding,
-.chartPadding,
-.twoColumnPadding {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-}
-
-.editorPadding > :global(.tiptap),
-.coverPadding > :global(.tiptap),
-.closingPadding > :global(.tiptap),
-.bigNumberPadding > :global(.tiptap),
-.chartPadding > :global(.tiptap),
-.twoColumnPadding > :global(.tiptap) {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.editorPadding > :global(.tiptap > .ProseMirror),
-.coverPadding > :global(.tiptap > .ProseMirror),
-.closingPadding > :global(.tiptap > .ProseMirror),
-.bigNumberPadding > :global(.tiptap > .ProseMirror),
-.chartPadding > :global(.tiptap > .ProseMirror),
-.twoColumnPadding > :global(.tiptap > .ProseMirror) {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.editorPadding {
-  padding: 56px 72px;
-  gap: 16px;
-}
-
-.editorPadding :global(.ProseMirror h1) {
-  font-size: 48px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-  margin-bottom: 4px;
-}
-
-.editorPadding :global(.ProseMirror h2) {
-  font-size: 40px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  line-height: 1.15;
-  margin-bottom: 4px;
-}
-
-.editorPadding :global(.ProseMirror p) {
-  font-size: 19px;
-  line-height: 1.55;
-  color: var(--mb-color-text-dark);
-}
-
-.editorPadding :global(.ProseMirror ul) {
-  padding-left: 1.2em;
-}
-
-.editorPadding :global(.ProseMirror ul li) {
-  font-size: 19px;
-  line-height: 1.75;
-  margin: 4px 0;
-}
-
-/* ---- Cover ---- */
-.coverPadding {
-  padding: 96px;
-  text-align: center;
-  align-items: center;
-  justify-content: center;
-  background:
-    radial-gradient(ellipse at top left, #d8d3ff 0%, transparent 60%),
-    radial-gradient(ellipse at bottom right, #ffd9f0 0%, transparent 55%),
-    linear-gradient(135deg, #6f43ff 0%, #4f2bd8 100%);
-  color: white;
-}
-
-.coverPadding :global(.ProseMirror) {
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
-
-.coverPadding :global(.ProseMirror h1),
-.coverPadding :global(.ProseMirror h2) {
-  font-size: 72px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.05;
-  color: white;
-  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.15);
-  margin: 0;
-}
-
-.coverPadding :global(.ProseMirror p) {
-  font-size: 26px;
-  line-height: 1.35;
-  color: rgba(255, 255, 255, 0.92);
-  font-weight: 500;
-  margin-top: 20px;
-}
-
-/* ---- Closing ---- */
-.closingPadding {
-  padding: 96px;
-  text-align: center;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(
-    ellipse at top right,
-    #2b3142 0%,
-    #0e1018 70%,
-    #050608 100%
-  );
-  color: white;
-}
-
-.closingPadding :global(.ProseMirror h1),
-.closingPadding :global(.ProseMirror h2) {
-  font-size: 64px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: white;
-  margin: 0;
-}
-
-.closingPadding :global(.ProseMirror p) {
-  font-size: 22px;
-  color: rgba(255, 255, 255, 0.75);
-  margin-top: 18px;
-}
-
-/* ---- Big number ---- */
-.bigNumberPadding {
-  padding: 56px 72px;
-  gap: 16px;
-  background: linear-gradient(180deg, #fafaff 0%, #f5f3ff 100%);
-}
-
-.bigNumberPadding :global(.ProseMirror h2) {
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--mb-color-text-medium);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.bigNumberPadding :global(.ProseMirror p) {
-  font-size: 17px;
-  color: var(--mb-color-text-medium);
-}
-
-.bigNumberPadding :global([data-type="resizeNode"]),
-.bigNumberPadding :global([data-type="cardEmbed"]) {
-  flex: 1;
-  min-height: 0;
-}
-
-/* ---- Chart (full-bleed) ---- */
-.chartPadding {
-  padding: 48px 64px;
-  gap: 14px;
-}
-
-.chartPadding :global(.ProseMirror h2) {
-  font-size: 34px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  margin: 0;
-}
-
-.chartPadding :global(.ProseMirror p) {
-  font-size: 16px;
-  color: var(--mb-color-text-medium);
-}
-
-.chartPadding :global([data-type="resizeNode"]),
-.chartPadding :global([data-type="cardEmbed"]) {
-  flex: 1;
-  min-height: 0;
-}
-
-/* ---- Two column (bullets + chart) ---- */
-.twoColumnPadding {
-  padding: 56px 64px;
-  gap: 20px;
-}
-
-.twoColumnPadding :global(.ProseMirror h2) {
-  font-size: 38px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  margin: 0;
-}
-
-.twoColumnPadding :global([data-type="flexContainer"]) {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: row;
-  gap: 32px;
-  align-items: stretch;
-}
-
-.twoColumnPadding :global([data-type="flexContainer"] > *) {
-  flex: 1;
-}
-
-.twoColumnPadding :global(ul) {
-  padding-left: 1.1em;
-}
-
-.twoColumnPadding :global(ul li) {
-  font-size: 18px;
-  line-height: 1.8;
-  margin: 6px 0;
-}
-
-/* ------------------------------------------------------------------------- */
-/* Embedded card chrome — hide it ruthlessly when inside a slide             */
-/* ------------------------------------------------------------------------- */
-
-.slideFrame :global([data-type="cardEmbed"]) {
-  border: none !important;
-  background: transparent !important;
-  margin: 0 !important;
-  box-shadow: none !important;
-}
-
-/* Hide the question header (title row + menu) inside slides.
- * It's the first direct child of the cardEmbed root in the rendered tree. */
-.slideFrame
-  :global([data-type="cardEmbed"])
-  > div
-  > div:first-child:not([data-keep]) {
-  display: none !important;
-}
-
-/* Some CardEmbed branches wrap differently; also hide explicit title containers. */
-.slideFrame :global([data-type="cardEmbed"]) :global([class*="titleContainer"]),
-.slideFrame :global([data-type="cardEmbed"]) :global([class*="questionHeader"]),
-.slideFrame :global([data-type="cardEmbed"]) :global([class*="menuButton"]),
-.slideFrame :global([data-type="cardEmbed"]) :global([class*="titleEditIcon"]) {
-  display: none !important;
-}
-
-.slideFrame
-  :global([data-type="cardEmbed"])
-  :global([class*="questionResults"]) {
-  flex: 1 1 0 !important;
-  height: 100% !important;
-}
-
-/* Make the actual visualization fill the available space */
-.slideFrame :global([data-type="resizeNode"]) :global([class*="resizeHandle"]) {
-  display: none !important;
-}
-
-.slideFrame :global([data-type="resizeNode"]) {
-  height: 100% !important;
-  width: 100% !important;
-  min-height: 0 !important;
-  display: flex;
-  flex-direction: column;
 }

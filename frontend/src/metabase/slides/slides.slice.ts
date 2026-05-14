@@ -1,6 +1,6 @@
 import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 
-import type { Slide } from "./types";
+import type { Slide, SlideDataByLayout, SlideLayout } from "./types";
 
 interface SlidesState {
   deckId: number | null;
@@ -18,6 +18,73 @@ const initialState: SlidesState = {
   activeIndex: 0,
   isDirty: false,
   isGenerateModalOpen: false,
+};
+
+const defaultDataFor = <L extends SlideLayout>(
+  layout: L,
+): SlideDataByLayout[L] => {
+  switch (layout) {
+    case "cover":
+      return {
+        title: "Untitled deck",
+        subtitle: "",
+        accent: "violet",
+      } as SlideDataByLayout[L];
+    case "bullets":
+      return {
+        title: "Untitled slide",
+        bullets: ["First point", "Second point"],
+      } as SlideDataByLayout[L];
+    case "closing":
+      return {
+        title: "Thank you",
+      } as SlideDataByLayout[L];
+    case "big_quote":
+      return {
+        quote: "Type your quote here.",
+      } as SlideDataByLayout[L];
+    case "chart_hero":
+      return {
+        title: "Untitled chart",
+        // Card id 0 = unset (the renderer will show a "pick a card" placeholder)
+        card_id: 0,
+      } as SlideDataByLayout[L];
+    case "metrics_grid":
+      return {
+        title: "Key metrics",
+        metrics: [
+          { value: "—", label: "Metric one" },
+          { value: "—", label: "Metric two" },
+        ],
+      } as SlideDataByLayout[L];
+    case "title_metrics_with_chart":
+      return {
+        title: "Untitled",
+        card_id: 0,
+        metrics: [
+          { value: "—", label: "Metric one" },
+          { value: "—", label: "Metric two" },
+        ],
+      } as SlideDataByLayout[L];
+    case "two_column":
+      return {
+        title: "Untitled",
+        bullets: ["First point", "Second point"],
+        card_id: 0,
+      } as SlideDataByLayout[L];
+    default: {
+      const _exhaustive: never = layout;
+      throw new Error(`No default for layout ${String(_exhaustive)}`);
+    }
+  }
+};
+
+export const createBlankSlide = <L extends SlideLayout>(layout: L): Slide => {
+  return {
+    id: `slide-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    layout,
+    data: defaultDataFor(layout),
+  } as Slide;
 };
 
 const slidesSlice = createSlice({
@@ -47,24 +114,20 @@ const slidesSlice = createSlice({
         Math.min(action.payload, state.slides.length - 1),
       );
     },
-    setSlideContent(
+    setSlideData(
       state,
-      action: PayloadAction<{ index: number; doc: Slide["doc"] }>,
+      action: PayloadAction<{ index: number; data: Slide["data"] }>,
     ) {
-      const { index, doc } = action.payload;
+      const { index, data } = action.payload;
       const slide = state.slides[index];
       if (slide) {
-        slide.doc = doc;
+        slide.data = data;
         state.isDirty = true;
       }
     },
-    addSlide(state) {
-      const id = `slide-${Date.now()}`;
-      state.slides.push({
-        id,
-        layout: "default",
-        doc: { type: "doc", content: [{ type: "paragraph" }] },
-      });
+    addSlide(state, action: PayloadAction<SlideLayout | undefined>) {
+      const layout = action.payload ?? "bullets";
+      state.slides.push(createBlankSlide(layout));
       state.activeIndex = state.slides.length - 1;
       state.isDirty = true;
     },
@@ -78,10 +141,7 @@ const slidesSlice = createSlice({
       }
       state.isDirty = true;
     },
-    moveSlide(
-      state,
-      action: PayloadAction<{ from: number; to: number }>,
-    ) {
+    moveSlide(state, action: PayloadAction<{ from: number; to: number }>) {
       const { from, to } = action.payload;
       if (from === to) {
         return;
@@ -125,7 +185,7 @@ export const {
   resetDeck,
   setName,
   setActiveIndex,
-  setSlideContent,
+  setSlideData,
   addSlide,
   removeSlide,
   moveSlide,

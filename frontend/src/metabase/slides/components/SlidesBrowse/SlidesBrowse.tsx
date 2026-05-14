@@ -9,10 +9,21 @@ import "metabase/utils/dayjs";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { Box, Button, Icon, Loader } from "metabase/ui";
 
-import type { SlidesDeck } from "../../types";
-import { previewSlide } from "../../utils/extractText";
+import type { Slide, SlidesDeck } from "../../types";
 
 import S from "./SlidesBrowse.module.css";
+
+const coverTitle = (slide: Slide | undefined): string => {
+  if (!slide) {
+    return "";
+  }
+  switch (slide.layout) {
+    case "big_quote":
+      return slide.data.quote;
+    default:
+      return (slide.data as { title?: string }).title ?? "";
+  }
+};
 
 export const SlidesBrowse = () => {
   usePageTitle(t`Slides`);
@@ -50,12 +61,11 @@ export const SlidesBrowse = () => {
         <Box className={S.grid}>
           {decks.map((deck) => {
             const first = deck.slides?.[0];
-            const preview = first ? previewSlide(first.doc) : null;
             return (
               <Link key={deck.id} to={`/slides/${deck.id}`} className={S.deck}>
                 <Box className={S.deckPreview}>
                   <Box className={S.deckPreviewHeading}>
-                    {preview?.heading || deck.name || t`Untitled slides`}
+                    {coverTitle(first) || deck.name || t`Untitled slides`}
                   </Box>
                 </Box>
                 <Box className={S.deckMeta}>

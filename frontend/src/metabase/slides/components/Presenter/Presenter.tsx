@@ -4,10 +4,10 @@ import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
 import { skipToken, useGetSlidesQuery } from "metabase/api";
-import { Editor } from "metabase/documents/components/Editor/Editor";
 import { Box, Icon, Loader } from "metabase/ui";
 
 import type { Slide } from "../../types";
+import { SlideContent } from "../Layouts/Layouts";
 
 import S from "./Presenter.module.css";
 
@@ -205,19 +205,9 @@ const PresenterStage = ({
   slide: Slide;
   isActive: boolean;
 }) => {
-  const stageClass = cx(S.stageContent, {
-    [S.stageCover]: slide.layout === "cover",
-    [S.stageClosing]: slide.layout === "closing",
-    [S.stageBigNumber]: slide.layout === "big_number",
-    [S.stageChart]: slide.layout === "chart",
-    [S.stageTwoColumn]: slide.layout === "two_column",
-    [S.stageBullets]: slide.layout === "bullets",
-  });
   return (
-    <Box className={S.stage} aria-hidden={!isActive}>
-      <Box className={stageClass}>
-        <Editor key={slide.id} initialContent={slide.doc} editable={false} />
-      </Box>
+    <Box className={cx(S.stage)} aria-hidden={!isActive}>
+      <SlideContent slide={slide} />
     </Box>
   );
 };

@@ -1,5 +1,3 @@
-import type { JSONContent } from "@tiptap/core";
-import cx from "classnames";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { WithRouterProps } from "react-router";
 import { replace } from "react-router-redux";
@@ -13,7 +11,6 @@ import {
   useUpdateSlidesMutation,
 } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
-import { Editor } from "metabase/documents/components/Editor/Editor";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Loader } from "metabase/ui";
@@ -36,9 +33,12 @@ import {
   resetDeck,
   setActiveIndex,
   setName,
-  setSlideContent,
+  setSlideData,
 } from "../../slides.slice";
+import type { Slide } from "../../types";
 import { GenerateModal } from "../GenerateModal/GenerateModal";
+import { SlideContent } from "../Layouts/Layouts";
+import { SlideDataPanel } from "../SlideDataPanel/SlideDataPanel";
 import { SlideThumbnailList } from "../SlideThumbnailList/SlideThumbnailList";
 import { SlidesHeader } from "../SlidesHeader/SlidesHeader";
 
@@ -54,7 +54,6 @@ export const SlidesPage = ({ params, router }: SlidesPageProps) => {
   const isNew = entityIdParam === "new";
   const numericId = !isNew ? Number(entityIdParam) : null;
 
-  // Fetch existing
   const {
     data: existing,
     isLoading: isLoadingExisting,
@@ -68,7 +67,6 @@ export const SlidesPage = ({ params, router }: SlidesPageProps) => {
   const [createSlides, { isLoading: isCreating }] = useCreateSlidesMutation();
   const [updateSlides, { isLoading: isSaving }] = useUpdateSlidesMutation();
 
-  // Create immediately when /slides/new
   useEffect(() => {
     if (!isNew) {
       return;
@@ -95,7 +93,6 @@ export const SlidesPage = ({ params, router }: SlidesPageProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNew]);
 
-  // Hydrate redux when deck loads
   useEffect(() => {
     if (existing) {
       dispatch(
@@ -121,7 +118,6 @@ export const SlidesPage = ({ params, router }: SlidesPageProps) => {
 
   usePageTitle(name || t`Slides`);
 
-  // Autosave
   const [saveError, setSaveError] = useState(false);
   const latestRef = useRef({ name, slides });
   latestRef.current = { name, slides };
@@ -161,9 +157,9 @@ export const SlidesPage = ({ params, router }: SlidesPageProps) => {
     }
   }, [deckId, router]);
 
-  const handleChangeSlideContent = useCallback(
-    (doc: JSONContent) => {
-      dispatch(setSlideContent({ index: activeIndex, doc }));
+  const handleDataChange = useCallback(
+    (data: Slide["data"]) => {
+      dispatch(setSlideData({ index: activeIndex, data }));
     },
     [activeIndex, dispatch],
   );
@@ -178,20 +174,6 @@ export const SlidesPage = ({ params, router }: SlidesPageProps) => {
   if (loadError || !existing) {
     return <Box className={S.empty}>{t`Couldn't load this deck.`}</Box>;
   }
-
-  const layout = activeSlide?.layout ?? "default";
-  const paddingClass =
-    layout === "cover"
-      ? S.coverPadding
-      : layout === "closing"
-        ? S.closingPadding
-        : layout === "big_number"
-          ? S.bigNumberPadding
-          : layout === "chart"
-            ? S.chartPadding
-            : layout === "two_column"
-              ? S.twoColumnPadding
-              : S.editorPadding;
 
   return (
     <Box className={S.page}>
@@ -209,7 +191,7 @@ export const SlidesPage = ({ params, router }: SlidesPageProps) => {
             slides={slides}
             activeIndex={activeIndex}
             onSelect={(i) => dispatch(setActiveIndex(i))}
-            onAdd={() => dispatch(addSlide())}
+            onAdd={() => dispatch(addSlide(undefined))}
             onDelete={(i) => dispatch(removeSlide(i))}
             onReorder={(from, to) => dispatch(moveSlide({ from, to }))}
           />
@@ -217,16 +199,13 @@ export const SlidesPage = ({ params, router }: SlidesPageProps) => {
         <Box className={S.canvas}>
           {activeSlide && (
             <Box className={S.slideFrame}>
-              <Box className={cx(S.editorViewport)}>
-                <Box className={paddingClass}>
-                  <Editor
-                    key={activeSlide.id}
-                    initialContent={activeSlide.doc}
-                    onChange={handleChangeSlideContent}
-                  />
-                </Box>
-              </Box>
+              <SlideContent slide={activeSlide} />
             </Box>
+          )}
+        </Box>
+        <Box className={S.inspector}>
+          {activeSlide && (
+            <SlideDataPanel slide={activeSlide} onChange={handleDataChange} />
           )}
         </Box>
       </Box>

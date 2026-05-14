@@ -1,0 +1,485 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   Shared canvas + accent palettes
+   ────────────────────────────────────────────────────────────────────────── */
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: #0f172a;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+}
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.title {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin: 0;
+}
+
+.subtitle {
+  color: #475569;
+  line-height: 1.35;
+  margin: 0;
+}
+
+/* Caption under a chart */
+.caption {
+  color: #475569;
+  font-size: 15px;
+  line-height: 1.5;
+  max-width: 78ch;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Cover layout
+   ────────────────────────────────────────────────────────────────────────── */
+
+.cover {
+  align-items: flex-start;
+  justify-content: center;
+  padding: 80px 96px;
+  color: white;
+}
+
+.cover .title {
+  color: white;
+  font-size: 92px;
+  text-shadow: 0 4px 32px rgba(0, 0, 0, 0.18);
+  max-width: 18ch;
+}
+
+.cover .subtitle {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 28px;
+  margin-top: 32px;
+  max-width: 36ch;
+}
+
+.coverDecoration {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.cover > * {
+  position: relative;
+  z-index: 1;
+}
+
+.accentViolet {
+  background:
+    radial-gradient(ellipse at top left, #c5b3ff 0%, transparent 55%),
+    radial-gradient(ellipse at bottom right, #ff97e0 0%, transparent 55%),
+    linear-gradient(135deg, #6f43ff 0%, #4f2bd8 100%);
+}
+
+.accentSunset {
+  background:
+    radial-gradient(ellipse at top right, #ffb259 0%, transparent 50%),
+    radial-gradient(ellipse at bottom left, #ff5d6c 0%, transparent 50%),
+    linear-gradient(135deg, #f43f5e 0%, #d62556 100%);
+}
+
+.accentOcean {
+  background:
+    radial-gradient(ellipse at top left, #7dd3fc 0%, transparent 55%),
+    radial-gradient(ellipse at bottom right, #38bdf8 0%, transparent 50%),
+    linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%);
+}
+
+.accentForest {
+  background:
+    radial-gradient(ellipse at top right, #a7f3d0 0%, transparent 55%),
+    radial-gradient(ellipse at bottom left, #34d399 0%, transparent 50%),
+    linear-gradient(135deg, #059669 0%, #064e3b 100%);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Closing layout
+   ────────────────────────────────────────────────────────────────────────── */
+
+.closing {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 96px;
+  background: radial-gradient(
+    ellipse at center,
+    #20253a 0%,
+    #0d1019 80%,
+    #050608 100%
+  );
+  color: white;
+}
+
+.closing .title {
+  color: white;
+  font-size: 84px;
+  max-width: 22ch;
+}
+
+.closing .subtitle {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 26px;
+  margin-top: 24px;
+  max-width: 40ch;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Bullets layout
+   ────────────────────────────────────────────────────────────────────────── */
+
+.bullets {
+  padding: 88px 112px;
+  gap: 24px;
+  background: linear-gradient(180deg, #fff 0%, #fafafe 100%);
+}
+
+.bullets .title {
+  font-size: 64px;
+  max-width: 20ch;
+}
+
+.bulletsList {
+  list-style: none;
+  padding: 0;
+  margin: 24px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bulletsItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  font-size: 26px;
+  line-height: 1.45;
+  color: #1f2937;
+  max-width: 36ch;
+}
+
+.bulletsBullet {
+  flex: 0 0 12px;
+  height: 12px;
+  width: 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #6f43ff, #c084fc);
+  margin-top: 14px;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Big quote
+   ────────────────────────────────────────────────────────────────────────── */
+
+.bigQuote {
+  align-items: center;
+  justify-content: center;
+  padding: 96px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  text-align: center;
+}
+
+.bigQuoteMark {
+  font-size: 96px;
+  line-height: 0.5;
+  color: #b45309;
+  margin-bottom: 32px;
+}
+
+.bigQuoteText {
+  font-size: 48px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: #422006;
+  max-width: 20ch;
+  margin: 0;
+}
+
+.bigQuoteAttribution {
+  margin-top: 32px;
+  font-size: 18px;
+  color: #78350f;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Chart hero
+   ────────────────────────────────────────────────────────────────────────── */
+
+.chartHero {
+  padding: 56px 72px 48px;
+  gap: 12px;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+}
+
+.chartHero .title {
+  font-size: 38px;
+  letter-spacing: -0.015em;
+}
+
+.chartHero .caption {
+  font-size: 17px;
+}
+
+.chartHeroChart {
+  flex: 1;
+  min-height: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  background: white;
+  border: 1px solid #e2e8f0;
+  padding: 12px;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Metrics grid
+   ────────────────────────────────────────────────────────────────────────── */
+
+.metricsGrid {
+  padding: 72px 96px;
+  gap: 32px;
+  background: linear-gradient(180deg, #fdfcff 0%, #f4f0ff 100%);
+}
+
+.metricsGrid .title {
+  font-size: 48px;
+  letter-spacing: -0.02em;
+}
+
+.metricsGridList {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  gap: 20px;
+}
+
+.metricsGridList[data-count="2"] {
+  grid-template-columns: 1fr 1fr;
+}
+
+.metricsGridList[data-count="3"] {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.metricsGridList[data-count="4"] {
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+}
+
+.metricsGridList[data-count="5"],
+.metricsGridList[data-count="6"] {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.metricCard {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.metricCard.withChart {
+  padding: 18px;
+}
+
+.metricCardValue {
+  font-size: 56px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  color: #4c1d95;
+  background: linear-gradient(135deg, #6f43ff 0%, #b042ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.metricCardLabel {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-top: 4px;
+}
+
+.metricCardSubtext {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.metricCardChart {
+  flex: 1;
+  min-height: 80px;
+  display: flex;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Title + metrics with chart (Presenton-style 60/40)
+   ────────────────────────────────────────────────────────────────────────── */
+
+.titleMetricsChart {
+  padding: 56px 72px 56px 80px;
+  gap: 14px;
+  background: linear-gradient(180deg, #fff 0%, #f7f5fb 100%);
+}
+
+.titleMetricsChart .title {
+  font-size: 40px;
+  letter-spacing: -0.015em;
+}
+
+.titleMetricsChart .subtitle {
+  font-size: 16px;
+}
+
+.titleMetricsChartBody {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr);
+  gap: 32px;
+  margin-top: 16px;
+}
+
+.titleMetricsChartLeft {
+  border-radius: 16px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  padding: 16px;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.titleMetricsChartRight {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.sidebarMetric {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebarMetricValue {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: #4c1d95;
+}
+
+.sidebarMetricLabel {
+  font-size: 13px;
+  color: #475569;
+  font-weight: 500;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Two-column (bullets + chart)
+   ────────────────────────────────────────────────────────────────────────── */
+
+.twoColumn {
+  padding: 64px 80px;
+  gap: 20px;
+  background: linear-gradient(180deg, #fff 0%, #fafafe 100%);
+}
+
+.twoColumn .title {
+  font-size: 44px;
+  letter-spacing: -0.015em;
+}
+
+.twoColumnBody {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(0, 1.4fr);
+  gap: 40px;
+}
+
+.twoColumnLeft {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+}
+
+.twoColumnBullets {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.twoColumnItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  font-size: 20px;
+  line-height: 1.4;
+  color: #1f2937;
+}
+
+.twoColumnBullet {
+  flex: 0 0 8px;
+  height: 8px;
+  width: 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #6f43ff, #c084fc);
+  margin-top: 10px;
+}
+
+.twoColumnRight {
+  border-radius: 16px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  padding: 16px;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Fallback (unknown layout)
+   ────────────────────────────────────────────────────────────────────────── */
+
+.fallback {
+  padding: 64px;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f7;
+  text-align: center;
+  color: #475569;
+}

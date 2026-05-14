@@ -37,11 +37,12 @@
    (deferred-tru "value must be a non-blank string between 1 and 254 characters.")))
 
 (def Slide
-  "A single slide: a stable client-generated id, a TipTap doc, and an optional layout hint."
+  "A single slide: `{id, layout, data}` where data is layout-specific (validated
+   by `metabase.slides.layouts` at agent time)."
   [:map
    [:id :string]
-   [:doc map?]
-   [:layout {:optional true} [:enum "default" "cover" "closing"]]])
+   [:layout :string]
+   [:data :any]])
 
 (def SlidesArray
   "A non-empty array of slides."
