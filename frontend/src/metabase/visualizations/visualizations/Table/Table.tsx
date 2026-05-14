@@ -96,7 +96,7 @@ export class Table extends Component<TableProps, TableState> {
   static isPivoted = _isPivoted;
 
   static settings = {
-    ...columnSettings({ hidden: true }),
+    ...columnSettings({ getHidden: () => true }),
     "table.pagination": {
       get section() {
         return t`Columns`;

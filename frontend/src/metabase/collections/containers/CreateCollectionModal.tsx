@@ -1,13 +1,11 @@
-import type { LocationDescriptor } from "history";
 import { useCallback } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useCreateCollectionMutation } from "metabase/api";
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
-import { Collections } from "metabase/entities/collections";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
-import { connect } from "metabase/redux";
-import type { State } from "metabase/redux/store";
+import { useDispatch } from "metabase/redux";
 import { Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Collection } from "metabase-types/api";
@@ -26,33 +24,18 @@ export interface CreateCollectionModalOwnProps extends Omit<
   shouldNavigateOnCreate?: boolean;
 }
 
-interface CreateCollectionModalDispatchProps {
-  onChangeLocation: (location: LocationDescriptor) => void;
-  handleCreateCollection: (
-    collection: CreateCollectionProperties,
-  ) => Promise<Collection>;
-}
-
-type Props = CreateCollectionModalOwnProps & CreateCollectionModalDispatchProps;
-
-const mapDispatchToProps = {
-  onChangeLocation: push,
-  handleCreateCollection: Collections.actions.create,
-};
-
 function CreateCollectionModal({
   onCreate,
-  onChangeLocation,
   onClose,
-  handleCreateCollection,
   shouldNavigateOnCreate = true,
   ...props
-}: Props) {
+}: CreateCollectionModalOwnProps) {
+  const dispatch = useDispatch();
+  const [createCollection] = useCreateCollectionMutation();
+
   const handleCreate = useCallback(
     async (values: CreateCollectionProperties) => {
-      const action = await handleCreateCollection(values);
-      const collection: Collection =
-        Collections.HACK_getObjectFromAction(action);
+      const collection = await createCollection(values).unwrap();
 
       if (typeof onCreate === "function") {
         onCreate(collection);
@@ -75,16 +58,10 @@ function CreateCollectionModal({
           });
         }
 
-        onChangeLocation(visitUrl);
+        dispatch(push(visitUrl));
       }
     },
-    [
-      handleCreateCollection,
-      onCreate,
-      onClose,
-      onChangeLocation,
-      shouldNavigateOnCreate,
-    ],
+    [createCollection, dispatch, onCreate, onClose, shouldNavigateOnCreate],
   );
 
   useEscapeToCloseModal(onClose);
@@ -109,12 +86,4 @@ function CreateCollectionModal({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect<
-  unknown,
-  CreateCollectionModalDispatchProps,
-  CreateCollectionModalOwnProps,
-  State
->(
-  null,
-  mapDispatchToProps,
-)(CreateCollectionModal);
+export default CreateCollectionModal;

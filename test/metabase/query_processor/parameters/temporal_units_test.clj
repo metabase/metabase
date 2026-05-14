@@ -1,4 +1,5 @@
 (ns ^:mb/driver-tests metabase.query-processor.parameters.temporal-units-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.parameters.temporal-units-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.field-visibility-test
   "Tests for behavior of fields with different visibility settings."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.field-visibility-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.field-visibility-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]

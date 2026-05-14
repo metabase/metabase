@@ -25,7 +25,7 @@ import { hasCyclicFlow } from "./utils/cycle-detection";
 const MAX_SANKEY_NODES = 150;
 
 export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
-  ...columnSettings({ hidden: true }),
+  ...columnSettings({ getHidden: () => true }),
   ...dimensionSetting("sankey.source", {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     section: t`Data`,

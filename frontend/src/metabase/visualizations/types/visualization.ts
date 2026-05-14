@@ -327,7 +327,6 @@ export type VisualizationSettingDefinition<
       : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => boolean;
-  hidden?: boolean;
   getHidden?: (
     object: T,
     settings: T extends DatasetColumn
@@ -394,11 +393,12 @@ export type CompleteVisualizationSettingDefinition<
   TProps extends Record<string, unknown> = Record<string, unknown>,
 > = Omit<
   VisualizationSettingDefinition<T, TValue, TProps>,
-  "getProps" | "getWrapperStyle"
+  "getProps" | "getWrapperStyle" | "getHidden"
 > & {
   id: string;
   style?: CSSProperties;
   props: Partial<TProps>;
+  hidden: boolean;
 };
 
 export type DatasetColumnSettingDefinition<

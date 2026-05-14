@@ -1,22 +1,37 @@
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { useToast } from "metabase/common/hooks/use-toast";
 import {
   useMetabotAgent,
+  useMetabotName,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 
 import { trackExplainChartClicked } from "../analytics";
 
-export const AIQuestionAnalysisButton = () => {
-  const { canUseMetabot } = useUserMetabotPermissions();
-  const { submitInput } = useMetabotAgent("omnibot");
+import { getMetabotNotConfiguredToastProps } from "./AIProviderConfigurationNotice";
 
-  if (!canUseMetabot) {
+export const AIQuestionAnalysisButton = () => {
+  const { hasMetabotAccess, canUseMetabot } = useUserMetabotPermissions();
+  const { submitInput } = useMetabotAgent("omnibot");
+  const metabotName = useMetabotName();
+  const [sendToast] = useToast();
+
+  if (!hasMetabotAccess) {
     return null;
   }
 
   const handleClick = () => {
+    if (!canUseMetabot) {
+      sendToast(
+        getMetabotNotConfiguredToastProps({
+          featureName: metabotName,
+        }),
+      );
+      return;
+    }
+
     trackExplainChartClicked();
     submitInput("Analyze this chart");
   };
