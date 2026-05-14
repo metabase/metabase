@@ -132,6 +132,9 @@ export function getTransformRunDurationMs(run: TransformRun): number | null {
 }
 
 export function formatTransformDuration(durationMs: number): string {
+  if (durationMs < 1000) {
+    return t`${durationMs}ms`;
+  }
   const totalSeconds = Math.round(durationMs / 1000);
   if (totalSeconds < 60) {
     return t`${totalSeconds}s`;
