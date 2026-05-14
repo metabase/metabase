@@ -28,7 +28,7 @@
 
 (defn- fetch-cards [card-ids]
   (when (seq card-ids)
-    (readable (t2/select [:model/Card :id :name :description :display :collection_id]
+    (readable (t2/select [:model/Card :id :name :description :display :collection_id :card_schema]
                          :id [:in card-ids] :archived false))))
 
 (defn- fetch-dashboards [dashboard-ids]
