@@ -13,6 +13,24 @@ const HEARTBEAT_INTERVAL_MS = 10_000;
 const RECONNECT_BASE_DELAY_MS = 1_000;
 const RECONNECT_MAX_DELAY_MS = 15_000;
 
+/**
+ * URL query-string keys that Metabase uses for non-filter UI state and that
+ * should NOT be reported as a viewer's filter selection. The dashboard
+ * front-end stores things like the active tab as `?tab=<slug>`; if we
+ * forwarded those they'd show up as confusing filter badges in other
+ * viewers' popovers.
+ */
+const RESERVED_URL_PARAMS = new Set<string>([
+  "tab",
+  "objectId",
+  "page",
+  "fullscreen",
+  "night",
+  "hide_parameters",
+  "hide_filters",
+  "refresh",
+]);
+
 /** Read the current URL's query string into a plain map. Repeated keys collapse to an array. */
 function readCurrentParameters(): PresenceParameters {
   if (typeof window === "undefined") {
@@ -21,6 +39,9 @@ function readCurrentParameters(): PresenceParameters {
   const params = new URLSearchParams(window.location.search);
   const out: PresenceParameters = {};
   for (const [key, value] of params.entries()) {
+    if (RESERVED_URL_PARAMS.has(key)) {
+      continue;
+    }
     const existing = out[key];
     if (existing == null) {
       out[key] = value;
