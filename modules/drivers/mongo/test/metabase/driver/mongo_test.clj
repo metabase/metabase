@@ -41,22 +41,10 @@
    :users
    :venues])
 
-;; in test_resources/ssl/mongo/ dir: openssl x509 -in metabase.crt -text -noout
-(def ^:private cert-subject "emailAddress=metabase@localhost,CN=localhost,OU=metabase,O=Metabase Inc.,L=San Francisco,ST=CA,C=US")
-
 ;; ## Tests for connection functions
 (deftest can-connect-test?
   (mt/test-driver :mongo
     (mt/dataset test-data (mt/db)
-      (try
-        (mongo.connection/with-mongo-client [c (mt/db)]
-          ;; allow connecting with the client cert
-          ;; https://www.mongodb.com/docs/manual/tutorial/configure-x509-client-authentication/#add-x-509-certificate-subject-as-a-user
-          (mongo.util/run-command (mongo.util/database c "$external")
-                                  {:createUser cert-subject
-                                   :roles [{:role "readWrite" :db "test-data"}]}))
-        ;; re-running createUser will cause failure on subsequent runs b/c user already exists
-        (catch com.mongodb.MongoCommandException _))
       (doseq [{:keys [details expected message]} [{:details  {:host   "localhost"
                                                               :port   3000
                                                               :dbname "bad-db-name"}
@@ -75,12 +63,6 @@
                                                               :dbname "test-data"}
                                                    :expected true
                                                    :message  "should use default port 27017 if not specified"}
-                                                  {:details  {:host   "localhost"
-                                                              :user   cert-subject
-                                                              :dbname "test-data"
-                                                              :additional-options "authMechanism=MONGODB-X509"}
-                                                   :expected true
-                                                   :message  "should use X509 authentication"}
                                                   {:details  {:host   "123.4.5.6"
                                                               :dbname "bad-db-name?connectTimeoutMS=50"}
                                                    :expected false}
@@ -99,6 +81,33 @@
           (is (= expected
                  (driver.u/can-connect-with-details? :mongo ssl-details))
               (str message)))))))
+
+;; openssl x509 -in test_resources/ssl/mongo/metabase.crt -inform PEM -subject -nameopt RFC2253
+(def cert-subject
+  "emailAddress=metabase@localhost,CN=localhost,OU=metabase,O=Metabase Inc.,L=San Francisco,ST=CA,C=US")
+
+(deftest can-connect?-with-x509
+  (if (tdm/ssl-required?)
+    (mt/test-driver :mongo
+      (mt/dataset test-data (mt/db)
+        (mongo.connection/with-mongo-client [c (mt/db)]
+          (try
+            ;; allow connecting with the client cert
+            ;; https://www.mongodb.com/docs/manual/tutorial/configure-x509-client-authentication/#add-x-509-certificate-subject-as-a-user
+            (mongo.util/run-command (mongo.util/database c "$external")
+                                    {:createUser cert-subject
+                                     :roles [{:role "readWrite" :db "test-data"}]})
+            (let [details {:host "localhost"
+                           :user cert-subject
+                           :dbname "test-data"
+                           :additional-options "authMechanism=MONGODB-X509"}
+                  ssl-details (tdm/conn-details details)]
+              (is (driver.u/can-connect-with-details? :mongo ssl-details)
+                  "should allow connecting with MONGODB-X509"))
+            (finally
+              (mongo.util/run-command (mongo.util/database c "$external")
+                                      {:dropUser cert-subject}))))))
+    (is true "Don't try X509 if mongo isn't configured with the necessary certs")))
 
 (deftest database-supports?-test
   (mt/test-driver :mongo
