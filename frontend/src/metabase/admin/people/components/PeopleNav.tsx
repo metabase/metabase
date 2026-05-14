@@ -20,8 +20,8 @@ export function PeopleNav() {
   const shouldNudge = useSelector(shouldNudgeToPro) as boolean;
   const isUsingTenants = useSetting("use-tenants");
   const showTenantsUpsell = useSelector(shouldShowTenantsUpsell);
-  const showTenantsNav = isUsingTenants || showTenantsUpsell;
-  const tenantUpsellGem = showTenantsUpsell ? <UpsellGem /> : undefined;
+  const showTenantsUpsellNav = showTenantsUpsell && !isUsingTenants;
+  const tenantUpsellGem = showTenantsUpsellNav ? <UpsellGem /> : undefined;
 
   return (
     <AdminNavWrapper justify="space-between" aria-label="people-nav">
@@ -38,7 +38,7 @@ export function PeopleNav() {
           label={isUsingTenants ? t`Internal groups` : t`Groups`}
           icon="group"
         />
-        {showTenantsNav && (
+        {isUsingTenants && (
           <>
             <Divider my="sm" />
             <PeopleNavItem
@@ -60,6 +60,18 @@ export function PeopleNav() {
               data-testid="nav-item-external-users"
               label={t`Tenant users`}
               icon="person"
+              rightSection={tenantUpsellGem}
+            />
+          </>
+        )}
+        {showTenantsUpsellNav && (
+          <>
+            <Divider my="sm" />
+            <PeopleNavItem
+              path="/admin/people/tenants"
+              data-testid="nav-item-tenants"
+              label={t`Tenants`}
+              icon="globe"
               rightSection={tenantUpsellGem}
             />
           </>

@@ -1,11 +1,7 @@
 import { IndexRoute, Route } from "react-router";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-import {
-  UpsellTenantGroups,
-  UpsellTenantUsers,
-  UpsellTenantsList,
-} from "metabase/admin/upsells/UpsellTenants";
+import { UpsellTenants } from "metabase/admin/upsells/UpsellTenants";
 import { createTenantsRouteGuard } from "metabase/admin/utils";
 import {
   createMockAdminAppState,
@@ -98,9 +94,9 @@ const setupTenantRoute = async (initialRoute: string) => {
   renderWithProviders(
     <Route path="/admin/people" component={AdminPeopleApp}>
       <Route path="tenants" component={createTenantsRouteGuard()}>
-        <Route path="groups" component={UpsellTenantGroups} />
-        <Route path="people" component={UpsellTenantUsers} />
-        <IndexRoute component={UpsellTenantsList} />
+        <Route path="groups" component={UpsellTenants} />
+        <Route path="people" component={UpsellTenants} />
+        <IndexRoute component={UpsellTenants} />
       </Route>
     </Route>,
     {
@@ -131,29 +127,15 @@ describe("AdminPeopleApp", () => {
       await assertNavLink("Tenant users", "/admin/people/tenants/people");
     });
 
-    it("should render tenant upsell links for embedding setup instances without tenants", async () => {
+    it("should render a tenant upsell link for embedding setup instances without tenants", async () => {
       await setup({ setupEmbeddingAutoenabled: true });
 
       const tenantsLink = await assertNavLink(
         "Tenants",
         "/admin/people/tenants",
       );
-      const tenantGroupsLink = await assertNavLink(
-        "Tenant groups",
-        "/admin/people/tenants/groups",
-      );
-      const tenantUsersLink = await assertNavLink(
-        "Tenant users",
-        "/admin/people/tenants/people",
-      );
 
       expect(within(tenantsLink).getByTestId("upsell-gem")).toBeInTheDocument();
-      expect(
-        within(tenantGroupsLink).getByTestId("upsell-gem"),
-      ).toBeInTheDocument();
-      expect(
-        within(tenantUsersLink).getByTestId("upsell-gem"),
-      ).toBeInTheDocument();
     });
 
     it("should render tenant upsell links when only the legacy embedding homepage signal is present", async () => {
@@ -170,13 +152,15 @@ describe("AdminPeopleApp", () => {
 
   describe("tenant upsell routes", () => {
     it.each([
-      ["/admin/people/tenants", "Manage customer-facing analytics at scale"],
-      ["/admin/people/tenants/groups", "Manage permissions for each tenant"],
-      ["/admin/people/tenants/people", "Manage users for each tenant"],
-    ])("should render the tenant upsell on %s", async (initialRoute, title) => {
+      "/admin/people/tenants",
+      "/admin/people/tenants/groups",
+      "/admin/people/tenants/people",
+    ])("should render the tenant upsell on %s", async (initialRoute) => {
       await setupTenantRoute(initialRoute);
 
-      expect(await screen.findByText(title)).toBeInTheDocument();
+      expect(
+        await screen.findByText("Manage customer-facing analytics at scale"),
+      ).toBeInTheDocument();
     });
   });
 
