@@ -582,9 +582,9 @@
   that would be executed. Pure: never runs anything, never inserts a
   request row. Validates column names against the table's fields and
   the warehouse driver."
-  [{:keys [id]}      :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
-   structured        :- IndexStructured]
+   {:keys [structured]} :- [:map [:structured IndexStructured]]]
   (api/check-superuser)
   (let [table (api/check-404 (t2/select-one :model/Table :id id))]
     (try

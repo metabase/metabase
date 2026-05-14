@@ -165,7 +165,7 @@ and returns the SQL that would be run.
 
 ```ts
 // request
-IndexStructured
+{ structured: IndexStructured }
 // response
 { statement: string, warnings: string[] }
 // errors: 400 { error: "unknown_column", detail: "..." }
