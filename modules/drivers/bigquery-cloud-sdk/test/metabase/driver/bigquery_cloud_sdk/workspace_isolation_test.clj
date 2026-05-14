@@ -315,7 +315,11 @@
             admin-client (bq.util/admin-client details)
             iam-client   (bq.util/iam-client details)
             run-id       (random-suffix)
-            in-dataset   (str "mb_iso_in_" run-id)
+            ;; Two SEPARATE input datasets: BQ's `dataViewer` is dataset-scoped,
+            ;; so a per-table read-denied assertion requires the tables live in
+            ;; different datasets.
+            in-a-dataset (str "mb_iso_in_a_" run-id)
+            in-b-dataset (str "mb_iso_in_b_" run-id)
             src-a-name   (str "ws_iso_src_a_" run-id)
             src-b-name   (str "ws_iso_src_b_" run-id)
             workspace    {:id   (Long/parseLong run-id 16)
@@ -329,36 +333,38 @@
                            (mapv (fn [^FieldValueList row] {:id (.getLongValue (.get row "id"))})
                                  (.iterateAll ^TableResult (run-sql c sql))))]
         (try
-          (bigquery/create-dataset! admin-client project-id in-dataset)
-          (run-sql admin-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual in-dataset src-a-name)))
-          (run-sql admin-client (format "INSERT INTO %s (id, v) VALUES (1, 'a')" (qual in-dataset src-a-name)))
-          (run-sql admin-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual in-dataset src-b-name)))
-          (run-sql admin-client (format "INSERT INTO %s (id, v) VALUES (1, 'b')" (qual in-dataset src-b-name)))
+          (bigquery/create-dataset! admin-client project-id in-a-dataset)
+          (bigquery/create-dataset! admin-client project-id in-b-dataset)
+          (run-sql admin-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual in-a-dataset src-a-name)))
+          (run-sql admin-client (format "INSERT INTO %s (id, v) VALUES (1, 'a')" (qual in-a-dataset src-a-name)))
+          (run-sql admin-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual in-b-dataset src-b-name)))
+          (run-sql admin-client (format "INSERT INTO %s (id, v) VALUES (1, 'b')" (qual in-b-dataset src-b-name)))
           (let [init-result     (driver/init-workspace-isolation! :bigquery-cloud-sdk database workspace)
                 ws-with-details (merge workspace init-result)
                 _               (reset! ws-state ws-with-details)
                 ws-sa-email     (-> ws-with-details :database_details :impersonate-service-account)
                 user-client     (bq.util/impersonated-client admin-creds ws-sa-email project-id)]
-            ;; First grant: only A.
+            ;; First grant: only dataset A.
             (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-with-details
-                                                 [in-dataset])
+                                                 [in-a-dataset])
             (testing "after first grant, A is readable and B is not"
-              (is (= [{:id 1}] (select-id user-client (format "SELECT id FROM %s" (qual in-dataset src-a-name)))))
-              (bq.util/expect-write-denied! user-client
-                                            (format "SELECT id FROM %s" (qual in-dataset src-b-name))
-                                            :select-b-before-grant))
-            ;; Second grant: only B. The additive contract means A's grant must
-            ;; still be in effect afterward.
+              (is (= [{:id 1}] (select-id user-client (format "SELECT id FROM %s" (qual in-a-dataset src-a-name)))))
+              (bq.util/expect-denied! user-client
+                                      (format "SELECT id FROM %s" (qual in-b-dataset src-b-name))
+                                      :select-b-before-grant))
+            ;; Second grant: only dataset B. The additive contract means A's
+            ;; grant must still be in effect afterward.
             (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-with-details
-                                                 [in-dataset])
+                                                 [in-b-dataset])
             (testing "after second grant, both A and B are readable (A's binding accumulated)"
-              (is (= [{:id 1}] (select-id user-client (format "SELECT id FROM %s" (qual in-dataset src-a-name)))))
-              (is (= [{:id 1}] (select-id user-client (format "SELECT id FROM %s" (qual in-dataset src-b-name)))))))
+              (is (= [{:id 1}] (select-id user-client (format "SELECT id FROM %s" (qual in-a-dataset src-a-name)))))
+              (is (= [{:id 1}] (select-id user-client (format "SELECT id FROM %s" (qual in-b-dataset src-b-name)))))))
           (finally
             (try (driver/destroy-workspace-isolation! :bigquery-cloud-sdk database @ws-state)
                  (catch Throwable t
                    (log/warn t "destroy-workspace-isolation! failed for :bigquery-cloud-sdk during grant-accumulation test cleanup")))
-            (try (bigquery/drop-dataset! admin-client project-id in-dataset) (catch Throwable _ nil))
+            (try (bigquery/drop-dataset! admin-client project-id in-a-dataset) (catch Throwable _ nil))
+            (try (bigquery/drop-dataset! admin-client project-id in-b-dataset) (catch Throwable _ nil))
             (try (bq.util/delete-sa-direct! iam-client project-id workspace) (catch Throwable _ nil))
             (u/ignore-exceptions (.close ^IAMClient iam-client))))))))
 
