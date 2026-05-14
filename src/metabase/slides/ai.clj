@@ -121,11 +121,14 @@
 
 (defn- card-embed
   "TipTap node that renders an interactive embedded Metabase card.
-   Mirrors the schema produced by the Documents editor."
+   The Documents editor always wraps cardEmbed in a resizeNode so it has a
+   pixel height to draw into — we have to do the same, or the chart will
+   collapse to 0px inside the slide's flex column."
   [card-id]
-  {:type "cardEmbed"
-   :attrs {:id card-id
-           :name nil}})
+  {:type "resizeNode"
+   :attrs {:height 420 :minHeight 200}
+   :content [{:type "cardEmbed"
+              :attrs {:id card-id :name nil}}]})
 
 (defn- slide-doc
   "Wrap a vector of TipTap block nodes in a `doc` node."
@@ -204,18 +207,22 @@
 
 ;;; ----------------------------------------------- Prompt construction --------------------------------------------
 
+(defn- non-blank [x]
+  (let [s (some-> x clojure.core/name)]
+    (when-not (str/blank? s) s)))
+
 (defn- format-card-line [{:keys [id name description display]}]
   (format "  %d — %s%s%s"
           id
-          name
-          (if-not (str/blank? display) (str " [" display "]") "")
-          (if-not (str/blank? description) (str " — " description) "")))
+          (or name "")
+          (if-let [d (non-blank display)] (str " [" d "]") "")
+          (if-let [d (non-blank description)] (str " — " d) "")))
 
 (defn- format-dashboard-line [{:keys [id name description]}]
   (format "  %d — %s%s"
           id
-          name
-          (if-not (str/blank? description) (str " — " description) "")))
+          (or name "")
+          (if-let [d (non-blank description)] (str " — " d) "")))
 
 (def ^:private system-prompt
   "You are an editor designing a short, punchy slide deck for a business audience reading inside Metabase, a BI tool.
