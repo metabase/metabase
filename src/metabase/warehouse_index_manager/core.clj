@@ -20,11 +20,16 @@
   nil when the table or its database is missing."
   [table]
   (when-let [database (and (:db_id table) (t2/select-one :model/Database :id (:db_id table)))]
-    (let [driver-kw (some-> database :engine keyword)]
-      {:table     table
-       :database  database
-       :driver-kw driver-kw
-       :supported (driver-supported? driver-kw)})))
+    (let [driver-kw  (some-> database :engine keyword)
+          supported  (driver-supported? driver-kw)
+          concurrent (boolean (and supported
+                                   (driver/database-supports?
+                                    driver-kw :index/create-concurrently database)))]
+      {:table       table
+       :database    database
+       :driver-kw   driver-kw
+       :supported   supported
+       :concurrent? concurrent})))
 
 (defn- request-map
   "Strip an `IndexRequest` row down to the FE-shaped subset embedded in
@@ -65,19 +70,20 @@
   Always returns a 200-shaped body; non-Postgres tables surface as
   `:indexes []` with `:driver_supported false`."
   [table can-manage?]
-  (let [{:keys [database driver-kw supported]} (table-meta table)
-        rows     (when supported
-                   (introspection/fetch-indexes
-                    driver-kw database [(:schema table) (:name table)]))
-        lookup   (requests-by-name (:id table))
-        indexes  (mapv (partial introspection-row->index lookup) (or rows []))]
-    {:table   {:id               (:id table)
-               :schema           (:schema table)
-               :name             (:name table)
-               :transform_id     (:transform_id table)
-               :driver           (some-> driver-kw name)
-               :driver_supported supported
-               :can_manage       (boolean (and supported (:transform_id table) can-manage?))}
+  (let [{:keys [database driver-kw supported concurrent?]} (table-meta table)
+        rows    (when supported
+                  (introspection/fetch-indexes
+                   driver-kw database [(:schema table) (:name table)]))
+        lookup  (requests-by-name (:id table))
+        indexes (mapv (partial introspection-row->index lookup) (or rows []))]
+    {:table   {:id                  (:id table)
+               :schema              (:schema table)
+               :name                (:name table)
+               :transform_id        (:transform_id table)
+               :driver              (some-> driver-kw name)
+               :driver_supported    supported
+               :supports_concurrent concurrent?
+               :can_manage          (boolean (and supported (:transform_id table) can-manage?))}
      :indexes indexes}))
 
 (defn preview

@@ -541,3 +541,56 @@
       (do
         (sync-schema-async! table api/*current-user-id*)
         {:status :ok}))))
+
+;;; -------------------------------------------------------------------------
+;;; Index manager — see metabase.warehouse-index-manager
+;;;
+;;; Mounted under `/api/table/:id/indexes/...`. All endpoints are
+;;; superuser-only. The mutating endpoints (POST/PUT/DELETE — in BE-3)
+;;; additionally require the table to be transform-managed.
+
+(def ^:private IndexColumn
+  [:map
+   [:name      :string]
+   [:direction {:optional true} [:enum {:decode/string keyword} :asc :desc]]
+   [:nulls     {:optional true} [:enum {:decode/string keyword} :first :last]]])
+
+(def ^:private IndexStructured
+  [:map
+   [:index_name    :string]
+   [:columns       [:vector {:min 1} IndexColumn]]
+   [:include       {:optional true} [:vector :string]]
+   [:unique        {:optional true} :boolean]
+   [:concurrent    {:optional true} :boolean]
+   [:if_not_exists {:optional true} :boolean]
+   [:method        {:optional true}
+    [:enum {:decode/string keyword} :btree :hash :gin :gist :brin :spgist]]])
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/:id/indexes"
+  "List every index on this table. Joins introspected indexes with the
+  `IndexRequest` rows that track Metabase-managed indexes; rows without
+  a matching request render as `managed_by_metabase: false` and the FE
+  hides write actions for them."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (let [table (api/check-404 (t2/select-one :model/Table :id id))]
+    (index-manager/list-indexes table api/*is-superuser?*)))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/:id/indexes/preview"
+  "Render a structured index definition into the CREATE INDEX statement
+  that would be executed. Pure: never runs anything, never inserts a
+  request row. Validates column names against the table's fields and
+  the warehouse driver."
+  [{:keys [id]}      :- [:map [:id ms/PositiveInt]]
+   _query
+   structured        :- IndexStructured]
+  (api/check-superuser)
+  (let [table (api/check-404 (t2/select-one :model/Table :id id))]
+    (try
+      (index-manager/preview table structured)
+      (catch clojure.lang.ExceptionInfo e
+        (let [{:keys [reason] :as data} (ex-data e)]
+          (throw (ex-info (ex-message e)
+                          (assoc data :status-code (if (= reason :driver-not-supported) 400 400)))))))))
