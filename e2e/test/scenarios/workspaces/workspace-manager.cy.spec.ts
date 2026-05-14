@@ -1,16 +1,14 @@
 import path from "path";
 
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { H } = cy;
 
-const POSTGRES_DB_NAME = "Writable Postgres12";
-const MYSQL_DB_NAME = "Writable MySQL8";
-
-const PG_SCHEMA_A = "Domestic";
-const PG_SCHEMA_B = "Wild";
-
 const CONFIG_FILENAME = "config.yml";
+
+const CREATE_QUERIES_PERMISSION_INDEX = 1;
+const WORKSPACES_PERMISSION_INDEX = 6;
 
 describe("scenarios > workspaces > workspace manager", () => {
   describe("navigation", () => {
@@ -53,6 +51,11 @@ describe("scenarios > workspaces > workspace manager", () => {
   });
 
   describe("postgres (with schemas)", () => {
+    const POSTGRES_DB_NAME = "Writable Postgres12";
+    const PG_SCHEMA_A = "Domestic";
+    const PG_SCHEMA_B = "Wild";
+    const workspaceName = "PG Workspace";
+
     beforeEach(() => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
@@ -62,9 +65,18 @@ describe("scenarios > workspaces > workspace manager", () => {
       cy.deleteDownloadsFolder();
     });
 
-    it("creates, edits, downloads config, and deletes a workspace with a Postgres database", () => {
-      const workspaceName = "PG Workspace";
+    it("should create, edit, download config, and delete a workspace as admin", () => {
+      runPostgresWorkflow();
+    });
 
+    it("should create, edit, download config, and delete a workspace as analyst after granting workspace permissions", () => {
+      H.setUserAsAnalyst(NORMAL_USER_ID);
+      grantWorkspacesPermissions();
+      cy.signInAsNormalUser();
+      runPostgresWorkflow();
+    });
+
+    function runPostgresWorkflow() {
       cy.log("create the workspace");
       H.WorkspaceListPage.visit();
       H.WorkspaceListPage.newButton().click();
@@ -118,10 +130,13 @@ describe("scenarios > workspaces > workspace manager", () => {
       H.DeleteWorkspaceModal.confirmButton().click();
       H.WorkspaceListPage.get().should("be.visible");
       H.WorkspaceListPage.workspace(workspaceName).should("not.exist");
-    });
+    }
   });
 
   describe("mysql (no schemas)", () => {
+    const MYSQL_DB_NAME = "Writable MySQL8";
+    const workspaceName = "MySQL Workspace";
+
     beforeEach(() => {
       H.restore("mysql-writable");
       cy.signInAsAdmin();
@@ -129,9 +144,11 @@ describe("scenarios > workspaces > workspace manager", () => {
       cy.deleteDownloadsFolder();
     });
 
-    it("creates, downloads config, and deletes a workspace with a MySQL database", () => {
-      const workspaceName = "MySQL Workspace";
+    it("creates, downloads config, and deletes a workspace as admin", () => {
+      runMysqlWorkflow();
+    });
 
+    function runMysqlWorkflow() {
       cy.log("create the workspace");
       H.WorkspaceListPage.visit();
       H.WorkspaceListPage.newButton().click();
@@ -167,9 +184,25 @@ describe("scenarios > workspaces > workspace manager", () => {
       H.DeleteWorkspaceModal.confirmButton().click();
       H.WorkspaceListPage.get().should("be.visible");
       H.WorkspaceListPage.workspace(workspaceName).should("not.exist");
-    });
+    }
   });
 });
+
+function grantWorkspacesPermissions() {
+  cy.intercept("PUT", "/api/permissions/graph").as("savePermissions");
+  cy.visit(`/admin/permissions/data/database/${WRITABLE_DB_ID}`);
+  H.modifyPermission(
+    "All Users",
+    CREATE_QUERIES_PERMISSION_INDEX,
+    "Query builder and native",
+  );
+  H.modifyPermission("All Users", WORKSPACES_PERMISSION_INDEX, "Yes");
+  cy.button("Save changes").click();
+  H.modal().within(() => {
+    cy.button("Yes").click();
+  });
+  cy.wait("@savePermissions");
+}
 
 function downloadConfig() {
   H.WorkspaceSetupSection.downloadConfigButton().click();
