@@ -220,7 +220,7 @@ body::before {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 40px;
+  height: 36px;
   padding: 0 16px 0 13px;
   box-sizing: border-box;
   border-radius: 6px;
