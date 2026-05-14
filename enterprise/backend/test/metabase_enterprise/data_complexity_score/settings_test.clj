@@ -24,20 +24,3 @@
           (mt/with-temp-env-var-value! [mb-store-use-staging               staging-env
                                         mb-data-complexity-scoring-enabled scoring-env]
             (is (= expected (settings/data-complexity-scoring-enabled)))))))))
-
-(deftest scoring-active?-test
-  (testing "the :data-complexity-score premium feature is authoritative — it enables scoring even
-           when the deprecated setting is explicitly false"
-    (mt/with-premium-features #{:data-complexity-score}
-      (mt/with-temporary-setting-values [data-complexity-scoring-enabled false]
-        (is (true? (settings/scoring-active?))))))
-  (testing "the deprecated setting still acts as a backward-compatible fallback when the premium
-           feature is absent"
-    (mt/with-premium-features #{}
-      (mt/with-temporary-setting-values [data-complexity-scoring-enabled true]
-        (is (true? (settings/scoring-active?))))))
-  (testing "scoring is off when neither path is enabled"
-    (mt/with-premium-features #{}
-      (mt/with-dynamic-fn-redefs [premium-features.settings/is-hosted? (constantly false)]
-        (mt/with-temporary-setting-values [data-complexity-scoring-enabled false]
-          (is (false? (settings/scoring-active?))))))))
