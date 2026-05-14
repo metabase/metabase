@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
-import { ActionIcon, Box, Icon, Loader, Textarea, Tooltip } from "metabase/ui";
+import { CodeEditor } from "metabase/common/components/CodeEditor";
+import { ActionIcon, Box, Icon, Loader, Tooltip } from "metabase/ui";
 
 import S from "./SqlPreview.module.css";
 
@@ -21,29 +22,38 @@ export function SqlPreview({
 }: Props) {
   if (isEditing) {
     return (
-      <Textarea
-        autosize
-        minRows={3}
-        value={statement ?? ""}
-        classNames={{ input: S.editor }}
-        placeholder={t`CREATE INDEX ...`}
-        aria-label={t`Index SQL statement`}
-        onChange={(event) => onChange(event.currentTarget.value)}
-      />
+      <Box className={S.editorWrapper}>
+        <CodeEditor
+          language="sql"
+          lineNumbers={false}
+          value={statement ?? ""}
+          onChange={onChange}
+          data-testid="sql-preview-editor"
+        />
+      </Box>
     );
   }
 
+  const hasContent = Boolean(statement?.trim());
+
   return (
     <Box className={S.previewWrapper}>
-      <Box className={S.preview} data-testid="sql-preview">
-        {statement?.trim() ? (
-          statement
-        ) : (
+      {hasContent ? (
+        <Box className={S.preview} data-testid="sql-preview">
+          <CodeEditor
+            language="sql"
+            lineNumbers={false}
+            readOnly
+            value={statement ?? ""}
+          />
+        </Box>
+      ) : (
+        <Box className={S.placeholderBox} data-testid="sql-preview">
           <span className={S.placeholder}>
             {t`Add columns to see the SQL preview.`}
           </span>
-        )}
-      </Box>
+        </Box>
+      )}
       <Box className={S.editButton}>
         {isLoading ? (
           <Loader size="xs" />

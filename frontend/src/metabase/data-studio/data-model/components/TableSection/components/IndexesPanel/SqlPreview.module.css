@@ -1,28 +1,43 @@
+.previewWrapper {
+  position: relative;
+}
+
 .preview {
-  padding: var(--mantine-spacing-sm);
   border-radius: var(--mantine-radius-md);
   background-color: var(--mb-color-background-secondary);
-  font-family: var(--mb-default-monospace-font-family, monospace);
-  font-size: 0.8125rem;
-  white-space: pre-wrap;
-  word-break: break-all;
+  overflow: hidden;
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
   min-height: 4rem;
 }
 
-.previewWrapper {
-  position: relative;
+.preview :global(.cm-editor) {
+  background-color: transparent;
+}
+
+.placeholderBox {
+  padding: var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mb-color-background-secondary);
+  min-height: 4rem;
+  display: flex;
+  align-items: center;
+}
+
+.editorWrapper {
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  overflow: hidden;
 }
 
 .editButton {
   position: absolute;
   top: var(--mantine-spacing-xs);
   right: var(--mantine-spacing-xs);
-}
-
-.editor {
-  font-family: var(--mb-default-monospace-font-family, monospace);
+  z-index: 1;
 }
 
 .placeholder {
   color: var(--mb-color-text-secondary);
+  font-family: var(--mb-default-monospace-font-family, monospace);
+  font-size: 0.8125rem;
 }
