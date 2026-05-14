@@ -7,11 +7,12 @@ import { useGetExplorationQueryResultQuery } from "metabase/api/exploration";
 import { createSeriesCard } from "metabase/metrics/utils/series";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Group, Icon, Stack, Text } from "metabase/ui";
+import { Box, Ellipsified, Group, Icon, Stack, Text } from "metabase/ui";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { isCartesianChart } from "metabase/visualizations";
 import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { LEGEND_ITEM_FONT_SIZE } from "metabase/visualizations/components/legend/LegendItem.styled";
 import * as Lib from "metabase-lib";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -289,7 +290,12 @@ function ExplorationGroupVisualizationChart({
         // wrap-flex legend at the top.
         <Stack gap="md" flex={1} mih={0} style={{ overflowY: "auto" }}>
           {queries.length > 1 && (
-            <Group gap="lg" wrap="wrap" role="list" aria-label={t`Legend`}>
+            <Group
+              gap="0.75rem"
+              wrap="nowrap"
+              role="list"
+              aria-label={t`Legend`}
+            >
               {series.map((s) => {
                 const color = queryColors[s.card.id];
                 return (
@@ -299,17 +305,25 @@ function ExplorationGroupVisualizationChart({
                     align="center"
                     wrap="nowrap"
                     role="listitem"
+                    p="0.125rem"
+                    miw={0}
                   >
                     <Box
                       aria-hidden
-                      w="0.625rem"
-                      h="0.625rem"
+                      w="0.5rem"
+                      h="0.5rem"
                       bdrs="50%"
+                      flex="none"
                       style={{ background: color }}
                     />
-                    <Text fw="bold" size="sm">
+                    <Ellipsified
+                      fw="bold"
+                      size="sm"
+                      fz={LEGEND_ITEM_FONT_SIZE}
+                      lh="normal"
+                    >
                       {s.card.name}
-                    </Text>
+                    </Ellipsified>
                   </Group>
                 );
               })}

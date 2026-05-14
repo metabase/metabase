@@ -128,7 +128,7 @@ export function ExplorationDocument({
         <Stack
           flex={1}
           w="100%"
-          maw="59.25rem" // Editor max-width is 56.25 rem, plus 3 for padding
+          maw="70rem"
           bg="background-primary"
           bd="1px solid border"
           bdrs="md"
