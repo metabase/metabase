@@ -275,10 +275,14 @@
             chart-stats  (interestingness/compute-chart-stats chart-cfg {:deep? true})
             curation-call (atom 0)
             analysis-call (atom 0)]
+        ;; Simulate what the runner writes: result_data + chart_stats plus the
+        ;; precomputed display / visualization_settings derived from chart-config.
         (t2/insert! :model/ExplorationQueryResult
-                    {:exploration_query_id (:id query)
-                     :result_data          (serialize-result qp-result)
-                     :chart_stats          chart-stats})
+                    {:exploration_query_id   (:id query)
+                     :result_data            (serialize-result qp-result)
+                     :chart_stats            chart-stats
+                     :display                (or (some-> (:display_type chart-cfg) keyword) :table)
+                     :visualization_settings {}})
         (with-redefs [metabot.settings/llm-metabot-configured? (constantly true)
                       metabot.self/call-llm-structured-with-trace
                       (fn [_model messages _schema _temp _max-tokens _opts]
@@ -308,14 +312,7 @@
               (is (some? doc) "Automatic Insights document was created")
               ;; No Card is created — the staticCardEmbed reads from the cached result blob.
               (let [cards (t2/select :model/Card :document_id (:id doc))]
-                (is (= 0 (count cards)) "no Card is materialized for staticCardEmbed"))
-              ;; Viz config is persisted onto the exploration_query_result row.
-              (let [row (t2/select-one [:model/ExplorationQueryResult :display :visualization_settings]
-                                       :exploration_query_id (:id query))]
-                (is (some? (:display row))
-                    "display was written to exploration_query_result")
-                (is (map? (:visualization_settings row))
-                    "visualization_settings was written to exploration_query_result")))))))))
+                (is (= 0 (count cards)) "no Card is materialized for staticCardEmbed")))))))))
 
 (deftest append-reasoning-section-paragraph-split-test
   (testing "Reasoning blocks are split on blank lines into separate paragraphs"

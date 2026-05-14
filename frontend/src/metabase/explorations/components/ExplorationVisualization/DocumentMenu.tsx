@@ -10,18 +10,14 @@ import { useToast } from "metabase/common/hooks";
 import { ActionIcon, Anchor, Icon, Menu, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
-  CardDisplayType,
   DocumentId,
   ExplorationQuery,
   ExplorationThread,
-  VisualizationSettings,
 } from "metabase-types/api";
 
 interface DocumentMenuProps {
   explorationQuery: ExplorationQuery;
   explorationThread: ExplorationThread;
-  display?: CardDisplayType;
-  vizSettings?: VisualizationSettings;
 }
 
 import { getDocumentsForDocumentMenu } from "./utils";
@@ -29,8 +25,6 @@ import { getDocumentsForDocumentMenu } from "./utils";
 export function DocumentMenu({
   explorationQuery,
   explorationThread,
-  display,
-  vizSettings,
 }: DocumentMenuProps) {
   const [appendChartToDocument] = useAppendChartToDocumentMutation();
   const [createExplorationDocument] = useCreateExplorationDocumentMutation();
@@ -42,8 +36,6 @@ export function DocumentMenu({
         threadId: explorationThread.id,
         documentId,
         exploration_query_id: explorationQuery.id,
-        display,
-        visualization_settings: vizSettings,
       });
       if (error) {
         sendToast({
@@ -71,14 +63,7 @@ export function DocumentMenu({
         });
       }
     },
-    [
-      appendChartToDocument,
-      sendToast,
-      explorationThread,
-      explorationQuery.id,
-      display,
-      vizSettings,
-    ],
+    [appendChartToDocument, sendToast, explorationThread, explorationQuery.id],
   );
 
   const handleCreateDocument = useCallback(async () => {

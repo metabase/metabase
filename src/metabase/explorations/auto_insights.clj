@@ -451,17 +451,17 @@
    :phase-2-llm-config phase2/llm-config})
 
 (defn- write-document!
-  "Persist viz config for every `staticCardEmbed` in `pm-doc` (one row write
-  per unique `exploration_query_id`) and update the placeholder `doc`
-  (created up-front by [[create-placeholder-doc!]]) with the final content.
-  Returns `{:document-id ... :rendered-pm-doc ...}`."
-  [{:keys [doc pm-doc eq-by-id creator-id]}]
+  "Update the placeholder `doc` (created up-front by [[create-placeholder-doc!]])
+  with the final content. The `staticCardEmbed` nodes the LLM emitted reference
+  `exploration_query_id`s whose viz config is already on the matching
+  `exploration_query_result` rows — written once at result-write time by the
+  query runner. Returns `{:document-id ... :rendered-pm-doc ...}`."
+  [{:keys [doc pm-doc creator-id]}]
   (request/with-current-user creator-id
-    (let [body (phase2/materialize-chart-configs! pm-doc eq-by-id)]
-      (t2/update! :model/Document (:id doc)
-                  {:document     body
-                   :content_type prose-mirror/prose-mirror-content-type})
-      {:document-id (:id doc) :rendered-pm-doc body})))
+    (t2/update! :model/Document (:id doc)
+                {:document     pm-doc
+                 :content_type prose-mirror/prose-mirror-content-type})
+    {:document-id (:id doc) :rendered-pm-doc pm-doc}))
 
 (defn generate-auto-insights!
   "Two-phase generation of the `Automatic Insights` document for `thread-id`.
@@ -564,7 +564,6 @@
                         {:keys [document-id rendered-pm-doc]}
                         (write-document! {:doc        placeholder-doc
                                           :pm-doc     err-pm+
-                                          :eq-by-id   {}
                                           :creator-id creator-id})]
                     (save-transcript! thread-id
                                       (assoc preamble
@@ -609,13 +608,7 @@
                                        :outcome      (:outcome p2)
                                        :final-pm-doc (:value p2)
                                        :final-errors (:final-errors p2)}
-                        p2-reasonings (attempt-reasonings (:attempts p2))
-                        ;; eq-by-id only needs the top-tier ids (awareness can't be embedded — model is told not to cite them)
-                        eq-by-id (into {}
-                                       (map (fn [q]
-                                              [(:id q) (assoc q :computed-display
-                                                              (:display-type (get prepped-by-id (:id q))))]))
-                                       (filter #((set top_tier) (:id %)) pool-queries))]
+                        p2-reasonings (attempt-reasonings (:attempts p2))]
                     (if (= :failed (:outcome p2))
                       ;; Phase 2 fatal — error doc with phase 1 context preserved.
                       (let [err-pm  (error-doc {:phase        :phase-2
@@ -631,7 +624,6 @@
                             {:keys [document-id rendered-pm-doc]}
                             (write-document! {:doc        placeholder-doc
                                               :pm-doc     err-pm+
-                                              :eq-by-id   {}
                                               :creator-id creator-id})]
                         (save-transcript! thread-id
                                           (assoc preamble
@@ -655,7 +647,6 @@
                             {:keys [document-id rendered-pm-doc]}
                             (write-document! {:doc        placeholder-doc
                                               :pm-doc     pm-doc+
-                                              :eq-by-id   eq-by-id
                                               :creator-id creator-id})]
                         (save-transcript! thread-id
                                           (assoc preamble

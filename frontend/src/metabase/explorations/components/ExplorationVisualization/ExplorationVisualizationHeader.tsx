@@ -1,13 +1,9 @@
-import { useMemo } from "react";
-
 import { Group, Text } from "metabase/ui";
 import type {
-  CardDisplayType,
   ExplorationQuery,
   ExplorationThread,
   Timeline,
   TimelineId,
-  VisualizationSettings,
 } from "metabase-types/api";
 
 import { DocumentMenu } from "./DocumentMenu";
@@ -23,7 +19,6 @@ interface ExplorationVisualizationHeaderProps {
   onSelectTimelineId?: (timelineId: TimelineId | null) => void;
   showTimelineDropdown?: boolean;
   showDocumentMenu?: boolean;
-  display?: CardDisplayType;
   /**
    * When provided alongside `showDocumentMenu`, the header renders a
    * `GroupDocumentMenu` (chart-picker → document-picker) instead of the
@@ -41,7 +36,6 @@ export function ExplorationVisualizationHeader({
   onSelectTimelineId,
   showTimelineDropdown,
   showDocumentMenu,
-  display,
   groupQueries,
   interestingTimelineIds,
 }: ExplorationVisualizationHeaderProps) {
@@ -55,15 +49,6 @@ export function ExplorationVisualizationHeader({
     !showGroupDocumentMenu &&
     explorationThread &&
     groupQueries?.length === 1;
-
-  const vizSettings: VisualizationSettings = useMemo(() => {
-    if (selectedTimelineId) {
-      return {
-        "timeline.selected_timeline_ids": [selectedTimelineId],
-      };
-    }
-    return {};
-  }, [selectedTimelineId]);
 
   return (
     <Group h="2rem" justify="space-between">
@@ -87,16 +72,12 @@ export function ExplorationVisualizationHeader({
           <GroupDocumentMenu
             queries={groupQueries}
             explorationThread={explorationThread}
-            display={display}
-            vizSettings={vizSettings}
           />
         )}
         {showSingleDocumentMenu && (
           <DocumentMenu
             explorationQuery={groupQueries?.[0]}
             explorationThread={explorationThread}
-            display={display}
-            vizSettings={vizSettings}
           />
         )}
       </Group>

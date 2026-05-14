@@ -27,10 +27,7 @@ import type {
   TimelineId,
   VisualizationSettings,
 } from "metabase-types/api";
-import {
-  isCardDisplayType,
-  isSettledExplorationQueryStatus,
-} from "metabase-types/api";
+import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
 import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
 import S from "./ExplorationVisualization.module.css";
@@ -271,7 +268,6 @@ function ExplorationGroupVisualizationChart({
         showTimelineDropdown={showTimelineDropdown}
         showDocumentMenu
         groupQueries={queries}
-        display={isCardDisplayType(display) ? display : undefined}
         interestingTimelineIds={interestingTimelineIds}
       />
       {isCartesian ? (

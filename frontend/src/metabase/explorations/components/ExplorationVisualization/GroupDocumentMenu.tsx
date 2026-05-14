@@ -10,11 +10,9 @@ import { useToast } from "metabase/common/hooks";
 import { ActionIcon, Anchor, Icon, Menu, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
-  CardDisplayType,
   DocumentId,
   ExplorationQuery,
   ExplorationThread,
-  VisualizationSettings,
 } from "metabase-types/api";
 
 import { getDocumentsForDocumentMenu } from "./utils";
@@ -22,8 +20,6 @@ import { getDocumentsForDocumentMenu } from "./utils";
 interface GroupDocumentMenuProps {
   queries: ExplorationQuery[];
   explorationThread: ExplorationThread;
-  display?: CardDisplayType;
-  vizSettings?: VisualizationSettings;
 }
 
 /**
@@ -35,8 +31,6 @@ interface GroupDocumentMenuProps {
 export function GroupDocumentMenu({
   queries,
   explorationThread,
-  display,
-  vizSettings,
 }: GroupDocumentMenuProps) {
   const [opened, setOpened] = useState(false);
   const [selectedQuery, setSelectedQuery] = useState<ExplorationQuery | null>(
@@ -70,8 +64,6 @@ export function GroupDocumentMenu({
         threadId: explorationThread.id,
         documentId,
         exploration_query_id: query.id,
-        display,
-        visualization_settings: vizSettings,
       });
       if (error) {
         sendToast({
@@ -99,14 +91,7 @@ export function GroupDocumentMenu({
         icon: "document",
       });
     },
-    [
-      appendChartToDocument,
-      sendToast,
-      explorationThread,
-      handleClose,
-      display,
-      vizSettings,
-    ],
+    [appendChartToDocument, sendToast, explorationThread, handleClose],
   );
 
   const handleCreateAndAppend = useCallback(

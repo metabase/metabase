@@ -5,10 +5,9 @@
   the user sees. This namespace holds the phase-2 LLM config, schema,
   slim/full chart block renderers, prompt builder, validation (including the
   per-node validator for the `staticCardEmbed` node type), the repair-prompt
-  builder, the `run-analysis!` entry point, and the chart-config materializer
-  that persists the chosen `display` + `visualization_settings` onto each
-  referenced `exploration_query_result` row so the frontend can render the
-  embed from the cached result blob (no live Card created).
+  builder, and the `run-analysis!` entry point. Display + visualization_settings
+  live on the `exploration_query_result` row, written once by the query runner —
+  Phase 2 doesn't touch viz config and the doc keeps the LLM-emitted nodes verbatim.
 
   Common chart-rendering and LLM-call infrastructure lives in
   [[metabase.explorations.auto-insights.common]]."
@@ -18,9 +17,7 @@
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.explorations.auto-insights.common :as common]
    [metabase.explorations.auto-insights.prompts :as prompts]
-   [metabase.interestingness.core :as interestingness]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.interestingness.core :as interestingness]))
 
 (set! *warn-on-reflection* true)
 
@@ -381,68 +378,3 @@
                            :validate-fn    #(validate-doc % categorical-chart-ids)
                            :repair-builder repair-prompt}))
 
-;;; ----- chart config persistence -----
-;;;
-;;; The frontend renders each `staticCardEmbed` by hitting the `/static-card`
-;;; API, which streams the cached `exploration_query_result` blob along with
-;;; the `display` and `visualization_settings` chosen for that query. Phase 2
-;;; persists those columns onto the result row here, once per referenced
-;;; exploration_query_id. The doc itself keeps the LLM-emitted nodes verbatim
-;;; (with their per-embed `sort` attr) — no tree rewrite, no Card creation.
-
-(defn- chart-display
-  "Pick a display type for `eq`, falling back through the same precedence the
-  old `materialize-chart-card!` used:
-    1. `(:display eq)` — explicit user override on the query
-    2. `(:computed-display eq)` — the `effective-display-type` heuristic
-       (line for temporal x, bar otherwise), populated upstream
-    3. `(:display src-card)` — the source card's display
-    4. `:table` — last-resort fallback"
-  [eq src-card]
-  (or (some-> (:display eq) keyword)
-      (some-> (:computed-display eq) keyword)
-      (:display src-card)
-      :table))
-
-(defn- chart-visualization-settings
-  "Pick a visualization_settings map for `eq` using the same precedence as the
-  old `materialize-chart-card!`."
-  [eq src-card]
-  (or (:visualization_settings eq)
-      (:visualization_settings src-card)
-      {}))
-
-(defn- write-chart-config!
-  "Persist the chosen `display` + `visualization_settings` for `eq-id` onto its
-  matching `exploration_query_result` row. No-ops when the result row doesn't
-  exist yet (e.g. the query is still pending/errored) — the frontend will
-  surface the 409 from the read endpoint instead."
-  [eq-id eq]
-  (let [src-card (when (:card_id eq)
-                   (t2/select-one [:model/Card :name :display :visualization_settings]
-                                  :id (:card_id eq)))]
-    (t2/update! :model/ExplorationQueryResult
-                :exploration_query_id eq-id
-                {:display                (chart-display eq src-card)
-                 :visualization_settings (chart-visualization-settings eq src-card)})))
-
-(defn materialize-chart-configs!
-  "Walk `pm-doc`, collect every distinct `exploration_query_id` referenced by a
-  `staticCardEmbed`, and write the chosen `display` + `visualization_settings`
-  onto the matching `exploration_query_result` row. Returns `pm-doc` unchanged
-  — the LLM-emitted node attrs (`exploration_query_id`, optional `sort`) are
-  the final shape persisted in the document.
-
-  One DB write per unique exploration_query_id. Two embeds of the same query
-  with different `sort`s share the same viz config row (sort is applied in
-  memory at read time by the `/static-card` API). Unknown ids are skipped
-  silently with a debug log."
-  [pm-doc eq-by-id]
-  (let [eq-ids (->> (all-static-card-embed-nodes pm-doc)
-                    (keep static-card-embed-eq-id)
-                    distinct)]
-    (doseq [eq-id eq-ids]
-      (if-let [eq (get eq-by-id eq-id)]
-        (write-chart-config! eq-id eq)
-        (log/debugf "staticCardEmbed references unknown exploration_query_id %s" eq-id))))
-  pm-doc)

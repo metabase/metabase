@@ -15,7 +15,6 @@
    [metabase.explorations.result-access :as result-access]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.queries.core :as queries]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -630,47 +629,35 @@
                                 :exploration_thread_id thread-id
                                 :archived false)))
 
-(defn- append-card-embed
-  "Append a `resizeNode` wrapping a `cardEmbed` to the end of a prose-mirror document body,
-  returning a structurally valid prose-mirror doc. The FE schema requires every `cardEmbed`
-  to live inside a `resizeNode`. Tolerates a missing/non-doc root by replacing it with an
-  empty doc."
-  [doc card-id]
+(defn- append-static-card-embed
+  "Append a `staticCardEmbed` node referencing `exploration-query-id` to the end of a
+  prose-mirror document body. `staticCardEmbed` is a block-level atom, so it's appended
+  directly (no `resizeNode` wrapper). Tolerates a missing/non-doc root by replacing it
+  with an empty doc."
+  [doc exploration-query-id]
   (let [base  (if (and (map? doc) (= "doc" (:type doc)))
                 doc
                 {:type "doc" :content []})
-        embed {:type "resizeNode"
-               :content [{:type "cardEmbed" :attrs {:id card-id :name nil}}]}]
+        embed {:type  "staticCardEmbed"
+               :attrs {:exploration_query_id exploration-query-id}}]
     (update base :content (fnil conj []) embed)))
 
 (api.macros/defendpoint :post "/thread/:thread-id/documents/:document-id/append" :- ::ExplorationDocument
-  "Append a chart from an `exploration_query` to a document owned by the thread. Materializes
-  a Card from the query's snapshot `dataset_query` (associated with the document via `document_id`)
-  and appends a `cardEmbed` node referencing the new card to the end of the document body."
+  "Append a `staticCardEmbed` node referencing the given `exploration_query_id` to the end
+  of the document body. Display + visualization_settings live on the `exploration_query_result`
+  row, computed once at result-write time, so this endpoint is a pure doc edit — no Card
+  creation and no per-embed viz overrides."
   [{:keys [thread-id document-id]} :- [:map
                                        [:thread-id   ms/PositiveInt]
                                        [:document-id ms/PositiveInt]]
    _query-params
-   {:keys [exploration_query_id display visualization_settings]} :- [:map
-                                                                     [:exploration_query_id ms/PositiveInt]
-                                                                     [:display {:optional true} [:maybe :string]]
-                                                                     [:visualization_settings {:optional true} [:maybe ms/Map]]]]
+   {:keys [exploration_query_id]} :- [:map
+                                      [:exploration_query_id ms/PositiveInt]]]
   (write-check-thread thread-id)
-  (let [doc        (get-thread-document-or-404 thread-id document-id)
-        eq         (api/check-404 (t2/select-one :model/ExplorationQuery :id exploration_query_id))
-        _          (api/check-404 (= thread-id (:exploration_thread_id eq)))
-        src-card   (api/check-404 (t2/select-one [:model/Card :name :database_id :display :visualization_settings]
-                                                 :id (:card_id eq)))
-        new-card   (queries/create-card!
-                    {:name                   (or (:name eq) (:name src-card))
-                     :type                   :question
-                     :dataset_query          (:dataset_query eq)
-                     :display                (or (some-> display keyword) (some-> (:display eq) keyword) (:display src-card) :table)
-                     :visualization_settings (or visualization_settings (:visualization_settings eq) (:visualization_settings src-card) {})
-                     :collection_id          (:collection_id doc)
-                     :document_id            (:id doc)}
-                    @api/*current-user*)
-        new-body   (append-card-embed (:document doc) (:id new-card))]
+  (let [doc      (get-thread-document-or-404 thread-id document-id)
+        eq       (api/check-404 (t2/select-one :model/ExplorationQuery :id exploration_query_id))
+        _        (api/check-404 (= thread-id (:exploration_thread_id eq)))
+        new-body (append-static-card-embed (:document doc) exploration_query_id)]
     (t2/update! :model/Document (:id doc) {:document new-body})
     (t2/select-one (into [:model/Document] document-summary-columns) :id (:id doc))))
 

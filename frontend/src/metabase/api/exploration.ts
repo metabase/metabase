@@ -1,6 +1,5 @@
 import type {
   Card,
-  CardDisplayType,
   CreateExplorationRequest,
   Dataset,
   DocumentId,
@@ -11,7 +10,6 @@ import type {
   ExplorationThreadId,
   GetExplorationDataRequest,
   GetExplorationDataResponse,
-  VisualizationSettings,
 } from "metabase-types/api";
 
 export type StaticCardSort =
@@ -103,8 +101,6 @@ export const explorationApi = Api.injectEndpoints({
         threadId: ExplorationThreadId;
         documentId: DocumentId;
         exploration_query_id: ExplorationQueryId;
-        display?: CardDisplayType;
-        visualization_settings?: VisualizationSettings;
       }
     >({
       query: ({ threadId, documentId, ...body }) => ({

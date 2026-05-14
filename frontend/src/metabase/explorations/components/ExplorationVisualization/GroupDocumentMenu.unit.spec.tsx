@@ -85,13 +85,11 @@ function makeThread(documents: ExplorationDocument[] = []): ExplorationThread {
 
 function setup(
   documents: ExplorationDocument[] = [makeDocument({ id: 11, name: "Notes" })],
-  display: "line" | "bar" | undefined = "line",
 ) {
   renderWithProviders(
     <GroupDocumentMenu
       queries={queries}
       explorationThread={makeThread(documents)}
-      display={display}
     />,
   );
 }
@@ -150,7 +148,7 @@ describe("GroupDocumentMenu", () => {
     expect(mockAppend).not.toHaveBeenCalled();
   });
 
-  it("clicking a document appends the picked chart with the right query+document ids and the rendered display", async () => {
+  it("clicking a document appends the picked chart with the right query+document ids", async () => {
     setup();
 
     await userEvent.click(
@@ -166,7 +164,6 @@ describe("GroupDocumentMenu", () => {
       threadId: 7,
       documentId: 11,
       exploration_query_id: 102,
-      display: "line",
     });
   });
 
@@ -190,7 +187,6 @@ describe("GroupDocumentMenu", () => {
         threadId: 7,
         documentId: 22, // the freshly-created document
         exploration_query_id: 101,
-        display: "line",
       });
     });
   });

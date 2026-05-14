@@ -190,6 +190,27 @@
         (catch Throwable e
           (log/errorf e "on-thread-completed failed for thread %d" thread-id))))))
 
+(defn- pick-display+viz-settings
+  "Pick the `display` and `visualization_settings` to persist on the
+  `exploration_query_result` row. Same precedence the old append/phase2 code
+  used, evaluated once at write time so the row carries a final, deterministic
+  default for every `staticCardEmbed` that references it:
+    1. explicit `:display` / `:visualization_settings` on the EQ (rarely set)
+    2. the chart-config's `:display_type` (the `effective-display-type`
+       heuristic — line for temporal x, bar otherwise)
+    3. the source card's `:display` / `:visualization_settings`
+    4. `:table` / `{}` as the last-resort fallback"
+  [exploration-query chart-config]
+  (let [src-card (when-let [card-id (:card_id exploration-query)]
+                   (t2/select-one [:model/Card :display :visualization_settings] :id card-id))]
+    {:display                (or (some-> (:display exploration-query) keyword)
+                                 (some-> (:display_type chart-config) keyword)
+                                 (:display src-card)
+                                 :table)
+     :visualization_settings (or (:visualization_settings exploration-query)
+                                 (:visualization_settings src-card)
+                                 {})}))
+
 (defn- safe-contextual-score
   "Best-effort contextual interestingness score against the thread's `prompt`.
   Returns nil whenever scoring isn't applicable (no prompt, no chart-config) or anything throws,
@@ -229,13 +250,16 @@
                   chart-config (safe-chart-config row qp-result)
                   stats        (safe-deep-stats row chart-config)
                   score        (safe-score row chart-config stats)
-                  ctx-score    (safe-contextual-score row chart-config)]
+                  ctx-score    (safe-contextual-score row chart-config)
+                  viz          (pick-display+viz-settings row chart-config)]
               (t2/insert! :model/ExplorationQueryResult
                           {:exploration_query_id             (:id row)
                            :result_data                      bytes
                            :chart_stats                      stats
                            :interestingness_score            score
-                           :contextual_interestingness_score ctx-score})
+                           :contextual_interestingness_score ctx-score
+                           :display                          (:display viz)
+                           :visualization_settings           (:visualization_settings viz)})
               (t2/update! :model/ExplorationQuery (:id row)
                           {:status      "done"
                            :started_at  started
