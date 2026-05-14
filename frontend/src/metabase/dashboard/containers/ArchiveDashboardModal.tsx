@@ -3,9 +3,9 @@ import { type WithRouterProps, withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { ArchiveModal } from "metabase/common/components/ArchiveModal";
 import { setArchivedDashboard } from "metabase/dashboard/actions";
-import { Dashboards } from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/redux";
 import * as Urls from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
@@ -14,10 +14,9 @@ type OwnProps = {
   onClose: () => void;
 };
 
-type ArchiveDashboardModalProps = OwnProps &
-  WithRouterProps & {
-    dashboard: Dashboard;
-  };
+type ArchiveDashboardModalProps = OwnProps & {
+  dashboard: Dashboard;
+};
 
 const ArchiveDashboardModal = ({
   onClose,
@@ -56,10 +55,22 @@ const ArchiveDashboardModal = ({
   );
 };
 
-export const ArchiveDashboardModalConnected = _.compose(
-  Dashboards.load({
-    id: (_state: unknown, props: WithRouterProps) =>
-      Urls.extractCollectionId(props.params?.slug),
-  }),
-  withRouter,
-)(ArchiveDashboardModal);
+const ArchiveDashboardModalConnectedInner = (
+  props: OwnProps & WithRouterProps,
+) => {
+  const id = Urls.extractCollectionId(props.params?.slug);
+  const { data: dashboard } = useGetDashboardQuery(
+    id != null ? { id } : skipToken,
+  );
+
+  if (!dashboard) {
+    return null;
+  }
+  return (
+    <ArchiveDashboardModal onClose={props.onClose} dashboard={dashboard} />
+  );
+};
+
+export const ArchiveDashboardModalConnected = withRouter(
+  ArchiveDashboardModalConnectedInner,
+);

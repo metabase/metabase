@@ -1,12 +1,14 @@
 import { c, t } from "ttag";
 
-import { useGetCollectionQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCollectionQuery,
+  useGetDashboardQuery,
+} from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { MoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";
 import { useSetCollection } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { Dashboards } from "metabase/entities/dashboards";
-import type { State } from "metabase/redux/store";
 import { Flex, Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 import * as Urls from "metabase/urls";
@@ -87,7 +89,20 @@ const DashboardMoveToast = ({
   );
 };
 
-export const DashboardMoveModalConnected = Dashboards.load({
-  id: (_state: State, props: { params: { slug: string } }) =>
-    Urls.extractCollectionId(props.params.slug),
-})(DashboardMoveModal);
+export const DashboardMoveModalConnected = ({
+  params,
+  onClose,
+}: {
+  params: { slug: string };
+  onClose: () => void;
+}) => {
+  const id = Urls.extractCollectionId(params.slug);
+  const { data: dashboard } = useGetDashboardQuery(
+    id != null ? { id } : skipToken,
+  );
+
+  if (!dashboard) {
+    return null;
+  }
+  return <DashboardMoveModal dashboard={dashboard} onClose={onClose} />;
+};
