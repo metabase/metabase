@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Set the Anthropic API key for the running slides demo instance.
+#
+# Usage:
+#   bin/slides-set-llm-key sk-ant-...
+#   ANTHROPIC_API_KEY=sk-ant-... bin/slides-set-llm-key
+#
+# Targets the local dev backend on :3040 and the admin user provisioned by the
+# smoke-test setup.
+
+set -euo pipefail
+
+KEY="${1:-${ANTHROPIC_API_KEY:-}}"
+if [[ -z "$KEY" ]]; then
+  echo "error: pass the key as an argument or set ANTHROPIC_API_KEY" >&2
+  echo "  bin/slides-set-llm-key sk-ant-..." >&2
+  exit 1
+fi
+
+HOST="${MB_HOST:-http://localhost:3040}"
+EMAIL="${MB_EMAIL:-ngoc@slides.local}"
+PASSWORD="${MB_PASSWORD:-slides12345!ABC}"
+
+echo "→ logging in as $EMAIL"
+SESSION=$(
+  curl -fsS -X POST "$HOST/api/session" \
+    -H 'content-type: application/json' \
+    -d "{\"username\":\"$EMAIL\",\"password\":\"$PASSWORD\"}" |
+    python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])'
+)
+
+echo "→ writing llm-anthropic-api-key"
+curl -fsS -o /dev/null -X PUT "$HOST/api/setting/llm-anthropic-api-key" \
+  -H "X-Metabase-Session: $SESSION" \
+  -H 'content-type: application/json' \
+  -d "{\"value\":$(printf %s "$KEY" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')}"
+
+echo "→ verifying"
+CONFIGURED=$(
+  curl -fsS "$HOST/api/setting/llm-anthropic-api-key-configured%3F" \
+    -H "X-Metabase-Session: $SESSION"
+)
+if [[ "$CONFIGURED" == "true" ]]; then
+  echo "✓ key set. Try ✨ Generate now."
+else
+  echo "✗ key did not stick (configured? = $CONFIGURED)" >&2
+  exit 1
+fi

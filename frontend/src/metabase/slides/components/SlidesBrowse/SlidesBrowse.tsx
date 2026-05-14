@@ -4,6 +4,8 @@ import { t } from "ttag";
 
 import { useListSlidesQuery } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
+// Pulls in dayjs.extend(relativeTime), so `.fromNow()` is available app-wide.
+import "metabase/utils/dayjs";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { Box, Button, Icon, Loader } from "metabase/ui";
 
@@ -50,11 +52,7 @@ export const SlidesBrowse = () => {
             const first = deck.slides?.[0];
             const preview = first ? previewSlide(first.doc) : null;
             return (
-              <Link
-                key={deck.id}
-                to={`/slides/${deck.id}`}
-                className={S.deck}
-              >
+              <Link key={deck.id} to={`/slides/${deck.id}`} className={S.deck}>
                 <Box className={S.deckPreview}>
                   <Box className={S.deckPreviewHeading}>
                     {preview?.heading || deck.name || t`Untitled slides`}

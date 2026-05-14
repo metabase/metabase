@@ -48,8 +48,8 @@
                 :card_id  {:type        "integer"
                            :description "ID of the Metabase card to embed (only for type=chart). Must come from the user's available cards."}
                 :card_caption
-                          {:type "string"
-                           :description "Short caption explaining what the embedded chart shows (chart slides)."}}}}}}})
+                {:type "string"
+                 :description "Short caption explaining what the embedded chart shows (chart slides)."}}}}}}})
 
 (defn- get-api-key []
   (let [api-key (llm.settings/llm-anthropic-api-key)]
@@ -223,7 +223,8 @@
 Rules:
 - The deck must have a `cover` slide first and a `closing` slide last.
 - Aim for 4 to 7 slides total. Be concise — slides are read in seconds.
-- When the user shares cards, prefer including them as `chart` slides. Pick the most relevant cards; not every card needs to appear.
+- When cards are available, lean heavily on `chart` slides — that is the whole point of this product (live, interactive Metabase charts in a deck). Aim for at least half of the body slides to be charts when cards are provided.
+- Use your judgement to pick the most relevant cards. Not every card has to appear, and the user-supplied dashboard may contain charts that don't fit the topic — skip those.
 - For `content` slides, use 2 to 5 short bullets, each under 12 words.
 - Titles are 2 to 7 words. Avoid corporate jargon.
 - `card_id` MUST be one of the cards the user listed; never invent IDs.
@@ -232,12 +233,14 @@ Always respond by calling the generate_slides tool.")
 
 (defn- build-user-prompt [prompt cards dashboards]
   (let [parts (cond-> [(str "Topic: " prompt)]
-                (seq cards)
-                (conj "\nAvailable Metabase cards (id — name — description):"
-                      (str/join "\n" (map format-card-line cards)))
                 (seq dashboards)
-                (conj "\nAvailable Metabase dashboards (id — name):"
-                      (str/join "\n" (map format-dashboard-line dashboards)))
+                (conj
+                 (str "\nReference dashboard(s) — treat these as the source of truth for the topic; their cards are listed below:\n"
+                      (str/join "\n" (map format-dashboard-line dashboards))))
+                (seq cards)
+                (conj
+                 (str "\nAvailable Metabase cards (id — name [display] — description). Embed the ones that match the topic; ignore the rest:\n"
+                      (str/join "\n" (map format-card-line cards))))
                 true
                 (conj "\nProduce the deck."))]
     (str/join "\n" parts)))
@@ -258,6 +261,8 @@ Always respond by calling the generate_slides tool.")
                                      {:type :empty-slides :status-code 502})))
         sanitized  (ensure-valid-card-ids raw card-ids)
         slides     (llm-output->slides sanitized)]
-    (log/infof "Generated %d slides in %dms" (count slides) (u/since-ms start))
+    (log/infof "Generated %d slides in %.0fms"
+               (count slides)
+               (double (u/since-ms start)))
     {:name   (or (not-empty (:title raw)) "Untitled slides")
      :slides slides}))
