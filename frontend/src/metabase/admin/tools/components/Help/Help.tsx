@@ -8,10 +8,8 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { UpsellBetterSupport } from "metabase/admin/upsells";
-import {
-  getConnectionPoolDetailsUrl,
-  useGetBugReportDetailsQuery,
-} from "metabase/api/bug-report";
+import { useGetBugReportDetailsQuery } from "metabase/api/bug-report";
+import legacyApi from "metabase/api/legacy-client";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
@@ -25,6 +23,13 @@ import S from "./help.module.css";
 
 function navigatorInfo() {
   return _.pick(navigator, "language", "platform", "userAgent", "vendor");
+}
+
+// Returns an external-link URL (not an API call) so it goes through `basename`
+// to support Metabase deployments at a subpath.
+function getConnectionPoolDetailsUrl() {
+  const path = "/api/bug-reporting/connection-pool-details";
+  return new URL(legacyApi.basename + path, location.origin).href;
 }
 
 const template = `**Describe the bug**
