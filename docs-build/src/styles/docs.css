@@ -672,3 +672,48 @@ article.docs-content td code { background: var(--neutral-95); }
 .copy-code-button .copy-button-copied-wrapper { display: none; }
 .copy-code-button .d-none { display: none !important; }
 .copy-code-button .d-flex { display: inline-flex !important; }
+
+/* ---------- Navigation header (vendored marketing nav) overrides ----------
+ *
+ * The marketing-site CSS in chrome.css positions dropdowns with
+ * position:fixed at viewport center, which only lines up with the buttons
+ * if the button row is also viewport-centered. The docs layout uses
+ * col-lg-2 (logo) + col-lg-3 (actions), so the middle column sits left
+ * of center and the dropdowns float away from their triggers, leaving a
+ * dead zone the cursor can't cross without losing :hover. Re-anchor each
+ * dropdown directly below its button, center the button row on the
+ * viewport, and suppress the sliding hover-highlight pill (positioned by
+ * main-nav.js via the hovered button's offsetLeft — stranded off-button
+ * in our layout). */
+
+.bootstrap .navigation-header > .container {
+  position: relative;
+}
+
+/* With the button row lifted out of flow below, the only remaining
+ * flex children are the logo and the action column. Default flex-start
+ * packs them next to each other on the left — push the actions back
+ * to the right edge so the centered button row sits between them. */
+.bootstrap .navigation-header .row.flex-grow-1 {
+  justify-content: space-between;
+}
+
+.bootstrap .navigation-header .submenus-container {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: auto;
+}
+
+.bootstrap .navigation-header .button-desktop {
+  position: relative;
+}
+
+.bootstrap .navigation-header [id$=nav-menu-wrapper] {
+  position: absolute;
+  top: 100%;
+}
+
+.bootstrap .navigation-header #hover-highlight {
+  display: none;
+}

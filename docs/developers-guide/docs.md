@@ -64,7 +64,7 @@ All docs tooling lives under the `./bin/mage docs-*` family:
 | `docs-generate-embedding` | Regenerate SDK/Embed.js typedoc reference | `bun run docs:generate:embedding` |
 | `docs-ensure-generated` | Lazy regen of missing artifacts (used by `bun run docs:preview`) | — |
 
-The `bun run docs:*` scripts in [`package.json`](../../package.json) are thin aliases — both forms do the same thing. Run `./bin/mage <task> --help` to see the full option list for any task. The implementations live in [`mage/src/mage/docs.clj`](../../mage/src/mage/docs.clj).
+The `bun run docs:*` scripts in the repo-root [`package.json`](../../package.json) are thin aliases — both forms do the same thing. Run `./bin/mage <task> --help` to see the full option list for any task. The implementations live in [`mage/src/mage/docs.clj`](../../mage/src/mage/docs.clj).
 
 The common path:
 
@@ -267,11 +267,17 @@ What was dropped from the snapshot:
 
 ## Search bar (Inkeep)
 
-The "Search" input in the docs topbar is an [Inkeep](https://inkeep.com/) cxkit-js widget. It's mounted into the `#inkeep` element in [`TopBar.astro`](../../docs-build/src/components/TopBar.astro) by [`docs-build/public/js/inkeep.js`](../../docs-build/public/js/inkeep.js), which pins the CDN version (`@inkeep/cxkit-js@0.5.117`) and holds the widget config (API key, AI assistant prompts, search placeholder). The theme styles live in [`docs-build/public/css/inkeep.css`](../../docs-build/public/css/inkeep.css) and are loaded into cxkit's shadow DOM via `theme.styles` in the config — the `.ikp-*` selectors target debug class names emitted by the widget components.
+The "Search" input in the docs topbar is an [Inkeep](https://inkeep.com/) cxkit-js widget. It's mounted into the `#inkeep` element in [`TopBar.astro`](../../docs-build/src/components/TopBar.astro) by [`docs-build/public/js/inkeep.js`](../../docs-build/public/js/inkeep.js), which pins the CDN version (`@inkeep/cxkit-js@0.5.117`) and holds the widget config (API key, AI assistant prompts, search placeholder). The theme styles live in [`docs-build/public/css/inkeep.css`](../../docs-build/public/css/inkeep.css) and are loaded into cxkit's shadow DOM via `theme.styles` in the config — the `.ikp-*` selectors target debug class names emitted by the widget components. The CSS is vendored from `metabase.github.io/css/inkeep.css` alongside the pinned cxkit version, so a marketing-side update to the search theme means re-vendoring this file the same way as the marketing chrome.
 
 `DocsLayout.astro` writes a small `window.__INKEEP_CONFIG__` object inline in `<head>` so the init script can resolve BASE-prefixed asset paths (the theme stylesheet, AI chat avatars) without hardcoding `/docs/latest`.
 
 The sparkle "What's new" button next to it is a plain link to [https://www.metabase.com/releases](https://www.metabase.com/releases); the icon lives at [`docs-build/public/images/icons/stars.svg`](../../docs-build/public/images/icons/stars.svg).
+
+## Feedback widget
+
+The "Was this helpful?" prompt at the bottom of the right-hand rail is the `FeedbackWidget` component in [`docs-build/src/components/FeedbackWidget.astro`](../../docs-build/src/components/FeedbackWidget.astro). It server-renders static markup — vote buttons, a hidden comment form, and a hidden thank-you message — and is hydrated at runtime by [`docs-build/public/js/feedback-widget.js`](../../docs-build/public/js/feedback-widget.js), which handles vote clicks, POSTs the comment to the CRM endpoint, and computes the "Propose a change" GitHub link from `window.location.pathname` so it always points at the markdown source of the current page.
+
+It's wired into the page by [`DocsLayout.astro`](../../docs-build/src/layouts/DocsLayout.astro) inside the `<aside class="docs-rail">`, directly below the table of contents. Styling lives under the "Feedback widget" section of [`docs-build/src/styles/docs.css`](../../docs-build/src/styles/docs.css).
 
 ## Where things live
 
@@ -285,6 +291,7 @@ A short map for when you need to dig deeper than this page goes:
   - `remark-docs-version` — the `{SAMPLE_APP_BRANCH}` token.
   - `rehype-internal-links` — relative-link rewriting.
   - `rehype-blockquote-classes` — plans-callout styling.
+- [`docs-build/src/lib/nav.ts`](../../docs-build/src/lib/nav.ts) — nav utilities (`findTrail`, `hrefForPage`) consumed by `Sidebar.astro` and `TopBar.astro`. `DocsLayout` walks the nav once per page and shares the resulting trail with both, so breadcrumbs and sidebar expansion stay in sync without a second traversal.
 - [`docs-build/src/layouts/DocsLayout.astro`](../../docs-build/src/layouts/DocsLayout.astro) — page chrome wiring (Header above the docs shell, Footer below it, sidebar + topbar + table of contents inside).
 - [`docs-build/src/components/`](../../docs-build/src/components) — `Header.astro` and `Footer.astro` (vendored marketing chrome), plus `Sidebar`, `TopBar`, `TableOfContents`, `FeedbackWidget` (docs-internal chrome).
 - [`docs-build/src/styles/`](../../docs-build/src/styles) — `chrome.css` (vendored marketing styles) and `docs.css` (docs-internal styles).

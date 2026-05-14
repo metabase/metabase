@@ -17,6 +17,7 @@ const personIconUrl =
 
 const config = {
   baseSettings: {
+    // Public read-only Inkeep search key — safe to embed in client code.
     apiKey: "6dd55673e83be3649d9ef8281b40795329b492a8fc320985",
     organizationDisplayName: "Metabase",
     primaryBrandColor: "#509EE3",
@@ -39,6 +40,7 @@ const config = {
   },
   shouldShowAskAICard: false,
   askAILabel: "Ask",
+  // Pin the widget to search mode; the AI chat tab stays hidden.
   forceDefaultView: "search",
   modalSettings: { shortcutKey: null },
 };
