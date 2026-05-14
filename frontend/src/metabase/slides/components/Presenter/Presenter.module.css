@@ -1,0 +1,191 @@
+.presenter {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: radial-gradient(
+    ellipse at top,
+    #1a1a22 0%,
+    #0c0c10 60%,
+    #050507 100%
+  );
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--mb-color-text-white);
+  overflow: hidden;
+}
+
+.viewport {
+  width: min(92vw, 1600px);
+  aspect-ratio: 16 / 9;
+  max-height: 86vh;
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+}
+
+.track {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  transition: transform 320ms cubic-bezier(0.32, 0.72, 0.36, 1);
+  will-change: transform;
+}
+
+.stage {
+  flex: 0 0 100%;
+  height: 100%;
+  background: var(--mb-color-bg-white);
+  position: relative;
+  overflow: hidden;
+}
+
+.stageContent {
+  position: absolute;
+  inset: 0;
+  padding: 64px 96px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  color: var(--mb-color-text-dark);
+}
+
+.stageCover {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: linear-gradient(135deg, #6f43ff 0%, #b042ff 100%);
+  color: #fff;
+}
+
+.stageCover :global(.ProseMirror h1),
+.stageCover :global(.ProseMirror h2) {
+  color: #fff;
+  font-size: 72px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.stageCover :global(.ProseMirror p) {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 28px;
+  margin-top: 12px;
+}
+
+.stageClosing {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  color: #fff;
+}
+
+.stageClosing :global(.ProseMirror h1),
+.stageClosing :global(.ProseMirror h2) {
+  color: #fff;
+  font-size: 64px;
+  font-weight: 700;
+}
+
+.stageClosing :global(.ProseMirror p) {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 26px;
+}
+
+.stageContent :global(.ProseMirror h1) {
+  font-size: 52px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-bottom: 8px;
+}
+
+.stageContent :global(.ProseMirror h2) {
+  font-size: 42px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.stageContent :global(.ProseMirror p) {
+  font-size: 22px;
+  line-height: 1.55;
+}
+
+.stageContent :global(.ProseMirror ul li) {
+  font-size: 22px;
+  line-height: 1.7;
+}
+
+.stageContent :global([data-type="cardEmbed"]),
+.stageContent :global(.tiptap-card-embed) {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Charts in presenter should fill their containers */
+.stageContent :global(.cardEmbed),
+.stageContent :global(.resize-node),
+.stageContent :global([data-type="resizeNode"]) {
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  min-height: 0;
+}
+
+.hud {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px;
+  background: rgba(15, 15, 25, 0.7);
+  backdrop-filter: blur(10px);
+  border-radius: 999px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+  transition: opacity 280ms ease;
+  pointer-events: auto;
+}
+
+.hudHidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.counter {
+  font-variant-numeric: tabular-nums;
+  min-width: 48px;
+  text-align: center;
+}
+
+.exit {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(15, 15, 25, 0.7);
+  backdrop-filter: blur(10px);
+  border-radius: 999px;
+  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  text-decoration: none;
+  transition: opacity 280ms ease;
+}
+
+.exit:hover {
+  color: #fff;
+}
+
+.empty {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 16px;
+}

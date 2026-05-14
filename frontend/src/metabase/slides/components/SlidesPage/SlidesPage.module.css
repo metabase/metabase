@@ -1,0 +1,130 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--mb-color-bg-light);
+}
+
+.body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  overflow: hidden;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  background: var(--mb-color-bg-white);
+  border-right: 1px solid var(--mb-color-border);
+}
+
+.canvas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  overflow: hidden;
+}
+
+.slideFrame {
+  position: relative;
+  width: min(100%, 1100px);
+  aspect-ratio: 16 / 9;
+  background: var(--mb-color-bg-white);
+  border-radius: 14px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 10px 40px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.editorViewport {
+  flex: 1;
+  position: relative;
+  overflow: auto;
+}
+
+.editorPadding {
+  padding: 48px 64px;
+  min-height: 100%;
+}
+
+.coverPadding {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  padding: 72px 96px;
+  text-align: center;
+  min-height: 100%;
+}
+
+.coverPadding :global(.ProseMirror h1),
+.coverPadding :global(.ProseMirror h2) {
+  font-size: 64px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.coverPadding :global(.ProseMirror p) {
+  font-size: 24px;
+  color: var(--mb-color-text-medium);
+}
+
+.closingPadding :global(.ProseMirror h1),
+.closingPadding :global(.ProseMirror h2) {
+  font-size: 56px;
+  font-weight: 700;
+}
+
+.closingPadding {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  padding: 72px 96px;
+  text-align: center;
+  min-height: 100%;
+}
+
+.editorPadding :global(.ProseMirror h1) {
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+
+.editorPadding :global(.ProseMirror h2) {
+  font-size: 36px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.editorPadding :global(.ProseMirror p) {
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+.editorPadding :global(.ProseMirror ul li) {
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+.layoutToggle {
+  position: absolute;
+  bottom: 12px;
+  right: 16px;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--mb-color-text-light);
+}

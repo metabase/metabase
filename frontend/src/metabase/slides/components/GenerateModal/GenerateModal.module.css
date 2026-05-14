@@ -1,0 +1,70 @@
+.modalHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sparkles {
+  color: var(--mb-color-brand);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--mb-color-text-medium);
+  margin-bottom: 6px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.searchResults {
+  border: 1px solid var(--mb-color-border);
+  border-radius: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--mb-color-bg-white);
+}
+
+.searchResult {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+}
+
+.searchResult:hover {
+  background: var(--mb-color-bg-light);
+}
+
+.selectedTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--mb-color-bg-light);
+  border: 1px solid var(--mb-color-border);
+  border-radius: 16px;
+  padding: 2px 4px 2px 10px;
+  font-size: 13px;
+}
+
+.selectedRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

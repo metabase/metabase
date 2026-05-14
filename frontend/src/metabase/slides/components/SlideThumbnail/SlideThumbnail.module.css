@@ -1,0 +1,106 @@
+.thumbnail {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--mb-color-bg-white);
+  border: 1px solid var(--mb-color-border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+  overflow: hidden;
+}
+
+.thumbnail:hover {
+  border-color: var(--mb-color-brand);
+}
+
+.active {
+  border-color: var(--mb-color-brand);
+  box-shadow: 0 0 0 2px var(--mb-color-brand);
+}
+
+.thumbnailCover {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: linear-gradient(135deg, var(--mb-color-brand) 0%, var(--mb-color-brand-light) 100%);
+  color: var(--mb-color-text-white);
+}
+
+.thumbnailCover .heading {
+  color: var(--mb-color-text-white);
+}
+
+.heading {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--mb-color-text-dark);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.body {
+  font-size: 9px;
+  line-height: 1.3;
+  color: var(--mb-color-text-medium);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.chartTag {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  color: var(--mb-color-text-medium);
+  background: var(--mb-color-bg-light);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.indexBadge {
+  flex: 0 0 18px;
+  width: 18px;
+  text-align: right;
+  color: var(--mb-color-text-light);
+  font-size: 11px;
+  user-select: none;
+}
+
+.thumbnailWrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.menuButton {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.thumbnail:hover .menuButton {
+  opacity: 1;
+}

@@ -42,6 +42,7 @@ export * from "./segment";
 export * from "./session";
 export * from "./settings";
 export * from "./slack";
+export * from "./slides";
 export * from "./snippet";
 export * from "./subscription";
 export * from "./table";

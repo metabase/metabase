@@ -119,6 +119,17 @@ export const NewItemMenuView = ({
       </Menu.Item>,
     );
 
+    items.push(
+      <Menu.Item
+        key="slides"
+        component={ForwardRefLink}
+        to="/slides/new"
+        leftSection={<Icon name="play" />}
+      >
+        {t`Slides`}
+      </Menu.Item>,
+    );
+
     return items;
   }, [
     hasDataAccess,

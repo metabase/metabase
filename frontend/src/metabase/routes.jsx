@@ -33,6 +33,11 @@ import { getDataStudioRoutes } from "metabase/data-studio/routes";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { CommentsSidesheet } from "metabase/documents/components/CommentsSidesheet";
 import { DocumentPageOuter } from "metabase/documents/routes";
+import {
+  SlidesBrowse,
+  SlidesPageOuter,
+  SlidesPresenterOuter,
+} from "metabase/slides/routes";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
@@ -165,6 +170,13 @@ export const getRoutes = (store) => {
           {/* Send historical /archive route to trash - can remove in v52 */}
           <Redirect from="archive" to="trash" replace />
           <Route path="trash" component={TrashCollectionLanding} />
+
+          <Route path="slides" component={SlidesBrowse} />
+          <Route
+            path="slides/:entityId/present"
+            component={SlidesPresenterOuter}
+          />
+          <Route path="slides/:entityId" component={SlidesPageOuter} />
 
           <Route path="document/:entityId" component={DocumentPageOuter}>
             <ModalRoute

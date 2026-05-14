@@ -29,6 +29,7 @@ const PATHS_WITHOUT_NAVBAR = [
   /^\/setup/,
   /^\/auth/,
   /^\/data-studio/,
+  /^\/slides\/[^/]+\/present/,
   /\/model\/.*\/query/,
   /\/model\/.*\/columns/,
   /\/model\/.*\/metadata/,

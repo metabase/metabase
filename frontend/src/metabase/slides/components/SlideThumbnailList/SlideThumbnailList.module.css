@@ -1,0 +1,21 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.addButton {
+  margin-top: 4px;
+}
+
+.dragging {
+  opacity: 0.4;
+}
+
+.item {
+  position: relative;
+  list-style: none;
+}

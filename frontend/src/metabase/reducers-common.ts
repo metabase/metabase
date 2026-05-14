@@ -5,6 +5,7 @@ import { combineReducers } from "@reduxjs/toolkit";
 import { Api } from "metabase/api";
 import { dashboardReducers as dashboard } from "metabase/dashboard/reducers";
 import { documentsReducer as documents } from "metabase/documents/documents.slice";
+import { slidesReducer as slidesEditor } from "metabase/slides/slides.slice";
 import * as parameters from "metabase/parameters/reducers";
 import { reducer as analyticsExport } from "metabase/redux/analytics-export";
 import app from "metabase/redux/app";
@@ -34,6 +35,7 @@ export const commonReducers = {
   undo,
   entities,
   documents,
+  slidesEditor,
   upload,
   analyticsExport,
   auth,

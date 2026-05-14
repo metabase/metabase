@@ -41,6 +41,7 @@ export const TAG_TYPES = [
   "segment",
   "session-properties",
   "slack-app-info",
+  "slides",
   "snippet",
   "subscription",
   "subscription-channel",
