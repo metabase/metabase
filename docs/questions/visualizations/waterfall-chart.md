@@ -18,7 +18,9 @@ Waterfall charts are useful for financial breakdowns, inventory changes, or anyw
 
 ## Data shape for a waterfall chart
 
-To create a waterfall chart, create a question that returns a single metric grouped by a single dimension, such as time or category. The metric should include both positive and negative values.
+To create a waterfall chart, create a question that returns a single metric grouped by a single dimension, such as time or category.
+
+Waterfall charts work best when each row represents a *change* in some value rather than the raw value itself. For example, use the change in sales from one month to the next, rather than the monthly sales totals.
 
 Here's the data shape for the example chart above:
 
@@ -33,7 +35,7 @@ Here's the data shape for the example chart above:
 
 Green bars represent months where sales increased, and red bars represent months where sales decreased. The dark bar at the end shows the net change across all six months.
 
-Here is another example grouped by category instead of time:
+Here's another example grouped by category instead of time:
 
 | Category    | Net revenue |
 | ----------- | ----------- |
@@ -42,15 +44,39 @@ Here is another example grouped by category instead of time:
 | Widget      | 9,700       |
 | Gadget      | -4,500      |
 
+## Build a query for a waterfall chart
+
+Your data might contain raw values like monthly sales totals but not the change in sales from one month to the next:
+
+| Month      | Sales   |
+| ---------- | ------- |
+| January    | 50,000  |
+| February   | 46,800  |
+| March      | 52,600  |
+
+To compute the change from one row to the next, use the `Offset` [custom expression](../query-builder/expressions.md) in a custom aggregation. `Offset` returns the value of an expression from another row, either earlier or later in the result set.
+
+To compute the change in sales from the previous month:
+
+1. In the query builder, click **Summarize**.
+2. Group by **Created At: Month**.
+3. Add a **Custom Expression** with the formula: `Sum([Sales]) - Offset(Sum([Sales]), -1)`. Name the column "Change in sales".
+
+The resulting question returns the data shape you need for a waterfall chart.
+
+If your data already contains the changes you want to plot (for example, individual transactions with positive and negative amounts), you can skip this step and use the data directly.
+
 ## Waterfall chart settings
 
 To open chart settings, click the **Gear** icon in the bottom left of the visualization.
 
 ### Display
 
-In chart settings, click the **Display** tab to edit the chart display.
+In chart settings, click the **Display** tab to edit how the chart looks.
 
 To add a goal line to your waterfall chart, enable the **Goal line** toggle. Use the **Goal value** and **Goal label** fields to set the goal value and label.
+
+> You can't set [alerts](../alerts.md) on goal lines in waterfall charts.
 
 Set the colors for each bar type:
 
@@ -92,3 +118,4 @@ Use the following options for the y-axis:
 - If your data only contains positive values, or if you don't need to track a running total, consider a [bar chart](./line-bar-and-area-charts.md) instead.
 - If you want to show progress toward a single value, consider a [progress bar](./progress-bar.md) or [gauge chart](./gauge.md) instead.
 - Waterfall charts only support a single metric grouped by a single dimension. You can't add breakouts or display multiple series.
+- You can't set [alerts](../alerts.md) on goal lines in waterfall charts.
