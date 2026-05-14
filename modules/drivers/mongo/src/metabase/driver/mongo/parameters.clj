@@ -18,8 +18,7 @@
    [metabase.util.performance :as perf :refer [get-in]])
   (:import
    (java.time ZoneOffset)
-   (java.time.temporal Temporal)
-   (metabase.driver.common.parameters Date)))
+   (java.time.temporal Temporal)))
 
 (set! *warn-on-reflection* true)
 
@@ -43,7 +42,7 @@
 
     ;; Date = the Parameters Date type, not an java.util.Date or java.sql.Date type
     ;; convert to a `Temporal` instance and recur
-    (instance? Date x)
+    (lib/parsed-date-param? x)
     (recur field (u.date/parse (:s x)))
 
     (and (instance? Temporal x)
@@ -87,7 +86,8 @@
 
 ;; Field filter value is either lib/parsed-param-no-value-placeholder (handled in `substitute-param`, a map with `:type` and `:value`, or a
 ;; sequence of those maps.
-(defn- substitute-one-field-filter [{field :field, alias :alias, {param-type :type, value :value} :value, :as field-filter}]
+(mu/defn- substitute-one-field-filter
+  [{:keys [field alias], {param-type :type, value :value} :value, :as field-filter} :- :metabase.lib.parameters.parse.types/field-filter]
   ;; convert relative dates to appropriate date range representations
   (cond
     (params.dates/not-single-date-type? param-type)
@@ -105,18 +105,21 @@
     (format "{%s: %s}" (field->name field alias) (param-value->str field value))))
 
 (mu/defn- substitute-field-filter
-  [{field :field, alias :alias, {:keys [value]} :value, :as field-filter} :- [:map
-                                                                              [:field driver-api/schema.metadata.column]
-                                                                              [:value [:map [:value :any]]]]]
+  [{field :field, alias :alias, {:keys [value]} :value, :as field-filter} :- :metabase.lib.parameters.parse.types/field-filter]
   (if (sequential? value)
     (format "{%s: %s}" (field->name field alias) (param-value->str field value))
     (substitute-one-field-filter field-filter)))
 
-(defn- substitute-native-query-snippet [[acc missing] v]
-  (let [{:keys [content]} v]
-    [(conj acc content) missing]))
+(mu/defn- substitute-native-query-snippet
+  [[acc missing]
+   {:keys [content]} :- :metabase.lib.parameters.parse.types/referenced-query-snippet]
+  [(conj acc content) missing])
 
-(defn- substitute-param [param->value [acc missing] in-optional? {:keys [k], :as _param}]
+(mu/defn- substitute-param
+  [param->value
+   [acc missing]
+   in-optional?
+   {:keys [k], :as _param} :- :metabase.lib.parameters.parse.types/param]
   (let [v (get param->value k)]
     (cond
       (not (contains? param->value k))
@@ -167,7 +170,10 @@
 
 (declare substitute*)
 
-(defn- substitute-optional [param->value [acc missing] {subclauses :args}]
+(mu/defn- substitute-optional
+  [param->value
+   [acc missing]
+   {subclauses :args} :- :metabase.lib.parameters.parse.types/optional]
   (let [[opt-acc opt-missing] (substitute* param->value subclauses true)]
     (if (seq opt-missing)
       [acc missing]
