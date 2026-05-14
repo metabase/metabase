@@ -17,8 +17,17 @@ To develop your Metabase content on your local filesystem, we've put together a 
 
 - [**Metabase Representation Format**](https://github.com/metabase/representations): the YAML schema and spec for every Metabase entity (questions, dashboards, collections, transforms, and so on).
 - **[Metabase Database Metadata Format](https://github.com/metabase/database-metadata)**: diff-friendly representations of synced databases, their tables, and their fields, as a tree of YAML files.
-- **Export and Import** CLI and API endpoints to manage serialized content (if you're not using Remote Sync).
-- [**Remote Sync**](../installation-and-operation/remote-sync.md) (Optional): you can push content from a Read-write Metabase into a git repo, and pull it into a Read-only Metabase in production.
+- **Export and Import** CLI and API endpoints to move serialized content between your local files and Metabase.
+- [**Remote Sync**](../installation-and-operation/remote-sync.md) (Optional): push content from a Read-write Metabase into a git repo, and pull it into a Read-only Metabase in production.
+
+## How content moves between files and Metabase
+
+You'll need a way to get YAML files out of Metabase to edit and back into Metabase to verify and ship. There are two options:
+
+- **[Remote Sync](../installation-and-operation/remote-sync.md)** — push and pull from inside Metabase. Requires a Read-write development instance and a Read-only production instance.
+- **Serialization API** — `curl`-based export and import against the `/api/ee/serialization/` endpoints.
+
+Pick one before you start the [Initial setup](#initial-setup); the setup steps differ slightly (Remote Sync doesn't need a separate API key in production).
 
 ## Initial setup
 
@@ -35,7 +44,7 @@ Once you have these set up, you can step through one of the example workflows.
 
 1. Set up a Metabase instance to check your work before pushing changes to production. This Metabase should connect to the same data warehouse(s) your production Metabase connects to. A [config file](../configuring-metabase/config-file.md) will come in handy here.
 
-2. Create an [API key](../people-and-groups/api-keys.md#create-an-api-key) and assign it to the Admin group. If you're not using Remote Sync, also create an API key in your production Metabase, as you'll need it for the import step.
+2. Create an [API key](../people-and-groups/api-keys.md#create-an-api-key) and assign it to the Admin group. The skills export and import all content and read database metadata, so they need Admin-level access. If you're using the [Serialization API workflow](#how-content-moves-between-files-and-metabase), you'll also need to create an API key in your production Metabase so you can import your files into it.
 
 3. We also recommend turning off the sample content and usage analytics, so they don't pollute the data model. If you're using a [docker compose file](../installation-and-operation/running-metabase-on-docker.md), add these [environment variables](../configuring-metabase/environment-variables.md):
 
@@ -48,9 +57,8 @@ MB_INSTALL_ANALYTICS_DATABASE: "false"
 ### Set up a repository to version your YAML files
 
 1. Initialize a new repo.
-2. Add the skills to the repo (like `.claude/skills` directory).
-3. Add a `.gitignore` file and add `.metabase/` and `.env`.
-4. Add the following to your .env:
+2. Add a `.gitignore` file and add `.metabase/` and `.env`.
+3. Add the following to your `.env`:
 
 ```
    METABASE_URL={your-metabase-url}
@@ -80,12 +88,7 @@ To refresh this database metadata, just ask your agent to re-fetch it.
 
 ## Example workflows
 
-There are two ways to get your YAML files into and out of Metabase:
-
-- **[Remote Sync](../installation-and-operation/remote-sync.md)** — push and pull from inside Metabase. Requires a Read-write development instance and a Read-only production instance.
-- **Serialization API** — `curl`-based export and import. Available on all plans.
-
-Pick one and follow the matching workflow below. Both assume you've completed the [initial setup](#initial-setup), and both use the same prompt patterns to drive the agent.
+The workflows below both assume you've completed the [Initial setup](#initial-setup).
 
 ### Example prompts
 
@@ -113,6 +116,8 @@ The agent will read the representation format spec, check existing files for loc
 In your development Metabase, configure [Remote Sync in Read-write mode](../installation-and-operation/remote-sync.md#setting-up-remote-sync) pointed at your repo. In production, configure a second Metabase in Read-only mode pointed at the same repo.
 
 ### 2. Create a branch from the Metabase UI
+
+Switch branches in Metabase, as the Metabase UI is the source of truth for which branch the development instance pushes to and pulls from.
 
 In your development Metabase, click the **branch dropdown** at the top and [create a new branch](../installation-and-operation/remote-sync.md#creating-a-branch) for your work, like `feature/support-dashboard`.
 
@@ -152,9 +157,9 @@ Open a pull request so your team can review the YAML diff.
 
 Click the **pull** (down arrow) icon in your development Metabase to load the agent's changes. Verify the dashboard renders correctly and the questions return expected results.
 
-### 9. Merge the PR so production auto-syncs
+### 9. Merge the PR so production picks up the changes
 
-When you merge the PR, your production Metabase (in Read-only mode) will [auto-sync](../installation-and-operation/remote-sync.md#pulling-changes-automatically) the new main branch on its next pull.
+If you've enabled [auto-sync](../installation-and-operation/remote-sync.md#pulling-changes-automatically), your production Metabase (in Read-only mode) will pull the new main branch automatically on its next interval. Otherwise, trigger a pull from production manually.
 
 ## Example workflow with import and export endpoints
 
@@ -198,7 +203,7 @@ git commit -m "Add support-overview dashboard"
 git push origin feature/support-dashboard
 ```
 
-Open a pull request so your team can review the YAML diff. Reviewing analytics content as text before it touches any Metabase is the whole point of the file-based workflow.
+Then open open a pull request so your team can review the YAML diff.
 
 ### 6. Import the YAML into your development Metabase
 
