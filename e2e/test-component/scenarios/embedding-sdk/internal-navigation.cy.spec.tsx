@@ -649,13 +649,50 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         isMultiSelect: false,
       });
 
+      const B_TAB_1 = { id: 11, name: "B Tab 1" };
+      const B_TAB_2 = { id: 12, name: "B Tab 2" };
+
       // External dashboard used to exercise the cross-dashboard push +
-      // back-restore path (`Go to Dashboard B` click behavior on Tab 1).
-      H.createDashboard({ name: "Dashboard B" }).then(
-        ({ body: externalDashboard }) => {
-          cy.wrap(externalDashboard.id).as("externalDashboardId");
-        },
-      );
+      // back-restore path (`Go to Dashboard B` click behavior on Tab 3).
+      // It is itself tabbed and the Tab 3 click behavior targets its
+      // second tab, so navigating there overwrites the global
+      // initialDashboardTabId — going back must still restore the source
+      // dashboard's own Tab 3.
+      H.createQuestion({
+        name: "Orders on B Tab 1",
+        query: { "source-table": ORDERS_ID, limit: 5 },
+      }).then(({ body: bTabOneCard }) => {
+        H.createQuestion({
+          name: "Orders on B Tab 2",
+          query: { "source-table": ORDERS_ID, limit: 5 },
+        }).then(({ body: bTabTwoCard }) => {
+          H.createDashboardWithTabs({
+            name: "Dashboard B",
+            tabs: [B_TAB_1, B_TAB_2],
+            dashcards: [
+              createMockDashboardCard({
+                id: -11,
+                card_id: bTabOneCard.id,
+                dashboard_tab_id: B_TAB_1.id,
+                size_x: 12,
+                size_y: 6,
+              }),
+              createMockDashboardCard({
+                id: -12,
+                card_id: bTabTwoCard.id,
+                dashboard_tab_id: B_TAB_2.id,
+                size_x: 12,
+                size_y: 6,
+              }),
+            ],
+          }).then((externalDashboard) => {
+            cy.wrap(externalDashboard.id).as("externalDashboardId");
+            cy.wrap((externalDashboard.tabs ?? [])[1].id).as(
+              "externalDashboardTab2Id",
+            );
+          });
+        });
+      });
 
       H.createQuestion({
         name: "Orders on Tab 1",
@@ -719,71 +756,80 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
               const resolvedTab3 = tabs[2];
               cy.get<number>("@externalDashboardId").then(
                 (externalDashboardId) => {
-                  const updatedDashcards = (dashboard.dashcards ?? []).map(
-                    (dashcard) => {
-                      if (dashcard.dashboard_tab_id === resolvedTab1.id) {
-                        return {
-                          ...dashcard,
-                          visualization_settings: {
-                            column_settings: {
-                              [`["ref",["field",${ORDERS.ID},null]]`]: {
-                                click_behavior: {
-                                  type: "link",
-                                  linkType: "dashboard",
-                                  linkTextTemplate: "Go to Tab 2",
-                                  targetId: dashboard.id,
-                                  tabId: resolvedTab2.id,
-                                  parameterMapping: {
-                                    [ID_FILTER.id]: {
-                                      source: {
-                                        type: "column",
-                                        id: "ID",
-                                        name: "ID",
+                  cy.get<number>("@externalDashboardTab2Id").then(
+                    (externalDashboardTab2Id) => {
+                      const updatedDashcards = (dashboard.dashcards ?? []).map(
+                        (dashcard) => {
+                          if (dashcard.dashboard_tab_id === resolvedTab1.id) {
+                            return {
+                              ...dashcard,
+                              visualization_settings: {
+                                column_settings: {
+                                  [`["ref",["field",${ORDERS.ID},null]]`]: {
+                                    click_behavior: {
+                                      type: "link",
+                                      linkType: "dashboard",
+                                      linkTextTemplate: "Go to Tab 2",
+                                      targetId: dashboard.id,
+                                      tabId: resolvedTab2.id,
+                                      parameterMapping: {
+                                        [ID_FILTER.id]: {
+                                          source: {
+                                            type: "column",
+                                            id: "ID",
+                                            name: "ID",
+                                          },
+                                          target: {
+                                            type: "parameter",
+                                            id: ID_FILTER.id,
+                                          },
+                                          id: ID_FILTER.id,
+                                        },
                                       },
-                                      target: {
-                                        type: "parameter",
-                                        id: ID_FILTER.id,
-                                      },
-                                      id: ID_FILTER.id,
                                     },
                                   },
                                 },
                               },
-                            },
-                          },
-                        };
-                      }
-                      if (dashcard.dashboard_tab_id === resolvedTab3.id) {
-                        return {
-                          ...dashcard,
-                          visualization_settings: {
-                            column_settings: {
-                              // ID column on Tab 3 links to Dashboard B
-                              // (cross-dashboard push) — used to exercise the
-                              // back-restore path.
-                              [`["ref",["field",${ORDERS.ID},null]]`]: {
-                                click_behavior: {
-                                  type: "link",
-                                  linkType: "dashboard",
-                                  linkTextTemplate: "Go to Dashboard B",
-                                  targetId: externalDashboardId,
-                                  parameterMapping: {},
+                            };
+                          }
+                          if (dashcard.dashboard_tab_id === resolvedTab3.id) {
+                            return {
+                              ...dashcard,
+                              visualization_settings: {
+                                column_settings: {
+                                  // ID column on Tab 3 links to Dashboard B's
+                                  // second tab (cross-dashboard push to a tabbed
+                                  // dashboard) — exercises the back-restore path
+                                  // where the destination's tab id must not
+                                  // clobber the source dashboard's remembered tab.
+                                  [`["ref",["field",${ORDERS.ID},null]]`]: {
+                                    click_behavior: {
+                                      type: "link",
+                                      linkType: "dashboard",
+                                      linkTextTemplate: "Go to Dashboard B",
+                                      targetId: externalDashboardId,
+                                      tabId: externalDashboardTab2Id,
+                                      parameterMapping: {},
+                                    },
+                                  },
                                 },
                               },
-                            },
-                          },
-                        };
-                      }
-                      return dashcard;
+                            };
+                          }
+                          return dashcard;
+                        },
+                      );
+
+                      cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+                        ...dashboard,
+                        dashcards: updatedDashcards,
+                      });
+
+                      cy.wrap(dashboard.entity_id).as(
+                        "tabbedDashboardEntityId",
+                      );
                     },
                   );
-
-                  cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-                    ...dashboard,
-                    dashcards: updatedDashcards,
-                  });
-
-                  cy.wrap(dashboard.entity_id).as("tabbedDashboardEntityId");
                 },
               );
             });
@@ -864,11 +910,22 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         H.getDashboardCard().findAllByText("Go to Dashboard B").first().click();
         cy.wait("@getDashboard");
         cy.findByText("Dashboard B").should("be.visible");
+
+        // Dashboard B is itself tabbed; the click behavior targets its
+        // second tab, so it should open directly on B Tab 2.
+        cy.findByRole("tab", { name: "B Tab 2" }).should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+        cy.findByText("Orders on B Tab 2").should("be.visible");
         cy.findByText("Back to Tabbed Dashboard").should("be.visible");
 
         // Click back — should restore the manually-selected Tab 3, and the
         // manually-changed ID filter value (999, not the click-behavior 1)
-        // should still be set.
+        // should still be set. Regression: navigating to a tabbed Dashboard B
+        // overwrites the global initialDashboardTabId with B's tab id, so the
+        // source dashboard re-mounts on its first tab instead of Tab 3.
         cy.findByText("Back to Tabbed Dashboard").click();
         cy.findByRole("tab", { name: "Tab 3" }).should(
           "have.attr",
