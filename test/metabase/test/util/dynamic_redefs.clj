@@ -33,15 +33,14 @@
 
 (defn- var->proxy
   "Build a proxy function to intercept the given var. The proxy checks the current scope for what to call.
-   Uses unconditional throws (not `assert`) so the safety checks fire even when `*assert*` is false."
+   Uses unconditional throws (not `assert`) so the safety checks fire even when `*assert*` is false.
+
+   Accepts any `IFn` root value — keywords and collections work via their `IFn` impl
+   (`(:a {:a 1})` → `1`, `({:a 1} :a)` → `1`), so the proxy's `apply` delegates correctly."
   [a-var]
   (let [v @a-var]
     (when-not (ifn? v)
-      (throw (ex-info (str "Cannot proxy non-functions: " a-var) {:var a-var, :value v})))
-    (when (keyword? v)
-      (throw (ex-info (str "Cannot proxy keywords: " a-var) {:var a-var, :value v})))
-    (when (coll? v)
-      (throw (ex-info (str "Cannot proxy collections: " a-var) {:var a-var, :value v})))
+      (throw (ex-info (str "Cannot proxy non-IFn values: " a-var) {:var a-var, :value v})))
     (when (instance? MultiFn v)
       (throw (ex-info (str "Cannot proxy multimethods: " a-var ". "
                            "with-dynamic-fn-redefs replaces the var's root with a proxy, which breaks "
@@ -87,7 +86,8 @@
    This proxy uses a dynamic mapping to check whether the function is currently redefined.
 
    Limitations:
-   - Functions only. Multimethods, plain value defs, keywords and collections will throw.
+   - `IFn`-valued vars only. Keywords and collections are fine (they're `IFn`); multimethods
+     and plain non-`IFn` value defs will throw.
    - If the replacement calls the redefined var (to delegate to the original), capture it
      via [[original-fn]] rather than `@#'the-var` or a bare symbol reference — the latter
      resolve to the proxy itself once installed, causing runaway recursion.

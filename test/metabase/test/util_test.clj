@@ -109,24 +109,21 @@
 
 (def also-accidentally-a-function [:wut-up])
 
-(deftest ^:parallel with-dynamic-fn-redefs-non-function
-  (testing "It is an error to redefine a non-function"
+(deftest ^:parallel with-dynamic-fn-redefs-non-ifn-test
+  (testing "Redefining a non-IFn value (e.g. a number) is an error — the proxy can't apply it"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"Cannot proxy non-functions"
+         #"Cannot proxy non-IFn values"
          (mt/with-dynamic-fn-redefs [not-a-function 5]
-           (is (= 5 not-a-function))))))
-  (testing "Redefining keywords or collections is likely to surprise you, so we don't allow it"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Cannot proxy keywords"
-         (mt/with-dynamic-fn-redefs [accidentally-a-function :not-much]
-           (is (= :not-much accidentally-a-function)))))
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Cannot proxy collections"
-         (mt/with-dynamic-fn-redefs [also-accidentally-a-function #{:butter-cup}]
-           (is (= [:butter-cup] also-accidentally-a-function)))))))
+           (is (= 5 not-a-function)))))))
+
+(deftest ^:parallel with-dynamic-fn-redefs-keyword-and-coll-test
+  (testing "Keyword-valued vars are IFn and can be redefined"
+    (mt/with-dynamic-fn-redefs [accidentally-a-function :other]
+      (is (= 2 (accidentally-a-function {:other 2})))))
+  (testing "Collection-valued vars are IFn and can be redefined"
+    (mt/with-dynamic-fn-redefs [also-accidentally-a-function [:other]]
+      (is (= :other (also-accidentally-a-function 0))))))
 
 (defmulti a-multimethod {:arglists '([x])} class)
 (defmethod a-multimethod String [_] :string)

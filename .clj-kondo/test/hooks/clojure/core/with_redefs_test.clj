@@ -53,36 +53,37 @@
         {:node (hooks/parse-string (if (string? src) src (pr-str src)))}))
      @(:findings clj-kondo.impl.utils/*ctx*))))
 
-(deftest ^:synchronized flags-fn-shaped-rhs-test
-  (testing "fn literal redefining a known defn"
-    (is (=? [{:type :metabase/prefer-with-dynamic-fn-redefs}]
-            (lint '(with-redefs [plain-fn (fn [x] x)] (plain-fn 1))))))
-  (testing "reader-macro fn literal — must be a string source so `#(...)` parses as a
-            `:fn`-tagged node, not the post-expansion `(fn* …)` list. Quoted forms
-            round-trip through pr-str/parse-string and lose the reader-macro shape."
+(deftest ^:synchronized flags-when-every-lhs-is-defn-test
+  (testing "RHS shape doesn't matter — once every LHS resolves to a defn, the form is a
+            migration candidate regardless of what's on the right. We deliberately stick
+            to `IFn`-valued shapes here (fns, keywords, colls) — pairing a fn-var LHS
+            with a non-`IFn` value (`42`) would be a weird shape callers wouldn't realistically
+            write, and `with-dynamic-fn-redefs` would throw at proxy time anyway."
+    (doseq [rhs ['(fn [x] x)
+                 '(constantly 42)
+                 '(partial + 1)
+                 '(comp inc dec)
+                 'identity              ; bare symbol resolving to an IFn
+                 '(foo/constantly 42)   ; namespaced lookalike — no longer special-cased
+                 :a-key                 ; keyword (IFn)
+                 {:a 1}                 ; map (IFn)
+                 [1 2 3]]]              ; vector (IFn)
+      (is (=? [{:type :metabase/prefer-with-dynamic-fn-redefs}]
+              (lint (list 'with-redefs ['plain-fn rhs] :body)))
+          (str "expected nudge for RHS: " (pr-str rhs)))))
+  (testing "reader-macro `#(...)` literal — passed as a string so it parses as a
+            `:fn`-tagged node, not the post-expansion `(fn* …)` list. Still works because
+            it's just one more shape the LHS-only rule treats uniformly."
     (is (=? [{:type :metabase/prefer-with-dynamic-fn-redefs}]
             (lint "(with-redefs [plain-fn #(inc %)] (plain-fn 1))"))))
-  (testing "(constantly …)"
-    (is (=? [{:type :metabase/prefer-with-dynamic-fn-redefs}]
-            (lint '(with-redefs [plain-fn (constantly 42)] (plain-fn))))))
-  (testing "(partial …), (comp …), (complement …), (identity …) are *not* fn-shaped —
-            they only return a function when their args are functions, so the heuristic
-            stays out of their way to avoid false positives like `(identity 42)`"
-    (is (= [] (lint '(with-redefs [plain-fn (partial + 1)] (plain-fn)))))
-    (is (= [] (lint '(with-redefs [plain-fn (comp inc dec)] (plain-fn)))))
-    (is (= [] (lint '(with-redefs [plain-fn (complement odd?)] (plain-fn)))))
-    (is (= [] (lint '(with-redefs [plain-fn (identity inc)] (plain-fn))))))
-  (testing "namespaced lookalikes like `foo/constantly` don't qualify — only unqualified
-            heads from `fn-building-heads` trigger the nudge"
-    (is (= [] (lint '(with-redefs [plain-fn (foo/constantly 42)] (plain-fn))))))
-  (testing "multiple bindings, all fn-shaped and all defns"
+  (testing "multiple bindings, every LHS is a defn"
     (is (=? [{:type :metabase/prefer-with-dynamic-fn-redefs}]
             (lint '(with-redefs [plain-fn   (constantly 1)
                                  plain-fn-2 (fn [] 2)]
                      (plain-fn)))))))
 
 (deftest ^:synchronized skips-multimethod-and-value-targets-test
-  (testing "defmulti — no arity in analysis, so don't nudge even with fn-shaped RHS"
+  (testing "defmulti — no arity in analysis, so don't nudge"
     (is (= [] (lint '(with-redefs [a-multimethod (fn [& _] nil)] :body))))
     (is (= [] (lint '(with-redefs [can-read? (constantly true)] :body))))
     (is (= [] (lint '(with-redefs [can-query? (constantly false)] :body)))))
@@ -150,19 +151,3 @@
             (is (not (contains? nudge-rows 5)))))
         (finally (delete-tree! tmp-dir))))))
 
-(deftest ^:synchronized ignores-non-fn-rhs-test
-  (testing "literal value"
-    (is (= [] (lint '(with-redefs [a-value 200] :body)))))
-  (testing "map / vector / set literal"
-    (is (= [] (lint '(with-redefs [a-value {:a 1}] :body))))
-    (is (= [] (lint '(with-redefs [a-value [1 2 3]] :body))))
-    (is (= [] (lint '(with-redefs [a-value #{:a}] :body)))))
-  (testing "non-fn-producing call (e.g. assoc, make-hierarchy, vec)"
-    (is (= [] (lint '(with-redefs [a-value (assoc {} :k :v)] :body))))
-    (is (= [] (lint '(with-redefs [a-value (make-hierarchy)] :body)))))
-  (testing "bare symbol — conservatively left alone even though `identity` is a fn"
-    (is (= [] (lint '(with-redefs [plain-fn identity] :body)))))
-  (testing "one fn-shaped + one non-fn → do not nudge (mixed intent)"
-    (is (= [] (lint '(with-redefs [plain-fn   (constantly 1)
-                                   plain-fn-2 42]
-                       :body))))))

@@ -2,43 +2,6 @@
   (:require
    [clj-kondo.hooks-api :as hooks]))
 
-(def ^:private fn-building-heads
-  "Head symbols that *unconditionally* produce a function value. We only use this on the
-   RHS — if every binding's RHS is fn-shaped, the user is mocking functions and would be
-   better served by `metabase.test.util.dynamic-redefs/with-dynamic-fn-redefs`
-   (thread-safe). The set covers `fn`, `fn*`, and `constantly`, which are unambiguous.
-
-   Names like `partial`, `comp`, `complement`, and `identity` were deliberately *omitted*:
-   they only return a function when their arguments are functions (`(identity 42)` is
-   `42`, `(partial 1 2)` throws), so including them would let the linter fire on
-   non-function RHSes. In practice mocks use `fn`/`#(...)`/`constantly`, so the loss is
-   negligible."
-  '#{fn fn* constantly})
-
-(defn- fn-shaped?
-  "Heuristic: does this rewrite-clj node look like it evaluates to a function?
-
-   Conservative — returns true only for cases we're confident about. A bare symbol (e.g. a
-   previously-bound local or a var reference) is NOT considered fn-shaped because we can't
-   tell without full resolution whether it's a function or a value.
-
-   Two shapes match: `#(...)` reader literals (parsed by rewrite-clj as a distinct node
-   with tag `:fn`, *not* a list node) and explicit list calls whose head is one of the
-   `fn-building-heads`. We require the head be an unqualified symbol so a user-defined
-   `foo/constantly` doesn't get conflated with `clojure.core/constantly`."
-  [node]
-  (or
-   ;; `#(...)` reader literal — always a function by construction.
-   (= :fn (hooks/tag node))
-   ;; `(fn …)`, `(fn* …)`, `(constantly …)`.
-   (and (hooks/list-node? node)
-        (let [[head] (:children node)]
-          (and (hooks/token-node? head)
-               (let [s (hooks/sexpr head)]
-                 (and (symbol? s)
-                      (nil? (namespace s))
-                      (contains? fn-building-heads s))))))))
-
 (defn- defn-arity?
   "Look up `var-sym` in `analysis` (the result of `hooks/ns-analysis`, keyed by language)
    and return true iff kondo recorded a non-empty arity for it. clj-kondo only emits
@@ -82,8 +45,13 @@
               (defn-arity? (hooks/ns-analysis ns-sym) (:name resolved))))))
 
 (defn lint-with-redefs
-  "Suggest `with-dynamic-fn-redefs` when every RHS is obviously a function AND every LHS
-   is known to be a `defn`-style var.
+  "Suggest `with-dynamic-fn-redefs` when every LHS is known to be a `defn`-style var.
+
+   We don't gate on the RHS — `with-dynamic-fn-redefs` accepts any `IFn` replacement
+   (fns, keywords, colls), and the LHS check alone is enough to know the form is
+   migratable as a whole. The `every?` keeps it whole-form: mixed bindings that include
+   a non-defn LHS (defmulti, plain `def`, unresolved) can't be split usefully — the
+   leftover `with-redefs` still does a global root-swap, so the form remains thread-unsafe.
 
    The LHS check uses kondo's own analysis cache rather than a hand-maintained list of
    multimethod names — adding a new `defmulti` doesn't require touching this hook."
@@ -93,13 +61,11 @@
       (let [pairs (partition-all 2 (:children bindings-vec))]
         (when (and (seq pairs)
                    (every? (fn [[lhs rhs]]
-                             (and rhs
-                                  (fn-shaped? rhs)
-                                  (safely-nudgeable-lhs? lhs)))
+                             (and rhs (safely-nudgeable-lhs? lhs)))
                            pairs))
           (hooks/reg-finding!
            (assoc (meta node)
-                  :message (str "Every binding here replaces a function — prefer "
+                  :message (str "Every binding here redefines a defn-style var — prefer "
                                 "metabase.test/with-dynamic-fn-redefs for thread-safe "
                                 "redefs. [:metabase/prefer-with-dynamic-fn-redefs]")
                   :type    :metabase/prefer-with-dynamic-fn-redefs))))))
