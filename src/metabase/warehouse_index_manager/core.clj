@@ -4,7 +4,6 @@
   internal namespaces directly."
   (:require
    [clojure.string :as str]
-   [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -188,13 +187,14 @@
                        :status-code 400})))
     (:name parsed)))
 
+(defn- pg-quote [ident]
+  (str \" (str/replace (str ident) "\"" "\"\"") \"))
+
 (defn- drop-statement
   "DROP INDEX CONCURRENTLY IF EXISTS for an index on `schema`."
   [schema index-name]
   (str "DROP INDEX CONCURRENTLY IF EXISTS "
-       (sql/format-entity (keyword schema))
-       "."
-       (sql/format-entity (keyword index-name))))
+       (pg-quote schema) "." (pg-quote index-name)))
 
 (defn- mark-running! [request-id]
   (t2/update! :model/IndexRequest request-id {:status :running}))
