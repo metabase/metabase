@@ -13,11 +13,6 @@ import type { VisualizationGridSize } from "metabase/visualizations/types";
 import S from "./ScalarValue.module.css";
 import { findSize, getMaxFontSize } from "./utils";
 
-// Tall enough to contain Unicode subscript/superscript descenders like `₂` in
-// `tCO₂e`. Mantine's `--mantine-line-height` is 1.22 in Metabase, which
-// shears the bottom of `₂` (metabase#72443).
-const DEFAULT_LINE_HEIGHT = 1.5;
-
 export const ScalarWrapper = ({ children }: PropsWithChildren) => (
   <Flex
     pos="relative"
@@ -97,11 +92,9 @@ export const ScalarValue = ({
         !disableHover && S.hoverable,
       )}
       fz={fontSize}
-      lh={numberTheme?.value?.lineHeight ?? DEFAULT_LINE_HEIGHT}
+      lh={numberTheme?.value?.lineHeight}
       data-testid="scalar-value"
-      // Route the dynamic color through a CSS variable so the `:hover`
-      // class in S.hoverable can override it; inline `style={{ color }}`
-      // would beat the class on specificity.
+      // Route color through a CSS variable so `S.hoverable:hover` can override (inline `style` would beat the class on specificity).
       style={{ "--scalar-value-color": color } as CSSProperties}
     >
       {value ?? t`null`}

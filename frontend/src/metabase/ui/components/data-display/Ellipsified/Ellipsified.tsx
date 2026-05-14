@@ -23,16 +23,24 @@ export const Ellipsified = ({
   tooltipProps,
   ...textProps
 }: EllipsifiedProps) => {
+  const isSingleLine = lines === 1;
   const canSkipTooltipRendering = !showTooltip && !alwaysShowTooltip;
+  // Single-line truncate clips only horizontally, so vertical overflow isn't truncation.
   const { isTruncated, ref } = useIsTruncated<HTMLDivElement>({
     disabled: canSkipTooltipRendering,
-    ignoreHeightTruncation,
+    ignoreHeightTruncation: ignoreHeightTruncation || isSingleLine,
   });
   const isEnabled =
     (showTooltip && (isTruncated || alwaysShowTooltip)) || false;
 
-  const truncatedProps: Partial<TextProps> =
-    lines > 1 ? { lineClamp: lines } : { truncate: true };
+  const truncatedProps: Partial<TextProps> = isSingleLine
+    ? { truncate: true }
+    : { lineClamp: lines };
+
+  // Override Mantine's `overflow: hidden` so deep descenders (e.g. `₂` in `tCO₂e`) render past the line box without growing it (metabase#72443).
+  const overflowStyle = isSingleLine
+    ? { overflowX: "clip" as const, overflowY: "visible" as const }
+    : undefined;
 
   return (
     <Tooltip
@@ -49,6 +57,7 @@ export const Ellipsified = ({
         lh="inherit"
         {...truncatedProps}
         {...textProps}
+        style={{ ...overflowStyle, ...textProps.style }}
       >
         {children}
       </Text>

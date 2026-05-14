@@ -93,7 +93,7 @@ describe("Scalar", () => {
     expect(styles.textOverflow).not.toBe("ellipsis");
   });
 
-  it("uses a line-height that fits Unicode subscript descenders (metabase#72443)", () => {
+  it("lets Unicode subscript descenders render past the line box (metabase#72443)", () => {
     render(
       <Scalar
         {...mockedProps}
@@ -104,10 +104,9 @@ describe("Scalar", () => {
         width={230}
       />,
     );
-    const lh = window.getComputedStyle(
-      screen.getByTestId("scalar-value"),
-    ).lineHeight;
-    expect(parseFloat(lh)).toBeGreaterThanOrEqual(1.5);
+    expect(screen.getByTestId("scalar-container")).toHaveStyle({
+      overflowY: "visible",
+    });
   });
 });
 

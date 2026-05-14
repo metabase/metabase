@@ -285,8 +285,7 @@ export const SmartScalarDarkTheme = {
   },
 };
 
-// Regression guard for metabase#72443 — the `₂` subscript descender used to
-// clip at the bottom of the value box.
+// Regression guard for metabase#72443: `₂` subscript descender used to clip at the value's line-box edge.
 export const SmartScalarUnicodeSubscript = {
   render: Template,
 
