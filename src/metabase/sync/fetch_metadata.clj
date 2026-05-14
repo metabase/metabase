@@ -5,6 +5,7 @@
   (:require
    [clojure.set :as set]
    [metabase.driver :as driver]
+   [metabase.driver.connection.workspaces :as driver.conn.w]
    [metabase.driver.util :as driver.u]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
@@ -14,19 +15,33 @@
    [metabase.workspaces.table-remapping :as ws.table-remapping]
    [toucan2.core :as t2]))
 
-(defn- effective-schema+name
-  "Pair used when querying the driver for a Table's fields. Lets workspace mode
-  redirect to the isolated warehouse table while the app-db row keeps its
-  logical identity. Returns a `[schema name]` 2-tuple for backward-compat with
-  call sites that destructure positionally; the underlying remap hook works in
-  the `{:db :schema :name}` map shape."
+(defn- effective-table-spec
+  "Resolves the workspace remap for `(schema, table-name)` on `database-id`. Returns
+  `{:db :schema :name}`: the iso warehouse coordinates when a remap exists, otherwise
+  the canonical input. Lets workspace mode redirect to the iso table while the app-db
+  row keeps its logical identity."
   [database-id schema table-name]
-  ; TODO make this fn table-spec aware and driver aware (and adjust callers to match)
   (let [from-spec {:schema schema :name table-name}]
-    (if-let [{:keys [schema name]} (ws.table-remapping/workspace-remap-schema+name
-                                    database-id from-spec)]
-      [schema name]
-      [schema table-name])))
+    (or (ws.table-remapping/workspace-remap-schema+name database-id from-spec)
+        {:db nil :schema schema :name table-name})))
+
+(defn- do-with-effective-table
+  "Resolve the workspace remap for `table` on `database`, then call `f` with an
+  `{:db :schema :name}` map of effective coordinates.
+
+  When the resolved `:db` differs from the canonical bound DB (true for engines like
+  MySQL whose iso namespace is a *different* database, not just a different schema),
+  installs a `:db` swap via [[driver.conn.w/with-swapped-connection-details]] so the
+  driver-side `describe-fields`/`describe-table`/`describe-indexes` SQL filters and
+  connects to the iso DB. Schema-having drivers (Postgres etc.) keep `:db` at the
+  canonical value and skip the swap."
+  [database table f]
+  (let [{effective-db :db :as spec} (effective-table-spec (:id database) (:schema table) (:name table))
+        canonical-db (-> database :details :db)]
+    (if (and effective-db (not= effective-db canonical-db))
+      (driver.conn.w/with-swapped-connection-details (:id database) {:db effective-db}
+        (f spec))
+      (f spec))))
 
 (defmacro log-if-error
   "Logs an error message if an exception is thrown while executing the body."
@@ -48,13 +63,14 @@
 (defn include-nested-fields-for-table
   "Add nested-field-columns for table to set of fields."
   [fields database table]
-  ; TODO adapt this to use table-specs and be driver aware
-  (let [driver                (driver.u/database->driver database)
-        [eff-schema eff-name] (effective-schema+name (:id database) (:schema table) (:name table))
-        effective-table       (assoc table :schema eff-schema :name eff-name)]
-    (cond-> fields
-      (driver.u/supports? driver :nested-field-columns database)
-      (set/union ((requiring-resolve 'metabase.driver.sql-jdbc.sync/describe-nested-field-columns) driver database effective-table)))))
+  (let [driver (driver.u/database->driver database)]
+    (do-with-effective-table
+     database table
+     (fn [{effective-schema :schema effective-name :name}]
+       (let [effective-table (assoc table :schema effective-schema :name effective-name)]
+         (cond-> fields
+           (driver.u/supports? driver :nested-field-columns database)
+           (set/union ((requiring-resolve 'metabase.driver.sql-jdbc.sync/describe-nested-field-columns) driver database effective-table))))))))
 
 (mu/defn table-fields-metadata :- [:set i/TableMetadataField]
   "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's
@@ -63,16 +79,17 @@
   [database :- i/DatabaseInstance
    table    :- i/TableInstance]
   (log-if-error "table-fields-metadata"
-    (let [driver                (driver.u/database->driver database)
-          [eff-schema eff-name] (effective-schema+name (:id database) (:schema table) (:name table))
-          effective-table       (assoc table :schema eff-schema :name eff-name)
-          result (if (driver.u/supports? driver :describe-fields database)
-                   (set (driver/describe-fields driver
-                                                database
-                                                :table-names [eff-name]
-                                                :schema-names [eff-schema]))
-                   (:fields (driver/describe-table driver database effective-table)))]
-      result)))
+    (let [driver (driver.u/database->driver database)]
+      (do-with-effective-table
+       database table
+       (fn [{effective-schema :schema effective-name :name}]
+         (let [effective-table (assoc table :schema effective-schema :name effective-name)]
+           (if (driver.u/supports? driver :describe-fields database)
+             (set (driver/describe-fields driver
+                                          database
+                                          :table-names [effective-name]
+                                          :schema-names [effective-schema]))
+             (:fields (driver/describe-table driver database effective-table)))))))))
 
 (defn- describe-fields-using-describe-table
   "Replaces [[metabase.driver/describe-fields]] for drivers that haven't implemented it. Uses [[driver/describe-table]]
@@ -168,6 +185,8 @@
   [database :- i/DatabaseInstance
    table    :- i/TableInstance]
   (log-if-error "index-metadata"
-    (let [[eff-schema eff-name] (effective-schema+name (:id database) (:schema table) (:name table))
-          effective-table       (assoc table :schema eff-schema :name eff-name)]
-      (driver/describe-table-indexes (driver.u/database->driver database) database effective-table))))
+    (do-with-effective-table
+     database table
+     (fn [{effective-schema :schema effective-name :name}]
+       (let [effective-table (assoc table :schema effective-schema :name effective-name)]
+         (driver/describe-table-indexes (driver.u/database->driver database) database effective-table))))))
