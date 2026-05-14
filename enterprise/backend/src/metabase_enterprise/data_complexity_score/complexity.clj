@@ -4,7 +4,6 @@
     :universe — everything (library entities + all active physical tables)
     :metabot  — what the internal Metabot can surface, narrowed by a caller-supplied scope."
   (:require
-   [clojure.pprint :as pprint]
    [clojure.string :as str]
    [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
    [metabase.analytics-interface.core :as analytics.interface]
@@ -334,14 +333,6 @@
 
 ;;; ----------------------------------- public API ------------------------------------
 
-(defn- log-scores!
-  "Log the result at :info so operators see the score in app logs even when Snowplow is off."
-  [result]
-  (log/info (str "Semantic complexity score:\n"
-                 ;; `pprint` goes through `with-out-str`, not `*out*`, so the "use metabase.util.log" lint is n/a.
-                 #_{:clj-kondo/ignore [:discouraged-var]}
-                 (with-out-str (pprint/pprint result)))))
-
 (defn- snake ^String [x]
   (str/replace (name x) "-" "_"))
 
@@ -512,7 +503,6 @@
                                                :synonym-threshold synonym-similarity-threshold}
                                         embedding-model-meta (assoc :embedding-model embedding-model-meta)
                                         text-variant         (assoc :text-variant    text-variant))}]
-        (log-scores! result)
         (let [published? (time-phase! "publish" "all"
                                       (fn []
                                         (boolean

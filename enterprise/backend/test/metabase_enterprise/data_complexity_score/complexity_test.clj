@@ -834,36 +834,6 @@
                     (messages))
               "a warning about the publish failure was logged"))))))
 
-(deftest ^:sequential local-info-log-is-emitted-even-when-snowplow-fails-test
-  (testing "the 'Semantic complexity score' info log fires independently of Snowplow emission"
-    ;; Guards two regressions together: local logging being removed, and local logging being
-    ;; gated on successful telemetry (so a broken collector would silence the operator-visible log).
-    (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
-                                (constantly {:library  [(entity :name "orders")]
-                                             :universe [(entity :name "orders")]
-                                             :metabot  []})
-                                analytics/track-event!       (fn [& _] (throw (RuntimeException. "snowplow down")))]
-      (mt/with-log-messages-for-level [messages [metabase-enterprise.data-complexity-score.complexity :info]]
-        (complexity/complexity-scores :embedder nil)
-        (is (some #(and (= :info (:level %))
-                        (re-find #"Semantic complexity score" (:message %)))
-                  (messages))
-            "the score was logged locally at :info even though Snowplow emission threw")))))
-
-(deftest ^:sequential scheduled-task-logs-score-test
-  (testing "the scheduled task body runs complexity-scores so operators see a score line in the logs"
-    (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
-                                (constantly {:library  [(entity :name "orders")]
-                                             :universe [(entity :name "orders")]
-                                             :metabot  []})]
-      (mt/with-temporary-setting-values [data-complexity-scoring-enabled true]
-        (mt/with-log-messages-for-level [messages [metabase-enterprise.data-complexity-score.complexity :info]]
-          (#'task.complexity-score/run-scoring! "test-fp")
-          (is (some #(and (= :info (:level %))
-                          (re-find #"Semantic complexity score" (:message %)))
-                    (messages))
-              "the scheduled task produced the expected info log"))))))
-
 (deftest ^:sequential complexity-score-library-hermetic-test
   (testing "library score is computed over exactly the Library collection tree — known inputs produce known scores"
     ;; The library tree gets a fixed set of tables, fields, measures, and metric cards. One extra
