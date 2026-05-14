@@ -86,8 +86,8 @@ Toucan 2 model: `:model/IndexRequest`.
 ## Structured index syntax
 
 Input to `POST /preview`. Covers the common case; anything more advanced
-(partial `WHERE`, expression indexes, operator classes, storage params)
-falls back to the raw-SQL editor.
+(partial `WHERE`, expression indexes, operator classes, storage params,
+`NULLS FIRST/LAST`) falls back to the raw-SQL editor.
 
 ```ts
 type IndexStructured = {
@@ -95,11 +95,13 @@ type IndexStructured = {
   columns: Array<{
     name: string;                // validated against the table's fields
     direction?: "asc" | "desc";  // default "asc"
-    nulls?: "first" | "last";    // optional
   }>;
   include?: string[];            // postgres INCLUDE columns
   unique?: boolean;              // default false
-  concurrent?: boolean;          // default true (recommended)
+  concurrent?: boolean;          // default true (recommended) — hidden in
+                                 //   the FE form when the driver doesn't
+                                 //   set the :index/create-concurrently
+                                 //   feature flag
   if_not_exists?: boolean;       // default true
   method?: "btree" | "hash" | "gin" | "gist" | "brin" | "spgist";
                                  // default "btree"
@@ -127,6 +129,9 @@ joined with its `IndexRequest` row when one exists.
     transform_id: number | null,
     driver: "postgres" | string,
     driver_supported: boolean,    // false → indexes: [], UI shows placeholder
+    supports_concurrent: boolean, // backed by the :index/create-concurrently
+                                  //   driver feature flag — FE hides the
+                                  //   "concurrent" toggle when false
     can_manage: boolean,          // driver_supported && transform_id !== null
                                   //   && currentUser.is_superuser
   },

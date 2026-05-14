@@ -4,20 +4,21 @@
 
   The structured form covers the common case: regular btree (or
   gin/gist/…) indexes on one or more columns of a single table, optional
-  INCLUDE columns, UNIQUE / CONCURRENTLY / IF NOT EXISTS toggles. Anything
-  more (partial WHERE clauses, expression indexes, operator classes,
-  storage parameters) is out of scope — the user falls back to the
+  INCLUDE columns, UNIQUE / CONCURRENTLY / IF NOT EXISTS toggles, and
+  ASC/DESC per key column. Anything more — partial WHERE clauses,
+  expression indexes, operator classes, storage parameters, NULLS
+  FIRST/LAST ordering — is out of scope; the user falls back to the
   raw-SQL editor.
 
   Pipeline:
 
-    `structured` → HoneySQL `{:create-index …}` map → `sql/format` → string
+    `structured` → HoneySQL map → `sql/format` → SQL string
 
-  HoneySQL handles all the identifier quoting (Postgres `:ansi` dialect)
-  and the basic clauses. The two pieces it doesn't natively support —
-  Postgres' `INCLUDE (…)` and `NULLS FIRST/LAST` ordering within a key
-  column — are emitted via `[:raw …]` fragments built with
-  `sql/format-entity`, so they participate in the same quoting pipeline.
+  HoneySQL handles identifier quoting (via the `:ansi` dialect with
+  `:quoted true`) and assembles the basic shape. Postgres' INCLUDE
+  clause isn't native to HoneySQL's `:create-index`, so we register a
+  custom `::include` clause that appears after `:create-index` in the
+  formatter order.
 
   Postgres-only today."
   (:require
@@ -31,7 +32,16 @@
   #{:btree :hash :gin :gist :brin :spgist})
 
 (def valid-directions #{:asc :desc})
-(def valid-nulls      #{:first :last})
+
+;;; ---------------------------------------------------------------------------
+;;; ::include — HoneySQL extension for Postgres INCLUDE columns
+
+(defn- format-include [_clause cols]
+  [(str "INCLUDE ("
+        (str/join ", " (map (comp sql/format-entity keyword) cols))
+        ")")])
+
+(sql/register-clause! ::include #'format-include nil)
 
 ;;; ---------------------------------------------------------------------------
 ;;; Validation
@@ -51,16 +61,13 @@
   (when (and method (not (contains? valid-methods (keyword method))))
     (throw (ex-info (str "Unknown index method: " method)
                     {:reason :unknown-method :method method})))
-  (doseq [{col-name :name dir :direction nulls :nulls} columns]
+  (doseq [{col-name :name dir :direction} columns]
     (when (str/blank? (str col-name))
       (throw (ex-info "column :name is required for every key column"
                       {:reason :missing-column-name})))
     (when (and dir (not (contains? valid-directions (keyword dir))))
       (throw (ex-info (str "Bad direction: " dir)
                       {:reason :bad-direction :direction dir})))
-    (when (and nulls (not (contains? valid-nulls (keyword nulls))))
-      (throw (ex-info (str "Bad nulls position: " nulls)
-                      {:reason :bad-nulls :nulls nulls})))
     (check-known-column! known-columns col-name :key))
   (doseq [col-name include]
     (when (str/blank? (str col-name))
@@ -71,29 +78,14 @@
 ;;; ---------------------------------------------------------------------------
 ;;; structured → HoneySQL
 
-(defn- key-column->order-spec
-  "HoneySQL's `:create-index` uses order-by syntax for the column list.
-  We render NULLS FIRST/LAST as a raw fragment because HoneySQL's
-  order-by doesn't carry it through into create-index."
-  [{col-name :name dir :direction nulls :nulls}]
-  (let [col-kw     (keyword col-name)
-        nulls-suffix (when nulls (str " NULLS " (str/upper-case (name nulls))))
-        col-expr   (if nulls-suffix
-                     [:raw (str (sql/format-entity col-kw) nulls-suffix)]
-                     col-kw)]
+(defn- column->order-spec
+  "HoneySQL's `:create-index` uses ORDER BY-style syntax for the column
+  list. `:colname` → `\"colname\"`, `[:colname :asc]` → `\"colname\" ASC`."
+  [{col-name :name dir :direction}]
+  (let [col-kw (keyword col-name)]
     (if dir
-      [col-expr (keyword (str/upper-case (name dir)))]
-      [col-expr])))
-
-(defn- include-clause
-  "HoneySQL doesn't natively support Postgres' INCLUDE. We emit it as
-  a `[:raw …]` fragment, but use `sql/format-entity` for every
-  identifier so quoting stays consistent."
-  [include]
-  (when (seq include)
-    [:raw (str "INCLUDE ("
-               (str/join ", " (map (comp sql/format-entity keyword) include))
-               ")")]))
+      [col-kw (keyword (str/upper-case (name dir)))]
+      col-kw)))
 
 (defn- structured->honey
   [{:keys [schema table]}
@@ -105,15 +97,16 @@
                          [(keyword index_name)]
                          (when if_not_exists [:if-not-exists])))
         method-kw  (when (not= (keyword method) :btree)
+                     ;; HoneySQL's create-index recognises `:using-<method>`
+                     ;; as a single ident slot between the table and the
+                     ;; column list.
                      (keyword (str "using-" (name method))))
         table-kw   (keyword (str schema "." table))
-        col-specs  (mapv key-column->order-spec columns)
         on-clause  (vec (concat [table-kw]
                                 (when method-kw [method-kw])
-                                col-specs
-                                (when-let [inc (include-clause include)]
-                                  [inc])))]
-    {:create-index [index-spec on-clause]}))
+                                (map column->order-spec columns)))]
+    (cond-> {:create-index [index-spec on-clause]}
+      (seq include) (assoc ::include include))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Public API
@@ -130,10 +123,10 @@
   turned it off)."
   [target {:keys [concurrent] :or {concurrent true} :as structured} known-columns]
   (validate! structured known-columns)
-  (let [honey      (structured->honey target structured)
+  (let [honey       (structured->honey target structured)
         [statement] (sql/format honey {:dialect :ansi :quoted true})
-        warnings   (cond-> []
-                     (not concurrent)
-                     (conj "CONCURRENTLY is recommended to avoid taking an ACCESS EXCLUSIVE lock on the table"))]
+        warnings    (cond-> []
+                      (not concurrent)
+                      (conj "CONCURRENTLY is recommended to avoid taking an ACCESS EXCLUSIVE lock on the table"))]
     {:statement statement
      :warnings  warnings}))

@@ -552,8 +552,7 @@
 (def ^:private IndexColumn
   [:map
    [:name      :string]
-   [:direction {:optional true} [:enum {:decode/string keyword} :asc :desc]]
-   [:nulls     {:optional true} [:enum {:decode/string keyword} :first :last]]])
+   [:direction {:optional true} [:enum {:decode/string keyword} :asc :desc]]])
 
 (def ^:private IndexStructured
   [:map
@@ -591,6 +590,7 @@
     (try
       (index-manager/preview table structured)
       (catch clojure.lang.ExceptionInfo e
-        (let [{:keys [reason] :as data} (ex-data e)]
-          (throw (ex-info (ex-message e)
-                          (assoc data :status-code (if (= reason :driver-not-supported) 400 400)))))))))
+        ;; Builder/driver-support failures surface as 400; defendpoint's
+        ;; exception middleware honours :status-code in ex-data.
+        (throw (ex-info (ex-message e)
+                        (assoc (ex-data e) :status-code 400)))))))
