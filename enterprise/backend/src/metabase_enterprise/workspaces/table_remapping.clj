@@ -315,14 +315,21 @@
    :schema (normalize-level schema)
    :table  name})
 
-(defn- driver-for-db
-  ; TODO think about whether we can keep track of the db driver in a more efficient way
-  ; Probably just convert the callers to pass the whole `database` instead of just the ID
-  "Fetch the engine keyword for `db-id`. For translators that take a consumer-shape
-   spec (no driver in scope) and need driver-aware key projection. The app-DB cache
-   keeps repeat lookups cheap."
-  [db-id]
-  (some-> (t2/select-one [:model/Database :engine] :id db-id) :engine keyword))
+(defn- enrich-from-spec
+  "Fill identifier slots the driver emits but the caller omitted from `from-spec`.
+
+   Callers in `metabase.sync.fetch-metadata` only carry the `:schema` and `:name`
+   they read off the `:model/Table` row — they don't know how to compute `:db`
+   for drivers like MySQL (whose canonical namespace is the connection's bound
+   database, not the Table's `:schema` column). Use `engine-namespace-positions`
+   to derive any missing slot from the `database`, so the driver-aware match in
+   `canonical->isolated` doesn't false-miss on a populated remap row."
+  [database from-spec]
+  (let [positions (ws/engine-namespace-positions database {:name   (:name from-spec)
+                                                           :schema (:schema from-spec)})]
+    (cond-> from-spec
+      (nil? (:db from-spec))     (assoc :db     (:db positions))
+      (nil? (:schema from-spec)) (assoc :schema (:schema positions)))))
 
 (defn remap-table
   "Returns `{:db :schema :name}` for the workspace destination of canonical
@@ -335,11 +342,13 @@
    `from-spec` is `{:db :schema :name}`. Output uses nil-instead-of-empty-string for
    slots the driver doesn't emit."
   [database-id from-spec]
-  (when-let [driver (driver-for-db database-id)]
-    (some-> (canonical->isolated driver
-                                 (ws.remapping/remappings-for-db database-id)
-                                 (consumer-shape->spec from-spec))
-            spec->consumer-shape)))
+  (when-let [database (t2/select-one :model/Database :id database-id)]
+    (let [driver   (keyword (:engine database))
+          enriched (enrich-from-spec database from-spec)]
+      (some-> (canonical->isolated driver
+                                   (ws.remapping/remappings-for-db database-id)
+                                   (consumer-shape->spec enriched))
+              spec->consumer-shape))))
 
 (defenterprise workspace-remap-schema+name
   "Enterprise impl of the sync hook. Returns `{:db :schema :name}` for the
@@ -470,7 +479,7 @@
    leaks above this boundary."
   :feature :none
   [db-id to-spec]
-  (when-let [driver (driver-for-db db-id)]
+  (when-let [driver (some-> (t2/select-one [:model/Database :engine] :id db-id) :engine keyword)]
     (some-> (isolated->canonical driver
                                  (all-mappings-for-db db-id)
                                  (consumer-shape->spec to-spec))

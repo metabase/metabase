@@ -198,6 +198,29 @@
                 (ws.table-remapping/workspace-remap-schema+name db-id {:schema "PUBLIC" :name "ORDERS"}))
              "with a remapping, the hook returns the isolated warehouse location so sync asks the driver there"))))))
 
+(deftest workspace-remap-schema+name-mysql-fills-db-slot-test
+  (testing "MySQL: hook receives `{:schema nil :name X}` from sync but must still match a remap row
+            whose canonical from-spec carries `:db <bound-db>`. The hook enriches the from-spec from
+            the database row's `:details :db` before matching, so the lookup succeeds."
+    ;; Insert raw via t2 so `mt/with-temp`'s post-create sync hook does not try
+    ;; to connect to MySQL on the test host.
+    (mt/with-model-cleanup [:model/Database]
+      (let [db-id (:id (t2/insert-returning-instance!
+                        :model/Database
+                        {:engine  :mysql
+                         :name    "mysql-fixture"
+                         :details {:db "appdata"}}))]
+        (try
+          (ws.table-remapping/clear-mappings-for-db! db-id)
+          (ws.table-remapping/add-mapping! db-id
+                                           {:db "appdata" :schema nil :table "orders"}
+                                           {:db "appdata_ws" :schema nil :table "orders_copy"})
+          (testing "from-spec without :db (the sync caller's shape) still resolves"
+            (is (= {:db "appdata_ws" :schema nil :name "orders_copy"}
+                   (ws.table-remapping/workspace-remap-schema+name db-id {:schema nil :name "orders"}))))
+          (finally
+            (ws.table-remapping/clear-mappings-for-db! db-id)))))))
+
 (deftest table-fields-metadata-honors-workspace-remapping-test
   (testing "sync/fetch-metadata/table-fields-metadata asks the driver about the remapped warehouse table"
     (let [db-id          (mt/id)

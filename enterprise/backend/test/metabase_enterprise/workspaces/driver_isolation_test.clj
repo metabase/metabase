@@ -744,12 +744,12 @@
             (testing "after first grant, A is readable and B is not"
               (is (= [{:id 1 :v "a"}]
                      (jdbc/query user-spec [(str "SELECT id, v FROM " src-a)])))
-              ;; MySQL grants at db.* granularity, so a single grant on db
-              ;; happens to allow B too. Skip the negative assertion there:
-              ;; this isn't an additivity question, it's a grant-granularity
-              ;; question (covered separately in the cross-workspace test by
-              ;; using *separate* input namespaces per workspace).
-              (when-not (= driver :mysql)
+              ;; MySQL and ClickHouse grant at db.* granularity (database-as-namespace
+              ;; drivers), so a single grant on the input db happens to allow B too.
+              ;; Skip the negative assertion there: this isn't an additivity question,
+              ;; it's a grant-granularity question (covered separately in the
+              ;; cross-workspace test by using *separate* input namespaces per workspace).
+              (when-not (contains? #{:mysql :clickhouse} driver)
                 (expect-sql-denied! user-spec
                                     (str "SELECT id, v FROM " src-b)
                                     :select-b-before-grant)))
