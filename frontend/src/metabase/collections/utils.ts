@@ -7,7 +7,7 @@ import {
 import { PLUGIN_COLLECTIONS, PLUGIN_LIBRARY } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type { IconName, IconProps } from "metabase/ui";
+import type { IconProps } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import type { ColorName } from "metabase/ui/colors/types";
 import {
@@ -19,6 +19,7 @@ import {
   type CollectionItem,
   type CollectionItemModel,
   type CollectionType,
+  type IconName,
   type User,
   isBaseEntityID,
 } from "metabase-types/api";
