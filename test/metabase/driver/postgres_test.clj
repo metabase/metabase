@@ -1277,7 +1277,7 @@
                          :message     "Some of your values violate the constraint: email_format_check"
                          :status-code 400
                          :type        actions.error/violate-check-constraint}
-                        (sql-jdbc.actions-test/perform-action-ex-data
+                        (sql-jdbc.actions-test/perform-action-ex-data!
                          :model.row/create (mt/$ids {:create-row {"email" "invalid-email"
                                                                   "age"   25}
                                                      :database   (:id database)
@@ -1309,7 +1309,7 @@
                          :message     "Column1 and Column2 already exist."
                          :status-code 400
                          :type        actions.error/violate-unique-constraint}
-                        (sql-jdbc.actions-test/perform-action-ex-data
+                        (sql-jdbc.actions-test/perform-action-ex-data!
                          :model.row/create (mt/$ids {:create-row {"id"      3
                                                                   "column1" "A"
                                                                   "column2" "A"}
@@ -1322,7 +1322,7 @@
                          :message     "Column1 and Column2 already exist."
                          :status-code 400
                          :type        actions.error/violate-unique-constraint}
-                        (sql-jdbc.actions-test/perform-action-ex-data
+                        (sql-jdbc.actions-test/perform-action-ex-data!
                          :model.row/update (mt/$ids {:update-row {"column1" "A"
                                                                   "column2" "A"}
                                                      :database   (:id database)

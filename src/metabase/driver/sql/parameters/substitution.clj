@@ -21,6 +21,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [mapv not-empty]])
   (:import
    (clojure.lang IPersistentVector Keyword)
@@ -78,22 +79,13 @@
   (honeysql->prepared-stmt-subs driver kwd))
 
 (mu/defmethod ->prepared-substitution [:sql :metabase.lib.parameters.parse.types/date] :- PreparedStatementSubstitution
-  [_driver date]
+  [_driver :- :keyword
+   date    :- :metabase.lib.parameters.parse.types/date]
   (make-stmt-subs "?" [date]))
 
 (mu/defmethod ->prepared-substitution [:sql Temporal] :- PreparedStatementSubstitution
   [driver t]
   (honeysql->prepared-stmt-subs driver t))
-
-(defmulti align-temporal-unit-with-param-type
-  "Returns a suitable temporal unit conversion keyword for `field`, `param-type` and the given driver.
-  The resulting keyword will be used to call the corresponding `metabase.driver.sql.query-processor/date`
-  implementation to convert the `field`.
-  Returns `nil` if the conversion is not necessary for this `field` and `param-type` combination.
-  Deprecated: use `align-temporal-unit-with-param-type-and-value` instead, as it has access to `value`."
-  {:added "0.48.0" :deprecated "0.49.0" :arglists '([driver field param-type])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
 
 (defmulti align-temporal-unit-with-param-type-and-value
   "Returns a suitable temporal unit conversion keyword for `field`, `param-type`, `value` and the given driver.
@@ -104,12 +96,6 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod align-temporal-unit-with-param-type :default
-  [_driver _field param-type]
-  (when (params.dates/date-type? param-type)
-    :day))
-
 (defmethod align-temporal-unit-with-param-type-and-value :default
   [_driver _field param-type value]
   (when (params.dates/date-type? param-type)
@@ -119,7 +105,7 @@
 
 ;;; ------------------------------------------- ->replacement-snippet-info -------------------------------------------
 
-(def ^:private ParamSnippetInfo
+(mr/def ::param-snippet-info
   [:map
    [:replacement-snippet     {:optional true} :string] ; allowed to be blank if this is an optional param
    [:prepared-statement-args {:optional true} [:maybe [:sequential :any]]]])
@@ -181,8 +167,9 @@
                     {:type      driver-api/qp.error-type.invalid-parameter
                      :parameter x}))))
 
-(defmethod ->replacement-snippet-info [:sql :metabase.lib.parameters.parse.types/date]
-  [driver {:keys [s]}]
+(mu/defmethod ->replacement-snippet-info [:sql :metabase.lib.parameters.parse.types/date]
+  [driver      :- :keyword
+   {:keys [s]} :- :metabase.lib.parameters.parse.types/date]
   (create-replacement-snippet driver (maybe-parse-temporal-literal s)))
 
 (defn- prepared-ts-subs [driver operator date-str]
@@ -190,8 +177,9 @@
     {:replacement-snippet     (str operator " " sql-string)
      :prepared-statement-args param-values}))
 
-(defmethod ->replacement-snippet-info [:sql :metabase.lib.parameters.parse.types/date-range]
-  [driver {:keys [start end]}]
+(mu/defmethod ->replacement-snippet-info [:sql :metabase.lib.parameters.parse.types/date-range]
+  [driver              :- :keyword
+   {:keys [start end]} :- :metabase.lib.parameters.parse.types/date-range]
   (cond
     (= start end)
     (prepared-ts-subs driver \= start)
@@ -211,8 +199,10 @@
       {:replacement-snippet     (format "BETWEEN %s AND %s" (:sql-string start) (:sql-string end))
        :prepared-statement-args (concat (:param-values start) (:param-values end))})))
 
-(defmethod ->replacement-snippet-info [:sql :metabase.lib.parameters.parse.types/date-time-range]
-  [driver {:keys [start end]} & [field-identifier]]
+(mu/defmethod ->replacement-snippet-info [:sql :metabase.lib.parameters.parse.types/date-time-range]
+  [driver              :- :keyword
+   {:keys [start end]} :- :metabase.lib.parameters.parse.types/date-time-range
+   & [field-identifier]]
   (let [[start end]       (map (fn [s]
                                  (when s
                                    (->prepared-substitution driver (maybe-parse-temporal-literal s))))
@@ -229,30 +219,30 @@
 
 ;;; ------------------------------------- Field Filter replacement snippet info --------------------------------------
 
-(mu/defn- combine-replacement-snippet-maps :- ParamSnippetInfo
+(mu/defn- combine-replacement-snippet-maps :- ::param-snippet-info
   "Combine multiple `replacement-snippet-maps` into a single map using a SQL `AND` clause."
-  [replacement-snippet-maps :- [:maybe [:sequential ParamSnippetInfo]]]
+  [replacement-snippet-maps :- [:maybe [:sequential ::param-snippet-info]]]
   {:replacement-snippet     (str \( (str/join " AND " (map :replacement-snippet replacement-snippet-maps)) \))
    :prepared-statement-args (mapcat :prepared-statement-args replacement-snippet-maps)})
 
 ;; for relative dates convert the param to a `DateRange` record type and call `->replacement-snippet-info` on it
-(mu/defn- date-range-field-filter->replacement-snippet-info :- ParamSnippetInfo
+(mu/defn- date-range-field-filter->replacement-snippet-info :- ::param-snippet-info
   [driver value]
   (let [{:keys [start end]} (params.dates/date-string->range value)]
     (->> (lib/parsed-date-range-param start end)
          (->replacement-snippet-info driver))))
 
-(mu/defn- field-filter->equals-clause-sql :- ParamSnippetInfo
+(mu/defn- field-filter->equals-clause-sql :- ::param-snippet-info
   [driver value]
   (-> (->replacement-snippet-info driver value)
       (update :replacement-snippet (partial str "= "))))
 
-(mu/defn- field-filter-multiple-values->in-clause-sql :- ParamSnippetInfo
+(mu/defn- field-filter-multiple-values->in-clause-sql :- ::param-snippet-info
   [driver values]
   (-> (->replacement-snippet-info driver (vec values))
       (update :replacement-snippet (partial format "IN (%s)"))))
 
-(mu/defn- honeysql->replacement-snippet-info :- ParamSnippetInfo
+(mu/defn- honeysql->replacement-snippet-info :- ::param-snippet-info
   "Convert `hsql-form` to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [driver hsql-form]
   (let [[snippet & args] (sql.qp/format-honeysql driver hsql-form)]
@@ -349,7 +339,7 @@
 
 (defmethod date-string->filter :default [_driver date-string field] (params.dates/date-string->filter date-string field))
 
-(mu/defn- field-filter->replacement-snippet-info :- ParamSnippetInfo
+(mu/defn- field-filter->replacement-snippet-info :- ::param-snippet-info
   "Return `[replacement-snippet & prepared-statement-args]` appropriate for a field filter parameter."
   [driver {{param-type :type, value :value, :as params} :value, field :field, :as field-filter}]
   (assert (:id field) (format "Why doesn't Field have an ID?\n%s" (u/pprint-to-str field)))
@@ -406,10 +396,8 @@
       (update replacement-snippet-info :replacement-snippet str/replace old-name alias))))
 
 (mu/defmethod ->replacement-snippet-info [:sql :metabase.lib.parameters.parse.types/field-filter]
-  [driver                            :- :keyword
-   {:keys [value alias field], :as field-filter} :- [:map
-                                                     [:field driver-api/schema.metadata.column]
-                                                     [:value :any]]]
+  [driver                                        :- :keyword
+   {:keys [value alias field], :as field-filter} :- :metabase.lib.parameters.parse.types/field-filter]
   (let [replacement-snippet-info
         (cond
           ;; otherwise if the value isn't present just put in something that will always be true, such as `1` (e.g. `WHERE 1
@@ -426,30 +414,30 @@
           (field-filter->replacement-snippet-info driver field-filter))]
     (replace-alias driver field alias replacement-snippet-info)))
 
-;;; ------------------------------------ Referenced Card replacement snippet info ------------------------------------
-
-(defmethod ->replacement-snippet-info [:sql :metabase.lib.parameters.parse.types/referenced-card-query]
-  [_ {:keys [query params]}]
-  {:prepared-statement-args (not-empty params)
+(mu/defmethod ->replacement-snippet-info [:sql :metabase.lib.parameters.parse.types/referenced-card-query]
+  [_driver                    :- :keyword
+   {:keys [query parameters]} :- :metabase.lib.parameters.parse.types/referenced-card-query]
+  {:prepared-statement-args (not-empty parameters)
    :replacement-snippet     (sql.qp/make-nestable-sql query)})
 
-;;; ---------------------------------- Native Query Snippet replacement snippet info ---------------------------------
-
-(defmethod ->replacement-snippet-info [:sql :metabase.lib.parameters.parse.types/referenced-query-snippet]
-  [_ {:keys [content]}]
+(mu/defmethod ->replacement-snippet-info [:sql :metabase.lib.parameters.parse.types/referenced-query-snippet]
+  [_driver           :- :keyword
+   {:keys [content]} :- :metabase.lib.parameters.parse.types/referenced-query-snippet]
   {:prepared-statement-args nil
    :replacement-snippet     content})
 
-(defmethod ->replacement-snippet-info [:sql :metabase.lib.parameters.parse.types/temporal-unit]
-  [driver {:keys [value field alias]}]
+(mu/defmethod ->replacement-snippet-info [:sql :metabase.lib.parameters.parse.types/temporal-unit]
+  [driver                      :- :keyword
+   {:keys [value field alias]} :- :metabase.lib.parameters.parse.types/temporal-unit]
   (let [replacement-snippet-info (->> (field->clause driver field (when (not= value lib/parsed-param-no-value-placeholder)
                                                                     {:temporal-unit (keyword value)}))
                                       (sql.qp/->honeysql driver)
                                       (honeysql->replacement-snippet-info driver))]
     (replace-alias driver field alias replacement-snippet-info)))
 
-(defmethod ->replacement-snippet-info [:sql :metabase.lib.parameters.parse.types/referenced-table-query]
-  [driver {:keys [table-id source-filters alias]}]
+(mu/defmethod ->replacement-snippet-info [:sql :metabase.lib.parameters.parse.types/referenced-table-query]
+  [driver                                  :- :keyword
+   {:keys [table-id source-filters alias]} :- :metabase.lib.parameters.parse.types/referenced-table-query]
   (let [mp         (driver-api/metadata-provider)
         table-hsql (sql.qp/->honeysql driver (driver-api/table mp table-id))
         add-alias  (fn [result]

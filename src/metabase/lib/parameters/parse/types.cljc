@@ -72,20 +72,20 @@
 (mr/def ::temporal-unit
   [:map
    [:lib/type [:= ::temporal-unit]]
-   [:name     ::lib.schema.common/non-blank-string]
+   [:field    ::lib.schema.metadata/column]
    ;; TODO (Cam 7/16/25) -- constrain `:value`
    [:value    some?]
    [:alias    {:optional true} [:maybe string?]]])
 
 (mu/defn temporal-unit :- ::temporal-unit
   "Create a parsed `temporal-unit` parameter from map `m`."
-  ([param-name :- ::lib.schema.common/non-blank-string
+  ([column    :- ::lib.schema.metadata/column
     value      :- some?]
    {:lib/type ::temporal-unit
-    :name     param-name
+    :field    column
     :value    value})
-  ([param-name value param-alias]
-   (assoc (temporal-unit param-name value) :alias param-alias)))
+  ([column value param-alias]
+   (assoc (temporal-unit column value) :alias param-alias)))
 
 (defn temporal-unit?
   "Whether `x` is a map representing a parsed [[temporal-unit]] parameter."
