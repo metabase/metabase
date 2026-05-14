@@ -812,9 +812,7 @@
      clojure.core/eval        {:message "Don't use eval outside of tests"}}
 
     :discouraged-namespace
-    {metabase.legacy-mbql.jvm-util       {:message "Avoid legacy MBQL utils, use Lib instead"}
-     metabase.legacy-mbql.normalize      {:message "Avoid legacy MBQL normalization, use MBQL 5 + lib/normalize instead"}
-     metabase.legacy-mbql.predicates     {:message "Avoid legacy MBQL utils, use Lib instead"}
+    {metabase.legacy-mbql.normalize      {:message "Avoid legacy MBQL normalization, use MBQL 5 + lib/normalize instead"}
      metabase.legacy-mbql.schema         {:message "Avoid the legacy MBQL schema, use MBQL 5 + lib.schema instead"}
      metabase.legacy-mbql.schema.helpers {:message "Avoid the legacy MBQL schema, use MBQL 5 + lib.schema instead"}
      metabase.legacy-mbql.schema.macros  {:message "Avoid the legacy MBQL schema, use MBQL 5 + lib.schema instead"}
@@ -866,9 +864,7 @@
   legacy-mbql-namespaces
   {:linters
    {:discouraged-namespace
-    {metabase.legacy-mbql.jvm-util       {:level :off}
-     metabase.legacy-mbql.normalize      {:level :off}
-     metabase.legacy-mbql.predicates     {:level :off}
+    {metabase.legacy-mbql.normalize      {:level :off}
      metabase.legacy-mbql.schema         {:level :off}
      metabase.legacy-mbql.schema.helpers {:level :off}
      metabase.legacy-mbql.schema.macros  {:level :off}
@@ -888,9 +884,7 @@
     ;; don't warn about the legacy MBQL namespaces being deprecated or discouraged in driver code now, we don't have a
     ;; real alternative YET so it's not a helpful warning.
     :discouraged-namespace
-    {metabase.legacy-mbql.jvm-util       {:level :off}
-     metabase.legacy-mbql.normalize      {:level :off}
-     metabase.legacy-mbql.predicates     {:level :off}
+    {metabase.legacy-mbql.normalize      {:level :off}
      metabase.legacy-mbql.schema         {:level :off}
      metabase.legacy-mbql.schema.helpers {:level :off}
      metabase.legacy-mbql.schema.macros  {:level :off}
@@ -902,9 +896,7 @@
      [metabase.driver.common.parameters.dates
       metabase.driver.common.parameters.operators
       metabase.driver.common.parameters.values
-      metabase.legacy-mbql.jvm-util
       metabase.legacy-mbql.normalize
-      metabase.legacy-mbql.predicates
       metabase.legacy-mbql.schema
       metabase.legacy-mbql.schema.helpers
       metabase.legacy-mbql.schema.macros

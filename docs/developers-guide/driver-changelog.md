@@ -45,6 +45,10 @@ title: Driver interface changelog
 - `metabase.driver.sql.parameters.substitution/align-temporal-unit-with-param-type`, deprecated in 0.49.0, has been
   removed.
 
+- `metabase.driver-api.core/desugar-filter-clause`, `metabase.driver-api.core/negate-filter-clause`, and
+  `metabase.driver-api.core/simplify-compound-filter`, deprecated in 0.57.0, have been removed; use the
+  `metabase.lib.core` versions instead. The new versions operate on MBQL 5 instead of MBQL 4.
+
 ## Metabase 0.60.0
 
 - Added `validate-impersonated-query` multimethod. This is used for drivers to perform validation on impersonated native queries.

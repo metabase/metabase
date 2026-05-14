@@ -308,9 +308,6 @@
   (-> (driver-api/replace filter-clause
         [_ [:field _ {:temporal-unit &truthy}] & _]
         nil)
-      ;; TODO (Cam 8/18/25) -- I am 90% sure this is serving no useful purpose.
-      #_{:clj-kondo/ignore [:deprecated-var]}
-      driver-api/simplify-compound-filter
       parse-filter*))
 
 (mu/defn- add-datetime-units* :- driver-api/mbql.schema.DateTimeValue
