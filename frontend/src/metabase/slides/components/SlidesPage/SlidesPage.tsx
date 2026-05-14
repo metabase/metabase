@@ -55,12 +55,15 @@ export const SlidesPage = ({ params, router }: SlidesPageProps) => {
   const numericId = !isNew ? Number(entityIdParam) : null;
 
   // Fetch existing
-  const { data: existing, isLoading: isLoadingExisting, error: loadError } =
-    useGetSlidesQuery(
-      numericId != null && !Number.isNaN(numericId)
-        ? { id: numericId }
-        : skipToken,
-    );
+  const {
+    data: existing,
+    isLoading: isLoadingExisting,
+    error: loadError,
+  } = useGetSlidesQuery(
+    numericId != null && !Number.isNaN(numericId)
+      ? { id: numericId }
+      : skipToken,
+  );
 
   const [createSlides, { isLoading: isCreating }] = useCreateSlidesMutation();
   const [updateSlides, { isLoading: isSaving }] = useUpdateSlidesMutation();
@@ -80,7 +83,10 @@ export const SlidesPage = ({ params, router }: SlidesPageProps) => {
       })
       .catch(() => {
         if (!cancelled) {
-          sendToast({ message: t`Couldn't create slide deck`, icon: "warning" });
+          sendToast({
+            message: t`Couldn't create slide deck`,
+            icon: "warning",
+          });
         }
       });
     return () => {
@@ -179,7 +185,13 @@ export const SlidesPage = ({ params, router }: SlidesPageProps) => {
       ? S.coverPadding
       : layout === "closing"
         ? S.closingPadding
-        : S.editorPadding;
+        : layout === "big_number"
+          ? S.bigNumberPadding
+          : layout === "chart"
+            ? S.chartPadding
+            : layout === "two_column"
+              ? S.twoColumnPadding
+              : S.editorPadding;
 
   return (
     <Box className={S.page}>
@@ -222,4 +234,3 @@ export const SlidesPage = ({ params, router }: SlidesPageProps) => {
     </Box>
   );
 };
-

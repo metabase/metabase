@@ -41,10 +41,7 @@ export const Presenter = ({ params, router }: PresenterProps) => {
   );
   const goPrev = useCallback(() => setIndex((i) => Math.max(i - 1, 0)), []);
   const goFirst = useCallback(() => setIndex(0), []);
-  const goLast = useCallback(
-    () => setIndex(Math.max(total - 1, 0)),
-    [total],
-  );
+  const goLast = useCallback(() => setIndex(Math.max(total - 1, 0)), [total]);
 
   const exit = useCallback(() => {
     router.push(`/slides/${params.entityId}`);
@@ -154,7 +151,11 @@ export const Presenter = ({ params, router }: PresenterProps) => {
           style={{ transform: `translateX(-${index * 100}%)` }}
         >
           {slides.map((slide, i) => (
-            <PresenterStage key={slide.id} slide={slide} isActive={i === index} />
+            <PresenterStage
+              key={slide.id}
+              slide={slide}
+              isActive={i === index}
+            />
           ))}
         </Box>
       </Box>
@@ -204,20 +205,18 @@ const PresenterStage = ({
   slide: Slide;
   isActive: boolean;
 }) => {
-  const stageClass =
-    slide.layout === "cover"
-      ? cx(S.stageContent, S.stageCover)
-      : slide.layout === "closing"
-        ? cx(S.stageContent, S.stageClosing)
-        : S.stageContent;
+  const stageClass = cx(S.stageContent, {
+    [S.stageCover]: slide.layout === "cover",
+    [S.stageClosing]: slide.layout === "closing",
+    [S.stageBigNumber]: slide.layout === "big_number",
+    [S.stageChart]: slide.layout === "chart",
+    [S.stageTwoColumn]: slide.layout === "two_column",
+    [S.stageBullets]: slide.layout === "bullets",
+  });
   return (
     <Box className={S.stage} aria-hidden={!isActive}>
       <Box className={stageClass}>
-        <Editor
-          key={slide.id}
-          initialContent={slide.doc}
-          editable={false}
-        />
+        <Editor key={slide.id} initialContent={slide.doc} editable={false} />
       </Box>
     </Box>
   );

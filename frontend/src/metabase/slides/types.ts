@@ -4,7 +4,14 @@ import type { CollectionId, UserId } from "metabase-types/api";
 
 export type SlideId = string;
 
-export type SlideLayout = "default" | "cover" | "closing";
+export type SlideLayout =
+  | "default"
+  | "cover"
+  | "closing"
+  | "bullets"
+  | "big_number"
+  | "chart"
+  | "two_column";
 
 export interface Slide {
   id: SlideId;

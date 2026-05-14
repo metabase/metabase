@@ -1,6 +1,5 @@
 import { Api } from "metabase/api/api";
 import { idTag, listTag } from "metabase/api/tags";
-
 import type {
   CreateSlidesRequest,
   GenerateSlidesRequest,
