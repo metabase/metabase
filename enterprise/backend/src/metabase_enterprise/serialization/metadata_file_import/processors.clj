@@ -362,36 +362,20 @@
                        [:= :t.is_defective_duplicate [:inline false]]
                        [:= :t.active [:inline true]]]}}}))
 
+;; UPDATE before INSERT: on a clean-schema import the UPDATE matches nothing
+;; (fast no-op) and the INSERT then writes each row exactly once.
+;;
+;; Returns the INSERTed source_ids rather than using `INSERT ... RETURNING`
+;; (vanilla MySQL has none). Callers re-run
+;; [[resolve-target-table-ids-in-staging!]] and pass the set to
+;; [[new-target-tables-from-staging]] to read back the freshly-created rows.
 (defn merge-tables!
-  "Merge `metabase_table_import` into `metabase_table` atomically.
+  "Merge `metabase_table_import` into `metabase_table` atomically: UPDATE the
+  staging rows that matched a live table, INSERT the rest. Returns the set of
+  staging `source_id`s that were INSERTed (snapshot taken before the INSERT).
 
-  Two SQL statements wrapped in a single `t2/with-transaction`:
-
-    1. **UPDATE** rows whose `target_id` resolved (i.e., a matching active
-       live row exists). Clobbers `description` from staging, bumps
-       `updated_at`. Each SET column is a single-key lookup on
-       `staging.target_id`.
-    2. **INSERT** rows whose `target_id` is NULL — no active live row
-       matched. Sets `active=true` and `data_layer='internal'`; lets column
-       defaults handle `field_order`, `initial_sync_status`, etc.
-
-  Order matters: UPDATE first so on a clean-schema import the UPDATE matches
-  nothing (fast no-op) and the INSERT writes each row exactly once.
-
-  Pre-condition: [[resolve-target-table-ids-in-staging!]] must have run.
-  Without that, every staging row's `target_id` is NULL — you'd get correct
-  INSERTs but no clobber.
-
-  The INSERT JOINs `metabase_database` on `db_name`, so staging rows whose
-  source DB has no target appdb match are silently dropped.
-
-  Returns the set of staging `source_id`s that were INSERTed (snapshot taken
-  *before* the INSERT runs). Callers that follow up with
-  [[resolve-target-table-ids-in-staging!]] can then pass that set to
-  [[new-target-tables-from-staging]] to read the freshly-created
-  `metabase_table` rows for downstream work like permission grants. We use
-  this round-trip instead of `INSERT ... RETURNING` so the SQL stays portable
-  across all supported appdbs (vanilla MySQL has no `RETURNING`)."
+  Pre-condition: [[resolve-target-table-ids-in-staging!]] must have run, so
+  matched staging rows carry a `target_id`."
   []
   (t2/with-transaction [_]
     ;; t2 joins an outer txn rather than creating a savepoint, so wrapping
@@ -433,7 +417,8 @@
                                      [:coalesce :it.description             [:inline ""]]]]}]]})
       ;; INSERT bypasses :model/Table's :after-insert hook — that hook
       ;; schedules per-DB Quartz triggers we don't want and fires
-      ;; `set-new-table-permissions!` once per row.
+      ;; `set-new-table-permissions!` once per row. The JOIN on db_name
+      ;; silently drops staging rows whose source DB has no target appdb.
       (t2/query
        {:insert-into
         [[:metabase_table [:db_id :schema :name :description :display_name :data_layer
@@ -621,19 +606,19 @@
     :where  [:= :depth nil]
     :limit  orphan-sample-cap}))
 
+;; The fixpoint loop terminates on convergence (no untagged rows) or a
+;; no-progress round. The `assert-no-orphan-refs!` pre-condition is what lets
+;; us read no-progress as a cycle: with orphans already ruled out, a row that
+;; can never be tagged must be part of one.
 (defn compute-staging-depth!
-  "Tag every `metabase_field_import` row with a non-NULL `depth` value. depth=0
-  is roots (no parent, no fk_target ref). depth d is rows whose deps are all
-  already at depth < d. Iterates until convergence (no rows untagged) or a
-  no-progress round (which signals a cycle in the file's reference graph).
+  "Tag every `metabase_field_import` row with a non-NULL `depth`: 0 for roots
+  (no parent, no fk_target ref), `d` for rows whose deps are all at depth
+  < `d`. Returns the maximum depth in staging.
 
-  Throws `:cycle_in_field_graph` if any rows remain untagged after the loop
-  exits.
+  Pre-condition: [[assert-no-orphan-refs!]] must have run successfully.
 
-  Pre-condition: [[assert-no-orphan-refs!]] must have run successfully — that
-  invariant is what guarantees no-progress means cycle (vs. orphan).
-
-  Returns the maximum depth currently in staging."
+  Throws `:cycle_in_field_graph` if rows can't be tagged (a reference cycle)
+  or `:depth_tagging_cap_exceeded` if the loop runs past [[depth-iteration-cap]]."
   []
   (mark-roots-at-depth-zero!)
   (loop [d 1]
@@ -859,28 +844,18 @@
                 [:not= :fi.target_parent_id nil]]]}]}))
 
 (defn merge-fields-by-depth!
-  "Walk staging from depth 0 to max-depth, merging each level's fields into
-  `metabase_field` before moving to the next. Each level:
-
-    1. Fill `target_parent_id` from already-resolved staging rows.
-    2. Fill `target_fk_target_id` from already-resolved staging rows.
-    3. Resolve `target_id` via natural-key match against `metabase_field`.
-    4. UPDATE matched rows (clobber payload with skip-if-unchanged).
-    5. INSERT unmatched rows (parent_id / fk_target_field_id already
-       populated from steps 1 and 2).
-    6. Re-resolve `target_id` to capture the INSERT ids so higher-depth
-       rows can find these as parents or FK targets.
+  "Merge `metabase_field_import` into `metabase_field`, walking depth 0 to
+  max-depth so a row's parents and FK targets are resolved before the row
+  itself. All depths run inside one transaction.
 
   Pre-conditions: [[compute-staging-depth!]] has populated `depth` and
   [[resolve-target-table-ids-for-fields-in-staging!]] has populated
-  `target_table_id`.
-
-  Composes inside an outer `t2/with-transaction` — Toucan2 joins the outer
-  txn so all depths are atomic together."
+  `target_table_id`."
   []
   (let [max-d (or (:max (first (t2/query {:select [[[:max :depth] :max]]
                                           :from   [:metabase_field_import]})))
                   0)]
+    ;; One transaction across all depths — t2 joins the import's outer txn.
     (t2/with-transaction [_]
       (doseq [d (range (inc max-d))]
         (fill-target-parent-ids-at-depth! d)
@@ -888,4 +863,6 @@
         (resolve-target-field-ids-at-depth! d)
         (update-matched-fields-at-depth! d)
         (insert-new-fields-at-depth! d)
+        ;; Re-resolve to capture INSERT ids, so higher depths can find these
+        ;; rows as parents / FK targets.
         (resolve-target-field-ids-at-depth! d)))))

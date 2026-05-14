@@ -96,11 +96,11 @@
       :tables    (fn [batch] (processors/drain-tables-batch-jdbc! tables-ps @databases-by-source-id batch))
       :fields    (fn [batch] (processors/drain-fields-batch-jdbc! fields-ps batch))})))
 
+;; Only one COPY can be active per connection at a time, so we track the
+;; current handle (`:tables` or `:fields`) and close it before opening the next.
 (defn- drain-via-pg-copy!
-  "Drive parser batches through PG's COPY wire protocol via `CopyManager`.
-  Streams TSV-formatted bytes directly to the server. Only one COPY can be
-  active per connection at a time, so we track the current handle (`:tables`
-  or `:fields`) and close it before opening the next."
+  "Drive parser batches through PG's COPY wire protocol via `CopyManager`,
+  streaming TSV-formatted bytes directly to the server."
   [^Connection conn ^File file matched-ids databases-by-source-id]
   (let [^PGConnection pg-conn  (.unwrap conn PGConnection)
         ^CopyManager  copy-mgr (.getCopyAPI pg-conn)
@@ -128,18 +128,15 @@
         (try (close-current!) (catch Throwable _ nil))
         (throw t)))))
 
+;; Opens one JDBC connection with autoCommit=false and commits at the end.
+;; c3p0's autoCommitOnClose=false means we must explicitly restore
+;; autoCommit=true before returning the connection to the pool — otherwise the
+;; next pool user inherits an open-transaction-capable connection and can leak
+;; an idle-in-transaction backend.
 (defn- drain-and-match-databases!
-  "Single-pass walk of the metadata file: match `:databases` against the live
-  appdb, drain `:tables` and `:fields` into staging. Returns the set of
-  matched target-db-ids.
-
-  Opens one JDBC connection, sets `autoCommit=false`, dispatches the drain
-  through a driver-conditional path (PG `CopyManager` fast path, JDBC
-  `executeBatch` fallback for H2/MySQL), commits at the end. c3p0's
-  `autoCommitOnClose=false` means we must explicitly restore `autoCommit=true`
-  before returning the connection to the pool; otherwise the next pool user
-  inherits an open-transaction-capable connection and can leak an idle-in-
-  transaction backend."
+  "Single-pass walk of `file`: match `:databases` against the live appdb,
+  drain `:tables` and `:fields` into staging. Returns the set of matched
+  target-db-ids."
   [^File file]
   (let [matched-ids            (volatile! #{})
         databases-by-source-id (volatile! {})
@@ -147,6 +144,7 @@
     (with-open [^Connection conn (.getConnection ds)]
       (.setAutoCommit conn false)
       (try
+        ;; PG COPY fast path; JDBC executeBatch fallback for H2/MySQL.
         (case (mdb/db-type)
           :postgres (drain-via-pg-copy!     conn file matched-ids databases-by-source-id)
           (drain-via-jdbc-batch! conn file matched-ids databases-by-source-id))
@@ -160,14 +158,13 @@
 
 ;;; ============================== Top-level orchestration ==============================
 
+;; Writes via raw `:metabase_database` to bypass `:model/Database`'s
+;; `:after-update` hook, which would schedule per-database Quartz sync triggers
+;; — undesirable here, since the whole point of metadata-file-import is to skip
+;; warehouse sync. App startup re-registers triggers.
 (defn- mark-databases-sync-complete!
   "Flip every matched target Database's `initial_sync_status` to `\"complete\"`
-  so the UI surfaces tables immediately.
-
-  Writes via raw `:metabase_database` to bypass `:model/Database`'s
-  `:after-update` hook, which would schedule per-database Quartz sync
-  triggers — undesirable here, since the whole point of metadata-file-import
-  is to skip warehouse sync. App startup re-registers triggers."
+  so the UI surfaces tables immediately."
   [matched-target-db-ids]
   (when (seq matched-target-db-ids)
     (t2/query {:update :metabase_database
