@@ -21,7 +21,6 @@ import {
 import type {
   Database,
   IndexAccessMethod,
-  IndexRequestId,
   Table,
 } from "metabase-types/api";
 
@@ -38,7 +37,7 @@ import {
 } from "./utils";
 
 interface Props {
-  mode: FormMode & ({ kind: "create" } | { kind: "edit"; requestId: IndexRequestId });
+  mode: Exclude<FormMode, { kind: "list" }>;
   table: Table;
   database: Database | undefined;
   onCancel: () => void;
@@ -115,25 +114,27 @@ export function IndexForm({
 
   const handleSubmit = async () => {
     const isEdit = mode.kind === "edit";
-    const action = isEdit
-      ? (body: Record<string, unknown>) =>
-          updateIndex({
-            tableId: table.id,
-            requestId: mode.requestId,
-            ...body,
-          } as Parameters<typeof updateIndex>[0])
-      : (body: Record<string, unknown>) =>
-          createIndex({
-            tableId: table.id,
-            ...body,
-          } as Parameters<typeof createIndex>[0]);
+    // Edits without a tracked request id (warehouse-only index) fall back
+    // to create — the backend treats it as an adoption when the name already
+    // exists on the table.
+    const editsExistingRequest = isEdit && mode.requestId != null;
 
     const body =
       state.rawStatement != null
         ? { statement: state.rawStatement }
         : { structured: formStateToStructured(state) };
 
-    const result = await action(body);
+    const result = editsExistingRequest
+      ? await updateIndex({
+          tableId: table.id,
+          requestId: mode.requestId as number,
+          ...body,
+        } as Parameters<typeof updateIndex>[0])
+      : await createIndex({
+          tableId: table.id,
+          ...body,
+        } as Parameters<typeof createIndex>[0]);
+
     if ("error" in result && result.error) {
       sendErrorToast(
         isEdit ? t`Failed to update index` : t`Failed to create index`,

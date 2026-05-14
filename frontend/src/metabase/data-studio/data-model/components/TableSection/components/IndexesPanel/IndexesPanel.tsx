@@ -44,18 +44,25 @@ export function IndexesPanel({ table }: Props) {
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const driverSupported = data?.table.driver_supported ?? true;
-  const isTransformTable = (data?.table.transform_id ?? table.transform_id) != null;
-  const canManage = (data?.table.can_manage ?? false) && isTransformTable;
+  const canManage = data?.table.can_manage ?? driverSupported;
 
   const handleEdit = (index: IndexInfo) => {
-    if (index.request == null) {
-      return;
-    }
-    setMode({ kind: "edit", requestId: index.request.id, existing: index });
+    setMode({
+      kind: "edit",
+      requestId: index.request?.id ?? null,
+      existing: index,
+    });
   };
 
   const handleDropConfirm = async () => {
     if (!dropTarget?.request) {
+      // Warehouse-only indexes have no IndexRequest row; the drop endpoint
+      // expects a request id, so we can't issue the call yet. The backend
+      // needs a drop-by-name path or auto-adoption during introspection.
+      sendErrorToast(
+        t`Can't drop this index yet — it isn't tracked by an index request.`,
+      );
+      setDropTarget(null);
       return;
     }
     const result = await dropIndex({
@@ -117,9 +124,7 @@ export function IndexesPanel({ table }: Props) {
         <Box className={S.headerTitle}>
           <Text className={S.title}>{t`Indexes`}</Text>
           <Text className={S.subtitle}>
-            {isTransformTable
-              ? t`Manage indexes on this transform's target table.`
-              : t`Indexes detected on this table.`}
+            {t`Manage indexes on this table.`}
           </Text>
         </Box>
         {canManage && (

@@ -9,7 +9,12 @@ import type {
 export type FormMode =
   | { kind: "list" }
   | { kind: "create" }
-  | { kind: "edit"; requestId: IndexRequestId; existing: IndexInfo };
+  | {
+      kind: "edit";
+      /** Null when editing a warehouse-only index that has no IndexRequest row yet. */
+      requestId: IndexRequestId | null;
+      existing: IndexInfo;
+    };
 
 export interface IndexFormColumn extends IndexStructuredColumn {
   id: string;

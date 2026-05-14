@@ -6,6 +6,7 @@ import {
   Box,
   Group,
   Icon,
+  Menu,
   Stack,
   Text,
   Tooltip,
@@ -55,7 +56,8 @@ interface RowProps {
 
 function IndexRow({ index, canManage, onEdit, onDrop }: RowProps) {
   const requestStatus = index.request?.status ?? "exists";
-  const managementAllowed = canManage && index.managed_by_metabase;
+  const isMetabaseManaged = index.managed_by_metabase;
+  const showActions = canManage;
 
   return (
     <Box className={S.row} data-testid="index-row">
@@ -71,43 +73,44 @@ function IndexRow({ index, canManage, onEdit, onDrop }: RowProps) {
           {index.is_primary && (
             <Badge variant="light" color="brand">{t`Primary`}</Badge>
           )}
-          {index.managed_by_metabase && (
-            <Tooltip
-              label={t`Recreated when this transform re-runs.`}
-            >
+          {isMetabaseManaged && (
+            <Tooltip label={t`Recreated when this transform re-runs.`}>
               <Badge variant="light" color="brand">{t`Managed`}</Badge>
             </Tooltip>
           )}
           <IndexStatusBadge status={requestStatus} />
         </Group>
 
-        <Box className={S.actions}>
-          {managementAllowed && (
-            <>
-              <Tooltip label={t`Edit index`}>
+        {showActions && (
+          <Box className={S.actions}>
+            <Menu position="bottom-end" withinPortal>
+              <Menu.Target>
                 <ActionIcon
                   variant="subtle"
                   size="sm"
-                  aria-label={t`Edit index`}
+                  aria-label={t`Index actions`}
+                >
+                  <Icon name="ellipsis" size={14} />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  leftSection={<Icon name="pencil" size={14} />}
                   onClick={() => onEdit(index)}
                 >
-                  <Icon name="pencil" size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label={t`Drop index`}>
-                <ActionIcon
-                  variant="subtle"
-                  color="danger"
-                  size="sm"
-                  aria-label={t`Drop index`}
+                  {t`Edit`}
+                </Menu.Item>
+                <Menu.Item
+                  c="danger"
+                  leftSection={<Icon name="trash" size={14} />}
                   onClick={() => onDrop(index)}
                 >
-                  <Icon name="trash" size={14} />
-                </ActionIcon>
-              </Tooltip>
-            </>
-          )}
-        </Box>
+                  {t`Drop`}
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          </Box>
+        )}
       </Box>
 
       <Text className={S.definition}>{index.definition}</Text>
