@@ -11,10 +11,10 @@ import {
 import {
   type EntityType,
   canonicalCollectionId,
+  getCollectionIcon,
   isTrashedCollection,
   isValidCollectionId,
 } from "metabase/collections/utils";
-import { getCollectionIcon } from "metabase/collections/utils";
 import { CollectionName } from "metabase/common/components/CollectionName";
 import { FormField } from "metabase/common/components/FormField";
 import type {
