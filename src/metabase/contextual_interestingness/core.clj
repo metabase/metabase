@@ -142,9 +142,6 @@ Always return a single object matching the supplied schema. Do not respond with 
   (when (map? response)
     (let [score (:score response)]
       (when (number? score)
-        (log/infof "Contextual interestingness: score=%.2f reasoning=%s"
-                   (double score)
-                   (pr-str (:reasoning response)))
         {:score              (clamp01 score)
          :chart-description  (some-> (:chart_description response) str/trim not-empty)
          :metric-description (some-> (:metric_description response) str/trim not-empty)}))))
