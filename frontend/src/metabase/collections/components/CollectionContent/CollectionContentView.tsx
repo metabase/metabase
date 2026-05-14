@@ -280,7 +280,9 @@ export const CollectionContentView = ({
               await deleteCollection({ id: collectionId }).unwrap();
               dispatch(push("/trash"));
               dispatch(
-                addUndo({ message: t`This item has been permanently deleted.` }),
+                addUndo({
+                  message: t`This item has been permanently deleted.`,
+                }),
               );
             } catch {
               dispatch(
