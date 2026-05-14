@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.driver.druid.query-processor-test
   "Some tests to make sure the Druid Query Processor is generating sane Druid queries when compiling MBQL."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.druid.query-processor-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.druid.query-processor-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [clojure.tools.macro :as tools.macro]

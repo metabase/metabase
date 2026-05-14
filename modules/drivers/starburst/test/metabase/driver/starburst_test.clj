@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.starburst-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.starburst-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.starburst-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

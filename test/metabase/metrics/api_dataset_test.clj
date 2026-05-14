@@ -12,6 +12,7 @@
    - Error handling
 
    Some tests may fail for unimplemented features - this is expected."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.metrics.api-dataset-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]

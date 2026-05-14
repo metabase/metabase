@@ -1,4 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]

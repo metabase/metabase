@@ -11,6 +11,7 @@
   - Alert attachments
 
   TODO (Cam 9/17/25) -- these tests need to get moved into appropriate module(s)."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.api.downloads-exports-test]}}}}}}
   (:require
    [clojure.data :as data]
    [clojure.data.csv :as csv]

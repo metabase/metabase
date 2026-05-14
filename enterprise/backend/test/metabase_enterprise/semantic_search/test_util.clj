@@ -1,4 +1,5 @@
 (ns metabase-enterprise.semantic-search.test-util
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.semantic-search.test-util]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

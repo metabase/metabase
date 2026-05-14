@@ -1,7 +1,8 @@
 (ns ^:mb/driver-tests metabase.query-processor.persistence-test
   {:clj-kondo/config '{:linters
                        ;; allowing with-temp in this namespace since model persistence needs to hit the app DB
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}
+                        :deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.persistence-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]

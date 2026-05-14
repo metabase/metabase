@@ -1,4 +1,5 @@
 (ns metabase-enterprise.sandbox.api.metric-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.sandbox.api.metric-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.test-util :as met]
