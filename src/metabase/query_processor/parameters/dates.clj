@@ -411,18 +411,18 @@
             (parser-result-decoder parser-result decoder-param)))
         decoders))
 
-(def ^:private TemporalUnit
+(mr/def ::temporal-unit
   (into [:enum] u.date/add-units))
 
-(def ^:private TemporalRange
+(mr/def ::temporal-range
   [:map
    [:start {:optional true} (lib.schema.common/instance-of-class Temporal)]
    [:end   {:optional true} (lib.schema.common/instance-of-class Temporal)]
-   [:unit                   TemporalUnit]])
+   [:unit                   ::temporal-unit]])
 
-(mu/defn- adjust-inclusive-range-if-needed :- [:maybe TemporalRange]
+(mu/defn- adjust-inclusive-range-if-needed :- [:maybe ::temporal-range]
   "Make an inclusive date range exclusive as needed."
-  [temporal-range :- [:maybe TemporalRange] {:keys [inclusive-start? inclusive-end?]}]
+  [temporal-range :- [:maybe ::temporal-range] {:keys [inclusive-start? inclusive-end?]}]
   (-> temporal-range
       (m/update-existing :start #(if inclusive-start?
                                    %

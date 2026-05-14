@@ -150,9 +150,9 @@
    ;; quarter year
    {:parser (#'qp.parameters.dates/regex->parser #"(Q[1-4]{1})-([0-9]{4})" [:quarter :year])
     :range  (fn [{:keys [quarter year]} _]
-              (#'qp.parameters.dates/absolute-quarter-range quarter (Integer/parseInt year)))
+              (#'qp.parameters.dates/absolute-quarter-range quarter (parse-long year)))
     :filter (fn [{:keys [quarter year]} field-clause]
-              (range->filter (#'qp.parameters.dates/absolute-quarter-range quarter (Integer/parseInt year))
+              (range->filter (#'qp.parameters.dates/absolute-quarter-range quarter (parse-long year))
                              field-clause))}
    ;; single day
    {:parser (#'qp.parameters.dates/regex->parser #"([0-9-T:]+)" [:date])
@@ -207,6 +207,7 @@
 (def ^:private all-date-string-decoders
   (concat relative-date-string-decoders absolute-date-string-decoders))
 
+;; This is only used by the SQL driver
 (mu/defn date-string->filter :- ::mbql.s/Filter
   "Takes a string description of a *date* (not datetime) range such as 'lastmonth' or '2016-07-15~2016-08-6', or
   an absolute date *or datetime* string, and returns a corresponding MBQL filter clause for a given field reference."
