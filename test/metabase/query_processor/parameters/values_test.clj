@@ -498,11 +498,11 @@
                                                                                  (lib/limit 2)))}
                          :model/Card       card-2 {:collection_id (u/the-id collection)
                                                    :dataset_query (mt/native-query
-                                                                    {:query         "SELECT * FROM {{card}}"
-                                                                     :template-tags {"card" {:name         "card"
-                                                                                             :display-name "card"
-                                                                                             :type         :card
-                                                                                             :card-id      card-1-id}}})}]
+                                                                   {:query         "SELECT * FROM {{card}}"
+                                                                    :template-tags {"card" {:name         "card"
+                                                                                            :display-name "card"
+                                                                                            :type         :card
+                                                                                            :card-id      card-1-id}}})}]
             (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
             (mt/with-test-user :rasta
               (binding [qp.perms/*card-id* (u/the-id card-2)]

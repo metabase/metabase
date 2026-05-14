@@ -93,7 +93,7 @@
       (testing "date"
         (let [field-filter (lib/parsed-field-filter-param
                             (lib.metadata/field (qp.store/metadata-provider) (meta/id :orders :created-at))
-                            {:type :date/all-options, :value "next3days"} )
+                            {:type :date/all-options, :value "next3days"})
               expected-args [(t/zoned-date-time 2018 7 2 0 0 0 0 (t/zone-id "UTC"))
                              (t/zoned-date-time 2018 7 5 0 0 0 0 (t/zone-id "UTC"))]]
           (testing "default implementation"

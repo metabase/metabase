@@ -8,6 +8,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -21,8 +22,7 @@
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [metabase.lib.core :as lib])
+   [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
    (metabase.driver.common.parameters ReferencedCardQuery ReferencedTableQuery)))
