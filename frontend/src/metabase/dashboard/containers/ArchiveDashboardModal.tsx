@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { ArchiveModal } from "metabase/common/components/ArchiveModal";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { setArchivedDashboard } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/redux";
 import * as Urls from "metabase/urls";
@@ -55,19 +56,24 @@ const ArchiveDashboardModal = ({
   );
 };
 
-const ArchiveDashboardModalConnectedInner = (
+export const ArchiveDashboardModalConnectedInner = (
   props: OwnProps & WithRouterProps,
 ) => {
   const id = Urls.extractCollectionId(props.params?.slug);
-  const { data: dashboard } = useGetDashboardQuery(
+  const { data: dashboard, error } = useGetDashboardQuery(
     id != null ? { id } : skipToken,
   );
 
-  if (!dashboard) {
-    return null;
-  }
   return (
-    <ArchiveDashboardModal onClose={props.onClose} dashboard={dashboard} />
+    <LoadingAndErrorWrapper
+      loading={id != null && !dashboard}
+      error={error}
+      noWrapper
+    >
+      {dashboard && (
+        <ArchiveDashboardModal onClose={props.onClose} dashboard={dashboard} />
+      )}
+    </LoadingAndErrorWrapper>
   );
 };
 

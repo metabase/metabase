@@ -6,6 +6,7 @@ import {
   useGetDashboardQuery,
 } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { MoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";
 import { useSetCollection } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
@@ -97,12 +98,19 @@ export const DashboardMoveModalConnected = ({
   onClose: () => void;
 }) => {
   const id = Urls.extractCollectionId(params.slug);
-  const { data: dashboard } = useGetDashboardQuery(
+  const { data: dashboard, error } = useGetDashboardQuery(
     id != null ? { id } : skipToken,
   );
 
-  if (!dashboard) {
-    return null;
-  }
-  return <DashboardMoveModal dashboard={dashboard} onClose={onClose} />;
+  return (
+    <LoadingAndErrorWrapper
+      loading={id != null && !dashboard}
+      error={error}
+      noWrapper
+    >
+      {dashboard && (
+        <DashboardMoveModal dashboard={dashboard} onClose={onClose} />
+      )}
+    </LoadingAndErrorWrapper>
+  );
 };
