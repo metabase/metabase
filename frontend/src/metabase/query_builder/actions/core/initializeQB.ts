@@ -310,6 +310,10 @@ async function handleQBInit(
     getState,
   });
 
+  if (isStale()) {
+    return;
+  }
+
   if (isSavedCard(card) && card.archived && !currentUser) {
     dispatch(setErrorPage(ARCHIVED_ERROR));
     return;
