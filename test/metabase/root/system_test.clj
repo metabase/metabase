@@ -12,16 +12,24 @@
 
 (def op-delay 10)
 
+(defn take-a-while
+  []
+  (dotimes [_ (* op-delay 1000000)] (inc 0)))
+
 (defn get-db
   []
-  (Thread/sleep ^long op-delay)
+  (take-a-while)
+  (mc/current db-handle))
+
+(defn get-db-from-scheduler
+  []
   (mc/current db-handle))
 
 (defn scheduler
   []
   (let [mailbox (atom (promise))]
     {:state    :running
-     :read-db! (fn read-db! []
+     :read-db! (fn read-db!* []
                  (let [reply (promise)]
                    (deliver @mailbox reply)
                    (deref reply 1000 ::timed-out)))
@@ -29,22 +37,30 @@
                            (loop []
                              (let [reply @@mailbox]
                                (when-not (= reply ::stop)
-                                 (let [observed (get-db)]
+                                 (let [observed (get-db-from-scheduler)]
                                    (reset! mailbox (promise))
                                    (deliver reply observed)
                                    (recur))))))]
-                 (fn stop-scheduler []
+                 (fn stop!* []
                    (deliver @mailbox ::stop)
                    (deref fut 1000 ::timed-out)))}))
 
 (defn scheduler-sees
   []
-  (Thread/sleep ^long op-delay)
+  (take-a-while)
   ((:read-db! (mc/current scheduler-handle))))
 
-(deftest ^:synchronized dynamic-binding-test
+(defn reset-db!
+  [x]
+  (mc/reset! db-handle x))
+
+(defn global-setup!
+  []
   (mc/alter-root db-handle :uninit-global-db)
-  (mc/reset! db-handle :ready-global-db)
+  (mc/reset! db-handle :ready-global-db))
+
+(deftest ^:synchronized dynamic-binding-test
+  (global-setup!)
   (let [sched (scheduler)]
     (mc/alter-root scheduler-handle sched)
     (try
@@ -53,7 +69,7 @@
                     (fn dynamic-test-scope []
                       (is (= :uninit-dynamic-db (get-db)))
                       (is (= :ready-global-db (scheduler-sees)))
-                      (mc/reset! db-handle :ready-dynamic-db)
+                      (reset-db! :ready-dynamic-db)
                       (is (= :ready-dynamic-db (get-db)))
                       (is (= :ready-global-db (scheduler-sees))))))
 
@@ -64,8 +80,7 @@
         ((:stop! sched))))))
 
 (deftest ^:synchronized root-binding-test
-  (mc/alter-root db-handle :uninit-global-db)
-  (mc/reset! db-handle :ready-global-db)
+  (global-setup!)
   (let [sched (scheduler)]
     (mc/alter-root scheduler-handle sched)
     (try
@@ -74,9 +89,9 @@
         (is (= :uninit-global-db (get-db)))
         (is (= :uninit-global-db (scheduler-sees))))
       (testing "Atom mutations on the root atom are seen on all threads"
-        (mc/reset! db-handle :ready-global-db-db)
-        (is (= :ready-global-db-db (get-db)))
-        (is (= :ready-global-db-db (scheduler-sees))))
+        (reset-db! :ready-global-db)
+        (is (= :ready-global-db (get-db)))
+        (is (= :ready-global-db (scheduler-sees))))
 
       (finally
         ((:stop! sched))))))
