@@ -875,7 +875,12 @@
     ;;
     ;; Does this driver support the workspace feature
     :workspace
-    ;;
+
+    ;; Does this driver support creating indexes without blocking writes? On Postgres this corresponds to
+    ;; `CREATE INDEX CONCURRENTLY`. Surfaced in the warehouse index manager response so the FE can hide
+    ;; the "concurrent" toggle for drivers that don't support it.
+    :index/create-concurrently
+
     ;; Does this driver support table references in native queries -- for example, "select * from {{table}}" where
     ;; `{{table}}` gets replaced by a reference to a table.
     :parameters/table-reference})
