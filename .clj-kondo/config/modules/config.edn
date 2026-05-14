@@ -2497,13 +2497,15 @@
 
   warehouse-index-manager
   {:team "Gadget"
-   :api  #{metabase.warehouse-index-manager.init
+   :api  #{metabase.warehouse-index-manager.core
+           metabase.warehouse-index-manager.init
            metabase.warehouse-index-manager.models.index-request}
    :uses #{driver
            models
            util}
    :model-exports #{:model/IndexRequest}
    :model-imports #{:model/Database
+                    :model/Field
                     :model/Table
                     :model/Transform}}
 
@@ -2566,6 +2568,7 @@
            types
            upload
            util
+           warehouse-index-manager
            warehouse-schema
            xrays}
    :model-imports #{:model/Database
