@@ -1,4 +1,4 @@
-import type { Route } from "react-router";
+import { Route } from "react-router";
 
 import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -15,9 +15,14 @@ function setup({ database }: { database: Database }) {
   setupDatabaseEndpoints(database);
 
   renderWithProviders(
-    <AdminConnectionInfoPage
-      params={{ databaseId: String(database.id) }}
-      route={{ path: "/" } as unknown as Route}
+    <Route
+      path="*"
+      component={() => (
+        <AdminConnectionInfoPage
+          params={{ databaseId: String(database.id) }}
+          route={{ path: "/" } as unknown as Route}
+        />
+      )}
     />,
     {
       withRouter: true,

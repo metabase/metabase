@@ -1,12 +1,13 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
 
 import {
   setupCreateWorkspaceDatabaseEndpoint,
   setupDatabasesEndpoints,
   setupGetWorkspaceEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import {
   createMockDatabase,
   createMockTable,
@@ -42,24 +43,37 @@ function setup() {
     }),
   );
 
-  renderWithProviders(<WorkspacePage params={{ workspaceId: "1" }} />, {
-    withRouter: true,
-  });
+  renderWithProviders(
+    <Route
+      path="*"
+      component={() => <WorkspacePage params={{ workspaceId: "1" }} />}
+    />,
+    {
+      withRouter: true,
+    },
+  );
 }
 
 describe("WorkspacePage", () => {
   it("loads the workspace and lets you add a database", async () => {
     setup();
 
-    expect(await screen.findByText("My workspace")).toBeInTheDocument();
+    expect(await screen.findByTestId("workspace-name-input")).toHaveValue(
+      "My workspace",
+    );
 
     await userEvent.click(screen.getByRole("button", { name: /Add database/ }));
 
-    await userEvent.click(await screen.findByLabelText("Schemas to include"));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(
+      await within(dialog).findByLabelText("Schemas to include"),
+    );
     await userEvent.click(
       await screen.findByRole("option", { name: "public" }),
     );
-    await userEvent.click(screen.getByRole("button", { name: "Add database" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Add database" }),
+    );
 
     await waitFor(() => {
       expect(

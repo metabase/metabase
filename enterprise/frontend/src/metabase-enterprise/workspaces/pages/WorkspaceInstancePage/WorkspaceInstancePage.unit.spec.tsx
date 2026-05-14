@@ -1,3 +1,5 @@
+import { Route } from "react-router";
+
 import {
   setupDatabasesEndpoints,
   setupGetCurrentWorkspaceEndpoint,
@@ -31,7 +33,9 @@ function setup({ remappings = [] as TableRemapping[] } = {}) {
   );
   setupListTableRemappingsEndpoint(remappings);
 
-  renderWithProviders(<WorkspaceInstancePage />, { withRouter: true });
+  renderWithProviders(<Route path="*" component={WorkspaceInstancePage} />, {
+    withRouter: true,
+  });
 }
 
 describe("WorkspaceInstancePage", () => {
@@ -58,7 +62,8 @@ describe("WorkspaceInstancePage", () => {
     });
 
     expect(await screen.findByText("Dev workspace")).toBeInTheDocument();
-    expect(await screen.findByText("public/orders")).toBeInTheDocument();
-    expect(screen.getByText("ws_dev/orders")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("region", { name: "Postgres" }),
+    ).toBeInTheDocument();
   });
 });

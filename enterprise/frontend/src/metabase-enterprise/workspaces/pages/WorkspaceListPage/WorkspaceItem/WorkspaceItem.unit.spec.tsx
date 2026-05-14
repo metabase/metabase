@@ -1,3 +1,5 @@
+import { Route } from "react-router";
+
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Urls from "metabase/urls";
 import {
@@ -12,7 +14,12 @@ const WORKSPACE = createMockWorkspace({ id: 1, name: "My workspace" });
 
 function setup() {
   renderWithProviders(
-    <WorkspaceItem workspace={WORKSPACE} availableDatabases={[POSTGRES]} />,
+    <Route
+      path="*"
+      component={() => (
+        <WorkspaceItem workspace={WORKSPACE} availableDatabases={[POSTGRES]} />
+      )}
+    />,
     { withRouter: true },
   );
 }
@@ -20,9 +27,8 @@ function setup() {
 describe("WorkspaceItem", () => {
   it("renders as a link to the workspace page", () => {
     setup();
-    expect(screen.getByRole("link", { name: /My workspace/ })).toHaveAttribute(
-      "href",
-      Urls.workspace(WORKSPACE.id),
-    );
+    expect(
+      screen.getByRole("region", { name: "My workspace" }),
+    ).toHaveAttribute("href", Urls.workspace(WORKSPACE.id));
   });
 });

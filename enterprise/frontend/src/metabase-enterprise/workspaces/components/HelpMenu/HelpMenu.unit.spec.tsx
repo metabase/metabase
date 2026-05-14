@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
@@ -7,7 +8,7 @@ import { createMockSettings } from "metabase-types/api/mocks";
 import { HelpMenu } from "./HelpMenu";
 
 function setup() {
-  renderWithProviders(<HelpMenu />, {
+  renderWithProviders(<Route path="*" component={HelpMenu} />, {
     withRouter: true,
     storeInitialState: {
       settings: createMockSettingsState(

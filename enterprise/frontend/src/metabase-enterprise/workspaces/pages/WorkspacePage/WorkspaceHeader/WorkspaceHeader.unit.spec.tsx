@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
 
 import {
   setupDeleteWorkspaceEndpoint,
@@ -16,16 +17,22 @@ function setup() {
   setupUpdateWorkspaceEndpoint({ ...WORKSPACE, name: "Renamed" });
   setupDeleteWorkspaceEndpoint(WORKSPACE.id);
 
-  renderWithProviders(<WorkspaceHeader workspace={WORKSPACE} />, {
-    withRouter: true,
-  });
+  renderWithProviders(
+    <Route
+      path="*"
+      component={() => <WorkspaceHeader workspace={WORKSPACE} />}
+    />,
+    {
+      withRouter: true,
+    },
+  );
 }
 
 describe("WorkspaceHeader", () => {
   it("renames the workspace via PUT when the title input changes", async () => {
     setup();
 
-    await userEvent.click(screen.getByText("My workspace"));
+    await userEvent.click(screen.getByTestId("workspace-name-input"));
     const input = screen.getByRole("textbox");
     await userEvent.clear(input);
     await userEvent.type(input, "Renamed");

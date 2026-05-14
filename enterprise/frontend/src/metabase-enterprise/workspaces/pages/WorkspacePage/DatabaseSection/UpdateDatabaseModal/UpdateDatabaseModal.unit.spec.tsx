@@ -85,9 +85,7 @@ describe("UpdateDatabaseModal", () => {
     await userEvent.click(
       await screen.findByRole("option", { name: "analytics" }),
     );
-    await userEvent.click(
-      screen.getByRole("button", { name: "Provision database" }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     await waitFor(() =>
       expect(onUpdate).toHaveBeenCalledWith(updatedWorkspace),

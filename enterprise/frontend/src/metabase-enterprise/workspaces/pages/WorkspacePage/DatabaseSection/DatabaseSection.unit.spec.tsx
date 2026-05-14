@@ -4,7 +4,7 @@ import {
   setupCreateWorkspaceDatabaseEndpoint,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import {
   createMockDatabase,
   createMockTable,
@@ -17,7 +17,7 @@ import { DatabaseSection } from "./DatabaseSection";
 const POSTGRES = createMockDatabase({
   id: 10,
   name: "Postgres",
-  features: ["schemas"],
+  features: ["schemas", "workspace"],
   tables: [
     createMockTable({ id: 100, db_id: 10, schema: "public", name: "orders" }),
   ],
@@ -26,7 +26,7 @@ const POSTGRES = createMockDatabase({
 const SNOWFLAKE = createMockDatabase({
   id: 11,
   name: "Snowflake",
-  features: ["schemas"],
+  features: ["schemas", "workspace"],
   tables: [
     createMockTable({ id: 200, db_id: 11, schema: "raw", name: "events" }),
   ],
@@ -76,11 +76,8 @@ describe("DatabaseSection", () => {
       screen.getByRole("button", { name: /Add another database/ }),
     );
 
-    expect(
-      await screen.findByRole("radio", { name: "Snowflake" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("radio", { name: "Postgres" }),
-    ).not.toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Snowflake")).toBeInTheDocument();
+    expect(within(dialog).queryByText("Postgres")).not.toBeInTheDocument();
   });
 });

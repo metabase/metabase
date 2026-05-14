@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { Route } from "react-router";
 
 import {
   setupCreateWorkspaceEndpoint,
@@ -26,7 +27,9 @@ function setup({ workspaces = [] as Workspace[] } = {}) {
   setupListWorkspacesEndpoint(workspaces);
   setupCreateWorkspaceEndpoint(createMockWorkspace({ name: "Brand new" }));
 
-  renderWithProviders(<WorkspaceListPage />, { withRouter: true });
+  renderWithProviders(<Route path="*" component={WorkspaceListPage} />, {
+    withRouter: true,
+  });
 }
 
 describe("WorkspaceListPage", () => {
@@ -49,7 +52,7 @@ describe("WorkspaceListPage", () => {
     setup({ workspaces: [workspace] });
 
     expect(
-      await screen.findByRole("link", { name: /Existing/ }),
+      await screen.findByRole("region", { name: "Existing" }),
     ).toHaveAttribute("href", Urls.workspace(workspace.id));
   });
 });

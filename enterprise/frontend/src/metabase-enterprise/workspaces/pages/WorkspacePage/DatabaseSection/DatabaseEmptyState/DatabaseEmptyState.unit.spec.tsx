@@ -5,7 +5,7 @@ import {
   setupCreateWorkspaceDatabaseEndpoint,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { Workspace } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -19,7 +19,7 @@ import { DatabaseEmptyState } from "./DatabaseEmptyState";
 const TEST_DATABASE = createMockDatabase({
   id: 10,
   name: "Postgres",
-  features: ["schemas"],
+  features: ["schemas", "workspace"],
   tables: [
     createMockTable({ id: 100, db_id: 10, schema: "public", name: "orders" }),
   ],
@@ -58,11 +58,16 @@ describe("DatabaseEmptyState", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /Add database/ }));
 
-    await userEvent.click(screen.getByLabelText("Schemas to include"));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(
+      await within(dialog).findByLabelText("Schemas to include"),
+    );
     await userEvent.click(
       await screen.findByRole("option", { name: "public" }),
     );
-    await userEvent.click(screen.getByRole("button", { name: "Add database" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Add database" }),
+    );
 
     await waitFor(() => {
       const request = fetchMock.callHistory.lastCall(

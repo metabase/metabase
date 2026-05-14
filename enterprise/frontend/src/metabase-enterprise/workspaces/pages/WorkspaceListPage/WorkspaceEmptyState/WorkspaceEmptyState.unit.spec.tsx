@@ -1,3 +1,5 @@
+import { Route } from "react-router";
+
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { createMockSettings } from "metabase-types/api/mocks";
@@ -5,7 +7,7 @@ import { createMockSettings } from "metabase-types/api/mocks";
 import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
 
 function setup() {
-  renderWithProviders(<WorkspaceEmptyState />, {
+  renderWithProviders(<Route path="*" component={WorkspaceEmptyState} />, {
     withRouter: true,
     storeInitialState: {
       settings: createMockSettingsState(
