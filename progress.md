@@ -45,11 +45,13 @@ Tracks backend work on the `hackaton-index-manager` branch. Plan lives in
 - **`metabase_table.transform_id` denormalised** into `metabase_index_request.transform_id`
   at creation time so the replay event subscriber can find rows by
   transform-id without joining through `metabase_table`.
-- **HoneySQL `:create-index`** covers UNIQUE / CONCURRENTLY / IF NOT EXISTS
-  / index name / table / USING `<method>` / ASC/DESC. Postgres' `INCLUDE`
-  isn't supported natively, so the builder registers a custom `::include`
-  clause via `sql/register-clause!` that the formatter emits after
-  `:create-index`.
+- **Builder: data-driven, not HoneySQL `:create-index`**. We tried using
+  HoneySQL but it emits *all* pre-options before the `INDEX` keyword —
+  produces `CREATE UNIQUE CONCURRENTLY INDEX …`, which is invalid SQL
+  (Postgres wants `CONCURRENTLY` *after* `INDEX`). HoneySQL has no
+  extension point between `INDEX` and the entity name. We render
+  ourselves via a small hiccup-style tree + `defmulti` per tag, with
+  Postgres-correct double-quoting (`""` for embedded quotes).
 - **NULLS FIRST/LAST dropped from MVP structured form**: HoneySQL's
   order-by inside `:create-index` doesn't expose a clean slot for it.
   Users who need it fall back to the raw-SQL editor.
