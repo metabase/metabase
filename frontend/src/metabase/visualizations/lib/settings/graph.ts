@@ -96,7 +96,7 @@ export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions = {
         data: { cols },
       },
     ]) => cols,
-    hidden: true,
+    getHidden: () => true,
   }),
   "graph.dimensions": {
     get section() {
@@ -415,7 +415,7 @@ export const SPLIT_PANELS_SETTINGS: VisualizationSettingsDefinitions = {
 export const LEGEND_SETTINGS: VisualizationSettingsDefinitions = {
   "legend.is_reversed": {
     getDefault: (_series, settings) => getDefaultLegendIsReversed(settings),
-    hidden: true,
+    getHidden: () => true,
   },
 };
 
@@ -427,7 +427,7 @@ export const TOOLTIP_SETTINGS: VisualizationSettingsDefinitions = {
       );
       return shouldShowComparisonTooltip ? "series_comparison" : "default";
     },
-    hidden: true,
+    getHidden: () => true,
   },
   "graph.tooltip_columns": {
     get section() {
@@ -638,7 +638,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
     },
   },
   "graph.max_categories_enabled": {
-    hidden: true,
+    getHidden: () => true,
     // temporarily hiding the setting (metabase#50510)
     getDefault: () => false,
     isValid: () => false,
@@ -646,7 +646,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
   },
   "graph.max_categories": {
     widget: ChartSettingMaxCategories,
-    hidden: true,
+    getHidden: () => true,
     // temporarily hiding the setting (metabase#50510)
     getDefault: () => Number.MAX_SAFE_INTEGER,
     isValid: () => false,
@@ -666,7 +666,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
     getDefault: () => color("text-tertiary"),
   },
   "graph.other_category_aggregation_fn": {
-    hidden: true,
+    getHidden: () => true,
     getDefault: ([{ data }], settings) => {
       const [metricName] = settings["graph.metrics"] ?? [];
       const metric = data.cols.find((col) => col.name === metricName);

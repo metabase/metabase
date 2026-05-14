@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import { useGetCollectionQuery } from "metabase/api";
 import { isRootCollection } from "metabase/collections/utils";
-import { SnippetCollections } from "metabase/entities/snippet-collections";
 import type { CollectionId } from "metabase-types/api";
 
 export function SnippetCollectionName({ id }: { id: CollectionId }) {
@@ -11,5 +11,13 @@ export function SnippetCollectionName({ id }: { id: CollectionId }) {
   if (!Number.isSafeInteger(id)) {
     return null;
   }
-  return <SnippetCollections.Name id={id} />;
+  return <SnippetCollectionNameLoader id={id} />;
+}
+
+function SnippetCollectionNameLoader({ id }: { id: CollectionId }) {
+  const { data: collection } = useGetCollectionQuery({
+    id,
+    namespace: "snippets",
+  });
+  return <span>{collection?.name ?? ""}</span>;
 }

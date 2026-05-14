@@ -1,4 +1,5 @@
 (ns metabase.collections.models.collection-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.collections.models.collection-test]}}}}}}
   (:refer-clojure :exclude [descendants])
   (:require
    [clojure.math.combinatorics :as math.combo]
@@ -1826,6 +1827,18 @@
             ;; The count should be the same since personal collections don't get permission entries
             (is (= initial-perms-count final-perms-count)
                 "No new permissions should be created for collections inside personal collections")))))))
+
+(deftest has-remote-synced-collection?-test
+  (testing "Returns false when no remote-synced collections exist"
+    (collection/clear-remote-synced-collection!)
+    (is (false? (collection/has-remote-synced-collection?))))
+  (testing "Returns true when at least one remote-synced collection exists"
+    (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
+      (is (true? (collection/has-remote-synced-collection?)))))
+  (testing "Returns false after clearing remote-synced collections"
+    (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
+      (collection/clear-remote-synced-collection!)
+      (is (false? (collection/has-remote-synced-collection?))))))
 
 (deftest non-remote-synced-dependencies-no-dependencies-test
   (testing "when model has no dependencies"

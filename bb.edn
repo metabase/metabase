@@ -117,6 +117,12 @@
    :requires [[mage.start-maildev :as start-maildev]]
    :task (task! (start-maildev/start-maildev!))}
 
+  tail-d
+  {:doc     "Tail the #d debug log in real time (see dev.debug). Asks the running REPL for the exact path; falls back to DEV_DEBUG_LOG or /tmp/<dir>_debug.log."
+   :examples [["./bin/mage tail-d" "tail the #d log, with bat syntax highlighting if available"]]
+   :requires [[mage.tail-d :as tail-d]]
+   :task (task! (tail-d/tail-d! parsed))}
+
   start-python-runner
   {:doc      "Start python-runner container with internal Moto S3 server for Python transforms"
    :examples [["./bin/mage start-python-runner" "start python-runner with internal S3"]]

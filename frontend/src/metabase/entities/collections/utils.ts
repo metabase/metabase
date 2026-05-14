@@ -6,10 +6,14 @@ import {
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type { IconName, IconProps } from "metabase/ui";
+import type { IconProps } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import type { ColorName } from "metabase/ui/colors/types";
-import type { Collection, CollectionContentModel } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionContentModel,
+  IconName,
+} from "metabase-types/api";
 
 import { PERSONAL_COLLECTIONS } from "./constants";
 

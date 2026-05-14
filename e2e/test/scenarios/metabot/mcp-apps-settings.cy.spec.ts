@@ -7,7 +7,7 @@ describe("admin > MCP apps settings > Cursor install link", () => {
   });
 
   it("shows 'Install in Cursor' link only when the Cursor and VS Code switch is enabled", () => {
-    cy.visit("/admin/metabot");
+    cy.visit("/admin/metabot/mcp");
 
     H.main().within(() => {
       cy.findByText("Supported MCP clients").scrollIntoView();

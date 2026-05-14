@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import _ from "underscore";
 
-import type { CreateQueryActionParams } from "metabase/entities/actions";
+import type { CreateQueryActionParams } from "metabase/actions/types";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";

@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { Link } from "react-router";
 
-import type { IconName } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import { LabelIcon } from "../LabelIcon";
 import S from "../Sidebar.module.css";

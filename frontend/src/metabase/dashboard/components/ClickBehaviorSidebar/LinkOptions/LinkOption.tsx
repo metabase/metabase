@@ -1,4 +1,4 @@
-import type { IconName } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import { SidebarItem } from "../SidebarItem";
 

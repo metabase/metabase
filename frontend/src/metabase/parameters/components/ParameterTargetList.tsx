@@ -6,8 +6,8 @@ import type {
   ParameterMappingOption,
   StructuredQuerySectionOption,
 } from "metabase/parameters/utils/mapping-options";
-import { Icon, type IconName } from "metabase/ui";
-import type { ParameterTarget } from "metabase-types/api";
+import { Icon } from "metabase/ui";
+import type { IconName, ParameterTarget } from "metabase-types/api";
 
 export type ParameterTargetListProps = {
   mappingOptions: ParameterMappingOption[];

@@ -7,8 +7,8 @@ import { Input } from "metabase/common/components/Input";
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import type { IconName } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
+import type { IconName } from "metabase-types/api";
 
 import {
   AdminTreeNode,

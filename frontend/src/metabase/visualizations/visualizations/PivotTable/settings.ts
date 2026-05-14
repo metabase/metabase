@@ -52,9 +52,9 @@ export const getTitleForColumn = (
 };
 
 export const settings = {
-  ...columnSettings({ hidden: true }),
+  ...columnSettings({ getHidden: () => true }),
   [COLLAPSED_ROWS_SETTING]: {
-    hidden: true,
+    getHidden: () => true,
     readDependencies: [COLUMN_SPLIT_SETTING],
     getValue: (
       [{ data }]: Series,

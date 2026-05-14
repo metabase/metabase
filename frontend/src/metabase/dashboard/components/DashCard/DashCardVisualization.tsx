@@ -14,19 +14,15 @@ import {
   getDashCardInlineValuePopulatedParameters,
   getDashcardData,
 } from "metabase/dashboard/selectors";
-import { getVirtualCardType } from "metabase/dashboard/utils";
+import {
+  getVirtualCardType,
+  isDashcardAccessRestricted,
+} from "metabase/dashboard/utils";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
-import {
-  Flex,
-  Group,
-  type IconName,
-  type IconProps,
-  Menu,
-  Title,
-} from "metabase/ui";
+import { Flex, Group, type IconProps, Menu, Title } from "metabase/ui";
 import { isVirtualDashCard } from "metabase/utils/dashboard";
 import { measureTextWidth } from "metabase/utils/measure-text";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
@@ -60,6 +56,7 @@ import type {
   DashboardCard,
   Dataset,
   DatasetData,
+  IconName,
   RawSeries,
   Series,
   VirtualCardDisplay,
@@ -204,6 +201,11 @@ export function DashCardVisualization({
     ) {
       return;
     }
+    // Skip when access is denied; the permission message would otherwise be
+    // masked by "Some columns are missing".
+    if (isDashcardAccessRestricted(rawSeries)) {
+      return;
+    }
 
     const missingCols = getMissingColumnsFromVisualizationSettings({
       visualizerEntity: dashcard.visualization_settings.visualization,
@@ -247,9 +249,10 @@ export function DashCardVisualization({
       ]),
     );
 
-    const didEveryDatasetLoad = dataSources.every(
-      (dataSource) => dataSourceDatasets[dataSource.id] != null,
-    );
+    const everyDatasetLoaded = dataSources.every((dataSource) => {
+      const dataset = dataSourceDatasets[dataSource.id];
+      return dataset != null && dataset.error == null;
+    });
 
     const columns = getVisualizationColumns(
       visualizerEntity,
@@ -267,7 +270,8 @@ export function DashCardVisualization({
       _.omit(dashcard.visualization_settings, "visualization"),
     );
 
-    if (!didEveryDatasetLoad) {
+    if (!everyDatasetLoaded) {
+      // No `data` so the parent <Visualization> picks its error or loading view.
       return [{ card }] as RawSeries;
     }
 

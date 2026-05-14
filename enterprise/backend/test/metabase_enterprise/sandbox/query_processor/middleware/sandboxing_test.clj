@@ -1,4 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -55,9 +58,12 @@
      (qp.store/with-metadata-provider (mt/id)
        (sql.qp/->honeysql
         (or driver/*driver* :h2)
-        [:field field-id {::add/source-table (mt/id table-key)
-                          ::add/source-alias field-name
-                          ::add/desired-alias field-name}])))))
+        (sql.qp/mbql-clause-with-opts driver/*driver*
+                                      :field
+                                      {::add/source-table (mt/id table-key)
+                                       ::add/source-alias field-name
+                                       ::add/desired-alias field-name}
+                                      field-id))))))
 
 (defn- venues-category-mbql-gtap-def []
   {:query (mt/mbql-query venues)

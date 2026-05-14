@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor.distinct-where-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.distinct-where-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.distinct-where-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]

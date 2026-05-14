@@ -1,8 +1,8 @@
 import type { ComponentType } from "react";
 import { t } from "ttag";
 
-import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
+import type { IconName } from "metabase-types/api";
 
 import type {
   NotebookStepHeaderProps,

@@ -285,6 +285,26 @@
                      :form-params      {:SAMLResponse saml-response
                                         :RelayState   (u/encode-base64 relay-state)}}})
 
+(defn- extract-csp-script-nonce
+  "Pull the `'nonce-<value>'` out of the Content-Security-Policy `script-src` directive."
+  [csp-header]
+  (some->> csp-header
+           (re-find #"script-src[^;]*'nonce-([^']+)'")
+           second))
+
+(defn- extract-script-tag-nonce
+  "Pull the nonce attribute out of the first `<script nonce=\"...\">` tag in the popup body."
+  [body]
+  (some->> body
+           (re-find #"<script nonce=\"([^\"]+)\">")
+           second))
+
+(defn- token-relay-state
+  "Build a RelayState whose decoded continue URL carries a valid SDK token + origin."
+  [continue-base origin]
+  (let [token (token-utils/generate-token)]
+    (str continue-base "?token=" token "&origin=" (codec/url-encode origin))))
+
 (defn- some-saml-attributes [user-nickname]
   {"http://schemas.auth0.com/identities/default/provider"   "auth0"
    "http://schemas.auth0.com/nickname"                      user-nickname
@@ -1097,3 +1117,45 @@
                                                                 default-redirect-uri)
                          response    (client/client-real-response :post 401 "/auth/sso" req-options)]
                      (is (not (successful-login? response))))))))))))))
+
+(deftest popup-csp-nonce-matches-header-test
+  (testing "When `/auth/sso` returns the SAML popup HTML, the `<script nonce>` attribute must byte-equal the `'nonce-<X>'` in the response's Content-Security-Policy `script-src` directive."
+    (with-other-sso-types-disabled!
+      (with-saml-default-setup!
+        (do-with-some-validators-disabled!
+         (fn []
+           (let [relay-state  (token-relay-state default-redirect-uri (system/site-url))
+                 req-options  (saml-post-request-options (saml-test-response) relay-state)
+                 response     (client/client-real-response :post 200 "/auth/sso" req-options)
+                 header-nonce (extract-csp-script-nonce (get-in response [:headers "Content-Security-Policy"]))
+                 body-nonce   (extract-script-tag-nonce (:body response))]
+             (testing "CSP header contains a script-src nonce"
+               (is (seq header-nonce)))
+             (testing "Popup body contains a <script nonce=\"...\"> tag"
+               (is (seq body-nonce)))
+             (testing "Header nonce matches body script nonce"
+               (is (= header-nonce body-nonce))))))))))
+
+(deftest popup-csp-nonce-per-request-unique-test
+  (testing "Each `/auth/sso` popup response carries a freshly generated nonce (no static reuse)."
+    (with-other-sso-types-disabled!
+      (with-saml-default-setup!
+        (do-with-some-validators-disabled!
+         (fn []
+           (let [response-1 (client/client-real-response
+                             :post 200 "/auth/sso"
+                             (saml-post-request-options
+                              (saml-test-response)
+                              (token-relay-state default-redirect-uri (system/site-url))))
+                 response-2 (client/client-real-response
+                             :post 200 "/auth/sso"
+                             (saml-post-request-options
+                              (saml-test-response)
+                              (token-relay-state default-redirect-uri (system/site-url))))
+                 nonce-1    (extract-script-tag-nonce (:body response-1))
+                 nonce-2    (extract-script-tag-nonce (:body response-2))]
+             (testing "Both responses have nonces"
+               (is (seq nonce-1))
+               (is (seq nonce-2)))
+             (testing "Nonces differ between requests"
+               (is (not= nonce-1 nonce-2))))))))))
