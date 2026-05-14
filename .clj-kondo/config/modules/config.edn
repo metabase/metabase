@@ -3331,7 +3331,6 @@
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core
            metabase-enterprise.serialization.init
-           metabase-enterprise.serialization.metadata-file-import
            metabase-enterprise.serialization.schema
            metabase-enterprise.serialization.v2.backfill-ids}
    :uses #{analytics
