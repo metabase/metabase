@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.driver.mongo-test
   "Tests for Mongo driver."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.mongo-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.mongo-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

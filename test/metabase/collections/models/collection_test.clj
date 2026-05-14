@@ -1,4 +1,5 @@
 (ns metabase.collections.models.collection-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.collections.models.collection-test]}}}}}}
   (:refer-clojure :exclude [descendants])
   (:require
    [clojure.math.combinatorics :as math.combo]

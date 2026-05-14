@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.mongo.execute-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.mongo.execute-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.mongo.execute-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer :all]
