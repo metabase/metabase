@@ -156,6 +156,19 @@ jobs:
     with:
       version: ${{ inputs.version }}
 
+  trigger-milestone-check:
+    # Posts a Slack FYI about issues that still need review for this release.
+    # Informational only — nothing depends on it, so it never blocks the release.
+    needs: [check-version, check-commit]
+    permissions:
+      contents: read
+      issues: read
+    uses: ./.github/workflows/release-milestone-check.yml
+    secrets: inherit
+    with:
+      version: ${{ inputs.version }}
+      commit: ${{ inputs.commit }}
+
   tag-uberjar-for-release:
     needs: [check-version, check-commit]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
