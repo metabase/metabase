@@ -261,7 +261,7 @@
    — same shape the `:workspace` section of `config.yml` resolves to at boot.
    Validation happens inside that fn against the `::ws/workspace-instance-config`
    schema. No-op on OSS."
-  [_route-params _query-params body]
+  [_route-params _query-params body :- ::ws/workspace-instance-config]
   (ws/set-instance-workspace! body)
   {:ok true})
 

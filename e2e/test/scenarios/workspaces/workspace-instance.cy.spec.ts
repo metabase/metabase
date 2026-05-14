@@ -3,6 +3,7 @@ import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 const { H } = cy;
 
 const WORKSPACE_NAME = "E2E workspace instance";
+const ROW_COUNT = 3;
 
 describe("scenarios > workspaces > workspace instance", () => {
   describe("postgres", () => {
@@ -11,6 +12,7 @@ describe("scenarios > workspaces > workspace instance", () => {
     const outputSchema = "mb__isolation";
     const sourceTable = "Animals";
     const targetTable = "transform_table";
+    const targetTableDisplayName = "Transform Table";
 
     beforeEach(() => {
       H.restore("postgres-writable");
@@ -47,7 +49,7 @@ describe("scenarios > workspaces > workspace instance", () => {
         sourceTable,
         sourceSchema: inputSchema,
         targetTable,
-        targetSchema: outputSchema,
+        targetSchema: inputSchema,
       });
 
       cy.log("instance page shows the remapping for the transform target");
@@ -62,14 +64,22 @@ describe("scenarios > workspaces > workspace instance", () => {
         query: `SELECT * FROM "${inputSchema}"."${targetTable}"`,
       });
       H.runNativeQuery();
-      H.assertQueryBuilderRowCount(5);
+      H.assertQueryBuilderRowCount(ROW_COUNT);
+
+      cy.log("mbql query is rewritten to workspace table");
+      H.startNewQuestion();
+      H.miniPicker().findByText(databaseName).click();
+      H.miniPicker().findByText(inputSchema).click();
+      H.miniPicker().findByText(targetTableDisplayName).click();
+      H.visualize();
+      H.assertQueryBuilderRowCount(ROW_COUNT);
 
       cy.log("the actual warehouse table lives under the workspace schema");
       H.queryWritableDB(
         `SELECT COUNT(*) AS count FROM "${outputSchema}"."${inputSchema}__${targetTable}"`,
         "postgres",
       ).then((result) => {
-        expect(Number(result.rows[0].count)).to.eq(5);
+        expect(Number(result.rows[0].count)).to.eq(ROW_COUNT);
       });
     });
   });
@@ -77,13 +87,15 @@ describe("scenarios > workspaces > workspace instance", () => {
   describe("mysql", () => {
     const databaseName = "Writable MySQL8";
     const outputDatabase = "mb__isolation";
-    const sourceTable = "ORDERS";
+    const sourceTable = "scoreboard_actions";
     const targetTable = "transform_table";
+    const targetTableDisplayName = "Transform Table";
 
     beforeEach(() => {
       H.restore("mysql-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
+      H.resetTestTable({ type: "mysql", table: sourceTable });
       H.queryWritableDB(`DROP DATABASE IF EXISTS ${outputDatabase}`, "mysql");
       H.queryWritableDB(`CREATE DATABASE ${outputDatabase}`, "mysql");
       H.resyncDatabase({ dbId: WRITABLE_DB_ID });
@@ -124,14 +136,21 @@ describe("scenarios > workspaces > workspace instance", () => {
         query: `SELECT * FROM \`${targetTable}\``,
       });
       H.runNativeQuery();
-      H.assertQueryBuilderRowCount(5);
+      H.assertQueryBuilderRowCount(ROW_COUNT);
+
+      cy.log("mbql query is rewritten to workspace table");
+      H.startNewQuestion();
+      H.miniPicker().findByText(databaseName).click();
+      H.miniPicker().findByText(targetTableDisplayName).click();
+      H.visualize();
+      H.assertQueryBuilderRowCount(ROW_COUNT);
 
       cy.log("the actual warehouse table lives under the workspace database");
       H.queryWritableDB(
         `SELECT COUNT(*) AS count FROM \`${outputDatabase}\`.\`__${targetTable}\``,
         "mysql",
       ).then((result) => {
-        expect(Number(result.rows[0].count)).to.eq(5);
+        expect(Number(result.rows[0].count)).to.eq(ROW_COUNT);
       });
     });
   });
@@ -159,7 +178,7 @@ function createAndRunTransform({
       stages: [
         {
           source: { type: "table", id: sourceTableId },
-          limit: 5,
+          limit: ROW_COUNT,
         },
       ],
     }).then((query) => {

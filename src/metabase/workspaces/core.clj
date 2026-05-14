@@ -42,11 +42,6 @@
    [metabase.util.malli.registry :as mr]))
 
 ;;; ----------------------------- Workspace config schemas ----------------------------------
-;;;
-;;; The canonical shape of the in-process workspace config atom. The schemas
-;;; live in OSS so the `defenterprise` boundary below can validate without
-;;; pulling in the EE namespace. The EE impl (and the boot loader, and the
-;;; testing-api endpoint) all read/write this exact shape.
 
 (mr/def ::table-namespace
   "A `{:db ?, :schema ?}` namespace map. Either or both keys may be present
@@ -61,12 +56,13 @@
     (fn [m] (or (some? (:db m)) (some? (:schema m))))]])
 
 (mr/def ::workspace-database-config
-  "Per-database workspace config: `:input_schemas` is a non-empty vector of
-   driver-opaque schema names (the source schemas the workspace reads from);
-   `:output` is a single namespace map (the workspace's isolation schema,
-   expanded with the warehouse catalog at boot)."
+  "Per-database workspace config: `:input_schemas` is a vector of driver-opaque
+   schema names (the source schemas the workspace reads from) — may be empty
+   on drivers with no schema layer (e.g. MySQL), where the bound DB itself acts
+   as the implicit input namespace; `:output` is a single namespace map (the
+   workspace's isolation schema, expanded with the warehouse catalog at boot)."
   [:map
-   [:input_schemas [:vector {:min 1} :string]]
+   [:input_schemas [:vector :string]]
    [:output        ::table-namespace]])
 
 (mr/def ::workspace-instance-config
@@ -76,15 +72,17 @@
    `metabase-enterprise.advanced-config.file.workspace`."
   [:map
    [:name      [:string {:min 1}]]
-   [:databases [:map-of :int ::workspace-database-config]]])
+   [:databases [:map-of
+                {:decode/json #(update-keys % (fn [k] (cond-> k (keyword? k) (-> name parse-long))))}
+                :int ::workspace-database-config]]])
 
 (defenterprise workspace-mode?
-  "True iff this instance is running in workspace mode — a `:workspace` section
+  "True if this instance is running in workspace mode — a `:workspace` section
    was loaded from `config.yml` at boot. Instance-level state set once at boot.
 
    For the per-database check, use the EE function
    `metabase-enterprise.workspaces.core/db-workspace-namespace` (returns the
-   workspace-isolated output namespace map iff this instance is in workspace mode
+   workspace-isolated output namespace map if this instance is in workspace mode
    AND the workspace's `:databases` map includes this database).
 
    The OSS fallback returns false."
