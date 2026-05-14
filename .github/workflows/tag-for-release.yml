@@ -1,4 +1,4 @@
-name: Release 1a - Tag Release Artifact
+name: Release 1 - Tag Release Artifact
 run-name: Tag ${{ inputs.version }}
 
 on:

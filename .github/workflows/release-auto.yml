@@ -1,4 +1,4 @@
-name: Release 1b - Auto Release
+name: Trigger Release End-to-End
 run-name: Auto ${{ inputs.kind }} release for v${{ inputs.version }}
 
 on:
