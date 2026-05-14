@@ -1286,31 +1286,35 @@
         (.getBindingsList policy)))
 
 (defn- ws-grant-impersonation-permission!
-  "Grant the main service account permission to impersonate the workspace service account."
+  "Grant the main service account permission to impersonate the workspace service account.
+
+   The pre-check `ws-has-role-binding?` makes the only no-op-of-concern (the binding
+   already exists) a non-write. Any exception raised by `getIamPolicy` or `setIamPolicy`
+   reflects a real failure -- `PERMISSION_DENIED`, `RESOURCE_EXHAUSTED`, `INVALID_ARGUMENT`,
+   network/`UNAVAILABLE`, or an etag race between concurrent provisioners -- and must
+   propagate so the caller's `init-workspace-isolation!` flow fails loudly instead of
+   timing out 120s downstream in `ws-wait-for-impersonation-ready!` with no signal."
   [^IAMClient iam-client ^String project-id ^String main-sa-email ^String workspace-sa-email]
   (let [resource (format "projects/%s/serviceAccounts/%s" project-id workspace-sa-email)
         role     "roles/iam.serviceAccountTokenCreator"
-        member   (format "serviceAccount:%s" main-sa-email)]
-    (try
-      ;; Get current policy
-      (let [current-policy (.getIamPolicy iam-client resource)]
-        ;; Only add if not already granted
-        (when-not (ws-has-role-binding? current-policy role member)
-          (let [new-binding    (-> (Binding/newBuilder)
-                                   (.setRole role)
-                                   (.addMembers member)
-                                   (.build))
-                updated-policy (-> (Policy/newBuilder current-policy)
-                                   (.addBindings new-binding)
-                                   (.build))
-                request        (-> (SetIamPolicyRequest/newBuilder)
-                                   (.setResource resource)
-                                   (.setPolicy updated-policy)
-                                   (.build))]
-            (.setIamPolicy iam-client request)
-            (log/infof "Granted impersonation permission on %s to %s" workspace-sa-email main-sa-email))))
-      (catch Exception e
-        (log/warn e "Failed to grant impersonation permission (may already exist)")))))
+        member   (format "serviceAccount:%s" main-sa-email)
+        ;; Get current policy
+        current-policy (.getIamPolicy iam-client resource)]
+    ;; Only add if not already granted
+    (when-not (ws-has-role-binding? current-policy role member)
+      (let [new-binding    (-> (Binding/newBuilder)
+                               (.setRole role)
+                               (.addMembers member)
+                               (.build))
+            updated-policy (-> (Policy/newBuilder current-policy)
+                               (.addBindings new-binding)
+                               (.build))
+            request        (-> (SetIamPolicyRequest/newBuilder)
+                               (.setResource resource)
+                               (.setPolicy updated-policy)
+                               (.build))]
+        (.setIamPolicy iam-client request)
+        (log/infof "Granted impersonation permission on %s to %s" workspace-sa-email main-sa-email)))))
 
 (defn- ws-grant-project-role!
   "Grant a project-level IAM role to a service account.
