@@ -12,9 +12,15 @@
 (defn- schema-filter-entries
   "Build sync-filter keys for the workspace's input scope. Per-engine:
 
-   - schema-having JDBC drivers (Postgres, Redshift, SQL Server, Snowflake,
-     ClickHouse) emit `:schema-filters-*` — `metabase.driver.sync` reads these
-     to scope describe-database to the named schemas.
+   - schema-having JDBC drivers (Postgres, Redshift, SQL Server, Snowflake)
+     emit `:schema-filters-*` — `metabase.driver.sync` reads these to scope
+     describe-database to the named schemas.
+   - ClickHouse emits `:db-filters-*` — CH calls its top-level namespaces
+     'databases' (= schemas in MB's vocabulary) and its describe-database
+     impl reads `:db-filters-*`, not `:schema-filters-*`. The canonical
+     CH details already carry `:db-filters-patterns <bound-db>`, which would
+     otherwise leak through and restrict sync to the canonical DB the
+     workspace user has no GRANTs on.
    - BigQuery emits `:dataset-filters-*` — its `list-datasets` reads these
      instead (BQ doesn't go through `metabase.driver.sync`).
    - No-schema engines (MySQL) emit `{}` — JDBC reports `TABLE_SCHEM` as null
@@ -27,6 +33,10 @@
       (= engine :bigquery-cloud-sdk)
       {:dataset-filters-type     "inclusion"
        :dataset-filters-patterns patterns}
+
+      (= engine :clickhouse)
+      {:db-filters-type     "inclusion"
+       :db-filters-patterns patterns}
 
       (driver.u/supports? engine :schemas db)
       {:schema-filters-type     "inclusion"

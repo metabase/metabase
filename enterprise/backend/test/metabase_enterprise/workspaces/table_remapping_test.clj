@@ -518,13 +518,13 @@
 
 (deftest spec-for-table-clickhouse-engine-test
   (when (workspaces.tu/driver-loadable? :clickhouse)
-    (testing "ClickHouse fills :schema with the database name (driver emits db.table)"
+    (testing "ClickHouse fills :schema from the Table row's :schema column (CH sync stores its database name there)"
       (let [database (assoc (t2/select-one :model/Database :id (mt/id)) :engine :clickhouse)
             table    (t2/select-one :model/Table :id (mt/id :orders))
             {:keys [db schema]} (ws.table-remapping/spec-for-table database table)]
         (is (= "" db) "no catalog level on ClickHouse")
-        (is (= (:name database) schema)
-            "schema-position filled from database.:name on schema-less drivers")))))
+        (is (= (:schema table) schema)
+            "schema-position reads off Table.:schema (= CH warehouse database name as recorded by sync)")))))
 
 (deftest spec-for-table-bigquery-engine-test
   (when (workspaces.tu/driver-loadable? :bigquery-cloud-sdk)
@@ -575,7 +575,7 @@
    [:redshift             [:schema]        {:name "analytics"}                              {:schema "public"  :name "orders"} {:db ""              :schema "public"   :table "orders"}]
    [:h2                   [:schema]        {:name "mem:test"}                               {:schema "PUBLIC"  :name "ORDERS"} {:db ""              :schema "PUBLIC"   :table "ORDERS"}]
    [:mysql                [:db]            {:name "ignored" :details {:db "analytics"}}     {:schema nil      :name "orders"} {:db "analytics"     :schema ""         :table "orders"}]
-   [:clickhouse           [:schema]        {:name "analytics"}                              {:schema nil      :name "events"} {:db ""              :schema "analytics" :table "events"}]
+   [:clickhouse           [:schema]        {:name "ignored"}                                {:schema "analytics" :name "events"} {:db ""              :schema "analytics" :table "events"}]
    [:snowflake            [:db :schema]    {:name "ignored" :details {:db "ANALYTICS"}}     {:schema "PUBLIC" :name "ORDERS"} {:db "ANALYTICS"     :schema "PUBLIC"   :table "ORDERS"}]
    [:sqlserver            [:db :schema]    {:name "ignored" :details {:db "AnalyticsDB"}}   {:schema "dbo"    :name "orders"} {:db "AnalyticsDB"   :schema "dbo"      :table "orders"}]
    [:bigquery-cloud-sdk   [:db :schema]    {:name "ignored" :details {:project-id "metabase-prod"}} {:schema "core"   :name "orders"} {:db "metabase-prod" :schema "core"     :table "orders"}]])

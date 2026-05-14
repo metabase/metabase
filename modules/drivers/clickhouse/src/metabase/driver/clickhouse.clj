@@ -160,20 +160,30 @@
   (if driver-api/is-test?
     (try
       ;; Default SELECT 1 is not enough for Metabase test suite,
-      ;; as it works slightly differently than expected there
-      (let [spec   (sql-jdbc.conn/connection-details->spec driver details)
-            dbname (or (first-db-name (:dbname details))
-                       (first-db-name (:db details))
-                       "default")
-            db     (ddl.i/format-name driver dbname)]
-        (sql-jdbc.execute/do-with-connection-with-options
-         driver spec nil
-         (fn [^java.sql.Connection conn]
-           (let [stmt (.prepareStatement conn "SELECT count(*) > 0 FROM system.databases WHERE name = ?")
-                 _    (.setString stmt 1 db)
-                 rset (.executeQuery stmt)]
-             (when (.next rset)
-               (.getBoolean rset 1))))))
+      ;; as it works slightly differently than expected there: in single-DB mode
+      ;; we want to confirm the named DB actually exists on the server (catches
+      ;; tests that pass bogus DB names), not just that the connection opens.
+      ;; In multi-DB mode (`:enable-multiple-db true`) there's no single bound DB
+      ;; whose existence is load-bearing — the user reads across every CH database
+      ;; they have grants on — and `system.databases` is grant-filtered, so probing
+      ;; one specific DB would false-fail for any restricted user (e.g. workspace
+      ;; users with grants only on their iso/input DBs). In that mode trust the
+      ;; default `SELECT 1` connection check.
+      (if (:enable-multiple-db details)
+        (sql-jdbc.conn/can-connect? driver details)
+        (let [spec   (sql-jdbc.conn/connection-details->spec driver details)
+              dbname (or (first-db-name (:dbname details))
+                         (first-db-name (:db details))
+                         "default")
+              db     (ddl.i/format-name driver dbname)]
+          (sql-jdbc.execute/do-with-connection-with-options
+           driver spec nil
+           (fn [^java.sql.Connection conn]
+             (let [stmt (.prepareStatement conn "SELECT count(*) > 0 FROM system.databases WHERE name = ?")
+                   _    (.setString stmt 1 db)
+                   rset (.executeQuery stmt)]
+               (when (.next rset)
+                 (.getBoolean rset 1)))))))
       (catch Throwable e
         (log/error e "An exception during ClickHouse connectivity check")
         false))
@@ -418,6 +428,12 @@
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))
     {:schema           db-name
+     ;; Intentionally omit `:db` from `:database_details`: the workspace config-loader merges
+     ;; these over the canonical Database's `:details`, and overwriting `:db` would re-bind the
+     ;; connection to the iso DB. Sync would then only enumerate iso-DB tables and miss the
+     ;; canonical input schemas. Queries route across DBs via fully-qualified `<schema>.<table>`,
+     ;; so keeping `:db` at canonical doesn't restrict access — the workspace user has GRANTs on
+     ;; the input schemas and iso DB regardless of the connection's bound DB.
      :database_details read-user}))
 
 (defmethod driver/grant-workspace-read-access! :clickhouse

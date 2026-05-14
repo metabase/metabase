@@ -61,11 +61,8 @@
                   :schema (:schema table)}
      :h2         {:db nil
                   :schema (:schema table)}
-
-     ;; 2-slot, schema-from-database-name (ClickHouse calls its top level
-     ;; "database" but emits it at the schema position in compiled SQL).
      :clickhouse {:db nil
-                  :schema (:name database)}
+                  :schema (:schema table)}
 
      ;; 1-slot (db only); MySQL has no schema layer.
      :mysql      {:db (:db (:details database))
