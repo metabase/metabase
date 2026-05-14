@@ -102,7 +102,11 @@ export const locationChanged =
   (location: Location, nextLocation: Location, nextParams: QueryParams) =>
   (dispatch: Dispatch) => {
     if (location !== nextLocation) {
-      const isExternalUrlChange = nextLocation.state === undefined;
+      // Treat both undefined and null as "no state" — the browser leaves
+      // `history.state` as null for navigations the app didn't initiate (typed
+      // URLs, browser hash changes, cy.visit), while `updateUrl` always sets a
+      // `state.card` object.
+      const isExternalUrlChange = nextLocation.state == null;
       const urlChanged =
         getURL(nextLocation, { includeMode: true }) !==
         getURL(location, { includeMode: true });
