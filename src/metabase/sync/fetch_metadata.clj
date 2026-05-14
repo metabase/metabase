@@ -5,7 +5,7 @@
   (:require
    [clojure.set :as set]
    [metabase.driver :as driver]
-   [metabase.driver.connection.workspaces :as driver.conn.w]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.util :as driver.u]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
@@ -31,7 +31,7 @@
 
   When the resolved `:db` differs from the canonical bound DB (true for engines like
   MySQL whose iso namespace is a *different* database, not just a different schema),
-  installs a `:db` swap via [[driver.conn.w/with-swapped-connection-details]] so the
+  installs a `:db` swap via [[driver.conn/with-swapped-connection-details]] so the
   driver-side `describe-fields`/`describe-table`/`describe-indexes` SQL filters and
   connects to the iso DB. Schema-having drivers (Postgres etc.) keep `:db` at the
   canonical value and skip the swap."
@@ -39,7 +39,7 @@
   (let [{effective-db :db :as spec} (effective-table-spec (:id database) (:schema table) (:name table))
         canonical-db (-> database :details :db)]
     (if (and effective-db (not= effective-db canonical-db))
-      (driver.conn.w/with-swapped-connection-details (:id database) {:db effective-db}
+      (driver.conn/with-swapped-connection-details (:id database) {:db effective-db}
         (f spec))
       (f spec))))
 

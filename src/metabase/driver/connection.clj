@@ -113,6 +113,14 @@
   `(binding [*suppress-resolution-telemetry* true]
      ~@body))
 
+(defmacro with-swapped-connection-details
+  "Re-export of [[metabase.driver.connection.workspaces/with-swapped-connection-details]]
+   on the driver module's public API surface, so consumers outside the module can apply
+   per-database connection-detail overrides through `metabase.driver.connection`."
+  {:style/indent 2}
+  [database-id swap-map & body]
+  `(driver.w/do-with-swapped-connection-details ~database-id ~swap-map (fn [] ~@body)))
+
 (defenterprise database-write-data-details
   "Returns the `:write-data-details` for a database, or `nil` if the writable-connection feature is not available.
    OSS implementation always returns `nil`."
