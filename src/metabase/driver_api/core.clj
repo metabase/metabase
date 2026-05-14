@@ -125,14 +125,14 @@
  logger/level-enabled?
  mbql.u/aggregation-at-index
  mbql.u/assoc-field-options
- mbql.u/desugar-filter-clause
+ mbql.u/desugar-filter-clause ; TODO (Cam 2026-05-14) Check if we can remove this altogether now
  mbql.u/expression-with-name
  mbql.u/field-options
  mbql.u/negate-filter-clause
  mbql.u/normalize-token
  mbql.u/query->max-rows-limit
  mbql.u/query->source-table-id
- mbql.u/simplify-compound-filter
+ mbql.u/simplify-compound-filter ; TODO (Cam 2026-05-14) Check if we can remove this altogether now
  mbql.u/update-field-options
  mdb/clob->str
  mdb/data-source

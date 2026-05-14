@@ -14,11 +14,7 @@ title: Driver interface changelog
   - `sql.qp/over-order-by->honeysql` - Returns the HoneySQL for an order by clause in the over clause of a window function.
   - `sql.qp/clause-value-idx` - Returns the index of the value in a value clause.
   - `sql.qp/breakout-options-index` - Returns the index of options in a breakout clause.
-  - `sql.params.substitution/field->clause` - Returns an MBQL field clause with the given options.
-  - `sql.params.substitution/to-clause` - Helper to dispatch to `params.ops/to-clause` or `qp.params.ops/to-clause`.
-  - `sql.params.substitution/desugar-filter-clause` - Helper to dispatch to `driver-api/desugar-filter-clause` or `lib/desugar-filter-clause`.
-  - `sql.params.substitution/wrap-value-literals-in-mbql` - Helper to dispatch to `driver-api/wrap-value-literals-in-mbql` or `driver-api/wrap-value-literals-in-mbql5`.
-  - `sql.params.substitution/date-string->filter` - Helper to dispatch to `params.dates/date-string->filter` or `qp.params.dates/date-string->filter`.
+  - `sql.params.substitution/->honeysql` - Compiles an MBQL 5 clause to HoneySQL with the given options.
 
   These methods have implementations for the `:sql` and `:sql-mbql5` drivers. Concrete drivers should *not* need to
   implement these methods. Drivers can opt-in to MBQL5 compilation by adding the `:sql-mbql5` driver as a parent, and updating the `sql.qp/->honeysql`
@@ -39,6 +35,12 @@ title: Driver interface changelog
   0.57.0, have been removed. Please use the Lib implementations instead. Relevant functions are aliased in
   `metabase.lib.core`, for example `metabase.lib.core/parse-parameters`, `metabase.lib.core/parsed-parameter`, and
   `metabase.lib.core/parsed-parameter?`.
+
+- The `metabase.driver.common.parameters.dates` and `metabase.driver.common.parameters.operators` namespaces,
+  deprecated in 0.57.0, have been removed. Use the equivalent QP namespaces instead:
+  `metabase.query-processor.parameters.dates` and `metabase.query-processor.parameters.operators`, respectively. These
+  namespaces return MBQL 5 clauses rather than MBQL 4; use `metabase.lib.core/->legacy-MBQL` if needed until your
+  driver has been fully updated to MBQL 5.
 
 - `metabase.driver.sql.parameters.substitution/align-temporal-unit-with-param-type`, deprecated in 0.49.0, has been
   removed.
