@@ -94,7 +94,8 @@
                               :transforms/python        true
                               :transforms/index-ddl     true
                               :metadata/table-existence-check true
-                              :workspace                true}]
+                              :workspace                true
+                              :index/create-concurrently true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
