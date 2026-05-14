@@ -38,8 +38,13 @@ export const Ellipsified = ({
     : { lineClamp: lines };
 
   // Override Mantine's `overflow: hidden` so deep descenders (e.g. `₂` in `tCO₂e`) render past the line box without growing it (metabase#72443).
+  // `min-width: 0` keeps flex-layout shrink-to-fit working; `overflow: hidden` gets it implicitly but `overflow: clip` doesn't.
   const overflowStyle = isSingleLine
-    ? { overflowX: "clip" as const, overflowY: "visible" as const }
+    ? {
+        overflowX: "clip" as const,
+        overflowY: "visible" as const,
+        minWidth: 0,
+      }
     : undefined;
 
   return (
