@@ -19,7 +19,7 @@
   (let [components (lib/parse-parameters text)]
     (str/join ""
               (for [c components]
-                (if (= (:lib/type c) :metabase.lib.parameters.parse.types/param)
+                (if (lib/parsed-param? c)
                   (or (get-in context (param-name->path (:k c)))
                       (when-not ignore-missing?
                         (throw (ex-info (str "Missing parameter: " (:k c)) {:param (:k c)}))))

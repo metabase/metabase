@@ -82,8 +82,8 @@
 
     {:type :metabase.lib.parse/param
      :name param-name}
-    (lib.params.parse.types/param {:k (or (match-and-normalize-tag-name param-name)
-                                          (str/trim param-name))})
+    (lib.params.parse.types/param (or (match-and-normalize-tag-name param-name)
+                                      (str/trim param-name)))
 
     {:type :metabase.lib.parse/function-param
      :name param-name
@@ -92,7 +92,7 @@
 
     {:type     :metabase.lib.parse/optional
      :contents contents}
-    (lib.params.parse.types/optional {:args (mapv ->param contents)})
+    (lib.params.parse.types/optional (mapv ->param contents))
 
     _ (throw (ex-info "Invalid value." {:value value}))))
 

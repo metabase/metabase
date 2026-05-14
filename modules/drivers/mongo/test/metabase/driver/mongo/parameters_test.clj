@@ -7,11 +7,12 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
    [metabase.driver.mongo.parameters :as mongo.params]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -24,98 +25,95 @@
       (is (= (t/instant "2020-03-14T00:00:00Z")
              (#'mongo.params/->utc-instant t))))))
 
-(defn- substitute [param->value xs]
-  (#'mongo.params/substitute param->value xs))
+(mu/defn- optional :- :metabase.lib.parameters.parse.types/optional
+  [& args]
+  (lib/parsed-optional-param args))
 
-(defn- param [k]
-  (params/->Param k))
-
-(defn- optional [& xs]
-  (params/->Optional xs))
-
-(defn- field-filter
+(mu/defn- field-filter :- :metabase.lib.parameters.parse.types/field-filter
   ([field-name value-type value]
    (field-filter field-name nil value-type value))
   ([field-name base-type value-type value]
    (field-filter field-name base-type value-type value nil))
   ([field-name base-type value-type value options]
-   (params/->FieldFilter {:lib/type  :metadata/column
-                          :name      (name field-name)
-                          :base-type (or base-type :type/*)}
-                         (cond-> {:type value-type, :value value}
-                           (map? options) (assoc :options options))
-                         nil)))
+   (merge (lib/parsed-field-filter-param {:lib/type  :metadata/column
+                                          :name      (name field-name)
+                                          :base-type (or base-type :type/*)}
+                                         (cond-> {:type value-type, :value value}
+                                           (map? options) (assoc :options options)))
+          options)))
 
 (deftest ^:parallel substitute-test
   (testing "non-parameterized strings should not be substituted"
     (is (= "wow"
-           (substitute nil ["wow"])))))
+           (#'mongo.params/substitute nil ["wow"])))))
 
 (deftest ^:parallel substitute-test-2
   (testing "non-optional-params"
     (testing "single param with no string before or after"
       (is (= "100"
-             (substitute {:x 100} [(param :x)]))
+             (#'mongo.params/substitute {"x" 100} [(lib/parsed-param "x")]))
           "\"{{x}}\" with x = 100 should be replaced with \"100\""))
     (testing "if a param is missing, an Exception should be thrown"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"missing required parameters: #\{:x\}"
-                            (substitute nil [(param :x)]))))
+                            #"missing required parameters: #\{\"x\"\}"
+                            (#'mongo.params/substitute nil [(lib/parsed-param "x")]))))
     (testing "params preceded or followed by strings should get combined into a single string"
       (is (= "2100"
-             (substitute {:x 100} ["2" (param :x)]))
+             (#'mongo.params/substitute {"x" 100} ["2" (lib/parsed-param "x")]))
           "\"2{{x}}\" with x = 100 should be replaced with string \"2100\""))
     (testing "temporal params"
       (is (= "ISODate(\"2019-12-06T17:01:00-08:00\")"
-             (substitute {:written-at #t "2019-12-06T17:01:00-08:00[America/Los_Angeles]"} [(param :written-at)]))))
+             (#'mongo.params/substitute {"written-at" #t "2019-12-06T17:01:00-08:00[America/Los_Angeles]"}
+                                        [(lib/parsed-param "written-at")]))))
     (testing "multiple params in one string"
       (is (= "2019-12-10"
-             (substitute {:year 2019, :month 12, :day 10} [(param :year) "-" (param :month) "-" (param :day)]))
+             (#'mongo.params/substitute {"year" 2019, "month" 12, "day" 10} [(lib/parsed-param "year") "-" (lib/parsed-param "month") "-" (lib/parsed-param "day")]))
           "\"{{year}}-{{month}}-{{day}}\" should be replaced with \"2019-12-09\"")
       (testing "some params missing"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"missing required parameters: #\{:day\}"
-                              (substitute {:year 2019, :month 12} [(param :year) "-" (param :month) "-" (param :day)])))))))
+                              #"missing required parameters: #\{\"day\"\}"
+                              (#'mongo.params/substitute {"year" 2019, "month" 12} [(lib/parsed-param "year") "-" (lib/parsed-param "month") "-" (lib/parsed-param "day")])))))))
 
 (deftest ^:parallel substitute-test-3
   (testing "optional params"
     (testing "single optional param"
       (is (= nil
-             (substitute nil [(optional (param :x))]))
+             (#'mongo.params/substitute nil [(optional (lib/parsed-param "x"))]))
           "\"[[{{x}}]]\" with no value for x should be replaced with `nil`"))
     (testing "{{year}}[[-{{month}}[[-{{day}}]]]]"
-      (let [params [(param :year) (optional "-" (param :month) (optional "-" (param :day)))]]
+      (let [params [(lib/parsed-param "year")
+                    (optional "-" (lib/parsed-param "month") (optional "-" (lib/parsed-param "day")))]]
         (testing "with all params present"
           (is (= "2019-12-10"
-                 (substitute {:year 2019, :month 12, :day 10} params))))
+                 (#'mongo.params/substitute {"year" 2019, "month" 12, "day" 10} params))))
         (testing "with :year & :month present but not :day"
           (is (= "2019-12"
-                 (substitute {:year 2019, :month 12} params))))
+                 (#'mongo.params/substitute {"year" 2019, "month" 12} params))))
         (testing "with :year present but not :month or :day"
           (is (= "2019"
-                 (substitute {:year 2019} params))))
+                 (#'mongo.params/substitute {"year" 2019} params))))
         (testing "with no params present"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                 #"missing required parameters"
-                                (substitute nil params))))))))
+                                (#'mongo.params/substitute nil params))))))))
 
 (deftest ^:parallel substitute-test-4
   (testing "comma-separated numbers"
     (is (= "{$in: [1, 2, 3]}"
-           (substitute {:id [1 2 3]}
-                       [(param :id)])))))
+           (#'mongo.params/substitute {"id" [1 2 3]}
+                                      [(lib/parsed-param "id")])))))
 
 (deftest ^:parallel substitute-test-5
   (testing "multiple-values single (#30136)"
     (is (= "\"33 Taps\""
-           (substitute {:id ["33 Taps"]}
-                       [(param :id)])))))
+           (#'mongo.params/substitute {"id" ["33 Taps"]}
+                                      [(lib/parsed-param "id")])))))
 
 (deftest ^:parallel substitute-test-6
   (testing "multiple-values multi (#22486)"
     (is (= "{$in: [\"33 Taps\", \"Cha Cha Chicken\"]}"
-           (substitute {:id ["33 Taps" "Cha Cha Chicken"]}
-                       [(param :id)])))))
+           (#'mongo.params/substitute {"id" ["33 Taps" "Cha Cha Chicken"]}
+                                      [(lib/parsed-param "id")])))))
 
 (defprotocol ^:private ToBSON
   (^:private to-bson [this]
@@ -159,8 +157,8 @@
   (testing "Date ranges"
     (mt/with-clock #t "2019-12-13T12:00:00.000Z[UTC]"
       (letfn [(substitute-date-range [s]
-                (substitute {:date (field-filter "date" :date/range s)}
-                            ["[{$match: " (param :date) "}]"]))]
+                (#'mongo.params/substitute {"date" (field-filter "date" :date/range s)}
+                                           ["[{$match: " (lib/parsed-param "date") "}]"]))]
         (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-12-08T00:00:00Z")}}
                                           {"date" {:$lt  (ISODate "2019-12-13T00:00:00Z")}}]}}])
                (substitute-date-range "past5days")))
@@ -175,20 +173,23 @@
 (deftest ^:parallel field-filter-test-2
   (testing "multiple values (numbers)"
     (is (= (to-bson [{:$match {"id" {:$in [1 2 3]}}}])
-           (substitute {:id (field-filter "id" :number [1 2 3])}
-                       ["[{$match: " (param :id) "}]"])))))
+           (#'mongo.params/substitute {"id" (field-filter "id" :number [1 2 3])}
+                                      ["[{$match: " (lib/parsed-param "id") "}]"])))))
 
 (deftest ^:parallel field-filter-test-3
   (testing "single date"
     (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-12-08")}}
                                       {"date" {:$lt  (ISODate "2019-12-09")}}]}}])
-           (substitute {:date (field-filter "date" :date/single "2019-12-08")}
-                       ["[{$match: " (param :date) "}]"])))))
+           (#'mongo.params/substitute {"date" (field-filter "date" :date/single "2019-12-08")}
+                                      ["[{$match: " (lib/parsed-param "date") "}]"])))))
 
 (deftest ^:parallel field-filter-test-4
   (testing "parameter not supplied"
     (is (= (to-bson [{:$match {}}])
-           (substitute {:date (params/->FieldFilter {:name "date"} params/no-value nil)} ["[{$match: " (param :date) "}]"])))))
+           (#'mongo.params/substitute {"date" (lib/parsed-field-filter-param
+                                               {:lib/type :metadata/column, :name "date", :base-type :type/Date}
+                                               lib/parsed-param-no-value-placeholder)}
+                                      ["[{$match: " (lib/parsed-param "date") "}]"])))))
 
 (deftest ^:parallel field-filter-test-5
   (testing "operators"
@@ -220,8 +221,8 @@
         (testing operator
           (is (= (strip (to-bson [{:$match form}]))
                  (strip
-                  (substitute {:desc (field-filter "description" :type/Text operator input options)}
-                              ["[{$match: " (param :desc) "}]"])))))))))
+                  (#'mongo.params/substitute {"desc" (field-filter "description" :type/Text operator input options)}
+                                             ["[{$match: " (lib/parsed-param "desc") "}]"])))))))))
 
 (deftest ^:parallel field-filter-test-6
   (testing "operators"
@@ -236,8 +237,8 @@
         (testing operator
           (is (= (strip (to-bson [{:$match form}]))
                  (strip
-                  (substitute {:price (field-filter "price" :type/Integer operator input)}
-                              ["[{$match: " (param :price) "}]"])))))))))
+                  (#'mongo.params/substitute {"price" (field-filter "price" :type/Integer operator input)}
+                                             ["[{$match: " (lib/parsed-param "price") "}]"])))))))))
 
 (deftest ^:parallel field-filter-test-7
   (testing "operators"
@@ -247,8 +248,8 @@
         (is (= (strip (to-bson [{:$match {"$or" [{"description" "foo"}
                                                  {"description" "bar"}]}}]))
                (strip
-                (substitute {:desc (field-filter "description" :type/Text :string/= ["foo" "bar"])}
-                            ["[{$match: " (param :desc) "}]"])))))
+                (#'mongo.params/substitute {"desc" (field-filter "description" :type/Text :string/= ["foo" "bar"])}
+                                           ["[{$match: " (lib/parsed-param "desc") "}]"])))))
       (testing :string/!=
         ;; this could be optimized to {:description {:in ["foo" "bar"}}?  one thing is that we pass it through the
         ;; desugar middleware that does this [:= 1 2] -> [:or [:= 1] [:= 2]] which makes for more complicated (or just
@@ -257,26 +258,29 @@
         (is (= (strip (to-bson [{:$match {"$and" [{"description" {"$ne" "foo"}}
                                                   {"description" {"$ne" "bar"}}]}}]))
                (strip
-                (substitute {:desc (field-filter "description" :type/Text :string/!= ["foo" "bar"])}
-                            ["[{$match: " (param :desc) "}]"])))))
+                (#'mongo.params/substitute {"desc" (field-filter "description" :type/Text :string/!= ["foo" "bar"])}
+                                           ["[{$match: " (lib/parsed-param "desc") "}]"])))))
       (testing :number/=
         (is (= (strip (to-bson [{:$match {"$or" [{"price" 1}
                                                  {"price" 2}]}}]))
                (strip
-                (substitute {:price (field-filter "price" :type/Integer :number/= [1 2])}
-                            ["[{$match: " (param :price) "}]"])))))
+                (#'mongo.params/substitute {"price" (field-filter "price" :type/Integer :number/= [1 2])}
+                                           ["[{$match: " (lib/parsed-param "price") "}]"])))))
       (testing :number/!=
         (is (= (strip (to-bson [{:$match {"$and" [{"price" {"$ne" 1}}
                                                   {"price" {"$ne" 2}}]}}]))
                (strip
-                (substitute {:price (field-filter "price" :type/Integer :number/!= [1 2])}
-                            ["[{$match: " (param :price) "}]"]))))))))
+                (#'mongo.params/substitute {"price" (field-filter "price" :type/Integer :number/!= [1 2])}
+                                           ["[{$match: " (lib/parsed-param "price") "}]"]))))))))
 
 (deftest ^:parallel substitute-native-query-snippets-test
   (testing "Native query snippet substitution"
     (is (= (strip (to-bson [{:$match {"price" {:$gt 2}}}]))
-           (strip (substitute {"snippet: high price" (params/->ReferencedQuerySnippet 123 (to-bson {"price" {:$gt 2}}))}
-                              ["[{$match: " (param "snippet: high price") "}]"]))))))
+           (strip (#'mongo.params/substitute {"snippet: high price"
+                                              {:lib/type   :metabase.lib.parameters.parse.types/referenced-query-snippet
+                                               :snippet-id 123
+                                               :content    (to-bson {"price" {:$gt 2}})}}
+                                             ["[{$match: " (lib/parsed-param "snippet: high price") "}]"]))))))
 
 (deftest ^:parallel e2e-field-filter-test
   (mt/test-driver :mongo

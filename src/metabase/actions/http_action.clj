@@ -36,7 +36,7 @@
     [sql (conj missing k)]
     (let [v (get param->value k)]
       (cond
-        (= v :metabase.lib.parameters.parse.types/no-value)
+        (= v lib/parsed-param-no-value-placeholder)
         [sql (conj missing k)]
 
         :else
@@ -60,10 +60,10 @@
        (string? x)
        [(str sql x) missing]
 
-       (= (:lib/type x) :metabase.lib.parameters.parse.types/param)
+       (lib/parsed-param? x)
        (substitute-param param->value [sql missing] in-optional? x)
 
-       (= (:lib/type x) :metabase.lib.parameters.parse.types/optional)
+       (lib/parsed-optional-param? x)
        (substitute-optional param->value [sql missing] x)))
    nil
    parsed))

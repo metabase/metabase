@@ -10,8 +10,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-;; TODO (Cam 2025-05-14) Consider whether to remove this and the predicate functions below and just rely on the types
-;; directly
 (def no-value
   "Convenience for representing an *optional* parameter present in a query but whose value is unspecified in the param
   values."
@@ -55,8 +53,11 @@
 
 (mu/defn field-filter :- ::field-filter
   "Create a parsed `field-filter` parameter from map `m`."
-  [m]
-  (assoc m :lib/type ::field-filter))
+  [field :- ::lib.schema.metadata/column
+   value :- ::field-filter.value]
+  {:lib/type ::field-filter
+   :field    field
+   :value    value})
 
 (defn field-filter?
   "Whether `x` is a map representing a parsed [[field-filter]] parameter."
@@ -72,8 +73,11 @@
 
 (mu/defn temporal-unit :- ::temporal-unit
   "Create a parsed `temporal-unit` parameter from map `m`."
-  [m :- :map]
-  (assoc m :lib/type ::temporal-unit))
+  [param-name :- ::lib.schema.common/non-blank-string
+   value      :- some?]
+  {:lib/type ::temporal-unit
+   :name     param-name
+   :value    value})
 
 (defn temporal-unit?
   "Whether `x` is a map representing a parsed [[temporal-unit]] parameter."
@@ -97,8 +101,15 @@
 
 (mu/defn referenced-card-query :- ::referenced-card-query
   "Create a parsed `referenced-card-query` parameter from map `m`."
-  [m :- :map]
-  (assoc m :lib/type ::referenced-card-query))
+  ([card-id query]
+   (referenced-card-query card-id query nil))
+  ([card-id    :- ::lib.schema.id/card
+    query      :- :string
+    parameters :- [:maybe [:sequential :any]]]
+   {:lib/type   ::referenced-card-query
+    :card-id    card-id
+    :query      query
+    :parameters parameters}))
 
 (defn referenced-card-query?
   "Whether `x` is a map representing a parsed [[referenced-card-query]] parameter."
@@ -119,8 +130,11 @@
 
 (mu/defn referenced-query-snippet :- ::referenced-query-snippet
   "Create a parsed `referenced-query-snippet` parameter from map `m`."
-  [m :- :map]
-  (assoc m :lib/type ::referenced-query-snippet))
+  [snippet-id :- ::lib.schema.id/snippet
+   content    :- :string]
+  {:lib/type   ::referenced-query-snippet
+   :snippet-id snippet-id
+   :content    content})
 
 (defn referenced-query-snippet?
   "Whether `x` is a map representing a parsed [[referenced-query-snippet]]."
@@ -135,8 +149,8 @@
 
 (mu/defn date :- ::date
   "Create a parsed `date` parameter from map `m`."
-  [m :- :map]
-  (assoc m :lib/type ::date))
+  [s :- ::lib.schema.literal/string.date]
+  {:lib/type ::date, :s s})
 
 (defn date?
   "Whether `x` is a map representing a parsed [[date]] parameter."
@@ -152,8 +166,8 @@
 
 (mu/defn date-range :- ::date-range
   "Create a new parsed `date-range` parameter from map `m`."
-  [m :- :map]
-  (assoc m :lib/type ::date-range))
+  [start end]
+  {:lib/type ::date-range, :start start, :end end})
 
 (defn date-range?
   "Whether `x` is a map representing a parsed [[date-range]] parameter."
@@ -169,8 +183,8 @@
 
 (mu/defn date-time-range :- ::date-time-range
   "Create a new parsed `date-time-range` parameter from map `m`."
-  [m :- :map]
-  (assoc m :lib/type ::date-time-range))
+  [start end]
+  {:lib/type ::date-time-range, :start start, :end end})
 
 (defn date-time-range?
   "Whether `x` is a map representing a parsed [[date-time-range]] parameter."
@@ -184,8 +198,9 @@
 
 (mu/defn param :- ::param
   "Create a new parsed `param` parameter from map `m`."
-  [m :- :map]
-  (assoc m :lib/type ::param))
+  [s :- :string]
+  {:lib/type ::param
+   :k        s})
 
 (defn param?
   "Whether `x` is a map that represents a parsed [[param]] parameter."
@@ -217,8 +232,9 @@
 
 (mu/defn optional :- ::optional
   "Create a new parsed `optional` param from map `m`."
-  [m :- :map]
-  (assoc m :lib/type ::optional))
+  [args :- [:sequential :any]]
+  {:lib/type ::optional
+   :args     args})
 
 (defn optional?
   "Whether `x` is a map that represents a parsed [[optional]] parameter."
