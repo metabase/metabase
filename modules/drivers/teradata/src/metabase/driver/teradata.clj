@@ -5,15 +5,15 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [java-time :as t]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.driver.sql.util.deduplicate :as deduplicateutil]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -239,7 +239,7 @@
 
 (defmethod sql.qp/apply-top-level-clause [:teradata :limit]
   [_ _ honeysql-form {_value :limit}]
-  (update honeysql-form :select deduplicateutil/deduplicate-identifiers))
+  (update honeysql-form :select sql.u/select-clause-deduplicate-aliases))
 
 (defmethod sql.qp/apply-top-level-clause [:teradata :page] [_ _ honeysql-form {{:keys [items page]} :page}]
   (assoc honeysql-form :offset (:raw (format "QUALIFY ROW_NUMBER() OVER (%s) BETWEEN %d AND %d"
@@ -341,12 +341,12 @@
 ;; https://www.mchange.com/projectstr/c3p0/#acquireRetryDelay
 (defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :teradata
   [driver database]
-  {"acquireRetryDelay"            (or (config/config-int :mb-jdbc-c3po-acquire-retry-delay) 1000)
+  {"acquireRetryDelay"            1000
    "acquireIncrement"             1
    "maxIdleTime"                  (* 6 60 60) ; 6 hours
    "minPoolSize"                  1
    "initialPoolSize"              1
-   "maxPoolSize"                  (or (config/config-int :mb-jdbc-data-warehouse-max-connection-pool-size) 30)
+   "maxPoolSize"                  (driver.settings/jdbc-data-warehouse-max-connection-pool-size)
    "testConnectionOnCheckout"     true
    "maxIdleTimeExcessConnections" (* 5 60)
    "checkoutTimeout"              300000 ; 300 seconds (increase this if needed)
