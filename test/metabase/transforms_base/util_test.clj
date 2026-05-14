@@ -30,9 +30,9 @@
   (testing "disable-auto-sync gates *automatic* syncs only; a transform finalizing its"
     (testing "output table still calls sync/sync-table! so the new table's fields are populated."
       (let [calls (atom 0)]
-        (mt/with-temp [:model/Table {table-id :id} {:db_id  (mt/id)
-                                                    :schema nil
-                                                    :name   "disable_auto_sync_target"}]
+        (mt/with-temp [:model/Table _ {:db_id  (mt/id)
+                                       :schema nil
+                                       :name   "disable_auto_sync_target"}]
           (with-redefs [sync/sync-table! (fn [_] (swap! calls inc))]
             (mt/with-temporary-setting-values [disable-auto-sync true]
               (transforms-base.u/activate-table-and-mark-computed!

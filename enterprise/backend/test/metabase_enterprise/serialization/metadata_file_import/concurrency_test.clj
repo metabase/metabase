@@ -72,7 +72,7 @@
             events (atom [])
             real-import mfi/import-metadata-file!]
         (with-redefs [mfi/import-metadata-file!
-                      (fn [f]
+                      (fn [^java.io.File f]
                         (swap! events conj [:start (.getName f) (System/nanoTime)])
                         (real-import f)
                         (swap! events conj [:end (.getName f) (System/nanoTime)]))]
