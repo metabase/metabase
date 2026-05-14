@@ -1543,7 +1543,9 @@
                           ;; Fast-path probe: if `getDataset` doesn't even see the dataset,
                           ;; `listDatasets` certainly won't, and we can skip the more expensive
                           ;; pagination this iteration.
-                          single-ok?   (some? (try (.getDataset client (DatasetId/of project-id target-dataset)
+                          single-ok?   (some? (try (.getDataset client
+                                                                (DatasetId/of project-id target-dataset)
+                                                                ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
                                                                 (into-array BigQuery$DatasetOption []))
                                                    (catch Exception _ nil)))
                           datasets     (when single-ok?
