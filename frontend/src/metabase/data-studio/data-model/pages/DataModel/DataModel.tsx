@@ -212,7 +212,7 @@ function DataModelContent({ params }: Props) {
               className={S.column}
               h="100%"
               justify="center"
-              miw={rem(400)}
+              miw={rem(500)}
               p="xl"
             >
               <LoadingAndErrorWrapper error={t`Not found.`} />
