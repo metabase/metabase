@@ -28,6 +28,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -472,9 +473,14 @@
                   "values" "qty"]
                  (sql/format-expr (sql.qp/->honeysql driver/*driver* field-clause) {:nested true}))))))))
 
-(def ^:private json-alias-mock-metadata-provider
+(defn- ^:private maybe-convert-and-compile [driver query]
+  (cond-> query
+    (= driver :postgres-mbql5) (lib.convert/->mbql5)
+    :always qp.compile/compile))
+
+(defn- ^:private json-alias-mock-metadata-provider [driver]
   (lib.tu/mock-metadata-provider
-   {:database (assoc meta/database :engine :postgres, :id 1)
+   {:database (assoc meta/database :engine driver, :id 1)
     :tables   [(merge (meta/table-metadata :venues)
                       {:id     1
                        :db-id  1
@@ -492,21 +498,25 @@
 (deftest ^:parallel json-alias-test
   (mt/test-driver :postgres
     (testing "json breakouts and order bys have alias coercion"
-      (qp.store/with-metadata-provider json-alias-mock-metadata-provider
-        (let [field-bucketed [:field 1
-                              {:temporal-unit                                              :month
-                               :metabase.query-processor.util.add-alias-info/source-table  1
-                               :metabase.query-processor.util.add-alias-info/source-alias  "dontwannaseethis"
-                               :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis"
-                               :metabase.query-processor.util.add-alias-info/position      1}]
-              compile-res    (qp.compile/compile
-                              (mt/query nil
-                                {:database 1
-                                 :type     :query
-                                 :query    {:source-table 1
-                                            :aggregation  [[:count]]
-                                            :breakout     [field-bucketed]
-                                            :order-by     [[:asc field-bucketed]]}}))]
+      (qp.store/with-metadata-provider (json-alias-mock-metadata-provider driver/*driver*)
+        ;; need to make this a function to avoid a duplicate `:lib/uuid` error when we use it in `compile-res`
+        (let [field-bucketed-fn (fn []
+                                  (sql.qp/mbql-clause-with-opts
+                                   driver/*driver* :field
+                                   {:temporal-unit                                              :month
+                                    :metabase.query-processor.util.add-alias-info/source-table  1
+                                    :metabase.query-processor.util.add-alias-info/source-alias  "dontwannaseethis"
+                                    :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis"
+                                    :metabase.query-processor.util.add-alias-info/position      1} 1))
+              compile-res (maybe-convert-and-compile
+                           driver/*driver*
+                           (mt/query nil
+                             {:database 1
+                              :type     :query
+                              :query    {:source-table 1
+                                         :aggregation  [[:count]]
+                                         :breakout     [(field-bucketed-fn)]
+                                         :order-by     [[:asc (field-bucketed-fn)]]}}))]
           (is (= ["SELECT"
                   "  DATE_TRUNC("
                   "    'month',"
@@ -521,7 +531,7 @@
                   "  \"json_alias_test\""
                   "ORDER BY"
                   "  \"json_alias_test\" ASC"]
-                 (str/split-lines (driver/prettify-native-form :postgres (:query compile-res)))))
+                 (str/split-lines (driver/prettify-native-form driver/*driver* (:query compile-res)))))
           (is (= ["injection' OR 1=1--' AND released = 1"
                   "injection' OR 1=1--' AND released = 1"]
                  (:params compile-res))))))))
@@ -529,13 +539,14 @@
 (deftest ^:parallel json-alias-test-2
   (mt/test-driver :postgres
     (testing "json breakouts and order bys have alias coercion"
-      (qp.store/with-metadata-provider json-alias-mock-metadata-provider
-        (let [field-ordinary [:field 1 nil]
-              only-order     (qp.compile/compile
-                              {:database 1
-                               :type     :query
-                               :query    {:source-table 1
-                                          :order-by     [[:asc field-ordinary]]}})]
+      (qp.store/with-metadata-provider (json-alias-mock-metadata-provider driver/*driver*)
+        (let [field-ordinary (sql.qp/mbql-clause-with-opts driver/*driver* :field nil 1)
+              only-order (maybe-convert-and-compile
+                          driver/*driver*
+                          {:database 1
+                           :type     :query
+                           :query    {:source-table 1
+                                      :order-by     [[:asc field-ordinary]]}})]
           (is (= ["SELECT"
                   "  (\"json_alias_test\".\"bob\" #>> (array [ ?, ? ] :: text [ ])) :: VARCHAR AS \"json_alias_test\""
                   "FROM"
@@ -544,11 +555,11 @@
                   "  \"json_alias_test\" ASC"
                   "LIMIT"
                   "  1048575"]
-                 (str/split-lines (driver/prettify-native-form :postgres (:query only-order))))))))))
+                 (str/split-lines (driver/prettify-native-form driver/*driver* (:query only-order))))))))))
 
-(def ^:private json-alias-in-model-mock-metadata-provider
+(defn- ^:private json-alias-in-model-mock-metadata-provider [driver]
   (providers.mock/mock-metadata-provider
-   json-alias-mock-metadata-provider
+   (json-alias-mock-metadata-provider driver)
    {:cards [{:name          "Model with JSON"
              :id            123
              :database-id   1
@@ -562,8 +573,9 @@
 (deftest ^:parallel json-breakout-in-model-test
   (mt/test-driver :postgres
     (testing "JSON columns in inner queries are referenced properly in outer queries #34930"
-      (qp.store/with-metadata-provider json-alias-in-model-mock-metadata-provider
-        (let [nested (qp.compile/compile
+      (qp.store/with-metadata-provider (json-alias-in-model-mock-metadata-provider driver/*driver*)
+        (let [nested (maybe-convert-and-compile
+                      driver/*driver*
                       {:database (meta/id)
                        :type     :query
                        :query    {:source-table "card__123"}})]
@@ -916,7 +928,7 @@
     (testing "check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`"
       (is (= (h2x/with-database-type-info [:cast "toucan" (h2x/identifier :type-name "bird type")]
                                           "bird type")
-             (sql.qp/->honeysql :postgres [:value {:database-type "bird type", :base-type :type/PostgresEnum} "toucan"]))))))
+             (sql.qp/->honeysql driver/*driver* (sql.qp/mbql-clause-with-opts driver/*driver* :value {:database_type "bird type", :base_type :type/PostgresEnum} "toucan")))))))
 
 (deftest enums-test-2
   (mt/test-driver :postgres
@@ -2184,7 +2196,7 @@
             ;; Wrap it in an ExceptionInfo with the :query-canceled? flag, as our code does
             (catch-exceptions
              (fn [] (throw (ex-info "Error executing query: canceling statement due to user request"
-                                    {:driver :postgres
+                                    {:driver driver/*driver*
                                      :sql    ["SELECT pg_sleep(1000)"]
                                      :params []
                                      :type   qp.error-type/invalid-query

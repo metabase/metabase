@@ -162,6 +162,7 @@
    :n1ql        Dialect/N1ql
    :plsql       Dialect/PlSql
    :postgres    Dialect/PostgreSql
+   :postgres-mbql5 Dialect/PostgreSql
    :redshift    Dialect/Redshift
    :sparksql    Dialect/SparkSql
    :standardsql Dialect/StandardSql
