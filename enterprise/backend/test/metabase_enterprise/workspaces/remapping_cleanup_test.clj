@@ -3,6 +3,7 @@
    `TableRemapping` deletion path invoked from `provisioning/deprovision-workspace-database!`."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.remapping-cleanup :as ws.remapping-cleanup]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.test :as mt]
@@ -89,3 +90,41 @@
               (->> (t2/select :model/TableRemapping :database_id (mt/id))
                    (map #(select-keys % [:to_schema]))))
            "ws_b's row survives")))))
+
+(deftest deprovision-clears-rows-even-when-destroy-throws-test
+  (testing "When the driver's `destroy!` step throws (e.g. BQ dataset gone but SA delete fails),
+            `deprovision-workspace-database!` must still clear the workspace's `TableRemapping`
+            rows. Without that, future queries against canonical tables on this DB rewrite to
+            an iso namespace that no longer exists on the warehouse and 500 in the QP. The
+            warehouse-side leak (orphan SA / dataset) is acceptable -- app-DB state must match
+            the deprovision intent so the workspace stops routing queries."
+    (mt/with-temp [:model/Database {db-id :id} {:engine :postgres :details {}}
+                   :model/Workspace {ws-id :id} {:name       "tear-down"
+                                                 :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase {wsd-id :id} {:workspace_id     ws-id
+                                                          :database_id      db-id
+                                                          :input_schemas    ["public"]
+                                                          :database_details {}
+                                                          :output_namespace "ws_alice"
+                                                          :status           :deprovisioning}]
+      (ws.table-remapping/add-mapping!
+       db-id {:schema "public" :table "orders"} {:schema "ws_alice" :table "orders_copy"})
+      (ws.table-remapping/add-mapping!
+       db-id {:schema "public" :table "products"} {:schema "ws_alice" :table "products_copy"})
+      (is (= 2 (count (ws.table-remapping/all-mappings-for-db db-id)))
+          "fixture: two remap rows registered before deprovision")
+      ;; Provisioner that fails on destroy! to simulate partial warehouse teardown
+      ;; (e.g. BQ dataset deleted, SA delete throws).
+      (let [failing-provisioner (reify provisioning/Provisioner
+                                  (init!    [_ _ _ _]     (throw (ex-info "not used" {})))
+                                  (grant!   [_ _ _ _ _]   (throw (ex-info "not used" {})))
+                                  (destroy! [_ _ _ _]     (throw (ex-info "warehouse teardown blew up" {}))))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"warehouse teardown blew up"
+             (provisioning/deprovision-workspace-database! wsd-id failing-provisioner))
+            "deprovision rethrows the destroy failure so the caller knows"))
+      (is (zero? (count (ws.table-remapping/all-mappings-for-db db-id)))
+          "remap rows must be cleared even when destroy! threw -- otherwise canonical-table queries 500")
+      (is (= :provisioned (:status (t2/select-one :model/WorkspaceDatabase :id wsd-id)))
+          "current rollback semantic: failed deprovision flips status back to :provisioned"))))

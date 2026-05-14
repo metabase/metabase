@@ -107,14 +107,21 @@
                          :name             (str "wsd-" workspace-database-id)
                          :schema           (:output_namespace wsd)
                          :database_details (:database_details wsd)}]
-          (destroy! provisioner driver db workspace)
-          ;; Clear `TableRemapping` rows whose `to_*` matches this workspace's iso
-          ;; namespace. The unique constraint on `(database_id, from_*)` prevents
-          ;; two workspaces on the same DB from remapping the same canonical
-          ;; table, so scoping by iso namespace alone is correct.
-          (ws.remapping-cleanup/clear-mappings-for-iso! db
-                                                        (:database_id wsd)
-                                                        (:output_namespace wsd))
+          (try
+            (destroy! provisioner driver db workspace)
+            (finally
+              ;; Clear `TableRemapping` rows whose `to_*` matches this workspace's
+              ;; iso namespace. Runs in `finally` so a partial warehouse teardown
+              ;; (e.g. BQ dataset deleted, SA delete throws) still leaves app-DB
+              ;; in a "workspace no longer routes queries" state. Without this,
+              ;; future queries against canonical tables would rewrite to an iso
+              ;; namespace that no longer exists and 500 in the QP. The unique
+              ;; constraint on `(database_id, from_*)` prevents two workspaces on
+              ;; the same DB from remapping the same canonical table, so scoping
+              ;; by iso namespace alone is correct.
+              (ws.remapping-cleanup/clear-mappings-for-iso! db
+                                                            (:database_id wsd)
+                                                            (:output_namespace wsd))))
           (t2/update! :model/WorkspaceDatabase
                       {:id workspace-database-id}
                       {:output_namespace ""
