@@ -14,11 +14,7 @@
 
   Strict-consistency invariants enforced by the pre-flight + depth-tagging
   steps mean the merge loop has no orphan-handling code paths. The whole
-  merge is set-based SQL, one statement per phase per depth level.
-
-  `with-staging-tables` clears the staging tables on entry and on exit
-  (try/finally), so a crashed prior attempt cannot leak rows into the next
-  run."
+  merge is set-based SQL, one statement per phase per depth level."
   (:require
    [metabase-enterprise.serialization.metadata-file-import.parsers :as parsers]
    [metabase-enterprise.serialization.metadata-file-import.processors :as processors]
@@ -59,7 +55,7 @@
 
 (defn- drain-via-jdbc-batch!
   "Drive parser batches through JDBC `executeBatch` against per-staging-table
-  `PreparedStatement`s. Portable across all app-db drivers."
+  `PreparedStatement`s. The fallback path for non-Postgres app-dbs."
   [^Connection conn ^File file matched-ids databases-by-source-id]
   (with-open [^PreparedStatement tables-ps (.prepareStatement conn (processors/tables-insert-sql))
               ^PreparedStatement fields-ps (.prepareStatement conn (processors/fields-insert-sql))]
@@ -156,6 +152,8 @@
   (let [^File m-file (if (instance? File metadata-file)
                        metadata-file
                        (File. ^String metadata-file))]
+    ;; with-staging-tables clears the staging tables on entry and exit
+    ;; (try/finally), so a crashed prior attempt can't leak rows into this run.
     (processors/with-staging-tables
       ;; --- drain + database matching (single pass over the file) ---
       (let [matched-target-db-ids (drain-and-match-databases! m-file)]
