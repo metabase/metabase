@@ -3,7 +3,6 @@
   Endpoints are versioned (e.g., /v1/search) and use standard HTTP semantics."
   (:require
    [clojure.string :as str]
-   [malli.util :as mut]
    [metabase.agent-api.validation :as agent-api.validation]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -391,32 +390,10 @@
                                    "reference.")}
     ::lib.schema/external-query]])
 
-(def ^:private construct-query-prompt-max-length
-  10000)
-
-(def ^:private ConstructQueryPrompt
-  (mut/update-properties
-   [:and
-    ms/NonBlankString
-    [:string {:max construct-query-prompt-max-length}]]
-   merge
-   {:json-schema {:type        "string"
-                  :minLength   1
-                  :maxLength   construct-query-prompt-max-length
-                  :description "The user's exact original message, when available. Pass it as-is without summarizing or rewriting."}}))
-
-(mr/def ::construct-query-request
-  "Request body for /v2/construct-query. Same as program-request, with an optional prompt
-  capturing the user's original intent when a caller has one."
-  (mut/merge agent-lib/program-schema
-             [:map
-              [:prompt {:optional true} ConstructQueryPrompt]]))
-
 (mr/def ::construct-query-response
-  "Response containing a base64-encoded MBQL query and, when supplied, the original prompt for use with /v1/execute."
+  "Response containing a base64-encoded MBQL query for use with /v1/execute."
   [:map
-   [:query ms/NonBlankString]
-   [:prompt {:optional true} ConstructQueryPrompt]])
+   [:query ms/NonBlankString]])
 
 (defn- evaluate-external-query-to-live-query
   "Run the representations pipeline (validate → convert → repair → resolve) on a request body

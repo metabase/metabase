@@ -1,6 +1,5 @@
 (ns metabase.mcp.api-test
   (:require
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.agent-api.settings :as agent-api.settings]
@@ -220,19 +219,20 @@
           (is (= "string" (get-in (array-branch (property-schema "search" "term_queries")) [:items :type])))
           (is (contains? (leaf-types (property-schema "search" "semantic_queries")) "array"))
           (is (= "string" (get-in (array-branch (property-schema "search" "semantic_queries")) [:items :type])))))
-      (testing "construct_query exposes the optional user prompt"
+      (testing "construct_query expects the portable external-query JSON body"
         (let [tools-by-name          (into {} (map (juxt :name identity)) tools)
               construct-query-tool   (get tools-by-name "construct_query")
               construct-query-schema (:inputSchema construct-query-tool)
-              prompt-schema          (or (get-in construct-query-schema [:properties "prompt"])
-                                         (get-in construct-query-schema [:properties :prompt]))
+              query-schema           (or (get-in construct-query-schema [:properties "query"])
+                                         (get-in construct-query-schema [:properties :query]))
               required-fields        (set (:required construct-query-schema))
-              reference              (slurp (io/resource "metabase/agent_api/construct_query.md"))]
-          (is (str/includes? (:description construct-query-tool) "include `\"prompt\""))
-          (is (not (contains? required-fields "prompt")))
-          (is (str/includes? (:description prompt-schema) "exact original message"))
-          (is (str/includes? reference "MCP clients should include it whenever they have the user's message"))
-          (is (str/includes? reference "{\"query_handle\": \"<uuid>\"}")))))))
+              ;; ::lib.schema/external-query is generated as a deeply-nested :allOf, so the
+              ;; root :type tag lives under the first branch rather than the top level.
+              query-leaf-type        (or (:type query-schema)
+                                         (some :type (:allOf query-schema)))]
+          (is (str/includes? (:description construct-query-tool) "construct_notebook_query"))
+          (is (contains? required-fields "query"))
+          (is (= "object" query-leaf-type)))))))
 
 (deftest ping-test
   (testing "ping returns empty result"
@@ -657,19 +657,20 @@
                                              :arguments {:query_handle handle}})
                            {"mcp-session-id" session-id})))))
 
-  (testing "visualize_query includes the prompt stored with a construct_query handle"
+  (testing "visualize_query resolves the query stored with a construct_query handle"
     (let [[session-id _] (initialize!)
-          construct-data (call-tool session-id "construct_query"
-                                    {:source     {:type "table" :id (mt/id :orders)}
-                                     :operations [["limit" 5]]
-                                     :prompt     "show 5 orders"})
+          db-name        (t2/select-one-fn :name :model/Database (mt/id))
+          external-query {:lib/type "mbql/query"
+                          :stages   [{:lib/type     "mbql.stage/mbql"
+                                      :source-table [db-name "PUBLIC" "ORDERS"]
+                                      :limit        5}]}
+          construct-data (call-tool session-id "construct_query" {:query external-query})
           response       (mcp-request (jsonrpc-request "tools/call"
                                                        {:name      "visualize_query"
                                                         :arguments {:query_handle (:query_handle construct-data)}})
                                       {"mcp-session-id" session-id})]
       (is (=? {:status 200
-               :body   {:result {:structuredContent {:query  string?
-                                                     :prompt "show 5 orders"}}}}
+               :body   {:result {:structuredContent {:query string?}}}}
               response))))
 
   (testing "visualize_query asks for an argument when neither query nor handle is provided"
@@ -709,10 +710,12 @@
   (testing "execute_query does not resolve a query_handle from another session"
     (let [[owner-session _]    (initialize!)
           [attacker-session _] (initialize!)
-          construct-data       (call-tool owner-session "construct_query"
-                                          {:source     {:type "table" :id (mt/id :orders)}
-                                           :operations [["limit" 5]]
-                                           :prompt     "show 5 orders"})
+          db-name              (t2/select-one-fn :name :model/Database (mt/id))
+          external-query       {:lib/type "mbql/query"
+                                :stages   [{:lib/type     "mbql.stage/mbql"
+                                            :source-table [db-name "PUBLIC" "ORDERS"]
+                                            :limit        5}]}
+          construct-data       (call-tool owner-session "construct_query" {:query external-query})
           response             (mcp-request (jsonrpc-request "tools/call"
                                                              {:name      "execute_query"
                                                               :arguments {:query_handle (:query_handle construct-data)}})

@@ -27183,7 +27183,7 @@
     },
     "/api/ee/database-routing/destination-database" : {
       "post" : {
-        "description" : "Create new Destination Databases.\n\n  Note that unlike the normal `POST /api/database` endpoint, does NOT check the details before adding the Database.\n\n  This is OK, it's not an invariant that all database details are always valid, but it's something to note.",
+        "description" : "Create new Destination Databases.\n\n  Note that unlike the normal `POST /api/database` endpoint, this endpoint does not test that the database is actually\n  reachable before adding it — destination details are not required to be valid at creation time, and an\n  unreachable destination is fine.",
         "operationId" : "post-api-ee-database-routing-destination-database",
         "parameters" : [ {
           "in" : "query",
@@ -32523,6 +32523,143 @@
         },
         "summary" : "POST /api/email/test",
         "tags" : [ "/api/email" ]
+      }
+    },
+    "/api/embed-mcp/drills" : {
+      "post" : {
+        "description" : "Stash a base64-encoded MBQL query for the iframe's pending drill-through and\n   return a handle UUID the iframe will thread into the agent message so the\n   `render_drill_through` tool can fetch it.",
+        "operationId" : "post-api-embed-mcp-drills",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "encodedQuery" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "encodedQuery" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/embed-mcp/drills",
+        "tags" : [ "/api/embed-mcp" ]
+      }
+    },
+    "/api/embed-mcp/feedback" : {
+      "post" : {
+        "description" : "Proxy MCP Apps visualization feedback to Harbormaster.",
+        "operationId" : "post-api-embed-mcp-feedback",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "conversation_data" : {
+                    "properties" : {
+                      "prompt" : {
+                        "oneOf" : [ {
+                          "maxLength" : 10000,
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "query" : {
+                        "oneOf" : [ {
+                          "maxLength" : 10000,
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "source" : {
+                        "const" : "mcp"
+                      }
+                    },
+                    "required" : [ "source" ],
+                    "type" : "object"
+                  },
+                  "feedback" : {
+                    "properties" : {
+                      "freeform_feedback" : {
+                        "oneOf" : [ {
+                          "maxLength" : 10000,
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "issue_type" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "message_id" : {
+                        "minLength" : 1,
+                        "type" : "string"
+                      },
+                      "positive" : {
+                        "type" : "boolean"
+                      }
+                    },
+                    "required" : [ "message_id", "positive" ],
+                    "type" : "object"
+                  }
+                },
+                "required" : [ "feedback", "conversation_data" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "body" : {
+                      "type" : "null"
+                    },
+                    "status" : {
+                      "const" : 204
+                    }
+                  },
+                  "required" : [ "status", "body" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/embed-mcp/feedback",
+        "tags" : [ "/api/embed-mcp" ]
       }
     },
     "/api/embed-theme" : {
