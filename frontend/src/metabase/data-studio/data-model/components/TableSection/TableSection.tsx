@@ -46,6 +46,7 @@ import {
 } from "metabase-types/api";
 
 import S from "./TableSection.module.css";
+import { IndexesPanel } from "./components/IndexesPanel";
 import { MeasureList } from "./components/MeasureList";
 import { SegmentList } from "./components/SegmentList";
 import { TableAttributesEditSingle } from "./components/TableAttributesEditSingle";
@@ -252,6 +253,10 @@ const TableSectionBase = ({
               value="measures"
               leftSection={<Icon name="ruler" />}
             >{t`Measures`}</Tabs.Tab>
+            <Tabs.Tab
+              value="indexing"
+              leftSection={<Icon name="key" />}
+            >{t`Indexing`}</Tabs.Tab>
           </Tabs.List>
 
           <Tabs.Panel value="details">
@@ -418,6 +423,10 @@ const TableSectionBase = ({
 
           <Tabs.Panel value="measures">
             <MeasureList table={table} />
+          </Tabs.Panel>
+
+          <Tabs.Panel value="indexing">
+            <IndexesPanel table={table} />
           </Tabs.Panel>
         </Tabs>
       </Box>

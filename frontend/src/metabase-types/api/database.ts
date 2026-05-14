@@ -58,7 +58,8 @@ export type DatabaseFeature =
   | "collate"
   | "transforms/python"
   | "transforms/table"
-  | "workspace";
+  | "workspace"
+  | "index/create-concurrently";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;

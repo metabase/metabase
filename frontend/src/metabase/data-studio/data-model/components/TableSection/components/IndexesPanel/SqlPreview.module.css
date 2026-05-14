@@ -1,0 +1,28 @@
+.preview {
+  padding: var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mb-color-background-secondary);
+  font-family: var(--mb-default-monospace-font-family, monospace);
+  font-size: 0.8125rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+  min-height: 4rem;
+}
+
+.previewWrapper {
+  position: relative;
+}
+
+.editButton {
+  position: absolute;
+  top: var(--mantine-spacing-xs);
+  right: var(--mantine-spacing-xs);
+}
+
+.editor {
+  font-family: var(--mb-default-monospace-font-family, monospace);
+}
+
+.placeholder {
+  color: var(--mb-color-text-secondary);
+}
