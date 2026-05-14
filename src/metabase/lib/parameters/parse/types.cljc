@@ -136,9 +136,7 @@
    [:value    any?]])
 
 (mr/def ::referenced-table-query
-  "A ReferencedCardQuery parameter expands to the native query of the referenced table.
-
-  `table-id` is the id of the table being referenced
+  "`table-id` is the id of the table being referenced
 
   `source-filters` is an optional sequence of filter maps applied to the table reference.
 

@@ -24,8 +24,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang ExceptionInfo)
-   (metabase.driver.common.parameters ReferencedCardQuery ReferencedTableQuery)))
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -383,7 +382,7 @@
                                           [{:database (meta/id)
                                             :type     "native"
                                             :native   {:query test-query}}])
-          (is (=? {:card-id 1, :query test-query, :params nil}
+          (is (=? {:card-id 1, :query test-query, :parameters nil}
                   (value-for-tag
                    {:name         "card-template-tag-test"
                     :display-name "Card template tag test"
@@ -410,7 +409,10 @@
           (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                                             meta/metadata-provider
                                             [mbql-query])
-            (is (= {:card-id 1, :query expected-sql, :params nil}
+            (is (= {:lib/type   :metabase.lib.parameters.parse.types/referenced-card-query
+                    :card-id    1
+                    :query      expected-sql
+                    :parameters nil}
                    (value-for-tag
                     {:name         "card-template-tag-test"
                      :display-name "Card template tag test"
@@ -599,24 +601,24 @@
     (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name    "expensive-venues"
                                                                :content "venues WHERE price = 4"}]
       (let [expected {"snippet: expensive-venues" (lib/parsed-referenced-query-snippet-param snippet-id "venues WHERE price = 4")}
-            query (assoc (mt/native-query {:query "SELECT * FROM {{snippet:expensive-venues}}"})
-                         :template-tags {"snippet:expensive-venues" {:type :snippet
-                                                                     :name         "expensive-venues"
-                                                                     :display-name "Expensive Venues"
-                                                                     :snippet-name "expensive-venues"
-                                                                     :snippet-id snippet-id}})]
+            query    (assoc (mt/native-query {:query "SELECT * FROM {{snippet:expensive-venues}}"})
+                            :template-tags {"snippet:expensive-venues" {:type         :snippet
+                                                                        :name         "expensive-venues"
+                                                                        :display-name "Expensive Venues"
+                                                                        :snippet-name "expensive-venues"
+                                                                        :snippet-id   snippet-id}})]
         (is (= expected
                (query->params-map query)))))))
 
 (deftest ^:parallel table-tag-test
   (testing "Table template tag produces a ReferencedTableQuery"
-    (is (instance? ReferencedTableQuery
-                   (#'params.values/value-for-tag
-                    {:name         "table-tag-test"
-                     :display-name "Table tag test"
-                     :type         :table
-                     :table-id     1}
-                    [])))
+    (is (=? {:lib/type :metabase.lib.parameters.parse.types/referenced-table-query}
+            (#'params.values/value-for-tag
+             {:name         "table-tag-test"
+              :display-name "Table tag test"
+              :type         :table
+              :table-id     1}
+             [])))
     (is (=? {:table-id 1}
             (value-for-tag {:name         "table-tag-test"
                             :display-name "Table tag test"
@@ -713,9 +715,9 @@
                                                                                        [:count-where [:starts-with $product-id->products.category "G"]]
                                                                                        {:name "G Monies", :display-name "G Monies"}]]
                                                                         :breakout    [!month.created-at]}))]})
-      (is (=? {:card-id 1
-               :query   (every-pred string? (complement str/blank?))
-               :params  ["G%"]}
+      (is (=? {:card-id    1
+               :query      (every-pred string? (complement str/blank?))
+               :parameters ["G%"]}
               (#'params.values/parse-tag
                {:id           "5aa37572-058f-14f6-179d-a158ad6c029d"
                 :name         "#1"
@@ -765,7 +767,7 @@
   (testing "Default values passed in as part of the request should not apply when the value is nil"
     (mt/dataset test-data
       (testing "Field filters"
-        (is (=? {"filter" {:value ::lib/parsed-param-no-value-placeholder}}
+        (is (=? {"filter" {:value lib/parsed-param-no-value-placeholder}}
                 (query->params-map
                  {:template-tags {"filter"
                                   {:id           "xyz456"
@@ -783,7 +785,7 @@
 
 (deftest ^:parallel nil-value-parameter-template-tag-default-raw-value-test
   (testing "Raw value template tags"
-    (is (= {"filter" ::lib/parsed-param-no-value-placeholder}
+    (is (= {"filter" lib/parsed-param-no-value-placeholder}
            (query->params-map
             {:template-tags {"filter"
                              {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
@@ -817,7 +819,7 @@
   (testing "If parameter specifies a default value (but tag does not), don't use the default when the value is nil"
     (mt/dataset test-data
       (testing "Field filters"
-        (is (=? {"filter" {:value ::lib/parsed-param-no-value-placeholder}}
+        (is (=? {"filter" {:value lib/parsed-param-no-value-placeholder}}
                 (query->params-map
                  {:template-tags {"filter"
                                   {:id           "xyz456"
@@ -835,7 +837,7 @@
 (deftest ^:parallel use-parameter-defaults-raw-value-template-tags-test
   (testing "If parameter specifies a default value (but tag does not), don't use the default when the value is nil"
     (testing "Raw value template tags"
-      (is (= {"filter" ::lib/parsed-param-no-value-placeholder}
+      (is (= {"filter" lib/parsed-param-no-value-placeholder}
              (query->params-map
               {:template-tags {"filter"
                                {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
@@ -871,13 +873,13 @@
                                          :id           "__source__"
                                          :name         param-name}}]
           (testing "With no parameters passed in"
-            (is (=? {param-name ReferencedCardQuery}
+            (is (=? {param-name {:lib/type :metabase.lib.parameters.parse.types/referenced-card-query}}
                     (query->params-map {:template-tags template-tags}))))
           (testing "WITH parameters passed in"
             (let [parameters [{:type   :date/all-options
                                :value  "2022-04-20"
                                :target [:dimension [:template-tag "created_at"]]}]]
-              (is (=? {param-name ReferencedCardQuery}
+              (is (=? {param-name {:lib/type :metabase.lib.parameters.parse.types/referenced-card-query}}
                       (query->params-map {:template-tags template-tags
                                           :parameters    parameters}))))))))))
 
