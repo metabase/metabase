@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.hash :as lib-be.hash]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -268,6 +269,43 @@
         (doseq [day [day-a day-b old-day]]
           (delete-query-executions-for-day! day)
           (delete-day! day))))))
+
+(deftest process-day!-skips-rows-when-normalize-query-throws-test
+  (testing "a row whose query throws inside normalize-query is counted as :normalize-error
+            and does not block the rest of the day from rolling up"
+    (let [bucket-date  (t/local-date "2026-04-13")
+          good-query   (orders-query)
+          good-hash    (lib-be.hash/query-hash good-query)
+          bad-hash     (.getBytes "bad-query" StandardCharsets/UTF_8)
+          bad-payload  {:cooked :poison}
+          original     lib-be/normalize-query]
+      (try
+        (delete-query-executions-for-day! bucket-date)
+        (delete-day! bucket-date)
+        (insert-query! good-hash good-query)
+        (insert-query! bad-hash bad-payload)
+        (insert-query-execution! good-hash (t/offset-date-time "2026-04-13T12:00Z"))
+        (insert-query-execution! bad-hash (t/offset-date-time "2026-04-13T13:00Z"))
+        (with-redefs [lib-be/normalize-query (fn [stored-query]
+                                               (if (= stored-query bad-payload)
+                                                 (throw (ex-info "kaboom" {:q stored-query}))
+                                                 (original stored-query)))]
+          (mt/with-temporary-setting-values [usage-metadata-last-completed-day "2026-04-12"]
+            (let [result (usage-metadata.batch/process-day! bucket-date)]
+              (testing "the bad row is recorded as :normalize-error skip"
+                (is (= 1 (get-in result [:skipped-rows :normalize-error]))))
+              (testing "the good row's rollups still landed"
+                (is (= 1 (t2/count :model/SourceSegmentDaily :bucket_date bucket-date)))
+                (is (= 1 (t2/count :model/SourceMetricDaily :bucket_date bucket-date))))
+              (testing "the watermark advances despite the per-row failure"
+                (is (true? (:watermark-advanced? result)))
+                (is (= "2026-04-13"
+                       (usage-metadata.settings/usage-metadata-last-completed-day)))))))
+        (finally
+          (delete-query! good-hash)
+          (delete-query! bad-hash)
+          (delete-query-executions-for-day! bucket-date)
+          (delete-day! bucket-date))))))
 
 (deftest run-batch!-stops-on-day-failure-test
   (let [day-a       (t/local-date "2026-04-13")

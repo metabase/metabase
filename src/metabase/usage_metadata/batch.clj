@@ -32,6 +32,12 @@
 (def ^:private low-cardinality-threshold
   30)
 
+(def ^:private hash-chunk-size
+  "Maximum number of query hashes to put into a single `IN (?, ?, ...)` clause.
+  Keeps us safely below the Postgres ~65535 bind-parameter cap when a busy
+  instance accumulates a huge number of unique query hashes per day."
+  10000)
+
 (defn- today-utc []
   (t/local-date (t/offset-date-time utc-zone-offset)))
 
@@ -92,20 +98,23 @@
   (update-in stats [:skipped-rows reason] (fnil + 0) n))
 
 (defn- query->facts [stored-query]
-  (let [normalized-query (lib-be/normalize-query stored-query)]
-    (cond
-      (empty? normalized-query)
-      {:status :skip, :reason :normalize-error}
+  (try
+    (let [normalized-query (lib-be/normalize-query stored-query)]
+      (cond
+        (empty? normalized-query)
+        {:status :skip, :reason :normalize-error}
 
-      (nil? (usage-metadata.extract/query-source-table-or-card normalized-query))
-      {:status :skip, :reason :unsupported-query}
+        (nil? (usage-metadata.extract/query-source-table-or-card normalized-query))
+        {:status :skip, :reason :unsupported-query}
 
-      :else
-      (try
-        {:status :ok
-         :facts  (usage-metadata.extract/extract-usage-facts normalized-query)}
-        (catch Throwable _
-          {:status :skip, :reason :extract-error})))))
+        :else
+        (try
+          {:status :ok
+           :facts  (usage-metadata.extract/extract-usage-facts normalized-query)}
+          (catch Throwable _
+            {:status :skip, :reason :extract-error}))))
+    (catch Throwable _
+      {:status :skip, :reason :normalize-error})))
 
 (defn- aggregate-row [rows row n]
   (update rows row (fnil + 0) n))
@@ -253,16 +262,18 @@
                            :metrics              {}
                            :dimensions           {}
                            :seen-hashes          #{}}
-         after-stream     (if (seq raw-hashes)
-                            (transduce
-                             (map t2.realize/realize)
-                             (completing (partial process-query-row bucket-date hash->count))
-                             initial-stats
-                             (mdb/streaming-reducible
-                              (fn [conn]
-                                (t2/reducible-select :conn conn [:model/Query :query_hash :query]
-                                                     :query_hash [:in raw-hashes]))))
-                            initial-stats)
+         after-stream     (reduce
+                           (fn [stats hash-chunk]
+                             (transduce
+                              (map t2.realize/realize)
+                              (completing (partial process-query-row bucket-date hash->count))
+                              stats
+                              (mdb/streaming-reducible
+                               (fn [conn]
+                                 (t2/reducible-select :conn conn [:model/Query :query_hash :query]
+                                                      :query_hash [:in hash-chunk])))))
+                           initial-stats
+                           (partition-all hash-chunk-size raw-hashes))
          seen-hashes      (:seen-hashes after-stream)
          day-stats        (reduce-kv
                            (fn [stats hash-bb n]

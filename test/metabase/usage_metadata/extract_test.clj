@@ -1,6 +1,7 @@
 (ns metabase.usage-metadata.extract-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -133,3 +134,63 @@
              {:source-type :table, :source-id (meta/id :categories), :ownership-mode :projected, :field-id (meta/id :categories :id)}}
            (set (map #(select-keys % [:source-type :source-id :ownership-mode :field-id])
                      (filter #(= :projected (:ownership-mode %)) rows)))))))
+
+(def ^:private metric-id-1 200)
+(def ^:private metric-id-2 201)
+
+(def ^:private metrics-metadata-provider
+  (lib.tu/mock-metadata-provider
+   meta/metadata-provider
+   {:cards [{:id            metric-id-1
+             :name          "Sum Subtotal"
+             :type          :metric
+             :database-id   (meta/id)
+             :table-id      (meta/id :orders)
+             :dataset-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
+                                lib.convert/->legacy-MBQL)}
+            {:id            metric-id-2
+             :name          "Sum Tax"
+             :type          :metric
+             :database-id   (meta/id)
+             :table-id      (meta/id :orders)
+             :dataset-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                (lib/aggregate (lib/sum (meta/field-metadata :orders :tax)))
+                                lib.convert/->legacy-MBQL)}]}))
+
+(deftest ^:parallel metric-extraction-only-records-primitive-aggregations-test
+  (testing "primitive Sum(field) aggregation emits a row"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal))))
+          rows  (:metrics (extract/extract-usage-facts query))]
+      (is (= 1 (count rows)))
+      (is (= :sum (:agg (first rows))))
+      (is (= (meta/id :orders :subtotal) (:agg-field-id (first rows))))))
+
+  (testing "top-level [:metric M1] reference emits no row (F001)"
+    (let [query (-> (lib/query metrics-metadata-provider (meta/table-metadata :orders))
+                    (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} metric-id-1]))
+          rows  (:metrics (extract/extract-usage-facts query))]
+      (is (= [] rows))))
+
+  (testing "composite [:- [:metric M1] [:metric M2]] emits no row (F015)"
+    (let [query (-> (lib/query metrics-metadata-provider (meta/table-metadata :orders))
+                    (lib/aggregate (lib/- [:metric {:lib/uuid (str (random-uuid))} metric-id-1]
+                                          [:metric {:lib/uuid (str (random-uuid))} metric-id-2])))
+          rows  (:metrics (extract/extract-usage-facts query))]
+      (is (= [] rows))))
+
+  (testing "composite Sum(A) - Sum(B) emits no row (F015)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/aggregate (lib/- (lib/sum (meta/field-metadata :orders :subtotal))
+                                          (lib/sum (meta/field-metadata :orders :tax)))))
+          rows  (:metrics (extract/extract-usage-facts query))]
+      (is (= [] rows))))
+
+  (testing "Sum(coalesce(A, 0)) emits a row with field A captured"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/aggregate (lib/sum (lib/coalesce (meta/field-metadata :orders :subtotal) 0))))
+          rows  (:metrics (extract/extract-usage-facts query))]
+      (is (= 1 (count rows)))
+      (is (= :sum (:agg (first rows))))
+      (is (= (meta/id :orders :subtotal) (:agg-field-id (first rows)))))))
