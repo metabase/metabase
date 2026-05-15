@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import type { MetricDimension } from "metabase-types/api";
 
 export const DIMENSION_INTERESTINGNESS_SCORE_THRESHOLD = 0.7;
@@ -14,3 +16,7 @@ export const TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD = 0.7;
 export const QUERY_INTERESTINGNESS_SCORE_THRESHOLD = 0.7;
 
 export const EXPLORATION_NAME_MAX_LENGTH = 254;
+
+export function getDefaultExplorationName() {
+  return t`New exploration`;
+}

@@ -40,7 +40,7 @@ type MetabotToolCallMessageWithResult = MetabotDebugToolCallMessage & {
 export interface NewExplorationChatProps {
   setMetrics: Dispatch<SetStateAction<ExplorationMetric[]>>;
   setDimensions: Dispatch<SetStateAction<MetricDimension[]>>;
-  setName: Dispatch<SetStateAction<string | null>>;
+  setName: Dispatch<SetStateAction<string>>;
 }
 
 export function NewExplorationChat({
