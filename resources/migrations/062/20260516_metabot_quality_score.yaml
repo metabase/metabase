@@ -1,0 +1,106 @@
+## BOT-1515 Phase 1: persist a v1 conversation quality composite.
+##
+## Adds quality_score (double in (-1, 0]) and quality_breakdown (JSON) to
+## metabot_conversation so newly finalized assistant turns can write a
+## composite verdict for the whole conversation. Adds query_modified /
+## query_count to metabot_message so per-turn authoring activity is queryable
+## without unpacking the data jsonb.
+##
+## All columns nullable or default-bearing so the migration is safe on a live
+## DB. The scoring shape is documented in
+## notes/bot-1515-conversation-score/strategy-v3-signals-ref-v2.md §5.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/062_update_migrations.yaml
+
+  - changeSet:
+      id: v62.2026-05-16T00:00:00
+      author: tylerplude
+      comment: Add metabot_conversation.quality_score for BOT-1515 v1 composite
+      changes:
+        - addColumn:
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: quality_score
+                  type: double
+                  remarks: >
+                    v1 conversation composite in (-1, 0]. NULL = not computed
+                    (or out of scope, e.g. old-format conversation). 0.0
+                    means scored, no signal fired.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabot_conversation
+            columnName: quality_score
+
+  - changeSet:
+      id: v62.2026-05-16T00:00:01
+      author: tylerplude
+      comment: Add metabot_conversation.quality_breakdown JSON column
+      changes:
+        - addColumn:
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: quality_breakdown
+                  type: ${text.type}
+                  remarks: >
+                    JSON-encoded breakdown of the composite — composite_version,
+                    raw, concern, per-signal magnitudes, per-signal
+                    contributions, and a small context block. Shape defined in
+                    notes/bot-1515-conversation-score/strategy-v3-signals-ref-v2.md §5.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabot_conversation
+            columnName: quality_breakdown
+
+  - changeSet:
+      id: v62.2026-05-16T00:00:02
+      author: tylerplude
+      comment: Add metabot_message.query_modified flag for BOT-1515
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: query_modified
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: >
+                    True if any AUTHORING tool was called in this turn
+                    (create_sql_query, edit_sql_query, replace_sql_query,
+                    construct_notebook_query, write_transform_sql,
+                    write_transform_python, document_construct_sql_chart,
+                    document_construct_model_chart).
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: metabot_message
+            columnName: query_modified
+
+  - changeSet:
+      id: v62.2026-05-16T00:00:03
+      author: tylerplude
+      comment: Add metabot_message.query_count for BOT-1515
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: query_count
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: >
+                    Number of AUTHORING tool calls in this turn. 0 for user
+                    rows and assistant turns that didn't author/edit a query.
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: metabot_message
+            columnName: query_count
