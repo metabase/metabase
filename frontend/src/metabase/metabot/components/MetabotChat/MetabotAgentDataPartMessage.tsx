@@ -102,11 +102,7 @@ const DataPartJsonCard = ({
   }, [value]);
 
   return (
-    <Box
-      bg="background-secondary"
-      bd="1px solid var(--mb-color-border)"
-      bdrs="sm"
-    >
+    <Box bd="1px solid var(--mb-color-border)" bdrs="sm">
       <Flex
         py="sm"
         px="md"
@@ -153,7 +149,6 @@ const NavigateToDataPart = ({ type, path }: { type: string; path: string }) => (
   <Flex
     py="sm"
     px="md"
-    bg="background-secondary"
     bd="1px solid var(--mb-color-border)"
     bdrs="sm"
     direction="row"
@@ -185,11 +180,7 @@ const CodeEditDataPart = ({
   const clipboard = useClipboard();
 
   return (
-    <Box
-      bg="background-secondary"
-      bd="1px solid var(--mb-color-border)"
-      bdrs="sm"
-    >
+    <Box bd="1px solid var(--mb-color-border)" bdrs="sm">
       <Flex
         py="sm"
         px="md"
@@ -210,7 +201,6 @@ const CodeEditDataPart = ({
         </ActionIcon>
       </Flex>
       <Box
-        bg="background-primary"
         style={{
           borderTop: "1px solid var(--mb-color-border)",
           borderBottomLeftRadius: "var(--mantine-radius-sm)",
