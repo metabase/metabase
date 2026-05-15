@@ -11,14 +11,6 @@ on:
       commit:
         description: 'A full-length commit SHA-1 hash'
         required: true
-      kind:
-        description: 'Release kind'
-        type: choice
-        required: true
-        default: 'patch'
-        options:
-          - patch
-          - minor
   workflow_call:
     inputs:
       version:
@@ -29,11 +21,6 @@ on:
         description: 'A full-length commit SHA-1 hash'
         type: string
         required: true
-      kind:
-        description: 'Release kind'
-        type: string
-        required: true
-        default: 'patch'
 
 permissions:
   id-token: write
@@ -49,6 +36,7 @@ jobs:
     outputs:
       ee: ${{ fromJson(steps.canonical_version.outputs.result).ee }}
       oss: ${{ fromJson(steps.canonical_version.outputs.result).oss }}
+      kind: ${{ fromJson(steps.canonical_version.outputs.result).kind }}
     steps:
     - name: Fail early on the incorrect version format
       if: ${{ !(startsWith(inputs.version,'v0.') || startsWith(inputs.version,'v1.')) }}
@@ -69,7 +57,7 @@ jobs:
       id: canonical_version
       with:
         script: | # js
-          const { isValidVersionString, getCanonicalVersion, hasBeenReleased } = require('${{ github.workspace }}/release/dist/index.cjs');
+          const { isValidVersionString, getCanonicalVersion, getVersionType, hasBeenReleased } = require('${{ github.workspace }}/release/dist/index.cjs');
 
           const version = '${{ inputs.version }}';
 
@@ -80,6 +68,7 @@ jobs:
           const versions = {
             ee: getCanonicalVersion(version, 'ee'),
             oss: getCanonicalVersion(version, 'oss'),
+            kind: getVersionType(version),
           };
 
           const released = await hasBeenReleased({
@@ -363,8 +352,8 @@ jobs:
       dot-x-tag: ${{ startsWith(matrix.tag, 'v') }}
 
   trigger-cloud-issues:
-    if: ${{ inputs.kind != 'patch' }}
-    needs: push-tags
+    if: ${{ needs.check-version.outputs.kind == 'minor' || needs.check-version.outputs.kind == 'major' }}
+    needs: [push-tags, check-version]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
@@ -438,8 +427,8 @@ jobs:
             });
 
   draft-release-notes:
-    if: ${{ inputs.kind != 'patch' }}
-    needs: add-extra-tags
+    if: ${{ needs.check-version.outputs.kind == 'minor' || needs.check-version.outputs.kind == 'major' }}
+    needs: [add-extra-tags, check-version]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     env:
@@ -507,7 +496,7 @@ jobs:
             }).catch(console.warn);
 
   publish-version-info:
-    if: ${{ inputs.kind != 'patch' }}
+    if: ${{ needs.check-version.outputs.kind == 'minor' || needs.check-version.outputs.kind == 'major' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: [push-tags, check-version]
     timeout-minutes: 15

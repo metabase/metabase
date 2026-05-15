@@ -86,7 +86,6 @@ jobs:
                   inputs: {
                     commit: releaseCommit,
                     version: nextVersion,
-                    kind,
                   }
                 }).catch(console.error);
                 return;

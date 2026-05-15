@@ -11,14 +11,6 @@ on:
       commit:
         description: 'A full-length commit SHA-1 hash'
         required: true
-      kind:
-        description: 'Release kind'
-        type: choice
-        required: true
-        default: 'patch'
-        options:
-          - patch
-          - minor
 
 permissions:
   id-token: write
@@ -283,4 +275,3 @@ jobs:
     with:
       version: ${{ inputs.version }}
       commit: ${{ inputs.commit }}
-      kind: ${{ inputs.kind }}
