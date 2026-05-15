@@ -643,8 +643,7 @@
                         ;; catches the malformed reference separately.
                         categorical-top-ids (->> top-prepped
                                                  (filter (fn [p]
-                                                           (let [xt (some-> p :cfg :series first val :x :type)]
-                                                             (and xt (not (#{"datetime" "number"} xt))))))
+                                                           (= :categorical (phase2/x-axis-kind (:cfg p)))))
                                                  (keep :stored-result-id)
                                                  set)
                         analysis-prompt   (phase2/build-analysis-prompt

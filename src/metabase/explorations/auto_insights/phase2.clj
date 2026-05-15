@@ -159,6 +159,32 @@
          "If you need to cite values from this chart, mention it in `Suggestions for further "
          "exploration` instead._")))
 
+(defn x-axis-kind
+  "Classify a chart-config's x-axis type for sort-attribute purposes. Returns one of
+  `:categorical`, `:temporal`, `:numeric`, or `:unknown`. Drives the per-chart sort
+  instruction in [[full-block]] and the categorical set passed into
+  [[validate-categorical-sorts]] — funneling both readers through one helper keeps the
+  prompt and the validator from disagreeing about which charts require sort."
+  [cfg]
+  (let [xt (some-> cfg :series first val :x :type)]
+    (case xt
+      "datetime" :temporal
+      "number"   :numeric
+      (if xt :categorical :unknown))))
+
+(defn- sort-instruction-line
+  "Per-chart directive inserted into [[full-block]] telling the model exactly what to do with
+  the `sort` attribute on a `cardEmbed` referencing this chart. The categorical-vs-non-
+  categorical decision is computed deterministically here so the model never has to infer it
+  from column metadata — the inference miss is the failure mode behind the most common
+  Phase-2 repair round."
+  [cfg]
+  (case (x-axis-kind cfg)
+    :categorical "- **sort attribute**: REQUIRED — choose one of \"value_desc\", \"value_asc\", \"label_asc\", \"label_desc\"."
+    :temporal    "- **sort attribute**: OMIT — rows are already in chronological order."
+    :numeric     "- **sort attribute**: OMIT — rows are already in binned order."
+    :unknown     "- **sort attribute**: OMIT."))
+
 (defn full-block
   "Top-tier rendering: title + (optional) chart description + (optional) metric description +
   metric/dim column detail + full chart Markdown representation, pre-computed key points, AND
@@ -179,7 +205,8 @@
          (when metric-description
            (str "- **metric description**: " metric-description "\n"))
          "- **metric**: " (or metric-detail "(unknown)") "\n"
-         "- **dim**: " (or dim-detail "(unknown)") "\n\n"
+         "- **dim**: " (or dim-detail "(unknown)") "\n"
+         (sort-instruction-line cfg) "\n\n"
          "When referencing this chart in a `cardEmbed` node, use "
          "`stored_result_id: " stored-result-id "`.\n\n"
          repr
