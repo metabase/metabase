@@ -44,27 +44,21 @@
     ;;                 events (extra universe repeat).
     (let [result (#'cli/run-cli {:representation-dir representation-fixture-dir})]
       (testing "library score matches the hand-derived total"
-        (is (=? {:total        215
-                 :rating       "low"
-                 :rating-label "Low complexity"
-                 :rating-color "green"
-                 :components   {:entity-count      {:measurement 6.0 :score 60}
-                                :name-collisions   {:measurement 1.0 :score 100}
-                                :synonym-pairs     {:measurement 1.0 :score 50}
-                                :field-count       {:measurement 3.0 :score 3}
-                                :repeated-measures {:measurement 1.0 :score 2}}}
-                (:library result))))
+        (is (= {:total      215
+                :components {:entity-count      {:measurement 6.0 :score 60}
+                             :name-collisions   {:measurement 1.0 :score 100}
+                             :synonym-pairs     {:measurement 1.0 :score 50}
+                             :field-count       {:measurement 3.0 :score 3}
+                             :repeated-measures {:measurement 1.0 :score 2}}}
+               (:library result))))
       (testing "universe score matches the hand-derived total"
-        (is (=? {:total        409
-                 :rating       "low"
-                 :rating-label "Low complexity"
-                 :rating-color "green"
-                 :components   {:entity-count      {:measurement 10.0 :score 100}
-                                :name-collisions   {:measurement 2.0  :score 200}
-                                :synonym-pairs     {:measurement 2.0  :score 100}
-                                :field-count       {:measurement 5.0  :score 5}
-                                :repeated-measures {:measurement 2.0  :score 4}}}
-                (:universe result))))
+        (is (= {:total      409
+                :components {:entity-count      {:measurement 10.0 :score 100}
+                             :name-collisions   {:measurement 2.0  :score 200}
+                             :synonym-pairs     {:measurement 2.0  :score 100}
+                             :field-count       {:measurement 5.0  :score 5}
+                             :repeated-measures {:measurement 2.0  :score 4}}}
+               (:universe result))))
       (testing "meta has formula-version + threshold + weights but no :embedding-model (offline mode)"
         (is (= {:formula-version   1
                 :synonym-threshold 0.8

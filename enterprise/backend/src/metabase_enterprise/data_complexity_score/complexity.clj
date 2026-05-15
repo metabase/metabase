@@ -35,16 +35,13 @@
    :repeated-measure 2})
 
 (def complexity-thresholds
-  "Thresholds for the catalog-total complexity rating.
-  Public — consumers introspect this rather than reproduce the table.
-  Values are strings so the JSON round-trip is a no-op.
-  Applies to the catalog total only; sub-component ratings are nil."
+  "Catalog-total rating bands. Applied at the API boundary, not persisted."
   [{:rating "low"    :label "Low complexity"    :color "green"  :max 999}
    {:rating "medium" :label "Medium complexity" :color "orange" :max 9999}
    {:rating "high"   :label "High complexity"   :color "red"}])
 
-(defn- rating-for-score
-  "Nil cascades through all three return keys so an uncomputed total isn't bucketed as low."
+(defn rating-for-score
+  "Nil score cascades nil through all three return keys."
   [score]
   (let [band (when (some? score)
                (some (fn [{:keys [max] :as b}] (when (or (nil? max) (<= score max)) b))
@@ -52,6 +49,19 @@
     {:rating       (:rating band)
      :rating-label (:label band)
      :rating-color (:color band)}))
+
+(defn decorate-with-ratings
+  "Annotate each catalog in a complexity-scores response with rating fields derived from its `:total`.
+  Components get present-but-nil rating keys so the response shape is uniform."
+  [score]
+  (let [nil-rating {:rating nil :rating-label nil :rating-color nil}
+        decorate   (fn [catalog]
+                     (-> catalog
+                         (merge (rating-for-score (:total catalog)))
+                         (update :components update-vals #(merge % nil-rating))))]
+    (reduce (fn [s k] (cond-> s (get s k) (update k decorate)))
+            score
+            [:library :universe :metabot])))
 
 (def ^:private component->group
   "Thematic parent per sub-component — drives the `<group>.total` + `<group>.<component>` rollup in
@@ -346,20 +356,15 @@
     (reduce + xs)))
 
 (defn score-catalog
-  "Pure: compute the score breakdown for a catalog given its `entities` and an optional `embedder`.
-  Rating fields are present on every component but nil — thresholds apply to the catalog total only."
+  "Pure: compute the score breakdown for a catalog given its `entities` and an optional `embedder`."
   [entities embedder]
-  (let [nil-rating {:rating nil :rating-label nil :rating-color nil}
-        components (-> {:entity-count      (score-entity-count entities)
-                        :name-collisions   (score-name-collisions entities)
-                        :synonym-pairs     (score-synonym-pairs entities embedder)
-                        :field-count       (score-field-count entities)
-                        :repeated-measures (score-repeated-measures entities)}
-                       (update-vals #(merge % nil-rating)))
-        total      (nil-safe-sum (map (comp :score val) components))]
-    (merge {:total      total
-            :components components}
-           (rating-for-score total))))
+  (let [components {:entity-count      (score-entity-count entities)
+                    :name-collisions   (score-name-collisions entities)
+                    :synonym-pairs     (score-synonym-pairs entities embedder)
+                    :field-count       (score-field-count entities)
+                    :repeated-measures (score-repeated-measures entities)}]
+    {:total      (nil-safe-sum (map (comp :score val) components))
+     :components components}))
 
 ;;; ----------------------------------- public API ------------------------------------
 

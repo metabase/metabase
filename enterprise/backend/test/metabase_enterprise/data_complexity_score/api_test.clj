@@ -55,45 +55,34 @@
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 endpoint :force-recalculation true)))))
 
-(defn- nil-rating
-  "Component-level rating fields are always nil (only the catalog total is bucketed)."
-  [sub]
-  (assoc sub :rating nil :rating-label nil :rating-color nil))
-
-(defn- low-rating
-  "Sample scores in this file all land in the low band — keep one definition so a band tweak
-  here doesn't silently desync the fixtures."
-  [catalog]
-  (assoc catalog
-         :rating "low"
-         :rating-label "Low complexity"
-         :rating-color "green"
-         :components (update-vals (:components catalog) nil-rating)))
-
 (def ^:private sample-score
-  {:library  (low-rating
-              {:total 18
-               :components {:entity-count      {:measurement 1.0 :score 10}
-                            :name-collisions   {:measurement 0.0 :score 0}
-                            :synonym-pairs     {:measurement 0.0 :score 0}
-                            :field-count       {:measurement 8.0 :score 8}
-                            :repeated-measures {:measurement 0.0 :score 0}}})
-   :universe (low-rating
-              {:total 54
-               :components {:entity-count      {:measurement 2.0 :score 20}
-                            :name-collisions   {:measurement 0.0 :score 0}
-                            :synonym-pairs     {:measurement 0.0 :score 0}
-                            :field-count       {:measurement 24.0 :score 24}
-                            :repeated-measures {:measurement 5.0 :score 10}}})
-   :metabot  (low-rating
-              {:total 30
-               :components {:entity-count      {:measurement 1.0 :score 10}
-                            :name-collisions   {:measurement 0.0 :score 0}
-                            :synonym-pairs     {:measurement 0.0 :score 0}
-                            :field-count       {:measurement 20.0 :score 20}
-                            :repeated-measures {:measurement 0.0 :score 0}}})
+  "Raw shape — what `complexity-scores` returns and what persistence stores. The API decorates
+  this with rating fields on the way out."
+  {:library  {:total 18
+              :components {:entity-count      {:measurement 1.0 :score 10}
+                           :name-collisions   {:measurement 0.0 :score 0}
+                           :synonym-pairs     {:measurement 0.0 :score 0}
+                           :field-count       {:measurement 8.0 :score 8}
+                           :repeated-measures {:measurement 0.0 :score 0}}}
+   :universe {:total 54
+              :components {:entity-count      {:measurement 2.0 :score 20}
+                           :name-collisions   {:measurement 0.0 :score 0}
+                           :synonym-pairs     {:measurement 0.0 :score 0}
+                           :field-count       {:measurement 24.0 :score 24}
+                           :repeated-measures {:measurement 5.0 :score 10}}}
+   :metabot  {:total 30
+              :components {:entity-count      {:measurement 1.0 :score 10}
+                           :name-collisions   {:measurement 0.0 :score 0}
+                           :synonym-pairs     {:measurement 0.0 :score 0}
+                           :field-count       {:measurement 20.0 :score 20}
+                           :repeated-measures {:measurement 0.0 :score 0}}}
    :meta     {:formula-version 3
               :synonym-threshold 0.9}})
+
+(defn- expected-response
+  "Apply the same decoration + snake-casing the API does, to compare against an `mt/user-http-request` body."
+  [score]
+  (m.util/deep-snake-keys (complexity/decorate-with-ratings score)))
 
 (def ^:private sample-calculated-at "2026-04-23T12:00:00Z")
 
@@ -112,7 +101,7 @@
         (let [resp (mt/user-http-request :crowberto :get 200 endpoint)]
           (is (= "api-test-fp" @captured-fingerprint)
               "API passes the cron fingerprint through; source=\"appdb\" defaulting is covered by latest-score-filters-by-source-test")
-          (is (= (m.util/deep-snake-keys (with-sample-calculated-at sample-score)) resp))
+          (is (= (expected-response (with-sample-calculated-at sample-score)) resp))
           (is (contains? (:meta resp) :formula_version))
           (is (= sample-calculated-at (get-in resp [:meta :calculated_at])))
           (is (not (contains? (:meta resp) :formula-version)))
@@ -134,7 +123,7 @@
                     data-complexity-score/record-score!       (fn [fingerprint source stored-score]
                                                                 (reset! persisted? [fingerprint source stored-score])
                                                                 (with-sample-calculated-at stored-score))]
-        (is (= (m.util/deep-snake-keys (with-sample-calculated-at sample-score))
+        (is (= (expected-response (with-sample-calculated-at sample-score))
                (mt/user-http-request :crowberto :get 200 endpoint :force-recalculation true)))
         (is (= ["api-test-fp" "appdb" sample-score] @persisted?)
             "API recompute path must stamp source=\"appdb\"")))))
@@ -174,7 +163,7 @@
                     task.complexity-score/current-fingerprint (constantly "api-test-fp")
                     complexity/complexity-scores              (fn [& _] sample-score)
                     data-complexity-score/record-score!       (fn [& _] nil)]
-        (is (= (m.util/deep-snake-keys sample-score)
+        (is (= (expected-response sample-score)
                (mt/user-http-request :crowberto :get 200 endpoint :force-recalculation true)))))))
 
 (deftest ^:sequential complexity-endpoint-force-recalculation-superuser-gets-consistent-totals-test
@@ -323,12 +312,11 @@
                 ":universe must be unscoped regardless of Metabot.collection_id")))))))
 
 (def ^:private empty-catalog
-  (low-rating
-   {:total 0 :components {:entity-count      {:measurement 0.0 :score 0}
-                          :name-collisions   {:measurement 0.0 :score 0}
-                          :synonym-pairs     {:measurement 0.0 :score 0}
-                          :field-count       {:measurement 0.0 :score 0}
-                          :repeated-measures {:measurement 0.0 :score 0}}}))
+  {:total 0 :components {:entity-count      {:measurement 0.0 :score 0}
+                         :name-collisions   {:measurement 0.0 :score 0}
+                         :synonym-pairs     {:measurement 0.0 :score 0}
+                         :field-count       {:measurement 0.0 :score 0}
+                         :repeated-measures {:measurement 0.0 :score 0}}})
 
 (def ^:private stub-scores
   {:library empty-catalog :universe empty-catalog :metabot empty-catalog
@@ -348,7 +336,7 @@
                       (fn [& _]
                         (reset! scoring-ran? true)
                         stub-scores)]
-          (is (= (m.util/deep-snake-keys stub-scores)
+          (is (= (expected-response stub-scores)
                  (mt/user-http-request :crowberto :get 200 endpoint :force-recalculation true)))
           (is (true? @scoring-ran?)
               "force recalculation should compute independently of scheduled claims")

@@ -97,7 +97,7 @@
                               :metabot-scope (metabot-scope/internal-metabot-scope)))
           stored      (data-complexity-score/record-score! fingerprint "appdb" result)]
       (task.complexity-score/maybe-advance-last-fingerprint! fingerprint result)
-      (m.util/deep-snake-keys (or stored result)))
+      (m.util/deep-snake-keys (complexity/decorate-with-ratings (or stored result))))
     (finally
       (.set api-scoring-running? false))))
 
@@ -113,6 +113,7 @@
   (if force-recalculation?
     (force-recalculate-score!)
     (api/check-404 (some-> (data-complexity-score/latest-score (task.complexity-score/current-fingerprint))
+                           complexity/decorate-with-ratings
                            m.util/deep-snake-keys)
                    (tru "Data Complexity Score has not been computed yet. Recompute it to create the first snapshot."))))
 
