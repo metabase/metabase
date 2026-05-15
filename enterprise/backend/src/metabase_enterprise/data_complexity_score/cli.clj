@@ -37,10 +37,8 @@
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.app-db.core :as mdb]
-   ;; Loaded for side-effect: derives setting `:on-change` event topics from `:metabase/event` so
-   ;; the report-timezone watcher (and friends) don't blow up when the settings cache is restored
-   ;; during `setup-db-without-migrations!`. The standalone CLI doesn't go through
-   ;; `metabase.core.core/entrypoint`, so without this the topic never gets derived.
+   ;; Loaded for side-effect: derives setting :on-change event topics from :metabase/event.
+   ;; metabase.core.core/entrypoint normally does this, but the standalone CLI bypasses it.
    [metabase.driver.init]
    [metabase.util.json :as json]))
 
