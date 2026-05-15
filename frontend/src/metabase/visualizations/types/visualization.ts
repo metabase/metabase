@@ -313,7 +313,6 @@ export type VisualizationSettingDefinition<
   TProps extends Record<string, unknown> = Record<string, unknown>,
 > = {
   id?: string;
-  section?: string;
   title?: string;
   placeholder?: string;
   group?: string;
@@ -393,12 +392,13 @@ export type CompleteVisualizationSettingDefinition<
   TProps extends Record<string, unknown> = Record<string, unknown>,
 > = Omit<
   VisualizationSettingDefinition<T, TValue, TProps>,
-  "getProps" | "getWrapperStyle" | "getHidden"
+  "getProps" | "getWrapperStyle" | "getHidden" | "getSection"
 > & {
   id: string;
   style?: CSSProperties;
   props: Partial<TProps>;
   hidden: boolean;
+  section?: string;
 };
 
 export type DatasetColumnSettingDefinition<

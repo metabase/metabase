@@ -17,6 +17,7 @@ import type {
 import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import type { State } from "metabase/redux/store";
+import type { DashboardTabId } from "metabase-types/api";
 
 export type EmbeddingSessionTokenState = {
   token: MetabaseEmbeddingSessionToken | null;
@@ -44,6 +45,14 @@ export type SdkState = {
   errorComponent: null | SdkErrorComponent;
   fetchRefreshTokenFn: null | MetabaseAuthConfig["fetchRequestToken"];
   pluginsReady: boolean;
+  /**
+   * Tab to apply when the next dashboard mounts via a cross-dashboard
+   * click behavior. Not cleared after use: tab IDs are globally unique
+   * PKs, so stale values can't match another dashboard's tabs, and the
+   * selector falls back to the first tab via a `hasTab` guard. Every
+   * cross-dashboard push overwrites this slot anyway.
+   */
+  initialDashboardTabId: DashboardTabId | null;
 };
 
 export interface SdkStoreState extends State {
