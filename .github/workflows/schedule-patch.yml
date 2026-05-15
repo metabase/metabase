@@ -1,4 +1,4 @@
-name: Schedule - Auto Patch
+name: Schedule Release - Auto Patch
 
 on:
   schedule:
@@ -8,7 +8,7 @@ permissions:
   actions: write
 
 jobs:
-  trigger:
+  trigger-auto-patch:
     # Never run on a fork's inherited cron; honor the kill switch.
     if: ${{ github.repository == 'metabase/metabase' && vars.ENABLE_AUTO_PATCH == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}

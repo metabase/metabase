@@ -1,4 +1,4 @@
-name: Schedule - Auto Minor
+name: Schedule Release - Auto Minor
 
 on:
   schedule:
@@ -8,7 +8,7 @@ permissions:
   actions: write
 
 jobs:
-  trigger:
+  trigger-auto-minor:
     # Never run on a fork's inherited cron; honor the kill switch.
     if: ${{ github.repository == 'metabase/metabase' && vars.ENABLE_AUTO_MINOR == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
