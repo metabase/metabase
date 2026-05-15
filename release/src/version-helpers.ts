@@ -483,6 +483,18 @@ export const getNextMinorVersion = async ({
   return findNextMinorVersion(lastRelease);
 };
 
+export const getNextVersion = async ({
+  github,
+  owner,
+  repo,
+  majorVersion,
+  kind,
+}: GithubProps & { majorVersion: number; kind: "patch" | "minor" }) => {
+  return kind === "patch"
+    ? getNextPatchVersion({ github, owner, repo, majorVersion })
+    : getNextMinorVersion({ github, owner, repo, majorVersion });
+};
+
 type SdkVersionInfo = {
   version: string;
   preReleaseLabel: string;
