@@ -287,6 +287,38 @@ describe("getAvailableAdditionalColumns", () => {
     expect(() => getAvailableAdditionalColumns(series, settings)).not.toThrow();
   });
 
+  it("treats resolved metric columns as referenced even when the stored dimension is missing", () => {
+    // Edge case: stored `graph.dimensions` references a column that doesn't
+    // exist (e.g. renamed/removed), but `graph.metrics` still resolves. The
+    // resolved metric must not appear in the available additional columns.
+    const metricCol = createMockColumn({
+      name: "count",
+      display_name: "Count",
+      base_type: "type/Integer",
+      source: "aggregation",
+    });
+    const extraCol = createMockColumn({
+      name: "extra",
+      display_name: "Extra",
+      source: "fields",
+    });
+    const series = [
+      {
+        card: createMockCard({ display: "bar" }),
+        data: createMockDatasetData({
+          cols: [metricCol, extraCol],
+          rows: [[1, "x"]],
+        }),
+      },
+    ];
+    const settings = {
+      "graph.dimensions": ["missing_dimension"],
+      "graph.metrics": ["count"],
+    };
+
+    expect(getAvailableAdditionalColumns(series, settings)).toEqual([extraCol]);
+  });
+
   it("returns available columns normally when dimension and metric are present", () => {
     const dimCol = createMockColumn({
       name: "created_at",
