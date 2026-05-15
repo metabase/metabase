@@ -135,6 +135,8 @@
   ;; derived from :metabase/event before the settings cache is restored from the appdb.
   (require 'metabase.driver.init)
   (mdb/setup-db-without-migrations!)
+  (when write?
+    (appdb-source/verify-write-target-shape!))
   (binding [appdb-source/*tolerate-missing-relations?* true]
     (let [result (complexity/complexity-scores
                   (assoc (synonym-source/complexity-scores-opts)
@@ -149,7 +151,8 @@
   uses, stamped `\"representation:<digest>\"`."
   [{:keys [representation-dir embeddings]} write?]
   (when write?
-    (mdb/setup-db-without-migrations!))
+    (mdb/setup-db-without-migrations!)
+    (appdb-source/verify-write-target-shape!))
   (let [{:keys [library universe embedder digest]} (representation/load-dir representation-dir
                                                                             :embeddings-path embeddings)
         result                                     (complexity/score-from-entities library universe embedder {})]
