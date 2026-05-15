@@ -94,19 +94,17 @@ In chart settings, click the **Axes** tab to edit the chart axes.
 
 #### X-axis
 
-To display the x-axis label, enable the **Show label** toggle.
-
 Use the following options for the x-axis:
 
+- **Show label:** Enable the toggle to display the x-axis label.
 - **Label:** Name the x-axis label.
 - **Show lines and tick marks:** Display the x-axis line and tick marks.
 
 #### Y-axis
 
-To display the y-axis label, enable the **Show label** toggle.
-
 Use the following options for the y-axis:
 
+- **Show label:** Enable the toggle to display the y-axis label.
 - **Label:** Name the y-axis label.
 - **Auto y-axis range:** When enabled, Metabase sets the y-axis range automatically based on your data. When disabled, use the **Min** and **Max** fields to set custom values.
 - **Scale:** Choose how values are spaced along the y-axis. Choose between **Linear**, **Power**, and **Log**.
