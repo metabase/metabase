@@ -24,6 +24,7 @@ export interface ExplorationTreeQueryGroup {
   type: "group";
   group_id: ExplorationQueryGroupId;
   query_ids: ExplorationQueryId[];
+  queries: ExplorationQuery[];
   status: ExplorationQueryStatus;
   interestingness_score: number | null;
   parent_id: ExplorationQueryGroupId | null;
@@ -127,6 +128,7 @@ function getExplorationQueryTree(
             type: "group",
             group_id: group.id,
             query_ids: group.query_ids,
+            queries: groupQueries,
             status: getExplorationQueryGroupStatus(groupQueries),
             interestingness_score:
               getExplorationQueryGroupInterestingness(groupQueries),

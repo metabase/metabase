@@ -1,10 +1,15 @@
 import cx from "classnames";
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { t } from "ttag";
 
+import { datasetApi } from "metabase/api/dataset";
+import { explorationApi } from "metabase/api/exploration";
 import { Tree } from "metabase/common/components/tree";
 import type { TreeHandle } from "metabase/common/components/tree/Tree";
-import type { TreeNodeProps } from "metabase/common/components/tree/types";
+import type {
+  ITreeNodeItem,
+  TreeNodeProps,
+} from "metabase/common/components/tree/types";
 import { QUERY_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
 import {
   Box,
@@ -19,7 +24,11 @@ import {
 import type { Exploration, ExplorationQueryStatus } from "metabase-types/api";
 
 import type { SelectedEntityId } from "../../pages/ExplorationPage";
-import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../../utils";
+import {
+  getAdjacentById,
+  getGroupDatasetQueryForMetadata,
+  shouldIgnoreKeyboardEvent,
+} from "../../utils";
 import { PotentiallyInterestingMarker } from "../PotentiallyInterestingMarker";
 
 import S from "./ExplorationSidebar.module.css";
@@ -51,6 +60,29 @@ export function ExplorationSidebar({
 
   const flatItems = useMemo(() => flattenTree(tree), [tree]);
 
+  const prefetchQueryResult = explorationApi.usePrefetch(
+    "getExplorationQueryResult",
+  );
+  const prefetchMetadata = datasetApi.usePrefetch(
+    "getAdhocQueryMetadataCached",
+  );
+
+  const handlePrefetch = useCallback(
+    (item: ITreeNodeItem<ExplorationTreeNode>) => {
+      if (item.data?.type !== "group") {
+        return;
+      }
+      const queries = item.data.queries;
+      for (const query of queries) {
+        prefetchQueryResult(query.id);
+      }
+      if (queries.length > 0) {
+        prefetchMetadata(getGroupDatasetQueryForMetadata(queries));
+      }
+    },
+    [prefetchQueryResult, prefetchMetadata],
+  );
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (selectedEntityId == null) {
@@ -75,6 +107,16 @@ export function ExplorationSidebar({
           setSelectedEntityId({ type: "document", id: nextItem.data.id });
         }
         event.preventDefault();
+        // prefetch the following item
+        // if the user uses a keyboard shortcut once, they're likely to use it again
+        const followingItem = getAdjacentById(
+          flatItems,
+          nextItem.id,
+          direction,
+        );
+        if (followingItem != null) {
+          handlePrefetch(followingItem);
+        }
       }
       // if we moved into a different folder, collapse the previous folder
       const currentItem = flatItems.find(
@@ -89,7 +131,7 @@ export function ExplorationSidebar({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [flatItems, selectedEntityId, setSelectedEntityId]);
+  }, [flatItems, selectedEntityId, setSelectedEntityId, handlePrefetch]);
 
   return (
     <Stack
@@ -116,28 +158,37 @@ export function ExplorationSidebar({
               setSelectedEntityId({ type: "document", id: item.data.id });
             }
           }}
-          TreeNode={ExplorationTreeNode}
+          TreeNode={(props: TreeNodeProps<ExplorationTreeNode>) => (
+            <ExplorationTreeNode {...props} handlePrefetch={handlePrefetch} />
+          )}
         />
       </Box>
     </Stack>
   );
 }
 
-function ExplorationTreeNode(props: TreeNodeProps<ExplorationTreeNode>) {
-  const { item } = props;
-  if (item.data?.type === "heading") {
-    return (
-      <ExplorationTreeHeading
-        {...(props as TreeNodeProps<ExplorationTreeHeading>)}
-      />
-    );
+interface ExplorationTreeNodeProps extends TreeNodeProps<ExplorationTreeNode> {
+  handlePrefetch: (item: ITreeNodeItem<ExplorationTreeNode>) => void;
+}
+
+function ExplorationTreeNode(props: ExplorationTreeNodeProps) {
+  if (isExplorationTreeHeadingProps(props)) {
+    return <ExplorationTreeHeading {...props} />;
   }
-  if (item.data?.type === "document" || item.data?.type === "group") {
-    return (
-      <ExplorationTreeItem {...(props as TreeNodeProps<ExplorationTreeItem>)} />
-    );
+  if (isExplorationTreeItemProps(props)) {
+    return <ExplorationTreeItem {...props} />;
   }
   return null;
+}
+
+interface ExplorationTreeHeadingProps extends ExplorationTreeNodeProps {
+  item: ITreeNodeItem<ExplorationTreeHeading>;
+}
+
+function isExplorationTreeHeadingProps(
+  props: ExplorationTreeNodeProps,
+): props is ExplorationTreeHeadingProps {
+  return props.item.data?.type === "heading";
 }
 
 function ExplorationTreeHeading({
@@ -145,7 +196,7 @@ function ExplorationTreeHeading({
   isExpanded,
   onToggleExpand,
   depth,
-}: TreeNodeProps<ExplorationTreeHeading>) {
+}: ExplorationTreeHeadingProps) {
   return (
     <UnstyledButton
       aria-expanded={isExpanded}
@@ -165,12 +216,25 @@ function ExplorationTreeHeading({
   );
 }
 
+interface ExplorationTreeItemProps extends ExplorationTreeNodeProps {
+  item: ITreeNodeItem<ExplorationTreeItem>;
+}
+
+function isExplorationTreeItemProps(
+  props: ExplorationTreeNodeProps,
+): props is ExplorationTreeItemProps {
+  return (
+    props.item.data?.type === "document" || props.item.data?.type === "group"
+  );
+}
+
 function ExplorationTreeItem({
   item,
   isSelected,
   onSelect,
   depth,
-}: TreeNodeProps<ExplorationTreeItem>) {
+  handlePrefetch,
+}: ExplorationTreeItemProps) {
   const itemRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -195,6 +259,7 @@ function ExplorationTreeItem({
         [S.treeRowSelected]: isSelected,
       })}
       onClick={onSelect}
+      onMouseEnter={() => handlePrefetch(item)}
       style={{ marginLeft: depth * 16 }}
     >
       <ExplorationTreeItemIcon

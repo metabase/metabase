@@ -2,8 +2,9 @@ import { useElementSize } from "@mantine/hooks";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useGetAdhocQueryMetadataQuery } from "metabase/api/dataset";
+import { useGetAdhocQueryMetadataCachedQuery } from "metabase/api/dataset";
 import { useGetExplorationQueryResultQuery } from "metabase/api/exploration";
+import { getGroupDatasetQueryForMetadata } from "metabase/explorations/utils";
 import { createSeriesCard } from "metabase/metrics/utils/series";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -154,12 +155,8 @@ function ExplorationGroupVisualizationChart({
   const datasets = queries.map((q) => useGetExplorationQueryResultQuery(q.id));
   /* eslint-enable react-hooks/rules-of-hooks */
 
-  // Adhoc-metadata for the first query drives default chart-type
-  // selection. All queries in a `page` group share the same
-  // `(card_id, dimension_id)` by BE construction, so picking any one
-  // is correct.
-  const { isLoading: isMetadataLoading } = useGetAdhocQueryMetadataQuery(
-    queries[0].dataset_query,
+  const { isLoading: isMetadataLoading } = useGetAdhocQueryMetadataCachedQuery(
+    getGroupDatasetQueryForMetadata(queries),
   );
   const metadata = useSelector(getMetadata);
 

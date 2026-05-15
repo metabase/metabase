@@ -1,3 +1,5 @@
+import type { DatasetQuery, ExplorationQuery } from "metabase-types/api";
+
 export function shouldIgnoreKeyboardEvent(event: KeyboardEvent) {
   if (!(event.target instanceof HTMLElement)) {
     return true;
@@ -31,4 +33,14 @@ export function getAdjacentById<T extends { id: unknown }>(
   const currentIndex = items.findIndex((item) => item.id === currentId);
   const nextIndex = (currentIndex + direction + items.length) % items.length;
   return items[nextIndex];
+}
+
+/**
+ * Metadata is used for chart type selection
+ * All queries in a group share metadata, so using any dataset query is correct
+ */
+export function getGroupDatasetQueryForMetadata(
+  groupQueries: ExplorationQuery[],
+): DatasetQuery {
+  return groupQueries[0].dataset_query;
 }
