@@ -397,3 +397,38 @@
           (println (str "  " worktree-dir))
           (println "Remove with: ./bin/mage docs-clean-worktrees --force")
           (throw e))))))
+
+;; ---------------------------------------------------------------------------
+;; docs-help
+;; ---------------------------------------------------------------------------
+
+(def ^:private help-rows
+  "Bun aliases and what they do. Mirrors the table in docs/developers-guide/docs.md;
+  keep the two in sync when adding or renaming a command."
+  [["bun run docs:dev"                "Hot-reload Astro dev server (skips auto-generated artifacts)"]
+   ["bun run docs:dev:clean"          "Kill orphaned dev server on port 4321 and restart"]
+   ["bun run docs:preview"            "Lazy-regen production build + Astro preview server"]
+   ["bun run docs:build"              "Full production build (what CI runs)"]
+   ["bun run docs:generate"           "Regenerate auto-derived backend docs (env vars, config, …)"]
+   ["bun run docs:generate:embedding" "Regenerate SDK / Embed.js typedoc reference"]
+   ["bun run docs:check"              "Astro/TypeScript check + nav.yml reference validator"]
+   ["bun run docs:test"               "Unit tests for the custom remark/rehype plugins"]
+   ["bun run docs:help"               "Print this listing"]])
+
+(defn print-help!
+  "Print every `bun run docs:*` alias and a one-line description."
+  [_parsed]
+  (let [width (apply max (map (comp count first) help-rows))]
+    (println)
+    (println (c/bold "Metabase docs commands"))
+    (println)
+    (doseq [[cmd desc] help-rows]
+      (println (str "  "
+                    (c/cyan cmd)
+                    (apply str (repeat (inc (- width (count cmd))) \space))
+                    desc)))
+    (println)
+    (println (str "Run " (c/cyan "./bin/mage <task> --help")
+                  " for flag-level help on commands that wrap a mage task"))
+    (println "(docs-build, docs-generate, docs-generate-embedding).")
+    (println)))

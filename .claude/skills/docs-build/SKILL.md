@@ -1,83 +1,69 @@
 ---
 name: docs-build
-description: Build, preview, and orchestrate the Metabase docs site. Use when working on the Astro renderer under docs-build/, the mage tasks in mage.docs, the auto-generated content (env vars, config, API, CLI commands, analytics, SDK typedoc), versioned/release builds, or the page chrome (header, footer, search).
+description: Build, preview, and orchestrate the Metabase docs site. Use when working on the Astro renderer under docs-build/, the mage tasks in mage.docs, the auto-generated content (env vars, config, API, CLI commands, analytics, country codes, SDK typedoc), versioned/release builds, or the page chrome (header, footer, search).
 allowed-tools: Read, Write, Edit, Grep, Bash, Glob
 ---
 
 # Docs build skill
 
-This skill is about *building* the docs site. For *writing* docs prose, see the `docs-write` skill. For the user-facing developer guide, see `docs/developers-guide/docs.md`.
+This skill is about *building* the docs site. For *writing* docs prose, use the `docs-write` skill. For the user-facing developer guide (audience: humans editing pages), see `docs/developers-guide/docs.md`.
 
-## Architecture at a glance
+## Architecture
 
-Three layers, top to bottom:
-
-1. **Content** — `docs/**/*.md`. Plain markdown with YAML frontmatter (`title`, `summary`, `redirect_from`). Some content is hand-written; some is **auto-generated** (see below).
-2. **Renderer** — `docs-build/` is a self-contained Astro app that reads `docs/` as a content collection and renders each markdown file to HTML. The route is `docs-build/src/pages/[...slug].astro`; the special `api` route is `docs-build/src/pages/api.astro` (Scalar viewer over `docs/api.json`).
-3. **Orchestrator** — `mage/src/mage/docs.clj` wraps everything. The CLI entry points (`docs-build`, `docs-preview`, `docs-generate`, `docs-build-branch`, `docs-ensure-generated`, `docs-generate-embedding`) live here and are registered in `bb.edn`. The `bun run docs:*` aliases in the root `package.json` shell out to `./bin/mage docs-*`.
+Markdown under `docs/` is rendered by a self-contained Astro app under `docs-build/` (entry route `src/pages/[...slug].astro`; Scalar API viewer at `src/pages/api.astro` over `docs/api.json`). Everything that crosses the repo — full builds, regenerating auto-derived content, building from a release branch via worktree — is orchestrated by `mage/src/mage/docs.clj`, registered as `docs-*` tasks in `bb.edn`. The `bun run docs:*` aliases in the root `package.json` are thin wrappers around those mage tasks.
 
 ## Decision tree: which command do I run?
 
 | I want to... | Run | Notes |
 |---|---|---|
-| Edit a doc page and see it live | `bun run docs:dev` | Hot reload. Does **not** regenerate auto-derived content — transcluded snippets will show placeholders. |
-| Preview a page that transcludes generated content | `bun run docs:preview` | Lazy-regen of stale gitignored artifacts, then a real production build + preview server. |
-| Build the production site | `bun run docs:build` | Full SDK + OpenAPI rebuild from scratch. Multi-minute. What CI runs. |
-| Build a different release version | `./bin/mage docs-build-branch release-x.NN.x` | Uses a git worktree; output lands in `build/docs/v0.NN/`. |
-| Regenerate the auto-derived markdown | `bun run docs:generate` | Updates committed files; you commit the diff alongside the code change that motivated it. |
-| Regenerate just one slice | `./bin/mage docs-generate --env-vars` (or `--config`/`--api`/`--commands`/`--analytics`) | Same as above, scoped. |
-| Regenerate the SDK typedoc | `bun run docs:generate:embedding` | Full SDK rebuild + typedoc, or `--pure` to skip the SDK rebuild. |
+| Edit a doc and see it live | `bun run docs:dev` | Hot reload. Does **not** regenerate auto-derived content — transcluded snippets render placeholders. |
+| Preview a page that transcludes generated content | `bun run docs:preview` | Calls `docs-build --preview --lazy`: regens only *missing* artifacts, then production build + preview server. |
+| Build the production site | `bun run docs:build` | Full SDK + OpenAPI rebuild from scratch. Multi-minute. |
+| Build a different release version | `./bin/mage docs-build-branch release-x.NN.x` | Builds via git worktree; output → `build/docs/v0.NN/`. |
+| Regenerate auto-derived markdown | `bun run docs:generate` | Updates committed files; commit the diff alongside the code change. |
+| Regenerate one slice | `./bin/mage docs-generate --env-vars` (or `--config` / `--api` / `--commands` / `--analytics` / `--country-codes`) | Same as above, scoped. |
+| Regenerate SDK typedoc | `bun run docs:generate:embedding` | Full SDK rebuild + typedoc. Pass `--pure` to skip the SDK rebuild. |
 | Kill an orphaned dev server | `bun run docs:dev:clean` | Astro pins port 4321; force-quit terminals reparent `node` to launchd. |
+| List every docs command | `bun run docs:help` | `./bin/mage <task> --help` for flag-level detail. |
 
-## Generated artifacts: gitignored vs committed
+## Generated artifacts
 
-This is the most important thing to internalize before touching the build:
+**The load-bearing distinction:** some auto-derived content is gitignored and lazily regenerated; the rest is committed and must be regenerated by hand.
 
-**Gitignored** — regenerated every CI build, lazy-regenerated by `docs-ensure-generated` for fast inner-loop preview:
-
-| Path | Generator | Source |
+| Path | Generator | Commit? |
 |---|---|---|
-| `docs/api.json` | `clojure -M:ee:doc api-documentation` | `src/metabase/**/api/**.clj`, `enterprise/backend/src/metabase_enterprise/**/api/**.clj` |
-| `docs/embedding/sdk/api/snippets/index.md` | `bun run embedding-sdk:docs:generate:pure` | `enterprise/frontend/src/embedding-sdk-{package,bundle,shared}/**.ts,tsx` |
-| `docs-build/public/embedding/sdk/api/index.html` | `bun run embedding-sdk:docs:generate:html:pure` | same as above |
-| `docs/embedding/eajs/snippets/` | part of `docs-generate-embedding` | embed.js sources |
+| `docs/api.json` | `./bin/mage docs-generate --api` | gitignored; lazy-regen if missing |
+| `docs/embedding/sdk/api/snippets/index.md` | `bun run docs:generate:embedding` | gitignored; lazy-regen if missing |
+| `docs-build/public/embedding/sdk/api/index.html` | `bun run docs:generate:embedding` | gitignored; lazy-regen if missing |
+| `docs/embedding/eajs/snippets/` | `bun run docs:generate:embedding` | gitignored |
+| `docs/configuring-metabase/environment-variables.md` | `--env-vars` | committed |
+| `docs/configuring-metabase/config-template.md` | `--config` | committed |
+| `docs/installation-and-operation/commands.md` | `--commands` | committed |
+| `docs/usage-and-performance-tools/usage-analytics-reference.md` | `--analytics` | committed |
+| `docs/questions/visualizations/country-codes.md` | `--country-codes` | committed |
 
-The freshness check (`mage.docs/artifact-fresh?`) is mtime-based against source globs and degrades to existence+nonempty when the glob matches nothing.
+The "lazy-regen if missing" path runs through `mage.docs/artifact-present?` (`mage/src/mage/docs.clj:126`) — freshness is **existence only**, not source-mtime. If you edit an SDK type and want the typedoc refreshed, you must run `bun run docs:generate:embedding` explicitly; merely re-running the build won't pick up the change.
 
-**Committed** — regenerated on demand via `docs-generate`, you commit the diff:
-
-| Path | Generator flag |
-|---|---|
-| `docs/configuring-metabase/environment-variables.md` | `--env-vars` |
-| `docs/configuring-metabase/config-template.md` | `--config` |
-| `docs/installation-and-operation/commands.md` | `--commands` |
-| `docs/usage-and-performance-tools/usage-analytics.md` | `--analytics` |
-
-These are **not** part of `docs-ensure-generated`'s lazy regen — the build trusts whatever's checked in. If you change a `defsetting`, you must run `docs:generate --env-vars` and commit the result, or the published docs will drift.
+The committed files are **not** part of the lazy-regen path. If you add or rename a `defsetting`, run `docs:generate --env-vars` and commit the diff — otherwise the published docs drift from the code.
 
 ## Versioned builds
 
-`mage.docs/base-path-for-branch` resolves the URL prefix:
-
-- `release-x.NN.x` → `/docs/v0.NN`
-- everything else → `/docs/latest`
-
-`docs-build-branch <branch>` builds an arbitrary branch via a git worktree at `__worktrees/docs-<slug>/` and rsyncs `dist/` into `build/docs/<base-tail>/` (e.g. `build/docs/v0.55/`). Worktrees are cleaned up on success, retained on failure or with `--keep`. Use `./bin/mage docs-clean-worktrees --force` to bulk-remove leftovers.
+`mage.docs/base-path-for-branch` maps `release-x.NN.x` → `/docs/v0.NN`; everything else → `/docs/latest`. `docs-build-branch <branch>` builds via a git worktree at `__worktrees/docs-<slug>/`, rsyncs `dist/` into `build/docs/<base-tail>/`, removes the worktree on success, retains it on failure. `./bin/mage docs-clean-worktrees [--force]` lists or bulk-removes leftovers. **The build hard-resets the worktree to the resolved ref — uncommitted work inside it will be discarded.**
 
 ## Custom plugins
 
-In `docs-build/src/plugins/` — each has a `.test.mjs` next to it:
+In `docs-build/src/plugins/` — each remark plugin has a `.test.mjs` next to it:
 
-- `remark-include-file.mjs` — `{% include_file "path" %}` (with optional `snippet="name"`) transcludes markdown or code fences from another file. Snippet markers: `<!-- [<snippet NAME>] --> ... <!-- [<endsnippet NAME>] -->` for markdown, `// [<snippet NAME>] ... // [<endsnippet NAME>]` for source files. `{{ dirname }}` in the path resolves to the consuming file's directory.
-- `remark-docs-version.mjs` — Replaces `{SAMPLE_APP_BRANCH}` with `<NN>-stable` on release branches, `master` elsewhere.
-- `rehype-internal-links.mjs` — Rewrites relative `.md` paths to the right URL under `DOCS_BASE_PATH`.
-- `rehype-blockquote-classes.mjs` — Adds a `.plans-callout` class to `> **Plans:**` blockquotes.
+- `remark-include-file.mjs` — `{% include_file "path" %}` transclusion (syntax documented in the dev guide). Markdown is spliced inline; source files render as syntax-highlighted code fences. Snippet markers: `<!-- [<snippet NAME>] -->` for markdown, `// [<snippet NAME>]` for source.
+- `remark-docs-version.mjs` — substitutes `{SAMPLE_APP_BRANCH}` (`<NN>-stable` on release branches, `master` elsewhere).
+- `rehype-internal-links.mjs` — rewrites relative `.md` paths to the right URL under `DOCS_BASE_PATH`.
+- `rehype-blockquote-classes.mjs` — adds `.plans-callout` to `> **Plans:**` blockquotes.
 
-`nav.yml` parsing lives in `docs-build/src/lib/nav.ts` (`getNav`, `findTrail`, `hrefForPage`, `urlMatchesSlug`). It's `?raw`-imported by Vite so the file is inlined at build time.
+`nav.yml` parsing lives in `docs-build/src/lib/nav.ts` and is `?raw`-imported by Vite so the file is inlined at build time.
 
 ## Header and footer
 
-The page chrome is native to the docs site. Markup lives in `docs-build/src/data/{header,footer}.html` (raw-imported by `Header.astro` / `Footer.astro`); styles in `docs-build/src/styles/chrome.css`; client behavior (mobile hamburger, status dot, GitHub star count, promo-banner dismiss) in `docs-build/public/js/`. Edit those files directly.
+Markup: `docs-build/src/data/{header,footer}.html` (raw-imported by `Header.astro` / `Footer.astro`). Styles: `docs-build/src/styles/chrome.css`. Client behavior (mobile hamburger, GitHub stars, promo-banner dismiss, Inkeep search): `docs-build/public/js/`. Edit those files directly.
 
 ## Pre-PR checklist
 
@@ -85,53 +71,32 @@ The page chrome is native to the docs site. Markup lives in `docs-build/src/data
 bun run docs:check          # Astro/TS type check + nav.yml reference validator
 bun run docs:test           # remark plugin unit tests (node --test)
 bun run lint-docs-links     # verifies in-product docsUrl() references resolve
+./bin/test-agent :only '[mage.docs-test]'   # if you touched mage.docs
 ```
 
-`docs:check` is the closest thing to a build-time linter for the markdown layer — frontmatter errors, plugin failures, broken `{% include_file %}` targets, and (after improvement 2c) misspelled `nav.yml` slugs all surface here.
-
-For the mage layer:
-
-```
-./bin/test-agent :only '[mage.docs-test]'
-```
+`docs:check` is the closest thing to a build-time linter for the markdown layer — frontmatter errors, plugin failures, broken `{% include_file %}` targets, and misspelled `nav.yml` slugs all surface here.
 
 ## Common pitfalls
 
-- **Transclusions render placeholders** — `bun run docs:dev` deliberately skips `docs-ensure-generated`. If a page `{% include_file %}`s the SDK typedoc, the dev server renders a placeholder blockquote and logs a warning. Use `bun run docs:preview` to see the rendered version.
-- **Plugin edits don't take effect** — Astro caches processed markdown in `.astro/data-store.json` keyed by source mtime. Plugin source changes don't invalidate the cache. `mage.docs/clear-astro-caches!` nukes `.astro`, `node_modules/.astro`, and `dist` on every `docs-build`; the dev server doesn't, so you need `docs:dev:clean` + restart after editing a plugin.
-- **Port 4321 is busy** — Astro pins it (`strictPort: true`). On macOS, force-quitting a terminal reparents the `node` process to launchd. `bun run docs:dev:clean` kills orphans.
-- **`docs:dev` silently doesn't regen** — by design, but easy to forget. If something looks wrong, try `docs:preview` once to confirm it's not just stale generated content.
-- **Worktree collision** — `docs-build-branch` fails if `__worktrees/docs-<slug>/` already exists and wasn't created by this script. Remove it manually or pass `--worktree-dir`.
-- **`docs-build-branch` re-uses worktrees that match the branch marker** — it does a hard reset to the resolved ref. Local uncommitted work inside the worktree will be discarded.
+- **Transclusions render placeholders in `docs:dev`** — by design, but easy to forget. If a page `{% include_file %}`s the SDK typedoc and looks broken, run `docs:preview` once to confirm it's not just stale generated content.
+- **SDK type changes don't appear after a rebuild** — lazy-regen is existence-based. Existing typedoc output won't refresh on its own; run `bun run docs:generate:embedding` to update it.
+- **Plugin edits look like no-ops** — Astro caches processed markdown in `.astro/data-store.json` keyed by source mtime; plugin source changes don't invalidate it. `docs-build` clears `.astro`, `node_modules/.astro`, and `dist` inline (`mage.docs` `build`, lines 229–233), but `docs:dev` does not — you need `docs:dev:clean` + restart after editing a plugin.
+- **Port 4321 is busy** — Astro pins it (`strictPort: true`). On macOS, force-quitting a terminal reparents `node` to launchd. `bun run docs:dev:clean` kills the orphan.
+- **Worktree leftover** — `docs-build-branch` refuses to overwrite an existing `__worktrees/docs-<slug>/`. Run `./bin/mage docs-clean-worktrees --force` to bulk-remove, or pass `--worktree-dir` to use a different path. Anything uncommitted *inside* a worktree is discarded by the next build's hard reset.
 
 ## Where things live
 
 - **Markdown content**: `docs/`
-- **Astro app**: `docs-build/`
-  - `astro.config.mjs` — markdown pipeline, base path, output config
-  - `nav.yml` — top-level sidebar and topbar
-  - `src/plugins/` — custom remark/rehype plugins
-  - `src/pages/[...slug].astro` — main route; `src/pages/api.astro` — Scalar API route
-  - `src/lib/nav.ts` — nav parser + utilities
-  - `src/layouts/DocsLayout.astro` — page chrome
-  - `src/components/` — `Header`, `Footer`, `Sidebar`, `TopBar`, `TableOfContents`, `FeedbackWidget`
-  - `src/data/{header,footer}.html` — header and footer markup (raw-imported)
-  - `src/styles/chrome.css` — header / footer / promo-banner styles (Bootstrap 5 subset scoped under `.bootstrap`)
-  - `scripts/generate-llms-files.mjs` — post-build llms.txt
-  - `scripts/validate-nav.mjs` — nav.yml reference validator (run by `docs:check`)
-- **Orchestrator**: `mage/src/mage/docs.clj`
-- **Mage task registration**: `bb.edn` (search for `docs-`)
-- **Tests**: `mage/test/mage/docs_test.clj`, `docs-build/src/plugins/*.test.mjs`
-- **CI**: none — there are no docs-related GitHub workflows yet. This is a prototype; CI will be wired up once the delivery hop to the marketing site is decided.
-- **User-facing dev guide**: `docs/developers-guide/docs.md`
+- **Astro app**: `docs-build/` — `astro.config.mjs` (markdown pipeline, base path), `nav.yml` (sidebar + topbar), `src/pages/[...slug].astro` and `src/pages/api.astro` (routes), `src/pages/llms.txt.ts` + `llms-[section]-full.txt.ts` (LLM index endpoints, emitted by Astro — no post-build step), `src/lib/nav.ts` (nav parser), `src/layouts/DocsLayout.astro`, `src/components/`, `src/plugins/`, `src/data/{header,footer}.html`, `src/styles/chrome.css`, `scripts/validate-nav.mjs` (run by `docs:check`).
+- **Orchestrator**: `mage/src/mage/docs.clj`; task registration in `bb.edn` (search `docs-`).
+- **Tests**: `mage/test/mage/docs_test.clj`, `docs-build/src/plugins/*.test.mjs`.
+- **User-facing dev guide**: `docs/developers-guide/docs.md`.
 
 ## Out of scope (today)
 
-These are deferred design questions, **not yet decided**:
+Deferred design questions — **not yet decided**, check with the user before touching:
 
-- Delivery hop from `docs-build/dist/` to the marketing site (`metabase.github.io`) — no CI publishes the build today; it's a developer-local prototype.
-- CI for docs builds (link checks, multi-version matrix, anything scheduled). All previously-checked-in docs workflows were removed to keep the prototype self-contained.
-- Fate of the legacy `docs.metabase.github.io` repo.
-- Inkeep search re-indexing (assumed to be configured in the Inkeep dashboard; out of repo).
-
-When working in any of those areas, check with the user first — they're tracking these explicitly.
+- **Delivery hop** from `docs-build/dist/` to the marketing site (`metabase.github.io`) — no CI publishes the build today; it's a developer-local prototype.
+- **CI for docs builds** — no link checks, multi-version matrix, or scheduled jobs. Previously-checked-in docs workflows were removed.
+- **Fate of the legacy `docs.metabase.github.io` repo.**
+- **Inkeep search re-indexing** — configured in the Inkeep dashboard, not this repo.

@@ -11,6 +11,7 @@ For most things you don't need to be in this directory — the build is
 orchestrated from the repo root via mage:
 
 ```
+bun run docs:help         # list every docs command with a one-line description
 bun run docs:dev          # hot-reload preview (skips auto-generated content)
 bun run docs:preview      # full preview with lazy regen of generated artifacts
 bun run docs:build        # production build (what CI runs)
