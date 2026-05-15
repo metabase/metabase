@@ -55,25 +55,43 @@
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 endpoint :force-recalculation true)))))
 
+(defn- nil-rating
+  "Component-level rating fields are always nil (only the catalog total is bucketed)."
+  [sub]
+  (assoc sub :rating nil :rating-label nil :rating-color nil))
+
+(defn- low-rating
+  "Sample scores in this file all land in the low band — keep one definition so a band tweak
+  here doesn't silently desync the fixtures."
+  [catalog]
+  (assoc catalog
+         :rating "low"
+         :rating-label "Low complexity"
+         :rating-color "green"
+         :components (update-vals (:components catalog) nil-rating)))
+
 (def ^:private sample-score
-  {:library  {:total 18
-              :components {:entity-count      {:measurement 1.0 :score 10}
-                           :name-collisions   {:measurement 0.0 :score 0}
-                           :synonym-pairs     {:measurement 0.0 :score 0}
-                           :field-count       {:measurement 8.0 :score 8}
-                           :repeated-measures {:measurement 0.0 :score 0}}}
-   :universe {:total 54
-              :components {:entity-count      {:measurement 2.0 :score 20}
-                           :name-collisions   {:measurement 0.0 :score 0}
-                           :synonym-pairs     {:measurement 0.0 :score 0}
-                           :field-count       {:measurement 24.0 :score 24}
-                           :repeated-measures {:measurement 5.0 :score 10}}}
-   :metabot  {:total 30
-              :components {:entity-count      {:measurement 1.0 :score 10}
-                           :name-collisions   {:measurement 0.0 :score 0}
-                           :synonym-pairs     {:measurement 0.0 :score 0}
-                           :field-count       {:measurement 20.0 :score 20}
-                           :repeated-measures {:measurement 0.0 :score 0}}}
+  {:library  (low-rating
+              {:total 18
+               :components {:entity-count      {:measurement 1.0 :score 10}
+                            :name-collisions   {:measurement 0.0 :score 0}
+                            :synonym-pairs     {:measurement 0.0 :score 0}
+                            :field-count       {:measurement 8.0 :score 8}
+                            :repeated-measures {:measurement 0.0 :score 0}}})
+   :universe (low-rating
+              {:total 54
+               :components {:entity-count      {:measurement 2.0 :score 20}
+                            :name-collisions   {:measurement 0.0 :score 0}
+                            :synonym-pairs     {:measurement 0.0 :score 0}
+                            :field-count       {:measurement 24.0 :score 24}
+                            :repeated-measures {:measurement 5.0 :score 10}}})
+   :metabot  (low-rating
+              {:total 30
+               :components {:entity-count      {:measurement 1.0 :score 10}
+                            :name-collisions   {:measurement 0.0 :score 0}
+                            :synonym-pairs     {:measurement 0.0 :score 0}
+                            :field-count       {:measurement 20.0 :score 20}
+                            :repeated-measures {:measurement 0.0 :score 0}}})
    :meta     {:formula-version 3
               :synonym-threshold 0.9}})
 
@@ -305,11 +323,12 @@
                 ":universe must be unscoped regardless of Metabot.collection_id")))))))
 
 (def ^:private empty-catalog
-  {:total 0 :components {:entity-count      {:measurement 0.0 :score 0}
-                         :name-collisions   {:measurement 0.0 :score 0}
-                         :synonym-pairs     {:measurement 0.0 :score 0}
-                         :field-count       {:measurement 0.0 :score 0}
-                         :repeated-measures {:measurement 0.0 :score 0}}})
+  (low-rating
+   {:total 0 :components {:entity-count      {:measurement 0.0 :score 0}
+                          :name-collisions   {:measurement 0.0 :score 0}
+                          :synonym-pairs     {:measurement 0.0 :score 0}
+                          :field-count       {:measurement 0.0 :score 0}
+                          :repeated-measures {:measurement 0.0 :score 0}}}))
 
 (def ^:private stub-scores
   {:library empty-catalog :universe empty-catalog :metabot empty-catalog

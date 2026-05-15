@@ -16,21 +16,34 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private SubScore
-  "Either a computed sub-score (`:measurement` + `:score`) or an uncomputed one (`:error`)."
+  "Either a computed sub-score (`:measurement` + `:score`) or an uncomputed one (`:error`).
+  `:rating`/`:rating_label`/`:rating_color` are always nil at the sub-component level — only the
+  catalog `:total` is bucketed today. Keys are present (not omitted) so the FE doesn't have to
+  branch on presence."
   [:or
    [:map {:closed true}
-    [:measurement number?]
-    [:score       nat-int?]]
+    [:measurement  number?]
+    [:score        nat-int?]
+    [:rating       nil?]
+    [:rating_label nil?]
+    [:rating_color nil?]]
    [:map {:closed true}
-    [:measurement nil?]
-    [:score       nil?]
-    [:error       string?]]])
+    [:measurement  nil?]
+    [:score        nil?]
+    [:error        string?]
+    [:rating       nil?]
+    [:rating_label nil?]
+    [:rating_color nil?]]])
 
 (def ^:private Catalog
   "One catalog's total + per-component breakdown.
-  `:total` is nil when any sub-score couldn't be computed — failures cascade through aggregates."
+  `:total` is nil when any sub-score couldn't be computed — failures cascade through aggregates,
+  and the three rating keys cascade nil alongside it."
   [:map
-   [:total [:maybe nat-int?]]
+   [:total        [:maybe nat-int?]]
+   [:rating       [:maybe [:enum "low" "medium" "high"]]]
+   [:rating_label [:maybe string?]]
+   [:rating_color [:maybe [:enum "green" "orange" "red"]]]
    [:components
     [:map
      [:entity_count      SubScore]

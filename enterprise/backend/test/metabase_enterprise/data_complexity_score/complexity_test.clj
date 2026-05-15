@@ -50,13 +50,21 @@
      (mapv #(when-let [v (get name->vec-literal %)] (float-array v)) names))))
 
 (deftest ^:parallel score-catalog-pure-test
-  (testing "empty catalog scores zero"
-    (is (=? {:total 0
-             :components {:entity-count      {:measurement 0.0 :score 0}
-                          :name-collisions   {:measurement 0.0 :score 0}
-                          :synonym-pairs     {:measurement 0.0 :score 0}
-                          :field-count       {:measurement 0.0 :score 0}
-                          :repeated-measures {:measurement 0.0 :score 0}}}
+  (testing "empty catalog scores zero and lands in the low-complexity band"
+    (is (=? {:total        0
+             :rating       "low"
+             :rating-label "Low complexity"
+             :rating-color "green"
+             :components   {:entity-count      {:measurement 0.0 :score 0
+                                                :rating nil :rating-label nil :rating-color nil}
+                            :name-collisions   {:measurement 0.0 :score 0
+                                                :rating nil :rating-label nil :rating-color nil}
+                            :synonym-pairs     {:measurement 0.0 :score 0
+                                                :rating nil :rating-label nil :rating-color nil}
+                            :field-count       {:measurement 0.0 :score 0
+                                                :rating nil :rating-label nil :rating-color nil}
+                            :repeated-measures {:measurement 0.0 :score 0
+                                                :rating nil :rating-label nil :rating-color nil}}}
             (#'complexity/score-catalog [] nil))))
 
   (testing "entity count contributes +10 per entity"
@@ -98,7 +106,39 @@
   (testing "nil embedder disables synonym scoring"
     (let [es [(entity :name "customers") (entity :name "clients")]]
       (is (=? {:components {:synonym-pairs {:measurement 0.0 :score 0}}}
-              (#'complexity/score-catalog es nil))))))
+              (#'complexity/score-catalog es nil)))))
+
+  (testing "catalog total bucketed into the right rating band"
+    ;; 100 entities at weight 10 = 1000 → top of `:medium`. Avoids touching unrelated axes.
+    (let [es (vec (for [i (range 100)] (entity :name (str "t" i))))]
+      (is (=? {:total        1000
+               :rating       "medium"
+               :rating-label "Medium complexity"
+               :rating-color "orange"}
+              (#'complexity/score-catalog es nil)))))
+
+  (testing "catalog total cascading nil zeroes out the rating fields too"
+    ;; An exploding embedder cascades nil through `:total`; the rating must follow suit so a nil
+    ;; total can't sneak past as `:low`.
+    (let [es       [(entity :name "customers") (entity :name "clients")]
+          embedder (fn [_] (throw (ex-info "boom" {})))]
+      (is (=? {:total        nil
+               :rating       nil
+               :rating-label nil
+               :rating-color nil}
+              (#'complexity/score-catalog es embedder))))))
+
+(deftest ^:parallel rating-for-score-boundaries-test
+  (testing "score buckets respect the inclusive upper bounds of `complexity-thresholds`"
+    (doseq [[score expected] [[0     {:rating "low"    :rating-label "Low complexity"    :rating-color "green"}]
+                              [999   {:rating "low"    :rating-label "Low complexity"    :rating-color "green"}]
+                              [1000  {:rating "medium" :rating-label "Medium complexity" :rating-color "orange"}]
+                              [9999  {:rating "medium" :rating-label "Medium complexity" :rating-color "orange"}]
+                              [10000 {:rating "high"   :rating-label "High complexity"   :rating-color "red"}]
+                              [1e9   {:rating "high"   :rating-label "High complexity"   :rating-color "red"}]
+                              [nil   {:rating nil      :rating-label nil                 :rating-color nil}]]]
+      (testing (str "score=" score)
+        (is (= expected (#'complexity/rating-for-score score)))))))
 
 (deftest ^:parallel score-from-entities-metabot-fallback-test
   (testing "score-from-entities marks :metabot as a universe fallback when no metabot-entities are passed"
@@ -293,13 +333,13 @@
                     :model/Table    _           {:db_id db-id :name "contributes_to_universe" :active true}]
        (let [{:keys [library universe]} (complexity/complexity-scores :embedder nil)]
          (testing "library is empty (no collection tree)"
-           (is (= {:total 0
-                   :components {:entity-count      {:measurement 0.0 :score 0}
-                                :name-collisions   {:measurement 0.0 :score 0}
-                                :synonym-pairs     {:measurement 0.0 :score 0}
-                                :field-count       {:measurement 0.0 :score 0}
-                                :repeated-measures {:measurement 0.0 :score 0}}}
-                  library)))
+           (is (=? {:total      0
+                    :components {:entity-count      {:measurement 0.0 :score 0}
+                                 :name-collisions   {:measurement 0.0 :score 0}
+                                 :synonym-pairs     {:measurement 0.0 :score 0}
+                                 :field-count       {:measurement 0.0 :score 0}
+                                 :repeated-measures {:measurement 0.0 :score 0}}}
+                   library)))
          (testing "universe still enumerates appdb content (our temp table + whatever else is there)"
            (is (pos? (:total universe)))))))))
 
@@ -945,13 +985,16 @@
           ;;  field-count        orders(2) + subscriptions(1) + others(0) = 3 × 1 = 3
           ;;  repeated-measures  "revenue" on orders + subscriptions = 1 × 2 = 2
           ;;  total              60 + 100 + 50 + 3 + 2 = 215
-          (is (= {:total      215
-                  :components {:entity-count      {:measurement 6.0 :score 60}
-                               :name-collisions   {:measurement 1.0 :score 100}
-                               :synonym-pairs     {:measurement 1.0 :score 50}
-                               :field-count       {:measurement 3.0 :score 3}
-                               :repeated-measures {:measurement 1.0 :score 2}}}
-                 library)))
+          (is (=? {:total        215
+                   :rating       "low"
+                   :rating-label "Low complexity"
+                   :rating-color "green"
+                   :components   {:entity-count      {:measurement 6.0 :score 60}
+                                  :name-collisions   {:measurement 1.0 :score 100}
+                                  :synonym-pairs     {:measurement 1.0 :score 50}
+                                  :field-count       {:measurement 3.0 :score 3}
+                                  :repeated-measures {:measurement 1.0 :score 2}}}
+                  library)))
         (testing "universe is a strict superset of library on every component: every measurement and score is higher"
           ;; Note: :synonym-pairs is monotonic on this fixture but not in general — score-synonym-pairs
           ;; dedupes by normalized name and picks one embedding per name, so a universe-only entity
