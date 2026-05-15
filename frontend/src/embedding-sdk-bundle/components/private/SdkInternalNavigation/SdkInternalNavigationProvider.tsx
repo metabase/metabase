@@ -12,13 +12,12 @@ import { SdkDashboardStyledWrapper } from "embedding-sdk-bundle/components/publi
 import { useSdkDispatch } from "embedding-sdk-bundle/store";
 import { setInitialDashboardTabId } from "embedding-sdk-bundle/store/reducer";
 import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
-import { setParameterValue } from "metabase/dashboard/actions";
+import { selectTab, setParameterValue } from "metabase/dashboard/actions";
 import {
   getDashboardComplete,
   getSelectedTabId,
 } from "metabase/dashboard/selectors";
-import { useSelector } from "metabase/redux";
-import { selectTab } from "metabase/redux/dashboard";
+import { useSelector } from "metabase/lib/redux";
 import { Stack } from "metabase/ui";
 
 import { SdkQuestion } from "../../public/SdkQuestion";
