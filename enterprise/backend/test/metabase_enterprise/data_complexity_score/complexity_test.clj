@@ -1051,6 +1051,38 @@
             (is (= "stale" (settings/data-complexity-scoring-last-fingerprint))
                 "fingerprint preserved — next boot / cron will retry the emission")))))))
 
+(deftest ^:sequential scoring-gate-matrix-test
+  (testing "scoring runs iff :data-complexity-score premium feature OR deprecated setting is on"
+    (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
+      (doseq [[label premium-features setting-value should-run?]
+              [["both gates on → run"           #{:data-complexity-score} true  true]
+               ["feature on, setting off → run" #{:data-complexity-score} false true]
+               ["feature off, setting on → run" #{}                       true  true]
+               ["both gates off → skip"         #{}                       false false]]]
+        (testing label
+          (mt/with-premium-features premium-features
+            (mt/with-temporary-setting-values [data-complexity-scoring-enabled         setting-value
+                                               data-complexity-scoring-last-fingerprint "stale"
+                                               data-complexity-scoring-claim            ""]
+              (testing "run-scoring! direct path"
+                (let [scoring-ran? (atom false)]
+                  (mt/with-dynamic-fn-redefs [complexity/complexity-scores
+                                              (fn [& _]
+                                                (reset! scoring-ran? true)
+                                                (stub-result true))]
+                    (#'task.complexity-score/run-scoring! "gate-matrix-test-fp")
+                    (is (= should-run? @scoring-ran?)
+                        (format "run-scoring! should %sinvoke complexity-scores for [%s]"
+                                (if should-run? "" "NOT ") label)))))
+              (testing "with-scoring-claim! cron/boot path"
+                (let [inner-ran? (atom false)]
+                  (#'task.complexity-score/with-scoring-claim!
+                   {}
+                   (fn [_fp] (reset! inner-ran? true)))
+                  (is (= should-run? @inner-ran?)
+                      (format "with-scoring-claim! should %sacquire a claim for [%s]"
+                              (if should-run? "" "NOT ") label)))))))))))
+
 (deftest ^:sequential run-scoring-keeps-fingerprint-stale-when-persistence-fails-test
   (testing "persistence is part of a successful run now — if the cache write fails we must retry"
     (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
