@@ -165,11 +165,6 @@ describe("FieldFingerprintInfo", () => {
     const idField = metadata.field(PRODUCTS.ID)!;
     const field = idField.clone();
     field.fingerprint = {
-      // Original test had `global` nested inside `type` and a non-existent
-      // `type/ID` key — structurally wrong but harmless since the component
-      // only reads `type/Number` and `type/DateTime`. Reshape to valid
-      // FieldFingerprint while preserving the test's intent: the component
-      // renders nothing for fingerprints without a recognized type.
       global: {
         "distinct-count": 123,
       },
