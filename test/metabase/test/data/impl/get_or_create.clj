@@ -101,10 +101,22 @@
                                (throw (Exception. (format "Field '%s' not loaded from definition:\n%s"
                                                           field-name
                                                           (u/pprint-to-str field-definition))))))]
-          (doseq [property [:visibility-type :semantic-type :effective-type :coercion-strategy]]
+          (doseq [property [:visibility-type :semantic-type]]
             (when-let [v (get field-definition property)]
               (log/debugf "SET %s %s.%s -> %s" property table-name field-name v)
-              (t2/update! :model/Field (:id @field) {(keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)}))))))))
+              (t2/update! :model/Field (:id @field) {(keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)})))
+          ;; effective-type and coercion-strategy must be set atomically — the GHY-3388 model
+          ;; invariant requires effective_type=base_type when coercion_strategy is nil, so a
+          ;; sequence that sets effective_type alone first would be reverted before
+          ;; coercion_strategy lands.
+          (let [eff-type (:effective-type field-definition)
+                coerce   (:coercion-strategy field-definition)
+                upd      (cond-> {}
+                           eff-type (assoc :effective_type (u/qualified-name eff-type))
+                           coerce   (assoc :coercion_strategy (u/qualified-name coerce)))]
+            (when (seq upd)
+              (log/debugf "SET effective-type/coercion-strategy %s.%s -> %s" table-name field-name upd)
+              (t2/update! :model/Field (:id @field) upd))))))))
 
 (def ^:private create-database-timeout-ms
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
