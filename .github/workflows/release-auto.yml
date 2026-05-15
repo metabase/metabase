@@ -125,7 +125,7 @@ jobs:
 
             core.setOutput('should_release', 'false');
 
-  tag-for-release:
+  trigger-release:
     needs: prepare
     if: ${{ needs.prepare.outputs.should_release == 'true' }}
     permissions:
