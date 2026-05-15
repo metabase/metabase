@@ -35,30 +35,50 @@
    :repeated-measure 2})
 
 (def complexity-thresholds
-  "Catalog-total rating bands. Applied at the API boundary, not persisted."
-  [{:rating "low"    :label "Low complexity"    :max 999}
-   {:rating "medium" :label "Medium complexity" :max 9999}
-   {:rating "high"   :label "High complexity"}])
+  "Rating bands keyed by catalog field: `:total` for the catalog total, component keys for
+  sub-component scores. Only `:total` is populated for now."
+  {:total [{:rating "low"    :label "Low complexity"    :max 999}
+           {:rating "medium" :label "Medium complexity" :max 9999}
+           {:rating "high"   :label "High complexity"}]})
+
+(def ^:private nil-rating {:rating nil :rating-label nil})
+
+(defn- ->rating-table
+  "Bundle `bands` with a pre-built `:rating`→presentation `:lookup`."
+  [bands]
+  {:bands  bands
+   :lookup (u/for-map [{:keys [rating label]} bands]
+             [rating {:rating rating :rating-label label}])})
+
+(def ^:private rating-tables
+  (update-vals complexity-thresholds ->rating-table))
 
 (defn rating-for-score
-  "Nil score cascades nil through both return keys."
-  [score]
-  (let [band (when (some? score)
-               (some (fn [{:keys [max] :as b}] (when (or (nil? max) (<= score max)) b))
-                     complexity-thresholds))]
-    {:rating       (:rating band)
-     :rating-label (:label band)}))
+  "Presentation for `score` from `rating-table`, or `nil-rating` when nothing matches."
+  [{:keys [bands lookup]} score]
+  (or (when (some? score)
+        (some (fn [{:keys [rating max]}]
+                (when (or (nil? max) (<= score max))
+                  (lookup rating)))
+              bands))
+      nil-rating))
+
+(defn decorate-with-ratings*
+  "Rate `:total` and each `:components` value of one catalog via the matching `tables` entry."
+  [tables {:keys [total] :as catalog}]
+  (-> catalog
+      (merge (rating-for-score (tables :total) total))
+      (update :components
+              #(reduce-kv (fn [m k {:keys [score] :as c}]
+                            (assoc m k (merge c (rating-for-score (tables k) score))))
+                          {} %))))
 
 ;; TODO: also emit the rating onto Snowplow events so benchmark consumers can correlate the band
 ;; against the raw total without re-applying the thresholds.
 (defn decorate-with-ratings
-  "Decorate each catalog total with rating fields; sub-components get present-but-nil rating keys."
+  "Decorate each catalog with rating fields per `complexity-thresholds`."
   [score]
-  (let [nil-rating {:rating nil :rating-label nil}
-        decorate  (fn [{:keys [total] :as catalog}]
-                    (-> catalog
-                        (merge (rating-for-score total))
-                        (update :components update-vals #(merge % nil-rating))))]
+  (let [decorate (partial decorate-with-ratings* rating-tables)]
     (reduce #(u/update-if-exists %1 %2 decorate) score [:library :universe :metabot])))
 
 (def ^:private component->group

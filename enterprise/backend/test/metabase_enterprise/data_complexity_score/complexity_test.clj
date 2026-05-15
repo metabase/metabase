@@ -101,26 +101,35 @@
               (#'complexity/score-catalog es nil))))))
 
 (deftest ^:parallel complexity-thresholds-well-formed-test
-  (let [bands         complexity/complexity-thresholds
-        bounded       (butlast bands)
-        unbounded     (last bands)]
-    (testing "all but the last entry have a :max, in strictly ascending order"
-      (is (every? :max bounded))
-      (is (apply < (map :max bounded))))
-    (testing "the last entry is the only one without a :max"
-      (is (not (contains? unbounded :max))))))
+  (testing "every threshold table: last entry is unbounded; earlier entries have strictly ascending :max"
+    (doseq [[k bands] complexity/complexity-thresholds
+            :let [bounded   (butlast bands)
+                  unbounded (last bands)]]
+      (testing (str "bands for " k)
+        (is (every? :max bounded))
+        (is (not (contains? unbounded :max)))
+        (when (next bounded)
+          (is (apply < (map :max bounded))))))))
 
 (deftest ^:parallel rating-for-score-boundaries-test
-  (testing "score buckets respect the inclusive upper bounds of `complexity-thresholds`"
-    (doseq [[score expected] [[0     {:rating "low"    :rating-label "Low complexity"}]
-                              [999   {:rating "low"    :rating-label "Low complexity"}]
-                              [1000  {:rating "medium" :rating-label "Medium complexity"}]
-                              [9999  {:rating "medium" :rating-label "Medium complexity"}]
-                              [10000 {:rating "high"   :rating-label "High complexity"}]
-                              [1e9   {:rating "high"   :rating-label "High complexity"}]
-                              [nil   {:rating nil      :rating-label nil}]]]
-      (testing (str "score=" score)
-        (is (= expected (complexity/rating-for-score score)))))))
+  (let [expectations
+        {:total [[0     {:rating "low"    :rating-label "Low complexity"}]
+                 [999   {:rating "low"    :rating-label "Low complexity"}]
+                 [1000  {:rating "medium" :rating-label "Medium complexity"}]
+                 [9999  {:rating "medium" :rating-label "Medium complexity"}]
+                 [10000 {:rating "high"   :rating-label "High complexity"}]
+                 [1e9   {:rating "high"   :rating-label "High complexity"}]
+                 [nil   {:rating nil      :rating-label nil}]]}]
+    (testing "expectations cover every rating-table key (add cases when component bands land)"
+      (is (= (set (keys @#'complexity/rating-tables)) (set (keys expectations)))))
+    (doseq [[k cases] expectations
+            :let [table (get @#'complexity/rating-tables k)]
+            [score expected] cases]
+      (testing (str k " score=" score)
+        (is (= expected (complexity/rating-for-score table score))))))
+  (testing "nil or empty rating-table falls through to nil-rating"
+    (is (= {:rating nil :rating-label nil} (complexity/rating-for-score nil 12345)))
+    (is (= {:rating nil :rating-label nil} (complexity/rating-for-score {} 12345)))))
 
 (deftest ^:parallel decorate-with-ratings-test
   (testing "catalog totals get rating fields; components get present-but-nil rating keys"
@@ -148,6 +157,30 @@
   (testing "missing catalogs are left alone (no rating fields injected)"
     (is (= {:meta {:formula-version 1}}
            (complexity/decorate-with-ratings {:meta {:formula-version 1}})))))
+
+(deftest ^:parallel decorate-with-ratings*-component-bands-test
+  (testing "components with bands get rated; components without bands cascade nil-rating"
+    (let [rating-tables (update-vals
+                         {:total        [{:rating "small" :label "Small" :max 100}
+                                         {:rating "big"   :label "Big"}]
+                          :entity-count [{:rating "few"  :label "Few"  :max 5}
+                                         {:rating "many" :label "Many"}]}
+                         #'complexity/->rating-table)
+          catalog       {:total      150
+                         :components {:entity-count {:measurement 8.0  :score 8}
+                                      :field-count  {:measurement 50.0 :score 50}}}]
+      (is (=? {:total        150
+               :rating       "big"
+               :rating-label "Big"
+               :components   {:entity-count {:measurement  8.0
+                                             :score        8
+                                             :rating       "many"
+                                             :rating-label "Many"}
+                              :field-count  {:measurement  50.0
+                                             :score        50
+                                             :rating       nil
+                                             :rating-label nil}}}
+              (complexity/decorate-with-ratings* rating-tables catalog))))))
 
 (deftest ^:parallel score-from-entities-metabot-fallback-test
   (testing "score-from-entities marks :metabot as a universe fallback when no metabot-entities are passed"
