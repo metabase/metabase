@@ -6,8 +6,8 @@ import { t } from "ttag";
 import { Button } from "metabase/common/components/Button";
 import L from "metabase/common/components/List/List.module.css";
 import CS from "metabase/css/core/index.css";
-import type { IconName } from "metabase/ui";
 import { Ellipsified, Icon, TextInputBlurChange } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./ReferenceHeader.module.css";
 

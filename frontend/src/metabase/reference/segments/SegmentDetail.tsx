@@ -20,7 +20,7 @@ import {
   getMetadata,
 } from "metabase/selectors/metadata";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Segment, User } from "metabase-types/api";
+import type { User } from "metabase-types/api";
 
 import S from "../components/Detail.module.css";
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
@@ -265,17 +265,21 @@ const SegmentDetail = (props: SegmentDetailProps) => {
                     />
                   </li>
                 )}
-                {table && !isEditing && (
-                  <li className={cx(CS.relative, CS.mb4)}>
-                    <Formula
-                      type="segment"
-                      entity={entity as Segment}
-                      isExpanded={Boolean(isFormulaExpanded)}
-                      expandFormula={expandFormula}
-                      collapseFormula={collapseFormula}
-                    />
-                  </li>
-                )}
+                {table &&
+                  !isEditing &&
+                  entity.definition &&
+                  entity.table_id != null && (
+                    <li className={cx(CS.relative, CS.mb4)}>
+                      <Formula
+                        type="segment"
+                        definition={entity.definition}
+                        tableId={entity.table_id}
+                        isExpanded={Boolean(isFormulaExpanded)}
+                        expandFormula={expandFormula}
+                        collapseFormula={collapseFormula}
+                      />
+                    </li>
+                  )}
               </List>
             </div>
           </div>

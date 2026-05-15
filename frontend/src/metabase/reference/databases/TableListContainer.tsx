@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { Location } from "history";
 import { Component } from "react";
 
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
@@ -8,8 +9,14 @@ import * as metadataActions from "metabase/redux/metadata";
 import TableList from "metabase/reference/databases/TableList";
 import * as actions from "metabase/reference/reference";
 
-import type { ReferenceRouteProps, StateWithReference } from "../selectors";
+import type { ClearStateProps, FetchProps } from "../reference";
+import type {
+  ReferenceRouteParams,
+  ReferenceRouteProps,
+  StateWithReference,
+} from "../selectors";
 import { getDatabase, getDatabaseId, getIsEditing } from "../selectors";
+import type { StubbedDatabase } from "../types";
 
 import DatabaseSidebar from "./DatabaseSidebar";
 
@@ -27,20 +34,26 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-interface TableListContainerProps {
-  location: { pathname: string };
+interface TableListContainerProps extends FetchProps, ClearStateProps {
+  // From React Router
+  params: ReferenceRouteParams;
+  location: Location;
 
-  database: any;
+  // From route definition / parent
+  style: React.CSSProperties;
+
+  // From mapStateToProps
+  database: StubbedDatabase;
   databaseId: number;
   isEditing?: boolean;
+
+  // From mapDispatchToProps (metadataActions spread)
+  fetchDatabaseMetadata: (id: number) => Promise<unknown>;
 }
 
 class TableListContainer extends Component<TableListContainerProps> {
-  async fetchContainerData() {
-    await actions.wrappedFetchDatabaseMetadata(
-      this.props as any,
-      this.props.databaseId,
-    );
+  fetchContainerData() {
+    actions.wrappedFetchDatabaseMetadata(this.props, this.props.databaseId);
   }
 
   UNSAFE_componentWillMount() {
@@ -52,7 +65,7 @@ class TableListContainer extends Component<TableListContainerProps> {
       return;
     }
 
-    actions.clearState(newProps as any);
+    actions.clearState(newProps);
   }
 
   render() {
@@ -64,13 +77,13 @@ class TableListContainer extends Component<TableListContainerProps> {
         style={isEditing ? { paddingTop: "43px" } : {}}
         sidebar={<DatabaseSidebar database={database} />}
       >
-        {}
-        <TableList {...(this.props as any)} />
+        <TableList {...this.props} />
       </SidebarLayout>
     );
   }
 }
 
+// connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,

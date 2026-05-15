@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { Location } from "history";
 import { Component } from "react";
 
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
@@ -7,15 +8,16 @@ import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
 import SegmentRevisions from "metabase/reference/segments/SegmentRevisions";
+import type { User } from "metabase-types/api";
 
-import type { ReferenceRouteProps, StateWithReference } from "../selectors";
-import {
-  getDatabaseId,
-  getIsEditing,
-  getSegment,
-  getSegmentId,
-  getUser,
+import type { ClearStateProps, FetchProps } from "../reference";
+import type {
+  ReferenceRouteParams,
+  ReferenceRouteProps,
+  StateWithReference,
 } from "../selectors";
+import { getIsEditing, getSegment, getSegmentId, getUser } from "../selectors";
+import type { StubbedSegment } from "../types";
 
 import SegmentSidebar from "./SegmentSidebar";
 
@@ -26,7 +28,6 @@ const mapStateToProps = (
   user: getUser(state),
   segment: getSegment(state, props),
   segmentId: getSegmentId(state, props),
-  databaseId: getDatabaseId(state, props),
   isEditing: getIsEditing(state),
 });
 
@@ -35,22 +36,29 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-interface SegmentRevisionsContainerProps {
-  location: { pathname: string };
+interface SegmentRevisionsContainerProps extends FetchProps, ClearStateProps {
+  // From React Router
+  params: ReferenceRouteParams;
+  location: Location;
 
-  user: any;
+  // From route definition / parent
+  style: React.CSSProperties;
 
-  segment: any;
+  // From mapStateToProps
+  user: User | null;
+  segment: StubbedSegment;
   segmentId: number;
   isEditing?: boolean;
+
+  // From mapDispatchToProps
+  fetchSegments: (id?: number) => Promise<unknown>;
+  fetchSegmentRevisions: (id: number) => Promise<unknown>;
+  fetchSegmentTable: (id: number) => Promise<unknown>;
 }
 
 class SegmentRevisionsContainer extends Component<SegmentRevisionsContainerProps> {
-  async fetchContainerData() {
-    await actions.wrappedFetchSegmentRevisions(
-      this.props as any,
-      this.props.segmentId,
-    );
+  fetchContainerData() {
+    actions.wrappedFetchSegmentRevisions(this.props, this.props.segmentId);
   }
 
   UNSAFE_componentWillMount() {
@@ -62,7 +70,7 @@ class SegmentRevisionsContainer extends Component<SegmentRevisionsContainerProps
       return;
     }
 
-    actions.clearState(newProps as any);
+    actions.clearState(newProps);
   }
 
   render() {
@@ -74,13 +82,13 @@ class SegmentRevisionsContainer extends Component<SegmentRevisionsContainerProps
         style={isEditing ? { paddingTop: "43px" } : {}}
         sidebar={<SegmentSidebar segment={segment} user={user} />}
       >
-        {}
-        <SegmentRevisions {...(this.props as any)} />
+        <SegmentRevisions {...this.props} />
       </SidebarLayout>
     );
   }
 }
 
+// connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,

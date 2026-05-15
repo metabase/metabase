@@ -13,13 +13,14 @@ import {
   SemanticTypePicker,
 } from "metabase/metadata/components";
 import { getFieldCurrency } from "metabase/metadata/utils/field";
-import type { IconName } from "metabase/ui";
 import { Box, Icon } from "metabase/ui";
 import { isTypeCurrency, isTypeFK } from "metabase-lib/v1/types/utils/isa";
 import type {
   Field as ApiField,
   DatabaseId,
+  FieldFormattingSettings,
   FieldId,
+  IconName,
   NormalizedField,
 } from "metabase-types/api";
 
@@ -33,7 +34,7 @@ interface FieldFormFields {
   description: FormFieldEntry<string | null>;
   semantic_type: FormFieldEntry<string | null>;
   fk_target_field_id: FormFieldEntry<FieldId | null>;
-  settings: FormFieldEntry<Record<string, unknown>>;
+  settings: FormFieldEntry<FieldFormattingSettings>;
 }
 
 interface FieldProps {
@@ -157,9 +158,7 @@ const Field = ({
             <Box mt="sm">
               <CurrencyPicker
                 value={getFieldCurrency(
-                  (formField.settings.value ?? field.settings) as Parameters<
-                    typeof getFieldCurrency
-                  >[0],
+                  formField.settings.value ?? field.settings,
                 )}
                 fw="bold"
                 onChange={(currency) => {

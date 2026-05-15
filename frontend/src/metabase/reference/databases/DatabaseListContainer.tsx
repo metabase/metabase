@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { Location } from "history";
 import { Component } from "react";
 
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
@@ -9,6 +10,7 @@ import DatabaseList from "metabase/reference/databases/DatabaseList";
 import BaseSidebar from "metabase/reference/guide/BaseSidebar";
 import * as actions from "metabase/reference/reference";
 
+import type { ClearStateProps, FetchProps } from "../reference";
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import { getDatabaseId, getIsEditing } from "../selectors";
 
@@ -25,13 +27,17 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-interface DatabaseListContainerProps {
-  location: { pathname: string };
+interface DatabaseListContainerProps extends FetchProps, ClearStateProps {
+  // From React Router
+  location: Location;
+
+  // From mapDispatchToProps (metadataActions spread)
+  fetchRealDatabases: (args: unknown) => Promise<unknown>;
 }
 
 class DatabaseListContainer extends Component<DatabaseListContainerProps> {
-  async fetchContainerData() {
-    await actions.wrappedFetchDatabases(this.props as any);
+  fetchContainerData() {
+    actions.wrappedFetchDatabases(this.props);
   }
 
   UNSAFE_componentWillMount() {
@@ -43,7 +49,7 @@ class DatabaseListContainer extends Component<DatabaseListContainerProps> {
       return;
     }
 
-    actions.clearState(newProps as any);
+    actions.clearState(newProps);
   }
 
   render() {
@@ -52,13 +58,13 @@ class DatabaseListContainer extends Component<DatabaseListContainerProps> {
         className={cx(CS.flexFull, CS.relative)}
         sidebar={<BaseSidebar />}
       >
-        {}
-        <DatabaseList {...(this.props as any)} />
+        <DatabaseList />
       </SidebarLayout>
     );
   }
 }
 
+// connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,

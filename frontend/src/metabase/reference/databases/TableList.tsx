@@ -71,11 +71,11 @@ const createSchemaSeparator = (table: TableLike) => (
   <li className={R.schemaSeparator}>{table.schema_name}</li>
 );
 
-export const separateTablesBySchema = <T extends TableLike>(
+export const separateTablesBySchema = <T extends TableLike, S, I>(
   tables: Record<string, T> | T[],
-  createSchemaSeparator: (table: T) => unknown,
-  createListItem: (table: T) => unknown,
-): Array<unknown> => {
+  createSchemaSeparator: (table: T) => S,
+  createListItem: (table: T) => I,
+): Array<I | [S, I] | undefined> => {
   const sortedTables = _.chain(tables)
     .sortBy((table) => table.name)
     .sortBy((table) => table.schema_name)
@@ -124,11 +124,11 @@ class TableList extends Component<TableListProps> {
               <div className={cx(CS.wrapper, CS.wrapperTrim)}>
                 <List>
                   {!hasSingleSchema
-                    ? (separateTablesBySchema(
+                    ? separateTablesBySchema(
                         tables,
                         createSchemaSeparator,
                         createListItem,
-                      ) as React.ReactNode[])
+                      )
                     : _.sortBy(tables, "name").map(
                         (table) =>
                           table &&

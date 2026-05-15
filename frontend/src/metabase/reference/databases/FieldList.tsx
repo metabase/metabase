@@ -14,9 +14,13 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import Field from "metabase/reference/components/Field";
 import F from "metabase/reference/components/Field.module.css";
 import * as actions from "metabase/reference/reference";
-import type { IconName } from "metabase/ui";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
-import type { FieldId, NormalizedField, User } from "metabase-types/api";
+import type {
+  FieldId,
+  IconName,
+  NormalizedField,
+  User,
+} from "metabase-types/api";
 
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {

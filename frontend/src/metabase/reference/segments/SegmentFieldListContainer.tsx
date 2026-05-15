@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { Location } from "history";
 import { Component } from "react";
 
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
@@ -7,8 +8,14 @@ import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
 import SegmentFieldList from "metabase/reference/segments/SegmentFieldList";
+import type { User } from "metabase-types/api";
 
-import type { ReferenceRouteProps, StateWithReference } from "../selectors";
+import type { ClearStateProps, FetchProps } from "../reference";
+import type {
+  ReferenceRouteParams,
+  ReferenceRouteProps,
+  StateWithReference,
+} from "../selectors";
 import {
   getIsEditing,
   getSegment,
@@ -16,6 +23,7 @@ import {
   getTable,
   getUser,
 } from "../selectors";
+import type { StubbedSegment, StubbedTable } from "../types";
 
 import SegmentSidebar from "./SegmentSidebar";
 
@@ -35,22 +43,30 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-interface SegmentFieldListContainerProps {
-  location: { pathname: string };
+interface SegmentFieldListContainerProps extends FetchProps, ClearStateProps {
+  // From React Router
+  params: ReferenceRouteParams;
+  location: Location;
 
-  user: any;
+  // From route definition / parent
+  style: React.CSSProperties;
 
-  segment: any;
+  // From mapStateToProps
+  user: User | null;
+  segment: StubbedSegment;
   segmentId: number;
+  table: StubbedTable;
   isEditing?: boolean;
+
+  // From mapDispatchToProps
+  fetchSegments: (id?: number) => Promise<unknown>;
+  fetchSegmentFields: (id: number) => Promise<unknown>;
+  fetchSegmentTable: (id: number) => Promise<unknown>;
 }
 
 class SegmentFieldListContainer extends Component<SegmentFieldListContainerProps> {
-  async fetchContainerData() {
-    await actions.wrappedFetchSegmentFields(
-      this.props as any,
-      this.props.segmentId,
-    );
+  fetchContainerData() {
+    actions.wrappedFetchSegmentFields(this.props, this.props.segmentId);
   }
 
   UNSAFE_componentWillMount() {
@@ -62,7 +78,7 @@ class SegmentFieldListContainer extends Component<SegmentFieldListContainerProps
       return;
     }
 
-    actions.clearState(newProps as any);
+    actions.clearState(newProps);
   }
 
   render() {
@@ -74,13 +90,13 @@ class SegmentFieldListContainer extends Component<SegmentFieldListContainerProps
         style={isEditing ? { paddingTop: "43px" } : {}}
         sidebar={<SegmentSidebar segment={segment} user={user} />}
       >
-        {}
-        <SegmentFieldList {...(this.props as any)} />
+        <SegmentFieldList {...this.props} />
       </SidebarLayout>
     );
   }
 }
 
+// connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,

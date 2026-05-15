@@ -71,7 +71,7 @@ class SegmentRevisions extends Component<SegmentRevisionsProps> {
 
     const entity = segment;
 
-    const userColorAssignments =
+    const userColorAssignments: Record<string | number, string> =
       user && Object.keys(revisions).length > 0
         ? assignUserColors(
             Object.values(revisions).map((revision) =>
@@ -79,7 +79,7 @@ class SegmentRevisions extends Component<SegmentRevisionsProps> {
             ),
             String(user.id),
           )
-        : ({} as Record<string | number, string>);
+        : {};
 
     return (
       <div style={style} className={CS.full} data-testid="segment-revisions">

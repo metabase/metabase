@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { Location } from "history";
 import { Component } from "react";
 
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
@@ -8,13 +9,19 @@ import * as metadataActions from "metabase/redux/metadata";
 import TableDetail from "metabase/reference/databases/TableDetail";
 import * as actions from "metabase/reference/reference";
 
-import type { ReferenceRouteProps, StateWithReference } from "../selectors";
+import type { ClearStateProps, FetchProps } from "../reference";
+import type {
+  ReferenceRouteParams,
+  ReferenceRouteProps,
+  StateWithReference,
+} from "../selectors";
 import {
   getDatabase,
   getDatabaseId,
   getIsEditing,
   getTable,
 } from "../selectors";
+import type { StubbedDatabase, StubbedTable } from "../types";
 
 import TableSidebar from "./TableSidebar";
 
@@ -33,22 +40,27 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-interface TableDetailContainerProps {
-  location: { pathname: string };
+interface TableDetailContainerProps extends FetchProps, ClearStateProps {
+  // From React Router
+  params: ReferenceRouteParams;
+  location: Location;
 
-  database: any;
+  // From route definition / parent
+  style: React.CSSProperties;
+
+  // From mapStateToProps
+  database: StubbedDatabase;
   databaseId: number;
-
-  table: any;
+  table: StubbedTable;
   isEditing?: boolean;
+
+  // From mapDispatchToProps (metadataActions spread)
+  fetchDatabaseMetadata: (id: number) => Promise<unknown>;
 }
 
 class TableDetailContainer extends Component<TableDetailContainerProps> {
-  async fetchContainerData() {
-    await actions.wrappedFetchDatabaseMetadata(
-      this.props as any,
-      this.props.databaseId,
-    );
+  fetchContainerData() {
+    actions.wrappedFetchDatabaseMetadata(this.props, this.props.databaseId);
   }
 
   UNSAFE_componentWillMount() {
@@ -60,7 +72,7 @@ class TableDetailContainer extends Component<TableDetailContainerProps> {
       return;
     }
 
-    actions.clearState(newProps as any);
+    actions.clearState(newProps);
   }
 
   render() {
@@ -72,13 +84,13 @@ class TableDetailContainer extends Component<TableDetailContainerProps> {
         style={isEditing ? { paddingTop: "43px" } : {}}
         sidebar={<TableSidebar database={database} table={table} />}
       >
-        {}
-        <TableDetail {...(this.props as any)} />
+        <TableDetail {...this.props} />
       </SidebarLayout>
     );
   }
 }
 
+// connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,

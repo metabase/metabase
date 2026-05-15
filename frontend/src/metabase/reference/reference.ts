@@ -36,7 +36,7 @@ export const showDashboardModal = createAction(SHOW_DASHBOARD_MODAL);
 
 export const hideDashboardModal = createAction(HIDE_DASHBOARD_MODAL);
 
-interface FetchProps {
+export interface FetchProps {
   clearError: () => void;
   startLoading: () => void;
   endLoading: () => void;
@@ -63,7 +63,7 @@ interface SegmentFetchProps extends FetchProps {
   fetchQuestions: () => Promise<unknown>;
 }
 
-interface ClearStateProps {
+export interface ClearStateProps {
   endEditing: () => void;
   endLoading: () => void;
   clearError: () => void;
@@ -98,14 +98,15 @@ const fetchDataWrapper = <T>(
 };
 
 export const wrappedFetchDatabaseMetadata = (
-  props: DatabaseFetchProps,
+  props: FetchProps & Pick<DatabaseFetchProps, "fetchDatabaseMetadata">,
   databaseID: number,
 ) => {
   fetchDataWrapper(props, props.fetchDatabaseMetadata)(databaseID);
 };
 
 export const wrappedFetchDatabaseMetadataAndQuestion = async (
-  props: DatabaseFetchProps,
+  props: FetchProps &
+    Pick<DatabaseFetchProps, "fetchDatabaseMetadata" | "fetchQuestions">,
   databaseID: number,
 ) => {
   fetchDataWrapper(props, async (dbID: number) => {
@@ -115,22 +116,30 @@ export const wrappedFetchDatabaseMetadataAndQuestion = async (
     ]);
   })(databaseID);
 };
-export const wrappedFetchDatabases = (props: DatabaseFetchProps) => {
+export const wrappedFetchDatabases = (
+  props: FetchProps & Pick<DatabaseFetchProps, "fetchRealDatabases">,
+) => {
   fetchDataWrapper(props, props.fetchRealDatabases)({});
 };
-export const wrappedFetchSegments = (props: SegmentFetchProps) => {
+export const wrappedFetchSegments = (
+  props: FetchProps & Pick<SegmentFetchProps, "fetchSegments">,
+) => {
   fetchDataWrapper(props, props.fetchSegments)(undefined);
 };
 
 export const wrappedFetchSegmentDetail = (
-  props: SegmentFetchProps,
+  props: FetchProps & Pick<SegmentFetchProps, "fetchSegmentTable">,
   segmentID: number,
 ) => {
   fetchDataWrapper(props, props.fetchSegmentTable)(segmentID);
 };
 
 export const wrappedFetchSegmentQuestions = async (
-  props: SegmentFetchProps,
+  props: FetchProps &
+    Pick<
+      SegmentFetchProps,
+      "fetchSegments" | "fetchSegmentTable" | "fetchQuestions"
+    >,
   segmentID: number,
 ) => {
   fetchDataWrapper(props, async (sID: number) => {
@@ -139,7 +148,11 @@ export const wrappedFetchSegmentQuestions = async (
   })(segmentID);
 };
 export const wrappedFetchSegmentRevisions = async (
-  props: SegmentFetchProps,
+  props: FetchProps &
+    Pick<
+      SegmentFetchProps,
+      "fetchSegments" | "fetchSegmentRevisions" | "fetchSegmentTable"
+    >,
   segmentID: number,
 ) => {
   fetchDataWrapper(props, async (sID: number) => {
@@ -151,7 +164,11 @@ export const wrappedFetchSegmentRevisions = async (
   })(segmentID);
 };
 export const wrappedFetchSegmentFields = async (
-  props: SegmentFetchProps,
+  props: FetchProps &
+    Pick<
+      SegmentFetchProps,
+      "fetchSegments" | "fetchSegmentFields" | "fetchSegmentTable"
+    >,
   segmentID: number,
 ) => {
   fetchDataWrapper(props, async (sID: number) => {

@@ -15,6 +15,7 @@ import { isTypeCurrency, isTypeFK } from "metabase-lib/v1/types/utils/isa";
 import type {
   Field as ApiField,
   DatabaseId,
+  FieldFormattingSettings,
   FieldId,
   NormalizedField,
 } from "metabase-types/api";
@@ -28,7 +29,7 @@ interface FieldTypeDetailProps {
   field: ApiField | NormalizedField | StubbedField;
   fieldTypeFormField: FormFieldEntry<string | null>;
   foreignKeyFormField: FormFieldEntry<FieldId | null>;
-  fieldSettingsFormField: FormFieldEntry<Record<string, unknown>>;
+  fieldSettingsFormField: FormFieldEntry<FieldFormattingSettings>;
   isEditing: boolean;
 }
 
@@ -48,9 +49,7 @@ const FieldTypeDetail = ({
     typeof fieldSettingsFormField.value !== "undefined"
       ? fieldSettingsFormField.value
       : field.settings;
-  const currency = getFieldCurrency(
-    settings as Parameters<typeof getFieldCurrency>[0],
-  );
+  const currency = getFieldCurrency(settings);
 
   return (
     <div className={cx(D.detail)}>

@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { Location } from "history";
 import { Component } from "react";
 
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
@@ -8,8 +9,14 @@ import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
 import SegmentFieldDetail from "metabase/reference/segments/SegmentFieldDetail";
 
-import type { ReferenceRouteProps, StateWithReference } from "../selectors";
+import type { ClearStateProps, FetchProps } from "../reference";
+import type {
+  ReferenceRouteParams,
+  ReferenceRouteProps,
+  StateWithReference,
+} from "../selectors";
 import { getField, getIsEditing, getSegment, getSegmentId } from "../selectors";
+import type { StubbedField, StubbedSegment } from "../types";
 
 import SegmentFieldSidebar from "./SegmentFieldSidebar";
 
@@ -28,22 +35,29 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-interface SegmentFieldDetailContainerProps {
-  location: { pathname: string };
+interface SegmentFieldDetailContainerProps extends FetchProps, ClearStateProps {
+  // From React Router
+  params: ReferenceRouteParams;
+  location: Location;
 
-  segment: any;
+  // From route definition / parent
+  style: React.CSSProperties;
+
+  // From mapStateToProps
+  segment: StubbedSegment;
   segmentId: number;
-
-  field: any;
+  field: StubbedField;
   isEditing?: boolean;
+
+  // From mapDispatchToProps
+  fetchSegments: (id?: number) => Promise<unknown>;
+  fetchSegmentFields: (id: number) => Promise<unknown>;
+  fetchSegmentTable: (id: number) => Promise<unknown>;
 }
 
 class SegmentFieldDetailContainer extends Component<SegmentFieldDetailContainerProps> {
-  async fetchContainerData() {
-    await actions.wrappedFetchSegmentFields(
-      this.props as any,
-      this.props.segmentId,
-    );
+  fetchContainerData() {
+    actions.wrappedFetchSegmentFields(this.props, this.props.segmentId);
   }
 
   UNSAFE_componentWillMount() {
@@ -55,7 +69,7 @@ class SegmentFieldDetailContainer extends Component<SegmentFieldDetailContainerP
       return;
     }
 
-    actions.clearState(newProps as any);
+    actions.clearState(newProps);
   }
 
   render() {
@@ -67,13 +81,13 @@ class SegmentFieldDetailContainer extends Component<SegmentFieldDetailContainerP
         style={isEditing ? { paddingTop: "43px" } : {}}
         sidebar={<SegmentFieldSidebar segment={segment} field={field} />}
       >
-        {}
-        <SegmentFieldDetail {...(this.props as any)} />
+        <SegmentFieldDetail {...this.props} />
       </SidebarLayout>
     );
   }
 }
 
+// connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,

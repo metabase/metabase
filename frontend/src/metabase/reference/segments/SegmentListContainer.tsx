@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { Location } from "history";
 import { Component } from "react";
 
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
@@ -9,7 +10,12 @@ import BaseSidebar from "metabase/reference/guide/BaseSidebar";
 import * as actions from "metabase/reference/reference";
 import { SegmentList } from "metabase/reference/segments/SegmentList";
 
-import type { ReferenceRouteProps, StateWithReference } from "../selectors";
+import type { ClearStateProps, FetchProps } from "../reference";
+import type {
+  ReferenceRouteParams,
+  ReferenceRouteProps,
+  StateWithReference,
+} from "../selectors";
 import { getDatabaseId, getIsEditing } from "../selectors";
 
 const mapStateToProps = (
@@ -25,14 +31,24 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-interface SegmentListContainerProps {
-  location: { pathname: string };
+interface SegmentListContainerProps extends FetchProps, ClearStateProps {
+  // From React Router
+  params: ReferenceRouteParams;
+  location: Location;
+
+  // From route definition / parent
+  style: React.CSSProperties;
+
+  // From mapStateToProps
   isEditing?: boolean;
+
+  // From mapDispatchToProps
+  fetchSegments: (id?: number) => Promise<unknown>;
 }
 
 class SegmentListContainer extends Component<SegmentListContainerProps> {
-  async fetchContainerData() {
-    await actions.wrappedFetchSegments(this.props as any);
+  fetchContainerData() {
+    actions.wrappedFetchSegments(this.props);
   }
 
   UNSAFE_componentWillMount() {
@@ -44,7 +60,7 @@ class SegmentListContainer extends Component<SegmentListContainerProps> {
       return;
     }
 
-    actions.clearState(newProps as any);
+    actions.clearState(newProps);
   }
 
   render() {
@@ -56,13 +72,13 @@ class SegmentListContainer extends Component<SegmentListContainerProps> {
         style={isEditing ? { paddingTop: "43px" } : {}}
         sidebar={<BaseSidebar />}
       >
-        {}
-        <SegmentList {...(this.props as any)} />
+        <SegmentList {...this.props} />
       </SidebarLayout>
     );
   }
 }
 
+// connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,

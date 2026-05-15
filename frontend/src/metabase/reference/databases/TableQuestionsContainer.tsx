@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { Location } from "history";
 import { Component } from "react";
 
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
@@ -9,13 +10,19 @@ import * as metadataActions from "metabase/redux/metadata";
 import TableQuestions from "metabase/reference/databases/TableQuestions";
 import * as actions from "metabase/reference/reference";
 
-import type { ReferenceRouteProps, StateWithReference } from "../selectors";
+import type { ClearStateProps, FetchProps } from "../reference";
+import type {
+  ReferenceRouteParams,
+  ReferenceRouteProps,
+  StateWithReference,
+} from "../selectors";
 import {
   getDatabase,
   getDatabaseId,
   getIsEditing,
   getTable,
 } from "../selectors";
+import type { StubbedDatabase, StubbedTable } from "../types";
 
 import TableSidebar from "./TableSidebar";
 
@@ -35,20 +42,29 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-interface TableQuestionsContainerProps {
-  location: { pathname: string };
+interface TableQuestionsContainerProps extends FetchProps, ClearStateProps {
+  // From React Router
+  params: ReferenceRouteParams;
+  location: Location;
 
-  database: any;
+  // From route definition / parent
+  style: React.CSSProperties;
+
+  // From mapStateToProps
+  database: StubbedDatabase;
   databaseId: number;
-
-  table: any;
+  table: StubbedTable;
   isEditing?: boolean;
+
+  // From mapDispatchToProps
+  fetchDatabaseMetadata: (id: number) => Promise<unknown>;
+  fetchQuestions: () => Promise<unknown>;
 }
 
 class TableQuestionsContainer extends Component<TableQuestionsContainerProps> {
-  async fetchContainerData() {
-    await actions.wrappedFetchDatabaseMetadataAndQuestion(
-      this.props as any,
+  fetchContainerData() {
+    actions.wrappedFetchDatabaseMetadataAndQuestion(
+      this.props,
       this.props.databaseId,
     );
   }
@@ -62,7 +78,7 @@ class TableQuestionsContainer extends Component<TableQuestionsContainerProps> {
       return;
     }
 
-    actions.clearState(newProps as any);
+    actions.clearState(newProps);
   }
 
   render() {
@@ -74,13 +90,13 @@ class TableQuestionsContainer extends Component<TableQuestionsContainerProps> {
         style={isEditing ? { paddingTop: "43px" } : {}}
         sidebar={<TableSidebar database={database} table={table} />}
       >
-        {}
-        <TableQuestions {...(this.props as any)} />
+        <TableQuestions {...this.props} />
       </SidebarLayout>
     );
   }
 }
 
+// connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
