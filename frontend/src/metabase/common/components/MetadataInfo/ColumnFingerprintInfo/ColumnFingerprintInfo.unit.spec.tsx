@@ -27,8 +27,10 @@ function setup(field: Field, timezone?: string) {
 }
 
 describe("FieldFingerprintInfo", () => {
+  const dateField = metadata.field(PRODUCTS.CREATED_AT)!;
+
   describe("without fingerprint", () => {
-    const field = metadata.field(PRODUCTS.CREATED_AT)!.clone();
+    const field = dateField.clone();
 
     delete field.fingerprint;
 
@@ -39,8 +41,6 @@ describe("FieldFingerprintInfo", () => {
   });
 
   describe("Date field", () => {
-    const dateField = metadata.field(PRODUCTS.CREATED_AT)!;
-
     describe("without type/DateTime fingerprint", () => {
       const field = dateField.clone();
       field.fingerprint = { type: {} };

@@ -45,23 +45,25 @@ function setupLib(table: string, column: string) {
 }
 
 describe("FieldInfo", () => {
+  const categoryField = metadata.field(PRODUCTS.CATEGORY)!;
+  const createdAtField = metadata.field(PRODUCTS.CREATED_AT)!;
+
   it("should show the given dimension's semantic type name", async () => {
-    const field = metadata.field(PRODUCTS.CATEGORY)!;
-    setup(field);
+    setup(categoryField);
 
     expect(await screen.findByText("Category")).toBeInTheDocument();
   });
 
   it("should display the given dimension's description", async () => {
-    const field = metadata.field(PRODUCTS.CATEGORY)!;
-    setup(field);
+    setup(categoryField);
 
-    expect(await screen.findByText(field.description!)).toBeInTheDocument();
+    expect(
+      await screen.findByText(categoryField.description!),
+    ).toBeInTheDocument();
   });
 
   it("should show a placeholder for a dimension with no description", () => {
-    const field = metadata.field(PRODUCTS.CREATED_AT)!;
-    setup(field);
+    setup(createdAtField);
 
     expect(screen.getByText("No description")).toBeInTheDocument();
   });
