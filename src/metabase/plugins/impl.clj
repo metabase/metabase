@@ -13,7 +13,7 @@
    [metabase.util.yaml :as yaml])
   (:import
    (java.io File)
-   (java.nio.file Files FileVisitOption Path Paths)))
+   (java.nio.file Files FileSystems FileVisitOption Path Paths)))
 
 (set! *warn-on-reflection* true)
 
@@ -71,8 +71,23 @@
 (defn- add-to-classpath! [^Path jar-path]
   (classloader/add-url-to-classpath! (-> jar-path .toUri .toURL)))
 
+(defn- slurp-plugin-manifest-from-archive
+  "Find and read `metabase-plugin.yaml` from a JAR archive. Searches both the JAR root and
+  `metabase/<driver>/metabase-plugin.yaml` to support both legacy and new driver resource layouts."
+  ^String [^Path jar-path]
+  (with-open [fs (FileSystems/newFileSystem jar-path (ClassLoader/getSystemClassLoader))]
+    (let [matcher (.getPathMatcher fs "glob:**/metabase-plugin.yaml")
+          root    (.getPath fs "/" (make-array String 0))]
+      (with-open [stream (Files/walk root 3 (make-array FileVisitOption 0))]
+        (when-let [^Path match (-> stream
+                                   (.filter (reify java.util.function.Predicate
+                                              (test [_ p] (.matches matcher ^Path p))))
+                                   (.findFirst)
+                                   (.orElse nil))]
+          (String. (Files/readAllBytes match)))))))
+
 (defn- plugin-info [^Path jar-path]
-  (some-> (u.files/slurp-file-from-archive jar-path "metabase-plugin.yaml")
+  (some-> (slurp-plugin-manifest-from-archive jar-path)
           yaml/parse-string))
 
 (defn- init-plugin-with-info!
@@ -140,7 +155,7 @@
     (load-plugin-manifest! manifest-path)))
 
 (defn- has-manifest? ^Boolean [^Path path]
-  (boolean (u.files/file-exists-in-archive? path "metabase-plugin.yaml")))
+  (boolean (slurp-plugin-manifest-from-archive path)))
 
 (defn- init-plugins! [paths]
   ;; sort paths so that ones that correspond to JARs with no plugin manifest (e.g. a dependency like the Oracle JDBC
