@@ -48,15 +48,38 @@
         (api/write-check :model/Collection new-coll)
         (api/write-check collection/root-collection)))))
 
+(defn- thread-ids-of-exploration-query
+  "HoneySQL subquery selecting every thread id belonging to an exploration. Used as the
+  `:in` clause for the thread-doc cascades below."
+  [exploration-id]
+  {:select [:id] :from [:exploration_thread] :where [:= :exploration_id exploration-id]})
+
 (defn- cascade-collection-id-to-thread-documents!
   "Propagate an Exploration's new `collection_id` to all documents attached to its threads.
   Mirrors the dashboard-question cascade in `dashboards_rest/api.clj`."
   [exploration-id new-coll-id]
   (t2/update! :model/Document
-              :exploration_thread_id [:in {:select [:id]
-                                           :from   [:exploration_thread]
-                                           :where  [:= :exploration_id exploration-id]}]
+              :exploration_thread_id [:in (thread-ids-of-exploration-query exploration-id)]
               {:collection_id new-coll-id}))
+
+(defn- cascade-archived-to-thread-documents!
+  "Propagate an Exploration's archive flip to all documents attached to its threads.
+  Mirrors `dashboards_rest/api.clj` (parent-archive cascade for dashboard questions):
+  on archive, flip every doc that wasn't already archived directly; on unarchive,
+  flip every doc that was cascade-archived. Docs with `archived_directly=true`
+  (user-archived) are never touched."
+  [exploration-id new-archived?]
+  (let [thread-ids (thread-ids-of-exploration-query exploration-id)]
+    (if new-archived?
+      (t2/update! :model/Document
+                  :exploration_thread_id [:in thread-ids]
+                  :archived              false
+                  {:archived true :archived_directly false})
+      (t2/update! :model/Document
+                  :exploration_thread_id [:in thread-ids]
+                  :archived              true
+                  :archived_directly     false
+                  {:archived false}))))
 
 (defn- find-dimension-target
   "Look up the MBQL `target` for a dimension by ID inside a metric's snapshotted dimension_mappings."
@@ -530,21 +553,27 @@
   `api/write-check` against the exploration itself via `:perms/use-parent-collection-perms`.
 
   Moving an exploration cascades the new `collection_id` onto every document attached to its
-  threads, keeping doc permissions in sync with the parent exploration's."
+  threads. Archiving or unarchiving the exploration cascades the new `archived` flag onto those
+  same documents (skipping any that were directly user-archived, mirroring the dashboard /
+  dashboard-question pattern)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    updates :- UpdateExploration]
-  (let [existing (get-exploration-or-404 id)
-        updates' (api/updates-with-archived-directly existing updates)
-        moving?  (and (contains? updates' :collection_id)
-                      (not= (:collection_id existing) (:collection_id updates')))]
+  (let [existing            (get-exploration-or-404 id)
+        updates'            (api/updates-with-archived-directly existing updates)
+        moving?             (and (contains? updates' :collection_id)
+                                 (not= (:collection_id existing) (:collection_id updates')))
+        archiving-changing? (and (contains? updates' :archived)
+                                 (not= (:archived existing) (:archived updates')))]
     (api/write-check existing)
     (check-destination-collection-perms! existing updates')
     (t2/with-transaction [_]
       (when (seq updates')
         (t2/update! :model/Exploration id updates'))
       (when moving?
-        (cascade-collection-id-to-thread-documents! id (:collection_id updates'))))
+        (cascade-collection-id-to-thread-documents! id (:collection_id updates')))
+      (when archiving-changing?
+        (cascade-archived-to-thread-documents! id (:archived updates'))))
     (hydrate-exploration (t2/select-one :model/Exploration :id id))))
 
 (def ^:private query-summary-columns
