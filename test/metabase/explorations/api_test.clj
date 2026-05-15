@@ -1294,6 +1294,72 @@
       (is (= (:id dest) (t2/select-one-fn :collection_id :model/Document :id (:id d1))))
       (is (= (:id dest) (t2/select-one-fn :collection_id :model/Document :id (:id d2)))))))
 
+(deftest exploration-put-archive-cascades-to-thread-documents-test
+  (testing "Archiving an exploration cascade-archives its thread docs, except user-archived ones."
+    (mt/with-temp [:model/Collection c {}
+                   :model/Exploration e {:name "to-archive"
+                                         :creator_id    (mt/user->id :crowberto)
+                                         :collection_id (:id c)}
+                   :model/ExplorationThread th {:exploration_id (:id e) :position 0}
+                   :model/Document live {:name "live-doc"
+                                         :document {:type "doc" :content []}
+                                         :content_type "application/json+vnd.prose-mirror"
+                                         :creator_id (mt/user->id :crowberto)
+                                         :collection_id (:id c)
+                                         :exploration_thread_id (:id th)}
+                   :model/Document user-archived {:name "user-archived"
+                                                  :document {:type "doc" :content []}
+                                                  :content_type "application/json+vnd.prose-mirror"
+                                                  :creator_id (mt/user->id :crowberto)
+                                                  :collection_id (:id c)
+                                                  :exploration_thread_id (:id th)
+                                                  :archived true
+                                                  :archived_directly true}]
+      (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
+                            {:archived true})
+      (testing "live doc is cascade-archived (archived_directly=false marks it as cascade)"
+        (let [d (t2/select-one :model/Document :id (:id live))]
+          (is (true?  (:archived d)))
+          (is (false? (:archived_directly d)))))
+      (testing "user-archived doc is left alone"
+        (let [d (t2/select-one :model/Document :id (:id user-archived))]
+          (is (true? (:archived d)))
+          (is (true? (:archived_directly d))))))))
+
+(deftest exploration-put-unarchive-cascades-to-thread-documents-test
+  (testing "Unarchiving restores cascade-archived docs but leaves user-archived docs archived."
+    (mt/with-temp [:model/Collection c {}
+                   :model/Exploration e {:name "to-unarchive"
+                                         :creator_id    (mt/user->id :crowberto)
+                                         :collection_id (:id c)
+                                         :archived      true
+                                         :archived_directly true}
+                   :model/ExplorationThread th {:exploration_id (:id e) :position 0}
+                   :model/Document cascade-doc {:name "cascade-doc"
+                                                :document {:type "doc" :content []}
+                                                :content_type "application/json+vnd.prose-mirror"
+                                                :creator_id (mt/user->id :crowberto)
+                                                :collection_id (:id c)
+                                                :exploration_thread_id (:id th)
+                                                :archived true
+                                                :archived_directly false}
+                   :model/Document user-archived {:name "user-archived"
+                                                  :document {:type "doc" :content []}
+                                                  :content_type "application/json+vnd.prose-mirror"
+                                                  :creator_id (mt/user->id :crowberto)
+                                                  :collection_id (:id c)
+                                                  :exploration_thread_id (:id th)
+                                                  :archived true
+                                                  :archived_directly true}]
+      (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
+                            {:archived false})
+      (testing "cascade-archived doc is restored"
+        (is (false? (t2/select-one-fn :archived :model/Document :id (:id cascade-doc)))))
+      (testing "user-archived doc stays archived"
+        (let [d (t2/select-one :model/Document :id (:id user-archived))]
+          (is (true? (:archived d)))
+          (is (true? (:archived_directly d))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Routed-database creation block                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+

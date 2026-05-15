@@ -45,11 +45,11 @@ export interface NewExplorationDataProps {
   setDimensions: (dimensions: MetricDimension[]) => void;
   timelines: Timeline[];
   setTimelines: (timelines: Timeline[]) => void;
-  name: string | null;
+  name: string;
 }
 
 function buildCreateExplorationRequest(
-  name: string | null,
+  name: string,
   prompt: string,
   metrics: ExplorationMetric[],
   dimensions: MetricDimension[],

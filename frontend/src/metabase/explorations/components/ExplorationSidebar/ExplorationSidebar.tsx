@@ -3,14 +3,22 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { datasetApi } from "metabase/api/dataset";
-import { explorationApi } from "metabase/api/exploration";
+import {
+  explorationApi,
+  useUpdateExplorationMutation,
+} from "metabase/api/exploration";
+import { EditableText } from "metabase/common/components/EditableText";
 import { Tree } from "metabase/common/components/tree";
 import type { TreeHandle } from "metabase/common/components/tree/Tree";
 import type {
   ITreeNodeItem,
   TreeNodeProps,
 } from "metabase/common/components/tree/types";
-import { QUERY_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
+import { useToast } from "metabase/common/hooks";
+import {
+  EXPLORATION_NAME_MAX_LENGTH,
+  QUERY_INTERESTINGNESS_SCORE_THRESHOLD,
+} from "metabase/explorations/constants";
 import {
   Box,
   Ellipsified,
@@ -18,7 +26,6 @@ import {
   type IconProps,
   Loader,
   Stack,
-  Text,
   UnstyledButton,
 } from "metabase/ui";
 import type { Exploration, ExplorationQueryStatus } from "metabase-types/api";
@@ -53,6 +60,23 @@ export function ExplorationSidebar({
 }: ExplorationSidebarProps) {
   const treeRef = useRef<TreeHandle>(null);
   const pendingKeyboardSelectionRef = useRef(false);
+
+  const [updateExploration] = useUpdateExplorationMutation();
+  const [sendToast] = useToast();
+
+  const handleNameChange = useCallback(
+    async (name: string) => {
+      const { error } = await updateExploration({ id: exploration.id, name });
+      if (error) {
+        sendToast({
+          message: t`Failed to update exploration name`,
+          icon: "warning_triangle_filled",
+          iconColor: "warning",
+        });
+      }
+    },
+    [updateExploration, sendToast, exploration.id],
+  );
 
   const tree = useMemo(
     () => getExplorationSidebarTree(exploration),
@@ -162,9 +186,17 @@ export function ExplorationSidebar({
       pt="3rem"
       mr="2rem"
     >
-      <Text size="xl" fw="bold" pl="0.75rem">
-        {exploration.name}
-      </Text>
+      <EditableText
+        initialValue={exploration.name}
+        onChange={handleNameChange}
+        placeholder="New Exploration"
+        fw="bold"
+        fz="h3"
+        lh="h3"
+        isDisabled={!exploration.can_write}
+        pl="0.75rem"
+        maxLength={EXPLORATION_NAME_MAX_LENGTH}
+      />
       <Box className={S.tree}>
         <Tree
           ref={treeRef}

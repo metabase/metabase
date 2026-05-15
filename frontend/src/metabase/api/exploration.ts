@@ -9,6 +9,7 @@ import type {
   ExplorationThreadId,
   GetExplorationDataRequest,
   GetExplorationDataResponse,
+  UpdateExplorationRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -44,6 +45,15 @@ export const explorationApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("exploration")]),
+    }),
+    updateExploration: builder.mutation<Exploration, UpdateExplorationRequest>({
+      query: ({ id, ...body }) => ({
+        method: "PUT",
+        url: `/api/exploration/${id}`,
+        body,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [idTag("exploration", id)]),
     }),
     getExplorationQueryResult: builder.query<Dataset, ExplorationQueryId>({
       query: (id) => ({
@@ -95,6 +105,7 @@ export const {
   useGetExplorationDataQuery,
   useGetExplorationQuery,
   useCreateExplorationMutation,
+  useUpdateExplorationMutation,
   useGetExplorationQueryResultQuery,
   useCreateExplorationDocumentMutation,
   useAppendChartToDocumentMutation,

@@ -1,11 +1,27 @@
 (ns metabase.explorations.models.exploration
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.search.spec :as search.spec]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+(def ExplorationName
+  "Validations for the name of an exploration. Mirrors `DocumentName`: non-blank, capped at 254
+  characters."
+  (mu/with-api-error-message
+   [:and
+    {:error/message "invalid exploration name"
+     :json-schema   {:type "string" :minLength 1 :maxLength 254}}
+    [:string {:min 1 :max 254}]
+    [:fn
+     {:error/message "invalid exploration name"}
+     (complement str/blank?)]]
+   (deferred-tru "value must be a non-blank string between 1 and 254 characters.")))
 
 (methodical/defmethod t2/table-name :model/Exploration [_model] :exploration)
 
