@@ -18,9 +18,7 @@ export const TRASHABLE_MODELS_ARRAY = [
 
 export type TrashableModel = (typeof TRASHABLE_MODELS_ARRAY)[number];
 
-export const TRASHABLE_MODELS = new Set<TrashableModel>(
-  TRASHABLE_MODELS_ARRAY,
-);
+export const TRASHABLE_MODELS = new Set<string>(TRASHABLE_MODELS_ARRAY);
 
 /**
  * @param  updateActionResult - result value of await dispatch(Entity.action.update(...))
@@ -34,13 +32,25 @@ export function HACK_getParentCollectionFromEntityUpdateAction(
     : updateActionResult?.payload?.object?.collection;
 }
 
-type ParentEntityLinkTarget = {
-  type?: string;
-  dashboard_id?: number;
-};
+function isDashboardQuestion(entity: unknown): entity is {
+  type: "question";
+  dashboard_id: number | string;
+} {
+  if (typeof entity !== "object" || entity === null) {
+    return false;
+  }
+  const { type, dashboard_id } = entity as {
+    type?: unknown;
+    dashboard_id?: unknown;
+  };
+  return (
+    type === "question" &&
+    (typeof dashboard_id === "number" || typeof dashboard_id === "string")
+  );
+}
 
 export function getParentEntityLink(
-  updatedEntity: ParentEntityLinkTarget,
+  updatedEntity: unknown,
   parentCollection: Pick<Collection, "id" | "name"> | undefined,
 ) {
   // get link for parent collection
@@ -49,10 +59,8 @@ export function getParentEntityLink(
     : `/collection/root`;
 
   // get link for parent dashboard if we're dealing with a dashboard question
-  const parentDashboardId =
-    updatedEntity.type === "question" ? updatedEntity.dashboard_id : undefined;
-  const parentDashboardLink = parentDashboardId
-    ? Urls.dashboard({ id: parentDashboardId, name: "" })
+  const parentDashboardLink = isDashboardQuestion(updatedEntity)
+    ? Urls.dashboard({ id: updatedEntity.dashboard_id, name: "" })
     : undefined;
 
   return parentDashboardLink ? parentDashboardLink : parentCollectionLink;
