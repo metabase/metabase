@@ -581,26 +581,28 @@
         (is (fn? embedder)
             "synonym-source returns a fresh provider-embedder for the descriptor")))))
 
-(deftest ^:sequential synonym-source-forwards-embed-opts-to-provider-test
-  (testing "complexity-scores-opts forwards embed-opts (e.g. :record-tokens? false) as kwargs into get-embeddings-batch"
-    ;; Pins the CLI's plumbing: passing `{:record-tokens? false}` here must reach the HTTP layer
-    ;; so the embedding service can skip the usage-table write.
-    (test-util/with-synonym-source []
-      (let [captured (atom nil)
-            {:keys [embedder]} (synonym-source/complexity-scores-opts {:record-tokens? false})]
-        (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch
-                                    (fn [_model texts & {:as opts}]
-                                      (reset! captured opts)
-                                      (repeat (count texts) [1.0]))]
-          (embedder [{:id 1 :name "orders" :kind :table}])
-          (is (false? (:record-tokens? @captured))))))))
+(deftest ^:sequential provider-embedder-suppresses-token-tracking-test
+  (testing "provider-embedder always passes :record-tokens? false to get-embeddings-batch"
+    ;; Complexity scoring isn't user-driven search traffic; the score itself is the analytics
+    ;; signal, so embedding calls here shouldn't write to `semantic_search_token_tracking`
+    ;; — regardless of caller (CLI, Quartz cron, API).
+    (let [captured (atom nil)
+          embedder (embedders/provider-embedder {:provider "ai-service" :model-name "fake" :model-dimensions 4})]
+      (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch
+                                  (fn [_model texts & {:as opts}]
+                                    (reset! captured opts)
+                                    (repeat (count texts) [1.0]))]
+        (embedder [{:id 1 :name "orders" :kind :table}])
+        (is (false? (:record-tokens? @captured)))))))
 
 (deftest ^:sequential provider-embedder-splits-names-before-calling-provider-test
   (testing "provider-embedder splits names on _, -, ., and camelCase before sending to get-embeddings-batch"
     (let [captured (atom nil)
           embedder (embedders/provider-embedder {:provider "ai-service" :model-name "fake" :model-dimensions 4})]
       (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch
-                                  (fn [_model texts] (reset! captured (vec texts)) (repeat (count texts) [1.0]))]
+                                  (fn [_model texts & _opts]
+                                    (reset! captured (vec texts))
+                                    (repeat (count texts) [1.0]))]
         (embedder
          [{:id 1 :name "monthly_active_users" :kind :table}
           {:id 2 :name "dim-date"             :kind :table}
@@ -616,7 +618,7 @@
   (testing "provider errors bubble up so score-synonym-pairs can report nil measurements + :error"
     (let [embedder (embedders/provider-embedder {:provider "ai-service" :model-name "fake" :model-dimensions 4})]
       (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch
-                                  (fn [_ _] (throw (ex-info "ai-service down" {})))]
+                                  (fn [& _] (throw (ex-info "ai-service down" {})))]
         (is (thrown-with-msg? Throwable #"ai-service down"
                               (embedder [{:id 1 :name "orders" :kind :table}])))))))
 
@@ -624,7 +626,7 @@
   (testing "vectors come back keyed by the normalized name; nil slots are dropped"
     (let [embedder (embedders/provider-embedder {:provider "ai-service" :model-name "fake" :model-dimensions 2})]
       (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch
-                                  (fn [_ texts]
+                                  (fn [_ texts & _opts]
                                     (for [t texts] (when-not (= t "drop me") [1.0 0.0])))]
         (let [result (embedder
                       [{:id 1 :name "keep me"  :kind :table}
@@ -792,7 +794,7 @@
 (deftest ^:sequential emit-snowplow-includes-embedding-model-and-text-variant-meta-test
   (testing "every event's parameters carry the nested embedding_model + text_variant from synonym-source"
     (snowplow-test/with-fake-snowplow-collector
-      (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch (fn [_ _] [])
+      (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch (fn [& _] [])
                                   complexity/enumerate-catalogs
                                   (constantly {:library  [(entity :name "orders")]
                                                :universe [(entity :name "orders")]

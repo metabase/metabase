@@ -21,20 +21,15 @@
   "Map ready to splice into `complexity/complexity-scores`. When the search-index toggle is on,
   routes the synonym axis through the active pgvector index and advertises whatever model that
   index reports (nil when unreachable). Otherwise builds a fresh provider-embedder for the
-  configured descriptor and advertises the descriptor + the names-split text variant.
-
-  `embed-opts` is forwarded into the provider-embedder for kwargs that need to reach the HTTP
-  layer (e.g. `{:record-tokens? false}` so the CLI doesn't write usage rows). The search-index
-  path ignores it — that embedder reads from pgvector and never hits the embedding service."
-  ([] (complexity-scores-opts {}))
-  ([embed-opts]
-   (if (settings/data-complexity-scoring-use-search-index-embedder)
-     {:embedder             semantic-search/search-index-embedder
-      :embedding-model-meta (semantic-search/active-embedding-model)}
-     (let [descriptor (configured-model-descriptor)]
-       {:embedder             (embedders/provider-embedder descriptor embed-opts)
-        :embedding-model-meta descriptor
-        :text-variant         embedders/default-text-variant}))))
+  configured descriptor and advertises the descriptor + the names-split text variant."
+  []
+  (if (settings/data-complexity-scoring-use-search-index-embedder)
+    {:embedder             semantic-search/search-index-embedder
+     :embedding-model-meta (semantic-search/active-embedding-model)}
+    (let [descriptor (configured-model-descriptor)]
+      {:embedder             (embedders/provider-embedder descriptor)
+       :embedding-model-meta descriptor
+       :text-variant         embedders/default-text-variant})))
 
 (defn fingerprint-fragment
   "Synonym-axis fragment of the scoring fingerprint. Toggling the source setting or swapping the
