@@ -128,33 +128,37 @@ describe("scenarios > admin > people", () => {
       cy.findByText("A group is only as good as its members.");
     });
 
-    it("should allow admin to create new users", { tags: "@smoke" }, () => {
-      const { first_name, last_name, email } = TEST_USER;
-      const FULL_NAME = `${first_name} ${last_name}`;
-      cy.visit("/admin/people");
-      clickButton("Invite someone");
+    it(
+      "should allow admin to create new users",
+      { tags: "@prerelease" },
+      () => {
+        const { first_name, last_name, email } = TEST_USER;
+        const FULL_NAME = `${first_name} ${last_name}`;
+        cy.visit("/admin/people");
+        clickButton("Invite someone");
 
-      // first modal
-      cy.findByLabelText("First name").type(first_name);
-      cy.findByLabelText("Last name").type(last_name);
-      //
-      cy.findByLabelText(/Email/).type(email);
-      clickButton("Create");
+        // first modal
+        cy.findByLabelText("First name").type(first_name);
+        cy.findByLabelText("Last name").type(last_name);
+        //
+        cy.findByLabelText(/Email/).type(email);
+        clickButton("Create");
 
-      // second modal
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(`${FULL_NAME} has been added`);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Show").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Done").click();
+        // second modal
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText(`${FULL_NAME} has been added`);
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Show").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Done").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(FULL_NAME);
-      cy.location().should((loc) =>
-        expect(loc.pathname).to.eq("/admin/people"),
-      );
-    });
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText(FULL_NAME);
+        cy.location().should((loc) =>
+          expect(loc.pathname).to.eq("/admin/people"),
+        );
+      },
+    );
 
     it("should allow admin to create new users without first name or last name (metabase#22754)", () => {
       const { email } = TEST_USER;
