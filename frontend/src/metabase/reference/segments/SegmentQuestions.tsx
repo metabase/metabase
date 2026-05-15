@@ -17,13 +17,14 @@ import visualizations from "metabase/visualizations";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import ReferenceHeader from "../components/ReferenceHeader";
+import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import { getSegment, getTableBySegment } from "../selectors";
-import type { EntityLike } from "../types";
+import type { StubbedSegment, StubbedTable } from "../types";
 import { getDescription, getQuestionUrl } from "../utils";
 
 const emptyStateData = (
-  table: EntityLike,
-  segment: EntityLike,
+  table: StubbedTable,
+  segment: StubbedSegment,
   metadata: Metadata,
 ) => {
   return {
@@ -31,15 +32,18 @@ const emptyStateData = (
     icon: "folder" as const,
     action: t`Ask a question`,
     link: getQuestionUrl({
-      dbId: table && table.db_id,
-      tableId: segment.table_id,
+      dbId: table.db_id!,
+      tableId: segment.table_id!,
       segmentId: segment.id,
       metadata,
     }),
   };
 };
 
-const mapStateToProps = (state: any, props: any) => ({
+const mapStateToProps = (
+  state: StateWithReference,
+  props: ReferenceRouteProps,
+) => ({
   segment: getSegment(state, props),
   table: getTableBySegment(state, props),
   metadata: getMetadata(state),
@@ -51,8 +55,8 @@ const mapDispatchToProps = {
 
 interface SegmentQuestionsInnerProps {
   style: React.CSSProperties;
-  table?: EntityLike;
-  segment: EntityLike;
+  table: StubbedTable;
+  segment: StubbedSegment;
   metadata: Metadata;
 }
 

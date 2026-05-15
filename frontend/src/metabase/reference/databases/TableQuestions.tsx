@@ -15,31 +15,36 @@ import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import visualizations from "metabase/visualizations";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { Card } from "metabase-types/api";
 
 import ReferenceHeader from "../components/ReferenceHeader";
+import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
   getError,
   getLoading,
   getTable,
   getTableQuestions,
 } from "../selectors";
-import type { EntityLike } from "../types";
+import type { StubbedTable } from "../types";
 import { getQuestionUrl } from "../utils";
 
-const emptyStateData = (table: EntityLike, metadata: Metadata) => {
+const emptyStateData = (table: StubbedTable, metadata: Metadata) => {
   return {
     message: t`Questions about this table will appear here as they're added`,
     icon: "folder" as const,
     action: t`Ask a question`,
     link: getQuestionUrl({
-      dbId: table.db_id,
+      dbId: table.db_id!,
       tableId: table.id,
       metadata,
     }),
   };
 };
 
-const mapStateToProps = (state: any, props: any) => ({
+const mapStateToProps = (
+  state: StateWithReference,
+  props: ReferenceRouteProps,
+) => ({
   table: getTable(state, props),
   entities: getTableQuestions(state, props),
   loading: getLoading(state),
@@ -52,9 +57,9 @@ const mapDispatchToProps = {
 };
 
 interface TableQuestionsProps {
-  table: EntityLike;
+  table: StubbedTable;
   metadata: Metadata;
-  entities: EntityLike[];
+  entities: Card[];
   loading?: boolean;
   loadingError?: unknown;
 }
@@ -85,10 +90,10 @@ class TableQuestions extends Component<TableQuestionsProps> {
                       entity.name && (
                         <ListItem
                           key={entity.id}
-                          name={entity.display_name || entity.name}
+                          name={entity.name}
                           description={t`Created ${dayjs(
                             entity.created_at,
-                          ).fromNow()} by ${entity.creator.common_name}`}
+                          ).fromNow()} by ${entity.creator?.common_name ?? ""}`}
                           url={Urls.card(entity)}
                           icon={visualizations.get(entity.display)?.iconName}
                         />

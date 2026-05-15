@@ -6,20 +6,20 @@ import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Card, Field, VisualizationDisplay } from "metabase-types/api";
+import type { Card, VisualizationDisplay } from "metabase-types/api";
 import type { DatabaseId } from "metabase-types/api/database";
 import type { FieldId } from "metabase-types/api/field";
 import type { SegmentId } from "metabase-types/api/segment";
 import type { TableId } from "metabase-types/api/table";
 
-export const idsToObjectMap = <T extends { id: string | number }>(
+export const idsToObjectMap = <T extends { id: unknown }>(
   ids: ReadonlyArray<string | number>,
-  objects: Record<string | number, T>,
-): Record<string | number, T> =>
+  objects: Record<string, T>,
+): Record<string, T> =>
   ids
     .map((id) => objects[id])
-    .reduce<Record<string | number, T>>(
-      (map, object) => ({ ...map, [object.id]: object }),
+    .reduce<Record<string, T>>(
+      (map, object) => ({ ...map, [String(object.id)]: object }),
       {},
     );
 // recursive freezing done by assoc here is too expensive
@@ -101,7 +101,7 @@ function breakoutWithDefaultTemporalBucket(
   const column = Lib.fromLegacyColumn(
     query,
     stageIndex,
-    field as unknown as Field,
+    field.getPlainObject(),
   );
 
   if (!column) {

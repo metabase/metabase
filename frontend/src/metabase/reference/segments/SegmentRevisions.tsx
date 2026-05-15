@@ -13,8 +13,14 @@ import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import { getShallowTables as getTables } from "metabase/selectors/metadata";
 import { assignUserColors } from "metabase/ui/colors/formatting-colors";
+import type {
+  NormalizedTable,
+  Revision as RevisionData,
+  User,
+} from "metabase-types/api";
 
 import ReferenceHeader from "../components/ReferenceHeader";
+import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
   getError,
   getLoading,
@@ -22,7 +28,7 @@ import {
   getSegmentRevisions,
   getUser,
 } from "../selectors";
-import type { EntityLike } from "../types";
+import type { StubbedSegment } from "../types";
 
 const emptyStateData = {
   get message() {
@@ -30,11 +36,14 @@ const emptyStateData = {
   },
 };
 
-const mapStateToProps = (state: any, props: any) => {
+const mapStateToProps = (
+  state: StateWithReference,
+  props: ReferenceRouteProps,
+) => {
   return {
     revisions: getSegmentRevisions(state, props),
     segment: getSegment(state, props),
-    tables: getTables(state, props),
+    tables: getTables(state),
     user: getUser(state),
     loading: getLoading(state),
     loadingError: getError(state),
@@ -47,10 +56,10 @@ const mapDispatchToProps = {
 
 interface SegmentRevisionsProps {
   style: React.CSSProperties;
-  revisions: Record<string, EntityLike>;
-  segment: EntityLike;
-  tables: Record<string, EntityLike>;
-  user: EntityLike;
+  revisions: Record<string, RevisionData>;
+  segment: StubbedSegment;
+  tables: Record<string, NormalizedTable>;
+  user: User;
   loading?: boolean;
   loadingError?: unknown;
 }
@@ -66,9 +75,9 @@ class SegmentRevisions extends Component<SegmentRevisionsProps> {
       user && Object.keys(revisions).length > 0
         ? assignUserColors(
             Object.values(revisions).map((revision) =>
-              getIn(revision, ["user", "id"]),
+              String(getIn(revision, ["user", "id"])),
             ),
-            user.id,
+            String(user.id),
           )
         : ({} as Record<string | number, string>);
 
@@ -83,7 +92,9 @@ class SegmentRevisions extends Component<SegmentRevisionsProps> {
           error={loadingError}
         >
           {() =>
-            Object.keys(revisions).length > 0 && tables[entity.table_id] ? (
+            Object.keys(revisions).length > 0 &&
+            entity.table_id != null &&
+            tables[entity.table_id] ? (
               <div className={CS.wrapper}>
                 <div
                   className={cx(
@@ -101,8 +112,8 @@ class SegmentRevisions extends Component<SegmentRevisionsProps> {
                           <Revision
                             key={revision.id}
                             revision={revision || {}}
-                            tableId={entity.table_id}
-                            objectName={entity.name}
+                            tableId={entity.table_id!}
+                            objectName={entity.name!}
                             currentUser={user || {}}
                             userColor={
                               userColorAssignments[

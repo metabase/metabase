@@ -9,6 +9,7 @@ import FieldDetail from "metabase/reference/databases/FieldDetail";
 import * as actions from "metabase/reference/reference";
 import { getMetadata } from "metabase/selectors/metadata";
 
+import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
   getDatabase,
   getDatabaseId,
@@ -19,7 +20,10 @@ import {
 
 import FieldSidebar from "./FieldSidebar";
 
-const mapStateToProps = (state: any, props: any) => ({
+const mapStateToProps = (
+  state: StateWithReference,
+  props: ReferenceRouteProps,
+) => ({
   database: getDatabase(state, props),
   table: getTable(state, props),
   field: getField(state, props),

@@ -8,11 +8,15 @@ import * as metadataActions from "metabase/redux/metadata";
 import TableList from "metabase/reference/databases/TableList";
 import * as actions from "metabase/reference/reference";
 
+import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import { getDatabase, getDatabaseId, getIsEditing } from "../selectors";
 
 import DatabaseSidebar from "./DatabaseSidebar";
 
-const mapStateToProps = (state: any, props: any) => ({
+const mapStateToProps = (
+  state: StateWithReference,
+  props: ReferenceRouteProps,
+) => ({
   database: getDatabase(state, props),
   databaseId: getDatabaseId(state, props),
   isEditing: getIsEditing(state),

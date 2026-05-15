@@ -8,6 +8,7 @@ import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
 import SegmentDetail from "metabase/reference/segments/SegmentDetail";
 
+import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
   getDatabaseId,
   getIsEditing,
@@ -18,7 +19,10 @@ import {
 
 import SegmentSidebar from "./SegmentSidebar";
 
-const mapStateToProps = (state: any, props: any) => ({
+const mapStateToProps = (
+  state: StateWithReference,
+  props: ReferenceRouteProps,
+) => ({
   user: getUser(state),
   segment: getSegment(state, props),
   segmentId: getSegmentId(state, props),

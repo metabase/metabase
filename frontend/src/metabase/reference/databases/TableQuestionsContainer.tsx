@@ -9,6 +9,7 @@ import * as metadataActions from "metabase/redux/metadata";
 import TableQuestions from "metabase/reference/databases/TableQuestions";
 import * as actions from "metabase/reference/reference";
 
+import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
   getDatabase,
   getDatabaseId,
@@ -18,7 +19,10 @@ import {
 
 import TableSidebar from "./TableSidebar";
 
-const mapStateToProps = (state: any, props: any) => ({
+const mapStateToProps = (
+  state: StateWithReference,
+  props: ReferenceRouteProps,
+) => ({
   database: getDatabase(state, props),
   table: getTable(state, props),
   databaseId: getDatabaseId(state, props),

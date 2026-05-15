@@ -18,7 +18,9 @@ import {
   getMetadata,
 } from "metabase/selectors/metadata";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { User } from "metabase-types/api";
 
+import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
   getError,
   getHasSingleSchema,
@@ -28,16 +30,16 @@ import {
   getTable,
   getUser,
 } from "../selectors";
-import type { EntityLike } from "../types";
+import type { StubbedTable } from "../types";
 import { getQuestionUrl } from "../utils";
 
-const interestingQuestions = (table: EntityLike, metadata: Metadata) => {
+const interestingQuestions = (table: StubbedTable, metadata: Metadata) => {
   return [
     {
       text: t`Count of ${table.display_name}`,
       icon: "number" as const,
       link: getQuestionUrl({
-        dbId: table.db_id,
+        dbId: table.db_id!,
         tableId: table.id,
         getCount: true,
         metadata,
@@ -47,7 +49,7 @@ const interestingQuestions = (table: EntityLike, metadata: Metadata) => {
       text: t`See raw data for ${table.display_name}`,
       icon: "table2" as const,
       link: getQuestionUrl({
-        dbId: table.db_id,
+        dbId: table.db_id!,
         tableId: table.id,
         metadata,
       }),
@@ -55,9 +57,12 @@ const interestingQuestions = (table: EntityLike, metadata: Metadata) => {
   ];
 };
 
-const mapStateToProps = (state: any, props: any) => {
+const mapStateToProps = (
+  state: StateWithReference,
+  props: ReferenceRouteProps,
+) => {
   const entity = getTable(state, props) || {};
-  const fields = getFields(state, props);
+  const fields = getFields(state);
 
   return {
     entity,
@@ -83,9 +88,9 @@ const mapDispatchToProps = {
 
 interface TableDetailProps {
   style: React.CSSProperties;
-  entity: EntityLike;
-  table?: EntityLike;
-  user: EntityLike;
+  entity: StubbedTable;
+  table: StubbedTable;
+  user: User;
   isEditing?: boolean;
   startEditing: () => void;
   endEditing: () => void;
@@ -148,7 +153,7 @@ const TableDetail = (props: TableDetailProps) => {
         type="table"
         headerIcon="table2"
         headerLink={getQuestionUrl({
-          dbId: entity.db_id,
+          dbId: entity.db_id!,
           tableId: entity.id,
           metadata,
         })}

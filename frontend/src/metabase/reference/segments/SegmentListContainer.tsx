@@ -9,9 +9,13 @@ import BaseSidebar from "metabase/reference/guide/BaseSidebar";
 import * as actions from "metabase/reference/reference";
 import { SegmentList } from "metabase/reference/segments/SegmentList";
 
+import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import { getDatabaseId, getIsEditing } from "../selectors";
 
-const mapStateToProps = (state: any, props: any) => ({
+const mapStateToProps = (
+  state: StateWithReference,
+  props: ReferenceRouteProps,
+) => ({
   databaseId: getDatabaseId(state, props),
   isEditing: getIsEditing(state),
 });

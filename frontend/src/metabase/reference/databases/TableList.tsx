@@ -14,6 +14,7 @@ import * as metadataActions from "metabase/redux/metadata";
 import R from "metabase/reference/Reference.module.css";
 
 import ReferenceHeader from "../components/ReferenceHeader";
+import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
   getDatabase,
   getError,
@@ -29,7 +30,10 @@ const emptyStateData = {
   icon: "table2" as const,
 };
 
-const mapStateToProps = (state: any, props: any) => ({
+const mapStateToProps = (
+  state: StateWithReference,
+  props: ReferenceRouteProps,
+) => ({
   database: getDatabase(state, props),
   entities: getTablesByDatabase(state, props),
   hasSingleSchema: getHasSingleSchema(state, props),
@@ -82,10 +86,8 @@ export const separateTablesBySchema = <T extends TableLike>(
       return;
     }
     // add schema header for first element and if schema is different from previous
-    const previousTableId = Object.keys(sortedTables)[index - 1];
     return index === 0 ||
-      (sortedTables as unknown as Record<string, T>)[previousTableId]
-        .schema_name !== table.schema_name
+      sortedTables[index - 1].schema_name !== table.schema_name
       ? [createSchemaSeparator(table), createListItem(table)]
       : createListItem(table);
   });

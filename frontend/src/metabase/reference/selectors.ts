@@ -8,17 +8,28 @@ import {
   getShallowSegments as getSegments,
   getShallowTables as getTables,
 } from "metabase/selectors/metadata";
+import type {
+  Card,
+  NormalizedField,
+  NormalizedTable,
+} from "metabase-types/api";
 
+import type {
+  StubbedDatabase,
+  StubbedField,
+  StubbedSegment,
+  StubbedTable,
+} from "./types";
 import { idsToObjectMap } from "./utils";
 
-interface ReferenceRouteParams {
+export interface ReferenceRouteParams {
   segmentId?: string;
   databaseId?: string;
   tableId?: string;
   fieldId?: string;
 }
 
-interface ReferenceRouteProps {
+export interface ReferenceRouteProps {
   params: ReferenceRouteParams;
 }
 
@@ -33,7 +44,7 @@ interface ReferenceSliceState {
 // but aren't declared on the global `State` type. Adding them centrally
 // triggers a TS2589 ("excessively deep") cascade in dashboard's reducers,
 // so we widen locally here instead.
-type StateWithReference = State & {
+export type StateWithReference = State & {
   reference: ReferenceSliceState;
   revisions?: Record<string, Record<string | number, unknown>>;
 };
@@ -46,7 +57,8 @@ export const getSegmentId = (
 ) => Number.parseInt(props.params.segmentId ?? "");
 export const getSegment = createSelector(
   [getSegmentId, getSegments],
-  (segmentId, segments) => segments[segmentId] || { id: segmentId },
+  (segmentId, segments): StubbedSegment =>
+    segments[segmentId] || { id: segmentId },
 );
 
 export const getDatabaseId = (
@@ -56,7 +68,8 @@ export const getDatabaseId = (
 
 export const getDatabase = createSelector(
   [getDatabaseId, getDatabases],
-  (databaseId, databases) => databases[databaseId] || { id: databaseId },
+  (databaseId, databases): StubbedDatabase =>
+    databases[databaseId] || { id: databaseId },
 );
 
 export const getTableId = (
@@ -66,27 +79,24 @@ export const getTableId = (
 // export const getTableId = (state, props) => Number.parseInt(props.params.tableId);
 export const getTablesByDatabase = createSelector(
   [getTables, getDatabase],
-  (tables, database) => {
-    const databaseTables = (database as { tables?: Array<string | number> })
-      .tables;
-    return tables && databaseTables
-      ? idsToObjectMap(databaseTables, tables)
-      : {};
-  },
+  (tables, database) =>
+    tables && database.tables
+      ? idsToObjectMap(database.tables, tables)
+      : ({} as Record<string, NormalizedTable>),
 );
 export const getTableBySegment = createSelector(
   [getSegment, getTables],
-  (segment, tables) =>
-    segment && segment.table_id ? tables[segment.table_id] : {},
+  (segment, tables): StubbedTable =>
+    segment.table_id ? tables[segment.table_id] : { id: 0 },
 );
 export const getTable = createSelector(
   [getTableId, getTables, getSegmentId, getTableBySegment],
-  (tableId, tables, segmentId, tableBySegment) =>
+  (tableId, tables, segmentId, tableBySegment): StubbedTable =>
     tableId
       ? tables[tableId] || { id: tableId }
       : segmentId
         ? tableBySegment
-        : {},
+        : { id: 0 },
 );
 
 export const getFieldId = (
@@ -95,35 +105,25 @@ export const getFieldId = (
 ) => Number.parseInt(props.params.fieldId ?? "");
 export const getFieldsByTable = createSelector(
   [getTable, getFields],
-  (table, fields) => {
-    const tableFields = (table as { fields?: Array<string | number> }).fields;
-    return tableFields
-      ? idsToObjectMap(
-          tableFields,
-          fields as unknown as Record<string | number, { id: string | number }>,
-        )
-      : {};
-  },
+  (table, fields) =>
+    table.fields
+      ? idsToObjectMap(table.fields, fields)
+      : ({} as Record<string, NormalizedField>),
 );
 export const getFieldsBySegment = createSelector(
   [getTableBySegment, getFields],
-  (table, fields) => {
-    const tableFields = (table as { fields?: Array<string | number> }).fields;
-    return tableFields
-      ? idsToObjectMap(
-          tableFields,
-          fields as unknown as Record<string | number, { id: string | number }>,
-        )
-      : {};
-  },
+  (table, fields) =>
+    table.fields
+      ? idsToObjectMap(table.fields, fields)
+      : ({} as Record<string, NormalizedField>),
 );
 export const getField = createSelector(
   [getFieldId, getFields],
-  (fieldId, fields) => fields[fieldId] || { id: fieldId },
+  (fieldId, fields): StubbedField => fields[fieldId] || { id: fieldId },
 );
 export const getFieldBySegment = createSelector(
   [getFieldId, getFieldsBySegment],
-  (fieldId, fields) => fields[fieldId] || { id: fieldId },
+  (fieldId, fields): StubbedField => fields[fieldId] || { id: fieldId },
 );
 
 const getQuestions = (state: StateWithReference) =>
@@ -138,11 +138,10 @@ export const getSegmentRevisions = createSelector(
 
 export const getTableQuestions = createSelector(
   [getTable, getQuestions],
-  (table, questions) => {
-    const tableId = (table as { id?: number | string }).id;
-    return Object.values(questions as Record<string, unknown>).filter(
-      (question) =>
-        (question as { table_id?: number | string }).table_id === tableId,
+  (table, questions): Card[] => {
+    const tableId = table.id;
+    return Object.values(questions as Record<string, Card>).filter(
+      (question) => question.table_id === tableId,
     );
   },
 );
@@ -155,13 +154,15 @@ export const getError = (state: State) =>
 
 export const getHasSingleSchema = createSelector(
   [getTablesByDatabase],
-  (tables) =>
-    tables && Object.keys(tables).length > 0
-      ? Object.values(tables).every(
-          (table: { schema_name?: string }, _index, tables) =>
-            table.schema_name === (tables[0] as { schema?: string }).schema,
-        )
-      : true,
+  (tables) => {
+    const list = Object.values(tables);
+    // NOTE: original compared each row's `schema_name` to the first row's
+    // `schema` (different fields). Behavior preserved verbatim — likely a
+    // pre-existing bug, but out of scope for the TS conversion.
+    return list.length > 0
+      ? list.every((table) => table.schema_name === list[0].schema)
+      : true;
+  },
 );
 
 export const getIsEditing = (state: State) =>

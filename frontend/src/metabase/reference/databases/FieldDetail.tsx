@@ -15,7 +15,9 @@ import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { FieldId, User } from "metabase-types/api";
 
+import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
   getDatabase,
   getError,
@@ -26,13 +28,13 @@ import {
   getTable,
   getUser,
 } from "../selectors";
-import type { EntityLike } from "../types";
+import type { StubbedDatabase, StubbedField, StubbedTable } from "../types";
 import { getQuestionUrl } from "../utils";
 
 const interestingQuestions = (
-  database: EntityLike,
-  table: EntityLike,
-  field: EntityLike,
+  database: StubbedDatabase,
+  table: StubbedTable,
+  field: StubbedField,
   metadata: Metadata,
 ) => {
   return [
@@ -42,7 +44,7 @@ const interestingQuestions = (
       link: getQuestionUrl({
         dbId: database.id,
         tableId: table.id,
-        fieldId: field.id,
+        fieldId: field.id as FieldId,
         getCount: true,
         visualization: "bar",
         metadata,
@@ -54,7 +56,7 @@ const interestingQuestions = (
       link: getQuestionUrl({
         dbId: database.id,
         tableId: table.id,
-        fieldId: field.id,
+        fieldId: field.id as FieldId,
         getCount: true,
         visualization: "pie",
         metadata,
@@ -66,14 +68,17 @@ const interestingQuestions = (
       link: getQuestionUrl({
         dbId: database.id,
         tableId: table.id,
-        fieldId: field.id,
+        fieldId: field.id as FieldId,
         metadata,
       }),
     },
   ];
 };
 
-const mapStateToProps = (state: any, props: any) => {
+const mapStateToProps = (
+  state: StateWithReference,
+  props: ReferenceRouteProps,
+) => {
   const entity = getField(state, props) || {};
 
   return {
@@ -99,11 +104,11 @@ const mapDispatchToProps = {
 
 interface FieldDetailProps {
   style: React.CSSProperties;
-  entity: EntityLike;
-  field: EntityLike;
-  table?: EntityLike;
-  user: EntityLike;
-  database: EntityLike;
+  entity: StubbedField;
+  field: StubbedField;
+  table: StubbedTable;
+  user: User;
+  database: StubbedDatabase;
   isEditing?: boolean;
   startEditing: () => void;
   endEditing: () => void;
@@ -238,7 +243,7 @@ const FieldDetail = (props: FieldDetailProps) => {
                 )}
                 <li>
                   <FieldTypeDetail
-                    databaseId={table.db_id}
+                    databaseId={table.db_id!}
                     field={entity}
                     fieldTypeFormField={getFormField("semantic_type")}
                     foreignKeyFormField={getFormField("fk_target_field_id")}

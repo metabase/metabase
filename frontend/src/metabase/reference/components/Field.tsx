@@ -20,9 +20,10 @@ import type {
   Field as ApiField,
   DatabaseId,
   FieldId,
+  NormalizedField,
 } from "metabase-types/api";
 
-import type { FormFieldEntry } from "../types";
+import type { FormFieldEntry, StubbedField } from "../types";
 
 import F from "./Field.module.css";
 import { FieldFkTargetPicker } from "./FieldFkTargetPicker";
@@ -37,7 +38,9 @@ interface FieldFormFields {
 
 interface FieldProps {
   databaseId: DatabaseId;
-  field: ApiField;
+  // Accept the redux-normalized shape; the inner pickers need the denormalized
+  // `Field` type, so we cast at those boundaries.
+  field: ApiField | NormalizedField | StubbedField;
   url: string;
   icon?: IconName;
   isEditing?: boolean;
@@ -90,9 +93,9 @@ const Field = ({
                 comboboxProps={{
                   width: 300,
                 }}
-                field={field}
+                field={field as ApiField}
                 fw="bold"
-                value={semanticType}
+                value={semanticType ?? null}
                 onChange={(value) => {
                   formField.semantic_type.onChange({
                     target: {
@@ -134,7 +137,7 @@ const Field = ({
             <Box mt="sm">
               <FieldFkTargetPicker
                 databaseId={databaseId}
-                field={field}
+                field={field as ApiField}
                 value={
                   formField.fk_target_field_id.value ||
                   field.fk_target_field_id ||

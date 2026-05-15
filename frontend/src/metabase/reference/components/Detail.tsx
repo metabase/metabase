@@ -16,7 +16,7 @@ interface DetailField {
 
 interface DetailProps {
   name: string;
-  description?: string;
+  description?: string | null;
   placeholder?: string;
   subtitleClass?: string;
   url?: string;
@@ -49,7 +49,7 @@ const Detail = ({
             onChange={field.onChange}
             //FIXME: use initialValues from redux forms instead of default value
             // to allow for reinitializing on cancel (see GettingStartedGuide.jsx)
-            defaultValue={description}
+            defaultValue={description ?? undefined}
           />
         ) : (
           <span className={subtitleClass}>

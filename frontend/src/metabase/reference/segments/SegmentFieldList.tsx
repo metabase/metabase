@@ -18,7 +18,9 @@ import F from "metabase/reference/components/Field.module.css";
 import * as actions from "metabase/reference/reference";
 import type { IconName } from "metabase/ui";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
+import type { FieldId, NormalizedField, User } from "metabase-types/api";
 
+import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
   getError,
   getFieldsBySegment,
@@ -27,6 +29,7 @@ import {
   getSegment,
   getUser,
 } from "../selectors";
+import type { StubbedSegment, StubbedTable } from "../types";
 
 const emptyStateData = {
   get message() {
@@ -35,7 +38,10 @@ const emptyStateData = {
   icon: "fields" as const,
 };
 
-const mapStateToProps = (state: any, props: any) => {
+const mapStateToProps = (
+  state: StateWithReference,
+  props: ReferenceRouteProps,
+) => {
   const data = getFieldsBySegment(state, props);
   return {
     segment: getSegment(state, props),
@@ -54,23 +60,20 @@ const mapDispatchToProps = {
 };
 
 interface SegmentFieldListProps {
-  segment: any;
+  segment: StubbedSegment;
   style: React.CSSProperties;
-
-  entities: Record<string, any>;
+  entities: Record<string, NormalizedField>;
   isEditing?: boolean;
   startEditing: () => void;
   endEditing: () => void;
-
-  user: any;
-
-  table: any;
+  user: User | null;
+  table: StubbedTable;
   loading?: boolean;
   loadingError?: unknown;
+  // The action handler in reference.ts types its own props parameter.
   onSubmit?: (
-    entities: Record<string, unknown>,
+    entities: Record<string, NormalizedField>,
     fields: Record<string, unknown>,
-
     props: any,
   ) => void;
 }
@@ -170,14 +173,14 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
                       entity &&
                       entity.id &&
                       entity.name && (
-                        <li className={CS.relative} key={entity.id}>
+                        <li className={CS.relative} key={String(entity.id)}>
                           <Field
-                            databaseId={table.db_id}
+                            databaseId={table.db_id!}
                             field={entity}
                             url={`/reference/segments/${segment.id}/fields/${entity.id}`}
                             icon={getIconForField(entity) as IconName}
                             isEditing={isEditing}
-                            formField={getNestedFormField(entity.id)}
+                            formField={getNestedFormField(entity.id as FieldId)}
                           />
                         </li>
                       ),

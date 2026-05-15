@@ -20,9 +20,10 @@ import {
   getMetadata,
 } from "metabase/selectors/metadata";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Segment } from "metabase-types/api";
+import type { Segment, User } from "metabase-types/api";
 
 import S from "../components/Detail.module.css";
+import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
   getError,
   getIsEditing,
@@ -32,12 +33,12 @@ import {
   getTable,
   getUser,
 } from "../selectors";
-import type { EntityLike } from "../types";
+import type { StubbedSegment, StubbedTable } from "../types";
 import { getQuestionUrl } from "../utils";
 
 const interestingQuestions = (
-  table: EntityLike,
-  segment: EntityLike,
+  table: StubbedTable,
+  segment: StubbedSegment,
   metadata: Metadata,
 ) => {
   return [
@@ -45,7 +46,7 @@ const interestingQuestions = (
       text: t`Number of ${segment.name}`,
       icon: "number" as const,
       link: getQuestionUrl({
-        dbId: table && table.db_id,
+        dbId: table.db_id!,
         tableId: table.id,
         segmentId: segment.id,
         getCount: true,
@@ -56,7 +57,7 @@ const interestingQuestions = (
       text: t`See all ${segment.name}`,
       icon: "table2" as const,
       link: getQuestionUrl({
-        dbId: table && table.db_id,
+        dbId: table.db_id!,
         tableId: table.id,
         segmentId: segment.id,
         metadata,
@@ -65,9 +66,12 @@ const interestingQuestions = (
   ];
 };
 
-const mapStateToProps = (state: any, props: any) => {
+const mapStateToProps = (
+  state: StateWithReference,
+  props: ReferenceRouteProps,
+) => {
   const entity = getSegment(state, props) || {};
-  const fields = getFields(state, props);
+  const fields = getFields(state);
 
   return {
     entity,
@@ -96,9 +100,9 @@ const validate = (values: { revision_message?: string }) =>
 
 interface SegmentDetailProps {
   style: React.CSSProperties;
-  entity: EntityLike;
-  table?: EntityLike;
-  user: EntityLike;
+  entity: StubbedSegment;
+  table: StubbedTable;
+  user: User;
   isEditing?: boolean;
   startEditing: () => void;
   endEditing: () => void;
@@ -167,8 +171,8 @@ const SegmentDetail = (props: SegmentDetailProps) => {
         type="segment"
         headerIcon={modelIconMap.segment}
         headerLink={getQuestionUrl({
-          dbId: table && table.db_id,
-          tableId: entity.table_id,
+          dbId: table.db_id!,
+          tableId: entity.table_id!,
           segmentId: entity.id,
           metadata,
         })}

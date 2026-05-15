@@ -16,7 +16,9 @@ import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
 import { getMetadata } from "metabase/selectors/metadata";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { FieldId, User } from "metabase-types/api";
 
+import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
   getError,
   getFieldBySegment,
@@ -26,12 +28,12 @@ import {
   getTable,
   getUser,
 } from "../selectors";
-import type { EntityLike } from "../types";
+import type { StubbedField, StubbedTable } from "../types";
 import { getQuestionUrl } from "../utils";
 
 const interestingQuestions = (
-  table: EntityLike,
-  field: EntityLike,
+  table: StubbedTable,
+  field: StubbedField,
   metadata: Metadata,
 ) => {
   return [
@@ -41,9 +43,9 @@ const interestingQuestions = (
       }`,
       icon: "number" as const,
       link: getQuestionUrl({
-        dbId: table && table.db_id,
+        dbId: table.db_id!,
         tableId: table.id,
-        fieldId: field.id,
+        fieldId: field.id as FieldId,
         getCount: true,
         metadata,
       }),
@@ -52,16 +54,19 @@ const interestingQuestions = (
       text: t`All distinct values of ${field.display_name}`,
       icon: "table2" as const,
       link: getQuestionUrl({
-        dbId: table && table.db_id,
+        dbId: table.db_id!,
         tableId: table.id,
-        fieldId: field.id,
+        fieldId: field.id as FieldId,
         metadata,
       }),
     },
   ];
 };
 
-const mapStateToProps = (state: any, props: any) => {
+const mapStateToProps = (
+  state: StateWithReference,
+  props: ReferenceRouteProps,
+) => {
   const entity = getFieldBySegment(state, props) || {};
 
   return {
@@ -85,9 +90,9 @@ const mapDispatchToProps = {
 
 interface SegmentFieldDetailProps {
   style: React.CSSProperties;
-  entity: EntityLike;
-  table?: EntityLike;
-  user: EntityLike;
+  entity: StubbedField;
+  table: StubbedTable;
+  user: User;
   isEditing?: boolean;
   startEditing: () => void;
   endEditing: () => void;
@@ -213,7 +218,7 @@ const SegmentFieldDetail = (props: SegmentFieldDetailProps) => {
                 )}
                 <li className={CS.relative}>
                   <FieldTypeDetail
-                    databaseId={table.db_id}
+                    databaseId={table.db_id!}
                     field={entity}
                     fieldTypeFormField={getFormField("semantic_type")}
                     foreignKeyFormField={getFormField("fk_target_field_id")}

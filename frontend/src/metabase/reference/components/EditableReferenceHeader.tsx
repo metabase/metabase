@@ -32,7 +32,7 @@ interface EditableReferenceHeaderProps {
   headerIcon?: IconName;
   headerLink?: string;
   name?: string;
-  user?: EditableReferenceHeaderUser;
+  user?: EditableReferenceHeaderUser | null;
   isEditing?: boolean;
   hasSingleSchema?: boolean;
   hasDisplayName?: boolean;

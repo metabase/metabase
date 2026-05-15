@@ -14,6 +14,7 @@ import { getShallowDatabases as getDatabases } from "metabase/selectors/metadata
 import type { NormalizedDatabase } from "metabase-types/api";
 
 import ReferenceHeader from "../components/ReferenceHeader";
+import type { StateWithReference } from "../selectors";
 import { getError, getLoading } from "../selectors";
 
 interface DatabaseListProps {
@@ -22,7 +23,7 @@ interface DatabaseListProps {
   loadingError?: unknown;
 }
 
-const mapStateToProps = (state: any) => ({
+const mapStateToProps = (state: StateWithReference) => ({
   entities: getDatabases(state),
   loading: getLoading(state),
   loadingError: getError(state),

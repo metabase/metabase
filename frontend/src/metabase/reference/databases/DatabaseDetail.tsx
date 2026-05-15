@@ -12,7 +12,9 @@ import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import * as actions from "metabase/reference/reference";
 import { getShallowFields as getFields } from "metabase/selectors/metadata";
+import type { User } from "metabase-types/api";
 
+import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
   getDatabase,
   getError,
@@ -21,10 +23,14 @@ import {
   getLoading,
   getUser,
 } from "../selectors";
+import type { StubbedDatabase } from "../types";
 
-const mapStateToProps = (state: any, props: any) => {
+const mapStateToProps = (
+  state: StateWithReference,
+  props: ReferenceRouteProps,
+) => {
   const entity = getDatabase(state, props) || {};
-  const fields = getFields(state, props);
+  const fields = getFields(state);
 
   return {
     entity,
@@ -47,17 +53,15 @@ const mapDispatchToProps = {
 
 interface DatabaseDetailProps {
   style: React.CSSProperties;
-
-  entity: any;
-
-  user: any;
+  entity: StubbedDatabase;
+  user: User | null;
   isEditing?: boolean;
   startEditing: () => void;
   endEditing: () => void;
   loading?: boolean;
   loadingError?: unknown;
-
-  onSubmit: (fields: Record<string, unknown>, props: any) => any;
+  // The action handler in reference.ts types its own props parameter.
+  onSubmit: (fields: Record<string, unknown>, props: any) => void;
 }
 
 const DatabaseDetail = (props: DatabaseDetailProps) => {
