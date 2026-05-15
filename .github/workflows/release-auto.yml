@@ -26,9 +26,13 @@ on:
 # scheduling lives in the schedule-* trigger workflows, which decide what to
 # release and when.
 jobs:
-  auto-release-trigger:
+  prepare:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
+    outputs:
+      version: ${{ steps.compute.outputs.version }}
+      commit: ${{ steps.compute.outputs.commit }}
+      should_release: ${{ steps.compute.outputs.should_release }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,7 +41,8 @@ jobs:
             .github
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
-      - name: Trigger auto-release
+      - name: Compute next version and green commit
+        id: compute
         uses: actions/github-script@v7
         env:
           SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
@@ -51,84 +56,86 @@ jobs:
               sendAutoReleaseFailureMessage,
             } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            async function dispatchRelease({ kind, majorVersion, overrideSha }) {
-              const nextVersion = await getNextVersion({
-                github,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                majorVersion,
-                kind,
-              });
+            const majorVersion = Number('${{ inputs.version }}');
+            const kind = '${{ inputs.kind }}';
 
-              const releaseCommit = overrideSha || await getLatestGreenCommit({
-                github,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                branch: `release-x.${majorVersion}.x`,
-              });
-
-              const hasBeenReleased = await hasCommitBeenReleased({
-                github,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: releaseCommit,
-                majorVersion: Number(majorVersion),
-              });
-
-              console.log({ kind, majorVersion, nextVersion, releaseCommit, hasBeenReleased });
-
-              if (nextVersion && releaseCommit && !hasBeenReleased) {
-                await github.rest.actions.createWorkflowDispatch({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  workflow_id: 'tag-for-release.yml',
-                  ref: 'refs/heads/master',
-                  inputs: {
-                    commit: releaseCommit,
-                    version: nextVersion,
-                  }
-                }).catch(console.error);
-                return;
-              }
-
-              const reason = !nextVersion
-                ? 'no-next-version'
-                : !releaseCommit
-                  ? 'no-green-commit'
-                  : 'already-released';
-
-              console.error(`Auto-${kind} skipped for v${majorVersion}: ${reason}`);
-
-              await sendAutoReleaseFailureMessage({
-                channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
-                kind,
-                majorVersion,
-                reason,
-                runId: '${{ github.run_id }}',
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-              }).catch(console.error);
-            }
-
-            const inputVersion = Number(context.payload.inputs.version);
-            const kind = String(context.payload.inputs.kind ?? '');
-
-            if (Number.isNaN(inputVersion)) {
-              throw new Error(`Invalid version number: ${context.payload.inputs.version}`);
+            if (Number.isNaN(majorVersion)) {
+              throw new Error(`Invalid version number: ${{ inputs.version }}`);
             }
             if (kind !== 'patch' && kind !== 'minor') {
               throw new Error(`Invalid kind: ${kind}`);
             }
 
-            const overrideSha = String(context.payload?.inputs?.override_sha ?? '').trim();
+            const overrideSha = String('${{ inputs.override_sha }}').trim();
             const isValidOverride = overrideSha.length === 40;
 
             if (!isValidOverride && overrideSha.length > 0) {
               throw new Error(`Invalid override SHA provided: ${overrideSha}`);
             }
 
-            await dispatchRelease({
+            const nextVersion = await getNextVersion({
+              github,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              majorVersion,
               kind,
-              majorVersion: inputVersion,
-              overrideSha: isValidOverride ? overrideSha : undefined,
             });
+
+            const releaseCommit = (isValidOverride ? overrideSha : null) || await getLatestGreenCommit({
+              github,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: `release-x.${majorVersion}.x`,
+            });
+
+            const hasBeenReleased = releaseCommit ? await hasCommitBeenReleased({
+              github,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: releaseCommit,
+              majorVersion,
+            }) : false;
+
+            console.log({ kind, majorVersion, nextVersion, releaseCommit, hasBeenReleased });
+
+            if (nextVersion && releaseCommit && !hasBeenReleased) {
+              core.setOutput('version', nextVersion);
+              core.setOutput('commit', releaseCommit);
+              core.setOutput('should_release', 'true');
+              return;
+            }
+
+            const reason = !nextVersion
+              ? 'no-next-version'
+              : !releaseCommit
+                ? 'no-green-commit'
+                : 'already-released';
+
+            console.error(`Auto-${kind} skipped for v${majorVersion}: ${reason}`);
+
+            await sendAutoReleaseFailureMessage({
+              channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
+              kind,
+              majorVersion,
+              reason,
+              runId: '${{ github.run_id }}',
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            }).catch(console.error);
+
+            core.setOutput('should_release', 'false');
+
+  tag-for-release:
+    needs: prepare
+    if: ${{ needs.prepare.outputs.should_release == 'true' }}
+    permissions:
+      id-token: write
+      contents: write
+      checks: write
+      issues: write
+      actions: read
+    uses: ./.github/workflows/tag-for-release.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+      commit: ${{ needs.prepare.outputs.commit }}

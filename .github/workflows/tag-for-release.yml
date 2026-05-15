@@ -11,6 +11,16 @@ on:
       commit:
         description: 'A full-length commit SHA-1 hash'
         required: true
+  workflow_call:
+    inputs:
+      version:
+        description: 'Metabase version (e.g. v0.46.3)'
+        type: string
+        required: true
+      commit:
+        description: 'A full-length commit SHA-1 hash'
+        type: string
+        required: true
 
 permissions:
   id-token: write
