@@ -124,6 +124,7 @@
     :tracking       {:select-fields  [:name :collection_id]
                      :field-mappings {:model_name          :name
                                       :model_collection_id :collection_id}}
+    :conditions     {:exploration_thread_id nil}  ; exclude exploration scratch docs from sync
     :removal        {:statuses  #{"removed"}
                      :scope-key :collection_id}
     :enabled?       true}
@@ -644,30 +645,38 @@
   {:arglists '([spec object])}
   (fn [spec _object] (get-in spec [:eligibility :type])))
 
+(defn- object-matches-conditions?
+  "True if `object` satisfies every column-value pair in `conditions` (or if no conditions are set)."
+  [conditions object]
+  (or (empty? conditions)
+      (every? (fn [[k v]] (= v (get object k))) conditions)))
+
 (defmethod check-eligibility :collection
-  [{:keys [eligibility]} object]
+  [{:keys [eligibility conditions]} object]
   (let [collection-type (:collection eligibility)
         collection-id   (:collection_id object)]
-    (case collection-type
-      :remote-synced
-      (boolean (collections/remote-synced-collection? collection-id))
+    (and
+     (object-matches-conditions? conditions object)
+     (case collection-type
+       :remote-synced
+       (boolean (collections/remote-synced-collection? collection-id))
 
-      :transforms-namespace
-      (and (rs-settings/remote-sync-transforms)
-           (transforms-namespace-collection? object))
+       :transforms-namespace
+       (and (rs-settings/remote-sync-transforms)
+            (transforms-namespace-collection? object))
 
-      :snippets-namespace
-      (and (rs-settings/library-is-remote-synced?)
-           (snippets-namespace-collection? object))
+       :snippets-namespace
+       (and (rs-settings/library-is-remote-synced?)
+            (snippets-namespace-collection? object))
 
-      :any
-      (or (collections/remote-synced-collection? (or collection-id object))
-          (and (rs-settings/remote-sync-transforms)
-               (transforms-namespace-collection? object))
-          (and (rs-settings/library-is-remote-synced?)
-               (snippets-namespace-collection? object)))
+       :any
+       (or (collections/remote-synced-collection? (or collection-id object))
+           (and (rs-settings/remote-sync-transforms)
+                (transforms-namespace-collection? object))
+           (and (rs-settings/library-is-remote-synced?)
+                (snippets-namespace-collection? object)))
 
-      false)))
+       false))))
 
 (defmethod check-eligibility :published-table
   [_ {:keys [is_published collection_id]}]

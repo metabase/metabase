@@ -501,6 +501,21 @@
       (is (= {:entity_id [:not= transforms-python/builtin-entity-id]}
              (spec/removal-conditions spec))))))
 
+(deftest document-spec-excludes-explorations-test
+  (testing "Document spec filters out exploration scratch documents via :conditions (UXW-4091)"
+    (let [spec (spec/spec-for-model-key :model/Document)]
+      (is (= {:exploration_thread_id nil} (:conditions spec))
+          "Document :conditions should require exploration_thread_id IS NULL")
+      (is (= {:exploration_thread_id nil} (spec/export-conditions spec)))
+      (is (= {:exploration_thread_id nil} (spec/removal-conditions spec)))))
+  (testing "check-eligibility returns false for an exploration document, even in a remote-synced collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced" :location "/" :is_remote_synced true}]
+      (let [spec       (spec/spec-for-model-key :model/Document)
+            plain-doc  {:id 1 :collection_id coll-id :exploration_thread_id nil}
+            explo-doc  {:id 2 :collection_id coll-id :exploration_thread_id 42}]
+        (is (true? (spec/check-eligibility spec plain-doc)))
+        (is (false? (spec/check-eligibility spec explo-doc)))))))
+
 (deftest transform-tag-spec-uses-conditions-test
   (testing "TransformTag spec still uses :conditions (not split)"
     (let [spec (spec/spec-for-model-key :model/TransformTag)]
