@@ -124,28 +124,40 @@
                         {:cli-validation true})))
       (validate-dir! representation-dir))))
 
-(defn- run-appdb-mode!
-  "Score against the live appdb the same way the cron does; optionally persist."
-  [write?]
-  ;; Load driver init so setting :on-change watchers (e.g. report-timezone) have their event topics
-  ;; derived from :metabase/event before the settings cache is restored from the appdb.
+(defn- bootstrap-appdb!
+  "Initialize the appdb the same way both source modes need before they can read settings or write
+  scores. Loads `metabase.driver.init` first so setting `:on-change` watchers (e.g. report-timezone)
+  have their event topics derived from `:metabase/event` before the settings cache is restored —
+  the standalone CLI doesn't go through `metabase.core.core/entrypoint`, so this require otherwise
+  wouldn't fire. Skipping it crashes `publish-event!` from inside the cache-restore.
+  Kept local so representation mode without `--write-to-appdb` stays driver-free."
+  []
   (require 'metabase.driver.init)
-  (mdb/setup-db-without-migrations!)
+  (mdb/setup-db-without-migrations!))
+
+(defn- run-appdb-mode!
+  "Score against the live appdb the same way the cron does; optionally persist.
+
+  Persistence here records the score row but deliberately does *not* advance
+  `data-complexity-scoring-last-fingerprint`. That setting gates the cron's skip-already-done
+  logic and assumes a confirmed Snowplow publish — which we disable for CLI runs. Letting the CLI
+  advance it would log a misleading 'Snowplow publish failed' warning and stop the next cron from
+  re-scoring a fingerprint nobody's seen externally yet."
+  [write?]
+  (bootstrap-appdb!)
   (let [result (complexity/complexity-scores
                 (assoc (synonym-source/complexity-scores-opts)
                        :metabot-scope (metabot-scope/internal-metabot-scope)
                        :emit-snowplow? false))]
     (when write?
-      (let [fp (task.complexity-score/current-fingerprint)]
-        (data-complexity-score/record-score! fp "appdb" result)
-        (task.complexity-score/maybe-advance-last-fingerprint! fp result)))
+      (data-complexity-score/record-score! (task.complexity-score/current-fingerprint) "appdb" result))
     result))
 
 (defn- run-representation-mode!
   "Score against an on-disk serdes export; optionally persist with `source` = `representation:<digest>`."
   [{:keys [representation-dir embeddings]} write?]
   (when write?
-    (mdb/setup-db-without-migrations!))
+    (bootstrap-appdb!))
   (let [{:keys [library universe embedder digest]} (representation/load-dir representation-dir
                                                                             :embeddings-path embeddings)
         result                                     (complexity/score-from-entities library universe embedder {})]

@@ -850,6 +850,25 @@
                     (messages))
               "a warning about the publish failure was logged"))))))
 
+(deftest ^:sequential complexity-scores-emit-snowplow-false-skips-publish-test
+  (testing ":emit-snowplow? false bypasses Snowplow entirely and stamps ::snowplow-published? false"
+    ;; Pins the CLI/appdb path: the standalone scorer disables telemetry, so we must not call
+    ;; into the analytics tracker at all (catching failures upstream isn't enough — the cost is
+    ;; the syscall + the misleading WARN). The accompanying metadata flag lets callers tell
+    ;; intentional skip apart from a successful publish, so they can avoid advancing fingerprints
+    ;; or otherwise treating the run as observed.
+    (let [tracked? (atom false)]
+      (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
+                                  (constantly {:library  [(entity :name "orders")]
+                                               :universe [(entity :name "orders")]
+                                               :metabot  []})
+                                  analytics/track-event! (fn [& _] (reset! tracked? true))]
+        (let [result (complexity/complexity-scores :embedder nil :emit-snowplow? false)]
+          (is (false? @tracked?)
+              "analytics/track-event! must not be called when :emit-snowplow? false")
+          (is (false? (::complexity/snowplow-published? (meta result)))
+              "result metadata reflects that nothing was published"))))))
+
 (deftest ^:sequential complexity-score-library-hermetic-test
   (testing "library score is computed over exactly the Library collection tree — known inputs produce known scores"
     ;; The library tree gets a fixed set of tables, fields, measures, and metric cards. One extra
