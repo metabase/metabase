@@ -8,9 +8,9 @@
 (defsetting ^:deprecated data-complexity-scoring-enabled
   (deferred-tru
    (str "Deprecated: the :data-complexity-score premium feature token is the authoritative gate "
-        "for the scheduled scoring job. Retained as an env-var-only fallback (MB_DATA_COMPLEXITY_"
-        "SCORING_ENABLED) so existing dev/staging overrides keep working and the value stays "
-        "observable in stats."))
+        "for the scheduled scoring job. Retained as a read-only fallback so existing overrides "
+        "keep working — values from the MB_DATA_COMPLEXITY_SCORING_ENABLED env var or previously "
+        "persisted DB rows are still honored, but the setting can no longer be changed at runtime."))
   :encryption :no
   :visibility :internal
   :setter     :none
@@ -23,8 +23,7 @@
   "Whether the scheduled Data Complexity Score runner is permitted to execute on this instance.
   The `:data-complexity-score` premium feature token is authoritative; the deprecated
   [[data-complexity-scoring-enabled]] setting is honored as a backward-compatible fallback so
-  existing self-hosted overrides (and the cloud-staging default) keep working until the setting
-  is removed."
+  existing self-hosted overrides keep working until the setting is removed."
   []
   (boolean (or (premium-features/enable-data-complexity-score?)
                ;; Intentional call to the deprecated env-var-only fallback (see docstring above).
