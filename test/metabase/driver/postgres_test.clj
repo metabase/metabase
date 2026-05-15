@@ -2209,16 +2209,19 @@
           (is (= 0 (count (into [] (cancel-messages) (log-messages))))
               "Query cancellation exceptions should not be logged")))
 
-      (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
-        (future
-          (Thread/sleep 400)
-          (a/put! qp.pipeline/*canceled-chan* :cancel))
-        (mt/with-log-messages-for-level [messages :error]
-          (let [response (qp/process-query (assoc-in (lib/native-query (mt/metadata-provider) "select pg_sleep(8), false")
-                                                     [:middleware :userland-query?] true))]
-            (is (= "ERROR: canceling statement due to user request" (:error response)))
-            (let [bad-messages (into [] (cancel-messages) (messages))]
-              (is (empty? bad-messages)))))))))
+      (let [mp (mt/metadata-provider)]
+        ;; Refresh the permission set in case the metadata provider created this test DB.
+        (mt/with-test-user :rasta
+          (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
+            (future
+              (Thread/sleep 400)
+              (a/put! qp.pipeline/*canceled-chan* :cancel))
+            (mt/with-log-messages-for-level [messages :error]
+              (let [response (qp/process-query (assoc-in (lib/native-query mp "select pg_sleep(8), false")
+                                                         [:middleware :userland-query?] true))]
+                (is (= "ERROR: canceling statement due to user request" (:error response)))
+                (let [bad-messages (into [] (cancel-messages) (messages))]
+                  (is (empty? bad-messages)))))))))))
 
 (deftest bit-strings-can-be-filtered
   (mt/test-driver :postgres
@@ -2289,28 +2292,32 @@
 
 (deftest set-network-timeout-test
   (mt/test-driver :postgres
-    (testing "network hangs are interrupted after *network-timeout-ms*"
-      (binding [driver.settings/*network-timeout-ms* 3000]
-        (is (thrown-with-msg?
-             org.postgresql.util.PSQLException
-             #"An I/O error occurred while sending to the backend"
-             (try
-               (sql-jdbc.execute/do-with-connection-with-options
-                driver/*driver* (mt/id) nil
-                (fn [^Connection conn]
-                  (with-open [stmt (.createStatement conn)]
-                    (.execute stmt "SELECT pg_sleep(6)"))))
-               (catch Exception e
-                 (is (true? (some #(instance? java.net.SocketTimeoutException %)
-                                  (u/full-exception-chain e))))
-                 (throw e)))))))
-    (testing "network hangs are not interrupted before *network-timeout-ms*"
-      (is (true?
-           (sql-jdbc.execute/do-with-connection-with-options
-            driver/*driver* (mt/id) nil
-            (fn [^Connection conn]
-              (with-open [stmt (.createStatement conn)]
-                (.execute stmt "SELECT pg_sleep(6)")))))))))
+    (let [db-name (u/lower-case-en (format "network-timeout-%s-%s" (name driver/*driver*) (mt/random-name)))
+          spec    (sql-jdbc.conn/connection-details->spec
+                   driver/*driver*
+                   (mt/dbdef->connection-details driver/*driver* :db {:database-name db-name}))]
+      (tx/with-temp-database! driver/*driver* db-name
+        ;; Use a raw spec against a unique DB; the shared test-data DB can be created/dropped by concurrent
+        ;; :postgres and :postgres-mbql5 test setup.
+        (letfn [(run-pg-sleep []
+                  (sql-jdbc.execute/do-with-connection-with-options
+                   driver/*driver* spec nil
+                   (fn [^Connection conn]
+                     (with-open [stmt (.createStatement conn)]
+                       (.execute stmt "SELECT pg_sleep(6)")))))]
+          (testing "network hangs are interrupted after *network-timeout-ms*"
+            (binding [driver.settings/*network-timeout-ms* 3000]
+              (is (thrown-with-msg?
+                   org.postgresql.util.PSQLException
+                   #"An I/O error occurred while sending to the backend"
+                   (try
+                     (run-pg-sleep)
+                     (catch Exception e
+                       (is (true? (some #(instance? java.net.SocketTimeoutException %)
+                                        (u/full-exception-chain e))))
+                       (throw e)))))))
+          (testing "network hangs are not interrupted before *network-timeout-ms*"
+            (is (true? (run-pg-sleep)))))))))
 
 (deftest ^:parallel parse-final-identifier-test
   (mt/test-driver :postgres
