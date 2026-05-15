@@ -44,14 +44,21 @@ describe("admin > MCP apps settings > Cursor install link", () => {
         });
 
       cy.log(
-        "link is hoverable — :hover styles apply when the pointer is on it",
+        "link is hoverable — pointer events reach it (not the switch track)",
       );
+      const hoverState = { mouseEntered: false };
       cy.findByRole("link", { name: "Install in Cursor" })
-        .should("have.css", "text-decoration-line", "none")
+        .then(($link) => {
+          $link[0].addEventListener("mouseenter", () => {
+            hoverState.mouseEntered = true;
+          });
+        })
         .realHover()
-        // Mantine Anchor (underline="hover") underlines on :hover. If the switch
-        // track is covering the link, :hover never fires and this stays "none".
-        .should("have.css", "text-decoration-line", "underline");
+        // If the switch track is covering the link, the pointer hits the track
+        // and `mouseenter` never fires on the link.
+        .should(() => {
+          expect(hoverState.mouseEntered).to.be.true;
+        });
 
       cy.log("clicking the link does not toggle the parent switch");
       cy.findByRole("link", { name: "Install in Cursor" })
