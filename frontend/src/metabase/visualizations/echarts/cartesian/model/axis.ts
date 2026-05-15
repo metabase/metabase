@@ -63,6 +63,17 @@ import type { ShowWarning } from "../../types";
 import { getAxisTransforms } from "./transforms";
 import { getFormattingOptionsWithoutScaling } from "./util";
 
+// Default y-axis tick count when no user override is set. Matches echarts'
+// own default and keeps single- vs. multi-series charts consistent.
+const DEFAULT_Y_AXIS_TICK_COUNT = 5;
+
+// Reduced y-axis tick count used only when a dashboard chart is at the
+// minimum allowed grid height (see `card-size-defaults` in
+// `src/metabase/dashboards/constants.cljc`). At that size there is not
+// enough vertical room for the default tick count.
+const SMALL_CHART_Y_AXIS_TICK_COUNT = 2;
+const SMALL_CHART_GRID_HEIGHT_THRESHOLD = 3;
+
 const uniqueCards = (seriesModels: SeriesModel[]) =>
   _.uniq(seriesModels.map(({ cardId }) => cardId)).length;
 
@@ -561,9 +572,10 @@ export function getYAxisModel(
     splitNumber:
       settings["graph.y_axis.split_number"] > 0
         ? settings["graph.y_axis.split_number"]
-        : gridSize?.height && gridSize.height <= 5
-          ? 2 // Use fewer ticks for small dashboard charts
-          : 5, // Default to 5 ticks for consistent behavior between single and multiple series
+        : gridSize?.height &&
+            gridSize.height <= SMALL_CHART_GRID_HEIGHT_THRESHOLD
+          ? SMALL_CHART_Y_AXIS_TICK_COUNT
+          : DEFAULT_Y_AXIS_TICK_COUNT,
   };
 }
 
