@@ -2,11 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { Api, collectionApi, documentApi } from "metabase/api";
-import { listTag } from "metabase/api/tags";
-import { HACK_getParentCollectionFromEntityUpdateAction } from "metabase/archive/utils";
 import { trackCollectionItemBookmarked } from "metabase/collections/analytics";
 import type {
   CreateBookmark,
@@ -28,13 +24,16 @@ import {
   type ArchivableItem,
   canMoveItem,
   canPinItem,
+  isDeletable,
   isPinnable,
+  isRestorable,
+  useDeleteItem,
+  useRestore,
   useSetArchive,
   useSetPinned,
 } from "metabase/common/hooks";
 import { useSetCollectionPreview } from "metabase/common/hooks/use-set-collection-preview";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { entityForObject } from "metabase/entities/utils";
 import { connect, useDispatch } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
@@ -96,6 +95,8 @@ function ActionMenu({
 }: ActionMenuProps & ActionMenuStateProps) {
   const dispatch = useDispatch();
   const archive = useSetArchive();
+  const restore = useRestore();
+  const deleteItem = useDeleteItem();
   const setPinned = useSetPinned();
   const [sendToast] = useToast();
   const setCollectionPreview = useSetCollectionPreview();
@@ -151,82 +152,26 @@ function ActionMenu({
   }, [item, setCollectionPreview]);
 
   const handleRestore = useCallback(async () => {
-    if (item.model === "collection") {
-      const collection = await dispatch(
-        collectionApi.endpoints.updateCollection.initiate({
-          id: item.id,
-          archived: false,
-        }),
-      ).unwrap();
-      dispatch(Api.util.invalidateTags([listTag("bookmark")]));
-
-      const parentCollection = _.last(collection.effective_ancestors ?? []);
-      const redirect = getParentEntityLink(collection, parentCollection);
-
-      sendToast({
-        message: t`${item.name} has been restored.`,
-        actionLabel: t`View`,
-        action: () => dispatch(push(redirect)),
-      });
+    if (!isRestorable(item)) {
       return;
     }
-
-    if (item.model === "document") {
-      const document = await dispatch(
-        documentApi.endpoints.updateDocument.initiate({
-          id: item.id,
-          archived: false,
-        }),
-      ).unwrap();
-      dispatch(Api.util.invalidateTags([listTag("bookmark")]));
-
-      const redirect = getParentEntityLink(document, document.collection);
-
-      sendToast({
-        message: t`${item.name} has been restored.`,
-        actionLabel: t`View`,
-        action: () => dispatch(push(redirect)),
-      });
-      return;
-    }
-
-    const Entity = entityForObject(item);
-    const result = await dispatch(
-      Entity.actions.update({ id: item.id, archived: false }),
-    );
-    dispatch(Api.util.invalidateTags([listTag("bookmark")]));
-
-    const entity = Entity.HACK_getObjectFromAction(result);
-    const parentCollection = HACK_getParentCollectionFromEntityUpdateAction(
-      item,
-      result,
-    );
+    const { entity, parentCollection } = await restore(item);
     const redirect = getParentEntityLink(entity, parentCollection);
 
     sendToast({
       message: t`${item.name} has been restored.`,
-      actionLabel: t`View`, // could be collection or dashboard
+      actionLabel: t`View`,
       action: () => dispatch(push(redirect)),
     });
-  }, [item, dispatch, sendToast]);
+  }, [item, restore, dispatch, sendToast]);
 
-  const handleDeletePermanently = useCallback(() => {
-    if (item.model === "collection") {
-      dispatch(
-        collectionApi.endpoints.deleteCollection.initiate({ id: item.id }),
-      );
-      sendToast({ message: t`This item has been permanently deleted.` });
+  const handleDeletePermanently = useCallback(async () => {
+    if (!isDeletable(item)) {
       return;
     }
-    if (item.model === "document") {
-      dispatch(documentApi.endpoints.deleteDocument.initiate({ id: item.id }));
-      sendToast({ message: t`This item has been permanently deleted.` });
-      return;
-    }
-    const Entity = entityForObject(item);
-    dispatch(Entity.actions.delete(item));
+    await deleteItem(item);
     sendToast({ message: t`This item has been permanently deleted.` });
-  }, [item, dispatch, sendToast]);
+  }, [item, deleteItem, sendToast]);
 
   return (
     <>
