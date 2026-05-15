@@ -32,7 +32,7 @@ describe("scenarios > dashboard", () => {
   });
 
   describe("create", () => {
-    it("new dashboard UI flow", { tags: "@smoke" }, () => {
+    it("new dashboard UI flow", { tags: "@prerelease" }, () => {
       cy.intercept("POST", "/api/dashboard").as("createDashboard");
       cy.intercept("POST", "/api/card").as("createQuestion");
 
