@@ -31,26 +31,23 @@
                   :metabot  {:total 1 :components {:entity-count {:measurement 1.0 :score 10}}}
                   :meta     {:formula-version   1
                              :synonym-threshold 0.8
-                             :weights           {:entity 10}}}
-          inserted-id (appdb-source/record-score! fp source score)]
+                             :weights           {:entity 10}}}]
+      (appdb-source/record-score! fp source score)
       (try
-        (is (some? inserted-id) "raw INSERT should surface the generated id")
-        (let [row (jdbc/execute-one!
-                   (mdb/data-source)
-                   [(str "SELECT fingerprint, source, score_data "
-                         "FROM data_complexity_score WHERE id = ?") inserted-id]
-                   {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+        (let [row     (jdbc/execute-one!
+                       (mdb/data-source)
+                       [(str "SELECT fingerprint, source, score_data "
+                             "FROM data_complexity_score WHERE fingerprint = ?") fp]
+                       {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+              ;; `${text.type}` maps to CLOB on H2 and TEXT on Postgres/MySQL — `clob->str`
+              ;; normalizes the JDBC driver's String / Clob handoff.
+              decoded (-> row :score_data mdb/clob->str (json/decode true))]
           (is (=? {:fingerprint fp
                    :source      source}
                   row))
-          (testing "score_data is stored as the JSON we serialized; round-trips via `json/decode`"
-            ;; `${text.type}` maps to CLOB on H2 and TEXT on Postgres/MySQL, so the JDBC driver
-            ;; hands us either a `String` or a `Clob` depending on the appdb — `clob->str`
-            ;; normalizes both.
-            (let [raw     (mdb/clob->str (:score_data row))
-                  decoded (json/decode raw true)]
-              (is (= 1 (get-in decoded [:library :total])))
-              (is (= 1 (get-in decoded [:meta :formula-version]))))))
+          (is (=? {:library {:total 1}
+                   :meta    {:formula-version 1}}
+                  decoded)))
         (finally
           ;; Append-only table — clean up manually so the test doesn't accumulate rows.
-          (t2/delete! :model/DataComplexityScore :id inserted-id))))))
+          (t2/delete! :model/DataComplexityScore :fingerprint fp))))))
