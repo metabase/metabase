@@ -767,6 +767,34 @@
                                        "DROP ROLE IF EXISTS \"impersonation_role\";"]]
                       (jdbc/execute! spec [statement]))))))))))))
 
+(deftest native-model-persistence-works-when-impersonation-enabled-test
+  ;; Test explicitly with postgres since it supports persistence, impersonation, and impersonated native-query
+  ;; validation.
+  (mt/test-driver :postgres
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/dataset test-data
+        (mt/with-persistence-enabled! [persist-models!]
+          (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                         :attributes     {"impersonation_attr" "impersonation_role"}}
+            (request/as-admin
+              (mt/with-temp [:model/Card model {:type            :model
+                                                :database_id     (mt/id)
+                                                :query_type      :native
+                                                :dataset_query   (mt/native-query {:query "SELECT 1 AS id"})
+                                                :result_metadata [{:name      "id"
+                                                                   :base_type :type/Integer}]}]
+                (try
+                  (persist-models!)
+                  (catch Exception e
+                    (tap> e)
+                    (throw e)))
+                (is (=? {:state  "persisted"
+                         :active true
+                         :error  nil}
+                        (t2/select-one [:model/PersistedInfo :state :active :error]
+                                       :database_id (mt/id)
+                                       :card_id (:id model))))))))))))
+
 (deftest resilient-connection-options-test
   (testing "resilient connections have the correct role set"
     (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc

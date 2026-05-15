@@ -69,7 +69,7 @@
    - `:default` — primary `:details`
    - `:write-data` — `:write-data-details` merged over `:details` (if configured)
 
-   Bind via [[with-write-connection]], not directly."
+   Bind via [[with-write-connection]] or [[with-default-connection]], not directly."
   :default)
 
 (defmacro with-write-connection
@@ -79,6 +79,14 @@
    into account (if configured) instead of only primary `:details`."
   [& body]
   `(binding [*connection-type* :write-data]
+     ~@body))
+
+(defmacro with-default-connection
+  "Establishes a default-connection context for body.
+
+   Use this to compile or execute a read query from inside a broader write-connection context."
+  [& body]
+  `(binding [*connection-type* :default]
      ~@body))
 
 (def ^:dynamic ^:private *suppress-resolution-telemetry*
