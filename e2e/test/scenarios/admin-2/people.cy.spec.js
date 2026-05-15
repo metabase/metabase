@@ -145,14 +145,14 @@ describe("scenarios > admin > people", () => {
         clickButton("Create");
 
         // second modal
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`${FULL_NAME} has been added`);
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Show").click();
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Done").click();
 
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(FULL_NAME);
         cy.location().should((loc) =>
           expect(loc.pathname).to.eq("/admin/people"),
