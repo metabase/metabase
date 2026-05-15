@@ -35,8 +35,7 @@
    :repeated-measure 2})
 
 (def complexity-thresholds
-  "Rating bands keyed by catalog field: `:total` for the catalog total, component keys for
-  sub-component scores. Only `:total` is populated for now."
+  "Rating bands keyed by catalog field; only `:total` is populated for now."
   {:total [{:rating "low"    :label "Low complexity"    :max 999}
            {:rating "medium" :label "Medium complexity" :max 9999}
            {:rating "high"   :label "High complexity"}]})
@@ -66,12 +65,11 @@
 (defn decorate-with-ratings*
   "Rate `:total` and each `:components` value of one catalog via the matching `tables` entry."
   [tables {:keys [total] :as catalog}]
-  (-> catalog
-      (merge (rating-for-score (tables :total) total))
-      (update :components
-              #(reduce-kv (fn [m k {:keys [score] :as c}]
-                            (assoc m k (merge c (rating-for-score (tables k) score))))
-                          {} %))))
+  (let [rate-component (fn [m k {:keys [score] :as c}]
+                         (assoc m k (merge c (rating-for-score (tables k) score))))]
+    (-> catalog
+        (merge (rating-for-score (tables :total) total))
+        (update :components (partial reduce-kv rate-component {})))))
 
 ;; TODO: also emit the rating onto Snowplow events so benchmark consumers can correlate the band
 ;; against the raw total without re-applying the thresholds.
