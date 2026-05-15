@@ -4,8 +4,8 @@ Astro renderer for [`../docs/`](../docs). The markdown lives next door; this
 directory is everything that turns it into a static site.
 
 See [`../docs/developers-guide/docs.md`](../docs/developers-guide/docs.md) for
-the full guide: previewing, building, generators, multi-version builds,
-vendored marketing chrome, and where each piece lives.
+the full guide: previewing, building, generators, multi-version builds, and
+where each piece lives.
 
 For most things you don't need to be in this directory — the build is
 orchestrated from the repo root via mage:

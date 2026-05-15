@@ -1,19 +1,19 @@
 /*
- * Marketing-site chrome styles for the docs (header + footer + promo banner).
+ * Page-chrome styles for the docs (header + footer + promo banner). Carries
+ * a Bootstrap 5 subset plus the docs-specific nav/footer/promo rules. The
+ * styles are scoped under .bootstrap so they can't leak into the
+ * docs-content area.
  *
- * Vendored snapshot of the relevant rules from metabase.github.io @
- * 2026-05-13. The docs site keeps its own copy so the build is
- * independent of any external CSS bundle. To resync, regenerate
- * metabase.github.io/_site/css/styles.css and re-run the chrome
- * extraction script described in docs/developers-guide/docs.md.
- *
- * Sources:
- *   metabase.github.io/_site/css/styles.css   (Bootstrap 5.0.2 + components)
- *   metabase.github.io/_site/css/main.css     (MB-Logo)
- *   flexboxgrid 6.3.1 col-xs-* helpers        (hand-written subset below)
+ * Class names / IDs that docs.css overrides depend on:
+ *   .navigation-header           (sticky nav row; docs.css positions + z-index)
+ *   .submenus-container          (button row; docs.css absolute-centers)
+ *   [id$=nav-menu-wrapper]       (mega-menu panels; docs.css positions top:100%)
+ *   #hover-highlight             (sliding pill; docs.css hides)
+ *   .body-footer > form          (newsletter; docs.css makes input responsive)
+ *   #mce-EMAIL                   (newsletter email field id)
  */
 
-/* --- flexboxgrid: subset used by the marketing nav --- */
+/* --- flexboxgrid: subset used by the nav --- */
 .bootstrap .col-xs-4 { flex: 0 0 auto; width: 33.3333%; padding-right: 0.5rem; padding-left: 0.5rem; }
 .bootstrap .col-xs-8 { flex: 0 0 auto; width: 66.6667%; padding-right: 0.5rem; padding-left: 0.5rem; }
 .bootstrap .col-xs-12 { flex: 0 0 auto; width: 100%; padding-right: 0.5rem; padding-left: 0.5rem; }
@@ -2846,9 +2846,8 @@
 @media(max-width: 991.98px) {
   .bootstrap .upcoming-events .no-upcoming-events .subscribe#mc-embedded-subscribe-form {margin:0;padding:0}
 }
-/* The marketing site's body is white, so the vendored footer rules don't
- * carry a background. The docs body is `--neutral-98` (#fafbfe), which would
- * bleed through, so we paint the footer wrapper white. Applied to the
+/* The docs body is `--neutral-98` (#fafbfe), which would bleed through the
+ * footer link grid, so we paint the footer wrapper white. Applied to the
  * `.footer-wrap` class set on the outer div in Footer.astro so it doesn't
  * also target the `.bootstrap` header. */
 .bootstrap.footer-wrap {background:#fff}
@@ -2900,11 +2899,10 @@
   .bootstrap .body-footer>div.links>div {flex:0 0 auto;flex-basis:50%;max-width:50%}
 }
 
-/* --- marketing utility classes (extracted from main.css) ---
- * Referenced by the vendored footer snapshot (Sign up button, email-input
- * border, Status dot, GitHub stars chip) but not part of Bootstrap 5. Listed
- * in the same order they appear in main.css. Scoped under .bootstrap to match
- * the rest of the chrome and avoid leaking into the docs-content area. */
+/* --- utility classes referenced by the footer markup ---
+ * Sign up button, email-input border, Status dot, GitHub stars chip. Not part
+ * of the Bootstrap 5 subset above. Scoped under .bootstrap to match the rest
+ * of the chrome and avoid leaking into the docs-content area. */
 .bootstrap .pseudo-link {color:#509ee3}
 .bootstrap .pseudo-link.light {color:#8d93a5}
 .bootstrap .Button {background-color:transparent;border:1px solid #5ea4e3;border-radius:6px;color:#5ea4e3;display:block;font-family:Lato,"Helvetica Neue",Helvetica,sans-serif;font-size:.843rem;padding:16px 20px;text-align:center}

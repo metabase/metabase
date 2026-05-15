@@ -1,9 +1,7 @@
 /* Metabase docs styles.
  *
- * Plain CSS — no preprocessor. The colour palette below mirrors the tokens in
- * metabase.github.io/_sass/variables/colors.scss so this build stays visually
- * aligned with the live docs (the `.learn` / `.learn__post` styles there) with
- * no external dependency.
+ * Plain CSS — no preprocessor. The colour palette below uses the standard
+ * Metabase design tokens.
  */
 
 :root {
@@ -49,6 +47,11 @@
   --topbar-height: 57px;
   --shell-padding-x: 24px;
   --sidebar-width: 240px;
+
+  /* Chrome tokens. chrome.css carries some magic numbers from the Bootstrap
+   * subset (top: 106px, etc.); docs.css neutralizes them with overrides
+   * further down. These tokens give the overrides a single home. */
+  --mb-z-header: 1001;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -693,9 +696,9 @@ article.docs-content td code { background: var(--neutral-95); }
 .copy-code-button .d-none { display: none !important; }
 .copy-code-button .d-flex { display: inline-flex !important; }
 
-/* ---------- Navigation header (vendored marketing nav) overrides ----------
+/* ---------- Navigation header overrides ----------
  *
- * The marketing-site CSS in chrome.css positions dropdowns with
+ * The Bootstrap-derived rules in chrome.css position dropdowns with
  * position:fixed at viewport center, which only lines up with the buttons
  * if the button row is also viewport-centered. The docs layout uses
  * col-lg-2 (logo) + col-lg-3 (actions), so the middle column sits left
@@ -716,7 +719,7 @@ article.docs-content td code { background: var(--neutral-95); }
 header.bootstrap.sticky {
   position: sticky;
   top: 0;
-  z-index: 1001;
+  z-index: var(--mb-z-header);
 }
 
 .bootstrap .navigation-header > .container {
@@ -749,4 +752,13 @@ header.bootstrap.sticky {
 
 .bootstrap .navigation-header #hover-highlight {
   display: none;
+}
+
+/* Newsletter email input in the footer is hard-coded to 360px in the chrome
+ * styles, which overflows on viewports narrower than the footer's
+ * column-content width. Let it shrink to fit; the 360px stays as a max so
+ * the desktop layout doesn't widen. */
+.bootstrap .body-footer > form input#mce-EMAIL {
+  width: 100%;
+  max-width: 360px;
 }
