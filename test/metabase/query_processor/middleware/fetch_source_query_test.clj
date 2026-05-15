@@ -1,4 +1,5 @@
 (ns metabase.query-processor.middleware.fetch-source-query-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.fetch-source-query-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]

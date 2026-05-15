@@ -1,96 +1,53 @@
 import { useEffect } from "react";
-import _ from "underscore";
 
-import { Segments } from "metabase/entities/segments";
-import { Tables } from "metabase/entities/tables";
-import { connect } from "metabase/redux";
+import { useGetSegmentQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useLoadTableWithMetadata } from "metabase/data-studio/common/hooks/use-load-table-with-metadata";
+import { useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getUser } from "metabase/selectors/user";
 import { checkNotNull } from "metabase/utils/types";
-import type { Revision, RevisionId, Segment, User } from "metabase-types/api";
 
 import { RevisionHistory } from "../components/revisions/RevisionHistory";
 import { fetchSegmentRevisions } from "../datamodel";
 import { getRevisions } from "../selectors";
 
-type RevisionHistoryAppOwnProps = {
+type RevisionHistoryAppProps = {
   params: {
     id: string;
   };
 };
 
-type RevisionHistoryAppStateProps = {
-  id: string;
-  revisions: Revision[] | null;
-  user: User;
-};
+export function RevisionHistoryApp({ params }: RevisionHistoryAppProps) {
+  const { id } = params;
+  const dispatch = useDispatch();
+  const user = checkNotNull(useSelector(getUser));
+  const revisions = useSelector((state: State) => getRevisions(state));
+  const segmentId = parseInt(id, 10);
 
-type RevisionHistoryAppDispatchProps = {
-  fetchSegmentRevisions: (id: RevisionId | string) => void;
-};
+  const {
+    data: segment,
+    isLoading: isLoadingSegment,
+    error: segmentError,
+  } = useGetSegmentQuery(segmentId);
 
-type RevisionHistoryAppInnerProps = RevisionHistoryAppOwnProps &
-  RevisionHistoryAppStateProps &
-  RevisionHistoryAppDispatchProps;
+  const { isLoading: isLoadingTable, error: tableError } =
+    useLoadTableWithMetadata(segment?.table_id, {
+      includeForeignTables: true,
+    });
 
-const mapStateToProps = (
-  state: State,
-  props: RevisionHistoryAppOwnProps,
-): RevisionHistoryAppStateProps => ({
-  id: props.params.id,
-  revisions: getRevisions(state),
-  user: checkNotNull(getUser(state)),
-});
-
-const mapDispatchToProps: RevisionHistoryAppDispatchProps = {
-  fetchSegmentRevisions,
-};
-
-function RevisionHistoryAppInner({
-  id,
-  user,
-  revisions,
-  fetchSegmentRevisions,
-  ...props
-}: RevisionHistoryAppInnerProps) {
   useEffect(() => {
-    fetchSegmentRevisions(id);
-  }, [id, fetchSegmentRevisions]);
+    dispatch(fetchSegmentRevisions(id));
+  }, [dispatch, id]);
+
+  const isLoading = isLoadingSegment || isLoadingTable;
+  const error = segmentError ?? tableError;
+
+  if (isLoading || error || !segment) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
 
   return (
-    <SegmentRevisionHistory
-      {...props}
-      id={id}
-      user={user}
-      revisions={revisions}
-      fetchSegmentRevisions={fetchSegmentRevisions}
-    />
+    <RevisionHistory revisions={revisions} segment={segment} user={user} />
   );
 }
-
-export const RevisionHistoryApp = connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(RevisionHistoryAppInner);
-
-type SegmentRevisionHistoryInnerProps = RevisionHistoryAppStateProps &
-  RevisionHistoryAppDispatchProps & {
-    segment: Segment;
-  };
-
-function SegmentRevisionHistoryInner({
-  segment,
-  ...props
-}: SegmentRevisionHistoryInnerProps) {
-  return <RevisionHistory segment={segment} {...props} />;
-}
-
-const SegmentRevisionHistory = _.compose(
-  Segments.load({ id: (_state: State, { id }: { id: string }) => id }),
-  Tables.load({
-    id: (_state: State, { segment }: { segment?: Segment }) =>
-      segment?.table_id,
-    fetchType: "fetchMetadataAndForeignTables",
-    requestType: "fetchMetadataDeprecated",
-  }),
-)(SegmentRevisionHistoryInner);

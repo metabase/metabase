@@ -254,6 +254,8 @@ describe("performAction", () => {
     expect(extraProps.onChangeCardAndRun).toHaveBeenCalledTimes(1);
     expect(extraProps.onChangeCardAndRun).toHaveBeenCalledWith({
       nextCard: mockQuestion.card(),
+      objectId: undefined,
+      drillName: defaultQuestionAction.name,
     });
 
     expect(performAction(updateQuestionAction, extraProps)).toBe(true);

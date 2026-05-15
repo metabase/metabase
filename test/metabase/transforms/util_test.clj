@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.transforms.util-test
   "Tests for transform utility functions."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.transforms.util-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer :all]

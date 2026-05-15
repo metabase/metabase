@@ -9,7 +9,6 @@ import {
   Card,
   Group,
   Icon,
-  type IconName,
   Paper,
   SimpleGrid,
   Stack,
@@ -17,6 +16,7 @@ import {
   Title,
 } from "metabase/ui";
 import { useCreateLibraryMutation } from "metabase-enterprise/api";
+import type { IconName } from "metabase-types/api";
 
 export function LibraryEmptyState() {
   const [createLibrary, { isLoading, isSuccess }] = useCreateLibraryMutation();

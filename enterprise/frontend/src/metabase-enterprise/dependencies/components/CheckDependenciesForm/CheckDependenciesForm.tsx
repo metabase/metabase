@@ -17,7 +17,6 @@ import {
   Card,
   FixedSizeIcon,
   Group,
-  type IconName,
   Stack,
   Text,
 } from "metabase/ui";
@@ -26,6 +25,7 @@ import visualizations from "metabase/visualizations";
 import type {
   Card as ApiCard,
   CheckDependenciesResponse,
+  IconName,
   Transform,
 } from "metabase-types/api";
 

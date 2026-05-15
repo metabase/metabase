@@ -538,7 +538,7 @@ export async function sendFlakeStatusReport({
  * 2) make an http POST request to that url with the file
  * 3) make an api call to "complete" the upload and post it somewhere in slack
  */
-async function uploadFileToSlack({
+export async function uploadFileToSlack({
   channelName,
   thread_ts,
   fileName,

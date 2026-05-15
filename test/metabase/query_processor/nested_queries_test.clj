@@ -1,5 +1,8 @@
 (ns ^:mb/driver-tests metabase.query-processor.nested-queries-test
   "Tests for handling queries with nested expressions."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.query-processor.nested-queries-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.query-processor.nested-queries-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.nested-queries-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]

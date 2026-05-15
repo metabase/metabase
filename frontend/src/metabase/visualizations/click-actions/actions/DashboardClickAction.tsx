@@ -1,3 +1,5 @@
+import { selectTab } from "metabase/redux/dashboard";
+import type { Dispatch } from "metabase/redux/store";
 import {
   getDashboardDrillLinkUrl,
   getDashboardDrillParameters,
@@ -5,9 +7,7 @@ import {
   getDashboardDrillTab,
   getDashboardDrillType,
   getDashboardDrillUrl,
-} from "metabase/dashboard/utils/dashboard-click-drill";
-import { selectTab } from "metabase/redux/dashboard";
-import type { Dispatch } from "metabase/redux/store";
+} from "metabase/visualizations/click-actions/lib/dashboard-click-drill";
 import type {
   AlwaysDefaultClickAction,
   AlwaysDefaultClickActionSubAction,
@@ -94,15 +94,11 @@ export const DashboardClickAction: LegacyDrill = ({
   settings,
   clicked = {},
 }): AlwaysDefaultClickAction[] => {
-  // ECharts-driven visualizations attach `settings` to the click object, but
-  // legacy visualizations (Scalar, Smart Scalar, Progress, Gauge, etc.) don't.
-  // Fall back to the computed settings injected by `Mode.actionsForClick` so we
-  // can resolve column-scoped click behaviors regardless of the source.
-  const enrichedClicked: ClickObject = clicked.settings
+  const clickObject: ClickObject = clicked.settings
     ? clicked
     : { ...clicked, settings };
+  const type = getDashboardDrillType(clickObject);
 
-  const type = getDashboardDrillType(enrichedClicked);
   if (!type) {
     return [];
   }
@@ -111,7 +107,7 @@ export const DashboardClickAction: LegacyDrill = ({
     {
       name: "click_behavior",
       defaultAlways: true,
-      ...getAction(type, question, enrichedClicked),
+      ...getAction(type, question, clickObject),
     },
   ];
 };

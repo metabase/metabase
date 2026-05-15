@@ -191,10 +191,7 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
 
         H.mockMetabotResponse({ statusCode: 200, body: apiKeyInvalidResponse });
         H.sendMetabotMessage("Who is your favorite?");
-        H.lastChatMessage().should(
-          "have.text",
-          "Sorry, an error occurred: Anthropic API key expired or invalid. If this persists, please contact your administrator.",
-        );
+        H.lastChatMessage().should("contain.text", "Something went wrong");
       });
 
       it("should allow starting a new metabot conversation via the /metabot/new", () => {

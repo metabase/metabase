@@ -1,7 +1,7 @@
 import type { JSX, MouseEventHandler } from "react";
 
-import { Button, Icon, type IconName, Tooltip } from "metabase/ui";
-
+import { Button, Icon, Tooltip } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 interface Props {
   label: string;
   iconName: IconName;

@@ -4,28 +4,27 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
+  getGroupNameLocalized,
+  getGroupSortOrder,
+  getSpecialGroupType,
+  isDefaultGroup,
+} from "metabase/admin/utils/groups";
+import { collectionApi } from "metabase/api";
+import {
   isInstanceAnalyticsCollection,
   isLibraryCollection,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
 import {
-  Collections,
   ROOT_COLLECTION,
   getCollectionIcon,
 } from "metabase/entities/collections";
-import { SnippetCollections } from "metabase/entities/snippet-collections";
 import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   CollectionTreeItem,
   ExpandedCollection,
   State,
 } from "metabase/redux/store";
-import {
-  getGroupNameLocalized,
-  getGroupSortOrder,
-  getSpecialGroupType,
-  isDefaultGroup,
-} from "metabase/utils/groups";
 import { isNotNull } from "metabase/utils/types";
 import type {
   Collection,
@@ -49,11 +48,10 @@ import { getPermissionWarningModal } from "./confirmations";
 import { selectGroupList } from "./data-permissions/groups";
 
 export const collectionsQuery = {
-  tree: true,
   "exclude-other-user-collections": true,
   "exclude-archived": true,
   "include-library": true,
-};
+} as const;
 
 export const getIsDirty = createSelector(
   (state: State) => state.admin.permissions.collectionPermissions,
@@ -91,12 +89,11 @@ const getRootCollectionTreeItem = () => {
   };
 };
 
-const getCollections = (state: State) =>
-  (
-    Collections.selectors.getList(state, {
-      entityQuery: collectionsQuery,
-    }) ?? []
-  ).filter(nonPersonalOrArchivedCollection);
+const getCollections = (state: State) => {
+  const queryState =
+    collectionApi.endpoints.listCollectionsTree.select(collectionsQuery)(state);
+  return (queryState?.data ?? []).filter(nonPersonalOrArchivedCollection);
+};
 
 const getCollectionsTree = createSelector([getCollections], (collections) => {
   const libraryCollections = collections.filter(isLibraryCollection);
@@ -176,7 +173,7 @@ const findCollection = (
 
 const getCollection = createSelector(
   [getCurrentCollectionId, getCollections],
-  (collectionId, collections) => {
+  (collectionId, collections): Collection | null => {
     if (collectionId == null) {
       return null;
     }
@@ -184,6 +181,11 @@ const getCollection = createSelector(
     if (collectionId === ROOT_COLLECTION.id) {
       return {
         ...ROOT_COLLECTION,
+        description: null,
+        can_write: true,
+        can_restore: false,
+        can_delete: false,
+        namespace: null,
         children: collections,
       };
     }
@@ -194,15 +196,20 @@ const getCollection = createSelector(
 
 const getFolder = (state: State, props: CollectionIdProps) => {
   const folderId = getCurrentCollectionId(state, props);
-  const folders = SnippetCollections.selectors.getList(state);
+  const folders = collectionApi.endpoints.listCollections.select({
+    namespace: "snippets",
+  })(state).data;
 
   return folders?.find((folder: Collection) => folder.id === folderId);
 };
 
-export const getCollectionEntity = (state: State, props: CollectionIdProps) => {
+export const getCollectionEntity = (
+  state: State,
+  props: CollectionIdProps,
+): Collection | undefined => {
   return props.namespace === "snippets"
     ? getFolder(state, props)
-    : getCollection(state, props);
+    : (getCollection(state, props) ?? undefined);
 };
 
 const getCollectionPermission = (
@@ -250,7 +257,7 @@ export const getCollectionsPermissionEditor = createSelector(
       return null;
     }
 
-    const hasChildren = collection.children?.length > 0;
+    const hasChildren = (collection.children?.length ?? 0) > 0;
     const toggleLabel = hasChildren ? getToggleLabel(namespace) : null;
     const isTenantCollection = PLUGIN_TENANTS.isTenantCollection(collection);
 
@@ -335,7 +342,11 @@ export const getCollectionsPermissionEditor = createSelector(
                 group.id,
                 collection.id,
               ),
-              warning: getCollectionWarning(group.id, collection, permissions),
+              warning: getCollectionWarning(
+                group.id,
+                collection as ExpandedCollection,
+                permissions,
+              ),
               confirmations,
               options,
             },

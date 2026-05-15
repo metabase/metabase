@@ -1,6 +1,6 @@
 import { type UnknownAction, isRejected, nanoid } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
-import { P, match } from "ts-pattern";
+import { P, isMatching, match } from "ts-pattern";
 import _ from "underscore";
 
 import {
@@ -29,20 +29,20 @@ import { METABOT_ERR_MSG, type MetabotProfileId } from "../constants";
 
 import { metabot } from "./reducer";
 import {
-  getAgentErrorMessages,
   getAgentRequestMetadata,
   getDebugMode,
   getDeveloperMessage,
   getHistory,
   getIsProcessing,
-  getLastMessage,
+  getMessageIdToRewind,
   getMetabotConversation,
   getUserPromptForMessageId,
 } from "./selectors";
 import type {
   MetabotAgentDataPartMessage,
   MetabotAgentId,
-  MetabotErrorMessage,
+  MetabotAgentTurnDisplayError,
+  MetabotAgentTurnError,
   MetabotUserChatMessage,
   SlashCommand,
 } from "./types";
@@ -51,7 +51,6 @@ import { createMessageId, parseSlashCommand } from "./utils";
 export const {
   addAgentTextDelta,
   addAgentMessage,
-  addAgentErrorMessage,
   addDeveloperMessage,
   addUserMessage,
   setIsProcessing,
@@ -72,73 +71,58 @@ export const {
   removeSuggestedCodeEdit,
 } = metabot.actions;
 
-type PromptErrorOutcome =
-  | {
-      errorMessage: MetabotErrorMessage;
-      shouldRetry: boolean;
-    }
-  | {
-      errorMessage: false;
-      shouldRetry: boolean;
-    };
+type HandledResponseError = {
+  error: MetabotAgentTurnError;
+  display: MetabotAgentTurnDisplayError;
+};
 
 const handleResponseError = (
   error: unknown,
   metabotName: string,
-): PromptErrorOutcome => {
+): HandledResponseError => {
   return match(error)
-    .with({ name: "AbortError" }, () => ({
-      errorMessage: false as const,
-      shouldRetry: false,
-    }))
     .with(
       { message: P.string.startsWith("Response status: 401") },
       { status: 401 },
       () => ({
-        errorMessage: {
+        error: { type: "unauthenticated" },
+        display: {
           type: "alert" as const,
           message: METABOT_ERR_MSG.unauthenticated(metabotName),
         },
-        shouldRetry: true,
       }),
     )
     .with({ status: 402, "error-code": "metabase_ai_managed_locked" }, () => ({
-      errorMessage: {
-        type: "locked" as const,
-        message: METABOT_ERR_MSG.locked,
-      },
-      shouldRetry: true,
+      error: { type: "metabase_ai_managed_locked" },
+      display: { type: "locked" as const, message: METABOT_ERR_MSG.locked },
     }))
     .with({ status: P.number, message: P.string }, ({ message }) => ({
-      errorMessage: {
+      error: { type: "http_error", message },
+      display: {
         type: "message" as const,
         message: METABOT_ERR_MSG.format(message),
       },
-      shouldRetry: true,
     }))
     .with(
       { "error-code": "ai_usage_limit_reached", message: P.string },
       ({ message }) => ({
-        errorMessage: {
-          type: "message" as const,
-          message,
-        },
-        shouldRetry: true,
+        error: { type: "ai_usage_limit_reached", message },
+        display: { type: "message" as const, message },
       }),
     )
     .with(P.string, (err) => ({
-      errorMessage: {
+      error: { type: "http_error", message: err },
+      display: {
         type: "message" as const,
         message: METABOT_ERR_MSG.format(err),
       },
-      shouldRetry: true,
     }))
     .otherwise(() => ({
-      errorMessage: {
+      error: { type: "unknown" },
+      display: {
         type: "message" as const,
         message: METABOT_ERR_MSG.default,
       },
-      shouldRetry: true,
     }));
 };
 
@@ -220,14 +204,14 @@ export type MetabotPromptSubmissionResult =
       prompt: string;
       success: false;
       shouldRetry: false;
-      errorMessage?: MetabotErrorMessage;
+      error?: MetabotAgentTurnDisplayError;
       data?: void;
     }
   | {
       prompt: string;
       success: false;
       shouldRetry: true;
-      errorMessage?: MetabotErrorMessage;
+      error?: MetabotAgentTurnDisplayError;
       data?: void;
     };
 
@@ -260,13 +244,12 @@ export const submitInput = createAsyncThunk<
       }
 
       // if there were from the last prompt, remove the last prompt from the history
-      const errors = getAgentErrorMessages(state, agentId);
-      const lastMessageId = getLastMessage(state, agentId)?.id;
-      if (errors.length > 0 && lastMessageId) {
+      const rewindToMessageId = getMessageIdToRewind(state, agentId);
+      if (rewindToMessageId) {
         dispatch(
           rewindConversation({
             agentId,
-            messageId: lastMessageId,
+            messageId: rewindToMessageId,
           }),
         );
       }
@@ -313,26 +296,13 @@ export const submitInput = createAsyncThunk<
       const result = await sendMessageRequestPromise;
 
       if (isRejected(result)) {
-        if (result.payload?.type === "error") {
-          dispatch(
-            stopProcessingAndNotify({
-              agentId,
-              message: result.payload?.errorMessage,
-            }),
-          );
-        }
-        const shouldRetry =
-          (result.payload &&
-            "shouldRetry" in result.payload &&
-            (result.payload?.shouldRetry ?? {})) ??
-          false;
         return {
           prompt: rawPrompt,
           success: false,
-          shouldRetry,
-          errorMessage:
+          shouldRetry: result.payload?.shouldRetry ?? true,
+          error:
             result.payload?.type === "error"
-              ? result.payload.errorMessage || undefined
+              ? result.payload.display
               : undefined,
         };
       }
@@ -346,19 +316,23 @@ export const submitInput = createAsyncThunk<
         prompt,
         success: false,
         shouldRetry: true,
-        errorMessage: {
-          type: "message",
-          message: METABOT_ERR_MSG.default,
-        },
+        error: { type: "message", message: METABOT_ERR_MSG.default },
       };
     }
   },
 );
 
 type SendAgentRequestError =
-  | ({ type: "error" } & PromptErrorOutcome)
+  | {
+      type: "error";
+      conversation_id: string;
+      shouldRetry: boolean;
+      error: MetabotAgentTurnError;
+      display?: MetabotAgentTurnDisplayError;
+    }
   | ({
       type: "abort";
+      shouldRetry: false;
       unresolved_tool_calls: { toolCallId: string; toolName: string }[];
     } & MetabotAgentResponse);
 
@@ -390,10 +364,12 @@ export const sendAgentRequest = createAsyncThunk<
   ) => {
     const { agentId, ...request } = payload;
 
+    let state = {};
+    let response: ProcessedChatResponse | undefined;
     try {
-      let state = {};
-      let error: unknown = undefined;
-      const response = await aiStreamingQuery(
+      // store error object streamed across the wire
+      let streamedError: MetabotAgentTurnError | undefined;
+      response = await aiStreamingQuery(
         {
           url: "/api/metabot/agent-streaming",
           // NOTE: StructuredDatasetQuery as part of the EntityInfo in MetabotChatContext
@@ -489,26 +465,30 @@ export const sendAgentRequest = createAsyncThunk<
             dispatch(toolCallEnd({ ...part, agentId }));
           },
           onError: function handleError(part) {
-            error = part;
+            streamedError = isMatching({ message: P.string }, part)
+              ? part
+              : { message: String(part) };
           },
         },
       );
 
-      if (error) {
-        throw error;
+      if (response.aborted) {
+        throw new DOMException("Stream aborted", "AbortError");
       }
 
-      if (response.aborted) {
+      if (streamedError) {
         return rejectWithValue({
-          type: "abort",
+          type: "error",
           conversation_id: request.conversation_id,
-          unresolved_tool_calls: response.toolCalls.filter(
-            (tc) => tc.state === "call",
-          ),
-          history: [...getHistory(getState(), agentId), ...response.history],
-          // state object comes at the end, so we may not have received it
-          // so fallback to the state used when the request was issued
-          state: Object.keys(state).length === 0 ? request.state : state,
+          shouldRetry: true,
+          error: streamedError,
+          display: isMatching(
+            { "error-code": "ai_usage_limit_reached", message: P.string },
+            streamedError,
+          )
+            ? // special case where we want to show the returned error from the backend
+              { type: "message" as const, message: streamedError.message }
+            : undefined,
         });
       }
 
@@ -519,13 +499,32 @@ export const sendAgentRequest = createAsyncThunk<
         processedResponse: response,
       });
     } catch (error) {
-      console.error(error);
+      if (isMatching({ name: "AbortError" }, error)) {
+        return rejectWithValue({
+          type: "abort",
+          conversation_id: request.conversation_id,
+          unresolved_tool_calls:
+            response?.toolCalls.filter((tc) => tc.state === "call") ?? [],
+          history: [
+            ...getHistory(getState(), agentId),
+            ...(response?.history ?? []),
+          ],
+          // reuse new state if we recieved it
+          state: Object.keys(state).length === 0 ? request.state : state,
+          shouldRetry: false,
+        });
+      }
+
+      const handled = handleResponseError(
+        error,
+        getSetting(getState(), "metabot-name") || "Metabot",
+      );
       return rejectWithValue({
-        type: "error",
-        ...handleResponseError(
-          error,
-          getSetting(getState(), "metabot-name") || "Metabot",
-        ),
+        type: "error" as const,
+        conversation_id: request.conversation_id,
+        shouldRetry: true,
+        error: handled.error,
+        display: handled.display,
       });
     }
   },
@@ -624,24 +623,3 @@ export const resetConversation = createAsyncThunk(
     dispatch(metabot.actions.resetConversation(payload));
   },
 );
-
-export const stopProcessingAndNotify =
-  (payload: {
-    agentId: MetabotAgentId;
-    message?: MetabotErrorMessage | false | undefined;
-  }) =>
-  (dispatch: Dispatch) => {
-    dispatch(setIsProcessing({ agentId: payload.agentId, processing: false }));
-    if (payload.message !== false) {
-      const message = payload.message ?? {
-        type: "message",
-        message: METABOT_ERR_MSG.default,
-      };
-      dispatch(
-        addAgentErrorMessage({
-          agentId: payload.agentId,
-          ...message,
-        }),
-      );
-    }
-  };

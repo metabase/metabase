@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useId } from "react";
 import { t } from "ttag";
 
+import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
@@ -15,7 +16,6 @@ interface Props {
 }
 
 export function TableMetadata({ table }: Props) {
-  const formattedDate = new Date(table.updated_at).toLocaleString();
   const formatNumber = useNumberFormatter();
   const isDependenciesEnabled = PLUGIN_DEPENDENCIES.isEnabled;
 
@@ -28,7 +28,10 @@ export function TableMetadata({ table }: Props) {
   return (
     <Stack gap="md">
       <MetadataRow label={t`Name in the database`} value={table.name} />
-      <MetadataRow label={t`Last updated at`} value={formattedDate} />
+      <MetadataRow
+        label={t`Last updated at`}
+        value={<DateTime value={table.updated_at} />}
+      />
       <MetadataRow
         label={t`View count`}
         value={formatNumber(table.view_count)}
