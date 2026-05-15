@@ -1164,17 +1164,17 @@
 
 (deftest agent-streaming-returns-free-trial-limit-error-when-managed-provider-is-locked-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
-                                     "metabase/anthropic/claude-sonnet-4-6"]))
-(mt/with-dynamic-fn-redefs [premium-features/token-status             (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens {:meter-value 1000000
-                                                                                                                                 :is-locked   true}}})
-                            metabot.config/check-metabot-enabled!     (constantly nil)
-                            metabot.persistence/start-turn!           (fn [& _]
-                                                                        (throw (ex-info "should not store messages" {})))
-                            api/native-agent-streaming-request        (fn [& _]
-                                                                        (throw (ex-info "should not call agent" {})))])
-(mt/user-http-request :rasta :post 402 "metabot/agent-streaming"
-                      {:message         "test message"
-                       :context         {}
-                       :conversation_id (str (random-uuid))
-                       :history         []
-                       :state           {}})
+                                     "metabase/anthropic/claude-sonnet-4-6"]
+    (mt/with-dynamic-fn-redefs [premium-features/token-status             (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens {:meter-value 1000000
+                                                                                                                                     :is-locked   true}}})
+                                metabot.config/check-metabot-enabled!     (constantly nil)
+                                metabot.persistence/start-turn!           (fn [& _]
+                                                                            (throw (ex-info "should not store messages" {})))
+                                api/native-agent-streaming-request        (fn [& _]
+                                                                            (throw (ex-info "should not call agent" {})))]
+      (mt/user-http-request :rasta :post 402 "metabot/agent-streaming"
+                            {:message         "test message"
+                             :context         {}
+                             :conversation_id (str (random-uuid))
+                             :history         []
+                             :state           {}}))))
