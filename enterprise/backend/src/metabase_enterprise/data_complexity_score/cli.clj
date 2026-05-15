@@ -128,13 +128,8 @@
       (validate-dir! representation-dir))))
 
 (defn- run-appdb-mode!
-  "Score against the live appdb the same way the cron does; optionally persist.
-
-  Persistence here records the score row but deliberately does *not* advance
-  `data-complexity-scoring-last-fingerprint`. That setting gates the cron's skip-already-done
-  logic and assumes a confirmed Snowplow publish — which we disable for CLI runs. Letting the CLI
-  advance it would log a misleading 'Snowplow publish failed' warning and stop the next cron from
-  re-scoring a fingerprint nobody's seen externally yet."
+  "Score against the live appdb; optionally persist the row.
+  Snowplow is off here, so we don't advance `data-complexity-scoring-last-fingerprint` — leave that to the cron."
   [write?]
   (mdb/setup-db-without-migrations!)
   (let [result (complexity/complexity-scores
