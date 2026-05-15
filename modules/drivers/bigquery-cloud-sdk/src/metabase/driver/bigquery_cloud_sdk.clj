@@ -1316,6 +1316,43 @@
         (.setIamPolicy iam-client request)
         (log/infof "Granted impersonation permission on %s to %s" workspace-sa-email main-sa-email)))))
 
+(defn- sa-propagation-error?
+  "True for the GCP race where an API call references a service account that was
+   just created but hasn't yet propagated to the API receiving the call. GCP
+   surfaces this as `INVALID_ARGUMENT: Service account <email> does not exist.`
+   even though `iam.googleapis.com` already created it. Retrying the same call
+   eventually succeeds once propagation completes (usually <30s)."
+  [^Throwable t]
+  (when-let [msg (ex-message t)]
+    (and (instance? com.google.api.gax.rpc.InvalidArgumentException t)
+         (str/includes? msg "Service account")
+         (str/includes? msg "does not exist"))))
+
+(defn- with-sa-propagation-retry!
+  "Run `f` (a no-arg fn), retrying when GCP rejects it because a freshly-created
+   workspace SA isn't yet visible to the API being called. Used for IAM bindings
+   that reference the SA as a member — these can race with SA creation across
+   GCP services (IAM ↔ Cloud Resource Manager) even after the create returned."
+  [{:keys [max-attempts interval-ms]
+    :or   {max-attempts 60
+           interval-ms  1000}}
+   f]
+  (loop [attempt 1]
+    (let [result (try
+                   [::ok (f)]
+                   (catch Throwable t
+                     (if (and (sa-propagation-error? t)
+                              (< attempt max-attempts))
+                       [::retry t]
+                       (throw t))))]
+      (case (first result)
+        ::ok    (second result)
+        ::retry (do
+                  (log/debugf "SA propagation race on attempt %d/%d, retrying in %dms"
+                              attempt max-attempts interval-ms)
+                  (Thread/sleep ^long interval-ms)
+                  (recur (inc attempt)))))))
+
 (defn- ws-grant-project-role!
   "Grant a project-level IAM role to a service account.
    This is needed for roles like bigquery.jobUser that must be granted at project level."
@@ -1332,26 +1369,28 @@
         resource       (format "projects/%s" project-id)
         member         (format "serviceAccount:%s" service-account-email)]
     (try
-      ;; Get current policy
-      (let [get-request    (-> (GetIamPolicyRequest/newBuilder)
-                               (.setResource resource)
-                               (.build))
-            current-policy (.getIamPolicy projects-client get-request)]
-        ;; Only add if not already granted
-        (when-not (ws-has-role-binding? current-policy role member)
-          (let [new-binding    (-> (Binding/newBuilder)
-                                   (.setRole role)
-                                   (.addMembers member)
-                                   (.build))
-                updated-policy (-> (Policy/newBuilder current-policy)
-                                   (.addBindings new-binding)
-                                   (.build))
-                set-request    (-> (SetIamPolicyRequest/newBuilder)
+      (with-sa-propagation-retry! {}
+        (fn []
+          ;; Get current policy
+          (let [get-request    (-> (GetIamPolicyRequest/newBuilder)
                                    (.setResource resource)
-                                   (.setPolicy updated-policy)
-                                   (.build))]
-            (.setIamPolicy projects-client set-request)
-            (log/infof "Granted %s on project %s to %s" role project-id service-account-email))))
+                                   (.build))
+                current-policy (.getIamPolicy projects-client get-request)]
+            ;; Only add if not already granted
+            (when-not (ws-has-role-binding? current-policy role member)
+              (let [new-binding    (-> (Binding/newBuilder)
+                                       (.setRole role)
+                                       (.addMembers member)
+                                       (.build))
+                    updated-policy (-> (Policy/newBuilder current-policy)
+                                       (.addBindings new-binding)
+                                       (.build))
+                    set-request    (-> (SetIamPolicyRequest/newBuilder)
+                                       (.setResource resource)
+                                       (.setPolicy updated-policy)
+                                       (.build))]
+                (.setIamPolicy projects-client set-request)
+                (log/infof "Granted %s on project %s to %s" role project-id service-account-email))))))
       (finally
         (.close projects-client)))))
 
