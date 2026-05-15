@@ -156,7 +156,12 @@
                          :components {}}}))))
   (testing "missing catalogs are left alone (no rating fields injected)"
     (is (= {:meta {:formula-version 1}}
-           (complexity/decorate-with-ratings {:meta {:formula-version 1}})))))
+           (complexity/decorate-with-ratings {:meta {:formula-version 1}}))))
+  (testing "a catalog without a `:components` key keeps it absent (not injected as `{}`)"
+    (is (= {:library {:total        0
+                      :rating       "low"
+                      :rating-label "Low complexity"}}
+           (complexity/decorate-with-ratings {:library {:total 0}})))))
 
 (deftest ^:parallel decorate-with-ratings*-component-bands-test
   (testing "components with bands get rated; components without bands cascade nil-rating"
