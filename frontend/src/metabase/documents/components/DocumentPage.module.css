@@ -5,18 +5,6 @@
   background-color: var(--mb-color-background-primary);
 }
 
-.header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 1rem 0;
-  background-color: var(--mb-color-background-primary);
-  gap: 1rem;
-  max-width: 900px;
-  margin: 0 auto;
-  width: 100%;
-}
-
 .contentArea {
   display: flex;
   flex: 1;
@@ -47,22 +35,29 @@
     }
   }
 
+  .mainContent {
+    padding: 0;
+  }
+
   .documentContainer {
     position: absolute;
     visibility: visible;
     top: 0;
     right: 0;
     z-index: 1000;
-
-    .header {
-      padding: 0;
-    }
+    padding: 0;
+    margin-inline: 0;
 
     :global(.node-metabot),
     :global(.node-cardEmbed),
     :global(.node-resizeNode),
     :global(.node-flexContainer) {
       break-inside: avoid;
+    }
+
+    .editorContent > :global([role="textbox"]) {
+      margin-inline: 0;
+      max-width: none;
     }
 
     [data-hide-on-print] {
