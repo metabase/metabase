@@ -56,7 +56,7 @@
           (t2/delete! :model/DataComplexityScore :fingerprint fp))))))
 
 (defn- ^SQLException sql-error-with-state [state]
-  (doto (SQLException. (str "boom (" state ")") state)))
+  (SQLException. (str "boom (" state ")") state))
 
 (deftest with-missing-relation-fallback-test
   (testing "off by default — read-side errors propagate so cron / API surface schema bugs"
@@ -80,7 +80,13 @@
              SQLException #"23505"
              (appdb-source/with-missing-relation-fallback
                ::probe ::fallback
-               #(throw (sql-error-with-state "23505")))))))))
+               #(throw (sql-error-with-state "23505"))))))
+      (testing "a missing-relation SQLException reached only via `getCause` (e.g. when a wrapper rewraps the SQL error) is still detected"
+        (let [wrapped (ex-info "wrapper" {} (sql-error-with-state "42P01"))]
+          (is (= ::fallback
+                 (appdb-source/with-missing-relation-fallback
+                   ::probe ::fallback
+                   #(throw wrapped)))))))))
 
 (deftest ^:sequential verify-write-target-shape-passes-on-current-schema-test
   (testing "verify-write-target-shape! is a no-op when the appdb has the columns record-score! writes"
@@ -90,12 +96,13 @@
 (deftest verify-write-target-shape-fails-fast-on-missing-relation-test
   (testing "verify-write-target-shape! converts a missing-table / column SQL error into a `:cli-validation` ex-info"
     (mt/with-dynamic-fn-redefs [jdbc/execute-one! (fn [& _] (throw (sql-error-with-state "42P01")))]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo #"data_complexity_score"
-           (appdb-source/verify-write-target-shape!)))
-      (try (appdb-source/verify-write-target-shape!)
-           (catch clojure.lang.ExceptionInfo e
-             (is (=? {:cli-validation true :sql-state "42P01"} (ex-data e)))))))
+      ;; Capture the exception once so a silently-missing throw becomes a test failure rather than
+      ;; sliding past a `try`/`catch` that quietly returns nil.
+      (let [thrown (try (appdb-source/verify-write-target-shape!)
+                        (catch clojure.lang.ExceptionInfo e e))]
+        (is (some? thrown) "verify-write-target-shape! must throw on a missing-relation SQL error")
+        (is (re-find #"data_complexity_score" (ex-message thrown)))
+        (is (=? {:cli-validation true :sql-state "42P01"} (ex-data thrown))))))
   (testing "an unrelated SQL error propagates without rewriting"
     (mt/with-dynamic-fn-redefs [jdbc/execute-one! (fn [& _] (throw (sql-error-with-state "08006")))]
       (is (thrown? SQLException (appdb-source/verify-write-target-shape!))))))
