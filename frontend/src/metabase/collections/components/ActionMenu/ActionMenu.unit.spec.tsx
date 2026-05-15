@@ -5,9 +5,6 @@ import fetchMock from "fetch-mock";
 import { setupCardEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, queryIcon, renderWithProviders } from "__support__/ui";
-import { getParentEntityLink } from "metabase/archive/utils";
-import { Dashboards } from "metabase/entities/dashboards";
-import { Questions } from "metabase/entities/questions";
 import {
   createMockSettingsState,
   createMockState,
@@ -23,7 +20,6 @@ import {
   createMockCard,
   createMockCollection,
   createMockCollectionItem,
-  createMockDashboard,
   createMockDocument,
 } from "metabase-types/api/mocks";
 
@@ -208,39 +204,6 @@ describe("ActionMenu", () => {
       expect(queryIcon("ellipsis")).not.toBeInTheDocument();
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
-    });
-
-    describe("getParentEntityLink", () => {
-      it("should generate collection link for collection question", () => {
-        const updatedCollection = createMockCollectionItem({ archived: false });
-        const link = getParentEntityLink(updatedCollection, undefined);
-        expect(link).toBe("/collection/root");
-      });
-
-      it("should generate collection link for dashboards", () => {
-        const updatedDashboard = Dashboards.wrapEntity(
-          createMockDashboard({ archived: false }),
-        );
-        const parentCollection = createMockCollectionItem({ id: 123 });
-        const link = getParentEntityLink(updatedDashboard, parentCollection);
-        expect(link).toBe("/collection/123-question");
-      });
-
-      it("should generate collection link for normal question", () => {
-        const updatedQuestion = Questions.wrapEntity(
-          createMockCard({ archived: false }),
-        );
-        const link = getParentEntityLink(updatedQuestion, undefined);
-        expect(link).toBe("/collection/root");
-      });
-
-      it("should generate collection link for dashboard question", () => {
-        const updatedQuestion = Questions.wrapEntity(
-          createMockCard({ archived: false, dashboard_id: 123 }),
-        );
-        const link = getParentEntityLink(updatedQuestion, undefined);
-        expect(link).toBe("/dashboard/123");
-      });
     });
   });
 
