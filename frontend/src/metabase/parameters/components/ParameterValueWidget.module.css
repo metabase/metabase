@@ -107,7 +107,6 @@
   border: 1px solid var(--mb-color-border);
   border-radius: 0.25rem;
   cursor: pointer;
-  transition: border-color 0.3s;
 
   &:hover,
   &.hasValue {

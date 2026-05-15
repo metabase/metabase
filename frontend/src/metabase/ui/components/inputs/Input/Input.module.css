@@ -33,7 +33,6 @@
 
   &[data-variant="default"] {
     border-color: var(--mb-color-border);
-    transition: border-color 0.3s;
 
     &:hover:not(:disabled) {
       border-color: var(--mb-color-brand);

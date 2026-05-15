@@ -33,7 +33,6 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   border-radius: var(--mantine-spacing-sm);
   font-weight: 700;
   min-width: 104px;
-  transition: all 200ms;
   color: ${getColor};
 
   &:hover {
