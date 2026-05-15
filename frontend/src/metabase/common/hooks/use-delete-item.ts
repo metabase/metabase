@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { match } from "ts-pattern";
+import { t } from "ttag";
 
 import {
   useDeleteCardMutation,
@@ -8,6 +9,7 @@ import {
   useDeleteDocumentMutation,
 } from "metabase/api";
 import { TRASHABLE_MODELS } from "metabase/archive/utils";
+import { useToast } from "metabase/common/hooks/use-toast";
 import type {
   CardId,
   DashboardId,
@@ -43,14 +45,15 @@ export function canDelete(item: {
 }
 
 export function useDeleteItem() {
+  const [sendToast] = useToast();
   const [deleteCard] = useDeleteCardMutation();
   const [deleteDashboard] = useDeleteDashboardMutation();
   const [deleteCollection] = useDeleteCollectionMutation();
   const [deleteDocument] = useDeleteDocumentMutation();
 
   return useCallback(
-    (item: DeletableItem) =>
-      match(item)
+    async (item: DeletableItem) => {
+      await match(item)
         .with(
           { model: "card" },
           { model: "dataset" },
@@ -64,7 +67,10 @@ export function useDeleteItem() {
         .with({ model: "document" }, ({ id }) =>
           deleteDocument({ id }).unwrap(),
         )
-        .exhaustive(),
-    [deleteCard, deleteDashboard, deleteCollection, deleteDocument],
+        .exhaustive();
+
+      sendToast({ message: t`This item has been permanently deleted.` });
+    },
+    [sendToast, deleteCard, deleteDashboard, deleteCollection, deleteDocument],
   );
 }

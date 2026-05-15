@@ -32,7 +32,6 @@ import {
   useSetPinned,
 } from "metabase/common/hooks";
 import { useSetCollectionPreview } from "metabase/common/hooks/use-set-collection-preview";
-import { useToast } from "metabase/common/hooks/use-toast";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
@@ -95,7 +94,6 @@ function ActionMenu({
   const restore = useRestore();
   const deleteItem = useDeleteItem();
   const setPinned = useSetPinned();
-  const [sendToast] = useToast();
   const setCollectionPreview = useSetCollectionPreview();
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
@@ -160,8 +158,7 @@ function ActionMenu({
       return;
     }
     await deleteItem(item);
-    sendToast({ message: t`This item has been permanently deleted.` });
-  }, [item, deleteItem, sendToast]);
+  }, [item, deleteItem]);
 
   return (
     <>
