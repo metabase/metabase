@@ -18,6 +18,7 @@
   51.x or older are now 'old'."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
@@ -2930,3 +2931,106 @@
                                                   :access_granted false
                                                   :created_at     :%now
                                                   :updated_at     :%now}))))))))
+
+;;;
+;;; 62 tests
+;;;
+
+(defn- insert-legacy-library-collection!
+  [attrs]
+  (t2/insert-returning-pk!
+   :collection
+   (merge {:name             (mt/random-name)
+           :slug             (mt/random-name)
+           :location         "/"
+           :entity_id        (mt/random-name)
+           :archived         false
+           :is_sample        false
+           :is_remote_synced false
+           :created_at       :%now}
+          attrs)))
+
+(defn- collection-entity-id
+  [collection-id]
+  (str/trim (t2/select-one-fn :entity_id :collection :id collection-id)))
+
+(deftest backfill-legacy-library-root-collection-entity-ids-test
+  (testing "v62.2026-05-13T12:00:00 through v62.2026-05-13T12:00:02: backfill canonical Library root entity IDs"
+    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02"] [migrate!]
+      (let [library-id (insert-legacy-library-collection! {:name      "Library"
+                                                           :slug      "library"
+                                                           :type      "library"
+                                                           :entity_id "legacy-library-root"})
+            data-id    (insert-legacy-library-collection! {:name      "Data"
+                                                           :slug      "data"
+                                                           :type      "library-data"
+                                                           :location  (str "/" library-id "/")
+                                                           :entity_id "legacy-library-data"})
+            metrics-id (insert-legacy-library-collection! {:name      "Metrics"
+                                                           :slug      "metrics"
+                                                           :type      "library-metrics"
+                                                           :location  (str "/" library-id "/")
+                                                           :entity_id "legacy-library-metric"})]
+        (migrate!)
+        (is (= "librarylibrarylibrary"
+               (collection-entity-id library-id)))
+        (is (= "librarylibrarydatadat"
+               (collection-entity-id data-id)))
+        (is (= "librarylibrarymetrics"
+               (collection-entity-id metrics-id))))))
+  (testing "ambiguous Library Data direct children are not modified"
+    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02"] [migrate!]
+      (let [library-id        (insert-legacy-library-collection! {:name      "Library"
+                                                                  :slug      "library"
+                                                                  :type      "library"
+                                                                  :entity_id "legacy-library-root"})
+            data-id           (insert-legacy-library-collection! {:name      "Data"
+                                                                  :slug      "data"
+                                                                  :type      "library-data"
+                                                                  :location  (str "/" library-id "/")
+                                                                  :entity_id "legacy-library-data"})
+            duplicate-data-id (insert-legacy-library-collection! {:name      "Other Data"
+                                                                  :slug      "other-data"
+                                                                  :type      "library-data"
+                                                                  :location  (str "/" library-id "/")
+                                                                  :entity_id "legacy-other-data"})
+            metrics-id        (insert-legacy-library-collection! {:name      "Metrics"
+                                                                  :slug      "metrics"
+                                                                  :type      "library-metrics"
+                                                                  :location  (str "/" library-id "/")
+                                                                  :entity_id "legacy-library-metric"})]
+        (migrate!)
+        (is (= "librarylibrarylibrary"
+               (collection-entity-id library-id)))
+        (is (= "legacy-library-data"
+               (collection-entity-id data-id)))
+        (is (= "legacy-other-data"
+               (collection-entity-id duplicate-data-id)))
+        (is (= "librarylibrarymetrics"
+               (collection-entity-id metrics-id))))))
+  (testing "Library Data collections outside Library root do not count as ambiguous"
+    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02"] [migrate!]
+      (let [library-id      (insert-legacy-library-collection! {:name      "Library"
+                                                                :slug      "library"
+                                                                :type      "library"
+                                                                :entity_id "legacy-library-root"})
+            other-parent-id (insert-legacy-library-collection! {:name      "Other parent"
+                                                                :slug      "other-parent"
+                                                                :entity_id "legacy-other-parent"})
+            data-id         (insert-legacy-library-collection! {:name      "Data"
+                                                                :slug      "data"
+                                                                :type      "library-data"
+                                                                :location  (str "/" library-id "/")
+                                                                :entity_id "legacy-library-data"})
+            orphan-data-id  (insert-legacy-library-collection! {:name      "Orphan Data"
+                                                                :slug      "orphan-data"
+                                                                :type      "library-data"
+                                                                :location  (str "/" other-parent-id "/")
+                                                                :entity_id "legacy-orphan-data"})]
+        (migrate!)
+        (is (= "librarylibrarylibrary"
+               (collection-entity-id library-id)))
+        (is (= "librarylibrarydatadat"
+               (collection-entity-id data-id)))
+        (is (= "legacy-orphan-data"
+               (collection-entity-id orphan-data-id)))))))
