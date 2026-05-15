@@ -97,7 +97,6 @@ const ROBERT_CHART_LABELS: CompleteChartLabels = {
 type DateFilterLabel =
   | "Today"
   | "Yesterday"
-  | "Previous week"
   | "Previous 7 days"
   | "Previous 30 days"
   | "Previous month"
@@ -113,7 +112,7 @@ const TODAY_CHART_LABELS: CompleteChartLabels = {
 
 const PREVIOUS_WEEK_CHART_LABELS: CompleteChartLabels = {
   source: ["Metabot"],
-  profile: ["NLQ"],
+  profile: ["Slackbot"],
   user: ["Bobby Tables"],
   ip: ["10.0.0.1"],
 };
@@ -134,7 +133,7 @@ const DATE_FILTER_CASES: Array<{
   chartLabels: ChartLabels;
 }> = [
   { label: "Today", chartLabels: TODAY_CHART_LABELS },
-  { label: "Previous week", chartLabels: PREVIOUS_WEEK_CHART_LABELS },
+  { label: "Previous 7 days", chartLabels: PREVIOUS_WEEK_CHART_LABELS },
 ];
 
 const MAIN_PROFILE_LABELS: string[] = [
@@ -539,7 +538,7 @@ function selectDateFilter(
   H.selectDropdown().findByText(dateLabel).realClick();
   H.main()
     .findByTestId("conversation-filters-date-select")
-    .should("contain", dateLabel);
+    .should("have.value", dateLabel);
   cy.wait(waitAlias);
 }
 
