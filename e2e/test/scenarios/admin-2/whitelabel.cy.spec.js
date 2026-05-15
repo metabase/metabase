@@ -163,7 +163,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       describe("login page illustration", () => {
         it(
           "should only allow uploading a valid image files (PNG, JPG, SVG) and display on login page",
-          { tags: "@smoke" },
+          { tags: "@prerelease" },
           () => {
             /**
              * Unfortunately, we couldn't test the browser file selector with Cypress yet.
