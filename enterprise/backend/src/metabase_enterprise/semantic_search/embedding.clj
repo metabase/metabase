@@ -197,8 +197,7 @@
   `:api-key`         — Bearer token
   `:model-name`      — model identifier sent in the request body
   `:texts`           — collection of input strings
-  `:record-tokens?`  — true writes a `semantic_search_token_tracking` row, false skips it. Required so
-                       a forgotten kwarg can't silently change the side-effect behaviour.
+  `:record-tokens?`  — true writes a `semantic_search_token_tracking` row, false skips it.
   `:snowplow?`       — optional; when true fires a Snowplow `token_usage` event
   `:extra-body`      — optional; merged into the request body (e.g. `{:dimensions 1024}`)
   `:type`            — optional; forwarded to the token-tracking row"
