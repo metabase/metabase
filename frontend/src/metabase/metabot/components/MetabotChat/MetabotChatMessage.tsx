@@ -91,49 +91,43 @@ export const MessageContainer = ({
 
 interface UserMessageProps extends Omit<BaseMessageProps, "message"> {
   message: MetabotUserChatMessage;
-  onCopy: () => void;
 }
 
 export const UserMessage = ({
   message,
   className,
   hideActions,
-  onCopy,
   ...props
-}: UserMessageProps) => (
-  <MessageContainer chatRole={message.role} {...props}>
-    {message.type === "text" && (
-      <AIMarkdown
-        className={cx(Styles.message, Styles.messageUser)}
-        singleNewlinesAreParagraphs
-      >
-        {message.message}
-      </AIMarkdown>
-    )}
+}: UserMessageProps) => {
+  const clipboard = useClipboard({ timeout: 2000 });
 
-    {message.type === "action" && (
-      <Flex direction="column" gap="xs">
-        <Flex align="center" gap="xs">
-          <Text className={cx(Styles.message, Styles.messageUserAction)}>
-            {message.userMessage}
-          </Text>
-        </Flex>
-      </Flex>
-    )}
-
-    <Flex className={Styles.messageActions}>
-      {!hideActions && (
-        <ActionIcon
-          h="sm"
-          data-testid="metabot-chat-message-copy"
-          onClick={onCopy}
+  return (
+    <MessageContainer chatRole={message.role} {...props}>
+      {message.type === "text" && (
+        <AIMarkdown
+          className={cx(Styles.message, Styles.messageUser)}
+          singleNewlinesAreParagraphs
         >
-          <Icon name="copy" size="1rem" />
-        </ActionIcon>
+          {message.message}
+        </AIMarkdown>
       )}
-    </Flex>
-  </MessageContainer>
-);
+
+      <Flex className={Styles.messageActions}>
+        {!hideActions && (
+          <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
+            <ActionIcon
+              h="sm"
+              data-testid="metabot-chat-message-copy"
+              onClick={() => clipboard.copy(message.message)}
+            >
+              <Icon name="copy" size="1rem" />
+            </ActionIcon>
+          </Tooltip>
+        )}
+      </Flex>
+    </MessageContainer>
+  );
+};
 
 interface FeedbackButtonProps {
   disabled: boolean;
@@ -170,7 +164,7 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   debug: boolean;
   readonly: boolean;
   onRetry?: (messageId: string) => void;
-  onCopy: (messageId: string) => void;
+  getCopyText: () => string;
   showFeedbackButtons: boolean;
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
   submittedFeedback: "positive" | "negative" | undefined;
@@ -182,7 +176,7 @@ export const AgentMessage = ({
   className,
   debug,
   readonly,
-  onCopy,
+  getCopyText,
   onRetry,
   showFeedbackButtons,
   setFeedbackMessage,
@@ -197,6 +191,7 @@ export const AgentMessage = ({
     setFeedbackMessage &&
     messageId
   );
+  const clipboard = useClipboard({ timeout: 2000 });
 
   return (
     <MessageContainer chatRole={message.role} {...props}>
@@ -221,11 +216,11 @@ export const AgentMessage = ({
       <Flex className={Styles.messageActions}>
         {!hideActions && (
           <>
-            <Tooltip label={t`Copy`}>
+            <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
               <ActionIcon
                 h="sm"
                 data-testid="metabot-chat-message-copy"
-                onClick={() => onCopy(message.id)}
+                onClick={() => clipboard.copy(getCopyText())}
               >
                 <Icon name="copy" size="1rem" />
               </ActionIcon>
@@ -366,7 +361,6 @@ export const Messages = ({
     () => (debug ? messages : messages.filter(isUserVisibleMessage)),
     [debug, messages],
   );
-  const clipboard = useClipboard();
   const [sendToast] = useToast();
 
   const [feedbackState, setFeedbackState] = useState<{
@@ -398,16 +392,16 @@ export const Messages = ({
     }
   };
 
-  const onAgentMessageCopy = useCallback(
+  const getAgentReplyCopyText = useCallback(
     (messageId: string) => {
       const allMessages = getFullAgentReply(messages, messageId);
       const textMessages = allMessages.filter(
         (msg): msg is MetabotAgentTextChatMessage =>
           msg.role === "agent" && msg.type === "text",
       );
-      clipboard.copy(textMessages.map((msg) => msg.message).join("\n\n"));
+      return textMessages.map((msg) => msg.message).join("\n\n");
     },
-    [messages, clipboard],
+    [messages],
   );
 
   const setFeedbackModal = useCallback(
@@ -432,7 +426,7 @@ export const Messages = ({
             debug={debug}
             readonly={readonly}
             onRetry={onRetryMessage}
-            onCopy={onAgentMessageCopy}
+            getCopyText={() => getAgentReplyCopyText(message.id)}
             showFeedbackButtons={showFeedbackButtons}
             setFeedbackMessage={setFeedbackModal}
             submittedFeedback={
@@ -451,13 +445,6 @@ export const Messages = ({
             data-testid="metabot-chat-message"
             message={message}
             hideActions={isDoingScience && visibleMessages.length === index + 1}
-            onCopy={() => {
-              const copyText =
-                message.type === "action"
-                  ? `${message.userMessage}: ${message.message}`
-                  : message.message;
-              clipboard.copy(copyText);
-            }}
           />
         ),
       )}

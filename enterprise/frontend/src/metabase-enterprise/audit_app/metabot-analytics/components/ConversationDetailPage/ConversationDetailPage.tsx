@@ -215,7 +215,7 @@ function FeedbackCard({
             debug
             readonly
             hideActions
-            onCopy={noopCopy}
+            getCopyText={noopGetCopyText}
             showFeedbackButtons={false}
             submittedFeedback={undefined}
             bg="background-secondary"
@@ -398,4 +398,6 @@ function noopUpdateQuestion(): Promise<void> {
   return Promise.resolve();
 }
 
-function noopCopy() {}
+function noopGetCopyText() {
+  return "";
+}

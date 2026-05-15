@@ -83,14 +83,6 @@
   overflow: hidden;
 }
 
-.messageUserAction {
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  background: var(--mb-color-background-secondary);
-  border: 1px solid var(--mb-color-background-tertiary);
-  font-weight: bold;
-}
-
 .messageActions {
   opacity: 0;
   transition: all 150ms linear;
