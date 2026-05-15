@@ -1,64 +1,37 @@
-import { useInterval } from "@mantine/hooks";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useMount, useUnmount } from "react-use";
-import { t } from "ttag";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useLazyListLogsQuery } from "metabase/api/logger";
+import { useListLogsQuery } from "metabase/api/logger";
 import type { Log } from "metabase-types/api";
 
 import { maybeMergeLogs } from "./utils";
 
 export function usePollingLogsQuery(pollingDurationMs: number) {
-  const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState<any>(null);
+  const {
+    data: newLogs,
+    isSuccess,
+    error: queryError,
+  } = useListLogsQuery(undefined, { pollingInterval: pollingDurationMs });
+
   const [logs, setLogs] = useState<Log[]>([]);
 
-  const [listLogs] = useLazyListLogsQuery();
-
-  const isMountedRef = useRef(false);
-  const isFetchingRef = useRef(false);
-
-  const fetchLogs = async () => {
-    if (isFetchingRef.current) {
-      console.warn("skipping logs request as a request is currently in flight");
-      return;
+  useEffect(() => {
+    if (newLogs) {
+      setLogs((previousLogs) => maybeMergeLogs(previousLogs, newLogs));
     }
+  }, [newLogs]);
 
-    try {
-      isFetchingRef.current = true;
-      const newLogs = await listLogs().unwrap();
-      if (isMountedRef.current) {
-        setLoaded(true);
-        setError(null);
-        setLogs((logs) => maybeMergeLogs(logs, newLogs));
-        isFetchingRef.current = false;
-      }
-    } catch (err: any) {
-      console.error(err);
-      const msg = err?.data?.message ?? err.message ?? t`An error occurred.`;
-      if (isMountedRef.current) {
-        setError(msg);
-        isFetchingRef.current = false;
-      }
+  const error = useMemo(() => {
+    if (!queryError) {
+      return null;
     }
-  };
+    const errorWithData = queryError as {
+      data?: { message?: string };
+      message?: string;
+    };
+    return errorWithData.data?.message ?? errorWithData.message ?? null;
+  }, [queryError]);
 
-  const pollingInterval = useInterval(fetchLogs, pollingDurationMs);
-
-  // keep track of mounted state to avoid settings state after unmount
-  // clear timeout that is polling for logs
-  useMount(() => {
-    isMountedRef.current = true;
-    fetchLogs();
-    pollingInterval.start();
-  });
-
-  useUnmount(() => {
-    isMountedRef.current = false;
-    pollingInterval.stop();
-  });
-
-  return { loaded, error, logs };
+  return { loaded: isSuccess, error, logs };
 }
 
 export function useTailLogs(logs: Log[]) {
