@@ -76,6 +76,30 @@
 
 ;;; --------------------------------------- writer ------------------------------------------
 
+(defn verify-write-target-shape!
+  "Throws an `ex-info` (with `:cli-validation true`) when the appdb doesn't have
+  `data_complexity_score` with the four columns [[record-score!]] writes. Extra columns are fine
+  — we only check that the names we INSERT all resolve, by running `SELECT … WHERE 1=0` so the
+  database parses the projection without scanning rows.
+
+  Call this before kicking off a slow scoring pass when `--write-to-appdb` is on, so the run
+  fails fast and obviously instead of computing for minutes and then crashing on INSERT."
+  []
+  (try
+    (jdbc/execute-one! (mdb/data-source)
+                       ["SELECT fingerprint, source, score_data, created_at
+                         FROM data_complexity_score
+                         WHERE 1 = 0"])
+    nil
+    (catch SQLException e
+      (if (missing-relation-error? e)
+        (throw (ex-info (str "`data_complexity_score` is missing or doesn't have the columns "
+                             "--write-to-appdb needs (fingerprint, source, score_data, created_at). "
+                             "Underlying SQL error: " (.getMessage e))
+                        {:cli-validation true
+                         :sql-state      (.getSQLState e)}))
+        (throw e)))))
+
 (defn record-score!
   "Insert one row into `data_complexity_score` via raw JDBC. No Toucan transforms, no model
   hooks. `score-data` is serialized to JSON here so we don't depend on `mi/transform-json`.

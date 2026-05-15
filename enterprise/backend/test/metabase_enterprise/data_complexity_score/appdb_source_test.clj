@@ -6,11 +6,14 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-complexity-score.appdb-source :as appdb-source]
    [metabase.app-db.core :as mdb]
+   [metabase.test :as mt]
    [metabase.test.initialize :as test.initialize]
    [metabase.util.json :as json]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -51,3 +54,48 @@
         (finally
           ;; Append-only table — clean up manually so the test doesn't accumulate rows.
           (t2/delete! :model/DataComplexityScore :fingerprint fp))))))
+
+(defn- ^SQLException sql-error-with-state [state]
+  (doto (SQLException. (str "boom (" state ")") state)))
+
+(deftest with-missing-relation-fallback-test
+  (testing "off by default — read-side errors propagate so cron / API surface schema bugs"
+    (is (thrown? SQLException
+                 (appdb-source/with-missing-relation-fallback
+                   ::probe ::fallback
+                   #(throw (sql-error-with-state "42P01"))))))
+  (testing "when toleration is on, only missing-table / missing-column SQLState codes trigger the fallback"
+    (binding [appdb-source/*tolerate-missing-relations?* true]
+      (testing "happy path returns the body's value"
+        (is (= ::ok
+               (appdb-source/with-missing-relation-fallback ::probe ::fallback (constantly ::ok)))))
+      (doseq [state ["42P01" "42703" "42102" "42122" "42S02" "42S22"]]
+        (testing (str "SQLState " state " (table or column absent) → fallback")
+          (is (= ::fallback
+                 (appdb-source/with-missing-relation-fallback
+                   ::probe ::fallback
+                   #(throw (sql-error-with-state state)))))))
+      (testing "an unrelated SQLState (e.g. syntax / constraint) is not swallowed"
+        (is (thrown-with-msg?
+             SQLException #"23505"
+             (appdb-source/with-missing-relation-fallback
+               ::probe ::fallback
+               #(throw (sql-error-with-state "23505")))))))))
+
+(deftest ^:sequential verify-write-target-shape-passes-on-current-schema-test
+  (testing "verify-write-target-shape! is a no-op when the appdb has the columns record-score! writes"
+    (mt/initialize-if-needed! :db)
+    (is (nil? (appdb-source/verify-write-target-shape!)))))
+
+(deftest verify-write-target-shape-fails-fast-on-missing-relation-test
+  (testing "verify-write-target-shape! converts a missing-table / column SQL error into a `:cli-validation` ex-info"
+    (mt/with-dynamic-fn-redefs [jdbc/execute-one! (fn [& _] (throw (sql-error-with-state "42P01")))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"data_complexity_score"
+           (appdb-source/verify-write-target-shape!)))
+      (try (appdb-source/verify-write-target-shape!)
+           (catch clojure.lang.ExceptionInfo e
+             (is (=? {:cli-validation true :sql-state "42P01"} (ex-data e)))))))
+  (testing "an unrelated SQL error propagates without rewriting"
+    (mt/with-dynamic-fn-redefs [jdbc/execute-one! (fn [& _] (throw (sql-error-with-state "08006")))]
+      (is (thrown? SQLException (appdb-source/verify-write-target-shape!))))))
