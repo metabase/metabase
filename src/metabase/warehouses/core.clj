@@ -17,4 +17,5 @@
  [metabase.warehouses.util
   get-database
   test-connection-details
-  test-database-connection])
+  test-database-connection
+  visible-databases])

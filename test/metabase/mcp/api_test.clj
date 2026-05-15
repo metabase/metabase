@@ -178,10 +178,12 @@
     "create_dashboard"
     "create_question"
     "execute_query"
+    "get_database"
     "get_metric"
     "get_metric_field_values"
     "get_table"
     "get_table_field_values"
+    "list_databases"
     "query"
     "render_drill_through"
     "search"
@@ -507,8 +509,8 @@
    below) — the test compares this set against the Agent API-backed tools and
    fails when they diverge, ensuring no Agent API tool ships without a basic
    invocation check."
-  #{"get_table" "get_table_field_values" "get_metric" "get_metric_field_values"
-    "search" "construct_query" "query" "execute_query"
+  #{"get_database" "get_table" "get_table_field_values" "get_metric" "get_metric_field_values"
+    "list_databases" "search" "construct_query" "query" "execute_query"
     "create_question" "create_dashboard"})
 
 (deftest tools-call-smoke-test
@@ -531,6 +533,8 @@
               dash-id        (atom nil)]
           (try
             (let [;; Read tools — call-tool helper asserts (not :isError) internally.
+                  _              (call-tool session-id "list_databases" {})
+                  _              (call-tool session-id "get_database" {:id (mt/id)})
                   table-data     (call-tool session-id "get_table" {:id orders-id})
                   table-fid      (-> table-data :fields first :field_id)
                   _              (call-tool session-id "get_table_field_values"

@@ -2,6 +2,8 @@
   "Agent API functional tests using session-based authentication.
    JWT and scope-related tests live in metabase-enterprise.agent-api.api-test."
   (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
@@ -221,6 +223,126 @@
       (is (= "Field 999999 not found"
              (mt/user-http-request :crowberto :get 404 (format "agent/v1/table/%d/field/999999/values" table-id)))))))
 
+;;; -------------------------------------------------- Databases --------------------------------------------------
+
+(def ^:private agent-database-allowed-keys
+  "Mirror of [[metabase.agent-api.api/agent-database-projection]] kept here as the
+   single source of truth for the security test: the response must contain ONLY
+   these keys, never `:details`, `:settings`, or sync-schedule fields."
+  #{:id :name :engine :description :is_sample :is_attached_dwh :created_at :updated_at})
+
+(deftest list-databases-test
+  (testing "Returns at least the sample test DB to a superuser, with only allowlisted fields"
+    ;; Use crowberto (superuser) here: this test asserts the response *shape* and the
+    ;; allowlist projection. Permission-filter semantics are covered by
+    ;; `mi/visible-filter-clause :model/Database` and the existing
+    ;; `metabase.warehouses-rest.api-test/databases-list-test`.
+    ;; `(mt/id)` forces the test dataset to lazy-load, otherwise app-DB has zero rows
+    ;; under the `:db :web-server :test-users` fixture chain and the endpoint would
+    ;; trivially return `:total_count 0`.
+    (mt/id)
+    (let [{:keys [data total_count]} (mt/user-http-request :crowberto :get 200 "agent/v1/database")
+          sample-db                  (m/find-first #(= (mt/id) (:id %)) data)]
+      (is (pos? total_count))
+      (is (= total_count (count data)))
+      (is (some? sample-db) "Sample DB should be visible to the superuser")
+      (testing "response items contain only allowlisted keys (nothing else may leak)"
+        (doseq [db data]
+          (is (= agent-database-allowed-keys
+                 (set (keys db)))
+              (format "Database id=%s leaked keys: %s"
+                      (:id db) (set/difference (set (keys db)) agent-database-allowed-keys))))))))
+
+(deftest list-databases-superuser-superset-test
+  (testing "A non-superuser's view of `/v1/database` is always a subset of a superuser's"
+    ;; Structural guarantee: a non-superuser cannot see a DB the superuser shortcut
+    ;; wouldn't surface. Strict perm-deny semantics are exercised by
+    ;; `list-databases-blocked-perms-test` below.
+    (mt/with-temp [:model/Database _ {:name   "agent-api-superset-canary-db"
+                                      :engine :h2}]
+      (let [admin-ids (->> (mt/user-http-request :crowberto :get 200 "agent/v1/database")
+                           :data (map :id) set)
+            user-ids  (->> (mt/user-http-request :rasta :get 200 "agent/v1/database")
+                           :data (map :id) set)]
+        (is (contains? admin-ids (t2/select-one-pk :model/Database
+                                                   :name "agent-api-superset-canary-db"))
+            "Superuser sees the freshly-created DB")
+        (is (set/subset? user-ids admin-ids))))))
+
+(deftest list-databases-blocked-perms-test
+  (testing "A user with all data-permissions revoked on a DB does NOT see it via /v1/database"
+    ;; Create a DB, wipe its default DataPermissions (which `mt/with-temp` grants to
+    ;; `All Users` by default), so no group has any grant — rasta loses access from every
+    ;; angle. Superuser still sees it via the `is-superuser?` short-circuit in
+    ;; `perms/visible-database-filter-select`.
+    (mt/with-temp [:model/Database {db-id :id} {:name   "agent-api-blocked-perms-db"
+                                                :engine :h2}]
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      (let [admin-ids (->> (mt/user-http-request :crowberto :get 200 "agent/v1/database")
+                           :data (map :id) set)
+            user-ids  (->> (mt/user-http-request :rasta :get 200 "agent/v1/database")
+                           :data (map :id) set)]
+        (is (contains? admin-ids db-id)
+            "Superuser sees the blocked DB (superuser short-circuit)")
+        (is (not (contains? user-ids db-id))
+            "Rasta MUST NOT see a DB she has zero data-permissions on")))))
+
+(deftest get-database-blocked-perms-test
+  (testing "`api/read-check` denies `/v1/database/:id` for a DB the user cannot access"
+    (mt/with-temp [:model/Database {db-id :id} {:name   "agent-api-get-blocked-db"
+                                                :engine :h2}]
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      ;; Sanity check: superuser still gets a 200 — confirms the DB exists and the URL
+      ;; routes correctly; the only reason rasta is rejected is the read-check.
+      (is (=? {:id db-id}
+              (mt/user-http-request :crowberto :get 200 (str "agent/v1/database/" db-id))))
+      ;; `api/read-check` raises 403 with "You don't have permissions to do that." for
+      ;; the non-superuser. We don't pin the exact message — just the status code, since
+      ;; that's the contract of the endpoint.
+      (mt/user-http-request :rasta :get 403 (str "agent/v1/database/" db-id)))))
+
+(deftest list-databases-no-credential-leak-test
+  (testing "Sensitive fields in :details are never exposed via the agent endpoint"
+    (mt/with-temp [:model/Database {db-id :id} {:name    "agent-api-credential-leak-db"
+                                                :engine  :h2
+                                                :details {:db       "mem:leak-canary"
+                                                          :password "super-secret-canary"
+                                                          :ssh-key  "-----BEGIN RSA PRIVATE KEY-----"}}]
+      (let [response     (mt/user-http-request :crowberto :get 200 "agent/v1/database")
+            leak-db      (m/find-first #(= db-id (:id %)) (:data response))
+            json-encoded (json/encode response)]
+        (is (some? leak-db) "Newly created DB should appear in the superuser's list")
+        (is (= agent-database-allowed-keys (set (keys leak-db))))
+        (testing "no credential payload appears anywhere in the serialized response"
+          (is (not (str/includes? json-encoded "super-secret-canary")))
+          (is (not (str/includes? json-encoded "BEGIN RSA PRIVATE KEY"))))))))
+
+(deftest get-database-test
+  (testing "Returns single database details for valid ID"
+    ;; Force-load the test dataset so the sample DB exists in the app DB.
+    (let [db-id (mt/id)
+          db    (mt/user-http-request :crowberto :get 200 (str "agent/v1/database/" db-id))]
+      (is (=? {:id     db-id
+               :name   string?
+               :engine string?}
+              db))
+      (is (= agent-database-allowed-keys (set (keys db))))))
+
+  (testing "Returns 404 for non-existent database"
+    (is (= "Not found."
+           (mt/user-http-request :crowberto :get 404 "agent/v1/database/999999"))))
+
+  (testing "Sensitive :details never appear on the single-DB endpoint"
+    (mt/with-temp [:model/Database {db-id :id} {:name    "agent-api-single-leak-db"
+                                                :engine  :h2
+                                                :details {:db       "mem:single-leak-canary"
+                                                          :password "single-secret-canary"}}]
+      (let [db (mt/user-http-request :crowberto :get 200 (str "agent/v1/database/" db-id))]
+        (is (= agent-database-allowed-keys (set (keys db))))
+        (is (not (str/includes? (json/encode db) "single-secret-canary")))))))
+
+;;; --------------------------------------------------- Search ---------------------------------------------------
+
 (deftest search-test
   (binding [search.ingestion/*force-sync* true]
     (search.tu/with-new-search-if-available-otherwise-legacy
@@ -230,6 +352,17 @@
                    :total_count 1}
                   (mt/user-http-request :rasta :post 200 "agent/v1/search"
                                         {:term_queries ["AgentSearchTestTable"]}))))))))
+
+(deftest search-databases-test
+  (testing "Search returns databases when entity_types includes \"database\""
+    (binding [search.ingestion/*force-sync* true]
+      (search.tu/with-new-search-if-available-otherwise-legacy
+        (mt/with-temp [:model/Database _ {:name "AgentSearchTestWarehouse" :engine :h2}]
+          (is (=? {:data        [{:type "database" :name "AgentSearchTestWarehouse"}]
+                   :total_count 1}
+                  (mt/user-http-request :rasta :post 200 "agent/v1/search"
+                                        {:term_queries ["AgentSearchTestWarehouse"]
+                                         :entity_types ["database"]}))))))))
 
 (deftest coerce-query-list-test
   (let [coerce #'agent-api.api/coerce-query-list]

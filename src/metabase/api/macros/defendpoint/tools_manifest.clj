@@ -218,7 +218,11 @@
   "Merge route, query, and body param schemas into a single inputSchema object.
   Route params are always required. For body schemas that aren't simple maps (e.g. `:or`),
   the full JSON Schema is used directly. If route/query/body share a property name,
-  later sources (body > query > route) take precedence."
+  later sources (body > query > route) take precedence.
+
+  Always returns an `:inputSchema` object — tools without any parameters get an empty
+  `{:type \"object\" :properties {}}`, since the MCP spec expects `inputSchema` to be
+  present on every tool definition."
   [form]
   (let [route-parts (schema->properties-and-required (get-in form [:params :route :schema]))
         query-parts (schema->properties-and-required (get-in form [:params :query :schema]))
@@ -236,7 +240,7 @@
                            (:required body-parts)])]
     (cond
       (and body-full (empty? all-props)) body-full
-      (seq all-props)                    (cond-> {:type "object" :properties all-props}
+      :else                              (cond-> {:type "object" :properties (or all-props {})}
                                            (seq all-req) (assoc :required all-req)))))
 
 (defn- response-schema->json-schema

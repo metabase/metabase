@@ -33,6 +33,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.core :as warehouses]
    [toucan2.core :as t2]))
 
 ;;; --------------------------------------------------- Defaults ------------------------------------------------------
@@ -208,11 +209,38 @@
    [:statistics {:optional true} [:maybe ::statistics]]
    [:values {:optional true} [:maybe [:sequential :any]]]])
 
+(def ^:private agent-database-projection
+  "Allowlist of database fields exposed to LLM agents. Explicit deny-by-default;
+   extending requires updating this vector AND `::database` (closed schema). The
+   test [[metabase.agent-api.api-test/list-databases-test]] asserts set equality
+   on response keys, so accidental additions fail loudly."
+  [:id :name :engine :description :is_sample :is_attached_dwh :created_at :updated_at])
+
+(mr/def ::database
+  "LLM-safe database summary. Never includes connection details (credentials),
+   settings, sync schedules, or routing config. Allowlist enforced by `:closed`
+   plus the [[->agent-database]] projection — defense in depth."
+  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en) :closed true}
+   [:id :int]
+   [:name :string]
+   [:engine :string]
+   [:description     {:optional true} [:maybe :string]]
+   [:is_sample       {:optional true} [:maybe :boolean]]
+   [:is_attached_dwh {:optional true} [:maybe :boolean]]
+   [:created_at      {:optional true} [:maybe :any]]
+   [:updated_at      {:optional true} [:maybe :any]]])
+
+(mr/def ::database-list-response
+  "Response shape for listing databases visible to the current user."
+  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
+   [:data        [:sequential ::database]]
+   [:total_count :int]])
+
 (mr/def ::search-result-item
-  "A table or metric returned from search."
+  "A table, metric, or database returned from search."
   [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
-   [:type [:enum "table" "metric"]]
+   [:type [:enum "table" "metric" "database"]]
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
@@ -317,6 +345,44 @@
      :field-id    field-id
      :limit       (or (request/limit) default-field-values-limit)})))
 
+;;; ----------------------------------------------------- Databases --------------------------------------------------
+
+(defn- ->agent-database
+  "Project a `:model/Database` row to the LLM-safe shape via the allowlist. Explicit
+  projection — never rely on `mi/to-json` to strip sensitive fields, since that only
+  removes `:details` and depends on `mi/can-write?` plumbing.
+
+  `:engine` is stored as a keyword on the model; render it as a plain string so the
+  response schema (and JSON consumers) get a stable type."
+  [db]
+  (cond-> (select-keys db agent-database-projection)
+    (keyword? (:engine db)) (update :engine name)))
+
+(api.macros/defendpoint :get "/v1/database" :- ::database-list-response
+  "List connected databases visible to the current user."
+  ;; HTTP GET implies read-only + idempotent — these annotations are inferred by the
+  ;; tools manifest (`metabase.api.macros.defendpoint.tools-manifest/infer-annotations`),
+  ;; so do NOT add an `:annotations` map here — explicit duplicates throw at manifest gen.
+  {:scope metabot/agent-metadata-read
+   :tool  {:name "list_databases"
+           :description (str "List connected databases (data warehouses) visible to the current user. "
+                             "Databases are the root of Metabase's data hierarchy — call this first "
+                             "when you need to know which data sources exist before searching tables.")}}
+  []
+  (let [databases (mapv ->agent-database (warehouses/visible-databases))]
+    {:data        databases
+     :total_count (count databases)}))
+
+(api.macros/defendpoint :get "/v1/database/:id" :- ::database
+  "Get details about a single connected database by ID."
+  {:scope metabot/agent-metadata-read
+   :tool  {:name "get_database"
+           :description "Get details about a single connected database by ID."}}
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (->agent-database (warehouses/get-database id {})))
+
+;;; ----------------------------------------------------- Search ------------------------------------------------------
+
 (defn- coerce-query-list
   "Defensive coercion for `/v1/search`'s query arguments. Some MCP clients (notably
    Codex) serialize array args through a string layer, so a caller that intended to
@@ -336,33 +402,49 @@
                         [v])
     :else           v))
 
+(def ^:private search-entity-types
+  "Entity types the agent-api `/v1/search` endpoint exposes."
+  #{"table" "metric" "database"})
+
+(def ^:private default-search-entity-types
+  "Entity types searched when the caller doesn't specify `entity_types`. Kept to
+  table+metric for backward compatibility — callers must opt in to `\"database\"`."
+  ["table" "metric"])
+
 (api.macros/defendpoint :post "/v1/search" :- ::search-response
-  "Search for tables and metrics.
+  "Search for tables, metrics, and databases.
 
   Supports both term-based and semantic search queries. Results are ranked using
   Reciprocal Rank Fusion when both query types are provided."
   {:scope metabot/agent-search
    :tool  {:name "search"
-           :title "Search Tables and Metrics"
-           :description (str "Search for tables and metrics in Metabase. "
+           :title "Search Tables, Metrics, and Databases"
+           :description (str "Search for tables, metrics, and databases in Metabase. "
                              "Use term_queries for keyword search or semantic_queries for natural language search. "
-                             "Both arguments are arrays of strings, for example term_queries: [\"orders\", \"revenue\"].")
+                             "Both arguments are arrays of strings, for example term_queries: [\"orders\", \"revenue\"]. "
+                             "Pass entity_types to restrict result types — e.g. [\"database\"] to find a connected "
+                             "data source by name. To enumerate all connected databases without a search term, use "
+                             "the `list_databases` tool instead.")
            :annotations {:read-only? true}}}
   [_route-params
    _query-params
    {term-queries     :term_queries
-    semantic-queries :semantic_queries}
+    semantic-queries :semantic_queries
+    entity-types     :entity_types}
    :- [:map
        [:term_queries {:optional true
                        :tool/description "Keyword search queries as an array of strings, for example [\"orders\", \"revenue\"]."}
         [:maybe [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]
        [:semantic_queries {:optional true
                            :tool/description "Natural-language search queries as an array of strings, for example [\"how much revenue did we make\"]."}
-        [:maybe [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]]]
+        [:maybe [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]
+       [:entity_types {:optional true
+                       :tool/description "Restrict results to specific entity types. Defaults to [\"table\", \"metric\"]; pass [\"database\"] to find a connected data source by name, or combine to widen results."}
+        [:maybe [:sequential (into [:enum] (sort search-entity-types))]]]]]
   (let [results (metabot-search/search
                  {:term-queries     (or (coerce-query-list term-queries) [])
                   :semantic-queries (or (coerce-query-list semantic-queries) [])
-                  :entity-types     ["table" "metric"]
+                  :entity-types     (or (seq entity-types) default-search-entity-types)
                   :limit            (or (request/limit) 50)})]
     {:data        results
      :total_count (count results)}))

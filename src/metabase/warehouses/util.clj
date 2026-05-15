@@ -3,12 +3,37 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(defn visible-databases
+  "Return all `:model/Database`s visible to the current user, ordered by name then
+  engine. Visibility OR's together data-access, manage-database, and
+  manage-table-metadata permission clauses — same filter the legacy
+  `GET /api/database` endpoint uses (see `metabase.warehouses-rest.api/dbs-list`).
+  Excludes the analytics/audit DB and destination DBs created by database routing."
+  []
+  (let [user-info      {:user-id          api/*current-user-id*
+                        :is-superuser?    (mi/superuser?)
+                        :is-data-analyst? api/*is-data-analyst?*}
+        visible-clause [:or
+                        (:clause (mi/visible-filter-clause :model/Database :id user-info
+                                                           {:perms/create-queries :query-builder}))
+                        (:clause (mi/visible-filter-clause :model/Database :id user-info
+                                                           {:perms/manage-database :yes}))
+                        (:clause (mi/visible-filter-clause :model/Database :id user-info
+                                                           {:perms/manage-table-metadata :yes}))]]
+    (t2/select :model/Database
+               {:order-by [:%lower.name :%lower.engine]
+                :where    [:and
+                           [:= :is_audit false]
+                           [:= :router_database_id nil]
+                           visible-clause]})))
 
 (mu/defn get-database
   "Retrieve database respecting `include-editable-data-model?`, `exclude-uneditable-details?` and `include-mirror-databases?`"

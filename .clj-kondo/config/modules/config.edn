@@ -170,7 +170,8 @@
               request
               server
               settings
-              util}
+              util
+              warehouses}
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/DashboardCard

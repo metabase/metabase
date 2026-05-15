@@ -13,6 +13,7 @@
   provider-and-model->provider]
  [metabase.metabot.scope
   agent-dashboard-create
+  agent-metadata-read
   agent-metric-read
   agent-question-create
   agent-query-construct
