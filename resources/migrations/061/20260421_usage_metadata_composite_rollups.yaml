@@ -10,7 +10,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: bigint
+                  type: int
                   autoIncrement: true
                   remarks: Surrogate primary key
                   constraints:
@@ -18,7 +18,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: source_type
-                  type: varchar(16)
+                  type: varchar(256)
                   remarks: Owning source kind for direct or projected facts, or null for canonical mixed facts
               - column:
                   name: source_id
@@ -26,7 +26,7 @@ databaseChangeLog:
                   remarks: Owning table or card ID for direct or projected facts, or null for canonical mixed facts
               - column:
                   name: ownership_mode
-                  type: varchar(16)
+                  type: varchar(256)
                   remarks: Ownership attribution mode such as direct, projected, or mixed
                   constraints:
                     nullable: false
