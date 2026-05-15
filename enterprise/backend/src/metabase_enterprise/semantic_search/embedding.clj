@@ -9,7 +9,8 @@
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu])
   (:import
    [com.knuddels.jtokkit Encodings]
    [com.knuddels.jtokkit.api Encoding EncodingType]
@@ -187,27 +188,30 @@
    (when (string? model-name)
      (str/starts-with? model-name "text-embedding-3"))))
 
-(defn- openai-compatible-get-embeddings-batch
+(mu/defn- openai-compatible-get-embeddings-batch
   "Call an OpenAI-compatible /v1/embeddings endpoint. Shared implementation for both
   the `ai-service` and `openai` providers.
 
-  `provider`   — label for analytics (e.g. \"ai-service\", \"openai\")
-  `endpoint`   — full URL including /v1/embeddings
-  `api-key`    — Bearer token
-  `model-name` — model identifier sent in the request body
-  `texts`      — collection of input strings
-  `opts`       — keyword opts; `:type` is forwarded to token tracking,
-                 `:extra-body` is merged into the request body (e.g. {:dimensions 1024}),
-                 `:snowplow?` when true fires a Snowplow token_usage event,
-                 `:record-tokens?` **required** — true writes a usage row, false skips it. No
-                   default; callers must commit so a forgotten kwarg can't silently change the
-                   side-effect behaviour (the analytics/usage write is the kind of thing that
-                   gets noticed only in aggregate later)."
-  [provider endpoint api-key model-name texts
-   & {:keys [extra-body snowplow? record-tokens?] :as opts}]
-  (when-not (contains? opts :record-tokens?)
-    (throw (ex-info "openai-compatible-get-embeddings-batch requires :record-tokens? (true or false)"
-                    {:provider provider})))
+  `:provider`        — label for analytics (e.g. \"ai-service\", \"openai\")
+  `:endpoint`        — full URL including /v1/embeddings
+  `:api-key`         — Bearer token
+  `:model-name`      — model identifier sent in the request body
+  `:texts`           — collection of input strings
+  `:record-tokens?`  — true writes a `semantic_search_token_tracking` row, false skips it. Required so
+                       a forgotten kwarg can't silently change the side-effect behaviour.
+  `:snowplow?`       — optional; when true fires a Snowplow `token_usage` event
+  `:extra-body`      — optional; merged into the request body (e.g. `{:dimensions 1024}`)
+  `:type`            — optional; forwarded to the token-tracking row"
+  [{:keys [provider endpoint api-key model-name texts record-tokens? extra-body snowplow?] :as opts}
+   :- [:map
+       [:provider       :string]
+       [:endpoint       :string]
+       [:api-key        :string]
+       [:model-name     :string]
+       [:texts          [:sequential :string]]
+       [:record-tokens? :boolean]
+       [:snowplow?      {:optional true} [:maybe :boolean]]
+       [:extra-body     {:optional true} [:maybe :map]]]]
   (try
     (log/debug (str "Calling " provider " embeddings API")
                {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
@@ -269,14 +273,26 @@
 (defmethod get-embedding "ai-service" [{:keys [model-name]} text & {:as opts}]
   (let [[endpoint api-key] (embedding-service-resolve-config!)]
     (first (openai-compatible-get-embeddings-batch
-            "ai-service" endpoint api-key model-name [text]
-            (merge {:record-tokens? true} opts {:snowplow? true})))))
+            {:provider       "ai-service"
+             :endpoint       endpoint
+             :api-key        api-key
+             :model-name     model-name
+             :texts          [text]
+             :snowplow?      true
+             :record-tokens? (get opts :record-tokens? true)
+             :type           (:type opts)}))))
 
 (defmethod get-embeddings-batch "ai-service" [{:keys [model-name]} texts & {:as opts}]
   (let [[endpoint api-key] (embedding-service-resolve-config!)]
     (openai-compatible-get-embeddings-batch
-     "ai-service" endpoint api-key model-name texts
-     (merge {:record-tokens? true} opts {:snowplow? true}))))
+     {:provider       "ai-service"
+      :endpoint       endpoint
+      :api-key        api-key
+      :model-name     model-name
+      :texts          texts
+      :snowplow?      true
+      :record-tokens? (get opts :record-tokens? true)
+      :type           (:type opts)})))
 
 (defmethod pull-model "ai-service" [_]
   (log/debug "ai-service provider does not require pulling a model"))
@@ -294,20 +310,28 @@
 (defmethod get-embedding "openai" [embedding-model text & {:as opts}]
   (let [[endpoint api-key] (openai-resolve-config!)]
     (first (openai-compatible-get-embeddings-batch
-            "openai" endpoint api-key (:model-name embedding-model) [text]
-            (merge {:record-tokens? true}
-                   opts
-                   {:extra-body (when (supports-dimensions? embedding-model)
-                                  {:dimensions (:vector-dimensions embedding-model)})})))))
+            {:provider       "openai"
+             :endpoint       endpoint
+             :api-key        api-key
+             :model-name     (:model-name embedding-model)
+             :texts          [text]
+             :record-tokens? (get opts :record-tokens? true)
+             :extra-body     (when (supports-dimensions? embedding-model)
+                               {:dimensions (:vector-dimensions embedding-model)})
+             :type           (:type opts)}))))
 
 (defmethod get-embeddings-batch "openai" [embedding-model texts & {:as opts}]
   (let [[endpoint api-key] (openai-resolve-config!)]
     (openai-compatible-get-embeddings-batch
-     "openai" endpoint api-key (:model-name embedding-model) texts
-     (merge {:record-tokens? true}
-            opts
-            {:extra-body (when (supports-dimensions? embedding-model)
-                           {:dimensions (:vector-dimensions embedding-model)})}))))
+     {:provider       "openai"
+      :endpoint       endpoint
+      :api-key        api-key
+      :model-name     (:model-name embedding-model)
+      :texts          texts
+      :record-tokens? (get opts :record-tokens? true)
+      :extra-body     (when (supports-dimensions? embedding-model)
+                        {:dimensions (:vector-dimensions embedding-model)})
+      :type           (:type opts)})))
 
 (defmethod pull-model "openai" [_]
   (log/debug "OpenAI provider does not require pulling a model"))
