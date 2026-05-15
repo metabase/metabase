@@ -502,20 +502,20 @@
                             :meta     (cond-> {:formula-version   formula-version
                                                :synonym-threshold synonym-similarity-threshold}
                                         embedding-model-meta (assoc :embedding-model embedding-model-meta)
-                                        text-variant         (assoc :text-variant    text-variant))}]
-        (let [published? (time-phase! "publish" "all"
-                                      (fn []
-                                        (boolean
-                                         (when emit-snowplow?
-                                           (try
-                                             (emit-snowplow! result)
-                                             (catch Throwable t
-                                               (log/warn t "Failed to publish complexity score to Snowplow")))))))]
-          ;; `emit-snowplow!` returns true only when every event reached the tracker (false when
-          ;; Snowplow is disabled or any emission failed) — scheduler/boot callers gate
-          ;; `data-complexity-scoring-last-fingerprint` on this so a disabled collector or any
-          ;; partial failure doesn't silently mark the fingerprint as published.
-          (with-meta result {::snowplow-published? published?})))
+                                        text-variant         (assoc :text-variant    text-variant))}
+            ;; `emit-snowplow!` returns true only when every event reached the tracker (false when
+            ;; Snowplow is disabled or any emission failed) — scheduler/boot callers gate
+            ;; `data-complexity-scoring-last-fingerprint` on this so a disabled collector or any
+            ;; partial failure doesn't silently mark the fingerprint as published.
+            published?     (time-phase! "publish" "all"
+                                        (fn []
+                                          (boolean
+                                           (when emit-snowplow?
+                                             (try
+                                               (emit-snowplow! result)
+                                               (catch Throwable t
+                                                 (log/warn t "Failed to publish complexity score to Snowplow")))))))]
+        (with-meta result {::snowplow-published? published?}))
       (finally
         (analytics.interface/observe! :metabase-data-complexity/scoring-duration-ms
                                       (u/since-ms total-timer))))))
