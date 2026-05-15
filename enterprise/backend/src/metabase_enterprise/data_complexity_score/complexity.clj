@@ -55,30 +55,39 @@
 
 ;;; ----------------------------------- enumeration -----------------------------------
 ;;;
+(def ^:private ^:const in-clause-chunk-size
+  "Cap on the number of table-ids we put into a single `IN (...)` query. PostgreSQL prepared
+   statements top out at 65,535 parameters and we leave headroom for other clauses."
+  50000)
+
 (defn- table-field-counts
-  "Return `{table-id field-count}` for active fields on the given `table-ids`. Single group-by query."
+  "Return `{table-id field-count}` for active fields on the given `table-ids`. Chunked to keep
+   the prepared-statement parameter count under the JDBC driver's limit on instances with very
+   many tables."
   [table-ids]
-  (if (empty? table-ids)
-    {}
-    (into {}
-          (map (juxt :table_id :field_count))
-          (t2/query {:select   [:table_id [:%count.* :field_count]]
-                     :from     [:metabase_field]
-                     :where    [:and
-                                [:= :active true]
-                                [:in :table_id table-ids]]
-                     :group-by [:table_id]}))))
+  (into {}
+        (mapcat (fn [chunk]
+                  (map (juxt :table_id :field_count)
+                       (t2/query {:select   [:table_id [:%count.* :field_count]]
+                                  :from     [:metabase_field]
+                                  :where    [:and
+                                             [:= :active true]
+                                             [:in :table_id chunk]]
+                                  :group-by [:table_id]}))))
+        (partition-all in-clause-chunk-size table-ids)))
 
 (defn- table-measure-names
   "Return `{table-id [measure-name ...]}` for non-archived Measures on the given `table-ids`. A
-   measure is a named MBQL aggregation attached to a Table — see [[metabase.measures.models.measure]]."
+   measure is a named MBQL aggregation attached to a Table — see [[metabase.measures.models.measure]].
+   Chunked to stay under the prepared-statement parameter limit."
   [table-ids]
-  (if (empty? table-ids)
-    {}
-    (u/group-by :table_id :name
-                (t2/select [:model/Measure :table_id :name]
-                           :archived false
-                           :table_id [:in table-ids]))))
+  (into {}
+        (mapcat (fn [chunk]
+                  (u/group-by :table_id :name
+                              (t2/select [:model/Measure :table_id :name]
+                                         :archived false
+                                         :table_id [:in chunk]))))
+        (partition-all in-clause-chunk-size table-ids)))
 
 (defn- ->card-entity
   "Shape a Card row into an entity map for scoring. Cards don't contribute to `:field-count` in
