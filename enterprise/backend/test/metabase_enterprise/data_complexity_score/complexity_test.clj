@@ -108,8 +108,8 @@
       (is (=? {:components {:synonym-pairs {:measurement 0.0 :score 0}}}
               (#'complexity/score-catalog es nil)))))
 
-  (testing "catalog total bucketed into the right rating band"
-    ;; 100 entities at weight 10 = 1000 → top of `:medium`. Avoids touching unrelated axes.
+  (testing "catalog total at the medium-band upper bound buckets as medium"
+    ;; 100 entities × weight 10 = 1000 — pin the boundary, not an arbitrary midpoint.
     (let [es (vec (for [i (range 100)] (entity :name (str "t" i))))]
       (is (=? {:total        1000
                :rating       "medium"
@@ -117,9 +117,7 @@
                :rating-color "orange"}
               (#'complexity/score-catalog es nil)))))
 
-  (testing "catalog total cascading nil zeroes out the rating fields too"
-    ;; An exploding embedder cascades nil through `:total`; the rating must follow suit so a nil
-    ;; total can't sneak past as `:low`.
+  (testing "a nil total cascades nil through the rating fields rather than bucketing as low"
     (let [es       [(entity :name "customers") (entity :name "clients")]
           embedder (fn [_] (throw (ex-info "boom" {})))]
       (is (=? {:total        nil

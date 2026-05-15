@@ -35,20 +35,16 @@
    :repeated-measure 2})
 
 (def complexity-thresholds
-  "Bands for translating a catalog `:total` into a categorical complexity rating.
-  Each band covers scores up through its `:max`; the final band is unbounded.
-  Public so callers (and the FE) can introspect the table rather than re-encoding it.
-  Values are strings rather than keywords so they survive the JSON round-trip on the wire
-  unchanged — JSON consumers see exactly the values declared here.
-  Applies to catalog totals only — sub-component ratings are nil for now."
+  "Thresholds for the catalog-total complexity rating.
+  Public — consumers introspect this rather than reproduce the table.
+  Values are strings so the JSON round-trip is a no-op.
+  Applies to the catalog total only; sub-component ratings are nil."
   [{:rating "low"    :label "Low complexity"    :color "green"  :max 999}
    {:rating "medium" :label "Medium complexity" :color "orange" :max 9999}
    {:rating "high"   :label "High complexity"   :color "red"}])
 
 (defn- rating-for-score
-  "Return `{:rating :rating-label :rating-color}` for `score` using [[complexity-thresholds]].
-  All three keys are nil when `score` is nil — an uncomputed total cascades the nil through
-  the rating fields the same way `nil-safe-sum` does for the total itself."
+  "Nil cascades through all three return keys so an uncomputed total isn't bucketed as low."
   [score]
   (let [band (when (some? score)
                (some (fn [{:keys [max] :as b}] (when (or (nil? max) (<= score max)) b))
@@ -351,8 +347,7 @@
 
 (defn score-catalog
   "Pure: compute the score breakdown for a catalog given its `entities` and an optional `embedder`.
-  Each component sub-score and the catalog total carry uniform `:rating`, `:rating-label`, and
-  `:rating-color` keys; thresholds apply to the catalog total only, so component values are nil."
+  Rating fields are present on every component but nil — thresholds apply to the catalog total only."
   [entities embedder]
   (let [nil-rating {:rating nil :rating-label nil :rating-color nil}
         components (-> {:entity-count      (score-entity-count entities)
@@ -360,9 +355,6 @@
                         :synonym-pairs     (score-synonym-pairs entities embedder)
                         :field-count       (score-field-count entities)
                         :repeated-measures (score-repeated-measures entities)}
-                       ;; `(merge sub nil-rating)` preserves the sub-score's own keys
-                       ;; (`:measurement`/`:score`, plus `:error` when synonym scoring failed)
-                       ;; — only the three rating keys are added.
                        (update-vals #(merge % nil-rating)))
         total      (nil-safe-sum (map (comp :score val) components))]
     (merge {:total      total

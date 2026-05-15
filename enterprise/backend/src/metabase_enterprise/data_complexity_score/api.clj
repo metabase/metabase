@@ -17,9 +17,7 @@
 
 (def ^:private SubScore
   "Either a computed sub-score (`:measurement` + `:score`) or an uncomputed one (`:error`).
-  `:rating`/`:rating_label`/`:rating_color` are always nil at the sub-component level — only the
-  catalog `:total` is bucketed today. Keys are present (not omitted) so the FE doesn't have to
-  branch on presence."
+  Rating keys are present but always nil — thresholds apply to the catalog total only."
   [:or
    [:map {:closed true}
     [:measurement  number?]
@@ -37,8 +35,7 @@
 
 (def ^:private Catalog
   "One catalog's total + per-component breakdown.
-  `:total` is nil when any sub-score couldn't be computed — failures cascade through aggregates,
-  and the three rating keys cascade nil alongside it."
+  A failed sub-score cascades nil through both the total and the three rating keys."
   [:map
    [:total        [:maybe nat-int?]]
    [:rating       [:maybe [:enum "low" "medium" "high"]]]
