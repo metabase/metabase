@@ -70,9 +70,7 @@ export class Scalar extends Component<
 
   static settings = {
     ...fieldSetting("scalar.field", {
-      get section() {
-        return t`Formatting`;
-      },
+      getSection: () => t`Formatting`,
       get title() {
         return t`Field to show`;
       },
@@ -88,9 +86,7 @@ export class Scalar extends Component<
       ]) => cols.length < 2,
     }),
     "scalar.segments": {
-      get section() {
-        return t`Conditional colors`;
-      },
+      getSection: () => t`Conditional colors`,
       getDefault() {
         return [];
       },
