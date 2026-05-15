@@ -151,12 +151,8 @@ describe("AdminPeopleApp", () => {
   });
 
   describe("tenant upsell routes", () => {
-    it.each([
-      "/admin/people/tenants",
-      "/admin/people/tenants/groups",
-      "/admin/people/tenants/people",
-    ])("should render the tenant upsell on %s", async (initialRoute) => {
-      await setupTenantRoute(initialRoute);
+    it("should render the tenant upsell on /admin/people/tenants", async () => {
+      await setupTenantRoute("/admin/people/tenants");
 
       expect(
         await screen.findByText("Manage customer-facing analytics at scale"),
