@@ -23,13 +23,13 @@ By default, Metabase will automatically provision a domain name for your Metabas
 3. In the custom domain field (the input prefixed with `https://` in the Metabase Store), enter your custom domain (e.g., your.custom.domain).
 4. Talk to whoever manages your Domain Name System (DNS) records, and have them add a CNAME to wherever you manage your DNS records. Point that CNAME to this URL:
 
-   ```url
+   ```text
    us-1.cd.metabaseapp.com
    ```
 
    So your CNAME record would look something like:
 
-   ```domain
+   ```text
    CNAME    your.custom.domain    us-1.cd.metabaseapp.com
    ```
 
