@@ -131,8 +131,10 @@
   ;; derived from :metabase/event before the settings cache is restored from the appdb.
   (require 'metabase.driver.init)
   (mdb/setup-db-without-migrations!)
+  ;; `:record-tokens? false` keeps the throwaway embedding calls from polluting
+  ;; `semantic_search_token_tracking` — the CLI fires a lot of them per run.
   (let [result (complexity/complexity-scores
-                (assoc (synonym-source/complexity-scores-opts)
+                (assoc (synonym-source/complexity-scores-opts {:record-tokens? false})
                        :metabot-scope (metabot-scope/internal-metabot-scope)
                        :emit-snowplow? false))]
     (when write?

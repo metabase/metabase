@@ -581,6 +581,20 @@
         (is (fn? embedder)
             "synonym-source returns a fresh provider-embedder for the descriptor")))))
 
+(deftest ^:sequential synonym-source-forwards-embed-opts-to-provider-test
+  (testing "complexity-scores-opts forwards embed-opts (e.g. :record-tokens? false) as kwargs into get-embeddings-batch"
+    ;; Pins the CLI's plumbing: passing `{:record-tokens? false}` here must reach the HTTP layer
+    ;; so the embedding service can skip the usage-table write.
+    (test-util/with-synonym-source []
+      (let [captured (atom nil)
+            {:keys [embedder]} (synonym-source/complexity-scores-opts {:record-tokens? false})]
+        (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch
+                                    (fn [_model texts & {:as opts}]
+                                      (reset! captured opts)
+                                      (repeat (count texts) [1.0]))]
+          (embedder [{:id 1 :name "orders" :kind :table}])
+          (is (false? (:record-tokens? @captured))))))))
+
 (deftest ^:sequential provider-embedder-splits-names-before-calling-provider-test
   (testing "provider-embedder splits names on _, -, ., and camelCase before sending to get-embeddings-batch"
     (let [captured (atom nil)

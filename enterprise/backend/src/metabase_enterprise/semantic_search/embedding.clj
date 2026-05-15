@@ -198,9 +198,11 @@
   `texts`      — collection of input strings
   `opts`       — keyword opts; `:type` is forwarded to token tracking,
                  `:extra-body` is merged into the request body (e.g. {:dimensions 1024}),
-                 `:snowplow?` when true fires a Snowplow token_usage event"
+                 `:snowplow?` when true fires a Snowplow token_usage event,
+                 `:record-tokens?` (default true) writes the usage row; set false for offline tools
+                   (e.g. the data-complexity-score CLI) that shouldn't pollute the usage table"
   [provider endpoint api-key model-name texts
-   & {:keys [extra-body snowplow?] :as opts}]
+   & {:keys [extra-body snowplow? record-tokens?] :or {record-tokens? true} :as opts}]
   (try
     (log/debug (str "Calling " provider " embeddings API")
                {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
@@ -231,7 +233,8 @@
           :estimated-costs-usd 0.0
           :duration-ms         (long (u/since-ms start-ms))
           :tag                 "embedding_generation"}))
-      (semantic.models.token-tracking/record-tokens model-name (:type opts) total-tokens)
+      (when record-tokens?
+        (semantic.models.token-tracking/record-tokens model-name (:type opts) total-tokens))
       (decode-embeddings data))
     (catch ConnectException e
       (log/error e (str "Failed to connect to " provider) {:endpoint endpoint})
