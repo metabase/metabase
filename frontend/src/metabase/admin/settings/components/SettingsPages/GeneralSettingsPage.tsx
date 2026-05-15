@@ -87,6 +87,7 @@ export function GeneralSettingsPage() {
         />
       </SettingsSection>
 
+      {/* On starter plan, both conditions are `false` */}
       {(enableAnonymousTracking || hasAuditAppFeature) && (
         <SettingsSection title={t`Usage tracking`}>
           {enableAnonymousTracking && <AnonymousTrackingInput />}
