@@ -4,7 +4,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Api, collectionApi } from "metabase/api";
+import { Api, collectionApi, documentApi } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { HACK_getParentCollectionFromEntityUpdateAction } from "metabase/archive/utils";
 import { trackCollectionItemBookmarked } from "metabase/collections/analytics";
@@ -171,6 +171,25 @@ function ActionMenu({
       return;
     }
 
+    if (item.model === "document") {
+      const document = await dispatch(
+        documentApi.endpoints.updateDocument.initiate({
+          id: item.id,
+          archived: false,
+        }),
+      ).unwrap();
+      dispatch(Api.util.invalidateTags([listTag("bookmark")]));
+
+      const redirect = getParentEntityLink(document, document.collection);
+
+      sendToast({
+        message: t`${item.name} has been restored.`,
+        actionLabel: t`View`,
+        action: () => dispatch(push(redirect)),
+      });
+      return;
+    }
+
     const Entity = entityForObject(item);
     const result = await dispatch(
       Entity.actions.update({ id: item.id, archived: false }),
@@ -196,6 +215,11 @@ function ActionMenu({
       dispatch(
         collectionApi.endpoints.deleteCollection.initiate({ id: item.id }),
       );
+      sendToast({ message: t`This item has been permanently deleted.` });
+      return;
+    }
+    if (item.model === "document") {
+      dispatch(documentApi.endpoints.deleteDocument.initiate({ id: item.id }));
       sendToast({ message: t`This item has been permanently deleted.` });
       return;
     }
