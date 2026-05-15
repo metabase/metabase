@@ -60,19 +60,27 @@
   "Migration 3: Add `collection_type` and `data_layer` columns to index tables for the new ranking signals
   (`:library` on `collection_type`; `:final`/`:internal`/`:hidden` on `data_layer`)."
   [tx index-metadata]
-  (let [index-metadata (keyword (:metadata-table-name index-metadata))
-        execute!       (fn [q] (jdbc/execute! tx (sql/format q)))
-        table-names    (->> (execute! {:select-distinct [:table_name]
-                                       :from            [index-metadata]
-                                       :where           [[:< :index_version 3]]})
-                            (mapcat vals))]
+  (let [metadata-table   (keyword (:metadata-table-name index-metadata))
+        execute!         (fn [q] (jdbc/execute! tx (sql/format q)))
+        candidate-names  (->> (execute! {:select-distinct [:table_name]
+                                         :from            [metadata-table]
+                                         :where           [[:< :index_version 3]]})
+                              (mapcat vals))
+        ;; Skip tables that have been deleted externally — their metadata row may still be present.
+        existing-names   (when (seq candidate-names)
+                           (->> (execute! {:select [:tablename]
+                                           :from   [:pg_tables]
+                                           :where  [:in :tablename (vec candidate-names)]})
+                                (mapcat vals)
+                                set))
+        table-names      (filter existing-names candidate-names)]
     (when (seq table-names)
       (doseq [table-name table-names]
         (execute! {:alter-table [(keyword table-name)]
                    :add-column  [[:collection_type :text :if-not-exists]]})
         (execute! {:alter-table [(keyword table-name)]
                    :add-column  [[:data_layer :text :if-not-exists]]}))
-      (execute! {:update index-metadata
+      (execute! {:update metadata-table
                  :set    {:index_version 3}
                  :where  [[:in :table_name (vec table-names)]]}))))
 
