@@ -1,6 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { trackCollectionItemBookmarked } from "metabase/collections/analytics";
@@ -34,10 +33,9 @@ import {
 } from "metabase/common/hooks";
 import { useSetCollectionPreview } from "metabase/common/hooks/use-set-collection-preview";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { connect, useDispatch } from "metabase/redux";
+import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
-import * as Urls from "metabase/urls";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
@@ -93,7 +91,6 @@ function ActionMenu({
   createBookmark,
   deleteBookmark,
 }: ActionMenuProps & ActionMenuStateProps) {
-  const dispatch = useDispatch();
   const archive = useSetArchive();
   const restore = useRestore();
   const deleteItem = useDeleteItem();
@@ -155,15 +152,8 @@ function ActionMenu({
     if (!isRestorable(item)) {
       return;
     }
-    const { entity, parentCollection } = await restore(item);
-    const redirect = getParentEntityLink(entity, parentCollection);
-
-    sendToast({
-      message: t`${item.name} has been restored.`,
-      actionLabel: t`View`,
-      action: () => dispatch(push(redirect)),
-    });
-  }, [item, restore, dispatch, sendToast]);
+    await restore(item);
+  }, [item, restore]);
 
   const handleDeletePermanently = useCallback(async () => {
     if (!isDeletable(item)) {
@@ -200,25 +190,6 @@ function ActionMenu({
       />
     </>
   );
-}
-
-export function getParentEntityLink(
-  updatedEntity: any,
-  parentCollection: Pick<Collection, "id" | "name"> | undefined,
-) {
-  // get link for parent collection
-  const parentCollectionLink = parentCollection
-    ? Urls.collection(parentCollection)
-    : `/collection/root`;
-
-  // get link for parent dashboard if we're dealing with a dashboard question
-  const parentDashboardId =
-    updatedEntity.type === "question" ? updatedEntity.dashboard_id : undefined;
-  const parentDashboardLink = parentDashboardId
-    ? Urls.dashboard({ id: parentDashboardId, name: "" })
-    : undefined;
-
-  return parentDashboardLink ? parentDashboardLink : parentCollectionLink;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

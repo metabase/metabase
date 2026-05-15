@@ -5,6 +5,7 @@ import fetchMock from "fetch-mock";
 import { setupCardEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, queryIcon, renderWithProviders } from "__support__/ui";
+import { getParentEntityLink } from "metabase/archive/utils";
 import { Dashboards } from "metabase/entities/dashboards";
 import { Questions } from "metabase/entities/questions";
 import {
@@ -26,7 +27,7 @@ import {
   createMockDocument,
 } from "metabase-types/api/mocks";
 
-import ActionMenu, { getParentEntityLink } from "./ActionMenu";
+import ActionMenu from "./ActionMenu";
 
 interface SetupOpts {
   item: CollectionItem;

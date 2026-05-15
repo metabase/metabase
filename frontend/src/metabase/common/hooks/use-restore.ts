@@ -1,5 +1,7 @@
 import { useCallback } from "react";
+import { push } from "react-router-redux";
 import { match } from "ts-pattern";
+import { t } from "ttag";
 import _ from "underscore";
 
 import {
@@ -10,7 +12,8 @@ import {
   useUpdateDocumentMutation,
 } from "metabase/api";
 import { listTag } from "metabase/api/tags";
-import { TRASHABLE_MODELS } from "metabase/archive/utils";
+import { TRASHABLE_MODELS, getParentEntityLink } from "metabase/archive/utils";
+import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch } from "metabase/redux";
 import type {
   Card,
@@ -27,6 +30,7 @@ import type {
 type Restorable<M extends string, Id> = {
   model: M;
   id: Id;
+  name?: string;
   can_restore?: boolean;
 };
 
@@ -60,6 +64,7 @@ export type RestoreResult = {
 
 export function useRestore() {
   const dispatch = useDispatch();
+  const [sendToast] = useToast();
   const [updateCard] = useUpdateCardMutation();
   const [updateDashboard] = useUpdateDashboardMutation();
   const [updateCollection] = useUpdateCollectionMutation();
@@ -104,8 +109,27 @@ export function useRestore() {
         .exhaustive();
 
       dispatch(Api.util.invalidateTags([listTag("bookmark")]));
+
+      const redirect = getParentEntityLink(
+        result.entity,
+        result.parentCollection,
+      );
+      const name = item.name ?? result.entity.name;
+      sendToast({
+        message: t`${name} has been restored.`,
+        actionLabel: t`View`,
+        action: () => dispatch(push(redirect)),
+      });
+
       return result;
     },
-    [dispatch, updateCard, updateDashboard, updateCollection, updateDocument],
+    [
+      dispatch,
+      sendToast,
+      updateCard,
+      updateDashboard,
+      updateCollection,
+      updateDocument,
+    ],
   );
 }

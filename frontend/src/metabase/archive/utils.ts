@@ -1,6 +1,7 @@
 import { c } from "ttag";
 import _ from "underscore";
 
+import * as Urls from "metabase/urls";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 // Models that participate in the trash lifecycle (restore + permanent delete).
@@ -25,6 +26,25 @@ export function HACK_getParentCollectionFromEntityUpdateAction(
   return item.model === "collection"
     ? _.last(updateActionResult?.payload?.collection?.effective_ancestors)
     : updateActionResult?.payload?.object?.collection;
+}
+
+export function getParentEntityLink(
+  updatedEntity: any,
+  parentCollection: Pick<Collection, "id" | "name"> | undefined,
+) {
+  // get link for parent collection
+  const parentCollectionLink = parentCollection
+    ? Urls.collection(parentCollection)
+    : `/collection/root`;
+
+  // get link for parent dashboard if we're dealing with a dashboard question
+  const parentDashboardId =
+    updatedEntity.type === "question" ? updatedEntity.dashboard_id : undefined;
+  const parentDashboardLink = parentDashboardId
+    ? Urls.dashboard({ id: parentDashboardId, name: "" })
+    : undefined;
+
+  return parentDashboardLink ? parentDashboardLink : parentCollectionLink;
 }
 
 export function getTrashUndoMessage(name: string, archived: boolean): string {
