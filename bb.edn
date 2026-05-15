@@ -175,34 +175,24 @@
   ;;; Docs build / generate
 
   docs-build
-  {:doc "Build the docs site to docs-build/dist/"
+  {:doc "Build the docs site to docs-build/dist/ (with --preview, run the Astro preview server after)"
    :examples [["./bin/mage docs-build" "Build the site for the current branch's base path"]
+              ["./bin/mage docs-build --preview --lazy" "Inner-loop preview: lazy-regen build + preview server"]
               ["./bin/mage docs-build --base-path /docs/v0.55" "Build with an explicit base path"]
               ["DOCS_BASE_PATH=/docs/v0.55 ./bin/mage docs-build" "Same, via environment variable"]]
    :requires [[mage.docs :as docs]]
-   :options [[nil "--base-path PATH" "URL prefix (default: /docs/latest, or /docs/v0.NN inferred from a release-x.NN.x branch)"]
+   :options [[nil "--preview" "After building, start the Astro preview server"]
+             [nil "--lazy" "Skip the full SDK + OpenAPI rebuild; regenerate only missing artifacts"]
+             [nil "--base-path PATH" "URL prefix (default: /docs/latest, or /docs/v0.NN inferred from a release-x.NN.x branch)"]
              [nil "--site-url URL" "Absolute site URL for canonical/sitemap"]]
    :task (task! (docs/build parsed))}
-
-  docs-preview
-  {:doc "Build the docs site with lazy regeneration and start the Astro preview server"
-   :examples [["./bin/mage docs-preview" "Lazy-regen build + preview server on the inferred base path"]
-              ["./bin/mage docs-preview --base-path /docs/v0.55" "Same, with an explicit base path"]]
-   :requires [[mage.docs :as docs]]
-   :options [[nil "--base-path PATH" "URL prefix (default: /docs/latest, or /docs/v0.NN inferred from a release-x.NN.x branch)"]
-             [nil "--site-url URL" "Absolute site URL for canonical/sitemap"]]
-   :task (task! (docs/preview parsed))}
 
   docs-build-branch
   {:doc "Build the docs site for an arbitrary git branch via a worktree"
    :examples [["./bin/mage docs-build-branch release-x.55.x" "Build v0.55 docs into build/docs/v0.55/"]
-              ["./bin/mage docs-build-branch master --no-fetch" "Skip git fetch, use local ref"]]
+              ["./bin/mage docs-build-branch master" "Build master docs into build/docs/latest/"]]
    :requires [[mage.docs :as docs]]
    :arg-schema [:tuple [:string {:name "branch"}]]
-   :options [[nil "--output DIR" "Output directory (default: build/docs/<base-tail>)"]
-             [nil "--no-fetch" "Skip git fetch origin <branch>"]
-             [nil "--base-path PATH" "Override DOCS_BASE_PATH"]
-             [nil "--site-url URL" "Override DOCS_SITE_URL"]]
    :task (task! (docs/build-branch parsed))}
 
   docs-generate
@@ -215,7 +205,8 @@
              [nil "--config"   "Generate config template doc -> docs/configuring-metabase/config-template.md"]
              [nil "--api"      "Generate REST API doc -> docs/api.json"]
              [nil "--commands" "Generate CLI command doc -> docs/installation-and-operation/commands.md"]
-             [nil "--analytics" "Generate usage analytics doc -> docs/usage-and-performance-tools/usage-analytics-reference.md"]]
+             [nil "--analytics" "Generate usage analytics doc -> docs/usage-and-performance-tools/usage-analytics-reference.md"]
+             [nil "--country-codes" "Generate country codes reference -> docs/questions/visualizations/country-codes.md"]]
    :task (task! (docs/generate parsed))}
 
   docs-generate-embedding

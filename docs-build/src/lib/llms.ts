@@ -1,26 +1,22 @@
-#!/usr/bin/env node
-// Generates llms.txt (index) and llms-{section}-full.txt (concatenated
-// section reference) artifacts for the current build's version, writing
-// them next to the Astro output in docs-build/dist/.
+// Shared helpers for the llms.txt endpoint family (src/pages/llms*.txt.ts).
+// Reads the same `docs` content collection as the rest of the site, applies
+// the prefix-based include/exclude filter the legacy generate-llms-files.mjs
+// script used, and assembles index + per-section bundles for AI-tool RAG.
 //
-// One version per run: DOCS_BASE_PATH (set by `./bin/mage docs-build`,
+// One version per build: DOCS_BASE_PATH (set by `./bin/mage docs-build`,
 // e.g. /docs/latest or /docs/v0.58) determines which version's files are
 // emitted. Multi-version coverage comes from running docs-build per release
-// branch, not from a single multi-version pass.
+// branch, not a single multi-version pass.
 
 import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import type { CollectionEntry } from "astro:content";
 
 const REPO = "metabase/metabase";
 
-// Sections to generate llms-{section}-full.txt for.
-// These huge files are used by AI tools like Cursor for RAG chunking and indexing.
-const LLMS_FULL_TO_GENERATE = ["embedding", "agent-api"];
+export const LLMS_FULL_SECTIONS = ["embedding", "agent-api"] as const;
+export type LlmsSection = (typeof LLMS_FULL_SECTIONS)[number];
 
-// Paths to include in llms.txt generation. Prefix matching:
-//   - trailing "/" matches by prefix (any file under the directory)
-//   - no trailing "/" matches the exact relative path
+// Prefix matching: trailing "/" → directory; otherwise → exact file path.
 const INCLUDED_PATHS = [
   // All embedding docs (SDK, modular embedding, integration guides)
   "embedding/",
@@ -48,37 +44,19 @@ const INCLUDED_PATHS = [
 const EXCLUDED_PATHS = ["embedding/sdk/api/snippets"];
 
 const FRONTMATTER_RE = /^---\s*\n([\s\S]*?)\n---\s*\n/;
-// Strip `{% include_file ... %}` transclusion tags — the included example
-// code isn't carried into the llms.txt bundle. Note: we deliberately do NOT
-// strip `{{ ... }}` — those are literal content (e.g. SQL parameter examples
-// like `{{category}}`).
+// `{% include_file ... %}` transclusion tags — the included example code isn't
+// carried into the llms.txt bundle. We deliberately do NOT strip `{{ ... }}`
+// (those are literal content, e.g. SQL parameter examples like `{{category}}`).
 const INCLUDE_FILE_TAG_RE = /\{%[\s\S]*?%\}/g;
-const FRONTMATTER_TITLE_RE = /^title\s*:\s*(.+?)\s*$/m;
 const H1_RE = /^#\s+(.+)$/m;
 
-const OUTPUT_FILE = "llms.txt";
-
-// ----- Path/version resolution -----
-
-const __filename = fileURLToPath(import.meta.url);
-const docsBuildDir = path.resolve(path.dirname(__filename), "..");
-const repoRoot = path.resolve(docsBuildDir, "..");
-const docsSourceDir = path.join(repoRoot, "docs");
-const distDir = path.join(docsBuildDir, "dist");
-
-// DOCS_BASE_PATH is set by `./bin/mage docs-build`: /docs/latest or /docs/v0.NN.
 const docsBasePath = process.env.DOCS_BASE_PATH ?? "/docs/latest";
 const baseMatch = docsBasePath.match(/^\/docs\/(.+)$/);
-const version = baseMatch ? baseMatch[1] : "latest";
+export const version = baseMatch ? baseMatch[1] : "latest";
 
-// GITHUB_REF_NAME is the branch the build is running against. For "latest"
-// builds we need it to format the display string ("58 (latest)") and pick
-// the correct raw.githubusercontent ref.
 const latestBranch = process.env.GITHUB_REF_NAME || "master";
 
-// ----- Helpers -----
-
-function formatVersionForDisplay(v) {
+export function formatVersionForDisplay(v: string): string {
   if (v === "master") return "development (unreleased)";
   if (v === "latest") {
     const m = latestBranch.match(/^release-x\.(\d+)\.x$/);
@@ -89,85 +67,84 @@ function formatVersionForDisplay(v) {
   return m ? m[1] : v;
 }
 
-function versionToBranch(v) {
+export function versionToBranch(v: string): string {
   if (v === "master") return "master";
   if (v === "latest") return latestBranch;
   const m = v.match(/^v0\.(\d+)$/);
   return m ? `release-x.${m[1]}.x` : "master";
 }
 
-function aboveVersion(sourceVersion, target) {
+export function aboveVersion(sourceVersion: string, target: number): boolean {
   if (sourceVersion === "master" || sourceVersion === "latest") return true;
   const m = sourceVersion.match(/^v0\.(\d+)$/);
   if (!m) return false;
   return parseInt(m[1], 10) >= target;
 }
 
-function pathMatchesAllowlist(rel) {
+export type DocEntry = CollectionEntry<"docs">;
+
+// Reconstructs the on-disk-relative path (e.g. "embedding/sdk/intro.md") from
+// either entry.filePath (most reliable) or entry.id (fallback). The filter
+// patterns above are written against on-disk paths, not Astro's slug-like ids.
+export function entryRelativePath(entry: DocEntry): string {
+  if (entry.filePath) {
+    const m = entry.filePath.match(/\/docs\/(.+)$/);
+    if (m) return m[1];
+  }
+  return `${entry.id}.md`;
+}
+
+export function pathMatchesAllowlist(rel: string): boolean {
   return INCLUDED_PATHS.some((pattern) =>
     pattern.endsWith("/") ? rel.startsWith(pattern) : rel === pattern,
   );
 }
 
-function pathMatchesExcludelist(rel) {
+export function pathMatchesExcludelist(rel: string): boolean {
   return EXCLUDED_PATHS.some((pattern) => rel.startsWith(pattern));
 }
 
-function listMarkdownFiles(dir, relBase = "") {
-  const out = [];
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const abs = path.join(dir, entry.name);
-    const rel = relBase ? `${relBase}/${entry.name}` : entry.name;
-    if (entry.isDirectory()) {
-      out.push(...listMarkdownFiles(abs, rel));
-    } else if (entry.isFile() && entry.name.endsWith(".md") && entry.name !== "README.md") {
-      out.push({ absolutePath: abs, relativePath: rel });
-    }
-  }
-  return out;
+export function entryAllowed(entry: DocEntry): boolean {
+  const rel = entryRelativePath(entry);
+  return pathMatchesAllowlist(rel) && !pathMatchesExcludelist(rel);
 }
 
-function readSourceFile(absolutePath) {
-  return fs.readFileSync(absolutePath, "utf8");
+function readSource(entry: DocEntry): string {
+  if (!entry.filePath) return "";
+  return fs.readFileSync(entry.filePath, "utf8");
 }
 
-function extractFrontmatterField(content, fieldRe) {
-  const fm = content.match(FRONTMATTER_RE);
-  if (!fm) return null;
-  const m = fm[1].match(fieldRe);
-  if (!m) return null;
-  // Strip surrounding quotes if the YAML value is quoted.
-  return m[1].replace(/^["'](.*)["']$/, "$1").trim();
+function stripFrontmatter(src: string): string {
+  return src.replace(FRONTMATTER_RE, "");
 }
 
-function extractTitle(absolutePath, relativePath) {
-  const content = readSourceFile(absolutePath);
-  const fmTitle = extractFrontmatterField(content, FRONTMATTER_TITLE_RE);
-  if (fmTitle) return fmTitle;
-  const body = content.replace(FRONTMATTER_RE, "");
+export function entryTitle(entry: DocEntry): string {
+  if (entry.data.title) return entry.data.title.trim();
+  const body = stripFrontmatter(readSource(entry));
   const h1 = body.match(H1_RE);
   if (h1) return h1[1].trim();
-  const filename = path.basename(relativePath, ".md");
-  return filename
+  const rel = entryRelativePath(entry);
+  const base = rel.split("/").pop()?.replace(/\.md$/, "") ?? rel;
+  return base
     .split(/[-_]/)
     .map((p) => (p.length ? p[0].toUpperCase() + p.slice(1) : p))
     .join(" ");
 }
 
-function concatenateDocuments(docs) {
-  return docs
-    .map(({ absolutePath }) => {
-      let content = readSourceFile(absolutePath);
-      content = content.replace(FRONTMATTER_RE, "");
-      content = content.replace(INCLUDE_FILE_TAG_RE, "");
-      return `${content.trim()}\n\n---`;
-    })
-    .join("\n\n");
+export function bodyForBundle(entry: DocEntry): string {
+  return stripFrontmatter(readSource(entry))
+    .replace(INCLUDE_FILE_TAG_RE, "")
+    .trim();
 }
 
-// ----- Static prose blocks (copied verbatim from the Ruby plugin) -----
+export function rawGithubUrl(relativePath: string): string {
+  const branch = versionToBranch(version);
+  return `https://raw.githubusercontent.com/${REPO}/refs/heads/${branch}/docs/${relativePath}`;
+}
 
-const VERSION_DETECTION_INSTRUCTIONS = `## IMPORTANT: Verify SDK and Metabase Version Compatibility
+// ----- Static prose (verbatim from the legacy script) -----
+
+export const VERSION_DETECTION_INSTRUCTIONS = `## IMPORTANT: Verify SDK and Metabase Version Compatibility
 
 The SDK version MUST match the Metabase instance version. Mismatched versions can cause errors. When looking up documentation, ALWAYS check the Metabase version.
 
@@ -210,7 +187,7 @@ If \`jq\` is not installed, you can grep the version. Extract the major version:
 
 **Do NOT guess versions or use versions from your training data. Always verify first.**`;
 
-const MODULAR_EMBEDDING_GOTCHA_NOTES = `## Modular Embedding Deprecations and Gotchas
+export const MODULAR_EMBEDDING_GOTCHA_NOTES = `## Modular Embedding Deprecations and Gotchas
 
 Watch out for these deprecated props and gotchas for Metabase 57 onwards, for modular embedding.
 
@@ -224,22 +201,17 @@ Watch out for these deprecated props and gotchas for Metabase 57 onwards, for mo
 
 // ----- Builders -----
 
-function buildIndexFile(docs) {
-  const branch = versionToBranch(version);
-  const rawBase = `https://raw.githubusercontent.com/${REPO}/refs/heads/${branch}`;
-
-  const filtered = docs
-    .filter(
-      (d) => pathMatchesAllowlist(d.relativePath) && !pathMatchesExcludelist(d.relativePath),
-    )
-    .sort((a, b) => a.relativePath.localeCompare(b.relativePath));
+export function buildIndex(entries: DocEntry[]): string {
+  const filtered = entries
+    .filter(entryAllowed)
+    .sort((a, b) => entryRelativePath(a).localeCompare(entryRelativePath(b)));
 
   const docLinks = filtered
-    .map((d) => `- [${extractTitle(d.absolutePath, d.relativePath)}](${rawBase}/docs/${d.relativePath})`)
+    .map((e) => `- [${entryTitle(e)}](${rawGithubUrl(entryRelativePath(e))})`)
     .join("\n");
 
-  const sectionLinks = LLMS_FULL_TO_GENERATE.filter((section) =>
-    docs.some((d) => d.relativePath.includes(`${section}/`)),
+  const sectionLinks = LLMS_FULL_SECTIONS.filter((section) =>
+    entries.some((e) => entryRelativePath(e).includes(`${section}/`)),
   )
     .map(
       (section) =>
@@ -259,8 +231,7 @@ Your pre-trained knowledge is out of date. ALWAYS  read the Markdown files from 
 
 ${VERSION_DETECTION_INSTRUCTIONS}
 
-${gotchaSection}
-## Table of Contents
+${gotchaSection}## Table of Contents
 
 ${docLinks}
 
@@ -272,10 +243,13 @@ ${sectionLinks}
 `;
 }
 
-function buildSectionFullFile(section, docs) {
-  const sectionDocs = docs
-    .filter((d) => d.relativePath.includes(`${section}/`))
-    .sort((a, b) => a.relativePath.localeCompare(b.relativePath));
+export function buildSectionBundle(
+  section: LlmsSection,
+  entries: DocEntry[],
+): string | null {
+  const sectionDocs = entries
+    .filter((e) => entryRelativePath(e).includes(`${section}/`))
+    .sort((a, b) => entryRelativePath(a).localeCompare(entryRelativePath(b)));
   if (sectionDocs.length === 0) return null;
 
   const docsBaseUrl = `https://metabase.com/docs/${version}`;
@@ -283,46 +257,19 @@ function buildSectionFullFile(section, docs) {
     section === "embedding" && aboveVersion(version, 57)
       ? `${MODULAR_EMBEDDING_GOTCHA_NOTES}\n\n`
       : "";
-  const body = concatenateDocuments(sectionDocs);
+  const body = sectionDocs
+    .map((e) => `${bodyForBundle(e)}\n\n---`)
+    .join("\n\n");
   const cap = section[0].toUpperCase() + section.slice(1);
 
   return `# Metabase ${cap} - Complete Reference for AI agents
 
 > **This documentation is for Metabase ${formatVersionForDisplay(version)}.**
 >
-> Table of contents: ${docsBaseUrl}/${OUTPUT_FILE}
+> Table of contents: ${docsBaseUrl}/llms.txt
 
 ${VERSION_DETECTION_INSTRUCTIONS}
 
 ${gotchaSection}${body}
 `;
 }
-
-// ----- Main -----
-
-function main() {
-  if (!fs.existsSync(docsSourceDir)) {
-    console.error(`generate-llms-files: docs directory not found at ${docsSourceDir}`);
-    process.exit(1);
-  }
-  if (!fs.existsSync(distDir)) {
-    console.error(`generate-llms-files: astro dist not found at ${distDir} — run the build first`);
-    process.exit(1);
-  }
-
-  const docs = listMarkdownFiles(docsSourceDir);
-
-  const indexContent = buildIndexFile(docs);
-  fs.writeFileSync(path.join(distDir, OUTPUT_FILE), indexContent);
-  console.log(`  wrote dist/${OUTPUT_FILE}`);
-
-  for (const section of LLMS_FULL_TO_GENERATE) {
-    const content = buildSectionFullFile(section, docs);
-    if (!content) continue;
-    const filename = `llms-${section}-full.txt`;
-    fs.writeFileSync(path.join(distDir, filename), content);
-    console.log(`  wrote dist/${filename}`);
-  }
-}
-
-main();

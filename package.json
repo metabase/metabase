@@ -490,7 +490,7 @@
     "docs:dev": "cd docs-build && bun install && bun run dev",
     "docs:dev:clean": "cd docs-build && bun run dev:clean",
     "docs:build": "./bin/mage docs-build",
-    "docs:preview": "./bin/mage docs-preview",
+    "docs:preview": "./bin/mage docs-build --preview --lazy",
     "docs:check": "cd docs-build && bun install && bun run check",
     "docs:test": "cd docs-build && bun install && bun run test",
     "docs:generate": "./bin/mage docs-generate",
