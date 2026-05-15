@@ -534,19 +534,37 @@
   (existing-composite-atomsets*-memo [source-type source-id]))
 
 (defn suggested-segments-for-owner
-  "Top implicit composite segment candidates for an owner — closed frequent itemsets (size 2..5) of
-  atom fingerprints that recur above the absolute + relative support thresholds across composite
-  rollup baskets in the window.
+  "Suggest composite (`:and`) segment definitions that recur across a source's query history but
+  have not been saved as Segments yet. Implemented as Apriori FIM over composite rollup baskets:
+  each rollup row is a basket whose items are the atomic predicates of one stage's top-level `:and`.
+  We mine closed frequent itemsets and reconstruct each surviving itemset as an `:and` MBQL clause.
 
-  Itemsets whose atom-set equals an existing non-archived Segment's definition are filtered out.
+  Each returned map describes one suggestion:
 
-  Returns a ranked sequence of:
-    {:clause <mbql :and clause>
-     :atom-count <int>
-     :source {:type :id :name :display-name}
-     :support <long>        ; weighted basket count containing the itemset
-     :support-ratio <double>; support / baskets-with-any-of-its-atoms
-     :count <long>}"
+    :clause         The reconstructed `[:and ...]` MBQL clause. This is what a caller would offer
+                    the user to save as a new Segment. Built via `lib/expression-clause`, so it's a
+                    proper normalized MBQL value, not a hand-rolled vector.
+
+    :itemset-size   How many atomic predicates the suggestion combines (`k` in FIM terms). Bounded
+                    by `fim-k-min`/`fim-k-max` (2..5). NOTE: not the size of the source baskets the
+                    itemset was mined from — those can be larger.
+
+    :source         The table or card the suggestion is attributed to: `{:type :id :name
+                    :display-name ...}`. A suggestion lives within a single source; cross-source
+                    composites aren't mined.
+
+    :support        Weighted count of baskets that contain ALL the itemset's atoms. The basket
+                    weight is the rollup row's `:count`, i.e. number of executions — so a
+                    suggestion with `:support 12` was observed across baskets representing 12 query
+                    executions. Used as the primary ranking key.
+
+    :support-ratio  `support / any-atom-support`, i.e. the fraction of baskets-touching-any-atom
+                    that also contain the FULL itemset. Guards against an individually popular
+                    atom dragging a co-occurrence that doesn't really travel together. Floor:
+                    `fim-relative-support-floor`.
+
+  Results are sorted by `:support` desc, then by `:itemset-size` desc — at equal support, larger
+  recurring `:and`s rank higher, since they encode more user intent. Truncated to `:limit`."
   ([] (suggested-segments-for-owner {}))
   ([{:keys [limit] :or {limit fim-default-limit} :as opts}]
    (let [rows          (grouped-composite-rows opts)
@@ -567,15 +585,14 @@
                                                         denom  (any-atom-support baskets itemset-vec)]
                                                  :when clause]
                                              {:clause        clause
-                                              :atom-count    (count itemset-vec)
+                                              :itemset-size  (count itemset-vec)
                                               :source        source
                                               :support       support
-                                              :support-ratio (if (pos? denom) (/ support (double denom)) 0.0)
-                                              :count         support})))))
+                                              :support-ratio (if (pos? denom) (/ support (double denom)) 0.0)})))))
                              by-source)]
      (into []
            (take limit)
-           (sort-by (juxt (comp - :support) (comp - :atom-count)) candidates)))))
+           (sort-by (juxt (comp - :support) (comp - :itemset-size)) candidates)))))
 
 (defn profile-observations
   "Top dimension profile observations recorded across usage-metadata rollups."
