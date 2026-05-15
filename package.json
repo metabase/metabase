@@ -495,6 +495,7 @@
     "docs:test": "cd docs-build && bun install && bun run test",
     "docs:generate": "./bin/mage docs-generate",
     "docs:generate:embedding": "./bin/mage docs-generate-embedding",
+    "docs:help": "./bin/mage docs-help",
     "embedding-sdk:generate-package": "node ./bin/embedding-sdk/generate-sdk-package-files.js",
     "embedding-sdk:publish": "cd ./resources/embedding-sdk && npm publish",
     "embedding-sdk:generate-package-support-files": "tsx enterprise/frontend/src/embedding-sdk-package/bin/generate-package-support-files.ts",

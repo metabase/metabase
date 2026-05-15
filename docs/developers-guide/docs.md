@@ -4,7 +4,7 @@ title: Developing Metabase documentation
 
 # Developing Metabase documentation
 
-The markdown lives in [`docs/`](../). The site is a self-contained [Astro](https://astro.build/) app under [`docs-build/`](../../docs-build) that renders each markdown file as a page. Builds are orchestrated by `./bin/mage docs-*` tasks; the `bun run docs:*` aliases in the root [`package.json`](../../package.json) shell out to them. Run `./bin/mage <task> --help` for options.
+The markdown lives in [`docs/`](../). The site is a self-contained [Astro](https://astro.build/) app under [`docs-build/`](../../docs-build) that renders each markdown file as a page. Day-to-day commands are `bun run docs:*` aliases in the root [`package.json`](../../package.json); the ones that cross the repo (full builds, regenerating auto-derived content) shell out to `./bin/mage docs-*` tasks defined in [`mage/src/mage/docs.clj`](../../mage/src/mage/docs.clj). Run `bun run docs:help` to list them, or `./bin/mage <task> --help` for flag-level detail.
 
 You'll need [Bun](https://bun.sh). The rest of the [dev environment](devenv.md) is only required for the auto-generated docs.
 
@@ -24,15 +24,19 @@ bun run docs:preview
 
 ## Build the production site
 
-| Task                                | Purpose                                   | Bun alias                         |
-| ----------------------------------- | ----------------------------------------- | --------------------------------- |
-| `docs-build`                        | Full production build                     | `bun run docs:build`              |
-| `docs-build --preview --lazy`       | Lazy-regen build + preview server         | `bun run docs:preview`            |
-| `docs-build-branch <branch>`        | Build any release branch via a worktree   | —                                 |
-| `docs-generate`                     | Regenerate auto-derived backend docs      | `bun run docs:generate`           |
-| `docs-generate-embedding`           | Regenerate SDK/Embed.js typedoc reference | `bun run docs:generate:embedding` |
+| Command                           | Purpose                                                      | Implemented by                             |
+| --------------------------------- | ------------------------------------------------------------ | ------------------------------------------ |
+| `bun run docs:dev`                | Hot-reload Astro dev server (skips auto-generated artifacts) | Astro                                      |
+| `bun run docs:dev:clean`          | Kill orphaned dev server on port 4321 and restart            | Astro                                      |
+| `bun run docs:preview`            | Lazy-regen production build + Astro preview server           | `./bin/mage docs-build --preview --lazy`   |
+| `bun run docs:build`              | Full production build (what CI runs)                         | `./bin/mage docs-build`                    |
+| `bun run docs:generate`           | Regenerate auto-derived backend docs (env vars, config, …)   | `./bin/mage docs-generate`                 |
+| `bun run docs:generate:embedding` | Regenerate SDK / Embed.js typedoc reference                  | `./bin/mage docs-generate-embedding`       |
+| `bun run docs:check`              | Astro/TypeScript check + nav.yml reference validator         | Astro                                      |
+| `bun run docs:test`               | Unit tests for the custom remark/rehype plugins              | Node                                       |
+| `bun run docs:help`               | Print this listing in the terminal                           | `./bin/mage docs-help`                     |
 
-Implementations live in [`mage/src/mage/docs.clj`](../../mage/src/mage/docs.clj). `docs-build-branch release-x.55.x` builds the v0.55 docs into `build/docs/v0.55/` via a git worktree at `__worktrees/docs-<branch>/` — kept on failure for debugging, cleaned up on success (or via `./bin/mage docs-clean-worktrees --force`).
+To build an arbitrary release branch into a versioned URL prefix, use `./bin/mage docs-build-branch release-x.55.x` — it spins up a git worktree at `__worktrees/docs-<branch>/`, builds v0.55 into `build/docs/v0.55/`, and cleans up on success (or leaves the worktree behind on failure for debugging; `./bin/mage docs-clean-worktrees --force` removes leftovers).
 
 ## Editing pages
 

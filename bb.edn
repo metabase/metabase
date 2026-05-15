@@ -231,6 +231,12 @@
    :options [[nil "--force" "Actually remove the worktrees (default: list only)"]]
    :task (task! (docs/clean-worktrees parsed))}
 
+  docs-help
+  {:doc "Print the list of docs commands (bun aliases and what they do)"
+   :examples [["./bin/mage docs-help" "List all docs:* commands with descriptions"]]
+   :requires [[mage.docs :as docs]]
+   :task (task! (docs/print-help! parsed))}
+
   jar-download
   {:doc "Download (and optionally run) jar for a metabase version or branch"
    :examples [["./bin/mage jar-download 50" "Download the latest enterprise version of release 50 to ~/path/to/my/metabase/jars"]
