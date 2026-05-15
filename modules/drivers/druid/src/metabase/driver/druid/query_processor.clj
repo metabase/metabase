@@ -309,6 +309,9 @@
   (-> (driver-api/replace filter-clause
         [_ [:field _ {:temporal-unit &truthy}] & _]
         nil)
+      lib/->mbql5
+      lib/simplify-compound-filter
+      lib/->legacy-MBQL
       parse-filter*))
 
 (mu/defn- add-datetime-units* :- driver-api/mbql.schema.DateTimeValue

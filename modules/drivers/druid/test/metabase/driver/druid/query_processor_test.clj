@@ -10,6 +10,8 @@
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.druid.query-processor :as druid.qp]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.timeseries-test.util :as tqpt]
@@ -643,24 +645,21 @@
                        (mt/first-row (qp/process-query query))))))))))))
 
 (deftest ^:parallel parse-filter-test
-  (mt/test-driver :druid
-    (testing "parse-filter should generate the correct filter clauses"
-      (tqpt/with-flattened-dbdef
-        (mt/with-metadata-provider (mt/id)
-          (tools.macro/macrolet [(parse-filter [filter-clause]
-                                   `(#'druid.qp/parse-filter (mt/$ids ~'checkins ~filter-clause)))]
-            (testing "normal non-compound filters should work as expected"
-              (is (= {:type :selector, :dimension "venue_price", :value 2}
-                     (parse-filter [:= $venue_price [:value 2 {:base_type :type/Integer}]]))))
-            (testing "temporal filters should get stripped out"
-              (is (= nil
-                     (parse-filter [:>= !default.timestamp [:absolute-datetime #t "2015-09-01T00:00Z[UTC]" :default]])))
-              (is (= {:type :selector, :dimension "venue_category_name", :value "Mexican"}
-                     (parse-filter
-                      [:and
-                       [:= $venue_category_name [:value "Mexican" {:base_type :type/Text}]]
-
-                       [:< !default.timestamp [:absolute-datetime #t "2015-10-01T00:00Z[UTC]" :default]]]))))))))))
+  (testing "parse-filter should generate the correct filter clauses"
+    (mt/with-metadata-provider meta/metadata-provider
+      (tools.macro/macrolet [(parse-filter [filter-clause]
+                               `(#'druid.qp/parse-filter (lib.tu.macros/$ids :checkins ~filter-clause)))]
+        (testing "normal non-compound filters should work as expected"
+          (is (= {:type :selector, :dimension "PRICE", :value 2}
+                 (parse-filter [:= $venues.price [:value 2 {:base_type :type/Integer}]]))))
+        (testing "temporal filters should get stripped out"
+          (is (= nil
+                 (parse-filter [:>= !checkins.date [:absolute-datetime #t "2015-09-01T00:00Z[UTC]" :default]])))
+          (is (= {:type :selector, :dimension "NAME", :value "Mexican"}
+                 (parse-filter
+                  [:and
+                   [:= $categories.name [:value "Mexican" {:base_type :type/Text}]]
+                   [:< !checkins.date [:absolute-datetime #t "2015-10-01T00:00Z[UTC]" :default]]]))))))))
 
 (deftest ^:parallel multiple-filters-test
   (mt/test-driver :druid
