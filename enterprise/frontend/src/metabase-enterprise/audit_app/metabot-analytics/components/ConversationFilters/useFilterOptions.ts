@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useListPermissionsGroupsQuery, useListUsersQuery } from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
 import type { DateFilterValue } from "metabase/querying/common/types";
 import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { getUserName } from "metabase/utils/user";
@@ -67,7 +68,9 @@ export function useFilterOptions({
   group,
   tenant,
 }: FilterUrlState) {
-  const tenantsFeatureEnabled = !!hasPremiumFeature("tenants");
+  const useTenantsSetting = useSetting("use-tenants");
+  const tenantsFeatureEnabled =
+    !!hasPremiumFeature("tenants") && !!useTenantsSetting;
   const { data: usersData, isLoading: isLoadingUsers } = useListUsersQuery({});
   const { data: groupsData, isLoading: isLoadingGroups } =
     useListPermissionsGroupsQuery(undefined);
@@ -90,10 +93,13 @@ export function useFilterOptions({
       : sortGroupsTenantsDisabled(rawGroups);
     const options = ordered.map((g) => ({
       value: String(g.id),
-      label: g.name,
+      label:
+        !tenantsFeatureEnabled && String(g.id) === DEFAULT_GROUP
+          ? t`All groups`
+          : g.name,
     }));
     return tenantsFeatureEnabled
-      ? [{ value: ALL_USERS_SYNTHETIC, label: t`All users` }, ...options]
+      ? [{ value: ALL_USERS_SYNTHETIC, label: t`All groups` }, ...options]
       : options;
   }, [groupsData, tenantsFeatureEnabled]);
 
