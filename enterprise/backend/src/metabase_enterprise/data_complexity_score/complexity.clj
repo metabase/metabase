@@ -50,17 +50,14 @@
      :rating-label (:label band)}))
 
 (defn decorate-with-ratings
-  "Annotate each catalog in a complexity-scores response with rating fields derived from its `:total`.
-  Components get present-but-nil rating keys so the response shape is uniform."
+  "Decorate each catalog total with rating fields; sub-components get present-but-nil rating keys."
   [score]
   (let [nil-rating {:rating nil :rating-label nil}
-        decorate   (fn [catalog]
-                     (-> catalog
-                         (merge (rating-for-score (:total catalog)))
-                         (update :components update-vals #(merge % nil-rating))))]
-    (reduce (fn [s k] (cond-> s (get s k) (update k decorate)))
-            score
-            [:library :universe :metabot])))
+        decorate  (fn [{:keys [total] :as catalog}]
+                    (-> catalog
+                        (merge (rating-for-score total))
+                        (update :components update-vals #(merge % nil-rating))))]
+    (reduce #(u/update-if-exists %1 %2 decorate) score [:library :universe :metabot])))
 
 (def ^:private component->group
   "Thematic parent per sub-component — drives the `<group>.total` + `<group>.<component>` rollup in

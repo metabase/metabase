@@ -100,6 +100,16 @@
       (is (=? {:components {:synonym-pairs {:measurement 0.0 :score 0}}}
               (#'complexity/score-catalog es nil))))))
 
+(deftest ^:parallel complexity-thresholds-well-formed-test
+  (let [bands         complexity/complexity-thresholds
+        bounded       (butlast bands)
+        unbounded     (last bands)]
+    (testing "all but the last entry have a :max, in strictly ascending order"
+      (is (every? :max bounded))
+      (is (apply < (map :max bounded))))
+    (testing "the last entry is the only one without a :max"
+      (is (not (contains? unbounded :max))))))
+
 (deftest ^:parallel rating-for-score-boundaries-test
   (testing "score buckets respect the inclusive upper bounds of `complexity-thresholds`"
     (doseq [[score expected] [[0     {:rating "low"    :rating-label "Low complexity"}]
