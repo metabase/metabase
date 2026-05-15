@@ -28,8 +28,13 @@ export function HACK_getParentCollectionFromEntityUpdateAction(
     : updateActionResult?.payload?.object?.collection;
 }
 
+type ParentEntityLinkTarget = {
+  type?: string;
+  dashboard_id?: number;
+};
+
 export function getParentEntityLink(
-  updatedEntity: any,
+  updatedEntity: ParentEntityLinkTarget,
   parentCollection: Pick<Collection, "id" | "name"> | undefined,
 ) {
   // get link for parent collection
