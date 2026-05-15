@@ -30,16 +30,13 @@
   (:require
    [clojure.java.io :as io]
    [clojure.tools.cli :as cli]
+   [metabase-enterprise.data-complexity-score.appdb-source :as appdb-source]
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
-   [metabase-enterprise.data-complexity-score.models.data-complexity-score :as data-complexity-score]
    [metabase-enterprise.data-complexity-score.representation :as representation]
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.app-db.core :as mdb]
-   ;; Loaded for side-effect: derives setting :on-change event topics from :metabase/event.
-   ;; metabase.core.core/entrypoint normally does this, but the standalone CLI bypasses it.
-   [metabase.driver.init]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
@@ -128,20 +125,27 @@
       (validate-dir! representation-dir))))
 
 (defn- run-appdb-mode!
-  "Score against the live appdb; optionally persist the row.
-  Snowplow is off here, so we don't advance `data-complexity-scoring-last-fingerprint` — leave that to the cron."
+  "Score against the live appdb the same way the cron does. The read path goes through the same
+  Toucan models the cron uses; only the write step is different — `appdb-source/record-score!`
+  is a single raw `INSERT INTO data_complexity_score`, no transforms, no fingerprint setting
+  advance, no Snowplow event. That isolation makes a `v73 binary against a v54 appdb` run safe
+  by construction: the one mutation this CLI can perform on the appdb is the inserted score row."
   [write?]
+  ;; Load driver init so setting :on-change watchers (e.g. report-timezone) have their event topics
+  ;; derived from :metabase/event before the settings cache is restored from the appdb.
+  (require 'metabase.driver.init)
   (mdb/setup-db-without-migrations!)
   (let [result (complexity/complexity-scores
                 (assoc (synonym-source/complexity-scores-opts)
                        :metabot-scope (metabot-scope/internal-metabot-scope)
                        :emit-snowplow? false))]
     (when write?
-      (data-complexity-score/record-score! (task.complexity-score/current-fingerprint) "appdb" result))
+      (appdb-source/record-score! (task.complexity-score/current-fingerprint) "appdb" result))
     result))
 
 (defn- run-representation-mode!
-  "Score against an on-disk serdes export; optionally persist with `source` = `representation:<digest>`."
+  "Score an on-disk serdes export; optionally persist via the same raw-JDBC writer the appdb path
+  uses, stamped `\"representation:<digest>\"`."
   [{:keys [representation-dir embeddings]} write?]
   (when write?
     (mdb/setup-db-without-migrations!))
@@ -149,9 +153,9 @@
                                                                             :embeddings-path embeddings)
         result                                     (complexity/score-from-entities library universe embedder {})]
     (when write?
-      (data-complexity-score/record-score! (task.complexity-score/current-fingerprint)
-                                           (str "representation:" digest)
-                                           result))
+      (appdb-source/record-score! (task.complexity-score/current-fingerprint)
+                                  (str "representation:" digest)
+                                  result))
     result))
 
 (defn- with-defaults
