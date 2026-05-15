@@ -47,7 +47,7 @@ And the data as seen in the table view, which Metabase will send as a `raw_data`
 
 Here's an example payload for an alert (we truncated the PNG encoding because it's boring):
 
-```JSON
+```json
 {
   "type": "alert",
   "alert_id": null,
