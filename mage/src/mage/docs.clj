@@ -25,16 +25,6 @@
           (str "/docs/v0." ver)))
       "/docs/latest"))
 
-(defn slugify
-  "Filesystem-safe slug for a git ref name."
-  [s]
-  (str/replace s #"[^A-Za-z0-9._-]" "-"))
-
-(defn base-tail
-  "Last segment of a base path: `/docs/v0.55` -> `v0.55`."
-  [base-path]
-  (last (str/split base-path #"/")))
-
 (defn- current-branch
   "Branch name in `dir`, or nil for detached HEAD."
   [dir]
@@ -104,7 +94,11 @@
    {:tag :analytics
     :msg "Generating usage analytics documentation"
     :cmd ["./bin/generate-usage-analytics-docs.bb"]
-    :writes ["docs/usage-and-performance-tools/usage-analytics-reference.md"]}])
+    :writes ["docs/usage-and-performance-tools/usage-analytics-reference.md"]}
+   {:tag :country-codes
+    :msg "Generating country code reference documentation"
+    :cmd ["./bin/generate-country-code-docs.bb"]
+    :writes ["docs/questions/visualizations/country-codes.md"]}])
 
 (defn- run-generate! [selected]
   (let [root u/project-root-directory]
@@ -130,22 +124,19 @@
 ;; ---------------------------------------------------------------------------
 
 (defn artifact-present?
-  "True if the artifact at `<root>/<rel-path>` exists and is non-empty.
-  A zero-byte file means a previous generation died mid-write — we treat
-  that as absent so the next build regenerates it."
+  "True if the artifact at `<root>/<rel-path>` exists."
   [root rel-path]
-  (let [f (java.io.File. (str root "/" rel-path))]
-    (and (.exists f) (pos? (.length f)))))
+  (.exists (java.io.File. (str root "/" rel-path))))
 
 (def ^:private generated-artifacts
   "Files the docs build expects to find on disk, paired with the command that
   regenerates them. Used by `docs-ensure-generated` (and the lazy regen path
-  inside `run-build!`) as a pre-flight: anything missing or empty gets
-  regenerated before the build. Add new auto-generated artifacts here so the
-  pre-flight stays in sync.
+  inside `build`) as a pre-flight: anything missing gets regenerated before
+  the build. Add new auto-generated artifacts here so the pre-flight stays in
+  sync.
 
-  Freshness is exists+non-empty, not source-mtime — if you edit an SDK type
-  and need the typedoc to refresh, run `bun run docs:generate:embedding`."
+  Freshness is mere existence, not source-mtime — if you edit an SDK type and
+  need the typedoc to refresh, run `bun run docs:generate:embedding`."
   [{:path        "docs/embedding/sdk/api/snippets/index.md"
     :missing-msg "embedding docs missing, regenerating (typedoc --pure)..."
     :regen       #(run-generate-embedding! true)}
@@ -170,7 +161,7 @@
   (ensure-all-artifacts!))
 
 ;; ---------------------------------------------------------------------------
-;; docs-build
+;; docs-build (also serves docs-preview via --preview --lazy)
 ;; ---------------------------------------------------------------------------
 
 (defn- resolve-base-path
@@ -197,103 +188,63 @@
 
 (defn- build-env
   "Shell env for Astro builds: parent env + DOCS_BASE_PATH, and DOCS_SITE_URL
-  when set. Single source of truth so `run-build!` and `preview` can't drift."
+  when set."
   [base-path site-url]
   (cond-> (assoc (into {} (System/getenv)) "DOCS_BASE_PATH" base-path)
     site-url (assoc "DOCS_SITE_URL" site-url)))
 
-(defn- bun-install! [docs-build-dir]
-  (let [has-lock? (or (fs/exists? (str docs-build-dir "/bun.lockb"))
-                      (fs/exists? (str docs-build-dir "/bun.lock")))]
-    (if has-lock?
-      (shell/sh {:dir docs-build-dir} "bun" "install" "--frozen-lockfile")
-      (shell/sh {:dir docs-build-dir} "bun" "install"))))
-
-(defn- clear-astro-caches! [docs-build-dir]
-  ;; Astro caches processed markdown in node_modules/.astro/data-store.json
-  ;; keyed by source mtime — plugin source changes don't invalidate it. We
-  ;; nuke the caches and dist on every build to guarantee plugin/markdown
-  ;; changes take effect.
-  (doseq [d [".astro" "node_modules/.astro" "dist"]]
-    (fs/delete-tree (str docs-build-dir "/" d))))
-
-(defn- regen-source!
-  "Regenerate the gitignored source-of-truth content the Astro build depends
-  on. `:full` rebuilds everything from scratch (multi-minute — used by
-  `docs-build` since CI has no pre-built SDK). `:lazy` only regenerates
-  missing or stale artifacts (sub-second on hot reruns — used by
-  `docs-preview` for fast inner-loop iteration)."
-  [mode]
-  (case mode
-    :full
-    (do (step "Regenerating embedding docs")
-        (run-generate-embedding! false)
-        (step "Regenerating OpenAPI spec")
-        (run-generate! #{:api}))
-    :lazy
-    (do (step "Ensuring generated artifacts present")
-        (ensure-all-artifacts!))))
-
-(defn- run-build!
-  "Run the docs build pipeline in the caller's repo
-  (`u/project-root-directory`). For worktree builds, the caller is mage
-  re-invoked inside the worktree, so this naturally targets the right tree.
-  `:regen-mode` selects between full (default — rebuild everything) and
-  lazy (only regenerate missing/stale artifacts). Returns the absolute path
-  of the dist/ directory."
-  [{:keys [base-path site-url regen-mode]
-    :or   {regen-mode :full}}]
-  (let [root (str u/project-root-directory)
-        base (resolve-base-path base-path)
-        url  (resolve-site-url site-url)
-        env  (build-env base url)]
+(defn build
+  "Build the docs site to docs-build/dist/. With `--preview`, start the Astro
+  preview server after the build completes. With `--lazy`, skip the multi-
+  minute SDK + OpenAPI rebuild and only regenerate missing artifacts — use
+  this for fast inner-loop iteration (`docs:preview` shells to it)."
+  [parsed]
+  (let [opts           (:options parsed)
+        lazy?          (boolean (:lazy opts))
+        preview?       (boolean (:preview opts))
+        root           (str u/project-root-directory)
+        docs-build-dir (str root "/docs-build")
+        base           (resolve-base-path (:base-path opts))
+        site-url       (resolve-site-url (:site-url opts))
+        env            (build-env base site-url)]
     (println (c/cyan "Building docs site"))
     (println "  repo:" root)
     (println "  base:" base)
 
-    (regen-source! regen-mode)
+    (if lazy?
+      (do (step "Ensuring generated artifacts present")
+          (ensure-all-artifacts!))
+      (do (step "Regenerating embedding docs")
+          (run-generate-embedding! false)
+          (step "Regenerating OpenAPI spec")
+          (run-generate! #{:api})))
 
-    (let [docs-build-dir (str root "/docs-build")]
-      (step "Installing docs-build dependencies")
-      (bun-install! docs-build-dir)
-      (step "Clearing Astro caches")
-      (clear-astro-caches! docs-build-dir)
-      (step "Running Astro build")
-      (shell/sh {:dir docs-build-dir :env env} "bun" "run" "build")
-      (step "Generating llms.txt artifacts")
-      (shell/sh {:dir docs-build-dir :env env}
-                "node" "scripts/generate-llms-files.mjs")
-      (let [dist (str docs-build-dir "/dist")]
-        (println)
-        (println (c/green (str "Output: " dist " (base path: " base ")")))
-        dist))))
+    (step "Installing docs-build dependencies")
+    (let [has-lock? (or (fs/exists? (str docs-build-dir "/bun.lockb"))
+                        (fs/exists? (str docs-build-dir "/bun.lock")))]
+      (if has-lock?
+        (shell/sh {:dir docs-build-dir} "bun" "install" "--frozen-lockfile")
+        (shell/sh {:dir docs-build-dir} "bun" "install")))
 
-(defn build [parsed]
-  (let [opts (:options parsed)]
-    (run-build! {:base-path  (:base-path opts)
-                 :site-url   (:site-url opts)
-                 :regen-mode :full})))
+    (step "Clearing Astro caches")
+    ;; Astro caches processed markdown in node_modules/.astro/data-store.json
+    ;; keyed by source mtime — plugin source changes don't invalidate it.
+    (doseq [d [".astro" "node_modules/.astro" "dist"]]
+      (fs/delete-tree (str docs-build-dir "/" d)))
 
-;; ---------------------------------------------------------------------------
-;; docs-preview
-;; ---------------------------------------------------------------------------
+    (step "Running Astro build")
+    ;; llms.txt and llms-*-full.txt are emitted as Astro endpoints
+    ;; (src/pages/llms*.txt.ts), so they fall out of the Astro build itself —
+    ;; no post-build node step needed.
+    (shell/sh {:dir docs-build-dir :env env} "bun" "run" "build")
 
-(defn preview
-  "Lazy-regen build + Astro preview server. Same output shape as `build`,
-  but skips the multi-minute SDK + OpenAPI rebuild when those artifacts are
-  already present and not stale. Use for inner-loop preview; use `build`
-  for the canonical production build."
-  [parsed]
-  (let [opts           (:options parsed)
-        base           (resolve-base-path (:base-path opts))
-        site-url       (resolve-site-url (:site-url opts))
-        env            (build-env base site-url)
-        docs-build-dir (str u/project-root-directory "/docs-build")]
-    (run-build! {:base-path  base
-                 :site-url   site-url
-                 :regen-mode :lazy})
-    (step "Starting Astro preview server")
-    (shell/sh {:dir docs-build-dir :env env} "bun" "run" "preview")))
+    (let [dist (str docs-build-dir "/dist")]
+      (println)
+      (println (c/green (str "Output: " dist " (base path: " base ")"))))
+
+    (when preview?
+      (step "Starting Astro preview server")
+      (shell/sh {:dir docs-build-dir :env env} "bun" "run" "preview"))))
 
 ;; ---------------------------------------------------------------------------
 ;; docs-build-branch
@@ -302,14 +253,13 @@
 (defn- resolve-ref!
   "Verify that `branch` is locally resolvable, preferring the remote-tracking
   ref so we work in a fresh shallow checkout. Returns the canonical ref name."
-  [root branch fetch?]
-  (when fetch?
-    (println (c/yellow (str "Fetching origin/" branch "...")))
-    (let [{:keys [exit]} (shell/sh* {:dir root :quiet? true}
-                                    "git" "fetch" "origin" branch)]
-      (when-not (zero? exit)
-        (println (c/yellow
-                  (str "warning: git fetch origin " branch " failed; using local ref if present"))))))
+  [root branch]
+  (println (c/yellow (str "Fetching origin/" branch "...")))
+  (let [{:keys [exit]} (shell/sh* {:dir root :quiet? true}
+                                  "git" "fetch" "origin" branch)]
+    (when-not (zero? exit)
+      (println (c/yellow
+                (str "warning: git fetch origin " branch " failed; using local ref if present")))))
   (or (some (fn [ref]
               (let [{:keys [exit]} (shell/sh* {:dir root :quiet? true}
                                               "git" "rev-parse" "--verify" "--quiet"
@@ -400,14 +350,11 @@
   to bulk-remove leftovers."
   [parsed]
   (let [[branch]     (:arguments parsed)
-        opts         (:options parsed)
         root         u/project-root-directory
-        worktree-dir (str root "/__worktrees/docs-" (slugify branch))
-        base-path    (resolve-base-path (:base-path opts) branch)
-        output-dir   (or (:output opts)
-                         (str root "/build/docs/" (base-tail base-path)))
-        site-url     (resolve-site-url (:site-url opts))
-        fetch?       (not (:no-fetch opts))]
+        worktree-dir (str root "/__worktrees/docs-"
+                          (str/replace branch #"[^A-Za-z0-9._-]" "-"))
+        base-path    (resolve-base-path nil branch)
+        output-dir   (str root "/build/docs/" (last (str/split base-path #"/")))]
     (println (c/cyan "Building docs for branch"))
     (println "  branch:   " branch)
     (println "  base path:" base-path)
@@ -420,7 +367,7 @@
                    "Run `./bin/mage docs-clean-worktrees --force` to remove it.")
               {:worktree-dir worktree-dir :babashka/exit 1})))
 
-    (let [resolved-ref (resolve-ref! root branch fetch?)]
+    (let [resolved-ref (resolve-ref! root branch)]
       (create-worktree! root worktree-dir resolved-ref branch)
       (try
         (println)
@@ -430,10 +377,9 @@
         ;; bb.edn, and mage sources all resolve to the worktree's checkout.
         ;; A few hundred ms of bb cold start cost vs the multi-minute build —
         ;; rounds to zero.
-        (let [cmd (cond-> [(str worktree-dir "/bin/mage") "docs-build"
-                           "--base-path" base-path]
-                    site-url (into ["--site-url" site-url]))]
-          (apply shell/sh {:dir worktree-dir} cmd))
+        (shell/sh {:dir worktree-dir}
+                  (str worktree-dir "/bin/mage") "docs-build"
+                  "--base-path" base-path)
 
         (let [dist (str worktree-dir "/docs-build/dist")]
           (when-not (fs/directory? dist)

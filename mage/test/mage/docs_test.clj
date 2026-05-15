@@ -25,26 +25,6 @@
   (testing "nil branch (e.g. detached HEAD) falls back to /docs/latest"
     (is (= "/docs/latest" (docs/base-path-for-branch nil)))))
 
-(deftest slugify-test
-  (testing "slashes and special chars become dashes"
-    (are [input expected] (= expected (docs/slugify input))
-      "release-x.55.x"        "release-x.55.x"      ; already filesystem-safe
-      "master"                "master"
-      "feature/foo-bar"       "feature-foo-bar"
-      "team/sub/branch"       "team-sub-branch"
-      "weird name!"           "weird-name-"
-      "tag@v1.0"              "tag-v1.0"
-      "spaces in here"        "spaces-in-here"
-      "preserve_underscores"  "preserve_underscores"
-      "preserve.dots"         "preserve.dots")))
-
-(deftest base-tail-test
-  (testing "extracts the last path segment"
-    (are [base-path expected] (= expected (docs/base-tail base-path))
-      "/docs/v0.55"   "v0.55"
-      "/docs/latest"  "latest"
-      "docs/latest"   "latest")))   ; missing leading slash still works
-
 ;; Realistic epoch-millis values, well above 0, far apart enough that any
 ;; filesystem mtime precision quirks (seconds vs millis) are irrelevant.
 (def ^:private older-mtime 1700000000000) ; 2023-11-14T22:13:20Z
@@ -62,11 +42,7 @@
         (testing "missing artifact is absent"
           (is (false? (docs/artifact-present? root artifact-rel))))
 
-        (testing "zero-byte artifact is treated as absent (generation died mid-write)"
-          (spit artifact-abs "")
-          (is (false? (docs/artifact-present? root artifact-rel))))
-
-        (testing "non-empty artifact is present"
+        (testing "existing artifact is present"
           (spit artifact-abs "x")
           (is (true? (docs/artifact-present? root artifact-rel)))))
       (finally
