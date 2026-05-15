@@ -7,17 +7,23 @@ import type {
   EnterpriseSettings,
 } from "metabase-types/api";
 
+type StringSettingKey = {
+  [K in EnterpriseSettingKey]: EnterpriseSettings[K] extends
+    | string
+    | null
+    | undefined
+    ? K
+    : never;
+}[EnterpriseSettingKey];
+
 /**
  * Persists a text setting on blur and on unmount. Suited for settings whose
  * saves shouldn't be debounced (e.g. Metabot system prompts).
  */
-export function useAdminSettingWithBlurInput<K extends EnterpriseSettingKey>(
-  settingName: K,
-) {
+export function useAdminSettingWithBlurInput(settingName: StringSettingKey) {
   const { value: settingValue, updateSetting } = useAdminSetting(settingName);
-  const [inputValue, setInputValue] =
-    useState<EnterpriseSettings[K]>(settingValue);
-  const lastSavedRef = useRef<EnterpriseSettings[K] | undefined>(settingValue);
+  const [inputValue, setInputValue] = useState(settingValue);
+  const lastSavedRef = useRef(settingValue);
 
   useEffect(() => {
     if (lastSavedRef.current === undefined && settingValue !== undefined) {
@@ -26,7 +32,9 @@ export function useAdminSettingWithBlurInput<K extends EnterpriseSettingKey>(
     }
   }, [settingValue]);
 
-  const isDirty = (inputValue || "") !== (lastSavedRef.current || "");
+  const trimmedInput = (inputValue ?? "").trim();
+  const trimmedSaved = (lastSavedRef.current ?? "").trim();
+  const isDirty = trimmedInput !== trimmedSaved;
 
   useBeforeUnload(isDirty);
 
@@ -34,12 +42,9 @@ export function useAdminSettingWithBlurInput<K extends EnterpriseSettingKey>(
     if (!isDirty) {
       return;
     }
-    lastSavedRef.current = inputValue;
-    updateSetting({
-      key: settingName,
-      value: inputValue,
-    });
-  }, [isDirty, inputValue, settingName, updateSetting]);
+    lastSavedRef.current = trimmedInput;
+    updateSetting({ key: settingName, value: trimmedInput });
+  }, [isDirty, trimmedInput, settingName, updateSetting]);
 
   // Track the latest `save` so the unmount cleanup can fire it. Browser back
   // doesn't fire blur on the focused textarea, so the cleanup is what saves.

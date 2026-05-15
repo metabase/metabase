@@ -221,6 +221,44 @@ describe("MetabotSystemPromptsPage", () => {
       expect(await calls[1]?.request?.json()).toEqual({ value: "First edit" });
     });
 
+    it("trims leading and trailing whitespace before saving", async () => {
+      setup({
+        Component: MetabotChatPromptPage,
+        settingKey: "metabot-chat-system-prompt",
+      });
+
+      const textarea = await screen.findByRole("textbox", {
+        name: "AI chat prompt instructions",
+      });
+      await userEvent.type(textarea, "  hello world  ");
+      fireEvent.blur(textarea);
+
+      await waitFor(() => {
+        expect(getUpdateCallsFor("metabot-chat-system-prompt")).toHaveLength(1);
+      });
+      const [call] = getUpdateCallsFor("metabot-chat-system-prompt");
+      expect(await call?.request?.json()).toEqual({ value: "hello world" });
+    });
+
+    it("does not save when only whitespace changes (trimmed value unchanged)", async () => {
+      setup({
+        Component: MetabotChatPromptPage,
+        settingKey: "metabot-chat-system-prompt",
+        settingValue: "hello",
+      });
+
+      const textarea = await screen.findByRole("textbox", {
+        name: "AI chat prompt instructions",
+      });
+      await waitFor(() => expect(textarea).toHaveValue("hello"));
+
+      await userEvent.click(textarea);
+      await userEvent.type(textarea, "   ");
+      fireEvent.blur(textarea);
+
+      expect(getUpdateCallsFor("metabot-chat-system-prompt")).toHaveLength(0);
+    });
+
     it("warns about unsaved edits via beforeunload, but stops once saved", async () => {
       setup({
         Component: MetabotChatPromptPage,
