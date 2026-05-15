@@ -1278,7 +1278,8 @@
                     :model/Metabot
                     :model/MetabotConversation
                     :model/MetabotFeedback
-                    :model/MetabotMessage}
+                    :model/MetabotMessage
+                    :model/MetabotUsedTable}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard

@@ -7,6 +7,7 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.used-tables :as used-tables]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -234,10 +235,14 @@
                                  (= "state" (:data-type %)))
                            parts)
         usage      (extract-usage parts)
-        content    (->> parts
+        ;; Pre-strip view: same filtering as `content`, just without
+        ;; `strip-tool-output-bloat`. `extract-used-tables` walks this so it
+        ;; can see tool-output `:structured-output` keys that strip discards
+        ;; (e.g. `:transform` from `write_transform_sql`/`_python`).
+        pre-strip  (->> parts
                         (remove #(#{:start :usage :finish :error} (:type %)))
-                        (filter streaming/persistable-data-part?)
-                        (mapv strip-tool-output-bloat))]
+                        (filter streaming/persistable-data-part?))
+        content    (mapv strip-tool-output-bloat pre-strip)]
     (analytics/observe! :metabase-metabot/message-persist-bytes
                         {:profile-id (or profile-id "unknown")}
                         (u/string-byte-count (json/encode content)))
@@ -254,7 +259,18 @@
                            :finished     (boolean finished?)
                            :error        (safe-encode-error error)}
                     slack-msg-id (assoc :slack_msg_id slack-msg-id)
-                    channel-id   (assoc :channel_id channel-id))))))
+                    channel-id   (assoc :channel_id channel-id)))
+      ;; Record machine-derived "what tables did the agent reference" rows.
+      ;; `extract-used-tables` is throw-safe by contract; the INSERT can still
+      ;; fail (e.g. constraint race), and recording must never fail the turn —
+      ;; the UPDATE above is the load-bearing write.
+      (when-let [rows (seq (used-tables/extract-used-tables
+                            assistant-msg-id pre-strip))]
+        (try
+          (t2/insert! :model/MetabotUsedTable rows)
+          (catch Exception e
+            (log/warn e "Failed to record metabot used tables for message"
+                      assistant-msg-id)))))))
 
 (defn set-response-slack-msg-id!
   "Backfill slack_msg_id on a MetabotMessage by primary key."

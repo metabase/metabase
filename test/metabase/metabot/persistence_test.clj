@@ -2,9 +2,12 @@
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.metabot.persistence :as metabot-persistence]
+   [metabase.metabot.query-analyzer :as nqa]
+   [metabase.metabot.used-tables :as used-tables]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
+   [metabase.util.log.capture :as log.capture]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -626,3 +629,179 @@
                  (mapv :message (metabot-persistence/messages->chat-messages
                                  [user-msg errored] {:include-errored? true})))
               "audit read keeps both rows; the empty-data stub renders so the FE has somewhere to hang the error alert"))))))
+
+;;; ---------------------------------------- used-table recording ----------------------------------------
+
+(defn- ->notebook-parts
+  "Build a minimal `construct_notebook_query` tool-input/output pair whose MBQL 5
+  query references the given table id."
+  [call-id source-table-id]
+  [{:type     :tool-input
+    :id       call-id
+    :function "construct_notebook_query"
+    :arguments {:reasoning "x"}}
+   {:type   :tool-output
+    :id     call-id
+    :result {:output "<result>...</result>"
+             :structured-output {:query-id "qid"
+                                 :query    {:lib/type :mbql/query
+                                            :database (mt/id)
+                                            :stages   [{:lib/type     :mbql.stage/mbql
+                                                        :source-table source-table-id}]}}}}])
+
+(deftest finalize-records-used-tables-test
+  (testing "finalize-assistant-turn! inserts metabot_used_table rows for successful query-generating tool calls"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [conversation-id (str (random-uuid))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                            conversation-id "internal"
+                                            {:role "user" :content "go"})
+                table-id                   (mt/id :orders)]
+            (metabot-persistence/finalize-assistant-turn!
+             conversation-id assistant-msg-id
+             (into [{:type :text :text "ok"}] (->notebook-parts "c1" table-id)))
+            (is (=? [{:message_id assistant-msg-id :table_id table-id}]
+                    (t2/select :model/MetabotUsedTable :message_id assistant-msg-id)))))))))
+
+(defn- ->transform-python-parts
+  "Build a `write_transform_python` tool-input/output pair that declares
+  `table-id` as its single source table. Used to verify the end-to-end
+  transform extraction path."
+  [call-id table-id]
+  [{:type     :tool-input
+    :id       call-id
+    :function "write_transform_python"
+    :arguments {:transform_name "T"
+                :edit_action    {:mode "replace" :new_content "def transform(): pass"}
+                :source_tables  [{:alias "t" :table_id table-id
+                                  :schema "PUBLIC" :database_id (mt/id)}]}}
+   {:type   :tool-output
+    :id     call-id
+    :result {:output "ok"
+             ;; Structured-output's `:transform` key is *dropped* by
+             ;; `strip-tool-output-bloat`. This test exercises the
+             ;; un-stripped extraction path — for python the relevant
+             ;; signal lives in tool-input `:arguments`, which the strip
+             ;; doesn't touch, but the test is here to make sure the
+             ;; transform branch runs against finalize's full parts vector.
+             :structured-output {:transform {:source {:type "python"}}
+                                 :thinking "x"
+                                 :message "Transform Python updated successfully."}}}])
+
+(defn- ->transform-sql-parts
+  "Build a `write_transform_sql` tool-input/output pair whose suggested
+  transform's `[:source :query]` is an MBQL 5 native query. The structured-
+  output's `:transform` key is dropped by `strip-tool-output-bloat`, so this
+  pair exercises finalize's pre-strip extraction path."
+  [call-id db-id sql]
+  [{:type     :tool-input
+    :id       call-id
+    :function "write_transform_sql"
+    :arguments {:database_id db-id
+                :edit_action {:mode "replace" :new_content sql}}}
+   {:type   :tool-output
+    :id     call-id
+    :result {:output "ok"
+             :structured-output
+             {:transform {:id nil :name "T" :description ""
+                          :target {:type "table" :name "" :database db-id :schema nil}
+                          :source {:type "query"
+                                   :query {:lib/type :mbql/query
+                                           :database db-id
+                                           :stages   [{:lib/type :mbql.stage/native
+                                                       :native   {:query sql}}]}}}
+              :thinking "x"
+              :message "Transform SQL updated successfully."}}}])
+
+(deftest finalize-records-used-tables-for-python-transform-test
+  (testing "finalize-assistant-turn! records `metabot_used_table` rows for a
+            write_transform_python tool call, even though strip-tool-output-bloat
+            discards the `:transform` key from structured-output. The
+            transform's declared `:source_tables` lives in the tool-input
+            arguments, which the pre-strip extraction path reads."
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [conversation-id (str (random-uuid))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                            conversation-id "transforms_codegen"
+                                            {:role "user" :content "make a transform"})
+                table-id                   (mt/id :orders)]
+            (metabot-persistence/finalize-assistant-turn!
+             conversation-id assistant-msg-id
+             (into [{:type :text :text "ok"}] (->transform-python-parts "t1" table-id)))
+            (is (=? [{:message_id assistant-msg-id :table_id table-id}]
+                    (t2/select :model/MetabotUsedTable :message_id assistant-msg-id)))))))))
+
+(deftest finalize-records-used-tables-for-sql-transform-test
+  (testing "finalize-assistant-turn! macaw-parses the SQL transform's MBQL 5 native
+            query out of the un-stripped structured-output. The `:transform` key
+            is dropped by `strip-tool-output-bloat`, so the only path to these
+            tables is the pre-strip parts vector — this test fails if extraction
+            is ever moved to run on the stripped content."
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [conversation-id (str (random-uuid))
+            orders-id       (mt/id :orders)]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                            conversation-id "transforms_codegen"
+                                            {:role "user" :content "make a SQL transform"})]
+            (with-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id orders-id}]})]
+              (metabot-persistence/finalize-assistant-turn!
+               conversation-id assistant-msg-id
+               (into [{:type :text :text "ok"}]
+                     (->transform-sql-parts "t1" (mt/id) "SELECT * FROM orders"))))
+            (is (=? [{:message_id assistant-msg-id :table_id orders-id}]
+                    (t2/select :model/MetabotUsedTable :message_id assistant-msg-id))))
+          (testing "stripped row.data drops the `:transform` key — so re-extracting from
+                    the persisted row would have found nothing; the rows above must come
+                    from the pre-strip path"
+            (let [{persisted-data :data}
+                  (t2/select-one [:model/MetabotMessage :data]
+                                 :conversation_id conversation-id
+                                 {:order-by [[:created_at :desc] [:id :desc]]})]
+              (is (every? (fn [block]
+                            (or (not= "tool-output" (:type block))
+                                (nil? (get-in block [:result :structured-output :transform]))))
+                          persisted-data)
+                  ":transform was stripped from persisted row data"))))))))
+
+(deftest finalize-records-nothing-without-query-tools-test
+  (testing "finalize-assistant-turn! inserts no used-table rows for text-only or non-query tool turns"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [conversation-id (str (random-uuid))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                            conversation-id "internal"
+                                            {:role "user" :content "go"})]
+            (metabot-persistence/finalize-assistant-turn!
+             conversation-id assistant-msg-id
+             [{:type :text :text "just text"}
+              {:type :tool-input  :id "n1" :function "navigate_user" :arguments {}}
+              {:type :tool-output :id "n1" :result {:output "ok"}}])
+            (is (zero? (t2/count :model/MetabotUsedTable :message_id assistant-msg-id)))))))))
+
+(deftest insert-failure-does-not-fail-finalize-test
+  (testing "a failed used-table INSERT is logged and finalize still completes"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [conversation-id (str (random-uuid))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                            conversation-id "internal"
+                                            {:role "user" :content "go"})]
+            ;; Force the INSERT to throw. `extract-used-tables` is throw-safe
+            ;; by contract; the wrap in `finalize-assistant-turn!` exists to
+            ;; protect the row insert.
+            (with-redefs [used-tables/extract-used-tables
+                          (fn [_ _] [{:message_id assistant-msg-id :table_id 1}])
+                          t2/insert!
+                          (fn [& _] (throw (ex-info "boom" {})))]
+              (log.capture/with-log-messages-for-level [logs [metabase.metabot.persistence :warn]]
+                (metabot-persistence/finalize-assistant-turn!
+                 conversation-id assistant-msg-id
+                 [{:type :text :text "ok"}])
+                (is (=? {:finished true :data [{:type "text" :text "ok"}]}
+                        (t2/select-one :model/MetabotMessage assistant-msg-id))
+                    "message UPDATE still landed")
+                (is (some #(re-find #"Failed to record metabot used tables" (:message %)) (logs))
+                    "warn line captured")))))))))
