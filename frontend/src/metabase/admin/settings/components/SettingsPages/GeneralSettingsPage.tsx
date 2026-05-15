@@ -87,11 +87,13 @@ export function GeneralSettingsPage() {
         />
       </SettingsSection>
 
-      <SettingsSection title={t`Usage tracking`}>
-        {enableAnonymousTracking && <AnonymousTrackingInput />}
+      {(enableAnonymousTracking || hasAuditAppFeature) && (
+        <SettingsSection title={t`Usage tracking`}>
+          {enableAnonymousTracking && <AnonymousTrackingInput />}
 
-        {hasAuditAppFeature && <CollectUserDataInput />}
-      </SettingsSection>
+          {hasAuditAppFeature && <CollectUserDataInput />}
+        </SettingsSection>
+      )}
 
       <UpsellDevInstances location="settings-general" />
     </SettingsPageWrapper>
