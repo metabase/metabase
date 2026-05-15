@@ -1,6 +1,5 @@
 import { DashboardClickAction } from "../../visualizations/click-actions/actions/DashboardClickAction";
-
-import { getClickBehavior } from "./dashboard-click-drill";
+import { getClickBehavior } from "../../visualizations/click-actions/lib/dashboard-click-drill";
 
 const rootClickBehavior = { type: "link", linkType: "url" };
 const metricClickBehavior = { type: "actionMenu" };
