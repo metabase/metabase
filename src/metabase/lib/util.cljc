@@ -419,10 +419,17 @@
     (when-let [[_match card-id-str] (re-find #"^card__(\d+)$" table-id)]
       (parse-long card-id-str))))
 
+(defn source-table-id*
+  "Unvalidated version of [[source-table-id]]. Returns the raw `:source-table` value of stage 0, whatever it is —
+  intended for callers (e.g. serdes) that hold queries whose `:source-table` is not a numeric ID, such as a portable
+  path vector."
+  [query]
+  (-> query :stages first :source-table))
+
 (mu/defn source-table-id :- [:maybe ::lib.schema.id/table]
   "If this query has a `:source-table` ID, return it."
   [query]
-  (-> query :stages first :source-table))
+  (source-table-id* query))
 
 (mu/defn source-card-id :- [:maybe ::lib.schema.id/card]
   "If this query has a `:source-card` ID, return it."
