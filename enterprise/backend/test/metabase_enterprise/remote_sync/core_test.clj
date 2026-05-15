@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.core :as core]
+   [metabase-enterprise.remote-sync.guards :as guards]
    [metabase.collections.test-utils :refer [with-library-synced with-library-not-synced]]
    [metabase.events.core :as events]
    [metabase.test :as mt]
@@ -303,3 +304,19 @@
   (testing "unknown model returns false for all instances"
     (is (= {1 false, 2 false}
            (core/batch-model-eligible? :model/UnknownModel [{:id 1} {:id 2}])))))
+
+;; ---------- Guard contract for bulk-set-remote-sync ---------------------------------------------
+;;
+;; bulk-set-remote-sync consults `guards/task-running?` and refuses if a task is in flight.
+
+(deftest bulk-set-remote-sync-refuses-while-task-running-test
+  (testing "bulk-set-remote-sync must refuse when guards/task-running? returns true,
+            without changing the collection's is_remote_synced flag"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"
+                                                    :location "/"
+                                                    :is_remote_synced false}]
+      (with-redefs [guards/task-running? (constantly true)]
+        (is (thrown-with-msg? Exception #"Remote sync task in progress"
+                              (core/bulk-set-remote-sync {coll-id true})))
+        (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))
+            "collection's is_remote_synced flag must remain unchanged when the guard fires")))))
