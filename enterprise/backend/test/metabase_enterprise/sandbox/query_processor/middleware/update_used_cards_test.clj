@@ -1,4 +1,5 @@
 (ns metabase-enterprise.sandbox.query-processor.middleware.update-used-cards-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.sandbox.query-processor.middleware.update-used-cards-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]

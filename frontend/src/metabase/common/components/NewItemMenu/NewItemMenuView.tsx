@@ -42,7 +42,7 @@ export const NewItemMenuView = ({
 
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
 
-  const { canUseNlq } = useUserMetabotPermissions();
+  const { hasNlqAccess } = useUserMetabotPermissions();
 
   const menuItems = useMemo(() => {
     const items = [];
@@ -50,7 +50,7 @@ export const NewItemMenuView = ({
     const aiExplorationItem = getNewMenuItemAIExploration(
       hasDataAccess,
       collectionId,
-      canUseNlq,
+      hasNlqAccess,
     );
     if (aiExplorationItem) {
       items.push(aiExplorationItem);
@@ -128,7 +128,7 @@ export const NewItemMenuView = ({
     hasDatabaseWithJsonEngine,
     dispatch,
     canWriteToCollections,
-    canUseNlq,
+    hasNlqAccess,
   ]);
 
   if (menuItems.length === 0) {

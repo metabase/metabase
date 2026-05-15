@@ -1,4 +1,5 @@
 (ns metabase.indexed-entities.task.index-values-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.indexed-entities.task.index-values-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.indexed-entities.models.model-index-test :refer [with-scheduler-setup!]]

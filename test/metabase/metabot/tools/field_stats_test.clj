@@ -1,4 +1,5 @@
 (ns metabase.metabot.tools.field-stats-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.metabot.tools.field-stats-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.metabot.tools.field-stats :as metabot.tools.field-stats]

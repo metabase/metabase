@@ -1,4 +1,5 @@
 (ns metabase-enterprise.permission-debug.api-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.permission-debug.api-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.permissions.core :as perms]

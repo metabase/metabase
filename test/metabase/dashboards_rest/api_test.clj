@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.dashboards-rest.api-test
   "Tests for /api/dashboard endpoints."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.dashboards-rest.api-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.dashboards-rest.api-test]}}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.set :as set]

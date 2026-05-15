@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.models.remote-sync-object-test
   "Unit tests for the remote-sync-object namespace.
   Tests the public methods: dirty? and dirty-objects."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.remote-sync.models.remote-sync-object-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as rs-object]

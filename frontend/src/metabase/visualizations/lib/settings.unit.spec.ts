@@ -122,6 +122,20 @@ describe("settings framework", () => {
       expect(widgets[0].props).toEqual({});
     });
 
+    it("should ignore provided `section`", () => {
+      const defs = { foo: { widget: "input", section: "Display" } };
+      const widgets = getSettingsWidgets(defs, {}, {}, mockObject, () => {});
+      expect(widgets[0].section).toBeUndefined();
+    });
+
+    it("should resolve section via `getSection`", () => {
+      const getSection = jest.fn().mockReturnValue("Display");
+      const defs = { foo: { widget: "input", getSection } };
+      const widgets = getSettingsWidgets(defs, {}, {}, mockObject, () => {});
+      expect(widgets[0].section).toEqual("Display");
+      expect(getSection.mock.calls).toEqual([[mockObject, {}, {}]]);
+    });
+
     it("should compute props when `getProps` is provided", () => {
       const getProps = jest.fn().mockReturnValue({ hello: "world" });
       const defs = { foo: { widget: "input", getProps } };
