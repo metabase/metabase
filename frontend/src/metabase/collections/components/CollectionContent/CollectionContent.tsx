@@ -1,15 +1,14 @@
 import { useCallback } from "react";
 
 import {
+  useCreateBookmarkMutation,
+  useDeleteBookmarkMutation,
   useGetCollectionQuery,
+  useListBookmarksQuery,
   useListCollectionsTreeQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import {
-  useBookmarkListQuery,
-  useDatabaseListQuery,
-} from "metabase/common/hooks";
-import { Bookmarks } from "metabase/entities/bookmarks";
+import { useDatabaseListQuery } from "metabase/common/hooks";
 import { Databases } from "metabase/entities/databases";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { UploadFileProps } from "metabase/redux/uploads";
@@ -29,7 +28,7 @@ export function CollectionContent({
 }: {
   collectionId: CollectionId;
 }) {
-  const { data: bookmarks, error: bookmarksError } = useBookmarkListQuery();
+  const { data: bookmarks, error: bookmarksError } = useListBookmarksQuery();
   const { data: databases, error: databasesError } = useDatabaseListQuery();
 
   const { data: collections, error: collectionsError } =
@@ -61,10 +60,13 @@ export function CollectionContent({
 
   const dispatch = useDispatch();
 
+  const [createBookmarkMutation] = useCreateBookmarkMutation();
+  const [deleteBookmarkMutation] = useDeleteBookmarkMutation();
+
   const createBookmark = (id: BookmarkId, type: BookmarkType) =>
-    dispatch(Bookmarks.actions.create({ id, type }));
+    createBookmarkMutation({ id, type });
   const deleteBookmark = (id: BookmarkId, type: BookmarkType) =>
-    dispatch(Bookmarks.actions.delete({ id, type }));
+    deleteBookmarkMutation({ id, type });
 
   const uploadFile = useCallback(
     ({ file, modelId, collectionId, tableId, uploadMode }: UploadFileProps) =>

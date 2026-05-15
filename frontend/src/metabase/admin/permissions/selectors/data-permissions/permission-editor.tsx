@@ -255,8 +255,7 @@ export const getDatabasesPermissionEditor = createSelector(
         ? database.getSchemas()[0]
         : (database.schema(schemaName) as Schema);
       permissionSubject = "fields";
-      entities = schema
-        .getTables()
+      entities = (schema.tables ?? [])
         .sort((a, b) => a.display_name.localeCompare(b.display_name))
         .map((table) => {
           const entityId = getTableEntityId(table);

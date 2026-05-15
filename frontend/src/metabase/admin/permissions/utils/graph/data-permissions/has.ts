@@ -25,7 +25,7 @@ import {
 // subtypes to make testing easier and avoid using deprecated Database / Schema types
 type SchemaPartial = {
   name: string;
-  getTables: () => { id: number | string }[];
+  tables?: { id: number | string }[];
 };
 type DatabasePartial = {
   schemas?: SchemaPartial[];
@@ -63,7 +63,7 @@ export function hasPermissionValueInSubgraph(
   }
 
   return schemasToSearch.some((schema) => {
-    return schema.getTables().some((table) => {
+    return (schema.tables ?? []).some((table) => {
       return (
         value ===
         getFieldsPermission(

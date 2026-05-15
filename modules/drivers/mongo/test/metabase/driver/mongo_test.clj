@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.driver.mongo-test
   "Tests for Mongo driver."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.mongo-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.mongo-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -43,10 +45,8 @@
 
 ;; ## Tests for connection functions
 (deftest can-connect-test?
-  (mt/test-driver
-    :mongo
-    (mt/dataset test-data
-      (mt/db)
+  (mt/test-driver :mongo
+    (mt/dataset test-data (mt/db)
       (doseq [{:keys [details expected message]} [{:details  {:host   "localhost"
                                                               :port   3000
                                                               :dbname "bad-db-name"}
@@ -83,6 +83,33 @@
           (is (= expected
                  (driver.u/can-connect-with-details? :mongo ssl-details))
               (str message)))))))
+
+;; openssl x509 -in test_resources/ssl/mongo/metabase.crt -inform PEM -subject -nameopt RFC2253
+(def cert-subject
+  "emailAddress=metabase@localhost,CN=localhost,OU=metabase,O=Metabase Inc.,L=San Francisco,ST=CA,C=US")
+
+(deftest can-connect?-with-x509
+  (if (tdm/ssl-required?)
+    (mt/test-driver :mongo
+      (mt/dataset test-data (mt/db)
+        (mongo.connection/with-mongo-client [c (mt/db)]
+          (try
+            ;; allow connecting with the client cert
+            ;; https://www.mongodb.com/docs/manual/tutorial/configure-x509-client-authentication/#add-x-509-certificate-subject-as-a-user
+            (mongo.util/run-command (mongo.util/database c "$external")
+                                    {:createUser cert-subject
+                                     :roles [{:role "readWrite" :db "test-data"}]})
+            (let [details {:host "localhost"
+                           :user cert-subject
+                           :dbname "test-data"
+                           :additional-options "authMechanism=MONGODB-X509"}
+                  ssl-details (tdm/conn-details details)]
+              (is (driver.u/can-connect-with-details? :mongo ssl-details)
+                  "should allow connecting with MONGODB-X509"))
+            (finally
+              (mongo.util/run-command (mongo.util/database c "$external")
+                                      {:dropUser cert-subject}))))))
+    (is true "Don't try X509 if mongo isn't configured with the necessary certs")))
 
 (deftest database-supports?-test
   (mt/test-driver :mongo

@@ -1,4 +1,5 @@
 (ns metabase.xrays.api.automagic-dashboards-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.xrays.api.automagic-dashboards-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

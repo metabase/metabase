@@ -1,9 +1,9 @@
 import cx from "classnames";
 import type { CSSProperties } from "react";
 
-import { Box, Flex, Icon, type IconName, Image } from "metabase/ui";
+import { Box, Flex, Icon, Image } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { DatasetColumn, RowValues } from "metabase-types/api";
+import type { DatasetColumn, IconName, RowValues } from "metabase-types/api";
 
 import { ColumnValue } from "./ColumnValue";
 import styles from "./ListView.module.css";

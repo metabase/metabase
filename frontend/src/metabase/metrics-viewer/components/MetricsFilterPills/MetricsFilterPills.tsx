@@ -1,9 +1,9 @@
 import { useCallback, useMemo } from "react";
 
-import type { IconName } from "metabase/ui";
 import { Group } from "metabase/ui";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
+import type { IconName } from "metabase-types/api";
 
 import type { SourceColorMap } from "../../types/viewer-state";
 import { isExpressionEntry } from "../../types/viewer-state";

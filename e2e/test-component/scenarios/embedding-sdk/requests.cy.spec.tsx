@@ -45,7 +45,7 @@ describe("scenarios > embedding-sdk > requests", () => {
 
       const sessionIds: string[] = [];
 
-      cy.intercept("GET", "/auth/sso?jwt=**", (req) => {
+      cy.intercept("POST", "/auth/sso", (req) => {
         req.continue((res) => {
           sessionIds.push(res.body.id);
         });
