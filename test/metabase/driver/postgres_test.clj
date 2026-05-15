@@ -2214,7 +2214,7 @@
           (Thread/sleep 400)
           (a/put! qp.pipeline/*canceled-chan* :cancel))
         (mt/with-log-messages-for-level [messages :error]
-          (let [response (qp/process-query (assoc-in (mt/native-query {:query "select pg_sleep(8), false"})
+          (let [response (qp/process-query (assoc-in (lib/native-query (mt/metadata-provider) "select pg_sleep(8), false")
                                                      [:middleware :userland-query?] true))]
             (is (= "ERROR: canceling statement due to user request" (:error response)))
             (let [bad-messages (into [] (cancel-messages) (messages))]
