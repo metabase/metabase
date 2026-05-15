@@ -147,11 +147,14 @@
         (delete-day! bucket-date)))))
 
 (defn- composite-orders-query []
-  (mt/mbql-query orders
-    {:filter [:and
-              [:= $orders.product_id 1]
-              [:> $orders.subtotal 0]]
-     :aggregation [[:count]]}))
+  (let [mp         (lib-be/application-database-metadata-provider (mt/id))
+        orders     (lib.metadata/table mp (mt/id :orders))
+        product-id (lib.metadata/field mp (mt/id :orders :product_id))
+        subtotal   (lib.metadata/field mp (mt/id :orders :subtotal))]
+    (-> (lib/query mp orders)
+        (lib/filter (lib/and (lib/= product-id 1)
+                             (lib/> subtotal 0)))
+        (lib/aggregate (lib/count)))))
 
 (deftest process-day!-composite-segment-test
   (testing "a top-level :and filter writes both atom rollup rows AND one composite rollup row"

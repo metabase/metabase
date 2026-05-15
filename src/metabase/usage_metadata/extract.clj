@@ -224,13 +224,6 @@
                 (map (fn [owner] (merge owner base {:ownership-mode :projected})))
                 owners))))))
 
-(defn- temporal-breakout
-  [breakout]
-  (when-let [temporal-unit (lib/raw-temporal-bucket breakout)]
-    (when-let [field-id (some-> breakout lib/all-field-ids not-empty first)]
-      {:temporal-field-id field-id
-       :temporal-unit     temporal-unit})))
-
 (defn- metric-bases
   [query stage-number aggregation]
   (let [root-owner (query-source-table-or-card query)
