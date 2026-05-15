@@ -14,7 +14,7 @@ const specialTestConfigs = [
   {
     name: "oss-subset",
     edition: "oss",
-    tags: "@OSS @smoke+-@EE",
+    tags: "@OSS @prerelease+-@EE",
     specs: DEFAULT_SPEC_PATTERN,
   },
   { name: "mongo", tags: "@mongo", specs: DEFAULT_SPEC_PATTERN },
