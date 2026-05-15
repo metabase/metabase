@@ -2,7 +2,7 @@ import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { useGetExplorationQuery, useListTimelinesQuery } from "metabase/api";
 import { Api } from "metabase/api/api";
@@ -236,7 +236,8 @@ export function ExplorationPage({
         selectedEntityId.id === autoDoc.id;
       sendToast({
         icon: "document",
-        message: t`Automatic Insights ready`,
+        message: c("{0} is the name of the document that is now ready to view")
+          .t`${autoDoc.name} ready`,
         ...(viewingThisDoc
           ? {}
           : {
