@@ -179,25 +179,35 @@
       (u/prog1 node
         (log/warn "Model not found at path" (id-key attrs))))))
 
+(defn- live-card-embed?
+  "True for a `cardEmbed` node carrying a live-Card reference. Static-mode embeds (with
+  `:stored_result_id` and a nil `:id`) are skipped during serdes — `stored_result` rows
+  are not first-class serdes entities."
+  [node]
+  (and (= prose-mirror/card-embed-type (:type node))
+       (pos-int? (-> node :attrs :id))))
+
 (defn- export-document-content
-  "Transform cardEmbed/smartLink nodes to use entity IDs instead of database IDs"
+  "Transform live cardEmbed / smartLink nodes to use entity IDs instead of database IDs"
   [document serdes-key _]
   (serdes-key
    (if (= (:content_type document) prose-mirror/prose-mirror-content-type)
      (prose-mirror/update-ast
       document
-      #(contains? #{prose-mirror/smart-link-type prose-mirror/card-embed-type} (:type %))
+      #(or (= prose-mirror/smart-link-type (:type %))
+           (live-card-embed? %))
       id->entity-id)
      document)))
 
 (defn- import-document-content
-  "Transform cardEmbed/smartLink nodes to use database IDs instead of entity IDs"
+  "Transform live cardEmbed / smartLink nodes to use database IDs instead of entity IDs"
   [document serdes-key _]
   (serdes-key
    (if (= (:content_type document) prose-mirror/prose-mirror-content-type)
      (prose-mirror/update-ast
       document
-      #(contains? #{prose-mirror/smart-link-type prose-mirror/card-embed-type} (:type %))
+      #(or (= prose-mirror/smart-link-type (:type %))
+           (live-card-embed? %))
       entity-id->id)
      document)))
 

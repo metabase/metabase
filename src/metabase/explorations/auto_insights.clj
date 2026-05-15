@@ -58,23 +58,32 @@
   100)
 
 (defn- load-result-rows
-  "Returns `{exploration_query_id {:result_data bytes :chart_stats m :metric_description s
-   :chart_description s}}` for the given ids. `chart_stats` is the cached deep-stats blob
-  written by the runner alongside the result; descriptions are LLM-generated during
-  contextual scoring (see [[metabase.explorations.task.runner]])."
+  "Returns `{exploration_query_id {:result_data bytes :chart_stats m :stored_result_id N
+   :metric_description s :chart_description s}}` for the given ids. `chart_stats` is the
+  cached deep-stats blob written by the runner alongside the EQR row; `result_data` is owned
+  by the linked `stored_result` row and joined in via a second select so the model's
+  chart_stats EDN transform still applies. Descriptions are LLM-generated during contextual
+  scoring (see [[metabase.explorations.task.runner]])."
   [query-ids]
   (when (seq query-ids)
-    (into {}
-          (map (fn [{:keys [exploration_query_id result_data chart_stats
-                            metric_description chart_description]}]
-                 [exploration_query_id {:result_data        result_data
-                                        :chart_stats        chart_stats
-                                        :metric_description metric_description
-                                        :chart_description  chart_description}]))
-          (t2/select [:model/ExplorationQueryResult
-                      :exploration_query_id :result_data :chart_stats
-                      :metric_description :chart_description]
-                     :exploration_query_id [:in query-ids]))))
+    (let [eqr-rows (t2/select [:model/ExplorationQueryResult
+                               :exploration_query_id :stored_result_id :chart_stats
+                               :metric_description :chart_description]
+                              :exploration_query_id [:in query-ids])
+          sr-ids   (keep :stored_result_id eqr-rows)
+          sr-blobs (when (seq sr-ids)
+                     (into {} (map (juxt :id :result_data))
+                           (t2/select [:model/StoredResult :id :result_data]
+                                      :id [:in sr-ids])))]
+      (into {}
+            (map (fn [{:keys [exploration_query_id stored_result_id chart_stats
+                              metric_description chart_description]}]
+                   [exploration_query_id {:result_data        (get sr-blobs stored_result_id)
+                                          :chart_stats        chart_stats
+                                          :stored_result_id   stored_result_id
+                                          :metric_description metric_description
+                                          :chart_description  chart_description}]))
+            eqr-rows))))
 
 (defn- load-timeline-events
   "Fetch every non-archived timeline event from each timeline the user selected
@@ -471,18 +480,33 @@
    :phase-1-llm-config phase1/llm-config
    :phase-2-llm-config phase2/llm-config})
 
+(defn- wrap-card-embeds-in-resize-nodes
+  "Walk the LLM-generated PM doc and wrap each top-level `cardEmbed` in a `resizeNode` so the
+  FE node-view inherits an explicit height (matching the structure produced by the user-facing
+  append endpoint). Without the wrapper, static cardEmbeds inside paragraphs collapse to 0
+  height because `.cardEmbed` is `height: 100%` of an unsized parent."
+  [pm-doc]
+  (letfn [(wrap [node]
+            (if (and (map? node) (= prose-mirror/card-embed-type (:type node)))
+              {:type "resizeNode" :attrs {:height 400} :content [node]}
+              node))]
+    (cond-> pm-doc
+      (and (map? pm-doc) (sequential? (:content pm-doc)))
+      (update :content (fn [content] (mapv wrap content))))))
+
 (defn- write-document!
   "Update the placeholder `doc` (created up-front by [[create-placeholder-doc!]])
-  with the final content. The `staticCardEmbed` nodes the LLM emitted reference
-  `exploration_query_id`s whose viz config is already on the matching
-  `exploration_query_result` rows — written once at result-write time by the
-  query runner. Returns `{:document-id ... :rendered-pm-doc ...}`."
+  with the final content. The `cardEmbed` nodes the LLM emitted reference `stored_result_id`s
+  resolved at render time via `/api/document/stored-result/:id`; we wrap each one in a
+  `resizeNode` here so the chart has an explicit height in the rendered doc. Returns
+  `{:document-id ... :rendered-pm-doc ...}`."
   [{:keys [doc pm-doc creator-id]}]
-  (request/with-current-user creator-id
-    (t2/update! :model/Document (:id doc)
-                {:document     pm-doc
-                 :content_type prose-mirror/prose-mirror-content-type})
-    {:document-id (:id doc) :rendered-pm-doc pm-doc}))
+  (let [pm-doc (wrap-card-embeds-in-resize-nodes pm-doc)]
+    (request/with-current-user creator-id
+      (t2/update! :model/Document (:id doc)
+                  {:document     pm-doc
+                   :content_type prose-mirror/prose-mirror-content-type})
+      {:document-id (:id doc) :rendered-pm-doc pm-doc})))
 
 (defn generate-auto-insights!
   "Two-phase generation of the `Automatic Insights` document for `thread-id`.
@@ -525,12 +549,13 @@
                 pool-queries (vec (take max-charts-in-pool done-queries))
                 result-rows  (load-result-rows (map :id pool-queries))
                 prepped      (vec (keep (fn [q]
-                                          (let [{:keys [result_data chart_stats
+                                          (let [{:keys [result_data chart_stats stored_result_id
                                                         metric_description chart_description]}
                                                 (get result-rows (:id q))]
                                             (common/prep-chart q
                                                                {:result-data        result_data
                                                                 :chart-stats        chart_stats
+                                                                :stored-result-id   stored_result_id
                                                                 :metric-description metric_description
                                                                 :chart-description  chart_description})))
                                         pool-queries))
@@ -620,7 +645,7 @@
                                                  (filter (fn [p]
                                                            (let [xt (some-> p :cfg :series first val :x :type)]
                                                              (and xt (not (#{"datetime" "number"} xt))))))
-                                                 (map :exploration-query-id)
+                                                 (keep :stored-result-id)
                                                  set)
                         analysis-prompt   (phase2/build-analysis-prompt
                                            {:thread-prompt      (:prompt thread)

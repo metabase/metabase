@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.contextual-interestingness.core :as contextual-interestingness]
    [metabase.explorations.interestingness :as explorations.interestingness]
+   [metabase.explorations.models.exploration-query-result :as eqr]
    [metabase.explorations.task.runner :as runner]
    [metabase.explorations.timeline-interestingness :as explorations.timeline-interestingness]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
@@ -50,8 +51,14 @@
         r
         (recur (dec n))))))
 
+(defn- stored-result-for
+  "Fetch the stored_result row linked from the EQR for `eq-id`. Returns nil when nothing
+  exists yet."
+  [eq-id]
+  (eqr/stored-result-for-exploration-query eq-id))
+
 (deftest run-one-iteration-happy-path-test
-  (testing "A pending row gets executed, result_data is written, and status flips to done"
+  (testing "A pending row gets executed, the linked stored_result holds result_data, and status flips to done"
     (mt/with-temp [:model/User u {:email "happy@example.com"}
                    :model/Card card {:type :metric
                                      :creator_id (:id u)
@@ -62,13 +69,16 @@
                                    (mt/mbql-query venues {:aggregation [[:count]]}))
             final  (drain-until-terminal! (:id row) 10)
             result (t2/select-one :model/ExplorationQueryResult
-                                  :exploration_query_id (:id row))]
+                                  :exploration_query_id (:id row))
+            sr     (stored-result-for (:id row))]
         (is (= "done" (:status final)))
         (is (some? (:started_at final)))
         (is (some? (:finished_at final)))
         (is (nil? (:error_message final)))
         (is (some? result))
-        (is (pos? (count (:result_data result))))))))
+        (is (some? (:stored_result_id result)))
+        (is (some? sr))
+        (is (pos? (count (:result_data sr))))))))
 
 (deftest run-one-iteration-writes-interestingness-score-test
   (testing "A 2-column result gets scored and the score lands on the result row"
@@ -106,10 +116,12 @@
                       (fn [& _] (throw (ex-info "boom" {})))]
           (let [final  (drain-until-terminal! (:id row) 10)
                 result (t2/select-one :model/ExplorationQueryResult
-                                      :exploration_query_id (:id row))]
+                                      :exploration_query_id (:id row))
+                sr     (stored-result-for (:id row))]
             (is (= "done" (:status final)))
             (is (some? result))
-            (is (pos? (count (:result_data result))))
+            (is (some? sr))
+            (is (pos? (count (:result_data sr))))
             (is (nil? (:interestingness_score result)))))))))
 
 (deftest run-one-iteration-writes-contextual-score-test
@@ -124,8 +136,8 @@
                                    (mt/mbql-query venues
                                      {:aggregation [[:count]]
                                       :breakout    [$category_id]}))]
-        (with-redefs [contextual-interestingness/contextual-chart-interestingness
-                      (fn [_chart _prompt] 0.73)]
+        (with-redefs [contextual-interestingness/score-and-describe-chart
+                      (fn [_inputs] {:score 0.73})]
           (drain-until-terminal! (:id row) 10)
           (let [result (t2/select-one :model/ExplorationQueryResult
                                       :exploration_query_id (:id row))]
@@ -144,8 +156,8 @@
                                      {:aggregation [[:count]]
                                       :breakout    [$category_id]}))
             calls  (atom 0)]
-        (with-redefs [contextual-interestingness/contextual-chart-interestingness
-                      (fn [_chart _prompt] (swap! calls inc) 0.99)]
+        (with-redefs [contextual-interestingness/score-and-describe-chart
+                      (fn [_inputs] (swap! calls inc) {:score 0.99})]
           (drain-until-terminal! (:id row) 10)
           (let [result (t2/select-one :model/ExplorationQueryResult
                                       :exploration_query_id (:id row))]
@@ -164,14 +176,16 @@
                                    (mt/mbql-query venues
                                      {:aggregation [[:count]]
                                       :breakout    [$category_id]}))]
-        (with-redefs [contextual-interestingness/contextual-chart-interestingness
+        (with-redefs [contextual-interestingness/score-and-describe-chart
                       (fn [& _] (throw (ex-info "boom" {})))]
           (let [final  (drain-until-terminal! (:id row) 10)
                 result (t2/select-one :model/ExplorationQueryResult
-                                      :exploration_query_id (:id row))]
+                                      :exploration_query_id (:id row))
+                sr     (stored-result-for (:id row))]
             (is (= "done" (:status final)))
             (is (some? result))
-            (is (pos? (count (:result_data result))))
+            (is (some? sr))
+            (is (pos? (count (:result_data sr))))
             (is (nil? (:contextual_interestingness_score result)))
             (is (double? (:interestingness_score result))
                 "heuristic score still computed when contextual fails")))))))
@@ -199,10 +213,16 @@
   (let [bytes (cache.impl/do-with-serialization
                (fn [in result-fn]
                  (in qp-result)
-                 (result-fn)))]
+                 (result-fn)))
+        sr-id (first
+               (t2/insert-returning-pks!
+                :model/StoredResult
+                {:result_data            bytes
+                 :display                :table
+                 :visualization_settings {}}))]
     (t2/insert! :model/ExplorationQueryResult
                 {:exploration_query_id query-id
-                 :result_data          bytes})))
+                 :stored_result_id     sr-id})))
 
 (defn- done-query-with-fake-result!
   [thread-id card-id]

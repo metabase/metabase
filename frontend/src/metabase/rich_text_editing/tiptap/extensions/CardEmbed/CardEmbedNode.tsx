@@ -13,6 +13,11 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api";
+import {
+  type StoredResultSort,
+  useGetStoredResultQuery,
+} from "metabase/api/document";
 import { ExplicitSizeRefreshModeContext } from "metabase/common/components/ExplicitSize/ExplicitSize";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
@@ -65,7 +70,7 @@ import { getGenericErrorMessage } from "metabase/visualizations/lib/errors";
 import { isTimeseries } from "metabase/visualizations/lib/renderer_utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import Question from "metabase-lib/v1/Question";
-import type { CardDisplayType, Dataset } from "metabase-types/api";
+import type { CardDisplayType, Dataset, RawSeries } from "metabase-types/api";
 
 import { CommentsButton } from "../../components/CommentsButton";
 import {
@@ -84,6 +89,17 @@ import { ExternalDocumentCardMenu } from "./ExternalDocumentCardMenu";
 import { ModifyQuestionModal } from "./modals/ModifyQuestionModal";
 import { useUpdateCardOperations } from "./use-update-card-operations";
 import { getEmbedIndex } from "./utils";
+
+const STATIC_CARD_SORTS: ReadonlyArray<StoredResultSort> = [
+  "value_asc",
+  "value_desc",
+  "label_asc",
+  "label_desc",
+];
+
+const isStaticCardSort = (value: unknown): value is StoredResultSort =>
+  typeof value === "string" &&
+  (STATIC_CARD_SORTS as ReadonlyArray<string>).includes(value);
 
 function formatCardEmbed(attrs: CardEmbedAttributes): string {
   if (attrs.name) {
@@ -106,6 +122,14 @@ export interface CardEmbedAttributes {
   id?: number;
   name?: string;
   class?: string;
+  /**
+   * When set, the embed renders in static mode: data is pulled from the cached `stored_result`
+   * snapshot via `/api/document/stored-result/:id` instead of running a live Card. Live-mode
+   * affordances (menu, replace, drag) are hidden — the snapshot is read-only.
+   */
+  stored_result_id?: number | null;
+  /** Sort to apply in-memory when reading a static snapshot. Static-mode only. */
+  sort?: string | null;
 }
 export const CardEmbed: Node<{
   HTMLAttributes: CardEmbedAttributes;
@@ -133,6 +157,21 @@ export const CardEmbed: Node<{
         default: null,
         parseHTML: (element) => element.getAttribute("data-name"),
       },
+      stored_result_id: {
+        default: null,
+        parseHTML: (element) => {
+          const raw = element.getAttribute("data-stored-result-id");
+          if (!raw) {
+            return null;
+          }
+          const parsed = parseInt(raw, 10);
+          return Number.isFinite(parsed) ? parsed : null;
+        },
+      },
+      sort: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-sort"),
+      },
       ...createIdAttribute(),
     };
   },
@@ -154,6 +193,11 @@ export const CardEmbed: Node<{
           "data-type": CardEmbed.name,
           "data-id": node.attrs.id,
           "data-name": node.attrs.name,
+          "data-stored-result-id":
+            node.attrs.stored_result_id != null
+              ? String(node.attrs.stored_result_id)
+              : null,
+          "data-sort": node.attrs.sort ?? null,
         },
         this.options.HTMLAttributes,
       ),
@@ -182,21 +226,27 @@ export const CardEmbedComponent = memo(
     editor,
     getPos,
     deleteNode,
+    // eslint-disable-next-line complexity
   }: NodeViewProps) => {
+    const { _id, id, name } = node.attrs;
+    const storedResultId = node.attrs.stored_result_id as number | null;
+    const isStatic = storedResultId != null;
+    const staticSort = isStaticCardSort(node.attrs.sort)
+      ? node.attrs.sort
+      : undefined;
+
     const childTargetId = useSelector(getChildTargetId);
     const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
     const document = useSelector(getCurrentDocument);
     const externalCardData = useExternalCardData();
-    const { _id } = node.attrs;
     const unresolvedCommentsCount = useUnresolvedCommentsCount(_id);
 
     const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
     const isOpen = childTargetId === _id;
     const isHovered = hoveredChildTargetId === _id;
     const commentsPath = useCommentUrl({ childTargetId: _id });
-    const { id, name } = node.attrs;
     const dispatch = useDispatch();
-    const canWrite = editor.options.editable;
+    const canWrite = editor.options.editable && !isStatic;
 
     const {
       isBeingDragged,
@@ -208,14 +258,50 @@ export const CardEmbedComponent = memo(
 
     const embedIndex = getEmbedIndex(editor, getPos);
 
-    // Use external hook when viewing an externally-rendered document (e.g. public), otherwise use regular hook
-    const isExternalDocument = externalCardData != null;
-    const regularCardData = useCardData({ id });
-    const externalCardDataResult = useExternalCardDataLoader(id);
+    // Pass id: 0 in static mode so the live-card hooks skip their fetches.
+    const liveCardId = isStatic ? 0 : (id ?? 0);
+    const isExternalDocument = !isStatic && externalCardData != null;
+    const regularCardData = useCardData({ id: liveCardId });
+    const externalCardDataResult = useExternalCardDataLoader(liveCardId);
 
-    const { card, dataset, isLoading, series, error } = isExternalDocument
-      ? externalCardDataResult
-      : regularCardData;
+    const storedResultQuery = useGetStoredResultQuery(
+      isStatic && storedResultId != null
+        ? { id: storedResultId, sort: staticSort }
+        : skipToken,
+    );
+
+    const { card, dataset, isLoading, series, error } = useMemo(() => {
+      if (isStatic) {
+        const card = storedResultQuery.data?.card;
+        const dataset = storedResultQuery.data?.dataset;
+        const series: RawSeries | null =
+          card && dataset
+            ? [
+                {
+                  card,
+                  // started_at isn't surfaced by the stored-result envelope
+                  data: dataset.data,
+                } as RawSeries[number],
+              ]
+            : null;
+        return {
+          card,
+          dataset,
+          isLoading: storedResultQuery.isLoading,
+          series,
+          error: storedResultQuery.error ? ("unknown" as const) : undefined,
+        };
+      }
+      return isExternalDocument ? externalCardDataResult : regularCardData;
+    }, [
+      isStatic,
+      isExternalDocument,
+      storedResultQuery.data,
+      storedResultQuery.isLoading,
+      storedResultQuery.error,
+      externalCardDataResult,
+      regularCardData,
+    ]);
 
     const metadata = useSelector(getMetadata);
     const datasetError = dataset && getDatasetError(dataset);
@@ -317,7 +403,7 @@ export const CardEmbedComponent = memo(
       question,
       editor,
       embedIndex,
-      cardId: id,
+      cardId: id ?? 0,
     });
 
     useEffect(() => {
@@ -503,13 +589,20 @@ export const CardEmbedComponent = memo(
             [CS.open]: isOpen || isHovered,
           })}
           data-type="cardEmbed"
-          data-id={id}
-          data-testid="document-card-embed"
-          data-drag-handle
-          onDragOver={handleDragOver}
-          onDrop={() => setDragState({ isDraggedOver: false, side: null })}
+          data-id={id ?? undefined}
+          data-testid={
+            isStatic ? "document-static-card-embed" : "document-card-embed"
+          }
+          {...(isStatic
+            ? null
+            : {
+                "data-drag-handle": true,
+                onDragOver: handleDragOver,
+                onDrop: () =>
+                  setDragState({ isDraggedOver: false, side: null }),
+              })}
         >
-          {canWrite && id && (
+          {!isStatic && canWrite && id && (
             <>
               <DropZone
                 isOver={dragState.isDraggedOver && dragState.side === "left"}
@@ -524,12 +617,12 @@ export const CardEmbedComponent = memo(
             </>
           )}
           <Box
-            ref={cardEmbedRef}
+            ref={isStatic ? undefined : cardEmbedRef}
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
               [styles.selected]: selected,
             })}
           >
-            {card && (
+            {!isStatic && card && (
               <Box className={styles.questionHeader}>
                 <Flex align="center" justify="space-between" gap="0.5rem">
                   {isEditingTitle ? (
@@ -679,13 +772,17 @@ export const CardEmbedComponent = memo(
                       metadata={metadata}
                       mode={DocumentMode}
                       onChangeCardAndRun={
-                        isExternalDocument ? undefined : handleChangeCardAndRun
+                        isStatic || isExternalDocument
+                          ? undefined
+                          : handleChangeCardAndRun
                       }
                       onUpdateQuestion={
-                        isExternalDocument ? undefined : handleUpdateQuestion
+                        isStatic || isExternalDocument
+                          ? undefined
+                          : handleUpdateQuestion
                       }
                       onUpdateVisualizationSettings={
-                        isExternalDocument
+                        isStatic || isExternalDocument
                           ? undefined
                           : handleUpdateVisualizationSettings
                       }
@@ -708,7 +805,8 @@ export const CardEmbedComponent = memo(
               </Box>
             )}
           </Box>
-          {isModifyModalOpen &&
+          {!isStatic &&
+            isModifyModalOpen &&
             card &&
             (isNativeQuestion ? (
               <NativeQueryModal
@@ -736,7 +834,7 @@ export const CardEmbedComponent = memo(
                 }}
               />
             ))}
-          {isReplaceModalOpen && (
+          {!isStatic && isReplaceModalOpen && (
             <QuestionPickerModal
               onChange={handleReplaceModalSelect}
               onClose={() => setIsReplaceModalOpen(false)}
@@ -750,6 +848,9 @@ export const CardEmbedComponent = memo(
     return (
       prevProps.node.attrs.id === nextProps.node.attrs.id &&
       prevProps.node.attrs.name === nextProps.node.attrs.name &&
+      prevProps.node.attrs.stored_result_id ===
+        nextProps.node.attrs.stored_result_id &&
+      prevProps.node.attrs.sort === nextProps.node.attrs.sort &&
       prevProps.selected === nextProps.selected
     );
   },

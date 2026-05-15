@@ -274,15 +274,22 @@
             chart-cfg    (explorations.interestingness/qp-result->chart-config query qp-result)
             chart-stats  (interestingness/compute-chart-stats chart-cfg {:deep? true})
             curation-call (atom 0)
-            analysis-call (atom 0)]
-        ;; Simulate what the runner writes: result_data + chart_stats plus the
-        ;; precomputed display / visualization_settings derived from chart-config.
-        (t2/insert! :model/ExplorationQueryResult
-                    {:exploration_query_id   (:id query)
-                     :result_data            (serialize-result qp-result)
-                     :chart_stats            chart-stats
+            analysis-call (atom 0)
+            ;; Simulate what the runner writes: a stored_result row with the cached blob +
+            ;; display + viz_settings, then an exploration_query_result row that points at it.
+            sr-id (first
+                   (t2/insert-returning-pks!
+                    :model/StoredResult
+                    {:result_data            (serialize-result qp-result)
                      :display                (or (some-> (:display_type chart-cfg) keyword) :table)
-                     :visualization_settings {}})
+                     :visualization_settings {}
+                     :creator_id             (:id u)
+                     :database_id            (mt/id)
+                     :dataset_query          (:dataset_query query)}))]
+        (t2/insert! :model/ExplorationQueryResult
+                    {:exploration_query_id (:id query)
+                     :stored_result_id     sr-id
+                     :chart_stats          chart-stats})
         (with-redefs [metabot.settings/llm-metabot-configured? (constantly true)
                       metabot.self/call-llm-structured-with-trace
                       (fn [_model messages _schema _temp _max-tokens _opts]
@@ -300,8 +307,8 @@
                                                       :content [{:type "text" :text "Abstract"}]}
                                                      {:type "paragraph"
                                                       :content [{:type "text" :text "Revenue trends upward in spring 2025."}]}
-                                                     {:type "staticCardEmbed"
-                                                      :attrs {:exploration_query_id (:id query)}}]}}
+                                                     {:type "cardEmbed"
+                                                      :attrs {:stored_result_id sr-id}}]}}
                                  :parts  [{:type :reasoning :reasoning "thinking about analysis"}]}))))]
           (let [outcome (auto-insights/generate-auto-insights! (:id t))]
             (is (= :ok outcome))
@@ -310,9 +317,9 @@
             (let [doc (t2/select-one :model/Document :exploration_thread_id (:id t)
                                      :name "Automatic Insights")]
               (is (some? doc) "Automatic Insights document was created")
-              ;; No Card is created — the staticCardEmbed reads from the cached result blob.
+              ;; No Card is created — the static cardEmbed reads from the stored_result blob.
               (let [cards (t2/select :model/Card :document_id (:id doc))]
-                (is (= 0 (count cards)) "no Card is materialized for staticCardEmbed")))))))))
+                (is (= 0 (count cards)) "no Card is materialized for static cardEmbed")))))))))
 
 (deftest append-reasoning-section-paragraph-split-test
   (testing "Reasoning blocks are split on blank lines into separate paragraphs"

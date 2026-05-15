@@ -46,10 +46,9 @@ DOCUMENT STRUCTURE (required — model after a short research paper):
    No chart embeds in this section.
 
 2. **Discussion** — heading level 2, titled `Discussion`. The body of the
-   document. This is where you build the argument. Embed `staticCardEmbed`
-   nodes INLINE, mid-discussion, immediately after the paragraph whose claim
-   they support — so each chart functions as a proof point, not a standalone
-   item.
+   document. This is where you build the argument. Embed `cardEmbed` nodes
+   INLINE, mid-discussion, immediately after the paragraph whose claim they
+   support — so each chart functions as a proof point, not a standalone item.
 
    Organize the discussion into level-3 sub-sections (each with a short,
    descriptive heading) that group the argument by *idea*, not by chart.
@@ -78,19 +77,19 @@ Use your thinking/reasoning to plan, then call the tool with the final result.
 SUPPORTED NODE TYPES (ProseMirror):
 - Root: `{"type": "doc", "content": [<block>, ...]}`
 - Block: paragraph, heading (`attrs.level` 1-3), bulletList, orderedList,
-  blockquote, staticCardEmbed.
+  blockquote, cardEmbed.
   - paragraph:  `{"type": "paragraph", "content": [<inline>, ...]}`
   - heading:    `{"type": "heading", "attrs": {"level": 2},
                   "content": [<inline>, ...]}`
   - bulletList: `{"type": "bulletList", "content": [<listItem>, ...]}`
   - listItem:   `{"type": "listItem", "content": [<paragraph>, ...]}`
   - blockquote: `{"type": "blockquote", "content": [<block>, ...]}`
-  - staticCardEmbed: `{"type": "staticCardEmbed",
-                        "attrs": {"exploration_query_id": <int>,
-                                  "sort": "value_desc"}}`
+  - cardEmbed:  `{"type": "cardEmbed",
+                  "attrs": {"stored_result_id": <int>,
+                            "sort": "value_desc"}}`
     Use this to embed one of the supplied charts inline as a proof point.
     Place it immediately after the paragraph whose claim it supports.
-    Reference an exploration_query_id from the CHARTS section below — do not
+    Reference a stored_result_id from the CHARTS section below — do not
     invent ids. Embed as many charts as the analysis genuinely needs — every
     embed should materially advance the argument, but don't ration them
     artificially. If the argument needs ten proof points, use ten; if it

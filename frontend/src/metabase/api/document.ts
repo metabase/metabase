@@ -1,14 +1,27 @@
 import { Api } from "metabase/api/api";
 import { idTag, listTag } from "metabase/api/tags";
 import type {
+  Card,
   CopyDocumentRequest,
   CreateDocumentRequest,
+  Dataset,
   DeleteDocumentRequest,
   Document,
   GetDocumentRequest,
   GetPublicDocument,
   UpdateDocumentRequest,
 } from "metabase-types/api";
+
+export type StoredResultSort =
+  | "value_asc"
+  | "value_desc"
+  | "label_asc"
+  | "label_desc";
+
+export interface StoredResultResponse {
+  card: Card;
+  dataset: Dataset;
+}
 
 export const documentApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -135,6 +148,19 @@ export const documentApi = Api.injectEndpoints({
             ]
           : [],
     }),
+    getStoredResult: builder.query<
+      StoredResultResponse,
+      { id: number; sort?: StoredResultSort }
+    >({
+      query: ({ id, sort }) => ({
+        method: "GET",
+        url: `/api/document/stored-result/${id}`,
+        params: sort ? { sort } : undefined,
+      }),
+      // Static cardEmbeds render from immutable cached snapshots, so keep them
+      // around long enough that navigating between docs doesn't reload them.
+      keepUnusedDataFor: 30 * 60,
+    }),
   }),
 });
 
@@ -147,4 +173,5 @@ export const {
   useListPublicDocumentsQuery,
   useCreateDocumentPublicLinkMutation,
   useDeleteDocumentPublicLinkMutation,
+  useGetStoredResultQuery,
 } = documentApi;

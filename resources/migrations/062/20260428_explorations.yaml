@@ -692,13 +692,94 @@ databaseChangeLog:
                   name: status
 
   - changeSet:
+      id: v62.storedresult
+      author: nvoxland
+      comment: Create stored_result table
+      changes:
+        - createTable:
+            tableName: stored_result
+            remarks: Cached query result snapshots referenced by static `cardEmbed` nodes in documents. Decoupled from any one feature so future tools can write static charts without going through explorations.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: result_data
+                  type: ${blob.type}
+                  remarks: gzipped+nippy serialized query result bytes
+                  constraints:
+                    nullable: false
+              - column:
+                  name: display
+                  type: varchar(254)
+                  remarks: Metabase display type chosen for this snapshot (line, bar, etc.)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: visualization_settings
+                  type: ${text.type}
+                  remarks: JSON-encoded visualization_settings for this snapshot
+                  constraints:
+                    nullable: true
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: User who produced this snapshot. Used for the can-read? bypass and for the data-permission gate (sandboxing/impersonation) applied to non-creator readers.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: Database the snapshot was produced against. Used by the data-permission gate without needing to parse `dataset_query`. NULL when the snapshot isn't tied to a database (e.g. a synthetic chart).
+                  constraints:
+                    nullable: true
+              - column:
+                  name: dataset_query
+                  type: ${text.type}
+                  remarks: JSON-encoded MBQL/native query that produced this snapshot, used by the data-permission gate. NULL when the snapshot has no underlying query (forward-compat for non-query-sourced charts).
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the snapshot was written
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the snapshot was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v62.storedresultcreatorfk
+      author: nvoxland
+      comment: FK stored_result.creator_id -> core_user.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: stored_result
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_stored_result_creator_id
+            onDelete: SET NULL
+
+  - changeSet:
       id: v62.qrescreate
       author: nvoxland
       comment: Create exploration_query_result table
       changes:
         - createTable:
             tableName: exploration_query_result
-            remarks: Serialized query results produced by the exploration worker, keyed 1:1 to exploration_query.
+            remarks: Per-exploration_query record pointing at the cached snapshot in stored_result plus the exploration-specific scoring metadata. Keyed 1:1 to exploration_query.
             columns:
               - column:
                   name: id
@@ -715,9 +796,9 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: result_data
-                  type: ${blob.type}
-                  remarks: gzipped+nippy serialized query result bytes
+                  name: stored_result_id
+                  type: int
+                  remarks: FK to the cached snapshot in stored_result
                   constraints:
                     nullable: false
               - column:
@@ -761,6 +842,19 @@ databaseChangeLog:
             referencedTableName: exploration_query
             referencedColumnNames: id
             constraintName: fk_exploration_query_result_query_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v62.qresstoredfk
+      author: nvoxland
+      comment: FK exploration_query_result.stored_result_id -> stored_result.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_query_result
+            baseColumnNames: stored_result_id
+            referencedTableName: stored_result
+            referencedColumnNames: id
+            constraintName: fk_exploration_query_result_stored_result_id
             onDelete: CASCADE
 
   - changeSet:
@@ -1101,27 +1195,6 @@ databaseChangeLog:
               )
               WHERE auto_insights_document_id IS NULL
       rollback:
-
-  - changeSet:
-      id: v62.qresviz
-      author: nvoxland
-      comment: Add display + visualization_settings columns to exploration_query_result
-      changes:
-        - addColumn:
-            tableName: exploration_query_result
-            columns:
-              - column:
-                  name: display
-                  type: varchar(254)
-                  remarks: Metabase display type chosen for this query's static chart embed
-                  constraints:
-                    nullable: true
-              - column:
-                  name: visualization_settings
-                  type: ${text.type}
-                  remarks: JSON-encoded visualization_settings for this query's static chart embed
-                  constraints:
-                    nullable: true
 
   - changeSet:
       id: v62.qresdesc

@@ -4,10 +4,10 @@
   Given the Phase-1 curation, the analyst LLM produces the ProseMirror document
   the user sees. This namespace holds the phase-2 LLM config, schema,
   slim/full chart block renderers, prompt builder, validation (including the
-  per-node validator for the `staticCardEmbed` node type), the repair-prompt
+  per-node validator for static-mode `cardEmbed` nodes), the repair-prompt
   builder, and the `run-analysis!` entry point. Display + visualization_settings
-  live on the `exploration_query_result` row, written once by the query runner —
-  Phase 2 doesn't touch viz config and the doc keeps the LLM-emitted nodes verbatim.
+  live on the `stored_result` row, written once by the query runner — Phase 2
+  doesn't touch viz config and the doc keeps the LLM-emitted nodes verbatim.
 
   Common chart-rendering and LLM-call infrastructure lives in
   [[metabase.explorations.auto-insights.common]]."
@@ -143,10 +143,10 @@
   description + metric/dim column detail + summary line + key-points. No stats Markdown, no
   verbatim data points dump. The model knows the chart exists and the gist, but won't cite
   values from it."
-  [{:keys [exploration-query-id name summary-line dim-detail metric-detail
+  [{:keys [stored-result-id name summary-line dim-detail metric-detail
            metric-description chart-description cfg stats]}]
   (let [key-pts (render-key-points-section cfg stats)]
-    (str "### exploration_query_id " exploration-query-id " — " name "\n\n"
+    (str "### stored_result_id " stored-result-id " — " name "\n\n"
          (when chart-description
            (str "- **chart**: " chart-description "\n"))
          (when metric-description
@@ -163,7 +163,7 @@
   "Top-tier rendering: title + (optional) chart description + (optional) metric description +
   metric/dim column detail + full chart Markdown representation, pre-computed key points, AND
   the verbatim (x, y) data points list the model must ground citations against."
-  [{:keys [exploration-query-id name cfg stats dim-detail metric-detail
+  [{:keys [stored-result-id name cfg stats dim-detail metric-detail
            metric-description chart-description]}]
   (let [repr    (interestingness/generate-representation
                  {:title                  (:title cfg)
@@ -173,15 +173,15 @@
         key-pts (render-key-points-section cfg stats)
         points  (render-data-points cfg)
         extras  (str/join "\n\n" (remove nil? [key-pts points]))]
-    (str "### exploration_query_id " exploration-query-id " — " name "\n\n"
+    (str "### stored_result_id " stored-result-id " — " name "\n\n"
          (when chart-description
            (str "- **chart**: " chart-description "\n"))
          (when metric-description
            (str "- **metric description**: " metric-description "\n"))
          "- **metric**: " (or metric-detail "(unknown)") "\n"
          "- **dim**: " (or dim-detail "(unknown)") "\n\n"
-         "When referencing this chart in a `staticCardEmbed` node, use "
-         "`exploration_query_id: " exploration-query-id "`.\n\n"
+         "When referencing this chart in a `cardEmbed` node, use "
+         "`stored_result_id: " stored-result-id "`.\n\n"
          repr
          (when (seq extras) (str "\n\n" extras)))))
 
@@ -197,11 +197,9 @@
    :additionalProperties false})
 
 (def allowed-chart-sorts
-  "Sort attribute values a `staticCardEmbed` is allowed to request. The set is
-  intentionally small — it's an enum the LLM picks from rather than free-form
-  sort expressions. The chosen sort is stored on the node and applied
-  in-memory at read time by the `/static-card` API."
-  #{"value_desc" "value_asc" "label_asc" "label_desc"})
+  "Sort attribute values a static `cardEmbed` is allowed to request. Re-exported here so the
+  prompt-builder and validators can refer to the same set the read-time renderer enforces."
+  documents/allowed-chart-sorts)
 
 (defn build-analysis-prompt
   "Phase 2 prompt: research-paper-shaped Automatic Insights document grounded
@@ -229,116 +227,127 @@
   (when (map? response)
     (or (:document response) (get response "document"))))
 
-;;; ----- staticCardEmbed validation -----
+;;; ----- static cardEmbed validation -----
 ;;;
-;;; The LLM emits `staticCardEmbed` nodes that reference an
-;;; `exploration_query_id`. The generic prose-mirror validator doesn't know
-;;; about this node type, so we register a per-node validator here. The doc
-;;; persists these nodes verbatim — the frontend resolves them at render time
-;;; by hitting `/api/exploration/query/:id/static-card`.
+;;; The LLM emits `cardEmbed` nodes that reference a `stored_result_id` (static mode). The
+;;; generic prose-mirror validator accepts `cardEmbed` shape but doesn't know about the
+;;; static-mode attrs, so we register a per-node validator here. The doc persists these nodes
+;;; verbatim — the frontend resolves them at render time via `/api/document/stored-result/:id`.
 
 (defn- validate-static-card-embed
-  "Validator passed to [[documents/validate-prose-mirror]] via
-  `:custom-block-nodes`. Confirms the node has an integer
-  `exploration_query_id` attr, an optional but enumerated `sort` attr, and
-  no children."
+  "Validator passed to [[documents/validate-prose-mirror]] via `:custom-block-nodes`. Runs on
+  every `cardEmbed` node. For static-mode embeds (those carrying `:stored_result_id`)
+  confirms the id is an integer, the optional `sort` attr is enumerated, and the node has no
+  children. Live-mode embeds (with `:id`) are passed through — the generic validator handles
+  them."
   [node path]
   (let [attrs    (or (get node :attrs) (get node "attrs"))
-        eq-id    (or (get attrs :exploration_query_id) (get attrs "exploration_query_id"))
+        sr-id    (or (get attrs :stored_result_id) (get attrs "stored_result_id"))
         sort-val (or (get attrs :sort) (get attrs "sort"))
         content  (or (get node :content) (get node "content"))]
-    (cond-> []
-      (not (or (integer? eq-id)
-               (and (string? eq-id) (re-matches #"\d+" eq-id))))
-      (conj (str path ".attrs.exploration_query_id: must be an integer, got "
-                 (pr-str eq-id)))
+    (cond
+      ;; Live-mode embed: defer to the generic validator.
+      (and (nil? sr-id) (some? (or (get attrs :id) (get attrs "id"))))
+      []
 
-      (and (some? sort-val) (not (contains? allowed-chart-sorts sort-val)))
-      (conj (str path ".attrs.sort: must be one of "
-                 (str/join ", " (sort allowed-chart-sorts))
-                 " (or omitted), got " (pr-str sort-val)))
+      :else
+      (cond-> []
+        (not (or (integer? sr-id)
+                 (and (string? sr-id) (re-matches #"\d+" sr-id))))
+        (conj (str path ".attrs.stored_result_id: must be an integer, got "
+                   (pr-str sr-id)))
 
-      content
-      (conj (str path ": staticCardEmbed must not have a `content` array"
-                 " (it's a leaf node); got " (count content) " children")))))
+        (and (some? sort-val) (not (contains? allowed-chart-sorts sort-val)))
+        (conj (str path ".attrs.sort: must be one of "
+                   (str/join ", " (sort allowed-chart-sorts))
+                   " (or omitted), got " (pr-str sort-val)))
+
+        content
+        (conj (str path ": cardEmbed must not have a `content` array"
+                   " (it's a leaf node); got " (count content) " children"))))))
 
 (def ^:private validation-opts
-  {:custom-block-nodes {prose-mirror/static-card-embed-type validate-static-card-embed}})
+  {:custom-block-nodes {prose-mirror/card-embed-type validate-static-card-embed}})
 
 (defn- node-type [node]
   (when (map? node)
     (or (get node :type) (get node "type"))))
 
-(defn- static-card-embed-eq-id
-  "Pull a numeric exploration_query_id out of a `staticCardEmbed` node,
-  tolerating string/keyword keys and numeric strings."
+(defn- card-embed-stored-result-id
+  "Pull a numeric `stored_result_id` out of a static `cardEmbed` node, tolerating string /
+  keyword keys and numeric strings. Returns nil for live-mode embeds (those without
+  `:stored_result_id`)."
   [node]
-  (when (= prose-mirror/static-card-embed-type (node-type node))
+  (when (= prose-mirror/card-embed-type (node-type node))
     (let [attrs (or (get node :attrs) (get node "attrs"))
-          raw   (or (get attrs :exploration_query_id)
-                    (get attrs "exploration_query_id"))]
+          raw   (or (get attrs :stored_result_id)
+                    (get attrs "stored_result_id"))]
       (cond
         (integer? raw) raw
         (string? raw)  (try (Long/parseLong raw) (catch Exception _ nil))))))
 
-(defn- static-card-embed-sort
-  "Pull the validated `sort` attribute out of a `staticCardEmbed` node, or nil
-  when absent. The per-node validator already enforced enum membership when
-  sort is present."
+(defn- card-embed-sort
+  "Pull the validated `sort` attribute out of a static `cardEmbed` node, or nil when absent."
   [node]
   (let [attrs (or (get node :attrs) (get node "attrs"))
         raw   (or (get attrs :sort) (get attrs "sort"))]
     (when (contains? allowed-chart-sorts raw) raw)))
 
 (defn- all-static-card-embed-nodes
-  "Walk `pm-doc` depth-first and return every `staticCardEmbed` node in
-  document order. Tolerates the keyword / string key shapes that arrive
-  post-JSON-decode."
+  "Walk `pm-doc` depth-first and return every static-mode `cardEmbed` node (those carrying a
+  parseable `:stored_result_id`) in document order. Live-mode embeds are skipped."
   [pm-doc]
   (cond
-    (and (map? pm-doc) (= prose-mirror/static-card-embed-type (node-type pm-doc))) [pm-doc]
-    (map? pm-doc)        (mapcat all-static-card-embed-nodes
-                                 (or (:content pm-doc) (get pm-doc "content")))
-    (sequential? pm-doc) (mapcat all-static-card-embed-nodes pm-doc)
-    :else                []))
+    (and (map? pm-doc)
+         (= prose-mirror/card-embed-type (node-type pm-doc))
+         (card-embed-stored-result-id pm-doc))
+    [pm-doc]
+
+    (map? pm-doc)
+    (mapcat all-static-card-embed-nodes
+            (or (:content pm-doc) (get pm-doc "content")))
+
+    (sequential? pm-doc)
+    (mapcat all-static-card-embed-nodes pm-doc)
+
+    :else []))
 
 (defn- validate-categorical-sorts
-  "Require a `sort` attribute on every `staticCardEmbed` whose underlying
-  chart has a categorical x-axis. The model's prompt already calls this out
-  as REQUIRED, but the JSON schema can't express it (temporal/numeric charts
-  must omit sort). Without this check the analyst can write prose calling for
-  a specific ordering and forget to attach the structured attribute, which
-  silently renders the chart in query order. The per-node validator already
-  enforces enum membership when sort is present — this only enforces
-  presence."
+  "Require a `sort` attribute on every static `cardEmbed` whose underlying chart has a
+  categorical x-axis. The model's prompt already calls this out as REQUIRED, but the JSON
+  schema can't express it (temporal/numeric charts must omit sort). Without this check the
+  analyst can write prose calling for a specific ordering and forget to attach the structured
+  attribute, which silently renders the chart in query order. The per-node validator already
+  enforces enum membership when sort is present — this only enforces presence.
+
+  `categorical-chart-ids` is a set of `stored_result_id`s."
   [pm-doc categorical-chart-ids]
   (->> (all-static-card-embed-nodes pm-doc)
        (keep (fn [node]
-               (let [eq-id (static-card-embed-eq-id node)
-                     sort  (static-card-embed-sort node)]
-                 (when (and eq-id
-                            (contains? categorical-chart-ids eq-id)
+               (let [sr-id (card-embed-stored-result-id node)
+                     sort  (card-embed-sort node)]
+                 (when (and sr-id
+                            (contains? categorical-chart-ids sr-id)
                             (nil? sort))
-                   (str "staticCardEmbed with exploration_query_id="
-                        eq-id " has a categorical x-axis but no `sort` attribute. "
+                   (str "cardEmbed with stored_result_id="
+                        sr-id " has a categorical x-axis but no `sort` attribute. "
                         "Pick one of \"value_desc\", \"value_asc\", \"label_asc\", "
                         "or \"label_desc\" — see the prompt's sort decision tree.")))))
        vec))
 
 (defn- validate-no-duplicate-embeds
-  "Flag any pair of `staticCardEmbed`s that share the same
-  (exploration_query_id, sort) — they render identically, which is almost
-  always an oversight where the prose calls for two distinct orderings of the
-  same chart but the second embed lost its sort attribute. The error message
-  names a concrete fix."
+  "Flag any pair of static `cardEmbed`s that share the same (stored_result_id, sort) — they
+  render identically, which is almost always an oversight where the prose calls for two
+  distinct orderings of the same chart but the second embed lost its sort attribute. The
+  error message names a concrete fix."
   [pm-doc]
   (->> (all-static-card-embed-nodes pm-doc)
-       (map (juxt static-card-embed-eq-id static-card-embed-sort))
+       (map (juxt card-embed-stored-result-id card-embed-sort))
        (filter first)        ; ids that didn't parse are caught by the per-node validator
        frequencies
-       (keep (fn [[[eq-id sort] n]]
+       (keep (fn [[[sr-id sort] n]]
                (when (> n 1)
-                 (str "staticCardEmbed for exploration_query_id=" eq-id
+                 (str "cardEmbed for stored_result_id=" sr-id
                       " appears " n " times with the same sort=" (pr-str sort)
                       ". Repeats of the same chart must use distinct sorts "
                       "(e.g. value_desc + value_asc to show top contributors "
@@ -348,9 +357,9 @@
 
 (defn- validate-doc
   "Phase-2 document validator. Combines:
-   - the generic prose-mirror schema validation (knows the standard node types
-     plus the custom `staticCardEmbed` via `validation-opts`),
-   - the categorical-sort presence check, and
+   - the generic prose-mirror schema validation (knows the standard node types,
+     including `cardEmbed`, with the static-mode validator layered via `validation-opts`),
+   - the categorical-sort presence check (over static-mode embeds), and
    - the duplicate-embed check.
   Returns one flat vector of error strings so the repair prompt can address
   them all in a single retry."

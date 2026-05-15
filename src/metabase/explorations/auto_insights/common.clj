@@ -228,7 +228,7 @@
    - `query`     — the `:model/ExplorationQuery` row.
    - `persisted` — `{:result-data :chart-stats :metric-description :chart-description}` from
                    the matching `exploration_query_result` row (see `load-result-rows`)."
-  [query {:keys [result-data chart-stats metric-description chart-description]}]
+  [query {:keys [result-data chart-stats stored-result-id metric-description chart-description]}]
   (try
     (when (and result-data chart-stats)
       (let [qp-result (deserialize-result result-data)
@@ -247,6 +247,7 @@
                 dim-col    (when dim-idx (nth cols dim-idx nil))
                 metric-col (when metric-idx (nth cols metric-idx nil))]
             {:exploration-query-id (:id query)
+             :stored-result-id     stored-result-id
              :name                 (:name query)
              :score                (chart-rank-score query)
              :display-type         (:display_type cfg)

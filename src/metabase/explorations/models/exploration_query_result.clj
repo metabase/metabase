@@ -1,12 +1,10 @@
 (ns metabase.explorations.models.exploration-query-result
   (:require
    [clojure.edn :as edn]
-   [metabase.models.interface :as mi]
+   [metabase.util.encryption :as encryption]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan2.core :as t2])
-  (:import
-   (java.sql Blob)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -15,16 +13,6 @@
 
 (doto :model/ExplorationQueryResult
   (derive :metabase/model))
-
-(defn- blob->bytes
-  "H2 returns blob columns as `java.sql.Blob` instances; Postgres/MySQL hand back a `byte[]`
-  directly. Normalize both to `byte[]` on read so consumers don't have to care."
-  [v]
-  (cond
-    (nil? v)         nil
-    (bytes? v)       v
-    (instance? Blob v) (let [^Blob b v] (.getBytes b 1 (int (.length b))))
-    :else            v))
 
 (defn- chart-stats-in
   "Encode `compute-chart-stats` output as EDN. JSON would mangle the shape:
@@ -51,8 +39,20 @@
         (log/warn e "Failed to parse exploration_query_result.chart_stats; returning nil")
         nil))))
 
+(def ^:private transform-encrypted-text
+  {:in  encryption/maybe-encrypt
+   :out encryption/maybe-decrypt})
+
 (t2/deftransforms :model/ExplorationQueryResult
-  {:result_data            {:out blob->bytes}
-   :chart_stats            {:in chart-stats-in :out chart-stats-out}
-   :display                mi/transform-keyword
-   :visualization_settings mi/transform-visualization-settings})
+  {:chart_stats         {:in chart-stats-in :out chart-stats-out}
+   :metric_description  transform-encrypted-text
+   :chart_description   transform-encrypted-text})
+
+(defn stored-results
+  "Resolve the cached stored_result for an exploration_query_id via the EQR FK. Returns the
+  full stored_result row (creator/db/query/blob/display/viz_settings) or nil when no result
+  row exists yet (query still pending/errored)."
+  [eq-id]
+  (when-let [sr-id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
+                                     :exploration_query_id eq-id)]
+    (t2/select-one :model/StoredResult :id sr-id)))

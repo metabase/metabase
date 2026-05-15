@@ -191,25 +191,41 @@
           (log/errorf e "on-thread-completed failed for thread %d" thread-id))))))
 
 (defn- pick-display+viz-settings
-  "Pick the `display` and `visualization_settings` to persist on the
-  `exploration_query_result` row. Same precedence the old append/phase2 code
-  used, evaluated once at write time so the row carries a final, deterministic
-  default for every `staticCardEmbed` that references it:
-    1. explicit `:display` / `:visualization_settings` on the EQ (rarely set)
-    2. the chart-config's `:display_type` (the `effective-display-type`
-       heuristic — line for temporal x, bar otherwise)
-    3. the source card's `:display` / `:visualization_settings`
-    4. `:table` / `{}` as the last-resort fallback"
-  [exploration-query chart-config]
+  "Pick the `display` and `visualization_settings` to persist on the `stored_result` row.
+  `graph.dimensions` / `graph.metrics` are *always* re-derived from the actual qp-result cols
+  (via `chart-config`) — the source Card's viz settings refer to *its* breakouts, which differ
+  from this query's, so carrying them forward unchanged would point graph.dimensions at a
+  column that doesn't exist in this result. Other viz settings (colors, formatting, etc.) are
+  inherited from the source Card. Display precedence:
+    1. explicit `:display` on the EQ (rarely set)
+    2. the chart-config's `:display_type` (line for temporal x, bar otherwise)
+    3. the source card's `:display`
+    4. `:table` as the last-resort fallback"
+  [exploration-query chart-config qp-result]
   (let [src-card (when-let [card-id (:card_id exploration-query)]
-                   (t2/select-one [:model/Card :display :visualization_settings] :id card-id))]
+                   (t2/select-one [:model/Card :display :visualization_settings] :id card-id))
+        cols     (get-in qp-result [:data :cols])
+        col-name (fn [src] (some #(when (= src (:source %)) (:name %)) cols))
+        dim-name (col-name :breakout)
+        met-name (col-name :aggregation)]
     {:display                (or (some-> (:display exploration-query) keyword)
                                  (some-> (:display_type chart-config) keyword)
                                  (:display src-card)
                                  :table)
-     :visualization_settings (or (:visualization_settings exploration-query)
-                                 (:visualization_settings src-card)
-                                 {})}))
+     :visualization_settings (cond-> (or (:visualization_settings exploration-query)
+                                         (dissoc (:visualization_settings src-card)
+                                                 :graph.dimensions :graph.metrics)
+                                         {})
+                               dim-name (assoc :graph.dimensions [dim-name])
+                               met-name (assoc :graph.metrics    [met-name]))}))
+
+(defn- exploration-creator-id
+  "Walk EQ → ExplorationThread → Exploration.creator_id for stamping onto the stored_result."
+  [exploration-query]
+  (t2/select-one-fn :creator_id :model/Exploration
+                    {:join  [:exploration_thread
+                             [:= :exploration_thread.exploration_id :exploration.id]]
+                     :where [:= :exploration_thread.id (:exploration_thread_id exploration-query)]}))
 
 (defn- safe-score+describe
   "Best-effort combined contextual scorer + describer for one chart. Threads the source
@@ -271,17 +287,24 @@
                   stats        (safe-deep-stats row chart-config)
                   score        (safe-score row chart-config stats)
                   ctx          (safe-score+describe row chart-config)
-                  viz          (pick-display+viz-settings row chart-config)]
+                  viz          (pick-display+viz-settings row chart-config qp-result)
+                  sr-id        (first
+                                (t2/insert-returning-pks!
+                                 :model/StoredResult
+                                 {:result_data            bytes
+                                  :display                (:display viz)
+                                  :visualization_settings (:visualization_settings viz)
+                                  :creator_id             (exploration-creator-id row)
+                                  :database_id            (-> row :dataset_query :database)
+                                  :dataset_query          (:dataset_query row)}))]
               (t2/insert! :model/ExplorationQueryResult
                           {:exploration_query_id             (:id row)
-                           :result_data                      bytes
+                           :stored_result_id                 sr-id
                            :chart_stats                      stats
                            :interestingness_score            score
                            :contextual_interestingness_score (:score ctx)
                            :metric_description               (:metric-description ctx)
-                           :chart_description                (:chart-description ctx)
-                           :display                          (:display viz)
-                           :visualization_settings           (:visualization_settings viz)})
+                           :chart_description                (:chart-description ctx)})
               (t2/update! :model/ExplorationQuery (:id row)
                           {:status      "done"
                            :started_at  started

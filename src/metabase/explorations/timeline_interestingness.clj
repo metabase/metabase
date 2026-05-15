@@ -12,6 +12,7 @@
   (:require
    [clojure.string :as str]
    [metabase.explorations.interestingness :as explorations.interestingness]
+   [metabase.explorations.models.exploration-query-result :as eqr]
    [metabase.interestingness.core :as interestingness]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
@@ -133,14 +134,13 @@ Always return a single object matching the supplied schema. Do not respond with 
   [exploration-query-id timeline-id]
   (when-let [query (t2/select-one :model/ExplorationQuery :id exploration-query-id)]
     (when (= "done" (:status query))
-      (when-let [{:keys [result_data]} (t2/select-one [:model/ExplorationQueryResult :result_data]
-                                                      :exploration_query_id exploration-query-id)]
+      (when-let [sr (eqr/stored-results exploration-query-id)]
         (when-let [timeline (t2/select-one :model/Timeline :id timeline-id)]
           (let [thread   (t2/select-one [:model/ExplorationThread :prompt]
                                         :id (:exploration_thread_id query))
                 hydrated (timeline/include-events-singular timeline {:events/all? false})]
             {:query        query
-             :result-bytes result_data
+             :result-bytes (:result_data sr)
              :timeline     hydrated
              :prompt       (:prompt thread)}))))))
 
