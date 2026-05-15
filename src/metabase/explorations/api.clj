@@ -12,6 +12,7 @@
    [metabase.explorations.auto-insights.phase2 :as auto-insights.phase2]
    [metabase.explorations.core :as explorations]
    [metabase.explorations.groups :as explorations.groups]
+   [metabase.explorations.models.exploration :as expl.model]
    [metabase.explorations.result-access :as result-access]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -427,7 +428,7 @@
 
 (def ^:private CreateExploration
   [:map
-   [:name         ms/NonBlankString]
+   [:name         expl.model/ExplorationName]
    [:description  {:optional true} [:maybe :string]]
    [:prompt       {:optional true} [:maybe :string]]
    [:metrics      {:optional true} [:maybe [:sequential MetricSelection]]]
@@ -439,7 +440,7 @@
   actually includes are forwarded to the underlying `t2/update!`. `collection_id` may be `nil`
   to move the exploration to the root collection (\"Our Analytics\")."
   [:map
-   [:name          {:optional true} ms/NonBlankString]
+   [:name          {:optional true} expl.model/ExplorationName]
    [:description   {:optional true} [:maybe :string]]
    [:archived      {:optional true} :boolean]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]])
