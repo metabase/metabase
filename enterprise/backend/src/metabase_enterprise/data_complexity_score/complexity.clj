@@ -61,9 +61,7 @@
   50000)
 
 (defn- table-field-counts
-  "Return `{table-id field-count}` for active fields on the given `table-ids`. Chunked to keep
-   the prepared-statement parameter count under the JDBC driver's limit on instances with very
-   many tables."
+  "Return `{table-id field-count}` for active fields on the given `table-ids`."
   [table-ids]
   (into {}
         (mapcat (fn [chunk]
@@ -77,9 +75,8 @@
         (partition-all in-clause-chunk-size table-ids)))
 
 (defn- table-measure-names
-  "Return `{table-id [measure-name ...]}` for non-archived Measures on the given `table-ids`. A
-   measure is a named MBQL aggregation attached to a Table — see [[metabase.measures.models.measure]].
-   Chunked to stay under the prepared-statement parameter limit."
+  "Return `{table-id [measure-name ...]}` for non-archived Measures on the given `table-ids`.
+  A measure is a named MBQL aggregation attached to a Table — see [[metabase.measures.models.measure]]."
   [table-ids]
   (into {}
         (mapcat (fn [chunk]
