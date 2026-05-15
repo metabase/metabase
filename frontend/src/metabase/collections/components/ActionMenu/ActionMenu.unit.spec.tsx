@@ -23,6 +23,7 @@ import {
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
+  createMockDocument,
 } from "metabase-types/api/mocks";
 
 import ActionMenu, { getParentEntityLink } from "./ActionMenu";
@@ -289,6 +290,67 @@ describe("ActionMenu", () => {
 
       await userEvent.click(getIcon("ellipsis"));
       expect(screen.queryByText("X-ray this")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("trashed documents", () => {
+    it("should restore a document via PUT /api/document/:id with archived: false", async () => {
+      const item = createMockCollectionItem({
+        id: 7,
+        name: "Trashed doc",
+        model: "document",
+        can_restore: true,
+        archived: true,
+      });
+      fetchMock.put(
+        "path:/api/document/7",
+        createMockDocument({ id: 7, archived: false, collection_id: null }),
+      );
+
+      setup({ item });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await userEvent.click(await screen.findByText("Restore"));
+
+      await waitFor(() => {
+        const calls = fetchMock.callHistory.calls("path:/api/document/7", {
+          method: "PUT",
+        });
+        expect(calls).toHaveLength(1);
+      });
+
+      const [putCall] = fetchMock.callHistory.calls("path:/api/document/7", {
+        method: "PUT",
+      });
+      expect(JSON.parse(putCall.options.body as string)).toMatchObject({
+        archived: false,
+      });
+    });
+
+    it("should permanently delete a document via DELETE /api/document/:id", async () => {
+      const item = createMockCollectionItem({
+        id: 7,
+        name: "Trashed doc",
+        model: "document",
+        can_delete: true,
+        archived: true,
+      });
+      fetchMock.delete("path:/api/document/7", 204);
+
+      setup({ item });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await userEvent.click(await screen.findByText("Delete permanently"));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Delete permanently" }),
+      );
+
+      await waitFor(() => {
+        const calls = fetchMock.callHistory.calls("path:/api/document/7", {
+          method: "DELETE",
+        });
+        expect(calls).toHaveLength(1);
+      });
     });
   });
 
