@@ -68,10 +68,10 @@
   [tables {:keys [total] :as catalog}]
   (-> catalog
       (merge (rating-for-score (tables :total) total))
-      (u/update-if-exists :components
-                          #(reduce-kv (fn [m k {:keys [score] :as c}]
-                                        (assoc m k (merge c (rating-for-score (tables k) score))))
-                                      {} %))))
+      (update :components
+              #(reduce-kv (fn [m k {:keys [score] :as c}]
+                            (assoc m k (merge c (rating-for-score (tables k) score))))
+                          {} %))))
 
 ;; TODO: also emit the rating onto Snowplow events so benchmark consumers can correlate the band
 ;; against the raw total without re-applying the thresholds.
