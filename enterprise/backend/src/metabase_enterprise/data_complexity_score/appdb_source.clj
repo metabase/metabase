@@ -36,27 +36,49 @@
   surface as exceptions."
   false)
 
-;; SQLState codes that mean \"the table or column you referenced isn't there\" across the appdb
-;; backends Metabase supports. We match on prefix (`42S`) for the MySQL family to catch both
-;; `42S02` (table) and `42S22` (column) without listing each one. Postgres uses `42P01`
-;; (undefined_table) and `42703` (undefined_column); H2 uses `42S02` / `42S22` for the modern JDBC
-;; surface and `42102` / `42122` for the legacy one.
+;; SQLState codes that mean "the table or column you referenced isn't there" across the appdb
+;; backends Metabase supports. Listed explicitly rather than prefix-matched on `42S` so we don't
+;; accidentally trip on other `42Sxx` codes a driver might introduce. Postgres uses `42P01`
+;; (undefined_table) and `42703` (undefined_column); MySQL uses `42S02` / `42S22`; H2 uses
+;; `42S02` / `42S22` on the modern JDBC surface and `42102` / `42122` on the legacy one.
 (def ^:private missing-relation-sql-states
   #{"42P01" "42703" "42102" "42122" "42S02" "42S22"})
 
 (defn- missing-relation-error?
-  "True when the SQL exception (or its chain) describes a missing table/column rather than some
-  other database failure. Walks `getNextException` so chained Postgres/H2 errors are reachable."
-  [^SQLException e]
-  (loop [^SQLException cur e]
-    (cond
-      (nil? cur)                                        false
-      (contains? missing-relation-sql-states (.getSQLState cur)) true
-      :else                                             (recur (.getNextException cur)))))
+  "True when `t` (or anything reachable via `getNextException` / `getCause`) is a `SQLException`
+  with a SQLState in [[missing-relation-sql-states]]. We walk both chains: Toucan 2 + next.jdbc
+  hand us a raw `SQLException` today so `getNextException` is enough, but a defensive `getCause`
+  walk costs nothing and protects against future wrappers (e.g. an `ex-info` carrying the SQL
+  exception as `:cause`). Cycle-guarded so a self-referential chain can't loop forever."
+  [^Throwable t]
+  (loop [pending (list t)
+         seen    #{}]
+    (if (empty? pending)
+      false
+      (let [^Throwable cur (first pending)
+            rest-pending   (rest pending)]
+        (cond
+          (or (nil? cur) (contains? seen cur))
+          (recur rest-pending seen)
+
+          (and (instance? SQLException cur)
+               (contains? missing-relation-sql-states (.getSQLState ^SQLException cur)))
+          true
+
+          :else
+          (recur (cond-> rest-pending
+                   (instance? SQLException cur) (conj (.getNextException ^SQLException cur))
+                   true                         (conj (.getCause cur)))
+                 (conj seen cur)))))))
 
 (defn with-missing-relation-fallback
-  "Run `f`. If [[*tolerate-missing-relations?*]] is true and `f` throws a missing-table/column
-  SQL error, log a warning naming `signal` and return `fallback`. Re-throws every other failure.
+  "Run `f`. If [[*tolerate-missing-relations?*]] is true and `f` throws anything reachable
+  through `getNextException` / `getCause` to a SQL `missing-table` / `missing-column` error,
+  log a warning naming `signal` and return `fallback`. Every other throwable propagates.
+
+  We catch `Throwable` (not just `SQLException`) on purpose — Toucan 2 / next.jdbc hand us a raw
+  `SQLException` today, but a future wrapper layer that surfaces the SQL error as the `:cause` of
+  an `ex-info` would otherwise slip past us. `missing-relation-error?` does the cause-walk.
 
   Pattern at call sites that read tables/columns introduced in a more recent Metabase version
   than the CLI may be pointed at:
@@ -66,12 +88,12 @@
   (if *tolerate-missing-relations?*
     (try
       (f)
-      (catch SQLException e
-        (if (missing-relation-error? e)
+      (catch Throwable t
+        (if (missing-relation-error? t)
           (do (log/warnf "Data Complexity: %s unavailable on this appdb (%s). Falling back to %s."
-                         signal (.getMessage e) (pr-str fallback))
+                         signal (.getMessage t) (pr-str fallback))
               fallback)
-          (throw e))))
+          (throw t))))
     (f)))
 
 ;;; --------------------------------------- writer ------------------------------------------

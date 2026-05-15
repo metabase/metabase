@@ -196,8 +196,12 @@
    `metabot-scope` requests verified-only filtering — avoids a `moderation_review` join on the
    universe Card select by pushing the check into a small auxiliary lookup.
 
-   Tolerates missing schema (very old appdbs) by falling back to an empty set; the metabot
-   catalog will be widened relative to an honest verified-only filter on those instances."
+   Tolerates missing schema (very old appdbs) by falling back to an empty set. Because the
+   downstream consumer requires both `verified-only?` to hold AND `verified-ids` to be non-empty
+   before installing the metabot-card predicate, an empty fallback under `verified-only? true`
+   short-circuits to no predicate and the metabot Card catalog becomes empty. That's a deliberate
+   safe-default: we can't honestly tell which Cards are verified, so the metabot Card catalog
+   stays empty rather than silently widening to everything."
   []
   (appdb-source/with-missing-relation-fallback
     ::verified-cards #{}
