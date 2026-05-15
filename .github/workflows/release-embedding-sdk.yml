@@ -8,9 +8,9 @@ on:
         description: "Branch we want to release the SDK from (to release from other branches use the workflow from those branches)"
         type: choice
         required: true
-        default: "master"
+        default: release-x.61.x
         options:
-          - master
+          - release-x.61.x
 
 concurrency:
   # We want to ensure only one job is running at a time per branch because
@@ -375,15 +375,6 @@ jobs:
           name: metabase-sdk
           path: sdk
 
-      - name: Compute master tag
-        id: compute-tag
-        run: |
-          if [ -n "${{ needs.determine-sdk-version.outputs.pre_release_label }}" ]; then
-            echo "masterTag=${{ needs.determine-sdk-version.outputs.pre_release_label }}" >> $GITHUB_OUTPUT
-          else
-            echo "masterTag=nightly" >> $GITHUB_OUTPUT
-          fi
-
       # Trusted publishing requires npm >= 11.5.1 and Node >= 22.14.0.
       # Node 22.x line bundles npm 10.x, so pin Node 24.x which ships npm 11.x.
       - name: Setup Node.js for npm publish with trusted publishing
@@ -395,15 +386,14 @@ jobs:
       - name: Publish to NPM
         working-directory: sdk
         run: |
-          TAG="${{ steps.compute-tag.outputs.masterTag }}"
-          echo "Resolved npm tag: $TAG"
-          npm publish --tag "$TAG"
+          npm publish --tag 61-stable
+
       # ⚠️ This step should only be executed on the latest stable (gold) release branch.
       # Only uncomment this when the new release branch becomes stable (gold).
-      # - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
-      #   working-directory: sdk
-      #   run: |
-      #     npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
+      - name: Add `latest` tag to the latest release branch (`release-x.61.x`) deployment
+        working-directory: sdk
+        run: |
+          npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
 
   git-tag:
     needs: [publish-npm, determine-sdk-version]
