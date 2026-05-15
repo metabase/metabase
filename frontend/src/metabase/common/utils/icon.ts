@@ -59,6 +59,7 @@ export const modelIconMap: Record<IconModel, IconName> = {
   transform: "transform",
   user: "person",
   pythonlibrary: "code_block",
+  exploration: "zoom_in",
 };
 
 export type IconData = {

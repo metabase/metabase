@@ -235,6 +235,7 @@ export function canBookmarkItem({ model, type, archived }: CollectionItem) {
 
   switch (model) {
     case "table":
+    case "exploration":
       return false;
     case "collection":
       return !isLibraryCollection({ type });
