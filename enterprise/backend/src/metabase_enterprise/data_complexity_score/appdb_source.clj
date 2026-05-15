@@ -15,8 +15,7 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.util.json :as json]
-   [next.jdbc :as jdbc]
-   [next.jdbc.result-set :as jdbc.rs])
+   [next.jdbc :as jdbc])
   (:import
    (java.sql Timestamp)))
 
@@ -26,18 +25,13 @@
   "Insert one row into `data_complexity_score` via raw JDBC. No Toucan transforms, no model
   hooks. `score-data` is serialized to JSON here so we don't depend on `mi/transform-json`.
 
-  Returns the inserted row's `id`, or nil if the driver doesn't surface generated keys."
+  Returns nil. Callers that need the row (e.g. tests) look it up by `fingerprint`."
   [fingerprint source score-data]
   (let [ds  (mdb/data-source)
         row {:fingerprint fingerprint
              :source      source
              :score_data  (json/encode score-data)
-             :created_at  (Timestamp. (System/currentTimeMillis))}
-        ;; `execute-one!` with `:return-keys` surfaces the inserted row when the driver supports
-        ;; `RETURN_GENERATED_KEYS` (postgres/h2/mysql all do for autoincrement pks); the id lets
-        ;; the CLI's printed result correlate with the persisted row.
-        result (jdbc/execute-one! ds (mdb/compile {:insert-into [:data_complexity_score]
-                                                   :values      [row]})
-                                  {:return-keys true
-                                   :builder-fn  jdbc.rs/as-unqualified-lower-maps})]
-    (:id result)))
+             :created_at  (Timestamp. (System/currentTimeMillis))}]
+    (jdbc/execute-one! ds (mdb/compile {:insert-into [:data_complexity_score]
+                                        :values      [row]}))
+    nil))
