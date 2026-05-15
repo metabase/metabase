@@ -5,9 +5,9 @@ redirect_from:
   - /docs/latest/databases/writeable-connection
 ---
 
-## Writable connection
+# Writable connection
 
-> Writable connection requires the **Advanced transforms (SQL + Python)** add-on
+> Writable connection requires the [Advanced transforms add-on](../data-studio/transforms/addons.md)
 
 _Admin > Databases > Writable connection_
 

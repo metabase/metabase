@@ -2,29 +2,77 @@
 title: Transform add-ons
 ---
 
-# Transform add-ons
+# Transform tiers and add-ons
+
+Metabase comes with two tiers of transform functionality:
+
+- **Basic transforms**: run [query-based transforms](query-transforms.md) and schedule transform [jobs](jobs-and-runs.md).
+- **Advanced transforms**: both query-based and Python transforms; separate database connection for write operations; transform inspector.
+
+Availability and pricing depends on your plan and hosting method.
 
 ## Basic transforms
 
-With basic transform functionality, you can create query-based transforms (either using SQL or the query builder) and schedule transforms to run periodically.
+With basic transform functionality, you can:
 
-- **Self-hosted Metabases** (any plan): Basic transforms are included by default, for free. You don't need to add an add-on - just log into your Metabase and [enable transforms](../transforms/transforms-overview.md#enable)
-- **Metabase Cloud**:
+- Write and run [query-based transforms](query-transforms.md) (but not Python transforms).
+- [Schedule and run jobs](jobs-and-runs.md).
+- (Pro/Enterprise only) Configure [permissions for transforms](transforms-overview.md#permissions-for-transforms).
 
-To add the Basic transforms to you
+### Enable basic transforms
+
+- **Self-hosted Metabases**: Basic transform functionality is included on self-hosted Metabases by default. Just log into your Metabase, [enable transforms](../transforms/transforms-overview.md#enable), and you're good to go.
+
+- **Metabase Cloud**: Basic transform functionality on Metabase Cloud - Starter, Pro, or Enterprise - comes with an additional small fee per successful transform run, see [Pricing](https://www.metabase.com/pricing).
+
+  Only people logged in with an email of a [Metabase Store admins](../../cloud/accounts-and-billing.md#add-people-to-manage-your-metabase-store-account) (not just Metabase _instance_ admins) can enable basic transforms. To enable Basic transforms on Metabase Cloud, see [Enable transforms](./transforms-overview.md#enable-transforms).
+
+### Disable basic transforms
+
+Once basic transforms are enabled on your Metabase Cloud instance, they can't be disabled.
 
 ## Advanced transforms
 
-Advanced transforms add-on
+Advanced transform functionality includes:
 
-- [Query-based transforms]() - also included in [Basic transforms]()
-- [Python transforms] -
+- All [basic transform](#basic-transforms) functionality: query-based transforms, scheduled jobs, and transform permissions (on Pro/Enterprise).
+- [Python transforms](python-transforms.md) for more flexible data processing.
+- [Writable connection](../../databases/writable-connection.md) - separate database connection used for write operations.
+- [Transform inspector](transform-inspector.md).
+
+Advanced transforms functionality can be added to:
+
+- Any Metabase Cloud instance (Starter, Pro, Enterprise)
+- Self-hosted Pro or Enterprise instances.
+
+  Currently, you can't use Advanced transforms functionality on Open Source self-hosted plans.
+
+Advanced transforms add-on comes with an additional charge per successful transform run (compare to [Basic transforms](#basic-transforms)). See [Pricing](https://www.metabase.com/pricing).
+
+### Enable Advanced transforms
+
+To enable Advanced transforms functionality, you need to have [Basic transforms](#basic-transforms) already.
+
+There are two ways to enable Advanced transforms:
+
+- **From your Metabase instance**: you can navigate to a feature requiring advanced transforms (like Python transforms or transform inspector), and follow the prompts to upgrade.
+
+  To enable Advanced transforms from your Metabase instance, you need to be logged into the instance with the same email as a [Metabase Store admin](../../cloud/accounts-and-billing.md#add-people-to-manage-your-metabase-store-account), because Advanced transform incur an additional charge.
+
+- **From [Metabase Store](https://store.metabase.com)**:
+
+  1. Log into Metabase Store.
+  2. Click on **Manage plan** next to the instance where you'd like to add Advanced transforms.
+  3. Under **Manage Add-ons**, find **Advanced transforms** and click **Upgrade**.
+
+### Disable Advanced transforms
+
+You can downgrade from Advanced transforms to [Basic transforms](#basic-transforms).
 
 ## How billing works for transforms
 
-Transforms - either basic transforms on Metabase Cloud, or advanced transforms are are billed based on the number of runs.
+Unless you're on an Enterprise plan, transforms - either basic (on Metabase Cloud) or advanced - are billed based on the number of successful runs. See [Jobs and runs](jobs-and-runs.md) for more on transform runs, and [Pricing](https://www.metabase.com/pricing) for up-to-date information on pricing.
 
-- Basic Transforms: SQL-based transforms with no advanced features. On Starter and Pro Cloud, your first 1,000 successful basic runs are free, then you're billed $0.01 per successful basic run. Basic Transforms are included on Open Source and paid self-hosted plans. Enterprise Cloud customers can use a prepaid package: $9K/year for up to 1M successful basic runs, with no rollover.
-- Advanced Transforms: SQL or Python transforms with advanced features like writable connection, Transforms inspector, and the Python runner. On Starter and Pro Cloud, your first 1,000 successful advanced runs are free, then you're billed $0.02 per successful advanced run. On Pro self-hosted, your first 1,000 successful advanced runs are free, then you're billed $0.01 per successful advanced run. Enterprise Cloud customers can use a prepaid package: $18K/year for full Data Studio access with up to 1M successful advanced runs, with no rollover. Enterprise self-hosted customers can use a $9K/year platform fee with unlimited runs.
+When you upgrade from basic to advanced transforms, _all_ your transforms will be billed at advanced transforms rate.
 
-Cloud monthly and annual customers are billed each month based on the previous month's successful runs, with no annual discount on usage. If you upgrade to Advanced Transforms, all transform runs are billed as advanced runs going forward.
+If you're on an Enterprise plan and have questions about billing, [contact us](https://www.metabase.com/help-premium).
