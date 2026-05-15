@@ -79,20 +79,12 @@
        (not (:error output-block))
        (some? (tool-output->structured (:result output-block)))))
 
-(defn- macaw-tables
-  "Macaw-parse a raw SQL string and resolve to a set of underlying table ids.
-  `nqa/tables-for-native` reads template tags via [[metabase.lib.native/template-tags]],
-  which validates its argument against `::lib.schema/query` and rejects the
-  legacy `{:type :native :native {...}}` shape — so we convert to MBQL 5
-  first via [[lib/->mbql5]]."
-  [database-id sql-text template-tags]
-  (if (and database-id (seq sql-text))
+(defn- native-tables
+  "If `query` is native, run macaw against it and return its underlying table ids."
+  [query]
+  (if (lib/native? query)
     (try
-      (let [legacy {:database database-id
-                    :type     :native
-                    :native   (cond-> {:query sql-text}
-                                (seq template-tags) (assoc :template-tags template-tags))}
-            result (nqa/tables-for-native (lib/->mbql5 legacy))]
+      (let [result (nqa/tables-for-native query)]
         (if (:error result)
           (do (log/warnf "tables-for-native error: %s" (:error result))
               #{})
@@ -101,25 +93,6 @@
         (log/warn e "Failed to extract tables from native SQL")
         #{}))
     #{}))
-
-(defn- native-stage-tables
-  "Run macaw against any native stages in `mbql5-query` and return their table ids.
-  In MBQL 5 native stages, `:native` is the SQL string and `:template-tags`
-  lives at the stage level alongside it (not nested under `:native`)."
-  [database-id mbql5-query]
-  (transduce
-   (comp (filter #(= (:lib/type %) :mbql.stage/native))
-         (map (fn [stage]
-                (let [native (:native stage)
-                      sql    (cond
-                               (string? native) native
-                               (map? native)    (:query native))
-                      tags   (or (:template-tags stage)
-                                 (when (map? native) (:template-tags native)))]
-                  (macaw-tables database-id sql tags)))))
-   into
-   #{}
-   (:stages mbql5-query)))
 
 (defn- query-tables-and-cards
   "Walk one query (legacy or MBQL 5) and return
@@ -136,7 +109,7 @@
           mbql5  (lib/query mp query)
           ids    (lib/all-referenced-entity-ids [mbql5])]
       {:tables (set/union (:table ids)
-                          (native-stage-tables database-id mbql5))
+                          (native-tables mbql5))
        :cards  (set/union (:card ids) (:metric ids))})
     (catch Exception e
       (log/warn e "Failed to walk query for used-table extraction")

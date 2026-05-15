@@ -409,7 +409,7 @@
 ;;;
 ;;; The tests above all stub `nqa/tables-for-native` to isolate the extractor logic from the macaw
 ;;; parser. These two tests run the real parser end-to-end against the H2 test-data DB so we catch
-;;; integration regressions (e.g. shape mismatches between `macaw-tables` and `tables-for-native`).
+;;; integration regressions in the lib/query → tables-for-native handoff.
 
 (deftest ^:sequential sql-real-macaw-join-with-where-test
   (testing "real macaw against a plain JOIN + WHERE: both tables come through end-to-end"
