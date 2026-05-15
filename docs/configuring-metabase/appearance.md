@@ -5,7 +5,6 @@ redirect_from:
   - /docs/latest/enterprise-guide/whitelabeling
   - /docs/latest/enterprise-guide/customize-embeds
   - /docs/latest/embedding/whitelabeling
-  - /docs/latest/embedding/fonts
   - /docs/latest/embedding/customize-embeds
 summary: Configure colors, fonts, and illustrations in your Metabase.
 ---
