@@ -42,7 +42,7 @@ Markdown under `docs/` is rendered by a self-contained Astro app under `docs-bui
 | `docs/usage-and-performance-tools/usage-analytics-reference.md` | `--analytics` | committed |
 | `docs/questions/visualizations/country-codes.md` | `--country-codes` | committed |
 
-The "lazy-regen if missing" path runs through `mage.docs/artifact-present?` (`mage/src/mage/docs.clj:126`) — freshness is **existence only**, not source-mtime. If you edit an SDK type and want the typedoc refreshed, you must run `bun run docs:generate:embedding` explicitly; merely re-running the build won't pick up the change.
+The "lazy-regen if missing" path runs through `mage.docs/artifact-present?` (`mage/src/mage/docs.clj:156`) — freshness is **existence only**, not source-mtime. If you edit an SDK type and want the typedoc refreshed, you must run `bun run docs:generate:embedding` explicitly; merely re-running the build won't pick up the change.
 
 The committed files are **not** part of the lazy-regen path. If you add or rename a `defsetting`, run `docs:generate --env-vars` and commit the diff — otherwise the published docs drift from the code.
 
@@ -52,12 +52,12 @@ The committed files are **not** part of the lazy-regen path. If you add or renam
 
 ## Custom plugins
 
-In `docs-build/src/plugins/` — each remark plugin has a `.test.mjs` next to it:
+In `docs-build/src/plugins/` — each plugin has a `.test.mjs` next to it (the Node test runner glob is `src/plugins/**/*.test.mjs`):
 
 - `remark-include-file.mjs` — `{% include_file "path" %}` transclusion (syntax documented in the dev guide). Markdown is spliced inline; source files render as syntax-highlighted code fences. Snippet markers: `<!-- [<snippet NAME>] -->` for markdown, `// [<snippet NAME>]` for source.
 - `remark-docs-version.mjs` — substitutes `{SAMPLE_APP_BRANCH}` (`<NN>-stable` on release branches, `master` elsewhere).
 - `rehype-internal-links.mjs` — rewrites relative `.md` paths to the right URL under `DOCS_BASE_PATH`.
-- `rehype-blockquote-classes.mjs` — adds `.plans-callout` to `> **Plans:**` blockquotes.
+- `rehype-blockquote-classes.mjs` — tags callout blockquotes by their leading `> **Marker:**`. Recognized markers (colon optional, case-insensitive): `Tip`/`Hint` → `.tip`, `Note` → `.note`, `Warning`/`Caution` → `.warning`, `Danger` → `.danger`, `Plans` → `.plans-callout`. Blockquotes that already carry a `*-callout` class are left untouched so author overrides win.
 
 `nav.yml` parsing lives in `docs-build/src/lib/nav.ts` and is `?raw`-imported by Vite so the file is inlined at build time.
 
@@ -69,7 +69,7 @@ Markup: `docs-build/src/data/{header,footer}.html` (raw-imported by `Header.astr
 
 ```
 bun run docs:check          # Astro/TS type check + nav.yml reference validator
-bun run docs:test           # remark plugin unit tests (node --test)
+bun run docs:test           # remark + rehype plugin unit tests (node --test)
 bun run lint-docs-links     # verifies in-product docsUrl() references resolve
 ./bin/test-agent :only '[mage.docs-test]'   # if you touched mage.docs
 ```
@@ -80,9 +80,10 @@ bun run lint-docs-links     # verifies in-product docsUrl() references resolve
 
 - **Transclusions render placeholders in `docs:dev`** — by design, but easy to forget. If a page `{% include_file %}`s the SDK typedoc and looks broken, run `docs:preview` once to confirm it's not just stale generated content.
 - **SDK type changes don't appear after a rebuild** — lazy-regen is existence-based. Existing typedoc output won't refresh on its own; run `bun run docs:generate:embedding` to update it.
-- **Plugin edits look like no-ops** — Astro caches processed markdown in `.astro/data-store.json` keyed by source mtime; plugin source changes don't invalidate it. `docs-build` clears `.astro`, `node_modules/.astro`, and `dist` inline (`mage.docs` `build`, lines 229–233), but `docs:dev` does not — you need `docs:dev:clean` + restart after editing a plugin.
+- **Plugin edits look like no-ops** — Astro caches processed markdown in `.astro/data-store.json` keyed by source mtime; plugin source changes don't invalidate it. `docs-build` clears `.astro`, `node_modules/.astro`, and `dist` inline (`mage.docs` `build`, lines 246–250), but `docs:dev` does not — you need `docs:dev:clean` + restart after editing a plugin.
 - **Port 4321 is busy** — Astro pins it (`strictPort: true`). On macOS, force-quitting a terminal reparents `node` to launchd. `bun run docs:dev:clean` kills the orphan.
 - **Worktree leftover** — `docs-build-branch` refuses to overwrite an existing `__worktrees/docs-<slug>/`. Run `./bin/mage docs-clean-worktrees --force` to bulk-remove, or pass `--worktree-dir` to use a different path. Anything uncommitted *inside* a worktree is discarded by the next build's hard reset.
+- **Editing the dev-guide command table directly fails CI** — `docs/developers-guide/docs.md` contains a `<!-- BEGIN docs-help-table --> … <!-- END docs-help-table -->` block generated from `help-rows` in `mage/src/mage/docs.clj`. To add/rename a command, edit `help-rows`, then run `./bin/mage docs-help --write` to regenerate the block. `mage.docs-test/dev-guide-table-in-sync-test` asserts the two stay in sync, so hand-edits silently drift until CI catches them.
 
 ## Where things live
 
