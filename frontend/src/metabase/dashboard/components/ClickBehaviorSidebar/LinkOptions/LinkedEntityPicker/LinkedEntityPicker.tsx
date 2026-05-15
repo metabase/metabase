@@ -224,7 +224,7 @@ export function LinkedEntityPicker({
     });
   }, [clickBehavior, updateSettings]);
 
-  const { data: targetDashboard } = useGetDashboardQuery(
+  const { currentData: targetDashboard } = useGetDashboardQuery(
     isDashboard && targetId != null ? { id: targetId } : skipToken,
   );
   const dashboardTabs = targetDashboard?.tabs ?? NO_DASHBOARD_TABS;

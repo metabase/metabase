@@ -126,7 +126,7 @@ export function FormCollectionAndDashboardPicker({
 
   const { data: openCollection } = useGetCollectionQuery({ id: "root" });
 
-  const { data: selectedDashboard } = useGetDashboardQuery(
+  const { currentData: selectedDashboard } = useGetDashboardQuery(
     dashboardIdInput.value != null ? { id: dashboardIdInput.value } : skipToken,
   );
   const { data: selectedCollection } = useGetCollectionQuery(

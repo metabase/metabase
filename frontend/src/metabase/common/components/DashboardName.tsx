@@ -16,7 +16,7 @@ export const DashboardName = ({ id }: DashboardNameProps) => {
 
 const FetchedDashboardName = ({ id }: { id: DashboardId }) => {
   const tc = useTranslateContent();
-  const { data: dashboard } = useGetDashboardQuery({ id });
+  const { currentData: dashboard } = useGetDashboardQuery({ id });
   if (!dashboard) {
     return null;
   }

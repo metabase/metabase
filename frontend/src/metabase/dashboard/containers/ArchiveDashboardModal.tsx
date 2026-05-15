@@ -60,7 +60,7 @@ export const ArchiveDashboardModalConnectedInner = (
   props: OwnProps & WithRouterProps,
 ) => {
   const id = Urls.extractCollectionId(props.params?.slug);
-  const { data: dashboard, error } = useGetDashboardQuery(
+  const { currentData: dashboard, error } = useGetDashboardQuery(
     id != null ? { id } : skipToken,
   );
 

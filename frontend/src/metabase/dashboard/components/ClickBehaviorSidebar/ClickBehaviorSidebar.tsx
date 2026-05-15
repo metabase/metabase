@@ -77,7 +77,7 @@ export function ClickBehaviorSidebarInner({
 
   const isDashboardLink =
     clickBehavior?.type === "link" && clickBehavior.linkType === "dashboard";
-  const { data: targetDashboard } = useGetDashboardQuery(
+  const { currentData: targetDashboard } = useGetDashboardQuery(
     isDashboardLink && clickBehavior.targetId != null
       ? { id: clickBehavior.targetId }
       : skipToken,

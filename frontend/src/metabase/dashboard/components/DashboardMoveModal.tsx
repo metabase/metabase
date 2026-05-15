@@ -98,7 +98,7 @@ export const DashboardMoveModalConnected = ({
   onClose: () => void;
 }) => {
   const id = Urls.extractCollectionId(params.slug);
-  const { data: dashboard, error } = useGetDashboardQuery(
+  const { currentData: dashboard, error } = useGetDashboardQuery(
     id != null ? { id } : skipToken,
   );
 
