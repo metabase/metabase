@@ -397,8 +397,8 @@
             results (transduce
                      (comp (partition-all *batch-size*)
                            (map (if serial?
-                                  #(upsert-index-batch! connectable index % {:type :index})
-                                  #(upsert-index-pooled! pool connectable index % {:type :index}))))
+                                  #(upsert-index-batch! connectable index % {:type :index :record-tokens? true})
+                                  #(upsert-index-pooled! pool connectable index % {:type :index :record-tokens? true}))))
                      conj
                      documents-reducible)]
         (reduce (fn [update-counts result]
