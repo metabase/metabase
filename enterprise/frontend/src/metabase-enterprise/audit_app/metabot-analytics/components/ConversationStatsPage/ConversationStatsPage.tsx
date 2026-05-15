@@ -153,6 +153,8 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
   const usageLogAudit = useAuditTable(VIEW_USAGE_LOG);
   const groupMembersAudit = useAuditTable(VIEW_GROUP_MEMBERS);
 
+  const hasDataComplexityFeature = hasPremiumFeature("data-complexity-score");
+
   const sharedChartProps: ChartProps = {
     provider: conversationsAudit.provider,
     table: tableForMetric(
@@ -254,12 +256,21 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
 
   return (
     <MetabotAdminLayout fullWidth>
-      <SettingsPageWrapper mt="sm" title={t`Usage stats`}>
+      <SettingsPageWrapper
+        mt="sm"
+        title={hasDataComplexityFeature ? t`Usage stats` : undefined}
+      >
         <DataComplexitySection />
         <Flex align="center" justify="space-between">
-          <Title order={3} display="flex" style={{ alignItems: "center" }}>
-            {t`Usage metrics`}
-          </Title>
+          {hasDataComplexityFeature ? (
+            <Title order={3} display="flex" style={{ alignItems: "center" }}>
+              {t`Usage metrics`}
+            </Title>
+          ) : (
+            <Title order={2} display="flex" style={{ alignItems: "center" }}>
+              {t`Usage stats`}
+            </Title>
+          )}
 
           <ConversationFilters
             date={date}
