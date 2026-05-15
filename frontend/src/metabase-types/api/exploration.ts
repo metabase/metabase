@@ -1,4 +1,5 @@
 import type { CardId } from "./card";
+import type { CollectionId } from "./collection";
 import type { DocumentId } from "./document";
 import type { DimensionId, DimensionMapping, MetricDimension } from "./measure";
 import type { Metric } from "./metric";
@@ -49,6 +50,14 @@ export interface CreateExplorationRequest {
   metrics: ExplorationMetricSelection[];
   dimensions: ExplorationDimensionSelection[];
   timeline_ids?: TimelineId[];
+}
+
+export interface UpdateExplorationRequest {
+  id: ExplorationId;
+  name?: string | null;
+  description?: string | null;
+  archived?: boolean;
+  collection_id?: CollectionId | null;
 }
 
 export interface ExplorationThreadMetric {
@@ -218,4 +227,5 @@ export interface Exploration {
   updated_at: string;
   creator?: ExplorationCreator;
   threads?: ExplorationThread[];
+  can_write: boolean;
 }

@@ -12,6 +12,7 @@ import { DocumentRevisionHistorySidebar } from "metabase/documents/components/Do
 import { Editor } from "metabase/documents/components/Editor";
 import { EmbedQuestionSettingsSidebar } from "metabase/documents/components/EmbedQuestionSettingsSidebar";
 import { TimelineEventsSidebar } from "metabase/documents/components/TimelineEventsSidebar";
+import { DOCUMENT_TITLE_MAX_LENGTH } from "metabase/documents/constants";
 import {
   setChildTargetId,
   setDocumentHost,
@@ -145,6 +146,7 @@ export function ExplorationDocument({
               isDisabled={!canWrite || isSaving || document.isAutoInsights}
               p={0}
               flex={1}
+              maxLength={DOCUMENT_TITLE_MAX_LENGTH}
             />
             {showSaveButton && (
               <Button

@@ -12,3 +12,5 @@ export function isInterestingDimension(dimension: MetricDimension): boolean {
 export const TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD = 0.7;
 
 export const QUERY_INTERESTINGNESS_SCORE_THRESHOLD = 0.7;
+
+export const EXPLORATION_NAME_MAX_LENGTH = 254;

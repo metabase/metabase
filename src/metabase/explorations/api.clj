@@ -137,7 +137,7 @@
 
 (defn- hydrate-exploration [exploration]
   (-> exploration
-      (t2/hydrate :creator
+      (t2/hydrate :creator :can_write
                   [:threads [:metrics :card] :dimensions :timelines :queries :documents])
       (update :threads #(some->> % (mapv attach-thread-groups)))
       (update :threads #(some->> % (mapv attach-query-dimension-labels)))))
