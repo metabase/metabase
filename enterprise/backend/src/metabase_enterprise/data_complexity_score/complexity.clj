@@ -49,6 +49,8 @@
     {:rating       (:rating band)
      :rating-label (:label band)}))
 
+;; TODO: also emit the rating onto Snowplow events so benchmark consumers can correlate the band
+;; against the raw total without re-applying the thresholds.
 (defn decorate-with-ratings
   "Decorate each catalog total with rating fields; sub-components get present-but-nil rating keys."
   [score]

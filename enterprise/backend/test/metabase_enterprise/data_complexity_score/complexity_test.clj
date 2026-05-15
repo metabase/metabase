@@ -124,15 +124,27 @@
 
 (deftest ^:parallel decorate-with-ratings-test
   (testing "catalog totals get rating fields; components get present-but-nil rating keys"
-    (is (=? {:library  {:total 0    :rating "low"    :rating-label "Low complexity"
-                        :components {:entity-count {:measurement 0.0 :score 0
-                                                    :rating nil :rating-label nil}}}
-             :universe {:total 1500 :rating "medium" :rating-label "Medium complexity"}
-             :metabot  {:total nil  :rating nil      :rating-label nil}}
+    (is (=? {:library  {:total        0
+                        :rating       "low"
+                        :rating-label "Low complexity"
+                        :components   {:entity-count {:measurement  0.0
+                                                      :score        0
+                                                      :rating       nil
+                                                      :rating-label nil}}}
+             :universe {:total        1500
+                        :rating       "medium"
+                        :rating-label "Medium complexity"}
+             :metabot  {:total        nil
+                        :rating       nil
+                        :rating-label nil}}
             (complexity/decorate-with-ratings
-             {:library  {:total 0    :components {:entity-count {:measurement 0.0 :score 0}}}
-              :universe {:total 1500 :components {}}
-              :metabot  {:total nil  :components {}}}))))
+             {:library  {:total      0
+                         :components {:entity-count {:measurement 0.0
+                                                     :score       0}}}
+              :universe {:total      1500
+                         :components {}}
+              :metabot  {:total      nil
+                         :components {}}}))))
   (testing "missing catalogs are left alone (no rating fields injected)"
     (is (= {:meta {:formula-version 1}}
            (complexity/decorate-with-ratings {:meta {:formula-version 1}})))))

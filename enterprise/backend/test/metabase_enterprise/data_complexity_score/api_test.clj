@@ -56,8 +56,8 @@
            (mt/user-http-request :rasta :get 403 endpoint :force-recalculation true)))))
 
 (def ^:private sample-score
-  "Raw shape — what `complexity-scores` returns and what persistence stores. The API decorates
-  this with rating fields on the way out."
+  "Raw shape — what `complexity-scores` returns and what persistence stores.
+  The API decorates this with rating fields on the way out."
   {:library  {:total 18
               :components {:entity-count      {:measurement 1.0 :score 10}
                            :name-collisions   {:measurement 0.0 :score 0}
