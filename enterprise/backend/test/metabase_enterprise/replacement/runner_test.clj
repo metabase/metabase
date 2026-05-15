@@ -1,5 +1,6 @@
 (ns metabase-enterprise.replacement.runner-test
   "Tests for bulk metadata loading in the replacement runner."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.replacement.runner-test]}}}}}}
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]

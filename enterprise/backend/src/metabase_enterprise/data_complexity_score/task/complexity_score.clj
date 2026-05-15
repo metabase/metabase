@@ -7,8 +7,9 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
+   [metabase-enterprise.data-complexity-score.models.data-complexity-score :as data-complexity-score]
    [metabase-enterprise.data-complexity-score.settings :as settings]
-   [metabase-enterprise.semantic-search.core :as semantic-search]
+   [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.config.core :as config]
    [metabase.task.core :as task]
@@ -21,21 +22,37 @@
 (def ^:private job-key     (jobs/key "metabase.task.data-complexity-score.job"))
 (def ^:private trigger-key (triggers/key "metabase.task.data-complexity-score.trigger"))
 
-(defn- current-fingerprint
-  "String capturing everything that changes the meaning of an emitted score — mirror of the Snowplow
-  `formula_version` + `parameters` fields. Includes `weights` so re-tuning forces a re-score
-  without bumping `formula-version`; only structural changes to the scoring algorithm need that."
+(defn current-fingerprint
+  "String capturing everything that changes the meaning of an emitted score.
+
+  Mirrors the Snowplow `formula_version` + `parameters` fields. `weights` is included so re-tuning
+  forces a re-score without a `formula-version` bump; only structural scoring-algorithm changes
+  need that.
+
+  The synonym-axis fragment comes from [[synonym-source/fingerprint-fragment]] so the fingerprint
+  reacts to the source toggle and the configured model — and on the search-index path also picks
+  up swaps in the active pgvector model so a re-index that swaps the model invalidates prior
+  scores."
   []
-  (let [embedding-model (semantic-search/active-embedding-model)]
-    (pr-str (into (sorted-map)
-                  (cond-> {:formula-version   complexity/formula-version
-                           :synonym-threshold complexity/synonym-similarity-threshold
-                           :weights           complexity/weights}
-                    embedding-model (assoc :embedding-model embedding-model))))))
+  (pr-str (into (sorted-map)
+                (merge {:formula-version   complexity/formula-version
+                        :synonym-threshold complexity/synonym-similarity-threshold
+                        :weights           complexity/weights}
+                       (synonym-source/fingerprint-fragment)))))
+
+(defn maybe-advance-last-fingerprint!
+  "Advance [[settings/data-complexity-scoring-last-fingerprint]] only if Snowplow accepted the publish.
+  On failure we leave it untouched so the next boot or cron retries.
+  Shared by the cron, API recompute, and CLI appdb paths to keep all persisters in lockstep."
+  [fingerprint result]
+  (if (::complexity/snowplow-published? (meta result))
+    (settings/data-complexity-scoring-last-fingerprint! fingerprint)
+    (log/warn "Data Complexity Score: Snowplow publish failed; leaving fingerprint unchanged so the next boot or cron retries")))
 
 (defn- run-scoring!
-  "One scoring pass. Gated by [[settings/data-complexity-scoring-enabled]] so admins can silence
-  scoring without unscheduling the job.
+  "One scoring pass. Gated by [[settings/scoring-active?]] — the `:data-complexity-score` premium
+  feature token is authoritative, with the deprecated `data-complexity-scoring-enabled` setting as
+  a backward-compatible fallback — so the job can be silenced without unscheduling.
 
   `claim-fingerprint` is the fingerprint carried on the scoring claim that authorized this run.
   Using it (rather than re-sampling [[current-fingerprint]] at commit time) means a config change
@@ -46,16 +63,21 @@
   other outcome leaves it untouched so the next boot or cron retries and telemetry doesn't
   silently stall behind a transient publish failure."
   [claim-fingerprint]
-  (if (settings/data-complexity-scoring-enabled)
+  (if (settings/scoring-active?)
     (try
-      (let [result (complexity/complexity-scores :metabot-scope (metabot-scope/internal-metabot-scope))]
-        (if (::complexity/snowplow-published? (meta result))
-          (settings/data-complexity-scoring-last-fingerprint! claim-fingerprint)
-          (log/warn "Data Complexity Score: Snowplow publish failed; leaving fingerprint unchanged so the next boot or cron retries"))
+      (let [result (complexity/complexity-scores
+                    (assoc (synonym-source/complexity-scores-opts)
+                           :metabot-scope (metabot-scope/internal-metabot-scope)))]
+        (try
+          (data-complexity-score/record-score! claim-fingerprint "appdb" result)
+          (maybe-advance-last-fingerprint! claim-fingerprint result)
+          (catch Throwable t
+            (log/warn t "Data Complexity Score: failed to persist score snapshot; leaving fingerprint unchanged so the next boot or cron retries")))
         result)
       (catch Throwable t
-        (log/warn t "Data Complexity Score run failed")))
-    (log/debug "Data Complexity Score run skipped — data-complexity-scoring-enabled is off")))
+        (log/warn t "Data Complexity Score run failed")
+        nil))
+    (log/debug "Data Complexity Score run skipped — scoring-active? is false")))
 
 ;; Long enough that any realistic scoring run finishes well inside it, short enough that a crashed
 ;; claimant unblocks the next tick's retry without operator intervention.
@@ -114,7 +136,7 @@
                                    :timeout-seconds 10}
     (binding [config/*disable-setting-cache* true]
       (let [current (current-fingerprint)]
-        (when (and (settings/data-complexity-scoring-enabled)
+        (when (and (settings/scoring-active?)
                    (or (not require-fingerprint-change?)
                        (not= current (settings/data-complexity-scoring-last-fingerprint)))
                    (not (scoring-claim-active?

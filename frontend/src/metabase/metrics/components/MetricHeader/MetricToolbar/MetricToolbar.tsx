@@ -9,13 +9,16 @@ import {
   useListNotificationsQuery,
 } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/data-studio/selectors";
-import { getLibraryCollectionType } from "metabase/data-studio/utils";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
-import { PLUGIN_AUDIT, PLUGIN_MODERATION } from "metabase/plugins";
-import { AddToDashSelectDashModal } from "metabase/query_builder/components/AddToDashSelectDashModal";
+import {
+  PLUGIN_AUDIT,
+  PLUGIN_LIBRARY,
+  PLUGIN_MODERATION,
+} from "metabase/plugins";
 import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
 import { CardCopyModal } from "metabase/questions/components/CardCopyModal";
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
@@ -24,7 +27,7 @@ import { openUrl } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Button, Group, Icon, Menu } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
@@ -105,7 +108,7 @@ function MetricToolbarButtons({
 
   const showDataStudioLink =
     showDataStudioLinkProp &&
-    getLibraryCollectionType(card.collection?.type) != null &&
+    PLUGIN_LIBRARY.isLibraryCollectionType(card.collection?.type) &&
     canAccessDataStudio;
 
   return (

@@ -22,6 +22,7 @@ export function GeneralSettingsPage() {
     anchor: "allowed-domains-for-iframes-in-dashboards",
   });
   const hasHostingFeature = useHasTokenFeature("hosting");
+  const hasAuditAppFeature = useHasTokenFeature("audit_app");
   const enableAnonymousTracking = !hasHostingFeature;
 
   return (
@@ -86,11 +87,14 @@ export function GeneralSettingsPage() {
         />
       </SettingsSection>
 
-      <SettingsSection title={t`Usage tracking`}>
-        {enableAnonymousTracking && <AnonymousTrackingInput />}
+      {/* On starter plan, both conditions are `false` */}
+      {(enableAnonymousTracking || hasAuditAppFeature) && (
+        <SettingsSection title={t`Usage tracking`}>
+          {enableAnonymousTracking && <AnonymousTrackingInput />}
 
-        <CollectUserDataInput />
-      </SettingsSection>
+          {hasAuditAppFeature && <CollectUserDataInput />}
+        </SettingsSection>
+      )}
 
       <UpsellDevInstances location="settings-general" />
     </SettingsPageWrapper>

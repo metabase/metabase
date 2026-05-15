@@ -2,6 +2,7 @@ import { type UnknownAction, createAction } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { push } from "react-router-redux";
 
+import { loadLocalization } from "metabase/api/localization";
 import { openNavbar } from "metabase/redux/app";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
@@ -9,11 +10,10 @@ import { createAsyncThunk } from "metabase/redux/utils";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
 import { SessionApi, UtilApi } from "metabase/services";
-import { deleteSession, initiateSLO } from "metabase/utils/auth";
+import * as Urls from "metabase/urls";
 import { isSmallScreen, reload } from "metabase/utils/dom";
-import { loadLocalization } from "metabase/utils/i18n";
+import { isResourceNotFoundError } from "metabase/utils/errors";
 import { passwordComplexityDescription } from "metabase/utils/password";
-import * as Urls from "metabase/utils/urls";
 
 import type { LoginData } from "./types";
 
@@ -176,5 +176,25 @@ export const validatePassword = async (password: string) => {
     await UtilApi.password_check({ password });
   } catch (error) {
     return getIn(error, ["data", "errors", "password"]);
+  }
+};
+
+const initiateSLO = async () => {
+  try {
+    return await SessionApi.slo();
+  } catch (error) {
+    if (!isResourceNotFoundError(error)) {
+      console.error("Problem clearing session", error);
+    }
+  }
+};
+
+export const deleteSession = async () => {
+  try {
+    await SessionApi.delete();
+  } catch (error) {
+    if (!isResourceNotFoundError(error)) {
+      console.error("Problem clearing session", error);
+    }
   }
 };

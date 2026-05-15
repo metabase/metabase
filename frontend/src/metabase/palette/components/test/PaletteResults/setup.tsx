@@ -5,13 +5,13 @@ import _ from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
+  setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import { getAdminPaths } from "metabase/admin/app/reducers";
 import { useCommandPalette } from "metabase/palette/hooks/useCommandPalette";
 import { useCommandPaletteBasicActions } from "metabase/palette/hooks/useCommandPaletteBasicActions";
 import {
@@ -35,7 +35,12 @@ import { PaletteResults } from "../../PaletteResults";
 const TestComponent = withRouter(
   ({ q, ...props }: WithRouterProps & { q?: string; isLoggedIn: boolean }) => {
     useCommandPaletteBasicActions(props);
-    const { searchRequestId, searchResults, searchTerm } = useCommandPalette({
+    const {
+      searchRequestId,
+      searchResults,
+      liveSearchTerm,
+      debouncedSearchTerm,
+    } = useCommandPalette({
       disabled: false,
       locationQuery: props.location.query,
     });
@@ -54,7 +59,8 @@ const TestComponent = withRouter(
         locationQuery={props.location.query}
         searchRequestId={searchRequestId}
         searchResults={searchResults}
-        searchTerm={searchTerm}
+        liveSearchTerm={liveSearchTerm}
+        debouncedSearchTerm={debouncedSearchTerm}
       />
     );
   },
@@ -129,10 +135,20 @@ export const commonSetup = ({
   setupDatabasesEndpoints([DATABASE]);
   setupSearchEndpoints([model_1, model_2, dashboard]);
   setupRecentViewsEndpoints(recents);
+  setupCollectionByIdEndpoint({
+    collections: [createMockCollection({ id: "root", can_write: true })],
+  });
   const adminState = isAdmin
     ? createMockAdminState({
         app: createMockAdminAppState({
-          paths: getAdminPaths(),
+          paths: [
+            {
+              name: "Permissions",
+              path: "/admin/permissions",
+              key: "permissions",
+            },
+            { name: "Settings", path: "/admin/settings", key: "settings" },
+          ],
         }),
       })
     : createMockAdminState();

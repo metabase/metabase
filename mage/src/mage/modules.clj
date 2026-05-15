@@ -103,6 +103,7 @@
      collections
      config
      content-verification
+     custom-viz-plugin
      dashboards
      documents
      eid-translation
@@ -116,6 +117,7 @@
      events
      formatter
      initialization-status
+     interestingness
      internal-stats
      llm
      login-history

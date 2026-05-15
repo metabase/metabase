@@ -279,43 +279,54 @@ export function githubRunLink(
   );
 }
 
-export type AutoPatchSkipReason =
-  | "no-next-patch"
+export type ReleaseKind = "patch" | "minor";
+
+export type AutoReleaseSkipReason =
+  | "no-next-version"
   | "no-green-commit"
   | "already-released";
 
-type AutoPatchSkipArgs = {
+type AutoReleaseSkipArgs = {
+  kind: ReleaseKind;
   majorVersion: number;
-  reason: AutoPatchSkipReason;
+  reason: AutoReleaseSkipReason;
   runId: string;
   owner: string;
   repo: string;
 };
 
-export function buildAutoPatchSkipMessage({
+export function buildAutoReleaseSkipMessage({
+  kind,
   majorVersion,
   reason,
   runId,
   owner,
   repo,
-}: AutoPatchSkipArgs): string {
+}: AutoReleaseSkipArgs): string {
   const runLink = githubRunLink("workflow run", runId, owner, repo);
+  const label = kind === "patch" ? "Auto-patch" : "Auto-minor";
 
-  const messageByReason: Record<AutoPatchSkipReason, string> = {
-    "no-green-commit": `:x: Auto-patch for *v${majorVersion}* skipped: no commit found suitable for the release. ${runLink}`,
-    "no-next-patch": `:x: Auto-patch for *v${majorVersion}* skipped: could not determine next patch version. ${runLink}`,
-    "already-released": `:information_source: Auto-patch for *v${majorVersion}* skipped: latest green commit has already been released — nothing new to patch. ${runLink}`,
+  const noNextVersion = kind === "patch"
+    ? `:x: ${label} for *v${majorVersion}* skipped: could not determine next patch version. ${runLink}`
+    : `:information_source: ${label} for *v${majorVersion}* skipped: no gold release yet — cut it manually. ${runLink}`;
+
+  const alreadyReleasedSuffix = kind === "patch" ? "nothing new to patch" : "nothing new to ship";
+
+  const messageByReason: Record<AutoReleaseSkipReason, string> = {
+    "no-green-commit": `:x: ${label} for *v${majorVersion}* skipped: no commit found suitable for the release. ${runLink}`,
+    "no-next-version": noNextVersion,
+    "already-released": `:information_source: ${label} for *v${majorVersion}* skipped: latest green commit has already been released — ${alreadyReleasedSuffix}. ${runLink}`,
   };
 
   return messageByReason[reason];
 }
 
-export async function sendAutoPatchFailureMessage(
-  args: AutoPatchSkipArgs & { channelName: string },
+export async function sendAutoReleaseFailureMessage(
+  args: AutoReleaseSkipArgs & { channelName: string },
 ) {
   return sendSlackMessage({
     channelName: args.channelName,
-    message: buildAutoPatchSkipMessage(args),
+    message: buildAutoReleaseSkipMessage(args),
   });
 }
 
@@ -498,7 +509,7 @@ export async function sendFlakeStatusReport({
  * 2) make an http POST request to that url with the file
  * 3) make an api call to "complete" the upload and post it somewhere in slack
  */
-async function uploadFileToSlack({
+export async function uploadFileToSlack({
   channelName,
   thread_ts,
   fileName,

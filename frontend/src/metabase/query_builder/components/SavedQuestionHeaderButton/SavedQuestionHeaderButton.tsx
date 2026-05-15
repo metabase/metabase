@@ -31,6 +31,7 @@ export function SavedQuestionHeaderButton({
         maxLength={QUESTION_NAME_MAX_LENGTH}
         onChange={onSave}
         data-testid="saved-question-header-title"
+        lh={undefined}
       />
 
       <Flex

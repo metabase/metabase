@@ -7,6 +7,7 @@ import { t } from "ttag";
 import { Link } from "metabase/common/components/Link";
 import { List } from "metabase/common/components/List";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
@@ -20,7 +21,6 @@ import {
   getShallowFields as getFields,
   getMetadata,
 } from "metabase/selectors/metadata";
-import { modelIconMap } from "metabase/utils/icon";
 
 import S from "../components/Detail.module.css";
 import {

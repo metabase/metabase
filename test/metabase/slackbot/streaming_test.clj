@@ -115,8 +115,9 @@
 
 (deftest feedback-blocks-test
   (testing "feedback-blocks generates correct Slack context_actions block with feedback_buttons"
-    (let [conversation-id "test-conv-123"
-          blocks          (#'slackbot.streaming/feedback-blocks conversation-id)]
+    (let [conversation-id     "test-conv-123"
+          message-external-id "msg-ext-abc"
+          blocks              (#'slackbot.streaming/feedback-blocks conversation-id message-external-id)]
       (is (= 1 (count blocks)))
       (let [{:keys [type block_id elements]} (first blocks)]
         (is (= "context_actions" type))
@@ -126,10 +127,14 @@
           (is (= "feedback_buttons" (:type fb)))
           (is (= "metabot_feedback" (:action_id fb)))
           (testing "positive button"
-            (is (= {:conversation_id conversation-id :positive true}
+            (is (= {:conversation_id     conversation-id
+                    :message_external_id message-external-id
+                    :positive            true}
                    (json/decode (get-in fb [:positive_button :value]) true))))
           (testing "negative button"
-            (is (= {:conversation_id conversation-id :positive false}
+            (is (= {:conversation_id     conversation-id
+                    :message_external_id message-external-id
+                    :positive            false}
                    (json/decode (get-in fb [:negative_button :value]) true)))))))))
 
 (deftest streaming-response-includes-feedback-blocks-test
@@ -174,54 +179,109 @@
                @posted-message))))))
 
 (deftest slackbot-streaming-sets-ai-proxied-on-messages-test
-  (testing "store-message! receives ai-proxy? = true for metabase/ prefixed provider"
+  (testing "start-turn! receives ai-proxy? = true (and writes it to both user and assistant rows)
+            for metabase/ prefixed provider"
     (tu/with-slackbot-setup
       (let [event-body tu/base-dm-event
-            store-opts (atom [])]
+            start-opts (atom [])]
         (tu/with-slackbot-mocks
           {:ai-text "Hello!"}
           (fn [{:keys [stop-stream-calls]}]
             (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
               (with-redefs [premium-features/token-status
                             (constantly nil)
-                            metabot.persistence/store-message!
-                            (fn [_conv-id _profile-id _messages & {:as opts}]
-                              (swap! store-opts conj opts)
-                              nil)]
+                            metabot.persistence/start-turn!
+                            (fn [_conv-id _profile-id _user-message & {:as opts}]
+                              (swap! start-opts conj opts)
+                              {:assistant-msg-id 1 :assistant-external-id "ext"})
+                            metabot.persistence/finalize-assistant-turn!
+                            (fn [& _] nil)]
                 (mt/client :post 200 "metabot/slack/events"
                            (tu/slack-request-options event-body)
                            event-body)
                 (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
                          :done?      true?
                          :timeout-ms 5000})))
-            (testing "user + assistant store-message! calls both received ai-proxy? = true"
-              (is (=? [{:ai-proxy? true}
-                       {:ai-proxy? true}]
-                      @store-opts)))))))))
+            (testing "start-turn! received ai-proxy? = true"
+              (is (=? [{:ai-proxy? true}] @start-opts)))))))))
 
-(deftest slackbot-streaming-sets-ai-proxied-false-for-byok-test
-  (testing "store-message! receives ai-proxy? = false for direct BYOK provider"
+(deftest slackbot-streaming-persists-failed-conversations-test
+  (testing "User row is persisted even if setup throws after it (BOT-1279). With placeholders,
+            start-turn! inserts user + placeholder atomically before any setup runs."
     (tu/with-slackbot-setup
       (let [event-body tu/base-dm-event
-            store-opts (atom [])]
+            stored     (promise)]
+        (tu/with-slackbot-mocks
+          {:ai-text "Hello!"}
+          (fn [_ctx]
+            (with-redefs [metabot.persistence/start-turn!
+                          (fn [_conv-id _profile-id _user-message & {:as opts}]
+                            (deliver stored opts)
+                            {:assistant-msg-id 1 :assistant-external-id "ext"})
+                          ;; Force setup to throw *after* start-turn! has run.
+                          slackbot.persistence/message-history
+                          (fn [& _] (throw (ex-info "boom" {})))]
+              (mt/client :post 200 "metabot/slack/events"
+                         (tu/slack-request-options event-body)
+                         event-body)
+              (let [opts (deref stored 5000 ::timeout)]
+                (testing "start-turn! was called before the failure"
+                  (is (not= ::timeout opts))
+                  (is (some? (:slack-msg-id opts))))))))))))
+
+(deftest slackbot-streaming-never-writes-pii-columns-test
+  (testing "Slack-originated rows leave ip_address/embedding_*/user_agent NULL regardless of analytics-pii-retention-enabled"
+    (mt/with-premium-features #{:audit-app}
+      (tu/with-slackbot-setup
+        (let [event-body tu/base-dm-event]
+          (doseq [flag-on? [true false]]
+            (testing (str "with analytics-pii-retention-enabled=" flag-on?)
+              (let [start-opts (atom [])]
+                (tu/with-slackbot-mocks
+                  {:ai-text "Hello!"}
+                  (fn [{:keys [stop-stream-calls]}]
+                    (mt/with-temporary-setting-values [analytics-pii-retention-enabled flag-on?]
+                      (with-redefs [metabot.persistence/start-turn!
+                                    (fn [_conv-id _profile-id _user-message & {:as opts}]
+                                      (swap! start-opts conj opts)
+                                      {:assistant-msg-id 1 :assistant-external-id "ext"})
+                                    metabot.persistence/finalize-assistant-turn!
+                                    (fn [& _] nil)]
+                        (mt/client :post 200 "metabot/slack/events"
+                                   (tu/slack-request-options event-body)
+                                   event-body)
+                        (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
+                                 :done?      true?
+                                 :timeout-ms 5000})))
+                    (testing "start-turn! never received :hostname or :pii-info from the slackbot path"
+                      (doseq [opts @start-opts]
+                        (is (not (contains? opts :hostname)))
+                        (is (not (contains? opts :pii-info)))))))))))))))
+
+(deftest slackbot-streaming-sets-ai-proxied-false-for-byok-test
+  (testing "start-turn! receives ai-proxy? = false (and writes it to both user and assistant rows)
+            for direct BYOK provider"
+    (tu/with-slackbot-setup
+      (let [event-body tu/base-dm-event
+            start-opts (atom [])]
         (tu/with-slackbot-mocks
           {:ai-text "Hello!"}
           (fn [{:keys [stop-stream-calls]}]
             (mt/with-temporary-setting-values [llm-metabot-provider "anthropic/claude-haiku-4-5"]
-              (with-redefs [metabot.persistence/store-message!
-                            (fn [_conv-id _profile-id _messages & {:as opts}]
-                              (swap! store-opts conj opts)
-                              nil)]
+              (with-redefs [metabot.persistence/start-turn!
+                            (fn [_conv-id _profile-id _user-message & {:as opts}]
+                              (swap! start-opts conj opts)
+                              {:assistant-msg-id 1 :assistant-external-id "ext"})
+                            metabot.persistence/finalize-assistant-turn!
+                            (fn [& _] nil)]
                 (mt/client :post 200 "metabot/slack/events"
                            (tu/slack-request-options event-body)
                            event-body)
                 (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
                          :done?      true?
                          :timeout-ms 5000})))
-            (testing "user + assistant store-message! calls both received ai-proxy? = false"
-              (is (=? [{:ai-proxy? false}
-                       {:ai-proxy? false}]
-                      @store-opts)))))))))
+            (testing "start-turn! received ai-proxy? = false"
+              (is (=? [{:ai-proxy? false}] @start-opts)))))))))
 
 ;;; ------------------------------------------------ Flush throttle tests ------------------------------------------------
 

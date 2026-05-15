@@ -34,14 +34,18 @@
     :model/CloudMigration
     :model/ContentTranslation
     :model/DashboardFavorite
+    :model/DataComplexityScore
     :model/DatabaseRouter
     :model/Dependency
     :model/DependencyStatus
+    :model/McpQueryHandle
+    :model/MetabotConversation
     :model/MetabotGroupLimit
     :model/MetabotInstanceLimit
+    :model/MetabotMessage
     :model/MetabotPermissions
-    :model/PythonLibrary
     :model/PremiumFeaturesCache
+    :model/PythonLibrary
     :model/Query
     :model/QueryCache
     :model/QueryExecution

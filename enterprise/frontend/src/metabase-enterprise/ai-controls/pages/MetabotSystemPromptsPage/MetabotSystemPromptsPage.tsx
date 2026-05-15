@@ -1,13 +1,10 @@
 import { t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Text, Textarea } from "metabase/ui";
-import { useAdminSettingWithDebouncedInput } from "metabase-enterprise/ai-controls/hooks";
+import { Textarea } from "metabase/ui";
+import { useAdminSettingWithBlurInput } from "metabase-enterprise/ai-controls/hooks";
 
 import S from "./MetabotSystemPromptsPage.module.css";
 
@@ -24,24 +21,28 @@ type SystemPromptPageProps = {
 
 function SystemPromptPage(props: SystemPromptPageProps) {
   const { title, description, settingKey } = props;
-  const { handleInputChange, inputValue } = useAdminSettingWithDebouncedInput<
-    string | null
-  >(settingKey);
+  const { handleInputChange, handleBlur, inputValue } =
+    useAdminSettingWithBlurInput(settingKey);
 
   return (
-    <SettingsPageWrapper title={title} mt="sm">
-      <SettingsSection>
-        <Text c="text-secondary" size="md" mb="lg">
-          {description}
-        </Text>
-        <Textarea
-          aria-label={title}
-          className={S.textareaWrapper}
-          onChange={(e) => handleInputChange(e.target.value)}
-          placeholder={getPlaceholder()}
-          value={inputValue || ""}
-        />
-      </SettingsSection>
+    <SettingsPageWrapper
+      title={title}
+      description={description}
+      className={S.wrapper}
+    >
+      <Textarea
+        aria-label={title}
+        autosize={false}
+        classNames={{
+          root: S.textareaRoot,
+          wrapper: S.textareaWrapper,
+          input: S.textareaInput,
+        }}
+        onBlur={handleBlur}
+        onChange={(e) => handleInputChange(e.target.value)}
+        placeholder={getPlaceholder()}
+        value={inputValue || ""}
+      />
     </SettingsPageWrapper>
   );
 }
@@ -49,14 +50,6 @@ function SystemPromptPage(props: SystemPromptPageProps) {
 const getPlaceholder = () => {
   return (
     t`# Here's a section` +
-    "\n" +
-    t`1. Do this` +
-    "\n" +
-    t`2. And this` +
-    "\n" +
-    t`3. And lastly, this` +
-    "\n\n" +
-    t`# Here's another section` +
     "\n" +
     t`1. Do this` +
     "\n" +
@@ -71,7 +64,7 @@ export function MetabotChatPromptPage() {
 
   return (
     <SystemPromptPage
-      title={t`Metabot chat prompt instructions`}
+      title={t`AI chat prompt instructions`}
       description={t`Add instructions here for the sidebar AI chat experience in ${applicationName}. You might want to give instructions about tone, types of entities to prefer, and things like that.`}
       settingKey="metabot-chat-system-prompt"
     />

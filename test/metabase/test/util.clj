@@ -217,6 +217,24 @@
              :name "Mock Measure"
              :table_id (data/id :checkins)}))
 
+   :model/MetabotConversation
+   (fn [_] {:id      (str (random-uuid))
+            :user_id (rasta-id)})
+
+   :model/MetabotMessage
+   ;; `:conversation_id` is required and has no sensible default — callers must provide one.
+   (fn [_] {:role         "assistant"
+            :profile_id   "gpt-5"
+            :total_tokens 0
+            :data         []})
+
+   :model/AiUsageLog
+   (fn [_] {:source            "test"
+            :model             "test/model"
+            :prompt_tokens     0
+            :completion_tokens 0
+            :total_tokens      0})
+
    :model/NativeQuerySnippet
    (fn [_] (default-timestamped
             {:creator_id (user-id :crowberto)
@@ -1003,6 +1021,7 @@
         called-query? (promise)
         pause-query (promise)
         query-thunk (fn []
+                      #_{:clj-kondo/ignore [:deprecated-var]}
                       (data/run-mbql-query checkins
                         {:aggregation [[:count]]}))
         ;; When the query is ran via the datasets endpoint, it will run in a future. That future can be canceled,
@@ -1299,6 +1318,7 @@
          (= (first x) 'values-of))
     (let [[_ table+field] x
           [table field] (str/split (str table+field) #"\.")]
+      #_{:clj-kondo/ignore [:deprecated-var]}
       `(into {} (get-in (data/run-mbql-query ~(symbol table)
                           {:fields [~'$id ~(symbol (str \$ field))]})
                         [:data :rows])))

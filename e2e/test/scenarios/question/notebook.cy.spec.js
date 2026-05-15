@@ -1,7 +1,10 @@
 const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ADMIN_USER_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
   SAMPLE_DATABASE;
@@ -10,6 +13,34 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+  });
+
+  it("keeps the notebook editor mounted when opening the question info sidebar (UXW-224)", () => {
+    H.activateToken("pro-self-hosted");
+    H.visitQuestion(ORDERS_QUESTION_ID);
+    H.openNotebook();
+
+    // The Visualize button only renders while the notebook editor is mounted.
+    cy.location("pathname").should("include", "/notebook");
+    cy.button("Visualize").should("be.visible");
+
+    // Open the question info sidesheet — the notebook should stay mounted behind it.
+    H.questionInfoButton().click();
+    H.sidesheet().should("be.visible");
+    cy.button("Visualize").should("be.visible");
+
+    // Closing the sidesheet should leave us in notebook mode with the editor intact.
+    H.sidesheet().findByLabelText("Close").click();
+    cy.location("pathname").should("include", "/notebook");
+    cy.button("Visualize").should("be.visible");
+
+    // Open Edit settings from the actions menu — same expectation.
+    // ("Edit settings" only appears with granular caching enabled, so this
+    // step requires EE.)
+    H.openQuestionActions("Edit settings");
+    H.sidesheet().should("be.visible");
+    cy.location("pathname").should("include", "/notebook");
+    cy.button("Visualize").should("be.visible");
   });
 
   it("shouldn't offer to save the question when there were no changes (metabase#13470)", () => {
@@ -1100,7 +1131,16 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.get("@questionId").then((PRODUCT_QUESTION_ID) => {
       cy.findByRole("button", { name: /Editor/ }).click();
+      cy.location("pathname").should(
+        "equal",
+        `/question/${PRODUCT_QUESTION_ID}-products/notebook`,
+      );
+
       cy.findByRole("button", { name: /Visualization/ }).click();
+      cy.location("pathname").should(
+        "equal",
+        `/question/${PRODUCT_QUESTION_ID}-products`,
+      );
 
       cy.go("back");
       cy.location("pathname").should(
@@ -1120,8 +1160,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         `/question/${PRODUCT_QUESTION_ID}-products/notebook`,
       );
 
+      cy.log("Turn this question into a model");
       H.openQuestionActions("Turn into a model");
-
       H.modal()
         .findByRole("button", { name: "Turn this into a model" })
         .click();
@@ -1133,8 +1173,13 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       H.openQuestionActions("Edit metadata");
       H.waitForLoaderToBeRemoved();
-      H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/columns`,
+      );
 
+      H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
+      H.datasetEditBar().should("not.exist");
       cy.location("pathname").should(
         "equal",
         `/model/${PRODUCT_QUESTION_ID}-products`,
@@ -1142,6 +1187,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       H.openQuestionActions("Edit metadata");
       H.waitForLoaderToBeRemoved();
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/columns`,
+      );
 
       cy.go("back");
       cy.location("pathname").should(
@@ -1150,66 +1199,81 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       );
 
       cy.go("back");
-
       cy.location("pathname").should(
         "equal",
         `/model/${PRODUCT_QUESTION_ID}-products/columns`,
       );
 
       H.datasetEditBar().findByText("Query").click();
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/query`,
+      );
 
       cy.go("back");
-
       cy.location("pathname").should(
         "equal",
         `/model/${PRODUCT_QUESTION_ID}-products/columns`,
       );
 
       cy.go("forward");
-
       cy.location("pathname").should(
         "equal",
         `/model/${PRODUCT_QUESTION_ID}-products/query`,
       );
 
       H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
+      H.datasetEditBar().should("not.exist");
 
       cy.go("back");
-
       cy.location("pathname").should(
         "equal",
         `/model/${PRODUCT_QUESTION_ID}-products/query`,
       );
 
-      cy.go("back");
-
       // This should work, but doesn't (metabase#55486)
+      // cy.go("back");
       // cy.location("pathname").should(
       //   "equal",
       //   `/model/${PRODUCT_QUESTION_ID}-products/columns`,
       // );
 
-      H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
+      H.datasetEditBar()
+        .findByRole("button", { name: "Cancel" })
+        .should("be.visible")
+        .click();
+      H.datasetEditBar().should("not.exist");
 
-      cy.findAllByTestId("row-id-cell")
+      const PRODUCT_ROW_ID = "1";
+      cy.findByTestId("table-body")
+        .find("[data-column-id='ID']")
         .first()
-        .findByRole("button", { hidden: true })
-        .click({ force: true });
+        .should("be.visible")
+        .and("have.text", PRODUCT_ROW_ID)
+        .click();
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/${PRODUCT_ROW_ID}`,
+      );
 
-      // Cannot navigate back and forth to details modal (metabase#55487)
-      // cy.go("back");
+      cy.log("Navigate back and forth to details modal (metabase#55487)");
+      cy.go("back");
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products`,
+      );
 
-      // cy.location("pathname").should(
-      //   "equal",
-      //   `/model/${PRODUCT_QUESTION_ID}-products`,
-      // );
+      cy.go("forward");
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/${PRODUCT_ROW_ID}`,
+      );
 
-      // cy.go("forward");
-
-      // cy.location("pathname").should(
-      //   "equal",
-      //   `/model/${PRODUCT_QUESTION_ID}-products/1`,
-      // );
+      cy.go("back");
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products`,
+      );
 
       /**
        * foreign key relation orders should work, but it consistently fails in CI
@@ -1220,13 +1284,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       // cy.location("pathname").should("contain", "/question");
       // cy.findByTestId("filter-pill").should("contain.text", "Product ID is 1");
-
-      cy.go("back");
-
-      cy.location("pathname").should(
-        "equal",
-        `/model/${PRODUCT_QUESTION_ID}-products`,
-      );
 
       H.openQuestionActions("Turn back to saved question");
 

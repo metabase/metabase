@@ -1,4 +1,6 @@
 (ns metabase.analyze.query-results-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.analyze.query-results-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.analyze.query-results-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
@@ -85,7 +87,7 @@
     (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id), :type :native, :native {:query "select * from venues"}}}]
       (is (=? (assoc-in (mt/round-all-decimals 2 (app-db-venue-fingerprints))
                         [:category_id :type]
-                        #:type{:Number {:min 2.0, :max 74.0, :avg 29.98, :q1 6.9, :q3 49.24, :sd 23.06}})
+                        #:type{:Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0, :sd 23.06}})
               (->> (name->fingerprints (query->result-metadata (query-for-card card)))
                    (mt/round-all-decimals 2)))))))
 

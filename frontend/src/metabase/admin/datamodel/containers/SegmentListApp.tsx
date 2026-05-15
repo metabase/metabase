@@ -1,44 +1,37 @@
 import cx from "classnames";
+import type { Location } from "history";
 import type { ReactNode } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { SegmentItem } from "metabase/admin/datamodel/components/SegmentItem";
 import { FilteredToUrlTable } from "metabase/admin/datamodel/hoc/FilteredToUrlTable";
+import { useListSegmentsQuery } from "metabase/api";
 import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSetArchive } from "metabase/common/hooks";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { trackSegmentCreateStarted } from "metabase/data-studio/analytics";
-import { Segments } from "metabase/entities/segments";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { connect } from "metabase/redux";
-import type { State } from "metabase/redux/store";
+import { useSelector } from "metabase/redux";
+import { getShallowTables } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Segment } from "metabase-types/api";
 
 interface Props {
-  isAdmin: boolean;
-  isRemoteSyncReadOnly: boolean;
   segments: Segment[];
-  setArchived: (
-    { id }: Pick<Segment, "id">,
-    archived: boolean,
-    opts?: {
-      revision_message?: string;
-    },
-  ) => void;
   tableSelector: ReactNode;
 }
 
-function SegmentListAppInner({
-  isAdmin,
-  isRemoteSyncReadOnly,
-  segments,
-  setArchived,
-  tableSelector,
-}: Props) {
+function SegmentListAppInner({ segments, tableSelector }: Props) {
+  const isAdmin = useSelector(getUserIsAdmin);
+  const isRemoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
+  const tables = useSelector(getShallowTables);
+  const archive = useSetArchive();
   const trackSegmentCreateClick = () => {
     trackSegmentCreateStarted("admin_datamodel_segments");
   };
@@ -77,8 +70,14 @@ function SegmentListAppInner({
             <SegmentItem
               key={segment.id}
               segment={segment}
-              readOnly={segment.table?.is_published && isRemoteSyncReadOnly}
-              onRetire={isAdmin ? () => setArchived(segment, true) : undefined}
+              readOnly={
+                tables[segment.table_id]?.is_published && isRemoteSyncReadOnly
+              }
+              onRetire={
+                isAdmin
+                  ? () => archive({ id: segment.id, model: "segment" }, true)
+                  : undefined
+              }
             />
           ))}
         </tbody>
@@ -93,16 +92,18 @@ function SegmentListAppInner({
   );
 }
 
-export const SegmentListApp = _.compose(
-  Segments.loadList(),
-  FilteredToUrlTable,
-  connect(
-    (state: State) => ({
-      isAdmin: getUserIsAdmin(state),
-      isRemoteSyncReadOnly: PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly(state),
-    }),
-    {
-      setArchived: Segments.actions.setArchived,
-    },
-  ),
-)(SegmentListAppInner);
+const FilteredSegmentList = FilteredToUrlTable(SegmentListAppInner);
+
+type SegmentListAppProps = {
+  location: Location<{ table?: string }>;
+};
+
+export function SegmentListApp({ location }: SegmentListAppProps) {
+  const { data: segments, isLoading, error } = useListSegmentsQuery();
+
+  if (isLoading || error || !segments) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return <FilteredSegmentList location={location} segments={segments} />;
+}

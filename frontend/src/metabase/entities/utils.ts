@@ -7,6 +7,7 @@ import createCachedSelector from "re-reselect";
 import type React from "react";
 import _ from "underscore";
 
+import { DELETE, GET, POST, PUT } from "metabase/api/legacy-client";
 import { PLUGIN_ENTITIES } from "metabase/plugins";
 import { combineReducers, compose, withAction } from "metabase/redux";
 import {
@@ -20,17 +21,12 @@ import {
 } from "metabase/redux/requests";
 import type { Dispatch, EntitiesState, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
-import { DELETE, GET, POST, PUT } from "metabase/utils/api";
 import { delay } from "metabase/utils/promise";
 
 // backend returns model = "card" instead of "question"
 export const entityTypeForModel = (model: string): string => {
   if (model === "card" || model === "dataset" || model === "metric") {
     return "questions";
-  }
-  if (model === "indexed-entity") {
-    // handle non-standard plural 🙃
-    return "indexedEntities";
   }
   return `${model}s`;
 };
@@ -107,8 +103,6 @@ export type EntitySelectors = {
   getFetched: EntitySelector;
   getError: EntitySelector;
   getListMetadata: EntitySelector;
-  getInitialCollectionId: EntitySelector;
-  getExpandedCollectionsById: EntitySelector;
 };
 
 /** Shape returned by createEntity */
@@ -205,12 +199,12 @@ export type Entity = {
   // Selectors
   selectors: EntitySelectors;
 
-  // Per-entity object accessors. Each entity defines these with its own object type.
-  objectSelectors: Record<string, (object: any, ...args: any[]) => any>;
-
   // Reducers
   reducer?: EntitiesReducer;
-  reducers: Record<string, EntitiesReducer | Reducer<Record<string, unknown>>>;
+  reducers: {
+    slice: EntitiesReducer;
+    list: EntityListReducer;
+  };
   requestsReducer: (
     state: RequestsStateTree,
     action: { type: string },
@@ -221,7 +215,7 @@ export type Entity = {
   writableProperties?: string[];
 
   // Wrap entity object with bound selectors/actions. The wrapper preserves the
-  // input's properties and adds the entity's bound objectSelectors/objectActions
+  // input's properties and adds the entity's bound objectActions
   // (e.g. `getName()`, `getIcon()`). Each entity defines its own object methods,
   // so we return `any` to allow consumers to use any wrapper-provided method.
   wrapEntity: (object: any, dispatch?: AnyDispatch | null) => any;
@@ -251,10 +245,29 @@ export type Entity = {
  */
 
 type EntityRtkBridge = Record<string, any>;
-type EntitiesReducer = Reducer<
-  Partial<EntitiesState> | undefined,
-  { type: string; payload: EntitiesState }
->;
+
+/**
+ * A single value held in an entity-list cache slice (`state.entities.<name>_list`):
+ * either a flat array of ids ("default" list, no `entityQuery`) or a per-query
+ * payload of result + result metadata. The `list` field comes straight from
+ * the dispatched action payload, so it's typed `unknown` here.
+ */
+type EntityListEntry = EntityId[] | { list: unknown; metadata?: unknown };
+
+/**
+ * Per-value type for any slice managed by the entities reducer. Concrete slices
+ * only hold one of these kinds — entity slices hold `EntityObject`s, list
+ * slices hold `EntityListEntry`s — but `combineReducers` requires reducers in
+ * the same map to share a state type (reducer state is invariant), so both
+ * reducers below operate on this union.
+ */
+type EntitySliceValue = EntityObject | EntityListEntry;
+
+/** Reducer for a single entity slice (`state.entities.<name>`). */
+type EntitiesReducer = Reducer<Record<string, EntitySliceValue>>;
+
+/** Reducer for an entity-list cache slice (`state.entities.<name>_list`). */
+type EntityListReducer = Reducer<Record<string, EntitySliceValue>>;
 
 type EntityDef = {
   name: string;
@@ -277,7 +290,6 @@ type EntityDef = {
   createSelectors?: (
     defaultSelectors: Partial<EntitySelectors>,
   ) => Partial<EntitySelectors>;
-  objectSelectors?: Partial<Entity["objectSelectors"]>;
   // Reducers in entity defs typically destructure `{ type, payload }` from the action
   // and accept any payload shape, so we type the action loosely here.
 
@@ -802,34 +814,16 @@ export function createEntity(def: EntityDef): Entity {
     ...(def.createSelectors ? def.createSelectors(defaultSelectors) : {}),
   } as EntitySelectors;
 
-  entity.objectSelectors = {
-    getName(object: EntityObject) {
-      return object.name;
-    },
-    getIcon(_object: EntityObject) {
-      return { name: "unknown" };
-    },
-    getColor(_object: EntityObject): string | undefined {
-      return undefined;
-    },
-    getCollection(object: EntityObject) {
-      return object.collection;
-    },
-    ...(def.objectSelectors || {}),
-  };
-
   // REDUCERS
 
-  entity.reducers = {};
-
-  entity.reducers[entity.name] = handleEntities(
+  const sliceReducer = handleEntities(
     /^metabase\/entities\//,
     entity.name,
     def.reducer,
   );
 
-  const listReducer: Reducer<Record<string, unknown>> = (
-    state: Record<string, unknown> = {},
+  const listReducer: EntityListReducer = (
+    state = {},
     action: {
       type: string;
       error?: boolean;
@@ -869,7 +863,7 @@ export function createEntity(def: EntityDef): Entity {
     }
     return state;
   };
-  entity.reducers[`${entity.name}_list`] = listReducer;
+  entity.reducers = { slice: sliceReducer, list: listReducer };
 
   // REQUEST STATE REDUCER
 
@@ -907,17 +901,6 @@ export function createEntity(def: EntityDef): Entity {
       ) {
         Object.assign(this, object);
         this._dispatch = dispatch;
-      }
-    }
-    // object selectors
-    for (const [methodName, method] of Object.entries(entity.objectSelectors)) {
-      if (method) {
-        EntityWrapper.prototype[methodName] = function (
-          this: EntityWrapper,
-          ...args: unknown[]
-        ) {
-          return method(this, ...args);
-        };
       }
     }
     // object actions
@@ -962,26 +945,59 @@ export function createEntity(def: EntityDef): Entity {
   return entity;
 }
 
+type EntitiesReducersMap = Record<string, EntitiesReducer | EntityListReducer>;
+
+/**
+ * State shape produced by `combineReducers(reducersMap)`: each top-level key is
+ * either an entity slice or a `${name}_list` cache slice. See `EntitySliceValue`
+ * for the per-value type.
+ */
+type EntitiesCombinedState = Record<string, Record<string, EntitySliceValue>>;
+
 type CombinedEntities = {
   entities: Record<string, Entity>;
-  reducers: Record<string, Reducer<Record<string, unknown>>>;
-  reducer: Reducer<Record<string, Record<string, unknown>>>;
+  reducers: EntitiesReducersMap;
+  reducer: Reducer<EntitiesCombinedState>;
   requestsReducer: (
     state: RequestsStateTree | undefined,
     action: { type: string },
   ) => RequestsStateTree;
 };
 
+/**
+ * Names of entities whose full `createEntity` definitions have been retired
+ * (their CRUD now lives in `metabase/api/*`), but whose normalized slice in
+ * `state.entities.<name>` still needs to receive updates dispatched via the
+ * `metabase/entities/UPDATE` action — typically because they appear nested in
+ * another entity's normalizr schema (e.g. measures inside a table's
+ * `query_metadata` response).
+ */
+const RETIRED_ENTITY_NAMES = [
+  "collections",
+  "measures",
+  "metrics",
+  "schemas",
+  "segments",
+  "snippets",
+];
+
 export function combineEntities(entities: Entity[]): CombinedEntities {
   const entitiesMap: Record<string, Entity> = {};
-  const reducersMap: Record<string, Reducer<Record<string, unknown>>> = {};
+  const reducersMap: EntitiesReducersMap = {};
 
   for (const entity of entities) {
     if (entity.name in entitiesMap) {
       console.warn(`Entity with name ${entity.name} already exists!`);
     } else {
       entitiesMap[entity.name] = entity;
-      Object.assign(reducersMap, entity.reducers);
+      reducersMap[entity.name] = entity.reducers.slice;
+      reducersMap[`${entity.name}_list`] = entity.reducers.list;
+    }
+  }
+
+  for (const name of RETIRED_ENTITY_NAMES) {
+    if (!(name in reducersMap)) {
+      reducersMap[name] = handleEntities(/^metabase\/entities\//, name);
     }
   }
 

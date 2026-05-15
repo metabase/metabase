@@ -1,44 +1,42 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
 import { withRouter } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
-import _ from "underscore";
 
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { ArchiveModal } from "metabase/common/components/ArchiveModal";
-import { Collections } from "metabase/entities/collections";
-import { connect } from "metabase/redux";
-import * as Urls from "metabase/utils/urls";
+import { useSetArchive } from "metabase/common/hooks";
+import * as Urls from "metabase/urls";
 
-const mapDispatchToProps = {
-  setCollectionArchived: Collections.actions.setArchived,
-  push,
-};
+function ArchiveCollectionModalInner({ collection, onClose }) {
+  const archive = useSetArchive();
+  const handleArchive = () =>
+    archive({ id: collection.id, model: "collection" }, true);
 
-class ArchiveCollectionModalInner extends Component {
-  archive = async () => {
-    const { collection, setCollectionArchived } = this.props;
-    await setCollectionArchived(collection, true);
-  };
-
-  render() {
-    return (
-      <ArchiveModal
-        title={t`Move this collection to trash?`}
-        message={t`The dashboards, collections, and alerts in this collection will also be moved to the trash.`}
-        model="collection"
-        modelId={this.props.collection.id}
-        onClose={this.props.onClose}
-        onArchive={this.archive}
-      />
-    );
-  }
+  return (
+    <ArchiveModal
+      title={t`Move this collection to trash?`}
+      message={t`The dashboards, collections, and alerts in this collection will also be moved to the trash.`}
+      model="collection"
+      modelId={collection.id}
+      onClose={onClose}
+      onArchive={handleArchive}
+    />
+  );
 }
 
-export const ArchiveCollectionModal = _.compose(
-  connect(null, mapDispatchToProps),
-  Collections.load({
-    id: (state, props) => Urls.extractCollectionId(props.params.slug),
-  }),
-  withRouter,
-)(ArchiveCollectionModalInner);
+function ArchiveCollectionModalContainer({ params, onClose }) {
+  const collectionId = Urls.extractCollectionId(params.slug);
+  const { data: collection } = useGetCollectionQuery(
+    collectionId != null ? { id: collectionId } : skipToken,
+  );
+  if (!collection) {
+    return null;
+  }
+  return (
+    <ArchiveCollectionModalInner collection={collection} onClose={onClose} />
+  );
+}
+
+export const ArchiveCollectionModal = withRouter(
+  ArchiveCollectionModalContainer,
+);

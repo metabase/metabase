@@ -19,6 +19,7 @@ custom-geojson: null
 custom-geojson-enabled: null
 custom-homepage: null
 custom-homepage-dashboard: null
+custom-viz-enabled: null
 default-maps-enabled: null
 disable-cors-on-localhost: null
 email-max-recipients-per-second: null
@@ -42,6 +43,7 @@ landing-page-illustration-custom: null
 loading-message: null
 login-page-illustration: null
 login-page-illustration-custom: null
+metabot-advanced-permissions: null
 metabot-chat-system-prompt: null
 metabot-enabled?: null
 metabot-icon: null

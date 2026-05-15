@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.driver.oracle-test
   "Tests for specific behavior of the Oracle driver."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.oracle-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.oracle-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -111,8 +113,9 @@
 (deftest connection-properties-test
   (testing "Connection properties should be returned properly (including transformation of secret types)"
     (with-redefs [premium-features/is-hosted? (constantly false)]
-      (let [expected [{:name "host"}
-                      {:name "port"}
+      (let [expected [{:type :group
+                       :fields [{:name "host"}
+                                {:name "port"}]}
                       {:name "sid"}
                       {:name "service-name"}
                       {:name "user"}
@@ -185,7 +188,7 @@
                           (driver.u/connection-props-server->client :oracle))]
         (is (= (count expected) (count actual))
             (str "actual names: " (pr-str (mapv :name actual))))
-        (is (= expected (mt/select-keys-sequentially expected actual)))))))
+        (is (=? expected actual))))))
 
 (deftest ^:parallel test-ssh-connection
   (testing "Gets an error when it can't connect to oracle via ssh tunnel"

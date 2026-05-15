@@ -1,4 +1,5 @@
 (ns metabase-enterprise.cache.cache-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.cache.cache-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]

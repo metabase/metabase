@@ -1,4 +1,5 @@
 (ns metabase.collections.models.collection-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.collections.models.collection-test]}}}}}}
   (:refer-clojure :exclude [descendants])
   (:require
    [clojure.math.combinatorics :as math.combo]
@@ -39,11 +40,11 @@
 (deftest format-personal-collection-name-length-test
   (testing "test that an unrealistically long collection name with unicode letters is still less than the max length for a slug (metabase#33917)"
     (mt/with-temporary-setting-values [site-locale "ru"]
-      (is (< (count (#'collection/slugify (collection/format-personal-collection-name (apply str (repeat 34 "Б"))
-                                                                                      (apply str (repeat 35 "Б"))
-                                                                                      "MetaBase@metabase.com"
-                                                                                      :site)))
-             (var-get #'collection/collection-slug-max-length))))))
+      (is (<= (count (#'collection/slugify (collection/format-personal-collection-name (apply str (repeat 256 "Б"))
+                                                                                       (apply str (repeat 256 "Б"))
+                                                                                       "MetaBase@metabase.com"
+                                                                                       :site)))
+              (var-get #'collection/collection-slug-max-length))))))
 
 (deftest user->personal-collection-name-test
   (testing "test that we can get the name of a user's personal collection as :site"
@@ -62,6 +63,29 @@
   (let [trash (collection/trash-collection)]
     (is (-> trash :name i18n/localized-string?)
         "Trash name must be a localized string")))
+
+(deftest ^:parallel library-collection-names-localized-test
+  (testing "maybe-localize-system-collection-name overrides names for system library collections"
+    (testing "Library root gets canonical name regardless of DB value"
+      (let [result (collection/maybe-localize-system-collection-name
+                    {:name "Wrong Name" :type collection/library-collection-type
+                     :entity_id @#'collection/library-entity-id})]
+        (is (= "Library" (str (:name result))))))
+    (testing "Data gets canonical name"
+      (let [result (collection/maybe-localize-system-collection-name
+                    {:name "Wrong Name" :type collection/library-data-collection-type
+                     :entity_id @#'collection/library-data-entity-id})]
+        (is (= "Data" (str (:name result))))))
+    (testing "Metrics gets canonical name"
+      (let [result (collection/maybe-localize-system-collection-name
+                    {:name "Wrong Name" :type collection/library-metrics-collection-type
+                     :entity_id @#'collection/library-metrics-entity-id})]
+        (is (= "Metrics" (str (:name result)))))))
+  (testing "User-created subcollections keep their custom names"
+    (let [result (collection/maybe-localize-system-collection-name
+                  {:name "My Custom Folder" :type collection/library-data-collection-type
+                   :entity_id "some-random-entity-id"})]
+      (is (= "My Custom Folder" (:name result))))))
 
 (deftest personal-collection-with-ui-details-test
   (testing "With personal_owner"
@@ -666,7 +690,7 @@
 
       (testing "make sure that `effective-children` isn't returning children or location of children! Those should get discarded."
         (with-current-user-perms-for-collections! [a b c d e f g]
-          (is (= #{:name :id :description}
+          (is (= #{:name :id :description :type}
                  (set (keys (first (collection/effective-children a))))))))
 
       (testing "If we don't have permissions for C, C's children (D and F) should be moved up one level"
@@ -1803,6 +1827,18 @@
             ;; The count should be the same since personal collections don't get permission entries
             (is (= initial-perms-count final-perms-count)
                 "No new permissions should be created for collections inside personal collections")))))))
+
+(deftest has-remote-synced-collection?-test
+  (testing "Returns false when no remote-synced collections exist"
+    (collection/clear-remote-synced-collection!)
+    (is (false? (collection/has-remote-synced-collection?))))
+  (testing "Returns true when at least one remote-synced collection exists"
+    (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
+      (is (true? (collection/has-remote-synced-collection?)))))
+  (testing "Returns false after clearing remote-synced collections"
+    (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
+      (collection/clear-remote-synced-collection!)
+      (is (false? (collection/has-remote-synced-collection?))))))
 
 (deftest non-remote-synced-dependencies-no-dependencies-test
   (testing "when model has no dependencies"
@@ -3289,11 +3325,8 @@
                                                                             non-archived-card]))))))))
 
 (deftest create-library
-  (mt/with-discard-model-updates! [:model/Collection]
+  (mt/with-empty-h2-app-db!
     (testing "Can create a library if none exist"
-      (t2/update! :model/Collection :type collection/library-collection-type {:type nil})
-      (t2/update! :model/Collection :type collection/library-data-collection-type {:type nil})
-      (t2/update! :model/Collection :type collection/library-metrics-collection-type {:type nil})
       (let [library (collection/create-library-collection!)]
         (is (= "Library" (:name library)))
         (is (= ["Data" "Metrics"] (sort (map :name (collection/descendants library)))))
@@ -3340,7 +3373,7 @@
 (deftest serdes-descendants-includes-published-tables-test
   (testing "Collection descendants includes published tables"
     (mt/with-temp [:model/Database   db              {:name "Test DB"}
-                   :model/Collection coll            {:name "Test Collection"}
+                   :model/Collection coll            {:name "Test Collection", :type "library-data"}
                    :model/Table      pub-table       {:name          "Published Table"
                                                       :db_id         (:id db)
                                                       :is_published  true
@@ -3363,7 +3396,7 @@
 (deftest serdes-descendants-skip-archived-tables-test
   (testing "Collection descendants with skip-archived handles published tables"
     (mt/with-temp [:model/Database   db             {:name "Test DB"}
-                   :model/Collection coll           {:name "Test Collection"}
+                   :model/Collection coll           {:name "Test Collection", :type "library-data"}
                    :model/Table      active-table   {:name          "Active Published Table"
                                                      :db_id         (:id db)
                                                      :is_published  true

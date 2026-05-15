@@ -5,10 +5,9 @@ import _ from "underscore";
 
 import { ArchiveModal } from "metabase/common/components/ArchiveModal";
 import { setArchivedDashboard } from "metabase/dashboard/actions";
-import { Collections } from "metabase/entities/collections";
 import { Dashboards } from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/redux";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
 
 type OwnProps = {
@@ -61,11 +60,6 @@ export const ArchiveDashboardModalConnected = _.compose(
   Dashboards.load({
     id: (_state: unknown, props: WithRouterProps) =>
       Urls.extractCollectionId(props.params?.slug),
-  }),
-  Collections.load({
-    id: (_state: unknown, props: { dashboard?: Dashboard }) =>
-      props.dashboard?.collection_id,
-    loadingAndErrorWrapper: false,
   }),
   withRouter,
 )(ArchiveDashboardModal);

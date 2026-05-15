@@ -7,7 +7,6 @@ import { getClauseDefinition, getMBQLName, isDefinedClause } from "../clause";
 import { CompileError, isExpressionError } from "../errors";
 import { isBigIntLiteral, isStringLiteral } from "../literal";
 import type { Resolver } from "../resolver";
-import type { ExpressionType } from "../types";
 import { assert, check } from "../utils";
 
 import type { Node, NodeType } from "./node";
@@ -43,7 +42,7 @@ type Options = {
 };
 
 type Context = {
-  type: ExpressionType;
+  type: Lib.ExpressionType;
   resolver: Resolver;
 };
 
@@ -56,14 +55,18 @@ export function compile(node: Node, options: Options) {
 
 function getTypeForExpressionMode(
   expressionMode: Lib.ExpressionMode,
-): ExpressionType {
+): Lib.ExpressionType {
   if (expressionMode === "filter") {
     return "boolean";
   }
   return expressionMode;
 }
 
-function fallbackResolver(_type: ExpressionType, name: string, _node?: Node) {
+function fallbackResolver(
+  _type: Lib.ExpressionType,
+  name: string,
+  _node?: Node,
+) {
   return {
     operator: "dimension" as Lib.ExpressionOperator,
     options: {},

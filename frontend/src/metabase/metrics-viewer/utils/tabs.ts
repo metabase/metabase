@@ -3,10 +3,10 @@ import { t } from "ttag";
 import type { DimensionDescriptor } from "metabase/metrics/common/utils/dimension-descriptors";
 import { getDimensionDescriptors } from "metabase/metrics/common/utils/dimension-descriptors";
 import { GEO_SUBTYPE_PRIORITY } from "metabase/metrics/common/utils/dimension-types";
-import type { IconName } from "metabase/ui";
 import { getObjectEntries } from "metabase/utils/objects";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
+import type { IconName } from "metabase-types/api";
 
 import { MAX_AUTO_TABS } from "../constants";
 import type {
@@ -39,7 +39,10 @@ export function getDimensionIcon(dimension: DimensionMetadata): IconName {
   if (LibMetric.isDateOrDateTime(dimension) || LibMetric.isTime(dimension)) {
     return "calendar";
   }
-  if (LibMetric.isCategory(dimension)) {
+  if (
+    LibMetric.isCategory(dimension) ||
+    LibMetric.isStringOrStringLike(dimension)
+  ) {
     return "string";
   }
   if (LibMetric.isNumeric(dimension) || LibMetric.isCoordinate(dimension)) {
@@ -416,7 +419,12 @@ function collectUniqueExactDimensions(
   type: MetricsViewerTabType,
 ): Map<
   string,
-  { displayName: string; slotIndices: number[]; canListValues: boolean }
+  {
+    displayName: string;
+    slotIndices: number[];
+    canListValues: boolean;
+    isPreferred: boolean | undefined;
+  }
 > {
   const unique = new Map<
     string,
@@ -424,6 +432,7 @@ function collectUniqueExactDimensions(
       displayName: string;
       slotIndices: number[];
       canListValues: boolean;
+      isPreferred: boolean | undefined;
     }
   >();
 
@@ -449,6 +458,7 @@ function collectUniqueExactDimensions(
           displayName: info.displayName,
           slotIndices: [slotIndex],
           canListValues: info.canListValues ?? false,
+          isPreferred: info.isPreferred,
         });
       }
     }
@@ -514,14 +524,16 @@ export function computeDefaultTabs(
       config.type,
     );
 
-    const sortedDimensions = [...uniqueDimensions.entries()].sort(
-      ([, infoA], [, infoB]) => {
-        if (infoA.canListValues === infoB.canListValues) {
-          return 0;
-        }
-        return infoA.canListValues ? -1 : 1;
-      },
+    const filteredDimensions = [...uniqueDimensions.entries()].filter(
+      ([, info]) => info.isPreferred !== false, // undefined is okay - means there is no preferred predicate
     );
+
+    const sortedDimensions = filteredDimensions.sort(([, infoA], [, infoB]) => {
+      if (infoA.canListValues === infoB.canListValues) {
+        return 0;
+      }
+      return infoA.canListValues ? -1 : 1;
+    });
 
     for (const [
       dimensionId,

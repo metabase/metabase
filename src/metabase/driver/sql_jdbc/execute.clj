@@ -63,7 +63,7 @@
     ;; a string like 'US/Pacific' or something like that.
     [:session-timezone {:optional true} [:maybe [:ref driver-api/schema.expression.temporal.timezone-id]]]
     ;; whether this Connection should NOT be read-only, e.g. for DDL stuff or inserting data or whatever.
-    [:write? {:optional true} [:maybe :boolean]]
+    [:write? {:optional true, :default false} [:maybe :boolean]]
     [:download? {:optional true} [:maybe :boolean]]
     ;; true if called from table-rows-sample-query
     [:sample? {:optional true} [:maybe :boolean]]
@@ -246,7 +246,7 @@
 (defenterprise set-role-if-supported!
   "OSS no-op implementation of `set-role-if-supported!`."
   metabase-enterprise.impersonation.driver
-  [_ _ _])
+  [_driver _conn _database])
 
 ;; TODO - since we're not running the queries in a transaction, does this make any difference at all? (metabase#40012)
 (defn set-best-transaction-level!
@@ -351,7 +351,15 @@
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
     (if-let [conn (:connection db-or-id-or-spec)]
       (f conn)
-      (let [get-conn (^:once fn* [] (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options)))]
+      (let [get-conn (^:once fn* []
+                       (let [conn-data-source (do-with-resolved-connection-data-source driver db-or-id-or-spec options)]
+                         (try
+                           (.getConnection conn-data-source)
+                           (catch Throwable e
+                             (throw (ex-info (tru "Unable to connect to the database: {0}" (ex-message e))
+                                             {:type   driver-api/qp.error-type.unable-to-acquire-connection
+                                              :driver driver}
+                                             e))))))]
         (if (:keep-open? options)
           (f (get-conn))
           (with-open [conn ^Connection (get-conn)]
@@ -567,13 +575,16 @@
 
 (defn- prepared-statement*
   ^PreparedStatement [driver conn sql params canceled-chan]
-  ;; sometimes preparing the statement fails, usually if the SQL syntax is invalid.
+  ;; sometimes preparing the statement fails, usually if the SQL syntax is invalid. Match the
+  ;; classification used in [[execute-reducible-query]] below: such errors should surface to the
+  ;; user as :invalid-query (HTTP 4xx with the underlying database message), not :driver
+  ;; (HTTP 5xx "We're experiencing server issues"). See #71637.
   (doto (try
           (prepared-statement driver conn sql params)
           (catch Throwable e
             (throw (ex-info (tru "Error preparing statement: {0}" (ex-message e))
                             {:driver driver
-                             :type   driver-api/qp.error-type.driver
+                             :type   driver-api/qp.error-type.invalid-query
                              :sql    (str/split-lines (driver/prettify-native-form driver sql))
                              :params params}
                             e))))

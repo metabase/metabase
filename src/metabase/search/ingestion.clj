@@ -112,15 +112,21 @@
   "Execute all function attributes for a given spec and return computed values.
   If a function returns a map, its entries are merged directly into the result —
   this allows a single function to populate multiple document keys (e.g. :temporal-info
-  returns both :has_temporal_dim and :non_temporal_dim_ids in one call)."
+  returns both :has_temporal_dim and :non_temporal_dim_ids in one call).
+
+  When a function attr declares `:provides`, the attr-key itself is not a column in
+  the index — it's a logical grouping whose `:provides` keys are the real columns.
+  In that case, on non-map results (e.g. when the function threw and `false` was
+  returned), skip writing instead of poisoning the document with an unknown column."
   [spec record]
   (reduce-kv
    (fn [acc attr-key attr-def]
      (if (search.spec/function-attr? attr-def)
        (let [result (execute-function-attr attr-key attr-def record)]
-         (if (map? result)
-           (merge acc result)
-           (assoc acc (keyword (u/->snake_case_en (name attr-key))) result)))
+         (cond
+           (map? result)                          (merge acc result)
+           (seq (search.spec/function-attr-provides attr-def)) acc
+           :else                                  (assoc acc (keyword (u/->snake_case_en (name attr-key))) result)))
        acc))
    {}
    (:attrs spec)))
@@ -186,13 +192,13 @@
       (sql.helpers/where where-clause)))
 
 (defn- spec-index-reducible [search-model & [where-clause]]
+  ;; Joins in the spec (e.g. card → revision on most_recent = true) can produce duplicate rows when the
+  ;; joined side has its own integrity violations. Downstream upserts hit a unique constraint on
+  ;; (model, model_id), so dedup here at the streaming boundary — bounded by per-model row count.
   (->> (spec-index-query-where search-model where-clause)
        mdb/streaming-reducible-query
-       (eduction (cond-> (map #(assoc % :model search-model))
-                   ;; It's possible to get redundant entries from the indexed-entities table.
-                   ;; We deduplicate only that model to avoid an unbounded set over all documents.
-                   (= "indexed-entity" search-model)
-                   (comp (m/distinct-by (juxt :id :model)))))))
+       (eduction (comp (map #(assoc % :model search-model))
+                       (m/distinct-by (juxt :id :model))))))
 
 (defn- search-items-reducible []
   (reduce u/rconcat [] (map spec-index-reducible search.spec/search-models)))
@@ -215,7 +221,11 @@
                ([result m]
                 (if-let [doc (try
                                (->document m)
-                               (catch Throwable t
+                               (catch InterruptedException ie
+                                 (.interrupt (Thread/currentThread))
+                                 (throw ie))
+                               (catch Exception t
+                                 (analytics/inc! :metabase-search/index-documents-skipped {:model (:model m)})
                                  (let [n (vswap! failures inc)]
                                    (cond
                                      (<= n max-document-error-logs)

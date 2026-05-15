@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [humane-are.core :as humane-are]
    [mb.hawk.core :as hawk]
+   [metabase.analytics.core :as analytics.core]
    [metabase.config.core :as config]
    [metabase.core.bootstrap]
    [metabase.test-runner.assert-exprs]
@@ -122,8 +123,11 @@
   ([options]
    (hawk/find-tests-with-options (parse-options options))))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn- initialize-all-fixtures []
   (let [steps (initialize/all-components)]
+    (analytics.core/setup!)
+    (log/info "Initialized prometheus collector")
     (u/with-timer-ms [duration-ms]
       (doseq [init-step steps]
         (fixtures/initialize init-step))

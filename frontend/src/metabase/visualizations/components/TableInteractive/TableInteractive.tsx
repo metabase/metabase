@@ -27,6 +27,7 @@ import {
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DataGrid, type DataGridStylesProps } from "metabase/data-grid";
 import {
+  FALLBACK_ID_FOR_EMPTY_COLUMN_NAME,
   FOOTER_HEIGHT,
   HEADER_HEIGHT,
   ROW_HEIGHT,
@@ -47,7 +48,7 @@ import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Flex, type MantineTheme } from "metabase/ui";
 import { getScrollBarSize } from "metabase/utils/dom";
-import { formatValue } from "metabase/utils/formatting";
+import { formatValue } from "metabase/visualizations/lib/formatting";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,
@@ -78,6 +79,7 @@ import {
 import { MiniBarCell } from "./cells/MiniBarCell";
 import { useObjectDetail } from "./hooks/use-object-detail";
 import { useResetWidthsOnColumnsChange } from "./hooks/use-reset-widths-on-columns-change";
+import { getInfoPopoversDisabled } from "./utils/get-info-popovers-disabled";
 import { tableThemeToDataGridTheme } from "./utils/table-theme-to-data-grid-theme";
 
 const shouldWrap = (
@@ -507,6 +509,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         sortDirection = getColumnSortDirection(columnIndex);
       }
 
+      if (id === "") {
+        id = `${FALLBACK_ID_FOR_EMPTY_COLUMN_NAME}:${columnIndex}`;
+      }
+
       const translatedColumnName = tc(columnName);
 
       const options: ColumnOptions<RowValues, RowValue> = {
@@ -739,11 +745,12 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     enableSelection: true,
   });
   const { getCenterColumns, scrollTo, columnsReordering } = tableProps;
-  const infoPopoversDisabled =
-    clicked !== null ||
-    !hasMetadataPopovers ||
-    isDashboard ||
-    columnsReordering.isDragging;
+  const infoPopoversDisabled = getInfoPopoversDisabled({
+    clicked,
+    hasMetadataPopovers,
+    isDashboard,
+    isReorderingColumns: columnsReordering.isDragging,
+  });
   const tableInteractiveContextValue = useMemo(
     () => ({ infoPopoversDisabled }),
     [infoPopoversDisabled],

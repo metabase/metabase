@@ -44,7 +44,7 @@
     (.toString output-stream "UTF-8")))
 
 (defn user-repl
-  "REPL for interacting with MetaBot."
+  "REPL for interacting with Metabot."
   ([history context conversation-id] (user-repl history context conversation-id {}))
   ([history context conversation-id state]
    (when-let [{history' :history, state' :state} (try
@@ -63,7 +63,8 @@
                                                                            :context         context
                                                                            :history         history
                                                                            :conversation_id conversation-id
-                                                                           :state           state})
+                                                                           :state           state}
+                                                                          nil)
                                                                          consume-streaming-response
                                                                          str/split-lines
                                                                          (metabot.u/aisdk->messages "assistant"))]
@@ -76,13 +77,13 @@
      (recur history' context conversation-id state'))))
 
 (defn user-repl-cli
-  "CLI entrypoint for using the MetaBot REPL.
+  "CLI entrypoint for using the Metabot REPL.
 
     clj -X:metabot/repl"
   [_options]
   (mdb/setup-db! :create-sample-content? false)
   #_{:clj-kondo/ignore [:discouraged-var]}
-  (println "Starting MetaBot REPL... 🤖")
+  (println "Starting Metabot REPL... 🤖")
   (user-repl [] {} (str (random-uuid)))
   (System/exit 0))
 

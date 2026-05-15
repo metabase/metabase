@@ -25,14 +25,14 @@ import {
   FixedSizeIcon,
   Flex,
   Group,
-  type IconName,
   Loader,
   Stack,
   Text,
   Tooltip,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { isMac } from "metabase/utils/browser";
-import * as Urls from "metabase/utils/urls";
+import type { IconName } from "metabase-types/api";
 
 import S from "./DataStudioLayout.module.css";
 import { getCurrentTab } from "./utils";

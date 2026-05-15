@@ -12,7 +12,6 @@ import {
   isSpinnerVisible,
 } from "metabase/status/components/utils/status";
 import useStatusVisibility from "metabase/status/hooks/use-status-visibility";
-import type { IconName } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import {
   useGetSourceReplacementRunQuery,
@@ -20,6 +19,7 @@ import {
 } from "metabase-enterprise/api/replacement";
 import type {
   Card,
+  IconName,
   LongTaskStatus,
   SourceReplacementRun,
   SourceReplacementRunId,

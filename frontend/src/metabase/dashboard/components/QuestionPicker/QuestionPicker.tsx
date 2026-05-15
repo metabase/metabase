@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
+import { useListCollectionsQuery } from "metabase/api";
 import { isPublicCollection } from "metabase/collections/utils";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { Input } from "metabase/common/components/Input";
@@ -12,16 +12,20 @@ import { getCollectionBreadCrumbs } from "metabase/common/utils/collections";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { Collections, ROOT_COLLECTION } from "metabase/entities/collections";
+import {
+  ROOT_COLLECTION,
+  getExpandedCollectionsById,
+} from "metabase/entities/collections";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { connect, useDispatch, useSelector } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
+  getUserPersonalCollectionId,
 } from "metabase/selectors/user";
 import { Button, Flex, Icon } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import { getIcon } from "metabase/utils/icon";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { QuestionList } from "./QuestionList";
@@ -33,15 +37,22 @@ import {
   useCollectionsWithTenants,
 } from "./hooks/use-collections-with-tenants";
 
-interface QuestionPickerInnerProps {
+interface QuestionPickerProps {
   onSelect: BaseSelectListItemProps["onSelect"];
-  collectionsById: Record<CollectionId, Collection>;
 }
 
-function QuestionPickerInner({
-  onSelect,
-  collectionsById: baseCollectionsById,
-}: QuestionPickerInnerProps) {
+export function QuestionPicker({ onSelect }: QuestionPickerProps) {
+  const { data: allCollectionsList = [] } = useListCollectionsQuery();
+  const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
+  const baseCollectionsById = useMemo(
+    () =>
+      getExpandedCollectionsById(
+        allCollectionsList,
+        userPersonalCollectionId,
+      ) as Record<CollectionId, Collection>,
+    [allCollectionsList, userPersonalCollectionId],
+  );
+  const getIcon = useGetIcon();
   const dispatch = useDispatch();
   const dashboard = useSelector(getDashboard);
   const dashboardCollection = dashboard?.collection ?? ROOT_COLLECTION;
@@ -168,20 +179,3 @@ function QuestionPickerInner({
     </div>
   );
 }
-
-export const QuestionPicker = _.compose(
-  Collections.load({
-    id: () => "root",
-    entityType: "collections",
-    loadingAndErrorWrapper: false,
-  }),
-  Collections.loadList({
-    entityType: "collections",
-    loadingAndErrorWrapper: false,
-  }),
-  connect((state, props: { entity: any /* collection entity instance */ }) => ({
-    collectionsById: (
-      props.entity || Collections
-    ).selectors.getExpandedCollectionsById(state),
-  })),
-)(QuestionPickerInner);

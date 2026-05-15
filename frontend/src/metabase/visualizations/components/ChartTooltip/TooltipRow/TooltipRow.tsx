@@ -1,17 +1,10 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import { formatPercent } from "metabase/static-viz/lib/numbers";
 import type { TooltipRowModel } from "metabase/visualizations/types";
 
-import {
-  Cell,
-  ColorIndicator,
-  ColorIndicatorCell,
-  PercentCell,
-  TooltipRowRoot,
-  TotalRowRoot,
-  ValueCell,
-} from "./TooltipRow.styled";
+import S from "./TooltipRow.module.css";
 
 export interface TooltipRowProps extends TooltipRowModel {
   isHeader?: boolean;
@@ -26,20 +19,29 @@ export const TooltipRow = ({
   isHeader,
   formatter = (value: unknown) => String(value),
 }: TooltipRowProps) => (
-  <TooltipRowRoot isHeader={isHeader}>
+  <tr className={cx(S.tooltipRowRoot, { [S.header]: isHeader })}>
     {color && (
-      <ColorIndicatorCell>
-        <ColorIndicator size={isHeader ? 12 : 8} color={color} />
-      </ColorIndicatorCell>
+      <td className={cx(S.cell, S.colorIndicatorCell)}>
+        <span
+          className={cx(S.colorIndicator, {
+            [S.colorIndicatorLarge]: isHeader,
+          })}
+          style={{ backgroundColor: color }}
+        />
+      </td>
     )}
-    <Cell data-testid="row-name">{name}</Cell>
-    <ValueCell data-testid="row-value">{formatter(value)}</ValueCell>
+    <td className={S.cell} data-testid="row-name">
+      {name}
+    </td>
+    <td className={cx(S.cell, S.valueCell)} data-testid="row-value">
+      {formatter(value)}
+    </td>
     {percent != null ? (
-      <PercentCell data-testid="row-percent">
+      <td className={cx(S.cell, S.percentCell)} data-testid="row-percent">
         {formatPercent(percent)}
-      </PercentCell>
+      </td>
     ) : null}
-  </TooltipRowRoot>
+  </tr>
 );
 
 interface TotalTooltipRow {
@@ -53,14 +55,18 @@ export const TooltipTotalRow = ({
   percent,
   hasIcon,
 }: TotalTooltipRow) => (
-  <TotalRowRoot>
-    {hasIcon && <ColorIndicatorCell>=</ColorIndicatorCell>}
-    <Cell data-testid="row-name">{t`Total`}</Cell>
-    <ValueCell data-testid="row-value">{value}</ValueCell>
+  <tr className={S.totalRowRoot}>
+    {hasIcon && <td className={cx(S.cell, S.colorIndicatorCell)}>=</td>}
+    <td className={S.cell} data-testid="row-name">
+      {t`Total`}
+    </td>
+    <td className={cx(S.cell, S.valueCell)} data-testid="row-value">
+      {value}
+    </td>
     {percent != null && (
-      <PercentCell data-testid="row-percent">
+      <td className={cx(S.cell, S.percentCell)} data-testid="row-percent">
         {formatPercent(percent)}
-      </PercentCell>
+      </td>
     )}
-  </TotalRowRoot>
+  </tr>
 );

@@ -1,55 +1,86 @@
 import { push } from "react-router-redux";
-import _ from "underscore";
 
-import { Collections } from "metabase/entities/collections";
-import { TimelineEvents } from "metabase/entities/timeline-events";
-import { Timelines } from "metabase/entities/timelines";
-import { connect } from "metabase/redux";
-import type { State } from "metabase/redux/store";
-import MoveEventModal from "metabase/timelines/common/components/MoveEventModal";
-import * as Urls from "metabase/utils/urls";
+import {
+  skipToken,
+  useGetCollectionQuery,
+  useGetTimelineEventQuery,
+  useListTimelinesQuery,
+} from "metabase/api";
+import { useDispatch } from "metabase/redux";
+import MoveEventModal, {
+  type MoveEventModalProps,
+} from "metabase/timelines/common/components/MoveEventModal";
+import { useSetTimeline } from "metabase/timelines/common/hooks";
+import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import type { ModalParams } from "../../types";
 
-interface MoveEventModalProps {
+interface OwnProps {
   params: ModalParams;
+  onClose?: () => void;
 }
 
-const timelinesProps = {
-  query: { include: "events" },
-  LoadingAndErrorWrapper,
-};
+type ContainerProps = Omit<
+  MoveEventModalProps,
+  "event" | "timelines" | "collection" | "onSubmit"
+> &
+  OwnProps;
 
-const timelineEventProps = {
-  id: (state: State, props: MoveEventModalProps) =>
-    Urls.extractEntityId(props.params.timelineEventId),
-  entityAlias: "event",
-  LoadingAndErrorWrapper,
-};
+function MoveEventModalContainer({ params, ...props }: ContainerProps) {
+  const setTimeline = useSetTimeline();
+  const dispatch = useDispatch();
+  const eventId = Urls.extractEntityId(params.timelineEventId);
+  const collectionId = Urls.extractCollectionId(params.slug);
+  const {
+    data: event,
+    isLoading: isEventLoading,
+    error: eventError,
+  } = useGetTimelineEventQuery(eventId ?? skipToken);
+  const {
+    data: timelines = [],
+    isLoading: isTimelinesLoading,
+    error: timelinesError,
+  } = useListTimelinesQuery({ include: "events" });
+  const {
+    data: collection,
+    isLoading: isCollectionLoading,
+    error: collectionError,
+  } = useGetCollectionQuery(
+    collectionId != null ? { id: collectionId } : skipToken,
+  );
 
-const collectionProps = {
-  id: (state: State, props: MoveEventModalProps) =>
-    Urls.extractCollectionId(props.params.slug),
-  LoadingAndErrorWrapper,
-};
-
-const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (
+  const handleSubmit = async (
     event: TimelineEvent,
-    newTimeline: Timeline,
-    oldTimeline: Timeline,
+    newTimeline?: Timeline,
+    oldTimeline?: Timeline,
   ) => {
-    await dispatch(TimelineEvents.actions.setTimeline(event, newTimeline));
-    dispatch(push(Urls.timelineInCollection(oldTimeline)));
-  },
-});
+    if (newTimeline) {
+      await setTimeline(event, newTimeline);
+    }
+    if (oldTimeline) {
+      dispatch(push(Urls.timelineInCollection(oldTimeline)));
+    }
+  };
+
+  const isLoading = isEventLoading || isTimelinesLoading || isCollectionLoading;
+  const error = eventError ?? timelinesError ?? collectionError;
+
+  if (isLoading || error || !event) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return (
+    <MoveEventModal
+      {...props}
+      event={event}
+      timelines={timelines}
+      collection={collection}
+      onSubmit={handleSubmit}
+    />
+  );
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Timelines.loadList(timelinesProps),
-  TimelineEvents.load(timelineEventProps),
-  Collections.load(collectionProps),
-  connect(null, mapDispatchToProps),
-)(MoveEventModal);
+export default MoveEventModalContainer;

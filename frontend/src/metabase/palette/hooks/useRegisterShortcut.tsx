@@ -11,6 +11,29 @@ export type RegisterShortcutProps = {
   perform: (action: ActionImpl, event?: KeyboardEvent) => void;
 } & Partial<ShortcutAction>;
 
+/**
+ * Combines `keywords` from the shortcut definition and the registration site,
+ * and — when the registration overrides `name` — also includes the original
+ * shortcut def name.
+ */
+export const composeKeywords = (
+  shortcutDef: { name?: string; keywords?: string } | undefined,
+  rest: { name?: string; keywords?: string },
+): string => {
+  const isNameOverridden =
+    shortcutDef?.name !== undefined &&
+    rest.name !== undefined &&
+    rest.name !== shortcutDef.name;
+
+  return [
+    shortcutDef?.keywords,
+    rest.keywords,
+    isNameOverridden ? shortcutDef?.name : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+};
+
 export const useRegisterShortcut = (
   shortcutsToRegister: RegisterShortcutProps[],
   deps: DependencyList = [],
@@ -31,6 +54,8 @@ export const useRegisterShortcut = (
           throw Error(`Unrecognized shortcut id ${id}`);
         }
 
+        const keywords = composeKeywords(shortcutDef, rest);
+
         return {
           ...shortcutDef,
           id,
@@ -41,6 +66,7 @@ export const useRegisterShortcut = (
             }
           },
           ...rest,
+          ...(keywords ? { keywords } : {}),
         };
       })
     : [];

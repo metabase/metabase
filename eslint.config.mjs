@@ -75,10 +75,13 @@ const configs = [
     ignores: [
       "frontend/src/cljs/**",
       "frontend/src/cljs_release/**",
+      "**/*.d.ts",
       "e2e/support/cypress_sample_database.js",
       "e2e/support/cypress_sample_instance_data.js",
+      "e2e/support/assets/**",
       "e2e/embedding-sdk-host-apps/**",
-      "frontend/src/metabase-types/openapi/types.gen.ts",
+      "e2e/tmp/**",
+      "frontend/test/__support__/custom-viz-fixtures/**/*.js",
       "node_modules/**",
       "**/dist/**",
       "**/target/**",
@@ -581,7 +584,16 @@ const configs = [
     },
   },
   {
-    files: ["frontend/src/metabase/redux/hooks.ts"],
+    // MCP UI app is a standalone SDK consumer — allow embedding-sdk-package imports
+    // and raw hex color literals (used for MCP host theme fallback values).
+    files: ["frontend/src/metabase/embedding/mcp/**/*"],
+    rules: {
+      "no-restricted-imports": "off",
+      "metabase/no-color-literals": "off",
+    },
+  },
+  {
+    files: ["frontend/src/metabase/utils/redux/hooks.ts"],
     rules: {
       "no-restricted-imports": "off",
     },
@@ -696,7 +708,7 @@ const configs = [
                 "!metabase/utils/time",
                 "!metabase/utils/time-dayjs",
                 "!metabase/utils/types",
-                "!metabase/utils/urls",
+                "!metabase/urls",
                 "!metabase/utils/clone",
               ],
             },
@@ -969,6 +981,23 @@ const configs = [
     },
   },
   {
+    files: ["frontend/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "custom-viz",
+              allowTypeImports: true,
+              message: "Please use only type-only imports from 'custom-viz'.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["enterprise/frontend/src/embedding-sdk-package/bin/**/*"],
     rules: {
       "metabase/no-literal-metabase-strings": "off",
@@ -981,6 +1010,13 @@ const configs = [
       "metabase/no-literal-metabase-strings": "off",
       "metabase/no-color-literals": "off",
       "no-console": "off",
+    },
+  },
+  {
+    files: ["enterprise/frontend/src/custom-viz/src/templates/index.tsx"],
+    rules: {
+      "import/no-default-export": "off",
+      "metabase/no-color-literals": "off",
     },
   },
   {

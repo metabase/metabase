@@ -15,6 +15,7 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -125,10 +126,37 @@
   [field]
   (dissoc field :is_defective_duplicate :unique_field_helper))
 
+(defn- enforce-effective-type-invariant
+  "GHY-3388 invariant: a Field row with no coercion_strategy must have effective_type=base_type.
+   When effective_type is set but diverges from base_type without a coercion to justify it, this
+   normalizes effective_type to match base_type (and logs a warning so the silent fix is visible).
+   Does not touch rows where coercion_strategy is set (legitimate divergence), where effective_type
+   is nil (separate concern, GHY-3367 territory), or where either type is not a valid descendant of
+   :type/* (so the transform's invalid-type validation still fires)."
+  [field]
+  (let [coercion      (:coercion_strategy field)
+        effective-raw (:effective_type field)
+        base-raw      (:base_type field)
+        effective     (some-> effective-raw keyword)
+        base          (some-> base-raw keyword)]
+    (if (and (nil? coercion)
+             effective
+             base
+             (isa? effective :type/*)
+             (isa? base :type/*)
+             (not= effective base))
+      (do (log/warnf "Field %s: effective_type %s ≠ base_type %s with no coercion_strategy. Normalizing effective_type to match base_type."
+                     (or (:id field) (:name field) "<new>")
+                     effective
+                     base)
+          (assoc field :effective_type base-raw))
+      field)))
+
 (t2/define-before-insert :model/Field
   [field]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
-    (merge defaults field)))
+    (-> (merge defaults field)
+        enforce-effective-type-invariant)))
 
 (def field-user-settings
   "Set of user-settable values for a Field"
@@ -150,7 +178,10 @@
 (defn- sync-user-settings [field]
   ;; we transparently prevent updates that would override user-set values
   (let [user-settings (t2/select-one :model/FieldUserSettings (:id field))
-        updated-field (merge field (u/select-keys-when user-settings :non-nil field-user-settings))]
+        updated-field (-> (merge field (u/select-keys-when user-settings :non-nil field-user-settings))
+                          ;; GHY-3388 invariant: enforce coercion_strategy=nil ⇒ effective_type=base_type
+                          ;; AFTER the user-settings merge, since the overlay can introduce stale effective_type
+                          enforce-effective-type-invariant)]
     (t2.protocols/with-current field updated-field)))
 
 (t2/define-before-update :model/Field
@@ -460,7 +491,7 @@
                :description :display_name :effective_type :has_field_values :is_defective_duplicate
                :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
                :unique_field_helper :visibility_type]
-   :skip      [:fingerprint :fingerprint_version :last_analyzed]
+   :skip      [:dimension_interestingness :fingerprint :fingerprint_version :last_analyzed]
    :transform {:created_at         (serdes/date)
                :table_id           (serdes/fk :model/Table)
                :fk_target_field_id (serdes/fk :model/Field)
@@ -479,3 +510,42 @@
     (conj (serdes/storage-path-prefixes path)
           {:label "fields"}
           {:label field-name :key field-name})))
+
+(defmethod serdes/metadata-query :model/Field
+  [model opts]
+  (t2/reducible-query
+   {:select [[:f.id :id]
+             [:f.table_id :table_id]
+             [:f.name :name]
+             [:f.parent_id :parent_id]
+             [:f.fk_target_field_id :fk_target_field_id]
+             [:f.description :description]
+             [:f.base_type :base_type]
+             [:f.database_type :database_type]
+             [:f.effective_type :effective_type]
+             [:f.semantic_type :semantic_type]
+             [:f.coercion_strategy :coercion_strategy]
+             [:f.nfc_path :nfc_path]]
+    :from   [[(t2/table-name model) :f]]
+    :join   [[(t2/table-name :model/Table) :t]    [:= :f.table_id :t.id]
+             [(t2/table-name :model/Database) :db] [:= :t.db_id :db.id]]
+    :where  [:and
+             (serdes/metadata-query-filter :model/Database :db opts)
+             (serdes/metadata-query-filter :model/Table :t opts)
+             (serdes/metadata-query-filter model :f opts)]}))
+
+(defmethod serdes/metadata-query-filter :model/Field
+  [_model alias {:keys [field-ids]}]
+  (cond-> [:and
+           [:= (u/qualified-key alias :active) true]
+           [:<> (u/qualified-key alias :visibility_type) "sensitive"]]
+    (seq field-ids) (conj [:in (u/qualified-key alias :id) field-ids])))
+
+(defmethod serdes/metadata-query-format :model/Field
+  [_model {:keys [base_type effective_type nfc_path] :as row}]
+  (-> row
+      (assoc :effective_type (when (not= base_type effective_type) effective_type))
+      (assoc :nfc_path (cond-> nfc_path
+                         (string? nfc_path) json/decode
+                         nfc_path           seq))
+      u/remove-nils))

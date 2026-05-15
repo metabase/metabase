@@ -181,6 +181,37 @@
             (merge default-metadata {:database-partitioned false})
             (merge default-metadata {:database-partitioned true :id 1}))))))
 
+(deftest update-nfc-path-test
+  (testing "nil -> vector"
+    (is (= [["Field" 1 {:nfc_path ["payload" "user"]}]]
+           (updates-that-will-be-performed!
+            (merge default-metadata {:nfc-path ["payload" "user"]})
+            (merge default-metadata {:id 1})))))
+
+  (testing "vector -> nil"
+    (is (= [["Field" 1 {:nfc_path nil}]]
+           (updates-that-will-be-performed!
+            default-metadata
+            (merge default-metadata {:nfc-path ["payload" "user"] :id 1})))))
+
+  (testing "vector -> different vector"
+    (is (= [["Field" 1 {:nfc_path ["payload" "account"]}]]
+           (updates-that-will-be-performed!
+            (merge default-metadata {:nfc-path ["payload" "account"]})
+            (merge default-metadata {:nfc-path ["payload" "user"] :id 1})))))
+
+  (testing "no change when path is identical"
+    (is (= []
+           (updates-that-will-be-performed!
+            (merge default-metadata {:nfc-path ["payload" "user"]})
+            (merge default-metadata {:nfc-path ["payload" "user"] :id 1})))))
+
+  (testing "no change when driver emits keywords and DB has equivalent strings"
+    (is (= []
+           (updates-that-will-be-performed!
+            (merge default-metadata {:nfc-path [:payload :user]})
+            (merge default-metadata {:nfc-path ["payload" "user"] :id 1}))))))
+
 (deftest nil-database-type-test
   (testing (str "test that if `database-type` comes back as `nil` in the metadata from the sync process, we won't try "
                 "to set a `nil` value in the DB -- this is against the rules -- we should set `NULL` instead. See "
@@ -333,3 +364,136 @@
                 (is (not= (:fingerprint original-field) (:fingerprint new-field))))))
           (finally
             (t2/delete! :model/Database (mt/id))))))))
+
+(deftest create-or-replace-table-updates-effective-type-test
+  (testing "GHY-3388: when a column's database type changes in place (e.g. TEXT -> numeric via
+           Snowflake's CREATE OR REPLACE TABLE AS SELECT TRY_TO_NUMBER(...)), sync should update
+           effective_type to match the new base_type and clear any stale coercion_strategy/semantic_type.
+           Reproduces the in-place update path (repro v1 from the Linear issue), where the field row
+           is preserved and only updated — as opposed to being dropped and re-created (repro v2)."
+    (mt/with-temp-test-data [["my_table"
+                              [{:field-name "text_column"
+                                :base-type  :type/Text}]
+                              [["100"] ["200"] ["300"]]]]
+      (try
+        (sync/sync-database! (mt/db))
+        (let [original-field (t2/select-one :model/Field (mt/id :my_table :text_column))]
+          (testing "sanity check: original column is text"
+            (is (=? {:base_type      :type/Text
+                     :effective_type :type/Text}
+                    original-field)))
+          ;; Mimic Snowflake's CREATE OR REPLACE TABLE AS SELECT TRY_TO_NUMBER(text_column) —
+          ;; the column is converted to a numeric type in place, preserving the field's identity
+          ;; in Metabase's app DB (same name, same position). Snowflake's CREATE OR REPLACE does
+          ;; not translate to H2, so we use ALTER COLUMN to achieve the same "in-place update" effect.
+          (sql-jdbc.execute/do-with-connection-with-options
+           :h2
+           (mt/db)
+           {}
+           (fn [conn]
+             (doseq [sql ["DROP TABLE \"MY_TABLE\";"
+                          "CREATE TABLE \"MY_TABLE\" (\"TEXT_COLUMN\" DECIMAL(38,2));"
+                          "INSERT INTO \"MY_TABLE\"(text_column) VALUES(100.00),(200.00),(300.00);"]]
+               (next.jdbc/execute! conn [sql]))))
+          (sync/sync-database! (mt/db))
+          (let [new-field (t2/select-one :model/Field (mt/id :my_table :text_column))]
+            (testing "after sync, base_type and effective_type both reflect the new numeric column
+                     and stale coercion/semantic type are cleared"
+              (is (=? {:id                (:id original-field)
+                       :base_type         :type/Decimal
+                       :effective_type    :type/Decimal
+                       :coercion_strategy nil
+                       :semantic_type     nil}
+                      new-field))))
+
+          (sql-jdbc.execute/do-with-connection-with-options
+           :h2
+           (mt/db)
+           {}
+           (fn [conn]
+             (doseq [sql ["DROP TABLE \"MY_TABLE\";"]]
+               (next.jdbc/execute! conn [sql]))))
+
+          (t2/delete! :model/Table (:table_id original-field))
+          (t2/delete! :model/Field :table_id (:table_id original-field))
+
+          (sql-jdbc.execute/do-with-connection-with-options
+           :h2
+           (mt/db)
+           {}
+           (fn [conn]
+             (doseq [sql ["CREATE TABLE \"MY_TABLE\" (\"TEXT_COLUMN\" TEXT);"
+                          "INSERT INTO \"MY_TABLE\"(text_column) VALUES('100'),('200'),('300');"]]
+               (next.jdbc/execute! conn [sql]))))
+          (sync/sync-database! (mt/db))
+          (sql-jdbc.execute/do-with-connection-with-options
+           :h2
+           (mt/db)
+           {}
+           (fn [conn]
+             (doseq [sql ["DROP TABLE \"MY_TABLE\";"
+                          "CREATE TABLE \"MY_TABLE\" (\"TEXT_COLUMN\" DECIMAL(38,2));"
+                          "INSERT INTO \"MY_TABLE\"(text_column) VALUES(100.00),(200.00),(300.00);"]]
+               (next.jdbc/execute! conn [sql]))))
+          (sync/sync-database! (mt/db))
+
+          (let [new-field (t2/select-one :model/Field :name "TEXT_COLUMN")]
+            (testing "after sync, base_type and effective_type both reflect the new numeric column
+                     and stale coercion/semantic type are cleared"
+              (is (=? {:base_type         :type/Decimal
+                       :effective_type    :type/Decimal
+                       :coercion_strategy nil
+                       :semantic_type     nil}
+                      new-field)))))
+        (finally
+          (t2/delete! :model/Database (mt/id)))))))
+
+(deftest sync-self-heals-effective-type-drift-test
+  (testing "GHY-3388: when a field is in the broken state (effective_type ≠ base_type with no
+           coercion_strategy) AND base_type does not change at this sync, sync should still
+           heal effective_type to match base_type. This catches drifted state from older
+           Metabase versions that the customer's instance carries forward."
+    (testing "broken row gets healed even when base_type does not change"
+      (is (= [["FieldUserSettings" 1 {:effective_type :type/Number}]
+              ["Field" 1 {:effective_type :type/Number}]]
+             (updates-that-will-be-performed!
+              (merge default-metadata
+                     {:base-type :type/Number})
+              (merge default-metadata
+                     {:id                1
+                      :base-type         :type/Number
+                      :effective-type    :type/Text
+                      :coercion-strategy nil})))))
+    (testing "row with a real coercion_strategy is left alone — effective_type ≠ base_type is legitimate"
+      (is (= []
+             (updates-that-will-be-performed!
+              (merge default-metadata
+                     {:base-type :type/Text})
+              (merge default-metadata
+                     {:id                1
+                      :base-type         :type/Text
+                      :effective-type    :type/Number
+                      :coercion-strategy :Coercion/String->Number})))))
+    (testing "row that is already consistent is not updated"
+      (is (= []
+             (updates-that-will-be-performed!
+              (merge default-metadata
+                     {:base-type :type/Number})
+              (merge default-metadata
+                     {:id                1
+                      :base-type         :type/Number
+                      :effective-type    :type/Number
+                      :coercion-strategy nil})))))
+    (testing "when base_type also changes, the existing reset path runs (not the heal path) —
+             both produce the same effective_type but the base_type-change path also clears
+             fingerprint and semantic_type for re-analysis"
+      (let [updates (updates-that-will-be-performed!
+                     (merge default-metadata
+                            {:base-type :type/Number})
+                     (merge default-metadata
+                            {:id                1
+                             :base-type         :type/Text
+                             :effective-type    :type/Text
+                             :coercion-strategy nil}))]
+        (is (some #(contains? (last %) :fingerprint_version) updates)
+            "base_type-change reset still includes fingerprint reset")))))

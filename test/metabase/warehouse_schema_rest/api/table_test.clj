@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.warehouse-schema-rest.api.table-test
   "Tests for /api/table endpoints."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.warehouse-schema-rest.api.table-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -90,7 +91,7 @@
     field
     [:created_at :fingerprint :fingerprint_version :fk_target_field_id :id :last_analyzed :updated_at
      :database_required :database_is_auto_increment :database_is_pk :database_is_generated :database_is_nullable
-     :entity_id])))
+     :entity_id :dimension_interestingness])))
 
 (deftest ^:parallel list-table-test
   (testing "GET /api/table"

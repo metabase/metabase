@@ -3,12 +3,10 @@ import { useCallback, useSyncExternalStore } from "react";
 import { ensureMetabaseProviderPropsStore } from "../lib/ensure-metabase-provider-props-store";
 
 export function useMetabaseProviderPropsStore() {
-  // Re-resolve the store from `window` on every subscribe/snapshot call.
-  // `cleanup()` deletes the window key, and the next `ensureMetabaseProviderPropsStore()`
-  // creates a fresh store. Holding a `useRef`'d store across React StrictMode's
-  // simulated unmount/remount cycle would leave the component reading from a
-  // stale store object while writes (via direct `ensureMetabaseProviderPropsStore()`
-  // calls in effects) target the current one.
+  // Re-resolve the store on every subscribe/snapshot call rather than capturing
+  // it in a closure. `cleanup()` resets state in place and reuses the same
+  // singleton, so this is mostly defensive — but it also keeps the hook
+  // resilient if the singleton implementation ever swaps the underlying object.
   const subscribe = useCallback(
     (listener: () => void) =>
       ensureMetabaseProviderPropsStore().subscribe(listener),

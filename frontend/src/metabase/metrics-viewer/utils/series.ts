@@ -7,7 +7,6 @@ import type {
   ExpressionMetricSource,
   MetricDimensionItem,
 } from "metabase/metrics-viewer/components/DimensionPillBar";
-import type { IconName } from "metabase/ui";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { isNotNull } from "metabase/utils/types";
 import {
@@ -24,6 +23,7 @@ import type {
   DatasetColumn,
   DatasetData,
   DimensionId,
+  IconName,
   MetricBreakoutValuesResponse,
   RowValue,
   RowValues,
@@ -58,6 +58,23 @@ import { type MetricSlot, slotsForEntity } from "./metric-slots";
 import { nextSyntheticCardId, parseSourceId } from "./source-ids";
 import { DISPLAY_TYPE_REGISTRY } from "./tab-config";
 import { getDimensionIcon } from "./tabs";
+
+export function shouldShowStackSeries(
+  display: MetricsViewerDisplayType,
+  rawSeries: SingleSeries[],
+  formulaEntities: MetricsViewerFormulaEntity[],
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+): boolean {
+  const hasBreakout = formulaEntities.some(
+    (entity) =>
+      isMetricEntry(entity) &&
+      entryHasBreakout(getEffectiveDefinitionEntry(entity, definitions)),
+  );
+  return (
+    DISPLAY_TYPE_REGISTRY[display].supportsStacking &&
+    (rawSeries.length > 1 || hasBreakout)
+  );
+}
 
 interface BuildSeriesParams {
   formulaEntities: MetricsViewerFormulaEntity[];
@@ -811,14 +828,12 @@ export function getSelectedMetricsInfo(
 
     const measureId = LibMetric.sourceMeasureId(definition);
     if (measureId != null) {
-      const tableId = LibMetric.sourceMeasureTableId(definition);
       return [
         {
           id: measureId,
           sourceType: "measure",
           name,
           isLoading,
-          tableId: tableId ?? undefined,
         },
       ];
     }

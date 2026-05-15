@@ -12,10 +12,14 @@ import type {
 import { isPreviewShown, isRootCollection } from "metabase/collections/utils";
 import { ItemDragSource } from "metabase/common/components/dnd/ItemDragSource";
 import CS from "metabase/css/core/index.css";
-import type { IconName } from "metabase/ui";
 import { Box, Group, Icon, Stack } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import type {
+  Bookmark,
+  Collection,
+  CollectionItem,
+  IconName,
+} from "metabase-types/api";
 
 import { Container, Grid } from "./PinnedItemOverview.styled";
 
