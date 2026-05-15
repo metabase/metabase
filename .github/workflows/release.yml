@@ -363,7 +363,7 @@ jobs:
       dot-x-tag: ${{ startsWith(matrix.tag, 'v') }}
 
   trigger-cloud-issues:
-    if: ${{ inputs.kind == 'minor' }}
+    if: ${{ inputs.kind != 'patch' }}
     needs: push-tags
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
@@ -438,7 +438,7 @@ jobs:
             });
 
   draft-release-notes:
-    if: ${{ inputs.kind == 'minor' }}
+    if: ${{ inputs.kind != 'patch' }}
     needs: add-extra-tags
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
@@ -507,7 +507,7 @@ jobs:
             }).catch(console.warn);
 
   publish-version-info:
-    if: ${{ inputs.kind == 'minor' }}
+    if: ${{ inputs.kind != 'patch' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: [push-tags, check-version]
     timeout-minutes: 15
