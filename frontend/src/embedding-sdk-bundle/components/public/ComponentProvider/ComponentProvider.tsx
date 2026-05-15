@@ -44,10 +44,6 @@ let hasInitializedPlugins = false;
 /**
  * Initializes EE plugins synchronously during render
  * to avoid an extra frame where children render without plugins.
- *
- * Uses reduxStore.dispatch directly instead of the useDispatch hook,
- * since the hook-based dispatch may not be available during render.
- * This follows the same pattern as use-init-data-internal.ts.
  */
 function useInitPlugins(reduxStore: SdkStore) {
   const tokenFeatures = useSelector(
@@ -57,20 +53,25 @@ function useInitPlugins(reduxStore: SdkStore) {
   // Modular Embedding already initializes the plugins in its entrypoint.
   // We have to avoid re-initializing SDK plugins as they could override
   // some of plugins needed by EAJS
-  if (isEmbeddingEajs() || !tokenFeatures) {
-    return;
-  }
+  const shouldInitialize = !isEmbeddingEajs() && !!tokenFeatures;
 
-  if (!hasInitializedPlugins) {
+  if (shouldInitialize && !hasInitializedPlugins) {
     hasInitializedPlugins = true;
 
     initializePlugins();
   }
 
-  // Mark ready for this store instance on first render.
-  if (!reduxStore.getState().sdk?.pluginsReady) {
-    reduxStore.dispatch(setPluginsReady(true));
-  }
+  // Dispatch is deferred to an effect to avoid scheduling updates on other
+  // subscribed components mid-render (React "setState while rendering" warning).
+  useEffect(() => {
+    if (!shouldInitialize) {
+      return;
+    }
+
+    if (!reduxStore.getState().sdk?.pluginsReady) {
+      reduxStore.dispatch(setPluginsReady(true));
+    }
+  }, [shouldInitialize, reduxStore]);
 }
 
 export const ComponentProviderInternal = (
