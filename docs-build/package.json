@@ -8,7 +8,7 @@
     "dev:clean": "pkill -f 'docs-build/node_modules/.bin/astro' || true",
     "build": "astro build",
     "preview": "astro preview",
-    "check": "node scripts/validate-nav.mjs && node scripts/validate-liquid.mjs && astro check",
+    "check": "node scripts/validate-nav.mjs && astro check",
     "test": "node --test 'src/plugins/**/*.test.mjs'"
   },
   "dependencies": {

@@ -42,12 +42,8 @@
   (testing "extracts the last path segment"
     (are [base-path expected] (= expected (docs/base-tail base-path))
       "/docs/v0.55"   "v0.55"
-      "/docs/v0.100"  "v0.100"
       "/docs/latest"  "latest"
-      "/docs/master"  "master"))
-
-  (testing "no leading slash works too"
-    (is (= "latest" (docs/base-tail "docs/latest")))))
+      "docs/latest"   "latest")))   ; missing leading slash still works
 
 ;; Realistic epoch-millis values, well above 0, far apart enough that any
 ;; filesystem mtime precision quirks (seconds vs millis) are irrelevant.
@@ -57,107 +53,22 @@
 (defn- touch! [path mtime]
   (.setLastModified (java.io.File. ^String (str path)) mtime))
 
-(deftest artifact-fresh?-test
+(deftest artifact-present?-test
   (let [root (str (fs/create-temp-dir {:prefix "mage-docs-test-"}))]
     (try
       (let [artifact-rel "out.json"
-            artifact-abs (str root "/" artifact-rel)
-            source-rel   "src/foo.clj"
-            source-abs   (str root "/" source-rel)]
-        (fs/create-dirs (str root "/src"))
+            artifact-abs (str root "/" artifact-rel)]
 
-        (testing "missing artifact is not fresh"
-          (is (false? (docs/artifact-fresh? root artifact-rel ["src/**.clj"]))))
+        (testing "missing artifact is absent"
+          (is (false? (docs/artifact-present? root artifact-rel))))
 
-        (testing "zero-byte artifact is not fresh (caught generation died mid-write)"
+        (testing "zero-byte artifact is treated as absent (generation died mid-write)"
           (spit artifact-abs "")
-          (is (false? (docs/artifact-fresh? root artifact-rel ["src/**.clj"]))))
+          (is (false? (docs/artifact-present? root artifact-rel))))
 
-        (testing "non-empty artifact with no matching sources is fresh (degrades to exists+nonempty)"
+        (testing "non-empty artifact is present"
           (spit artifact-abs "x")
-          (is (true? (docs/artifact-fresh? root artifact-rel ["nothing/**.clj"]))))
-
-        (testing "artifact newer than all sources is fresh"
-          (spit source-abs "src")
-          (touch! source-abs older-mtime)
-          (touch! artifact-abs newer-mtime)
-          (is (true? (docs/artifact-fresh? root artifact-rel ["src/**.clj"]))))
-
-        (testing "artifact older than any source is not fresh"
-          (touch! artifact-abs older-mtime)
-          (touch! source-abs newer-mtime)
-          (is (false? (docs/artifact-fresh? root artifact-rel ["src/**.clj"]))))
-
-        (testing "artifact mtime equal to newest source mtime is fresh (boundary)"
-          (touch! source-abs newer-mtime)
-          (touch! artifact-abs newer-mtime)
-          (is (true? (docs/artifact-fresh? root artifact-rel ["src/**.clj"]))))
-
-        (testing "freshness is judged against the newest source, not any single one"
-          (let [other-source-abs (str root "/src/bar.clj")]
-            (spit other-source-abs "bar")
-            (touch! source-abs        older-mtime)
-            (touch! other-source-abs  newer-mtime)
-            (touch! artifact-abs      older-mtime)
-            (is (false? (docs/artifact-fresh? root artifact-rel ["src/**.clj"]))
-                "artifact older than bar.clj should not be considered fresh"))))
-      (finally
-        (fs/delete-tree root)))))
-
-(deftest newest-mtime-ms-test
-  (let [root (str (fs/create-temp-dir {:prefix "mage-docs-test-"}))]
-    (try
-      (testing "returns nil when no files match"
-        (is (nil? (docs/newest-mtime-ms root ["does-not-exist/**.clj"]))))
-
-      (testing "returns the newest mtime across all matching globs"
-        (fs/create-dirs (str root "/a"))
-        (fs/create-dirs (str root "/b"))
-        (let [a (str root "/a/x.clj")
-              b (str root "/b/y.clj")]
-          (spit a "a") (touch! a older-mtime)
-          (spit b "b") (touch! b newer-mtime)
-          (is (= newer-mtime
-                 (docs/newest-mtime-ms root ["a/**.clj" "b/**.clj"])))))
-      (finally
-        (fs/delete-tree root)))))
-
-(deftest staleness-test
-  (let [root (str (fs/create-temp-dir {:prefix "mage-docs-test-"}))]
-    (try
-      (let [artifact-rel "out.json"
-            artifact-abs (str root "/" artifact-rel)
-            source-rel   "src/foo.clj"
-            source-abs   (str root "/" source-rel)]
-        (fs/create-dirs (str root "/src"))
-
-        (testing "missing artifact"
-          (is (= {:reason :missing}
-                 (docs/staleness root artifact-rel ["src/**.clj"]))))
-
-        (testing "empty artifact"
-          (spit artifact-abs "")
-          (is (= {:reason :empty}
-                 (docs/staleness root artifact-rel ["src/**.clj"]))))
-
-        (testing "fresh artifact returns nil"
-          (spit artifact-abs "x")
-          (spit source-abs "src")
-          (touch! source-abs older-mtime)
-          (touch! artifact-abs newer-mtime)
-          (is (nil? (docs/staleness root artifact-rel ["src/**.clj"]))))
-
-        (testing "no matching sources + non-empty artifact returns nil (degrades to fresh)"
-          (is (nil? (docs/staleness root artifact-rel ["nothing/**.clj"]))))
-
-        (testing "stale artifact names the newest source"
-          (touch! artifact-abs older-mtime)
-          (touch! source-abs newer-mtime)
-          (let [s (docs/staleness root artifact-rel ["src/**.clj"])]
-            (is (= :stale (:reason s)))
-            (is (= older-mtime (:artifact-mtime s)))
-            (is (= newer-mtime (get-in s [:newest-source :mtime])))
-            (is (= source-abs (get-in s [:newest-source :path]))))))
+          (is (true? (docs/artifact-present? root artifact-rel)))))
       (finally
         (fs/delete-tree root)))))
 

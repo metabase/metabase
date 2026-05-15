@@ -196,14 +196,11 @@
   docs-build-branch
   {:doc "Build the docs site for an arbitrary git branch via a worktree"
    :examples [["./bin/mage docs-build-branch release-x.55.x" "Build v0.55 docs into build/docs/v0.55/"]
-              ["./bin/mage docs-build-branch master --no-fetch" "Skip git fetch, use local ref"]
-              ["./bin/mage docs-build-branch master --keep" "Keep the worktree after a successful build"]]
+              ["./bin/mage docs-build-branch master --no-fetch" "Skip git fetch, use local ref"]]
    :requires [[mage.docs :as docs]]
    :arg-schema [:tuple [:string {:name "branch"}]]
    :options [[nil "--output DIR" "Output directory (default: build/docs/<base-tail>)"]
-             [nil "--worktree-dir DIR" "Worktree path (default: __worktrees/docs-<slug>)"]
              [nil "--no-fetch" "Skip git fetch origin <branch>"]
-             [nil "--keep" "Keep the worktree on success (always kept on failure)"]
              [nil "--base-path PATH" "Override DOCS_BASE_PATH"]
              [nil "--site-url URL" "Override DOCS_SITE_URL"]]
    :task (task! (docs/build-branch parsed))}
@@ -231,10 +228,8 @@
 
   docs-ensure-generated
   {:doc "Lazily generate the docs artifacts that the Astro build depends on (typedoc snippets, OpenAPI spec)"
-   :examples [["./bin/mage docs-ensure-generated" "Generate missing artifacts; skip ones already present"]
-              ["./bin/mage docs-ensure-generated --verbose" "Print the stale source path + mtime that triggered each regen"]]
+   :examples [["./bin/mage docs-ensure-generated" "Generate missing artifacts; skip ones already present"]]
    :requires [[mage.docs :as docs]]
-   :options [[nil "--verbose" "Print which source file (and its mtime) made each artifact stale"]]
    :task (task! (docs/ensure-generated parsed))}
 
   docs-clean-worktrees

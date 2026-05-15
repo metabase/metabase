@@ -33,7 +33,7 @@ export default defineConfig({
   site: process.env.DOCS_SITE_URL ?? "https://www.metabase.com",
   base,
   outDir: "./dist",
-  trailingSlash: "never",
+  trailingSlash: "ignore",
   redirects,
   server: {
     port: 4321,
