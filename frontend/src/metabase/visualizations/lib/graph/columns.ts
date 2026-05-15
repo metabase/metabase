@@ -33,6 +33,21 @@ export const getColumnDescriptors = <TColumn extends DatasetColumn>(
   return result;
 };
 
+// Returns the subset of `cols` referenced by `graph.dimensions` or
+// `graph.metrics` settings that successfully resolve in the dataset.
+export const getReferencedColumns = <TColumn extends DatasetColumn>(
+  cols: TColumn[],
+  settings: Pick<VisualizationSettings, "graph.dimensions" | "graph.metrics">,
+): TColumn[] => {
+  const names = [
+    ...(settings["graph.dimensions"] ?? []).filter(isNotNull),
+    ...(settings["graph.metrics"] ?? []).filter(isNotNull),
+  ];
+  return names
+    .map((name) => cols.find((col) => col.name === name))
+    .filter(isNotNull);
+};
+
 export const hasValidColumnsSelected = (
   visualizationSettings: VisualizationSettings,
   data: DatasetData,
