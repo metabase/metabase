@@ -15,6 +15,13 @@
   Both query paths feed a single recursive collector that, for each `[db-id, query]`
   pair, normalizes the query to MBQL 5 and:
   - Collects `:source-table` ids via [[metabase.lib.walk.util/all-source-table-ids]].
+  - Collects every `:field` id via [[metabase.lib.walk.util/all-field-ids]] and
+    resolves them to their parent tables in one batched lookup at the end of
+    the BFS. This recovers implicit-join targets (a breakout/filter like
+    `[:field {:source-field <fk>} <field-in-joined-table>]` references a field
+    whose table is not otherwise named in the query) — see the
+    `MetabotAgentDataSourcePills` UI which uses the same trick via
+    `field-ids->table-ids`.
   - Collects card refs — `:source-card` ids, template-tag `:card-id`s, and
     `:metric` ref ids — via [[metabase.lib.walk.util/all-source-card-ids]],
     then enqueues each unseen card's `:dataset_query` for recursive walking.
@@ -75,13 +82,19 @@
        (some? (tool-output->structured (:result output-block)))))
 
 (defn- macaw-tables
-  "Macaw-parse a raw SQL string and resolve to a set of underlying table ids."
+  "Macaw-parse a raw SQL string and resolve to a set of underlying table ids.
+  `nqa/tables-for-native` reads template tags via [[metabase.lib.native/template-tags]],
+  which validates its argument against `::lib.schema/query` and rejects the
+  legacy `{:type :native :native {...}}` shape — so we convert to MBQL 5
+  first via [[lib/->mbql5]]."
   [database-id sql-text template-tags]
   (if (and database-id (seq sql-text))
     (try
-      (let [result (nqa/tables-for-native
-                    {:database database-id
-                     :native   {:query sql-text :template-tags template-tags}})]
+      (let [legacy {:database database-id
+                    :type     :native
+                    :native   (cond-> {:query sql-text}
+                                (seq template-tags) (assoc :template-tags template-tags))}
+            result (nqa/tables-for-native (lib/->mbql5 legacy))]
         (if (:error result)
           (do (log/warnf "tables-for-native error: %s" (:error result))
               #{})
@@ -92,7 +105,9 @@
     #{}))
 
 (defn- native-stage-tables
-  "Run macaw against any native stages in `mbql5-query` and return their table ids."
+  "Run macaw against any native stages in `mbql5-query` and return their table ids.
+  In MBQL 5 native stages, `:native` is the SQL string and `:template-tags`
+  lives at the stage level alongside it (not nested under `:native`)."
   [database-id mbql5-query]
   (transduce
    (comp (filter #(= (:lib/type %) :mbql.stage/native))
@@ -101,7 +116,8 @@
                       sql    (cond
                                (string? native) native
                                (map? native)    (:query native))
-                      tags   (when (map? native) (:template-tags native))]
+                      tags   (or (:template-tags stage)
+                                 (when (map? native) (:template-tags native)))]
                   (macaw-tables database-id sql tags)))))
    into
    #{}
@@ -109,18 +125,37 @@
 
 (defn- query-tables-and-cards
   "Walk one query (legacy or MBQL 5) and return
-  `{:tables #{table-id ...} :cards #{card-id ...}}`. `:cards` includes any
-  `:source-card`, template-tag `:card-id`, and `:metric` ref ids; the outer
-  loop in [[collect-tables]] follows them recursively."
+  `{:tables #{table-id ...} :cards #{card-id ...} :fields #{field-id ...}}`.
+  `:cards` includes any `:source-card`, template-tag `:card-id`, and `:metric`
+  ref ids; the outer loop in [[collect-tables]] follows them recursively.
+  `:fields` is the set of every `:field` id referenced; the outer loop
+  resolves these to parent table ids in one batched lookup so we surface
+  implicit-join targets (which have no `:source-table` of their own — the
+  joined table is only named via `:source-field` on a field ref)."
   [database-id query]
   (try
     (let [mbql5 (lib/->mbql5 query)]
       {:tables (set/union (or (lib/all-source-table-ids mbql5) #{})
                           (native-stage-tables database-id mbql5))
-       :cards  (or (lib/all-source-card-ids mbql5) #{})})
+       :cards  (or (lib/all-source-card-ids mbql5) #{})
+       :fields (or (lib/all-field-ids mbql5) #{})})
     (catch Exception e
       (log/warn e "Failed to walk query for used-table extraction")
-      {:tables #{} :cards #{}})))
+      {:tables #{} :cards #{} :fields #{}})))
+
+(defn- resolve-field-table-ids
+  "Batch-resolve field ids to their parent table ids. Returns `#{}` on empty
+  input or failure — never throws."
+  [field-ids]
+  (if (seq field-ids)
+    (try
+      (into #{}
+            (keep :table_id)
+            (t2/select [:model/Field :id :table_id] :id [:in field-ids]))
+      (catch Exception e
+        (log/warn e "Failed to resolve field ids to table ids for used-table extraction")
+        #{}))
+    #{}))
 
 (defn- card-info
   "Fetch a card's `:dataset_query` and `:database_id` by id. Warns and returns
@@ -138,23 +173,28 @@
 
 (defn- collect-tables
   "BFS over a queue of `[db-id, query]` pairs, accumulating underlying table
-  ids. Tracks visited card ids to break cycles. Never throws."
+  ids. Field ids referenced anywhere in the walked queries are accumulated and
+  resolved to parent tables in a single batched lookup at the end (this is how
+  we capture implicit-join targets). Tracks visited card ids to break cycles.
+  Never throws."
   [initial-pairs]
   (loop [tables  #{}
+         fields  #{}
          queue   (vec initial-pairs)
          visited #{}]
     (if (empty? queue)
-      tables
-      (let [[db-id query]          (first queue)
-            queue'                 (subvec queue 1)
-            {ts :tables cs :cards} (query-tables-and-cards db-id query)
-            new-cards              (set/difference cs visited)
-            new-pairs              (keep (fn [card-id]
-                                           (when-let [{:keys [dataset-query database-id]} (card-info card-id)]
-                                             (when dataset-query
-                                               [(or database-id db-id) dataset-query])))
-                                         new-cards)]
+      (into tables (resolve-field-table-ids fields))
+      (let [[db-id query]                     (first queue)
+            queue'                            (subvec queue 1)
+            {ts :tables cs :cards fs :fields} (query-tables-and-cards db-id query)
+            new-cards                         (set/difference cs visited)
+            new-pairs                         (keep (fn [card-id]
+                                                      (when-let [{:keys [dataset-query database-id]} (card-info card-id)]
+                                                        (when dataset-query
+                                                          [(or database-id db-id) dataset-query])))
+                                                    new-cards)]
         (recur (into tables ts)
+               (into fields fs)
                (into queue' new-pairs)
                (into visited new-cards))))))
 

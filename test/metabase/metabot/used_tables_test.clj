@@ -285,6 +285,51 @@
             rows  (used-tables/extract-used-tables 99 parts)]
         (is (= #{(mt/id :orders) (mt/id :people)} (table-ids rows)))))))
 
+(deftest notebook-implicit-join-via-source-field-breakout-test
+  (testing (str "a breakout with :source-field (implicit join) surfaces the joined table — "
+                "the MBQL has no :source-table for products, only a [:field {:source-field <fk>} <field-in-products>]")
+    (let [query {:lib/type :mbql/query
+                 :database (mt/id)
+                 :stages   [{:lib/type     :mbql.stage/mbql
+                             :source-table (mt/id :orders)
+                             :aggregation  [[:count {:lib/uuid (str (random-uuid))}]]
+                             :breakout     [[:field {:lib/uuid     (str (random-uuid))
+                                                     :base-type    :type/Text
+                                                     :source-field (mt/id :orders :product_id)}
+                                             (mt/id :products :category)]]}]}
+          parts [(notebook-input "c1") (notebook-output "c1" query)]
+          rows  (used-tables/extract-used-tables 99 parts)]
+      (is (= #{(mt/id :orders) (mt/id :products)} (table-ids rows))))))
+
+(deftest notebook-implicit-join-via-source-field-filter-test
+  (testing "an implicit-join field reference inside a filter clause also surfaces the joined table"
+    (let [query {:lib/type :mbql/query
+                 :database (mt/id)
+                 :stages   [{:lib/type     :mbql.stage/mbql
+                             :source-table (mt/id :orders)
+                             :filters      [[:= {:lib/uuid (str (random-uuid))}
+                                             [:field {:lib/uuid     (str (random-uuid))
+                                                      :base-type    :type/Text
+                                                      :source-field (mt/id :orders :product_id)}
+                                              (mt/id :products :category)]
+                                             "Widget"]]}]}
+          parts [(notebook-input "c1") (notebook-output "c1" query)]
+          rows  (used-tables/extract-used-tables 99 parts)]
+      (is (= #{(mt/id :orders) (mt/id :products)} (table-ids rows))))))
+
+(deftest notebook-implicit-join-inside-nested-card-test
+  (testing "implicit joins inside a recursively-walked card's dataset_query also surface"
+    (mt/with-temp [:model/Card {card-id :id}
+                   {:type          :question
+                    :database_id   (mt/id)
+                    :dataset_query (mt/mbql-query orders
+                                     {:aggregation [[:count]]
+                                      :breakout    [[:field (mt/id :products :category)
+                                                     {:source-field (mt/id :orders :product_id)}]]})}]
+      (let [parts [(notebook-input "c1") (notebook-output "c1" (mbql5-source-card card-id))]
+            rows  (used-tables/extract-used-tables 99 parts)]
+        (is (= #{(mt/id :orders) (mt/id :products)} (table-ids rows)))))))
+
 ;;; ---------------------------------------- native (SQL) ----------------------------------------
 
 (deftest sql-extracts-macaw-tables-test
@@ -327,8 +372,10 @@
                                                 :dataset_query {:database (mt/id)
                                                                 :type     :native
                                                                 :native   {:query inner-sql}}}]
-        (with-redefs [nqa/tables-for-native (fn [{:keys [native]} & _]
-                                              (let [sql (:query native)]
+        (with-redefs [nqa/tables-for-native (fn [query & _]
+                                              ;; production extractor converts to MBQL 5
+                                              ;; before calling, so SQL lives on the stage
+                                              (let [sql (-> query :stages first :native)]
                                                 (cond
                                                   (= sql outer-sql) {:tables [{:table-id orders-id}]}
                                                   (= sql inner-sql) (do (reset! inner-tables true)
@@ -357,6 +404,42 @@
         (log.capture/with-log-messages-for-level [logs [metabase.metabot.used-tables :warn]]
           (is (= [] (used-tables/extract-used-tables 99 parts)))
           (is (some #(re-find #"tables-for-native error" (:message %)) (logs))))))))
+
+;;; ---------------------------------------- native (SQL) — real macaw ----------------------------------------
+;;;
+;;; The tests above all stub `nqa/tables-for-native` to isolate the extractor logic from the macaw
+;;; parser. These two tests run the real parser end-to-end against the H2 test-data DB so we catch
+;;; integration regressions (e.g. shape mismatches between `macaw-tables` and `tables-for-native`).
+
+(deftest ^:sequential sql-real-macaw-join-with-where-test
+  (testing "real macaw against a plain JOIN + WHERE: both tables come through end-to-end"
+    (let [sql "SELECT o.id FROM orders o JOIN products p ON o.product_id = p.id WHERE p.category = 'Widget'"
+          parts [(sql-input "s1" "create_sql_query"
+                            {:database_id (mt/id) :sql_query sql})
+                 (sql-output "s1" sql (mt/id))]
+          rows  (used-tables/extract-used-tables 99 parts)]
+      (is (= #{(mt/id :orders) (mt/id :products)} (table-ids rows))))))
+
+(deftest ^:sequential sql-real-macaw-with-card-template-tag-test
+  (testing (str "real macaw against SQL that references a saved card via {{#card-id}} template tag — "
+                "macaw expands the tag and surfaces both the outer table and the card's underlying table")
+    (mt/with-temp [:model/Card {card-id :id}
+                   {:type          :question
+                    :database_id   (mt/id)
+                    :dataset_query (mt/mbql-query products)}]
+      (let [tag-name (str "#" card-id)
+            sql      (format "SELECT * FROM orders WHERE product_id IN (SELECT id FROM {{%s}})" tag-name)
+            tags     {tag-name {:id           tag-name
+                                :name         tag-name
+                                :display-name tag-name
+                                :type         :card
+                                :card-id      card-id}}
+            parts    [(sql-input "s1" "create_sql_query"
+                                 {:database_id (mt/id) :sql_query sql})
+                      (sql-output "s1" sql (mt/id) :template-tags tags)]
+            rows     (used-tables/extract-used-tables 99 parts)]
+        (is (= #{(mt/id :orders) (mt/id :products)} (table-ids rows))
+            "outer macaw walk finds orders; template-tag substitution + card recursion both reach products")))))
 
 ;;; ---------------------------------------- transforms ----------------------------------------
 
