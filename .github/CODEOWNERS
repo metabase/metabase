@@ -12,12 +12,12 @@ enterprise/backend/src/metabase_enterprise/dependencies @metabase/graphy
 enterprise/frontend/src/metabase-enterprise/dependencies @metabase/graphy
 
 # @metabase/embedding
-enterprise/frontend/src/embedding-sdk-package @metabase/embedding
-enterprise/frontend/src/embedding-sdk-bundle @metabase/embedding
-enterprise/frontend/src/embedding-sdk-shared @metabase/embedding
-frontend/src/metabase/embedding-sdk @metabase/embedding
-frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion @metabase/embedding
-frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard @metabase/embedding
+# enterprise/frontend/src/embedding-sdk-package @metabase/embedding
+# enterprise/frontend/src/embedding-sdk-bundle @metabase/embedding
+# enterprise/frontend/src/embedding-sdk-shared @metabase/embedding
+# frontend/src/metabase/embedding-sdk @metabase/embedding
+# frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion @metabase/embedding
+# frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard @metabase/embedding
 
 # @metabase/tech-writers
 docs @metabase/tech-writers
