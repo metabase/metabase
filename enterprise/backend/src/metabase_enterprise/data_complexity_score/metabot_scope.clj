@@ -1,13 +1,18 @@
 (ns metabase-enterprise.data-complexity-score.metabot-scope
   "Resolves the internal Metabot's retrieval scope for the `:metabot` catalog."
   (:require
+   [metabase-enterprise.data-complexity-score.appdb-source :as appdb-source]
    [metabase-enterprise.data-complexity-score.db :as data-complexity-score.db]
    [metabase.metabot.config :as metabot.config]))
 
 (defn internal-metabot-scope
-  "`{:curated-only? <bool> :collection-id <nil|Long>}` matching the filters Metabot search applies."
+  "`{:curated-only? <bool> :collection-id <nil|Long>}` matching the filters Metabot search applies.
+  Returns a default-open scope (`{:curated-only? false :collection-id nil}`) when the CLI is pointed
+  at an appdb older than the `metabot` table — see [[appdb-source/*tolerate-missing-relations?*]]."
   []
-  (let [metabot (data-complexity-score.db/metabot-by-entity-id metabot.config/internal-metabot-id)]
+  (let [metabot (appdb-source/with-missing-relation-fallback
+                  ::metabot-row nil
+                  #(data-complexity-score.db/metabot-by-entity-id metabot.config/internal-metabot-id))]
     ;; `use_verified_content` means "verified or curated content only" (see the note in
     ;; `metabase.metabot.models.metabot`). No premium-feature gate, mirroring the search index's
     ;; precomputed `curated` column: a curation signal can only be set while its feature is present,

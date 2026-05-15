@@ -130,23 +130,24 @@
       (validate-dir! representation-dir))))
 
 (defn- run-appdb-mode!
-  "Score against the live appdb the same way the cron does. The read path goes through the same
-  Toucan models the cron uses; only the write step is different — `appdb-source/record-score!`
-  is a single raw `INSERT INTO data_complexity_score`, no transforms, no fingerprint setting
-  advance, no Snowplow event. That isolation makes a `v73 binary against a v54 appdb` run safe
-  by construction: the one mutation this CLI can perform on the appdb is the inserted score row."
+  "Score against the live appdb. The read path uses the same Toucan models as the cron, wrapped
+  by [[appdb-source/*tolerate-missing-relations?*]] so tables or columns introduced after the
+  appdb's Metabase version degrade gracefully (e.g. `metabot`, `measure`) instead of crashing
+  the run. The write step is `appdb-source/record-score!` — a single raw `INSERT INTO
+  data_complexity_score`, no transforms, no fingerprint setting advance, no Snowplow event."
   [write?]
   (mdb/setup-db-without-migrations!)
   ;; `metabase.core.core/init!` does this on the server, but standalone modes skip it. Without it a synonym axis
   ;; configured for the `in-process` provider finds nothing registered and fails with `:provider-not-registered`.
   (embeddings.startup/ensure-in-process-provider!)
-  (let [result (complexity/complexity-scores
-                (assoc (synonym-source/complexity-scores-opts)
-                       :metabot-scope (metabot-scope/internal-metabot-scope)
-                       :emit-snowplow? false))]
-    (when write?
-      (appdb-source/record-score! (task.complexity-score/current-fingerprint) "appdb" result))
-    result))
+  (binding [appdb-source/*tolerate-missing-relations?* true]
+    (let [result (complexity/complexity-scores
+                  (assoc (synonym-source/complexity-scores-opts)
+                         :metabot-scope (metabot-scope/internal-metabot-scope)
+                         :emit-snowplow? false))]
+      (when write?
+        (appdb-source/record-score! (task.complexity-score/current-fingerprint) "appdb" result))
+      result)))
 
 (defn- run-representation-mode!
   "Score an on-disk serdes export; optionally persist via the same raw-JDBC writer the appdb path
