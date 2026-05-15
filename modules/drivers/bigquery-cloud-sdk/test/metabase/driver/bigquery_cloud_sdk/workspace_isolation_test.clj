@@ -212,7 +212,15 @@
             test-id      (random-suffix)
             ws-a-id      (random-suffix)
             ws-b-id      (random-suffix)
-            in-dataset   (str "mb_iso_in_" test-id)
+            ;; Each workspace gets its own input dataset. The BQ grant impl
+            ;; grants `dataViewer` at the *dataset* level (matching the
+            ;; schema-wide semantics of the SQL drivers), so co-locating
+            ;; A's and B's source tables in a single dataset would let
+            ;; either workspace SELECT both tables as a correctly-scoped
+            ;; grant rather than a leak. Splitting per workspace makes the
+            ;; `:select-other-grant` assertion meaningful.
+            in-dataset-a (str "mb_iso_in_a_" test-id)
+            in-dataset-b (str "mb_iso_in_b_" test-id)
             src-a-name   (str "ws_iso_src_a_" test-id)
             src-b-name   (str "ws_iso_src_b_" test-id)
             sneaky-name  (str "ws_iso_sneaky_" test-id)
@@ -230,11 +238,12 @@
                            (.query c (QueryJobConfiguration/of sql)
                                    (into-array BigQuery$JobOption [])))]
         (try
-          (bigquery/create-dataset! admin-client project-id in-dataset)
-          (run-sql admin-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual in-dataset src-a-name)))
-          (run-sql admin-client (format "INSERT INTO %s (id, v) VALUES (1, 'a')" (qual in-dataset src-a-name)))
-          (run-sql admin-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual in-dataset src-b-name)))
-          (run-sql admin-client (format "INSERT INTO %s (id, v) VALUES (1, 'b')" (qual in-dataset src-b-name)))
+          (bigquery/create-dataset! admin-client project-id in-dataset-a)
+          (bigquery/create-dataset! admin-client project-id in-dataset-b)
+          (run-sql admin-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual in-dataset-a src-a-name)))
+          (run-sql admin-client (format "INSERT INTO %s (id, v) VALUES (1, 'a')" (qual in-dataset-a src-a-name)))
+          (run-sql admin-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual in-dataset-b src-b-name)))
+          (run-sql admin-client (format "INSERT INTO %s (id, v) VALUES (1, 'b')" (qual in-dataset-b src-b-name)))
           (let [init-a       (driver/init-workspace-isolation! :bigquery-cloud-sdk database ws-a)
                 init-b       (driver/init-workspace-isolation! :bigquery-cloud-sdk database ws-b)
                 ws-a-full    (merge ws-a init-a)
@@ -246,10 +255,12 @@
                 a-client     (bq.util/impersonated-client admin-creds a-sa-email project-id)
                 b-client     (bq.util/impersonated-client admin-creds b-sa-email project-id)
                 out-b-ds     (:schema ws-b-full)]
+            ;; Each workspace is granted access only to its own input dataset —
+            ;; A's grant must not let A read src-b in B's dataset, and vice-versa.
             (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-a-full
-                                                 [in-dataset])
+                                                 [in-dataset-a])
             (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-b-full
-                                                 [in-dataset])
+                                                 [in-dataset-b])
             ;; B populates its own output dataset with a table A should never reach.
             (run-sql b-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual out-b-ds b-secret)))
             (run-sql b-client (format "INSERT INTO %s (id, v) VALUES (1, 'b-only')" (qual out-b-ds b-secret)))
@@ -268,7 +279,7 @@
                 (bq.util/expect-denied! a-client sql label)))
             (testing "workspace A's SA cannot SELECT a source table that was only granted to workspace B"
               (bq.util/expect-denied! a-client
-                                      (format "SELECT id, v FROM %s" (qual in-dataset src-b-name))
+                                      (format "SELECT id, v FROM %s" (qual in-dataset-b src-b-name))
                                       :select-other-grant))
             (testing "workspace A's listDatasets does not enumerate workspace B's output dataset"
               ;; A's SA has only `roles/bigquery.jobUser` at the project plus `dataEditor`
@@ -292,8 +303,9 @@
               (try (driver/destroy-workspace-isolation! :bigquery-cloud-sdk database w)
                    (catch Throwable t
                      (log/warn t "destroy-workspace-isolation! failed for :bigquery-cloud-sdk during cross-workspace test cleanup"))))
-            ;; Belt-and-suspenders: drop input dataset + delete each workspace SA directly.
-            (try (bigquery/drop-dataset! admin-client project-id in-dataset) (catch Throwable _ nil))
+            ;; Belt-and-suspenders: drop input datasets + delete each workspace SA directly.
+            (doseq [ds [in-dataset-a in-dataset-b]]
+              (try (bigquery/drop-dataset! admin-client project-id ds) (catch Throwable _ nil)))
             (doseq [w [ws-a ws-b]]
               (try (bq.util/delete-sa-direct! iam-client project-id w) (catch Throwable _ nil)))
             (u/ignore-exceptions (.close ^IAMClient iam-client))))))))
