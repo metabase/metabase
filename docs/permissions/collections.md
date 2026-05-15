@@ -36,7 +36,7 @@ The group can view, edit, move, delete, and pin items saved in this collection, 
 
 ### View access
 
-The group can see all the questions, dashboards, and models in the collection, as well as [events and timelines](../exploration-and-organization/events-and-timelines.md).
+The group can see all the questions, dashboards, and models in the collection, as well as [events and timelines](../exploration-and-organization/events-and-timelines.md). Note: Curate access includes View access.
 
 ### No access
 
@@ -71,6 +71,8 @@ Just like with data access permissions, collection permissions are _additive_, m
 ## Permissions and sub-collections
 
 A group can be given access to a collection located somewhere within one or more sub-collections _without_ having to have access to every collection "above" it. For example, if a group had access to the "Super Secret Collection" that's saved several layers deep within a "Marketing" collection that the group lacks access to, the "Super Secret Collection" would show up at the top-most level that the group _does_ have access to.
+
+The same applies in the other direction: granting access to a collection does not automatically grant access to its sub-collections. By default, only the selected collection receives the new permission level. To cascade permissions down to all **existing** sub-collections, use the **Also change sub-collections** toggle in addition to choosing the level of access (Curate, View, or No access). Any sub-collections created after that point will automatically inherit the parent collection's permissions. If you don't use the toggle, existing sub-collections stay unchanged while newly created ones still inherit — which can leave a group with access to some sub-collections but not others.
 
 ## Deleting collections
 
