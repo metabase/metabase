@@ -1,9 +1,8 @@
 import { screen } from "@testing-library/react";
 
 import { getIcon, queryIcon, renderWithProviders } from "__support__/ui";
-import type { IconName } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
-import type { DatasetColumn, RowValues } from "metabase-types/api";
+import type { DatasetColumn, IconName, RowValues } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks/dataset";
 
 import { Header } from "./Header";

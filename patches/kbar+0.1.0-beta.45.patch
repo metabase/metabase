@@ -715,7 +715,22 @@ index 0d3b4e7..0571622 100644
  }) : (function(o, m, k, k2) {
      if (k2 === undefined) k2 = k;
      o[k2] = m[k];
-@@ -195,7 +199,7 @@ function useInternalMatches(filtered, search, fuse) {
+@@ -51,7 +55,7 @@ var fuseOptions = {
+     ignoreLocation: true,
+     includeScore: true,
+     includeMatches: true,
+-    threshold: 0.2,
++    threshold: 0.3,
+     minMatchCharLength: 1,
+ };
+ function order(a, b) {
+@@ -190,12 +194,12 @@ function useInternalMatches(filtered, search, fuse) {
+         }
+         var matches = [];
+         // Use Fuse's `search` method to perform the search efficiently
+-        var searchResults = fuse.search(throttledSearch);
++        var searchResults = fuse.search(throttledSearch.trim());
+         // Format the search results to match the existing structure
          matches = searchResults.map(function (_a) {
              var action = _a.item, score = _a.score;
              return ({

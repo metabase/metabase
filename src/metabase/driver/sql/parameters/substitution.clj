@@ -9,6 +9,7 @@
   (:refer-clojure :exclude [not-empty mapv])
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
@@ -265,8 +266,14 @@
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 
-(mu/defn- field->clause :- driver-api/mbql.schema.field
-  [field other-opts]
+(defmulti field->clause
+  "Returns an MBQL field clause with the given options."
+  {:added "0.61.0" :arglists '([driver field other-opts])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(mu/defmethod field->clause :default :- driver-api/mbql.schema.field
+  [_driver field other-opts]
   (driver-api/normalize
    driver-api/mbql.schema.field
    [:field
@@ -276,7 +283,7 @@
             ::compiling-field-filter?      true}
            other-opts)]))
 
-(mu/defn- field->field-filter-clause :- driver-api/mbql.schema.field
+(mu/defn- field->field-filter-clause :- [:or driver-api/mbql.schema.field :mbql.clause/field]
   [driver     :- :keyword
    field      :- driver-api/schema.metadata.column
    param-type :- driver-api/schema.parameter.type
@@ -287,7 +294,7 @@
   ;; middleware would work either because we don't know what Field this parameter actually refers to until we resolve
   ;; the parameter. There's probably _some_ way to structure things that would make this "duplicate" call unneeded, but
   ;; I haven't figured out what that is yet
-  (field->clause field {:temporal-unit (align-temporal-unit-with-param-type-and-value driver field param-type value)}))
+  (field->clause driver field (m/assoc-some {} :temporal-unit (align-temporal-unit-with-param-type-and-value driver field param-type value))))
 
 (mu/defn- field->identifier :- driver-api/schema.common.non-blank-string
   "Return an appropriate snippet to represent this `field` in SQL given its param type.
@@ -310,6 +317,45 @@
         params/map->DateTimeRange
         ->datetime-replacement-snippet-info)))
 
+(defmulti to-clause
+  "Helper to dispatch to `params.ops/to-clause` for `:sql` or `qp.params.ops/to-clause` for `:sql-mbql5`."
+  {:added "0.61.0" :arglists '([driver param])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod to-clause :default [_driver param] (params.ops/to-clause param))
+
+(defmulti desugar-filter-clause
+  "Helper to dispatch to `driver-api/desugar-filter-clause` for `:sql` or `lib/desugar-filter-clause` for `:sql-mbql5`."
+  {:added "0.61.0" :arglists '([driver filter-clause])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod desugar-filter-clause :default [_driver filter-clause]
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (driver-api/desugar-filter-clause filter-clause))
+
+(defmulti wrap-value-literals-in-mbql
+  "Helper to dispatch to `driver-api/wrap-value-literals-in-mbql` for `:sql`
+   or `driver-api/wrap-value-literals-in-mbql5` for `:sql-mbql5`."
+  {:added "0.61.0" :arglists '([driver mbql])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod wrap-value-literals-in-mbql :default
+  [_driver mbql]
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (driver-api/wrap-value-literals-in-mbql mbql))
+
+(defmulti date-string->filter
+  "Helper to dispatch to `params.dates/date-string->filter` for `:sql`
+   or `qp.params.dates/date-string->filter` for `:sql-mbql5`."
+  {:added "0.61.0" :arglists '([driver date-string field])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod date-string->filter :default [_driver date-string field] (params.dates/date-string->filter date-string field))
+
 (mu/defn- field-filter->replacement-snippet-info :- ParamSnippetInfo
   "Return `[replacement-snippet & prepared-statement-args]` appropriate for a field filter parameter."
   [driver {{param-type :type, value :value, :as params} :value, field :field, :as field-filter}]
@@ -323,18 +369,18 @@
       (params.ops/operator? param-type)
       #_{:clj-kondo/ignore [:deprecated-var]}
       (->> (assoc params :target [:dimension (field->field-filter-clause driver field param-type value)])
-           params.ops/to-clause
-           driver-api/desugar-filter-clause
-           driver-api/wrap-value-literals-in-mbql
+           (to-clause driver)
+           (desugar-filter-clause driver)
+           (wrap-value-literals-in-mbql driver)
            ->honeysql
            (honeysql->replacement-snippet-info driver))
 
       (params.dates/exclusion-date-type param-type value)
       (let [field-clause (field->field-filter-clause driver field param-type value)]
         #_{:clj-kondo/ignore [:deprecated-var]}
-        (->> (params.dates/date-string->filter value field-clause)
-             driver-api/desugar-filter-clause
-             driver-api/wrap-value-literals-in-mbql
+        (->> (date-string->filter driver value field-clause)
+             (desugar-filter-clause driver)
+             (wrap-value-literals-in-mbql driver)
              ->honeysql
              (honeysql->replacement-snippet-info driver)))
 
@@ -361,7 +407,7 @@
   [driver field alias replacement-snippet-info]
   (if (str/blank? alias)
     replacement-snippet-info
-    (let [[old-name] (->> (field->clause field nil)
+    (let [[old-name] (->> (field->clause driver field nil)
                           (sql.qp/->honeysql driver)
                           (sql.qp/format-honeysql driver))]
       (update replacement-snippet-info :replacement-snippet str/replace old-name alias))))
@@ -403,12 +449,10 @@
 
 (defmethod ->replacement-snippet-info [:sql TemporalUnit]
   [driver {:keys [value field alias]}]
-  (let [replacement-snippet-info
-        (honeysql->replacement-snippet-info
-         driver
-         (sql.qp/->honeysql driver
-                            (field->clause field (when (not= value params/no-value)
-                                                   {:temporal-unit (keyword value)}))))]
+  (let [replacement-snippet-info (->> (field->clause driver field (when (not= value params/no-value)
+                                                                    {:temporal-unit (keyword value)}))
+                                      (sql.qp/->honeysql driver)
+                                      (honeysql->replacement-snippet-info driver))]
     (replace-alias driver field alias replacement-snippet-info)))
 
 (defmethod ->replacement-snippet-info [:sql ReferencedTableQuery]

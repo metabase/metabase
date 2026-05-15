@@ -8,7 +8,7 @@
    [metabase.collections-rest.settings :as collections-rest.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
-   [metabase.collections.test-utils :refer [without-library]]
+   [metabase.collections.test-utils :refer [with-library-not-synced without-library]]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -595,6 +595,78 @@
            (is (some #{collection/library-collection-type} all-types))
            (is (some #{collection/library-metrics-collection-type} all-types))
            (is (some #{collection/library-data-collection-type} all-types))))))))
+
+(defn- flatten-tree
+  "Flatten a tree of collections into a flat sequence."
+  [collections]
+  (mapcat (fn [collection]
+            (cons collection
+                  (when-let [children (:children collection)]
+                    (flatten-tree children))))
+          collections))
+
+(deftest is-library-root-on-collection-tree-test
+  (testing "GET /api/collection/tree with include-library"
+    (without-library
+     (mt/with-model-cleanup [:model/Collection]
+       (collection/create-library-collection!)
+       (with-library-not-synced
+         (let [data-coll    (t2/select-one :model/Collection :entity_id @#'collection/library-data-entity-id)
+               _subcoll     (mt/user-http-request :crowberto :post 200 "collection"
+                                                  {:name "My Data Subcollection" :parent_id (:id data-coll)})
+               response     (mt/user-http-request :crowberto :get 200 "collection/tree" :include-library true)
+               all-colls    (flatten-tree response)
+               by-type      (group-by :type all-colls)]
+           (testing "System library collections have is_library_root true"
+             (doseq [coll (concat (get by-type collection/library-collection-type)
+                                  (get by-type collection/library-data-collection-type)
+                                  (get by-type collection/library-metrics-collection-type))]
+               (when (contains? @#'collection/library-entity-id? (:entity_id coll))
+                 (is (true? (:is_library_root coll))
+                     (str "System library collection " (:name coll) " should have is_library_root true")))))
+           (testing "User-created subcollections do NOT have is_library_root true"
+             (let [subcoll (first (filter #(= "My Data Subcollection" (:name %)) all-colls))]
+               (is (some? subcoll) "Subcollection should appear in the tree")
+               (is (not (:is_library_root subcoll))
+                   "User-created subcollection should not have is_library_root")))))))))
+
+(deftest is-library-root-on-collection-items-test
+  (testing "GET /api/collection/:id/items"
+    (without-library
+     (mt/with-model-cleanup [:model/Collection]
+       (collection/create-library-collection!)
+       (with-library-not-synced
+         (let [library      (t2/select-one :model/Collection :type collection/library-collection-type)
+               data-coll    (t2/select-one :model/Collection :entity_id @#'collection/library-data-entity-id)
+               _subcoll     (mt/user-http-request :crowberto :post 200 "collection"
+                                                  {:name "My Metrics Subcollection" :parent_id
+                                                   (:id (t2/select-one :model/Collection
+                                                                       :entity_id @#'collection/library-metrics-entity-id))})
+               lib-items    (:data (mt/user-http-request :crowberto :get 200
+                                                         (str "collection/" (:id library) "/items")))]
+           (testing "System library children (Data, Metrics) have is_library_root true"
+             (doseq [item (filter :is_library_root lib-items)]
+               (is (contains? #{collection/library-data-collection-type
+                                collection/library-metrics-collection-type}
+                              (:type item)))))
+           (testing "Data and Metrics collections both marked as is_library_root"
+             (let [roots (filter :is_library_root lib-items)]
+               (is (= #{collection/library-data-collection-type
+                        collection/library-metrics-collection-type}
+                      (set (map :type roots))))))
+           (testing "User-created subcollections inside Data do NOT have is_library_root"
+             (let [data-items (:data (mt/user-http-request :crowberto :get 200
+                                                           (str "collection/" (:id data-coll) "/items")))
+                   subcoll    (first (filter #(= "My Metrics Subcollection" (:name %)) data-items))]
+               (is (nil? subcoll)
+                   "Subcollection created under Metrics should not appear under Data"))
+             (let [metrics-coll (t2/select-one :model/Collection :entity_id @#'collection/library-metrics-entity-id)
+                   metrics-items (:data (mt/user-http-request :crowberto :get 200
+                                                              (str "collection/" (:id metrics-coll) "/items")))
+                   subcoll       (first (filter #(= "My Metrics Subcollection" (:name %)) metrics-items))]
+               (is (some? subcoll) "Subcollection should appear under Metrics")
+               (is (not (:is_library_root subcoll))
+                   "User-created subcollection should not have is_library_root")))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              GET /collection/:id                                               |
@@ -2731,6 +2803,32 @@
               "Root collection without parent should have nil namespace when not specified")
           (is (= "snippets" (:namespace root-collection-with-ns))
               "Root collection should use explicitly provided namespace"))))))
+
+(deftest create-child-collection-of-library-collection-test
+  (testing "POST /api/collection"
+    (testing "Child collection of library collection should inherit the :type"
+      (mt/with-model-cleanup [:model/Collection]
+        (collection/create-library-collection!)
+        (with-library-not-synced
+          (doseq [[entity-id collection-type] [[@#'collection/library-data-entity-id    "library-data"]
+                                               [@#'collection/library-metrics-entity-id "library-metrics"]]]
+            (let [;; Create a parent collection with snippets namespace
+                  lib-root         (t2/select-one :model/Collection :entity_id entity-id)
+                  child-collection (mt/user-http-request :crowberto :post 200 "collection"
+                                                       ;; Deliberately not setting `:type` here - it's automatic.
+                                                         {:name      "Child Collection"
+                                                          :parent_id (u/the-id lib-root)})
+                  child-id         (:id child-collection)]
+              (is (= collection-type (:type child-collection))
+                  "Children of the Library's magic collections inherit their :type")
+              (is (=? {:id   number?
+                       :name "Grandchild Collection"
+                       :type collection-type}
+                      (mt/user-http-request :crowberto :post 200 "collection"
+                                          ;; Likewise, deliberately no `:type`.
+                                            {:name      "Grandchild Collection"
+                                             :parent_id child-id}))
+                  "Grandchild collection should also inherit the :type of their non-magic parent"))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUT /api/collection/:id                                             |

@@ -1,19 +1,16 @@
-import { useDisclosure } from "@mantine/hooks";
-import React, { type ReactElement } from "react";
 import { t } from "ttag";
 
-import {
-  AdminNavItem,
-  type AdminNavItemProps,
-  AdminNavWrapper,
-} from "metabase/admin/components/AdminNav";
+import { AdminNavWrapper } from "metabase/admin/components/AdminNav";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { getPlan, isProPlan } from "metabase/common/utils/plan";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getLocation } from "metabase/selectors/routing";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { Divider, Flex } from "metabase/ui";
 
+import { CustomVisualizationsNav } from "./CustomVisualizationsNav";
+import { SettingsNavItem } from "./SettingsNavItem";
 import { UpdatesNavItem } from "./UpdatesNavItem";
 
 const NavDivider = () => <Divider my="sm" />;
@@ -27,6 +24,9 @@ export function SettingsNav() {
   const hasScim = useHasTokenFeature("scim");
   const hasPythonTransforms = useHasTokenFeature("transforms-python");
   const isHosted = useSetting("is-hosted?");
+  const tokenFeatures = useSetting("token-features");
+  const isAdmin = useSelector(getUserIsAdmin);
+  const isPro = isProPlan(getPlan(tokenFeatures));
 
   return (
     <AdminNavWrapper>
@@ -50,7 +50,20 @@ export function SettingsNav() {
         {hasJwt && <SettingsNavItem path="authentication/jwt" label="JWT" />}
         {hasOidc && <SettingsNavItem path="authentication/oidc" label="OIDC" />}
       </SettingsNavItem>
-      <PLUGIN_REMOTE_SYNC.LibraryNav />
+      {PLUGIN_REMOTE_SYNC.isEnabled ? (
+        <PLUGIN_REMOTE_SYNC.LibraryNav />
+      ) : !isPro ? (
+        <SettingsNavItem
+          path="remote-sync"
+          label={
+            <Flex gap="sm" align="center">
+              <span>{t`Remote sync`}</span>
+              <UpsellGem />
+            </Flex>
+          }
+          icon="sync"
+        />
+      ) : null}
       <NavDivider />
       <SettingsNavItem path="email" label={t`Email`} icon="mail" />
       <SettingsNavItem path="slack" label={t`Slack`} icon="slack" />
@@ -62,6 +75,8 @@ export function SettingsNav() {
         label={t`Localization`}
         icon="globe"
       />
+      {/* do not allow users with "Settings access" permissions to access custom viz pages */}
+      {isAdmin && <CustomVisualizationsNav />}
       <SettingsNavItem path="maps" label={t`Maps`} icon="pinmap" />
       <SettingsNavItem
         path={!hasWhitelabel ? "whitelabel" : undefined}
@@ -116,41 +131,5 @@ export function SettingsNav() {
         icon="cloud"
       />
     </AdminNavWrapper>
-  );
-}
-
-const hasActiveChild = (children: ReactElement[], pathname: string) =>
-  children.length > 0 &&
-  children.some(
-    (child) => child?.props?.path && pathname.includes(child.props.path),
-  );
-
-export function SettingsNavItem({
-  path,
-  folderPattern,
-  ...navItemProps
-}: AdminNavItemProps) {
-  const children = React.Children.toArray(
-    navItemProps.children,
-  ) as ReactElement[];
-  const currentPath: string = useSelector(getLocation)?.pathname ?? "";
-  const [isOpen, { toggle: toggleOpen }] = useDisclosure(
-    folderPattern ? currentPath.includes(folderPattern) : false,
-  );
-
-  const showActive =
-    (!isOpen && hasActiveChild(children, currentPath)) ||
-    currentPath === `/admin/settings/${path}`;
-
-  return (
-    <AdminNavItem
-      data-testid={`settings-sidebar-link`}
-      path={path ? `/admin/settings/${path}` : ""}
-      folderPattern={folderPattern}
-      opened={isOpen}
-      active={showActive}
-      onClick={toggleOpen}
-      {...navItemProps}
-    />
   );
 }

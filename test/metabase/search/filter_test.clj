@@ -163,3 +163,19 @@
                 [:>= [:cast :search_index.last_edited_at :date] #t "2024-10-02"]}}
              (-> (search.filter/with-filters kitchen-sink-filter-context {:select [:some :stuff], :from :somewhere})
                  (update :where set)))))))
+
+(deftest personal-collections-where-clause-set-based-test
+  (testing "the \"exclude\" branch uses a single NOT EXISTS subquery rather than one :not-like clause per personal collection"
+    (let [clause (search.filter/personal-collections-where-clause
+                  {:filter-items-in-personal-collection "exclude"
+                   :current-user-id                     1}
+                  :search_index.collection_id)]
+      (is (=? [:or any? [:and any? [:not [:exists any?]]]]
+              clause))))
+  (testing "the \"only\" branch uses a single EXISTS subquery rather than one :like clause per personal collection"
+    (let [clause (search.filter/personal-collections-where-clause
+                  {:filter-items-in-personal-collection "only"
+                   :current-user-id                     1}
+                  :search_index.collection_id)]
+      (is (=? [:or any? [:exists any?]]
+              clause)))))

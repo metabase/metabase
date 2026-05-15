@@ -55,7 +55,7 @@ describe("ChartTypeSettings", () => {
     setup({ selectedVisualization: "pie" });
     expect(getIcon("chevrondown")).toBeInTheDocument();
     expect(
-      screen.getByTestId("display-options-not-sensible"),
+      screen.getByTestId("display-options-more-charts-toggle"),
     ).toBeInTheDocument();
   });
 
@@ -73,7 +73,9 @@ describe("ChartTypeSettings", () => {
   it("passes correct props to ChartTypeLists", () => {
     setup({ selectedVisualization: "pie" });
     const sensibleList = screen.getByTestId("display-options-sensible");
-    const nonSensibleList = screen.getByTestId("display-options-not-sensible");
+    const nonSensibleList = screen.getByTestId(
+      "display-options-more-charts-toggle",
+    );
 
     expect(sensibleList).toHaveAttribute(
       "data-testid",
@@ -81,7 +83,7 @@ describe("ChartTypeSettings", () => {
     );
     expect(nonSensibleList).toHaveAttribute(
       "data-testid",
-      "display-options-not-sensible",
+      "display-options-more-charts-toggle",
     );
   });
 

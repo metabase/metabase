@@ -1,10 +1,9 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import type { IconName } from "metabase/ui";
 import { Anchor, FixedSizeIcon, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Card } from "metabase-types/api";
+import type { Card, IconName } from "metabase-types/api";
 
 type LocationSectionProps = {
   card: Card;

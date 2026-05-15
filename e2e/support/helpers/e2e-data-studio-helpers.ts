@@ -77,6 +77,8 @@ export const DataStudio = {
     saveButton: () => cy.findByRole("button", { name: "Save" }),
     cancelButton: () => cy.findByRole("button", { name: "Cancel" }),
     editor: codeMirrorHelpers("snippet-editor", {}),
+    visitSnippet: (snippetId: number) =>
+      cy.visit(`/data-studio/library/snippets/${snippetId}`),
   },
   Metrics: MetricPage,
   Tables: {
@@ -149,7 +151,7 @@ export const DataStudio = {
     result: (name: string) =>
       libraryPage().findByText(name).closest('[role="row"]'),
     newButton: () => libraryPage().findByRole("button", { name: /New/ }),
-    collectionItem: (name: string) =>
+    collectionItem: (name: string | RegExp) =>
       libraryPage().findAllByTestId("collection-name").contains(name),
   },
 };

@@ -2,13 +2,13 @@ import cx from "classnames";
 import { useCallback, useMemo } from "react";
 
 import CS from "metabase/css/core/index.css";
-import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   ClickBehavior,
   ClickBehaviorType,
   DashboardCard,
+  IconName,
 } from "metabase-types/api";
 
 import { SidebarItem } from "../SidebarItem";

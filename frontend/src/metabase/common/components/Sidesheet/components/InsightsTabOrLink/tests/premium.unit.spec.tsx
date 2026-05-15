@@ -19,6 +19,7 @@ describe("InsightsTabOrLink (EE with token)", () => {
         isUserAdmin: true,
       });
       expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("upsell-gem")).not.toBeInTheDocument();
       const routerLink = await screen.findByText("Insights");
       await userEvent.click(routerLink);
       expect(history?.getCurrentLocation().pathname).toBe("/dashboard/201");
@@ -36,6 +37,7 @@ describe("InsightsTabOrLink (EE with token)", () => {
         isUserAdmin: true,
       });
       expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("upsell-gem")).not.toBeInTheDocument();
       const routerLink = await screen.findByText("Insights");
       await userEvent.click(routerLink);
       expect(history?.getCurrentLocation().pathname).toBe("/dashboard/202");

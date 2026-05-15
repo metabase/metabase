@@ -31,15 +31,16 @@ const setup = ({
   setupMockJwtEndpoints();
 
   const getFirstSsoDiscoveryCall = () => {
-    // This is `/auth/sso` or `auth/sso?preferred_method=...`
-    // that returns the method (jwt/saml) and the url of the sso provider
-    // `auth/sso?jwt=...` is the second call and should be excluded from this
+    // This is GET `/auth/sso` or `auth/sso?preferred_method=...`
+    // that returns the method (jwt/saml) and the url of the sso provider.
+    // The requests that exchanges the JWT for a session is a POST
+    // to /auth/sso and should not be matched by this.
     return fetchMock.callHistory
       .calls()
       .filter(
         (call) =>
           new URL(call.url).pathname === "/auth/sso" &&
-          !new URL(call.url).searchParams.has("jwt"),
+          (call.options?.method ?? "GET").toUpperCase() === "GET",
       );
   };
 
@@ -89,6 +90,29 @@ describe("Auth Flow - JWT", () => {
       // this is just something we know it's on the screen when everything is ok
       screen.getByTestId("query-visualization-root"),
     ).toBeInTheDocument();
+  });
+
+  it("should send the JWT in the JSON body via POST to /auth/sso, not in the URL via GET (EMB-1645)", async () => {
+    const authConfig = defineMetabaseAuthConfig({
+      metabaseInstanceUrl: MOCK_INSTANCE_URL,
+    });
+
+    const { getLastUserApiCall } = setup({ authConfig });
+
+    await waitForRequest(() => getLastUserApiCall());
+
+    const ssoExchange = fetchMock.callHistory
+      .calls(`${MOCK_INSTANCE_URL}/auth/sso`)
+      .find((call) => (call.options?.method ?? "GET").toUpperCase() === "POST");
+
+    expect(ssoExchange).toBeDefined();
+    expect(ssoExchange!.url).not.toContain("jwt=");
+    expect(ssoExchange!.options.headers).toMatchObject({
+      "content-type": "application/json",
+    });
+    expect(JSON.parse(ssoExchange!.options.body as string)).toEqual({
+      jwt: MOCK_VALID_JWT_RESPONSE,
+    });
   });
 
   it("should retrieve the session from the authProviderUri and send it as 'X-Metabase-Session' header", async () => {
@@ -212,16 +236,13 @@ describe("Auth Flow - JWT", () => {
       },
     });
 
-    fetchMock.get(
-      `${instanceUrlWithSubpath}/auth/sso?jwt=${MOCK_VALID_JWT_RESPONSE}`,
-      {
-        status: 200,
-        body: {
-          id: MOCK_SESSION_TOKEN_ID,
-          user: { id: 1 },
-        },
+    fetchMock.post(`${instanceUrlWithSubpath}/auth/sso`, {
+      status: 200,
+      body: {
+        id: MOCK_SESSION_TOKEN_ID,
+        user: { id: 1 },
       },
-    );
+    });
 
     fetchMock.get(`${instanceUrlWithSubpath}/api/user/current`, {
       status: 200,
@@ -268,17 +289,14 @@ describe("Auth Flow - JWT", () => {
     );
 
     // Mock the Metabase SSO validation endpoint
-    fetchMock.get(
-      `${MOCK_INSTANCE_URL}/auth/sso?jwt=${MOCK_VALID_JWT_RESPONSE}`,
-      {
-        status: 200,
-        body: {
-          id: MOCK_SESSION_TOKEN_ID,
-          exp: 1965805007,
-          iat: 1609459200,
-        },
+    fetchMock.post(`${MOCK_INSTANCE_URL}/auth/sso`, {
+      status: 200,
+      body: {
+        id: MOCK_SESSION_TOKEN_ID,
+        exp: 1965805007,
+        iat: 1609459200,
       },
-    );
+    });
 
     const authConfig = defineMetabaseAuthConfig({
       metabaseInstanceUrl: MOCK_INSTANCE_URL,

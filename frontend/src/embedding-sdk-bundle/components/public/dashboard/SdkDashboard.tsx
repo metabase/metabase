@@ -25,11 +25,14 @@ import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion/
 import { useDashboardLoadHandlers } from "embedding-sdk-bundle/hooks/private/use-dashboard-load-handlers";
 import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
+import { useSdkControlledParameters } from "embedding-sdk-bundle/hooks/private/use-sdk-controlled-parameters";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
 } from "embedding-sdk-bundle/hooks/private/use-sdk-dashboard-params";
 import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/use-setup-content-translations";
+import { useWarnConflictingParameterProps } from "embedding-sdk-bundle/hooks/private/use-warn-conflicting-parameter-props";
+import { getEffectiveParameterValues } from "embedding-sdk-bundle/lib/controlled-parameters";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
 import {
@@ -39,6 +42,7 @@ import {
 import type { MetabaseQuestion } from "embedding-sdk-bundle/types";
 import type {
   DashboardEventHandlersProps,
+  ParameterChangePayload,
   SdkDashboardId,
 } from "embedding-sdk-bundle/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
@@ -129,13 +133,45 @@ export type SdkDashboardProps = PropsWithChildren<
     autoRefreshInterval?: number;
 
     /**
-     * Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
+     * Initial values for query parameters, slug-keyed. Applied once on mount; user widget edits afterwards are not reflected back to the host.
+     * <br/>
+     * For each parameter:
+     * <br/>
+     * - set to a value (string for a single option, array of strings for multiple): that value is applied.
+     * <br/>
+     * - set to `null`: strictly cleared, ignoring the parameter's default.
+     * <br/>
+     * - omitted (or set to `undefined`): falls back to the parameter's default (or `null` if it has no default).
+     * <br/>
      * <br/>
      * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
      * <br/>
      * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
      */
     initialParameters?: ParameterValues;
+
+    /**
+     * Controlled parameter values, slug-keyed. On every render, this object replaces the dashboard's parameter values:
+     * <br/>
+     * - a parameter set to a value uses that value.
+     * <br/>
+     * - a parameter set to `null` is cleared, even if it has a default.
+     * <br/>
+     * - a parameter omitted from the object (or set to `undefined`) uses its default (or `null` if it has no default).
+     * <br/>
+     * <br/>
+     * Pair with {@link SdkDashboardProps.onParametersChange | onParametersChange} to stay in sync with user edits.
+     * <br/>
+     * - Combining {@link SdkDashboardProps.parameters | parameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
+     * <br/>
+     * - Combining {@link SdkDashboardProps.parameters | parameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
+     */
+    parameters?: ParameterValues;
+
+    /**
+     * Fires on parameters change. The payload's `source` distinguishes the initial state on load (`'initial-state'`), user edits in the UI (`'manual-change'`), and auto-updates (`'auto-change'`).
+     */
+    onParametersChange?: (payload: ParameterChangePayload) => void;
   } & SdkDashboardDisplayProps &
     DashboardEventHandlersProps &
     EditableDashboardOwnProps
@@ -170,7 +206,9 @@ const SdkDashboardInner = ({
   dashboardId: rawDashboardId,
   token: rawToken,
   autoRefreshInterval,
-  initialParameters = {},
+  initialParameters,
+  parameters,
+  onParametersChange,
   withTitle = true,
   withCardTitle = true,
   withDownloads = false,
@@ -200,6 +238,24 @@ const SdkDashboardInner = ({
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
   const dispatch = useSdkDispatch();
   const [isFirstRender, setIsFirstRender] = useState(true);
+
+  useWarnConflictingParameterProps({
+    initialParameters,
+    parameters,
+    initialParameterPropName: "initialParameters",
+    parameterPropName: "parameters",
+  });
+
+  const effectiveInitialParameters = getEffectiveParameterValues(
+    parameters,
+    initialParameters,
+  );
+
+  useSdkControlledParameters({
+    parameters,
+    onParametersChange,
+  });
+
   const { rawToken: tokenFromStore, error: tokenFetchError } =
     useSdkSelector(getSessionTokenState);
 
@@ -418,7 +474,7 @@ const SdkDashboardInner = ({
         ref={dashboardContextProviderRef}
         dashboardId={dashboardId}
         isGuestEmbed={isGuestEmbed}
-        parameterQueryParams={initialParameters}
+        parameterQueryParams={effectiveInitialParameters}
         navigateToNewCardFromDashboard={
           navigateToNewCardFromDashboard !== undefined
             ? navigateToNewCardFromDashboard
