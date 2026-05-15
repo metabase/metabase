@@ -129,123 +129,45 @@
 ;; docs-ensure-generated
 ;; ---------------------------------------------------------------------------
 
-(defn newest-mtime-ms
-  "Newest mtime in millis across all files matching any glob in `sources`,
-  relative to `root`. Returns nil if no files match — callers should treat
-  nil as 'no source dependency known' and fall back to existence checks."
-  [root sources]
-  (let [mtimes (->> sources
-                    (mapcat #(fs/glob root %))
-                    (map fs/last-modified-time)
-                    (map #(.toMillis ^java.nio.file.attribute.FileTime %)))]
-    (when (seq mtimes)
-      (apply max mtimes))))
-
-(defn newest-source
-  "Like `newest-mtime-ms` but returns `{:path :mtime}` for the actual newest
-  file. Used by `--verbose` mode to attribute staleness to a specific source."
-  [root sources]
-  (->> sources
-       (mapcat #(fs/glob root %))
-       (map (fn [p]
-              {:path  (str p)
-               :mtime (.toMillis ^java.nio.file.attribute.FileTime
-                       (fs/last-modified-time p))}))
-       (sort-by (comp - :mtime))
-       first))
-
-(defn artifact-fresh?
-  "True if the artifact at `<root>/<rel-path>` exists, is non-empty, and is
-  at least as new as the newest file matching any glob in `sources`
-  (relative to `root`). When `sources` is empty or matches no files, falls
-  back to existence + non-empty."
-  [root rel-path sources]
+(defn artifact-present?
+  "True if the artifact at `<root>/<rel-path>` exists and is non-empty.
+  A zero-byte file means a previous generation died mid-write — we treat
+  that as absent so the next build regenerates it."
+  [root rel-path]
   (let [f (java.io.File. (str root "/" rel-path))]
-    (and (.exists f)
-         (pos? (.length f))
-         (let [src (newest-mtime-ms root sources)]
-           (or (nil? src) (<= src (.lastModified f)))))))
-
-(defn staleness
-  "Returns a map describing *why* the artifact at `<root>/<rel-path>` would be
-  considered stale by `artifact-fresh?`, or nil when it is fresh. Used by
-  `--verbose` mode to make 'regenerating X' lines self-explanatory.
-
-  Shape: `{:reason :missing}` / `{:reason :empty}` /
-  `{:reason :stale :artifact-mtime ms :newest-source {:path :mtime}}`."
-  [root rel-path sources]
-  (let [f (java.io.File. (str root "/" rel-path))]
-    (cond
-      (not (.exists f))      {:reason :missing}
-      (zero? (.length f))    {:reason :empty}
-      :else
-      (when-let [src (newest-source root sources)]
-        (when (> (:mtime src) (.lastModified f))
-          {:reason          :stale
-           :artifact-mtime  (.lastModified f)
-           :newest-source   src})))))
+    (and (.exists f) (pos? (.length f)))))
 
 (def ^:private generated-artifacts
-  "Files the docs build expects to find on disk, paired with the source globs
-  that drive freshness checks and the command that regenerates them. Used
-  by `docs-ensure-generated` (and the lazy regen path inside `run-build!`)
-  as a pre-flight: anything missing, empty, or older than its newest source
-  gets regenerated before the build. Add new auto-generated artifacts here
-  so the pre-flight stays in sync."
+  "Files the docs build expects to find on disk, paired with the command that
+  regenerates them. Used by `docs-ensure-generated` (and the lazy regen path
+  inside `run-build!`) as a pre-flight: anything missing or empty gets
+  regenerated before the build. Add new auto-generated artifacts here so the
+  pre-flight stays in sync.
+
+  Freshness is exists+non-empty, not source-mtime — if you edit an SDK type
+  and need the typedoc to refresh, run `bun run docs:generate:embedding`."
   [{:path        "docs/embedding/sdk/api/snippets/index.md"
-    :missing-msg "embedding docs missing or stale, regenerating (typedoc --pure)..."
-    :sources     ["enterprise/frontend/src/embedding-sdk-package/**.ts"
-                  "enterprise/frontend/src/embedding-sdk-package/**.tsx"
-                  "enterprise/frontend/src/embedding-sdk-bundle/**.ts"
-                  "enterprise/frontend/src/embedding-sdk-bundle/**.tsx"
-                  "enterprise/frontend/src/embedding-sdk-shared/**.ts"
-                  "enterprise/frontend/src/embedding-sdk-shared/**.tsx"]
+    :missing-msg "embedding docs missing, regenerating (typedoc --pure)..."
     :regen       #(run-generate-embedding! true)}
    {:path        "docs-build/public/embedding/sdk/api/index.html"
-    :missing-msg "embedding HTML API reference missing or stale, regenerating..."
-    :sources     ["enterprise/frontend/src/embedding-sdk-package/**.ts"
-                  "enterprise/frontend/src/embedding-sdk-package/**.tsx"
-                  "enterprise/frontend/src/embedding-sdk-bundle/**.ts"
-                  "enterprise/frontend/src/embedding-sdk-bundle/**.tsx"
-                  "enterprise/frontend/src/embedding-sdk-shared/**.ts"
-                  "enterprise/frontend/src/embedding-sdk-shared/**.tsx"]
+    :missing-msg "embedding HTML API reference missing, regenerating..."
     :regen       #(shell/sh {:dir u/project-root-directory}
                             "bun" "run" "embedding-sdk:docs:generate:html:pure")}
    {:path        "docs/api.json"
-    :missing-msg "OpenAPI spec missing or stale, regenerating..."
-    :sources     ;; `**` requires a non-empty path element, so we need both
-                 ;; the directly-under-src and the nested-module forms.
-    ["src/metabase/api/**.clj"
-     "src/metabase/**/api/**.clj"
-     "enterprise/backend/src/metabase_enterprise/api/**.clj"
-     "enterprise/backend/src/metabase_enterprise/**/api/**.clj"]
+    :missing-msg "OpenAPI spec missing, regenerating..."
     :regen       #(run-generate! #{:api})}])
 
-(defn- print-staleness [{:keys [reason artifact-mtime newest-source]}]
-  (case reason
-    :missing (println "    reason: artifact missing")
-    :empty   (println "    reason: artifact is empty (zero bytes)")
-    :stale   (do (println "    reason: source newer than artifact")
-                 (println (str "    newest source:  " (:path newest-source)))
-                 (println (str "    source mtime:   "
-                               (java.time.Instant/ofEpochMilli (:mtime newest-source))))
-                 (println (str "    artifact mtime: "
-                               (java.time.Instant/ofEpochMilli artifact-mtime))))))
+(defn- ensure-artifact! [{:keys [path missing-msg regen]}]
+  (when-not (artifact-present? u/project-root-directory path)
+    (println (str "→ " missing-msg))
+    (regen)))
 
-(defn- ensure-artifact!
-  ([artifact] (ensure-artifact! false artifact))
-  ([verbose? {:keys [path missing-msg sources regen]}]
-   (when-not (artifact-fresh? u/project-root-directory path sources)
-     (println (str "→ " missing-msg))
-     (when verbose?
-       (when-let [s (staleness u/project-root-directory path sources)]
-         (print-staleness s)))
-     (regen))))
+(defn- ensure-all-artifacts! []
+  (doseq [artifact generated-artifacts]
+    (ensure-artifact! artifact)))
 
-(defn ensure-generated [parsed]
-  (let [verbose? (boolean (:verbose (:options parsed)))]
-    (doseq [artifact generated-artifacts]
-      (ensure-artifact! verbose? artifact))))
+(defn ensure-generated [_parsed]
+  (ensure-all-artifacts!))
 
 ;; ---------------------------------------------------------------------------
 ;; docs-build
@@ -255,14 +177,30 @@
   "Compute DOCS_BASE_PATH for a build, honoring (in order):
   1. explicit `base-path` argument
   2. `DOCS_BASE_PATH` env var
-  3. `GITHUB_REF_NAME` env var (set in GitHub Actions)
-  4. current branch in the caller's checkout"
-  [base-path]
-  (or base-path
-      (System/getenv "DOCS_BASE_PATH")
-      (base-path-for-branch
-       (or (System/getenv "GITHUB_REF_NAME")
-           (current-branch u/project-root-directory)))))
+  3. `branch` argument (e.g. from `docs-build-branch`'s positional arg)
+  4. `GITHUB_REF_NAME` env var (set in GitHub Actions)
+  5. current branch in the caller's checkout"
+  ([base-path] (resolve-base-path base-path nil))
+  ([base-path branch]
+   (or base-path
+       (System/getenv "DOCS_BASE_PATH")
+       (base-path-for-branch
+        (or branch
+            (System/getenv "GITHUB_REF_NAME")
+            (current-branch u/project-root-directory))))))
+
+(defn- resolve-site-url
+  "Absolute site URL from CLI arg or `DOCS_SITE_URL` env var; nil if neither
+  is set (Astro will then skip canonicals/sitemap)."
+  [site-url]
+  (or site-url (System/getenv "DOCS_SITE_URL")))
+
+(defn- build-env
+  "Shell env for Astro builds: parent env + DOCS_BASE_PATH, and DOCS_SITE_URL
+  when set. Single source of truth so `run-build!` and `preview` can't drift."
+  [base-path site-url]
+  (cond-> (assoc (into {} (System/getenv)) "DOCS_BASE_PATH" base-path)
+    site-url (assoc "DOCS_SITE_URL" site-url)))
 
 (defn- bun-install! [docs-build-dir]
   (let [has-lock? (or (fs/exists? (str docs-build-dir "/bun.lockb"))
@@ -293,9 +231,8 @@
         (step "Regenerating OpenAPI spec")
         (run-generate! #{:api}))
     :lazy
-    (do (step "Ensuring generated artifacts present and fresh")
-        (doseq [artifact generated-artifacts]
-          (ensure-artifact! artifact)))))
+    (do (step "Ensuring generated artifacts present")
+        (ensure-all-artifacts!))))
 
 (defn- run-build!
   "Run the docs build pipeline in the caller's repo
@@ -308,8 +245,8 @@
     :or   {regen-mode :full}}]
   (let [root (str u/project-root-directory)
         base (resolve-base-path base-path)
-        env  (cond-> (assoc (into {} (System/getenv)) "DOCS_BASE_PATH" base)
-               site-url (assoc "DOCS_SITE_URL" site-url))]
+        url  (resolve-site-url site-url)
+        env  (build-env base url)]
     (println (c/cyan "Building docs site"))
     (println "  repo:" root)
     (println "  base:" base)
@@ -349,9 +286,8 @@
   [parsed]
   (let [opts           (:options parsed)
         base           (resolve-base-path (:base-path opts))
-        site-url       (or (:site-url opts) (System/getenv "DOCS_SITE_URL"))
-        env            (cond-> (assoc (into {} (System/getenv)) "DOCS_BASE_PATH" base)
-                         site-url (assoc "DOCS_SITE_URL" site-url))
+        site-url       (resolve-site-url (:site-url opts))
+        env            (build-env base site-url)
         docs-build-dir (str u/project-root-directory "/docs-build")]
     (run-build! {:base-path  base
                  :site-url   site-url
@@ -382,15 +318,6 @@
             [(str "refs/remotes/origin/" branch) branch])
       (throw (ex-info (str "Cannot resolve branch '" branch "' locally or on origin")
                       {:branch branch :babashka/exit 1}))))
-
-(defn- worktree-on-branch?
-  "True if `worktree-dir` is a git worktree created by this script for
-  `branch` (we identify by a marker file we drop on creation)."
-  [worktree-dir branch]
-  (let [marker (str worktree-dir "/.docs-build-branch")]
-    (and (fs/exists? (str worktree-dir "/.git"))
-         (fs/exists? marker)
-         (= branch (str/trim (slurp marker))))))
 
 (defn- create-worktree! [root worktree-dir resolved-ref branch]
   (fs/create-dirs (fs/parent worktree-dir))
@@ -467,79 +394,60 @@
           (println "Re-run with --force to remove them.")))))
 
 (defn build-branch
-  "Build the docs site for an arbitrary git branch via a git worktree."
+  "Build the docs site for an arbitrary git branch via a git worktree.
+  Always creates a fresh worktree, removes it on success, retains it on
+  failure so the operator can inspect. Use `docs-clean-worktrees --force`
+  to bulk-remove leftovers."
   [parsed]
-  (let [[branch]      (:arguments parsed)
-        opts          (:options parsed)
-        root          u/project-root-directory
-        slug          (slugify branch)
-        worktree-dir  (or (:worktree-dir opts)
-                          (str root "/__worktrees/docs-" slug))
-        base-path     (or (:base-path opts)
-                          (System/getenv "DOCS_BASE_PATH")
-                          (base-path-for-branch branch))
-        output-dir    (or (:output opts)
-                          (str root "/build/docs/" (base-tail base-path)))
-        site-url      (or (:site-url opts) (System/getenv "DOCS_SITE_URL"))
-        fetch?        (not (:no-fetch opts))
-        keep?         (boolean (:keep opts))]
+  (let [[branch]     (:arguments parsed)
+        opts         (:options parsed)
+        root         u/project-root-directory
+        worktree-dir (str root "/__worktrees/docs-" (slugify branch))
+        base-path    (resolve-base-path (:base-path opts) branch)
+        output-dir   (or (:output opts)
+                         (str root "/build/docs/" (base-tail base-path)))
+        site-url     (resolve-site-url (:site-url opts))
+        fetch?       (not (:no-fetch opts))]
     (println (c/cyan "Building docs for branch"))
     (println "  branch:   " branch)
     (println "  base path:" base-path)
     (println "  worktree: " worktree-dir)
     (println "  output:   " output-dir)
 
-    (let [resolved-ref (resolve-ref! root branch fetch?)
-          existed?     (fs/directory? worktree-dir)
-          reuse?       (and existed? (worktree-on-branch? worktree-dir branch))]
-      (cond
-        reuse?
-        (do (println (c/yellow (str "Reusing existing worktree at " worktree-dir)))
-            (shell/sh {:dir worktree-dir} "git" "reset" "--hard" resolved-ref))
+    (when (fs/directory? worktree-dir)
+      (throw (ex-info
+              (str worktree-dir " already exists (leftover from a previous failed build).\n"
+                   "Run `./bin/mage docs-clean-worktrees --force` to remove it.")
+              {:worktree-dir worktree-dir :babashka/exit 1})))
 
-        existed?
-        (throw (ex-info
-                (str worktree-dir " already exists and was not created by this script for '"
-                     branch "'.\nRemove it or pass --worktree-dir to use a different path.")
-                {:worktree-dir worktree-dir :branch branch :babashka/exit 1}))
+    (let [resolved-ref (resolve-ref! root branch fetch?)]
+      (create-worktree! root worktree-dir resolved-ref branch)
+      (try
+        (println)
+        (println (c/cyan "Running docs build in worktree..."))
+        (println)
+        ;; Re-invoke mage in the worktree so its `project-root-directory`,
+        ;; bb.edn, and mage sources all resolve to the worktree's checkout.
+        ;; A few hundred ms of bb cold start cost vs the multi-minute build —
+        ;; rounds to zero.
+        (let [cmd (cond-> [(str worktree-dir "/bin/mage") "docs-build"
+                           "--base-path" base-path]
+                    site-url (into ["--site-url" site-url]))]
+          (apply shell/sh {:dir worktree-dir} cmd))
 
-        :else
-        (create-worktree! root worktree-dir resolved-ref branch))
+        (let [dist (str worktree-dir "/docs-build/dist")]
+          (when-not (fs/directory? dist)
+            (throw (ex-info (str "Expected build output at " dist " not found")
+                            {:dist dist :babashka/exit 1})))
+          (rsync-dist! dist output-dir))
 
-      (let [build-failed? (atom true)]
-        (try
+        (println)
+        (println (c/green (str "Done. Output: " output-dir)))
+        (remove-worktree! root worktree-dir)
+
+        (catch Exception e
           (println)
-          (println (c/cyan "Running docs build in worktree..."))
-          (println)
-          ;; Re-invoke mage in the worktree so its `project-root-directory`,
-          ;; bb.edn, and mage sources all resolve to the worktree's checkout.
-          ;; A few hundred ms of bb cold start cost vs the multi-minute build —
-          ;; rounds to zero.
-          (let [cmd (cond-> [(str worktree-dir "/bin/mage") "docs-build"
-                             "--base-path" base-path]
-                      site-url (into ["--site-url" site-url]))]
-            (apply shell/sh {:dir worktree-dir} cmd))
-
-          (let [dist (str worktree-dir "/docs-build/dist")]
-            (when-not (fs/directory? dist)
-              (throw (ex-info (str "Expected build output at " dist " not found")
-                              {:dist dist :babashka/exit 1})))
-            (rsync-dist! dist output-dir))
-
-          (reset! build-failed? false)
-          (println)
-          (println (c/green (str "Done. Output: " output-dir)))
-
-          (finally
-            (cond
-              @build-failed?
-              (do (println)
-                  (println (c/red "Build failed. Worktree retained for debugging:"))
-                  (println (str "  " worktree-dir))
-                  (println (str "Remove with: git worktree remove --force '" worktree-dir "'")))
-
-              (or keep? reuse?)
-              (println (str "Worktree retained: " worktree-dir))
-
-              :else
-              (remove-worktree! root worktree-dir))))))))
+          (println (c/red "Build failed. Worktree retained for debugging:"))
+          (println (str "  " worktree-dir))
+          (println "Remove with: ./bin/mage docs-clean-worktrees --force")
+          (throw e))))))

@@ -5,8 +5,7 @@
 // generated typedoc output (docs/embedding/sdk/api/snippets/*.md,
 // docs/embedding/eajs/snippets/*.md), so the docs can't drift from the
 // real types/examples. `include_file` is the only build-time tag the
-// markdown layer understands — `scripts/validate-liquid.mjs` enforces that
-// nothing else slips through.
+// markdown layer understands.
 //
 // Two shapes are handled (an audit of docs/ shows every `include_file` is one
 // of these — nothing inline in prose / lists / tables):
