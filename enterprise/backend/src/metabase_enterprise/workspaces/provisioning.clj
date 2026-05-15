@@ -7,6 +7,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.util.log :as log]
    [potemkin.types :as p]
+   [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]))
 
 (comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
@@ -119,9 +120,15 @@
               ;; constraint on `(database_id, from_*)` prevents two workspaces on
               ;; the same DB from remapping the same canonical table, so scoping
               ;; by iso namespace alone is correct.
-              (ws.remapping-cleanup/clear-mappings-for-iso! db
-                                                            (:database_id wsd)
-                                                            (:output_namespace wsd))))
+              ;;
+              ;; Rebind `*current-connectable*` to nil so the DELETE runs on a
+              ;; fresh autocommit connection outside the `with-cluster-lock` tx.
+              ;; Otherwise, when `destroy!` throws, the surrounding tx rolls back
+              ;; and undoes the DELETE.
+              (binding [t2.connection/*current-connectable* nil]
+                (ws.remapping-cleanup/clear-mappings-for-iso! db
+                                                              (:database_id wsd)
+                                                              (:output_namespace wsd)))))
           (t2/update! :model/WorkspaceDatabase
                       {:id workspace-database-id}
                       {:output_namespace ""
