@@ -251,18 +251,30 @@
         metabot-cids      (metabot-collection-scope-ids collection-id)
         verified-ids      (when verified-only? (verified-card-id-set))
         routed-db-ids     (routed-child-database-id-set)
-        ;; Extra columns (`:collection_id`, `:is_published`, `:visibility_type`, `:db_id`) are
-        ;; selected purely to drive the in-memory library/metabot derivations below — they're
-        ;; ignored by `->card-entity` / `->table-entity`. `:card_schema` is required by
-        ;; `:model/Card`'s post-select hooks even when we don't otherwise use it.
-        universe-cards    (t2/select [:model/Card :id :name :type :collection_id :card_schema]
-                                     :type        [:in ["metric" "model"]]
-                                     :archived    false
-                                     :database_id [:not= audit/audit-db-id])
-        universe-tables   (t2/select [:model/Table :id :name :collection_id :is_published
-                                      :visibility_type :db_id]
-                                     :active true
-                                     :db_id  [:not= audit/audit-db-id])
+        ;; Raw `t2/query` against the physical tables instead of `t2/select [:model/Card ...]` /
+        ;; `:model/Table` — we read only the columns the scorer actually consumes (no
+        ;; `:card_schema` etc.) and bypass each model's post-select hooks entirely. That keeps
+        ;; the CLI safe when a modern jar is pointed at an older appdb whose `:model/*` definitions
+        ;; reference columns the schema hasn't grown yet. Wrapped in
+        ;; [[appdb-source/with-missing-relation-fallback]] so a missing `is_published` /
+        ;; `collection_id` on an ancient appdb degrades to an empty catalog rather than a stack
+        ;; trace; cron / API (with [[appdb-source/*tolerate-missing-relations?*]] off) still raise.
+        universe-cards    (appdb-source/with-missing-relation-fallback
+                            ::universe-cards []
+                            #(t2/query {:select [:id :name :type :collection_id]
+                                        :from   [:report_card]
+                                        :where  [:and
+                                                 [:in :type ["metric" "model"]]
+                                                 [:= :archived false]
+                                                 [:not= :database_id audit/audit-db-id]]}))
+        universe-tables   (appdb-source/with-missing-relation-fallback
+                            ::universe-tables []
+                            #(t2/query {:select [:id :name :collection_id :is_published
+                                                 :visibility_type :db_id]
+                                        :from   [:metabase_table]
+                                        :where  [:and
+                                                 [:= :active true]
+                                                 [:not= :db_id audit/audit-db-id]]}))
         field-counts      (table-field-counts  (mapv :id universe-tables))
         measure-names     (table-measure-names (mapv :id universe-tables))
         card-entities     (mapv ->card-entity universe-cards)
