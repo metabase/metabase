@@ -163,7 +163,7 @@ jobs:
         if: ${{ matrix.edition == 'oss' }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
-            --env grepTags="@smoke+-@EE",grepOmitFiltered=true \
+            --env grepTags="@prerelease+-@EE",grepOmitFiltered=true \
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
             --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
@@ -171,7 +171,7 @@ jobs:
         if: ${{ matrix.edition == 'ee' }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
-            --env grepTags="@smoke+-@OSS",grepOmitFiltered=true \
+            --env grepTags="@prerelease+-@OSS",grepOmitFiltered=true \
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
             --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
@@ -208,7 +208,13 @@ jobs:
   tests-complete-message:
     if: always()
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    needs: [run-sanity-check, check-uberjar-health, containerize-ee, containerize-oss]
+    needs:
+      [
+        run-sanity-check,
+        check-uberjar-health,
+        containerize-ee,
+        containerize-oss,
+      ]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
