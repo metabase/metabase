@@ -1,20 +1,16 @@
 ---
 /**
- * Marketing-site footer (newsletter form + 5-column sitemap + social row).
- * Vendored snapshot of `metabase.github.io/_includes/footer.html` rendered
- * from a built Jekyll page; lives in `src/data/footer-snapshot.html`.
+ * Page footer: newsletter form + 5-column sitemap + social row. The HTML body
+ * lives in `src/data/footer.html` and is imported as a raw string.
  *
- * The Mailchimp `mc-validate.js` external script and its jQuery noConflict
- * snippet are stripped from the snapshot — they pull from S3 and depend on
- * jQuery, neither of which the docs site has. The form still POSTs to
- * Mailchimp directly; HTML5 form validation handles the email field.
- *
- * Live status indicator + GitHub star count come from the corresponding
- * scripts under `public/js/`, which DocsLayout.astro loads.
+ * The newsletter form POSTs directly to Mailchimp; HTML5 form validation
+ * handles the email field (no JS dependency). The live status indicator and
+ * GitHub star count come from `public/js/status.js` and
+ * `public/js/github-stars.js`, loaded by DocsLayout.astro.
  */
-import footerSnapshot from "../data/footer-snapshot.html?raw";
+import footerHtml from "../data/footer.html?raw";
 ---
 
 <div class="bootstrap footer-wrap">
-  <footer class="body-footer" set:html={footerSnapshot} />
+  <footer class="body-footer" set:html={footerHtml} />
 </div>

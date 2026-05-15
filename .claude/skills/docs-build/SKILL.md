@@ -1,6 +1,6 @@
 ---
 name: docs-build
-description: Build, preview, and orchestrate the Metabase docs site. Use when working on the Astro renderer under docs-build/, the mage tasks in mage.docs, the auto-generated content (env vars, config, API, CLI commands, analytics, SDK typedoc), versioned/release builds, or the vendored marketing chrome.
+description: Build, preview, and orchestrate the Metabase docs site. Use when working on the Astro renderer under docs-build/, the mage tasks in mage.docs, the auto-generated content (env vars, config, API, CLI commands, analytics, SDK typedoc), versioned/release builds, or the page chrome (header, footer, search).
 allowed-tools: Read, Write, Edit, Grep, Bash, Glob
 ---
 
@@ -75,9 +75,9 @@ In `docs-build/src/plugins/` — each has a `.test.mjs` next to it:
 
 `nav.yml` parsing lives in `docs-build/src/lib/nav.ts` (`getNav`, `findTrail`, `hrefForPage`, `urlMatchesSlug`). It's `?raw`-imported by Vite so the file is inlined at build time.
 
-## Vendored marketing chrome
+## Header and footer
 
-The header/footer are **vendored** static snapshots from `metabase.github.io` — the docs build has zero runtime dependency on the marketing site. Files live in `docs-build/src/data/{header,footer}-snapshot.html`, with extracted CSS in `docs-build/src/styles/chrome.css`. Resync procedure is documented in `docs/developers-guide/docs.md` under "Resyncing the chrome after a marketing-nav change". Strip the dynamic blog-posts loop, the promo-banner countdown script, and the Mailchimp scripts before swapping in.
+The page chrome is native to the docs site. Markup lives in `docs-build/src/data/{header,footer}.html` (raw-imported by `Header.astro` / `Footer.astro`); styles in `docs-build/src/styles/chrome.css`; client behavior (mobile hamburger, status dot, GitHub star count, promo-banner dismiss) in `docs-build/public/js/`. Edit those files directly.
 
 ## Pre-PR checklist
 
@@ -115,8 +115,8 @@ For the mage layer:
   - `src/lib/nav.ts` — nav parser + utilities
   - `src/layouts/DocsLayout.astro` — page chrome
   - `src/components/` — `Header`, `Footer`, `Sidebar`, `TopBar`, `TableOfContents`, `FeedbackWidget`
-  - `src/data/{header,footer}-snapshot.html` — vendored marketing chrome
-  - `src/styles/chrome.css` — vendored marketing CSS
+  - `src/data/{header,footer}.html` — header and footer markup (raw-imported)
+  - `src/styles/chrome.css` — header / footer / promo-banner styles (Bootstrap 5 subset scoped under `.bootstrap`)
   - `scripts/generate-llms-files.mjs` — post-build llms.txt
   - `scripts/validate-nav.mjs` — nav.yml reference validator (run by `docs:check`)
 - **Orchestrator**: `mage/src/mage/docs.clj`
