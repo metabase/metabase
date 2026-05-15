@@ -4,8 +4,8 @@ import { memo } from "react";
 import { Card } from "metabase/common/components/Card";
 import S from "metabase/common/components/List/List.module.css";
 import CS from "metabase/css/core/index.css";
-import type { IconName } from "metabase/ui";
 import { Ellipsified, Icon } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import { ListItemLink, Root } from "./ListItem.styled";
 

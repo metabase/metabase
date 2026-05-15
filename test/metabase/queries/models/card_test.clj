@@ -1,4 +1,5 @@
 (ns metabase.queries.models.card-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.queries.models.card-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]

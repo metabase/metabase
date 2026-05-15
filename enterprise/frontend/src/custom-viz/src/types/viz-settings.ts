@@ -111,10 +111,13 @@ export type CreateDefineSetting<TSettings extends Record<string, unknown>> =
     id: Key;
 
     /**
-     * Top-level section that this setting appears under in the settings sidebar
-     * (e.g. `"Data"`, `"Display"`, `"Axes"`).
+     * Returns the top-level section this setting appears under in the settings
+     * sidebar (e.g. `"Data"`, `"Display"`, `"Axes"`). Implemented as a getter so
+     * the label can be localized at call time.
+     *
+     * @returns Section to put this setting into.
      */
-    section?: string;
+    getSection?: () => string;
 
     /** Human-readable label rendered above the widget in the sidebar. */
     title?: string;

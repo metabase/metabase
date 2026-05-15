@@ -5,10 +5,14 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/redux";
-import { Flex, Group, Icon, type IconName, Select, Text } from "metabase/ui";
+import { Flex, Group, Icon, Select, Text } from "metabase/ui";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import visualizations from "metabase/visualizations";
-import type { BaseDashboardCard, ParameterId } from "metabase-types/api";
+import type {
+  BaseDashboardCard,
+  IconName,
+  ParameterId,
+} from "metabase-types/api";
 
 import { moveParameter } from "../../../actions";
 import { getCurrentDashcards, getTabs } from "../../../selectors";

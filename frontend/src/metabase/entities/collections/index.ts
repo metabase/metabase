@@ -1,3 +1,3 @@
+export { default as getExpandedCollectionsById } from "./getExpandedCollectionsById";
 export * from "./constants";
-export * from "./collections";
 export * from "./utils";

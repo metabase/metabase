@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
+  setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
@@ -134,6 +135,9 @@ export const commonSetup = ({
   setupDatabasesEndpoints([DATABASE]);
   setupSearchEndpoints([model_1, model_2, dashboard]);
   setupRecentViewsEndpoints(recents);
+  setupCollectionByIdEndpoint({
+    collections: [createMockCollection({ id: "root", can_write: true })],
+  });
   const adminState = isAdmin
     ? createMockAdminState({
         app: createMockAdminAppState({

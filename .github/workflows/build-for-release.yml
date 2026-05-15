@@ -1,4 +1,10 @@
-name: Release 1 - Build Release Artifact
+# Builds a fresh release JAR from scratch at a given commit.
+#
+# You should almost never have to use this. The normal release flow relies on a
+# commit that has already been built and tested on its branch — see
+# `tag-for-release.yml`, which tags that existing JAR. Building from scratch
+# here is only for exceptional cases.
+name: Release 0 - Build Release Artifact
 run-name: Build ${{ inputs.version }}
 
 on:
@@ -45,24 +51,17 @@ jobs:
             }).catch(console.error);
 
   trigger-milestone-check:
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 5
-    needs: start-message
-    steps:
-      - name: trigger pre-release milestone check
-        uses: actions/github-script@v7
-        with:
-          script: | # js
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'release-milestone-check.yml',
-              ref: '${{ github.ref }}',
-              inputs: {
-                commit: '${{ inputs.commit }}',
-                version: '${{ inputs.version }}',
-              }
-            });
+    # Posts a Slack FYI about issues that still need review for this release.
+    # Informational only — nothing depends on it, so it never blocks the release.
+    needs: [check-version, check-commit]
+    permissions:
+      contents: read
+      issues: read
+    uses: ./.github/workflows/release-milestone-check.yml
+    secrets: inherit
+    with:
+      version: ${{ inputs.version }}
+      commit: ${{ inputs.commit }}
 
   check-version:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -187,43 +186,13 @@ jobs:
     # so any PRs that merge while the build is in flight are tagged with the next
     # milestone (not the one about to be released). Gated on the preflight checks
     # so a bad version/commit input doesn't rotate the milestone spuriously.
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: [check-version, check-commit]
-    timeout-minutes: 15
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        sparse-checkout: |
-          release
-          .github
-    - name: Prepare release scripts
-      uses: ./.github/actions/prepare-release-scripts
-    - name: Update milestones
-      uses: actions/github-script@v7
-      with:
-        script: | # js
-          const { closeMilestone, openNextMilestones, isPreReleaseVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
-
-          const version = '${{ inputs.version }}';
-
-          if (isPreReleaseVersion(version)) {
-            console.log("This is a prerelease version, skipping milestone management");
-            return;
-          }
-
-          await closeMilestone({
-            github,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            version,
-          }).catch(console.error);
-
-          await openNextMilestones({
-            github,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            version,
-          }).catch(console.error);
+    permissions:
+      contents: read
+      issues: write
+    uses: ./.github/workflows/release-milestone-manage.yml
+    with:
+      version: ${{ inputs.version }}
 
   build-uberjar-for-release:
     needs: [check-version, check-commit, get-build-requirements]

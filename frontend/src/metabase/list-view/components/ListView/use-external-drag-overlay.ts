@@ -6,8 +6,7 @@ import type {
 import { arrayMove } from "@dnd-kit/sortable";
 import { useState } from "react";
 
-import type { IconName } from "metabase/ui";
-
+import type { IconName } from "metabase-types/api";
 type ContainerId = "left" | "right";
 
 /**

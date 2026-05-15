@@ -18,8 +18,8 @@ import type { SelectButtonProps } from "metabase/common/components/SelectButton"
 import { SelectButton } from "metabase/common/components/SelectButton";
 import CS from "metabase/css/core/index.css";
 import Uncontrollable from "metabase/hoc/Uncontrollable";
-import type { IconName } from "metabase/ui";
 import { Icon, Popover } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 const MIN_ICON_WIDTH = 20;
 

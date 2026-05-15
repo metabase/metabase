@@ -1154,32 +1154,29 @@
 (doseq [driver [:h2 :sqlite]]
   (defmethod bad-connection-details driver
     [_driver]
-    nil))
+    {:db (u.random/random-name)}))
 
-(doseq [driver [:bigquery-cloud-sdk]]
-  (defmethod bad-connection-details driver
-    [_driver]
-    {:project-id (u.random/random-name)}))
+(defmethod bad-connection-details :bigquery-cloud-sdk
+  [_driver]
+  {:project-id (u.random/random-name)})
 
 (doseq [driver [:redshift :snowflake :vertica :sparksql]]
   (defmethod bad-connection-details driver
     [_driver]
     {:db (u.random/random-name)}))
 
-(doseq [driver [:oracle]]
-  (defmethod bad-connection-details driver
-    [_driver]
-    {:service-name (u.random/random-name)}))
+(defmethod bad-connection-details :oracle
+  [_driver]
+  {:service-name (u.random/random-name)})
 
 (doseq [driver [:presto-jdbc :databricks]]
   (defmethod bad-connection-details driver
     [_driver]
     {:catalog (u.random/random-name)}))
 
-(doseq [driver [:athena]]
-  (defmethod bad-connection-details driver
-    [_driver]
-    {:access_key (u.random/random-name)}))
+(defmethod bad-connection-details :athena
+  [_driver]
+  {:access_key (u.random/random-name)})
 
 (doseq [driver [:postgres :mysql :snowflake :databricks :redshift :sqlite :vertica :athena :oracle]]
   (defmethod driver/database-supports? [driver :test/arrays]

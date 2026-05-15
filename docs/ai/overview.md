@@ -5,7 +5,7 @@ summary: Overview of all the ways you can use AI with Metabase.
 
 # AI in Metabase
 
-AI is in Metabase optional. You can use Metabase without AI at all. But if you do want to use AI to interact with Metabase, we have you covered.
+AI in Metabase is optional. You can use Metabase without AI at all. But if you do want to use AI to interact with Metabase, we have you covered.
 
 Here are the different ways to use AI with Metabase:
 
@@ -34,13 +34,13 @@ See [full docs for Metabot](metabot.md) and [embedded AI chat](../embedding/comp
 
 **Best for: asking ad-hoc, ephemeral questions; combining data from Metabase with data from other tools.**
 
-Connect your favorite third-party AI tool - like Claude or Codex - to the Metabase MCP server. MCP server's main functionality is designed to for answering in-the-moment questions like "hey btw what's our q3 revenue?". The MCP server is also useful when combined with other MCP servers. for eFample, you can ask Claude a question about your customers that combines data from Metabase, your CRM, and your support ticket platform.
+Connect your favorite third-party AI tool - like Claude or Codex - to the Metabase MCP server. MCP servers are designed for answering in-the-moment questions like "hey btw what's our q3 revenue?" Metabase's MCP server is also useful when combined with other MCP servers. For example, you can ask Claude a question about your customers that combines data from Metabase, your CRM, and your support ticket platform.
 
-Compared to the built-in Metabot, MCP server has somewhat restricted functionality (for example, it can't generate code or built transforms for now). See [the ever-expanding list of MCP server tools](mcp.md#available-tools).
+Compared to the built-in Metabot, MCP server has somewhat restricted functionality (for example, it can't generate code or build transforms for now). See [the ever-expanding list of MCP server tools](mcp.md#available-tools).
 
-**Controls**: Metabase MCP server requires people to authenticate into Metabase, and all the responses it provides will be scoped to their permissions. However, Unlike built-in Metabot, MCP server doesn't come with granular control over which _tools_ people can use, or disable MCP server altogether.
+**Controls**: Metabase MCP server requires people to authenticate into Metabase, and all the responses it provides will be scoped to their permissions. However, unlike built-in Metabot, MCP server doesn't come with granular control over which _tools_ people can use, or disable MCP server altogether.
 
-**Provider**: Requests to Metabase MCP server are handled by the provider you choose connect to the MCP server (e.g. Claude, Cursor, etc).
+**Provider**: Requests to Metabase's MCP server are handled by the provider you choose to connect to the MCP server (e.g. Claude, Cursor, etc).
 
 **Plans**: MCP server is available on all plans.
 
@@ -50,7 +50,7 @@ See [full docs for MCP server](mcp.md).
 
 **Best for: developers creating stuff that other people will use.**
 
-Use a coding agent like Claude Code to understand your database's metadata, generate Metabase content as YAML files locally, verify the schema, then sync and import the generated into your production Metabase. Sky's the limit on what you can accomplish.
+Use a coding agent like Claude Code to understand your database's metadata, generate Metabase content as YAML files locally, verify the schema, then sync and import the generated content into your production Metabase. Sky's the limit on what you can accomplish.
 
 **Controls**: Only admins can sync content to Metabase instances.
 

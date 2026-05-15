@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.settings-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase.collections.models.collection.root :as collection.root]
@@ -137,6 +138,42 @@
 
 ;;; ------------------------------------------------- Root Collection Remote Sync -------------------------------------------------
 
+(deftest check-and-update-remote-settings-env-var-aware-test
+  (testing "Settings sourced from env vars are not overwritten by check-and-update-remote-settings!"
+    (with-redefs [settings/check-git-settings! (constantly true)]
+      (mt/with-temp-env-var-value! [mb-remote-sync-url "file://env/url.git"
+                                    mb-remote-sync-token "env-token"
+                                    mb-remote-sync-branch "env-branch"]
+        (testing "Updating URL, token, and branch via API has no effect when sourced from env"
+          (settings/check-and-update-remote-settings!
+           {:remote-sync-url    "file://api/url.git"
+            :remote-sync-token  "api-token"
+            :remote-sync-branch "api-branch"
+            :remote-sync-type   :read-only})
+          (is (= "file://env/url.git" (settings/remote-sync-url)))
+          (is (= "env-token" (settings/remote-sync-token)))
+          (is (= "env-branch" (settings/remote-sync-branch))))
+        (testing "Clearing URL (blank) does not wipe env-backed URL/token/branch"
+          (settings/check-and-update-remote-settings! {:remote-sync-url ""})
+          (is (= "file://env/url.git" (settings/remote-sync-url)))
+          (is (= "env-token" (settings/remote-sync-token)))
+          (is (= "env-branch" (settings/remote-sync-branch)))))))
+
+  (testing "Non-env-sourced settings are still updated normally"
+    (with-redefs [settings/check-git-settings! (constantly true)]
+      (mt/with-temporary-setting-values [:remote-sync-url nil
+                                         :remote-sync-token nil
+                                         :remote-sync-branch nil
+                                         :remote-sync-type nil]
+        (settings/check-and-update-remote-settings!
+         {:remote-sync-url    "file://api/url.git"
+          :remote-sync-token  "api-token"
+          :remote-sync-branch "api-branch"
+          :remote-sync-type   :read-only})
+        (is (= "file://api/url.git" (settings/remote-sync-url)))
+        (is (= "api-token" (settings/remote-sync-token)))
+        (is (= "api-branch" (settings/remote-sync-branch)))))))
+
 (deftest root-collection-is-not-remote-synced-test
   (testing "Root collection for shared-tenant-collection namespace is never remote-synced (individual children can be toggled)"
     (let [root-coll (collection.root/root-collection-with-ui-details :shared-tenant-collection)]
@@ -147,3 +184,31 @@
   (testing "Root collection for snippets namespace is not remote-synced"
     (let [root-coll (collection.root/root-collection-with-ui-details :snippets)]
       (is (false? (:is_remote_synced root-coll))))))
+
+;; ---------- Guard contract for settings mutations -----------------------------------------------
+;;
+;; check-and-update-remote-settings! consults `guards/task-running?` and refuses if a task is
+;; in flight.
+
+(deftest check-and-update-remote-settings!-refuses-while-task-running-test
+  (testing "check-and-update-remote-settings! must refuse when guards/task-running? returns true,
+            without changing any settings or calling git"
+    (let [check-git-call-count (atom 0)]
+      (with-redefs [guards/task-running?         (constantly true)
+                    settings/check-git-settings! (fn [_] (swap! check-git-call-count inc) true)]
+        (mt/with-temporary-setting-values [:remote-sync-url    "file://my/repo.git"
+                                           :remote-sync-token  nil
+                                           :remote-sync-type   :read-only
+                                           :remote-sync-branch "main"]
+          (is (thrown-with-msg? Exception #"Remote sync task in progress"
+                                (settings/check-and-update-remote-settings!
+                                 {:remote-sync-url    "file://different.git"
+                                  :remote-sync-type   :read-only
+                                  :remote-sync-branch "feature-x"
+                                  :remote-sync-token  nil})))
+          (is (= "file://my/repo.git" (settings/remote-sync-url))
+              "remote-sync-url must remain unchanged when the guard fires")
+          (is (= "main" (settings/remote-sync-branch))
+              "remote-sync-branch must remain unchanged when the guard fires")
+          (is (zero? @check-git-call-count)
+              "check-git-settings! must not be called when the guard fires"))))))

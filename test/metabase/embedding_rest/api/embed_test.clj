@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.embedding-rest.api.embed-test
   "Tests for /api/embed endpoints."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.embedding-rest.api.embed-test]}}}}}}
   (:require
    [buddy.sign.jwt :as jwt]
    [buddy.sign.util :as buddy-util]

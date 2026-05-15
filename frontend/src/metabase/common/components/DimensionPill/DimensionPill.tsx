@@ -7,9 +7,9 @@ import {
   type Section,
 } from "metabase/common/components/AccordionList";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
-import type { IconName } from "metabase/ui";
 import { Divider, Flex, Icon, Popover, Text } from "metabase/ui";
 import type { DimensionGroup, DimensionMetadata } from "metabase-lib/metric";
+import type { IconName } from "metabase-types/api";
 
 import S from "./DimensionPill.module.css";
 import { groupIntoSections } from "./utils";

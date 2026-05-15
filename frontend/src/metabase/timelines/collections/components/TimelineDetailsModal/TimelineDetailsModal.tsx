@@ -2,18 +2,18 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { EntityMenu } from "metabase/common/components/EntityMenu";
 import type { InputProps } from "metabase/common/components/Input";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getTimelineName } from "metabase/common/utils/timelines";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
+import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-import type { MenuItem } from "../../types";
 import EventList from "../EventList";
 import SearchEmptyState from "../SearchEmptyState";
 import TimelineEmptyState from "../TimelineEmptyState";
@@ -81,7 +81,14 @@ const TimelineDetailsModal = ({
         onGoBack={canGoBack ? handleGoBack : undefined}
       >
         {menuItems.length > 0 && (
-          <EntityMenu items={menuItems} triggerIcon="ellipsis" />
+          <Menu position="bottom-end" shadow="md">
+            <Menu.Target>
+              <ActionIcon variant="subtle" aria-label={t`Timeline menu`}>
+                <Icon name="ellipsis" />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>{menuItems}</Menu.Dropdown>
+          </Menu>
         )}
       </ModalHeader>
       {(isNotEmpty || isSearching) && (
@@ -148,37 +155,56 @@ const getMenuItems = (
   isArchive: boolean,
   isOnlyTimeline: boolean,
 ) => {
-  const items: MenuItem[] = [];
+  const items: JSX.Element[] = [];
 
   if (timeline.collection?.can_write && !isArchive) {
     items.push(
-      {
-        title: t`New timeline`,
-        link: Urls.newTimelineInCollection(timeline.collection),
-      },
-      {
-        title: t`Edit timeline details`,
-        link: Urls.editTimelineInCollection(timeline),
-      },
-      {
-        title: t`Move timeline`,
-        link: Urls.moveTimelineInCollection(timeline),
-      },
+      <Menu.Item
+        key="new-timeline"
+        component={ForwardRefLink}
+        to={Urls.newTimelineInCollection(timeline.collection)}
+      >
+        {t`New timeline`}
+      </Menu.Item>,
+      <Menu.Item
+        key="edit-timeline-details"
+        component={ForwardRefLink}
+        to={Urls.editTimelineInCollection(timeline)}
+      >
+        {t`Edit timeline details`}
+      </Menu.Item>,
+      <Menu.Item
+        key="move-timeline"
+        component={ForwardRefLink}
+        to={Urls.moveTimelineInCollection(timeline)}
+      >
+        {t`Move timeline`}
+      </Menu.Item>,
     );
   }
 
   if (!isArchive) {
-    items.push({
-      title: t`View archived events`,
-      link: Urls.timelineArchiveInCollection(timeline),
-    });
+    items.push(
+      <Menu.Item
+        key="view-archived-events"
+        component={ForwardRefLink}
+        to={Urls.timelineArchiveInCollection(timeline)}
+      >
+        {t`View archived events`}
+      </Menu.Item>,
+    );
   }
 
   if (isOnlyTimeline) {
-    items.push({
-      title: t`View archived timelines`,
-      link: Urls.timelinesArchiveInCollection(timeline.collection),
-    });
+    items.push(
+      <Menu.Item
+        key="view-archived-timelines"
+        component={ForwardRefLink}
+        to={Urls.timelinesArchiveInCollection(timeline.collection)}
+      >
+        {t`View archived timelines`}
+      </Menu.Item>,
+    );
   }
 
   return items;

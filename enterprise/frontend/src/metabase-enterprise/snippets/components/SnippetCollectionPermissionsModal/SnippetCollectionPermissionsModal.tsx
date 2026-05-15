@@ -12,7 +12,7 @@ export function SnippetCollectionPermissionsModal({
   return (
     <Modal onClose={onClose}>
       <CollectionPermissionsModal
-        params={{ slug: collectionId }}
+        params={{ slug: String(collectionId) }}
         onClose={onClose}
         namespace="snippets"
       />
