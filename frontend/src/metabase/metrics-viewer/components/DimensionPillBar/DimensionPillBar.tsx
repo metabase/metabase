@@ -1,8 +1,8 @@
 import type { DimensionOption } from "metabase/common/components/DimensionPill";
 import { DimensionPill } from "metabase/common/components/DimensionPill";
-import type { IconName } from "metabase/ui";
 import { Flex } from "metabase/ui";
 import type { DimensionMetadata } from "metabase-lib/metric";
+import type { IconName } from "metabase-types/api";
 
 import type { MetricSourceId } from "../../types/viewer-state";
 
@@ -28,6 +28,7 @@ export interface ExpressionMetricSource {
   metricName: string;
   metricCount?: number;
   colors?: string[];
+  currentDimension?: DimensionMetadata;
   currentDimensionLabel?: string;
   currentDimensionIcon?: IconName;
   availableOptions: DimensionOption[];
@@ -69,8 +70,8 @@ export function DimensionPillBar({
 
   return (
     <Flex
-      bg="background-secondary"
-      p="sm"
+      bg="background-primary"
+      p="xs"
       bdrs="xl"
       w="100%"
       align="center"

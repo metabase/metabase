@@ -14,7 +14,10 @@ import { SdkQuestionAlertListModal } from "embedding-sdk-bundle/components/priva
 import { QuestionAlertModalProvider } from "embedding-sdk-bundle/components/private/notifications/context/QuestionAlertModalProvider";
 import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token";
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
+import { useSdkControlledSqlParameters } from "embedding-sdk-bundle/hooks/private/use-sdk-controlled-sql-parameters";
 import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/use-setup-content-translations";
+import { useWarnConflictingParameterProps } from "embedding-sdk-bundle/hooks/private/use-warn-conflicting-parameter-props";
+import { getEffectiveParameterValues } from "embedding-sdk-bundle/lib/controlled-parameters";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
 import {
@@ -23,6 +26,7 @@ import {
   getPlugins,
   getSessionTokenState,
 } from "embedding-sdk-bundle/store/selectors";
+import type { NavigateToNewCardParams } from "embedding-sdk-bundle/types";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
@@ -36,7 +40,10 @@ import { EmbeddingDataPickerContextProvider } from "metabase/querying/notebook/c
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+
+import { getLastVisibleStageIndex } from "../utils/stages";
 
 import type { SdkQuestionContextType, SdkQuestionProviderProps } from "./types";
 
@@ -68,6 +75,8 @@ export const SdkQuestionProvider = ({
   dataPicker,
   targetCollection,
   initialSqlParameters,
+  sqlParameters,
+  onSqlParametersChange,
   hiddenParameters,
   withDownloads,
   withAlerts,
@@ -75,6 +84,7 @@ export const SdkQuestionProvider = ({
   backToDashboard,
   getClickActionMode: userGetClickActionMode,
   navigateToNewCard: userNavigateToNewCard,
+  onDrillThrough,
   onVisualizationChange,
 }: SdkQuestionProviderProps) => {
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
@@ -83,6 +93,11 @@ export const SdkQuestionProvider = ({
   const [isFirstRender, setIsFirstRender] = useState(true);
   const { rawToken: tokenFromStore, error: tokenFetchError } =
     useSdkSelector(getSessionTokenState);
+
+  const effectiveInitialSqlParameters = getEffectiveParameterValues(
+    sqlParameters,
+    initialSqlParameters,
+  );
 
   // Store token so the refresh handler can check expiry. No need to await — not used here.
   useEffect(() => {
@@ -174,8 +189,23 @@ export const SdkQuestionProvider = ({
     token,
     options,
     deserializedCard,
-    initialSqlParameters,
+    initialSqlParameters: effectiveInitialSqlParameters,
     targetDashboardId,
+  });
+
+  useWarnConflictingParameterProps({
+    initialParameters: initialSqlParameters,
+    parameters: sqlParameters,
+    initialParameterPropName: "initialSqlParameters",
+    parameterPropName: "sqlParameters",
+  });
+
+  useSdkControlledSqlParameters({
+    sqlParameters,
+    onSqlParametersChange,
+    question,
+    parameterValues: parameterValues ?? {},
+    updateParameterValues,
   });
 
   const globalPlugins = useSdkSelector(getPlugins);
@@ -199,11 +229,31 @@ export const SdkQuestionProvider = ({
 
   const mode = (question && getClickActionMode({ question })) ?? null;
 
+  // Wrap navigateToNewCard to intercept navigation to new card
+  const navigateToNewCardWithDrillThrough = useCallback(
+    async (params: NavigateToNewCardParams) => {
+      if (onDrillThrough) {
+        await onDrillThrough(
+          {
+            drillName: params.drillName,
+            nextCard: params.nextCard,
+          },
+          async () => {
+            await navigateToNewCard?.(params);
+          },
+        );
+      } else {
+        await navigateToNewCard?.(params);
+      }
+    },
+    [navigateToNewCard, onDrillThrough],
+  );
+
   // Wrap navigateToNewCard to push the virtual entry for the internal navigation system
   const navigateToNewCardWithSdkInternalNavigation = useCallback(
-    async (params: Parameters<NonNullable<typeof navigateToNewCard>>[0]) => {
+    async (params: NavigateToNewCardParams) => {
       // This actually changes what gets rendered
-      await navigateToNewCard?.(params);
+      await navigateToNewCardWithDrillThrough(params);
 
       // Push virtual entry if last entry is NOT already a question drill
       const currentEntry = navigation?.stack.at(-1);
@@ -216,11 +266,32 @@ export const SdkQuestionProvider = ({
         });
       }
     },
-    [navigateToNewCard, navigation, question, loadAndQueryQuestion],
+    [
+      navigateToNewCardWithDrillThrough,
+      navigation,
+      question,
+      loadAndQueryQuestion,
+    ],
+  );
+
+  const query = question?.query();
+  const lastVisibleStageIndex = useMemo(
+    () => getLastVisibleStageIndex(query),
+    [query],
+  );
+
+  const updateAndNormalizeQuestion = useCallback(
+    (nextQuestion: Question, options?: { run?: boolean }) =>
+      updateQuestion(
+        nextQuestion.setQuery(Lib.dropEmptyStages(nextQuestion.query())),
+        options,
+      ),
+    [updateQuestion],
   );
 
   const questionContext: SdkQuestionContextType = {
     originalId: questionId,
+    lastVisibleStageIndex,
     token,
     isQuestionLoading,
     isQueryRunning,
@@ -230,10 +301,11 @@ export const SdkQuestionProvider = ({
     queryQuestion,
     replaceQuestion,
     updateQuestion,
+    updateAndNormalizeQuestion,
     updateParameterValues,
     navigateToNewCard:
       userNavigateToNewCard !== undefined
-        ? navigateToNewCard
+        ? navigateToNewCardWithDrillThrough
         : navigateToNewCardWithSdkInternalNavigation,
     plugins,
     question,

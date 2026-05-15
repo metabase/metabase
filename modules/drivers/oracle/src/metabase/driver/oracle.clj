@@ -62,7 +62,8 @@
                               :now                              true
                               ;; these don't seem to ERROR on Oracle but they don't work as expected either, see
                               ;; https://github.com/metabase/metabase/pull/66982#issuecomment-3667113995
-                              :regex/lookaheads-and-lookbehinds false}]
+                              :regex/lookaheads-and-lookbehinds false
+                              :table-privileges                true}]
   (defmethod driver/database-supports? [:oracle feature] [_driver _feature _db] supported?))
 
 (mr/def ::details
@@ -762,3 +763,53 @@
 
 (defmethod driver/llm-sql-dialect-resource :oracle [_]
   "metabot/prompts/dialects/oracle.md")
+
+(defmethod sql-jdbc.sync/current-user-table-privileges :oracle
+  [_driver conn-spec & {:as _options}]
+  ;; ALL_TABLES/ALL_VIEWS are user-scoped views that only show objects accessible to the current user.
+  ;; Write privileges come from three sources: ownership, ALL_TAB_PRIVS (includes role/PUBLIC grants),
+  ;; and system privileges (e.g. INSERT ANY TABLE) via SESSION_PRIVS.
+  (->> (jdbc/query
+        conn-spec
+        (str/join
+         "\n"
+         ["WITH accessible_objects AS ("
+          "  SELECT owner, table_name FROM all_tables"
+          "  UNION ALL"
+          "  SELECT owner, view_name AS table_name FROM all_views"
+          "),"
+          "sys_privs AS ("
+          "  SELECT privilege FROM session_privs"
+          "  WHERE privilege IN ('INSERT ANY TABLE', 'UPDATE ANY TABLE', 'DELETE ANY TABLE')"
+          ")"
+          "SELECT"
+          "  NULL AS \"role\","
+          "  ao.owner AS \"schema\","
+          "  ao.table_name AS \"table\","
+          "  1 AS \"select\","
+          "  CASE WHEN ao.owner = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA')"
+          "       OR EXISTS (SELECT 1 FROM sys_privs WHERE privilege = 'INSERT ANY TABLE')"
+          "       OR EXISTS (SELECT 1 FROM all_tab_privs p"
+          "                  WHERE p.table_schema = ao.owner AND p.table_name = ao.table_name"
+          "                    AND p.privilege = 'INSERT')"
+          "       THEN 1 ELSE 0 END AS \"insert\","
+          "  CASE WHEN ao.owner = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA')"
+          "       OR EXISTS (SELECT 1 FROM sys_privs WHERE privilege = 'UPDATE ANY TABLE')"
+          "       OR EXISTS (SELECT 1 FROM all_tab_privs p"
+          "                  WHERE p.table_schema = ao.owner AND p.table_name = ao.table_name"
+          "                    AND p.privilege = 'UPDATE')"
+          "       THEN 1 ELSE 0 END AS \"update\","
+          "  CASE WHEN ao.owner = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA')"
+          "       OR EXISTS (SELECT 1 FROM sys_privs WHERE privilege = 'DELETE ANY TABLE')"
+          "       OR EXISTS (SELECT 1 FROM all_tab_privs p"
+          "                  WHERE p.table_schema = ao.owner AND p.table_name = ao.table_name"
+          "                    AND p.privilege = 'DELETE')"
+          "       THEN 1 ELSE 0 END AS \"delete\""
+          "FROM accessible_objects ao"]))
+       ;; Oracle SQL has no BOOLEAN type before 23c, so CASE returns 1/0
+       (map (fn [row]
+              (-> row
+                  (update :select pos?)
+                  (update :update pos?)
+                  (update :insert pos?)
+                  (update :delete pos?))))))

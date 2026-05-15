@@ -6,7 +6,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as agent-tools]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
-   [metabase.metabot.tools.filters :as filter-tools]))
+   [metabase.metabot.tools.construct :as construct]))
 
 (deftest all-tools-test
   (testing "profile tools are vars with required metadata"
@@ -113,14 +113,16 @@
       (is (= "search" (:tool-name m)))
       (is (some? (:schema m))))))
 
-(deftest construct-notebook-query-tool-raw-table-test
-  (testing "construct_notebook_query maps raw table query args"
-    (let [captured (atom nil)
-          chart-called (atom nil)]
-      (with-redefs [filter-tools/query-datasource (fn [args]
-                                                    (reset! captured args)
-                                                    {:structured-output {:query-id "q-1"
-                                                                         :query {:database 1}}})
+(deftest construct-notebook-query-tool-test
+  (testing "construct_notebook_query evaluates a program and creates a chart"
+    (let [program-captured (atom nil)
+          chart-called     (atom nil)]
+      (with-redefs [construct/execute-program (fn [_source-entity _referenced-entities program]
+                                                (reset! program-captured program)
+                                                {:structured-output {:query-id "q-1"
+                                                                     :query {:database 1}
+                                                                     :result-columns []}
+                                                 :instructions "Query created."})
                     create-chart-tools/create-chart (fn [args]
                                                       (reset! chart-called args)
                                                       {:chart-id "c-1"
@@ -132,20 +134,15 @@
                                                                     :url "/question#hash"}]})]
         (let [result (agent-tools/construct-notebook-query-tool
                       {:reasoning "check seats"
-                       :query {:query_type "raw"
-                               :source {:table_id 6}
-                               :filters [{:filter_type "multi_value"
-                                          :field_id "t6-1"
-                                          :operation "equals"
-                                          :values ["a" "b"]}]
-                               :fields [{:field_id "t6-1"}]
-                               :order_by [{:field {:field_id "t6-1"} :direction "desc"}]
-                               :limit 10}
+                       :source_entity {:type "table" :id 6}
+                       :program {:source     {:type "context" :ref "source"}
+                                 :operations [["filter" ["=" ["field" 301] "a"]]
+                                              ["with-fields" [["field" 301]]]
+                                              ["order-by" ["field" 301] "desc"]
+                                              ["limit" 10]]}
                        :visualization {:chart_type "table"}})]
-          (is (= 6 (:table-id @captured)))
-          (is (= "t6-1" (get-in @captured [:fields 0 :field-id])))
-          (is (= ["a" "b"] (get-in @captured [:filters 0 :values])))
-          (is (= :desc (get-in @captured [:order-by 0 :direction])))
+          (is (= "context" (get-in @program-captured [:source :type])))
+          (is (= 4 (count (:operations @program-captured))))
           (is (= "c-1" (get-in result [:structured-output :chart-id])))
           (is (= "q-1" (get-in result [:structured-output :query-id])))
           (is (= :table (get @chart-called :chart-type)))

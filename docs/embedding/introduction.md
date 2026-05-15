@@ -7,8 +7,6 @@ redirect_from:
 
 # Embedding introduction
 
-{% include shared/in-page-promo-embedding-workshop.html %}
-
 You can embed Metabase tables, charts, and dashboards—even Metabase's query builder—in your website or application. Here are the different ways you can embed Metabase:
 
 - [Modular embedding](#modular-embedding)
@@ -43,6 +41,8 @@ Currently, you can't embed [documents](../documents/introduction.md).
 With SSO, Metabase can know who's viewing what, which unlocks a lot of power. You can automatically apply [data permissions](../permissions/embedding.md), which means you can give people access to all the cool tools Metabase provides, and everyone will only ever see the data they're allowed to.
 
 **When to use SSO**: You want to offer multi-tenant, self-service analytics, or you want to include the query builder, AI chat, drill-through, or a collection browser.
+
+If you're building a SaaS product with embedded analytics for multiple customers, you can keep customer data isolated with [Tenants](./tenants.md).
 
 ### Guest embedding
 
@@ -83,6 +83,12 @@ If you'd like to share your data with the good people of the internet, admins ca
 \* Each embedding type allows data downloads by default, but only [Pro and Enterprise](https://www.metabase.com/pricing/) plans can disable data downloads.
 
 \*\* Requires a [Pro and Enterprise](https://www.metabase.com/pricing/) plan for any embedding type.
+
+### Should you use the Modular embedding SDK?
+
+If your app uses React, you can go with the modular embedding SDK, but you don't need to.
+
+The modular embeds that you can set up in the [in-app wizard](./modular-embedding.md) are built on top of the Modular embedding SDK. Using the SDK just gives you slightly more customization (see the table above), but your app has to use React. You can always start with modular embedding, then move to the SDK if you really need that extra customization. Both support SSO and Guest embeds.
 
 ## Resources for AI agents
 

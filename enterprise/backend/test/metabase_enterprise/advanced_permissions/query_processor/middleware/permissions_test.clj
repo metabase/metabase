@@ -1,4 +1,5 @@
 (ns metabase-enterprise.advanced-permissions.query-processor.middleware.permissions-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.advanced-permissions.query-processor.middleware.permissions-test]}}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.test :refer :all]
@@ -8,7 +9,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
    [metabase.permissions.test-util :as perms.test-util]
@@ -17,7 +17,8 @@
    [metabase.query-processor.streaming-test :as streaming-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.match :as match])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -33,7 +34,7 @@
         (f)))))
 
 (defn- remove-metadata [m]
-  (lib.util.match/replace-lite m
+  (match/replace m
     {:source-metadata _}
     (remove-metadata (dissoc &match :source-metadata))))
 

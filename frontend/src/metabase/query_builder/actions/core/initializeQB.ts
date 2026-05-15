@@ -1,14 +1,20 @@
 import type { LocationDescriptorObject } from "history";
 import { replace } from "react-router-redux";
 
+import { snippetApi } from "metabase/api";
+import {
+  cardIsEquivalent,
+  deserializeCard,
+  parseHash,
+} from "metabase/common/utils/card";
 import { Questions } from "metabase/entities/questions";
-import { Snippets } from "metabase/entities/snippets";
 import {
   getIsEditingInDashboard,
   getNotebookNativePreviewSidebarWidth,
 } from "metabase/query_builder/selectors";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
+import type { DispatchFn } from "metabase/redux/hooks";
 import { addFields } from "metabase/redux/metadata";
 import { INITIALIZE_QB, resetQB } from "metabase/redux/query-builder";
 import type {
@@ -18,15 +24,13 @@ import type {
 } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { canUserCreateQueries, getUser } from "metabase/selectors/user";
-import { deserializeCard, parseHash } from "metabase/utils/card";
+import * as Urls from "metabase/urls";
 import { isNotNull } from "metabase/utils/types";
-import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery";
-import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
 import type { Card, SegmentId } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 import { isSavedCard } from "metabase-types/guards";
@@ -243,12 +247,26 @@ export async function updateTemplateTagNames(
 
   query = updateCardTemplateTagNames(query, referencedCards);
   if (query.hasSnippets()) {
-    await dispatch(Snippets.actions.fetchList());
-    const snippets = Snippets.selectors.getList(getState());
-    query = query.updateSnippetNames(snippets);
+    const action = (dispatch as DispatchFn)(
+      snippetApi.endpoints.listSnippets.initiate(undefined, {
+        forceRefetch: true,
+      }),
+    );
+    try {
+      const snippets = await action.unwrap();
+      query = query.updateSnippetNames(snippets);
+    } finally {
+      action.unsubscribe();
+    }
   }
   return query;
 }
+
+// Tracks the most recent initializeQB invocation so that stale, in-flight
+// calls (whose location has been superseded by a newer navigation before they
+// finished awaiting metadata) don't overwrite the QB state with results
+// belonging to the previous URL.
+let latestInitializeQBVersion = 0;
 
 async function handleQBInit(
   dispatch: Dispatch,
@@ -256,7 +274,12 @@ async function handleQBInit(
   {
     location,
     params,
-  }: { location: LocationDescriptorObject; params: QueryParams },
+    isStale,
+  }: {
+    location: LocationDescriptorObject;
+    params: QueryParams;
+    isStale: () => boolean;
+  },
 ) {
   dispatch(resetQB());
   dispatch(cancelQuery());
@@ -286,6 +309,10 @@ async function handleQBInit(
     dispatch,
     getState,
   });
+
+  if (isStale()) {
+    return;
+  }
 
   if (isSavedCard(card) && card.archived && !currentUser) {
     dispatch(setErrorPage(ARCHIVED_ERROR));
@@ -319,7 +346,15 @@ async function handleQBInit(
     });
   }
 
+  if (isStale()) {
+    return;
+  }
+
   await dispatch(loadMetadataForCard(card));
+
+  if (isStale()) {
+    return;
+  }
 
   // Populate the metadata store with param_fields from the card response.
   // This ensures field filter widgets have has_field_values even when the user
@@ -366,6 +401,10 @@ async function handleQBInit(
     const query = question.legacyNativeQuery() as NativeQuery;
     const newQuery = await updateTemplateTagNames(query, getState, dispatch);
     question = question.setLegacyQuery(newQuery);
+  }
+
+  if (isStale()) {
+    return;
   }
 
   const finalCard = question.card();
@@ -415,9 +454,14 @@ async function handleQBInit(
 export const initializeQB =
   (location: LocationDescriptorObject, params: QueryParams) =>
   async (dispatch: Dispatch, getState: GetState) => {
+    const version = ++latestInitializeQBVersion;
+    const isStale = () => version !== latestInitializeQBVersion;
     try {
-      await handleQBInit(dispatch, getState, { location, params });
+      await handleQBInit(dispatch, getState, { location, params, isStale });
     } catch (error) {
+      if (isStale()) {
+        return;
+      }
       console.warn("initializeQB failed because of an error:", error);
       dispatch(setErrorPage(error));
     }

@@ -1,4 +1,5 @@
 (ns metabase-enterprise.remote-sync.api-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.remote-sync.api-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [diehard.core :as dh]

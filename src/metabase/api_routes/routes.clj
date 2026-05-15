@@ -33,6 +33,7 @@
    [metabase.logger.api]
    [metabase.login-history.api]
    [metabase.mcp.api]
+   [metabase.mcp.callback-api]
    [metabase.measures.api]
    [metabase.metabot.api]
    [metabase.metabot.api.entity-analysis]
@@ -94,6 +95,7 @@
          metabase.logger.api/keep-me
          metabase.login-history.api/keep-me
          metabase.mcp.api/keep-me
+         metabase.mcp.callback-api/keep-me
          metabase.measures.api/keep-me
          metabase.metrics.api/keep-me
          metabase.model-persistence.api/keep-me
@@ -155,7 +157,7 @@
 (def ^:private route-map
   {"/action"               (+auth 'metabase.actions-rest.api)
    "/activity"             (+auth 'metabase.activity-feed.api)
-   "/agent"                metabase.agent-api.api/routes
+   "/agent"                (metabase.agent-api.api/+agent-api-enabled metabase.agent-api.api/routes)
    "/ai-entity-analysis"   metabase.metabot.api.entity-analysis/routes
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
@@ -179,6 +181,8 @@
    "/eid-translation"      (+auth 'metabase.eid-translation.api)
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
+   "/embed-mcp"            (+auth metabase.mcp.callback-api/routes)
+   "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
    "/frontend-errors"      metabase.frontend-errors.api/routes
    "/geojson"              'metabase.geojson.api
@@ -188,7 +192,7 @@
    "/llm"                  (+auth metabase.llm.api/routes)
    "/logger"               (+auth 'metabase.logger.api)
    "/login-history"        (+auth 'metabase.login-history.api)
-   "/mcp"                  metabase.mcp.api/handler
+   "/mcp"                  (metabase.mcp.api/+mcp-enabled metabase.mcp.api/handler)
    "/measure"              (+auth 'metabase.measures.api)
    "/metabot"              metabase.metabot.api/routes
    "/metric"               (+auth 'metabase.metrics.api)

@@ -38,11 +38,11 @@
    [metabase.lib.schema.settings :as lib.schema.settings]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [every? select-keys #?(:clj doseq) some mapv update-keys empty? not-empty]]
+   [metabase.util.match :as match]
+   [metabase.util.performance :refer [every? select-keys #?(:clj doseq) some mapv update-keys empty? not-empty]]
    [metabase.util.time :as u.time]))
 
 (defn infer-mbql-clause-schema
@@ -298,7 +298,7 @@
    (lib.schema.common/disallowed-keys {:lib/uuid "MBQL 4 refs should not have :lib/uuid"})
    [:fn
     {:error/message    "MBQL 4 :expression options should not be empty, use a nil map instead"
-     :decode/normalize perf/not-empty}
+     :decode/normalize not-empty}
     seq]])
 
 (mr/def ::ExpressionName
@@ -341,7 +341,7 @@
     (lib.schema.common/disallowed-keys {:lib/uuid "MBQL 4 refs should not have :lib/uuid"})
     [:fn
      {:error/message    "MBQL 4 :field ref options should not be empty, use nil instead"
-      :decode/normalize perf/not-empty}
+      :decode/normalize not-empty}
      seq]]])
 
 (mr/def ::require-base-type-for-field-name
@@ -947,19 +947,18 @@
 (defn- replace-exclude-date-filters
   "Replaces legacy exclude date filter clauses that rely on temporal bucketing with `:temporal-extract` function calls."
   [filter-clause]
-  (lib.util.match/replace-lite filter-clause
+  (match/replace filter-clause
     [:!=
      [:field id-or-name (opts :guard (= (:temporal-unit opts) :hour-of-day))]
      & (args :guard (every? number? args))]
     (into [:!= [:get-hour [:field id-or-name (not-empty (dissoc opts :temporal-unit))]]] args)
 
     [:!=
-     [:field id-or-name (opts :guard (#{:day-of-week :month-of-year :quarter-of-year} (:temporal-unit opts)))]
+     [:field id-or-name (:and opts {:temporal-unit (unit :guard #{:day-of-week :month-of-year :quarter-of-year})})]
      & (args :guard (every? u.time/timestamp-coercible? args))]
     (let [args (mapv u.time/coerce-to-timestamp args)]
       (if (every? u.time/valid? args)
-        (let [unit         (:temporal-unit opts)
-              field        [:field id-or-name (not-empty (dissoc opts :temporal-unit))]
+        (let [field        [:field id-or-name (not-empty (dissoc opts :temporal-unit))]
               extract-expr (case unit
                              :day-of-week     [:get-day-of-week field :iso]
                              :month-of-year   [:get-month field]
@@ -1012,7 +1011,7 @@
   expression and convert it to a `:relative-time-interval` call, honoring the original user intent. See #46211 and
   #46438 for details."
   [clause]
-  (lib.util.match/replace-lite clause
+  (match/replace clause
     [:between
      [:+
       field
@@ -2121,7 +2120,7 @@
 
 (defclause* dimension
   [:and
-   [:fn {:error/message "must be a `:dimension` clause"} (partial helpers/is-clause? :dimension)]
+   [:fn {:error/message "must be a `:dimension` clause"} (partial is-clause? :dimension)]
    [:catn
     [:tag [:= :dimension]]
     [:target [:schema [:or [:ref ::FieldOrExpressionRef] [:ref ::template-tag]]]]

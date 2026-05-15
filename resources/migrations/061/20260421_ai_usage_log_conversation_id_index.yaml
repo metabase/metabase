@@ -1,0 +1,16 @@
+## Index on ai_usage_log.conversation_id for analytics view joins.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/061_update_migrations.yaml
+
+  - changeSet:
+      id: v61.2026-04-21T00:00:00
+      author: mappleby
+      comment: Index on ai_usage_log.conversation_id for analytics view joins
+      changes:
+        - createIndex:
+            indexName: idx_ai_usage_log_conversation_id
+            tableName: ai_usage_log
+            columns:
+              - column:
+                  name: conversation_id

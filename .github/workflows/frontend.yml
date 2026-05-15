@@ -9,6 +9,9 @@ on:
       skip-lint:
         type: boolean
         default: false
+      skip-custom-viz:
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       skip:
@@ -16,7 +19,11 @@ on:
         type: boolean
         default: false
       skip-lint:
-        description: "Skip linting jobs (prettier, eslint, css variables check)"
+        description: "Skip linting jobs (oxfmt, eslint, css variables check)"
+        type: boolean
+        default: false
+      skip-custom-viz:
+        description: "Skip custom-viz package tests"
         type: boolean
         default: false
 
@@ -49,8 +56,8 @@ jobs:
         run: bun run build-pure:cljs
       - name: Find CSS variables that are used but never defined
         run: bun run find-never-defined-css-variables
-      - name: Run Prettier formatting linter
-        run: bun run lint-prettier-pure
+      - name: Run oxfmt formatting linter
+        run: bun run lint-format-pure
       - name: Run ESLint linter
         run: bun run lint-eslint-pure
       - name: Run CSS linter
@@ -116,10 +123,32 @@ jobs:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
       - name: Run frontend timezones tests
         run: bun run test-timezones
+
+  # The custom-viz package is an isolated Bun workspace under
+  # enterprise/frontend/src/custom-viz
+  fe-custom-viz:
+    if: ${{ !inputs.skip-custom-viz }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: enterprise/frontend/src/custom-viz
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare Node + Bun environment
+        uses: ./.github/actions/prepare-node-bun
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Type-check
+        run: bun run type-check
+      - name: Lint
+        run: bun run lint
+      - name: Build CLI
+        run: bun run build
+      - name: Run tests
+        run: bun run test
 
   fe-tests-result:
     needs:
@@ -127,6 +156,7 @@ jobs:
       - fe-type-check
       - fe-tests-unit
       - fe-tests-timezones
+      - fe-custom-viz
     if: always() && !cancelled()
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5

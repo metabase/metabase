@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.public-sharing-rest.api-test
   "Tests for `api/public/` (public links) endpoints."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.public-sharing-rest.api-test]}}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.set :as set]

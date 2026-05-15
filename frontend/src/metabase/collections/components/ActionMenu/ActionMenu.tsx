@@ -2,7 +2,10 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
+import { Api, collectionApi } from "metabase/api";
+import { listTag } from "metabase/api/tags";
 import { HACK_getParentCollectionFromEntityUpdateAction } from "metabase/archive/utils";
 import { trackCollectionItemBookmarked } from "metabase/collections/analytics";
 import type {
@@ -15,21 +18,27 @@ import {
   canArchiveItem,
   canBookmarkItem,
   canCopyItem,
-  canMoveItem,
-  canPinItem,
   canPreviewItem,
   isItemPinned,
   isPreviewEnabled,
 } from "metabase/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { EntityItem } from "metabase/common/components/EntityItem";
+import {
+  type ArchivableItem,
+  canMoveItem,
+  canPinItem,
+  isPinnable,
+  useSetArchive,
+  useSetPinned,
+} from "metabase/common/hooks";
+import { useSetCollectionPreview } from "metabase/common/hooks/use-set-collection-preview";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { bookmarks as BookmarkEntity } from "metabase/entities";
 import { entityForObject } from "metabase/entities/utils";
+import { connect, useDispatch } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
-import { connect, useDispatch } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
@@ -86,7 +95,10 @@ function ActionMenu({
   deleteBookmark,
 }: ActionMenuProps & ActionMenuStateProps) {
   const dispatch = useDispatch();
+  const archive = useSetArchive();
+  const setPinned = useSetPinned();
   const [sendToast] = useToast();
+  const setCollectionPreview = useSetCollectionPreview();
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
   const canBookmark = canBookmarkItem(item);
@@ -99,8 +111,10 @@ function ActionMenu({
   const canCopy = onCopy && canCopyItem(item);
 
   const handlePin = useCallback(() => {
-    item.setPinned?.(!isItemPinned(item));
-  }, [item]);
+    if (isPinnable(item)) {
+      setPinned(item, !isItemPinned(item));
+    }
+  }, [item, setPinned]);
 
   const handleCopy = useCallback(() => {
     onCopy?.([item]);
@@ -110,9 +124,10 @@ function ActionMenu({
     onMove?.([item]);
   }, [item, onMove]);
 
-  const handleArchive = useCallback(() => {
-    return item.setArchived ? item.setArchived(true) : Promise.resolve();
-  }, [item]);
+  const handleArchive = useCallback(
+    () => archive(item as ArchivableItem, true),
+    [archive, item],
+  );
 
   const handleToggleBookmark = useMemo(() => {
     if (!createBookmark && !deleteBookmark) {
@@ -132,15 +147,35 @@ function ActionMenu({
   }, [createBookmark, deleteBookmark, isBookmarked, item]);
 
   const handleTogglePreview = useCallback(() => {
-    item?.setCollectionPreview?.(!isPreviewEnabled(item));
-  }, [item]);
+    setCollectionPreview(item.id, !isPreviewEnabled(item));
+  }, [item, setCollectionPreview]);
 
   const handleRestore = useCallback(async () => {
+    if (item.model === "collection") {
+      const collection = await dispatch(
+        collectionApi.endpoints.updateCollection.initiate({
+          id: item.id,
+          archived: false,
+        }),
+      ).unwrap();
+      dispatch(Api.util.invalidateTags([listTag("bookmark")]));
+
+      const parentCollection = _.last(collection.effective_ancestors ?? []);
+      const redirect = getParentEntityLink(collection, parentCollection);
+
+      sendToast({
+        message: t`${item.name} has been restored.`,
+        actionLabel: t`View`,
+        action: () => dispatch(push(redirect)),
+      });
+      return;
+    }
+
     const Entity = entityForObject(item);
     const result = await dispatch(
       Entity.actions.update({ id: item.id, archived: false }),
     );
-    await dispatch(BookmarkEntity.actions.invalidateLists());
+    dispatch(Api.util.invalidateTags([listTag("bookmark")]));
 
     const entity = Entity.HACK_getObjectFromAction(result);
     const parentCollection = HACK_getParentCollectionFromEntityUpdateAction(
@@ -157,6 +192,13 @@ function ActionMenu({
   }, [item, dispatch, sendToast]);
 
   const handleDeletePermanently = useCallback(() => {
+    if (item.model === "collection") {
+      dispatch(
+        collectionApi.endpoints.deleteCollection.initiate({ id: item.id }),
+      );
+      sendToast({ message: t`This item has been permanently deleted.` });
+      return;
+    }
     const Entity = entityForObject(item);
     dispatch(Entity.actions.delete(item));
     sendToast({ message: t`This item has been permanently deleted.` });

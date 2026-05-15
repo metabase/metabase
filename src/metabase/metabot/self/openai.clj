@@ -4,6 +4,7 @@
    [malli.json-schema :as mjs]
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
+   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -232,7 +233,11 @@
                                     :as      :stream
                                     :headers {"Content-Type" "application/json"}
                                     :body    (json/encode req)})]
-        (core/sse-reducible (:body response)))
+        (-> (core/sse-reducible (:body response))
+            (debug/capture-stream {:provider "openai"
+                                   :model    model
+                                   :url      "/v1/responses"
+                                   :request  req})))
       (catch Exception e
         (core/rethrow-api-error! "openai" openai-errors e)))))
 

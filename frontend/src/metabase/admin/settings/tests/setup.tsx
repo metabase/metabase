@@ -1,4 +1,6 @@
+import { render as testingLibraryRender } from "@testing-library/react";
 import fetchMock from "fetch-mock";
+import type { ReactNode } from "react";
 import { Route } from "react-router";
 
 import {
@@ -21,7 +23,7 @@ import {
 } from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { getTestStoreAndWrapper, screen } from "__support__/ui";
 import { getSettingsRoutes } from "metabase/admin/settingsRoutes";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { TokenFeature, TokenFeatures } from "metabase-types/api";
@@ -74,6 +76,10 @@ export const ossRoutes: RouteMap = {
     testPattern: /Make Metabase look like you/i,
   },
   cloud: { path: "/cloud", testPattern: /Migrate to Metabase Cloud/i },
+  remoteSync: {
+    path: "/remote-sync",
+    testPattern: /Manage your Metabase content in Git/i,
+  },
 };
 
 export const enterpriseRoutes: RouteMap = {
@@ -152,12 +158,20 @@ export const setup = async ({
 
   fetchMock.get("path:/api/cloud-migration", { status: 204 });
   fetchMock.get("path:/api/ee/sso/oidc", []);
+  fetchMock.get("path:/api/ee/remote-sync/dirty", {
+    data: [],
+    metadata: {
+      changed_collections: {},
+      is_dirty: false,
+      has_removed_items: false,
+    },
+  });
 
   const user = createMockUser({
     is_superuser: isAdmin,
   });
 
-  const store = createMockState({
+  const initialState = createMockState({
     currentUser: user,
     settings: mockSettings(settings),
   });
@@ -171,13 +185,21 @@ export const setup = async ({
     setupTokenStatusEndpoint({ valid: hasTokenFeatures });
   }
 
-  renderWithProviders(
-    <Route path="admin/settings">{getSettingsRoutes()}</Route>,
-    {
-      storeInitialState: store,
-      withRouter: true,
-      initialRoute: `/admin/settings${initialRoute}`,
-    },
+  const { wrapper, store } = getTestStoreAndWrapper({
+    storeInitialState: initialState,
+    withRouter: true,
+    initialRoute: `/admin/settings${initialRoute}`,
+  });
+
+  const PassThroughGuard = ({ children }: { children: ReactNode }) => (
+    <>{children}</>
+  );
+
+  testingLibraryRender(
+    <Route path="admin/settings">
+      {getSettingsRoutes(store, PassThroughGuard)}
+    </Route>,
+    { wrapper },
   );
 
   await screen.findByTestId("admin-layout-content");

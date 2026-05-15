@@ -299,6 +299,10 @@ jobs:
     needs: [build-sdk, determine-sdk-version]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
+    permissions:
+      id-token: write # OIDC handshake for npm trusted publishing
+      actions: read # actions/download-artifact reads the Actions API via GITHUB_TOKEN
+      pull-requests: write # gh pr review --approve step uses GITHUB_TOKEN
     env:
       sdk_version: ${{ needs.determine-sdk-version.outputs.sdk_version }}
     steps:
@@ -380,17 +384,20 @@ jobs:
             echo "masterTag=nightly" >> $GITHUB_OUTPUT
           fi
 
+      # Trusted publishing requires npm >= 11.5.1 and Node >= 22.14.0.
+      # Node 22.x line bundles npm 10.x, so pin Node 24.x which ships npm 11.x.
+      - name: Setup Node.js for npm publish with trusted publishing
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
       - name: Publish to NPM
         working-directory: sdk
         run: |
-          echo //registry.npmjs.org/:_authToken="${NPM_RELEASE_TOKEN}" > .npmrc
-
           TAG="${{ steps.compute-tag.outputs.masterTag }}"
           echo "Resolved npm tag: $TAG"
           npm publish --tag "$TAG"
-
-        env:
-          NPM_RELEASE_TOKEN: ${{ secrets.NPM_RELEASE_TOKEN }}
       # ⚠️ This step should only be executed on the latest stable (gold) release branch.
       # Only uncomment this when the new release branch becomes stable (gold).
       # - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment

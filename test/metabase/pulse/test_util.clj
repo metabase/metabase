@@ -1,4 +1,5 @@
 (ns metabase.pulse.test-util
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.pulse.test-util]}}}}}}
   (:require
    [medley.core :as m]
    [metabase.channel.core :as channel]

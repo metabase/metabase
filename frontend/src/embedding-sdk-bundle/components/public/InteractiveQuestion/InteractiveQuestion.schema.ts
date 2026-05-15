@@ -2,9 +2,12 @@ import * as Yup from "yup";
 
 import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
 
-import type { InteractiveQuestionProps } from "./InteractiveQuestion";
+import type { InteractiveQuestionInternalProps } from "./InteractiveQuestion";
 
-const propsSchema: Yup.SchemaOf<InteractiveQuestionProps> = Yup.object({
+// Typed against the internal shape so runtime validation still accepts the
+// `query` prop used by the `useMetabot` hook. The public API (see
+// `InteractiveQuestionProps`) intentionally doesn't expose `query` to users.
+const propsSchema: Yup.SchemaOf<InteractiveQuestionInternalProps> = Yup.object({
   children: Yup.mixed().optional(),
   className: Yup.mixed().optional(),
   componentPlugins: Yup.object({
@@ -18,6 +21,8 @@ const propsSchema: Yup.SchemaOf<InteractiveQuestionProps> = Yup.object({
   dataPicker: Yup.mixed().optional(),
   height: Yup.mixed().optional(),
   initialSqlParameters: Yup.mixed().optional(),
+  sqlParameters: Yup.mixed().optional(),
+  onSqlParametersChange: Yup.mixed().optional(),
   hiddenParameters: Yup.mixed().optional(),
   isSaveEnabled: Yup.mixed().optional(),
   onBeforeSave: Yup.mixed().optional(),
@@ -31,16 +36,24 @@ const propsSchema: Yup.SchemaOf<InteractiveQuestionProps> = Yup.object({
   })
     .optional()
     .noUnknown(),
-  questionId: Yup.mixed().required(),
+  questionId: Yup.mixed().when(["token", "query"], {
+    is: (token: unknown, query: unknown) =>
+      token !== undefined || query !== undefined,
+    then: (schema) => schema.optional(),
+    otherwise: (schema) => schema.required(),
+  }),
   token: Yup.mixed().optional(),
+  query: Yup.mixed().optional(),
   style: Yup.mixed().optional(),
   targetCollection: Yup.mixed().optional(),
   targetDashboardId: Yup.mixed().optional(),
   title: Yup.mixed().optional(),
   width: Yup.mixed().optional(),
   withChartTypeSelector: Yup.mixed().optional(),
+  withEditorButton: Yup.mixed().optional(),
   withDownloads: Yup.mixed().optional(),
   withAlerts: Yup.mixed().optional(),
+  onDrillThrough: Yup.mixed().optional(),
   onVisualizationChange: Yup.mixed().optional(),
 }).noUnknown();
 

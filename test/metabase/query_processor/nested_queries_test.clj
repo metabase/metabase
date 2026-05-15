@@ -1,5 +1,8 @@
 (ns ^:mb/driver-tests metabase.query-processor.nested-queries-test
   "Tests for handling queries with nested expressions."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.query-processor.nested-queries-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.query-processor.nested-queries-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.nested-queries-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -1757,3 +1760,17 @@
                          (lib/limit 3))]
       (is (=? (mt/rows (qp/process-query base-query))
               (mt/rows (qp/process-query (lib/append-stage base-query))))))))
+
+(deftest ^:parallel empty-column-alias-test
+  (testing "can query a card that has an empty column alias (#57685)"
+    (let [mp (mt/metadata-provider)
+          card-query (lib/native-query mp "select id as \"\" from orders limit 2")]
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (mt/with-temp [:model/Card card {:dataset_query card-query}]
+        (let [query (->> (lib/query mp (lib.metadata/card mp (:id card)))
+                         lib/append-stage
+                         qp/process-query)]
+          (is (= [[1] [2]]
+                 (mt/rows query)))
+          (is (= ""
+                 (-> query :data :results_metadata :columns first :name))))))))

@@ -12,6 +12,7 @@ describe("scenarios > setup", () => {
   beforeEach(() => {
     H.restore("blank");
     H.resetSnowplow();
+    cy.intercept("GET", "/app/locales/*").as("getTranslations");
   });
 
   locales.forEach((locale) => {
@@ -183,7 +184,7 @@ describe("scenarios > setup", () => {
       cy.intercept(SUBSCRIBE_URL, {}).as("subscribe");
 
       // Finish & Subscribe
-      cy.findByText(
+      cy.findByLabelText(
         "Get infrequent emails about new releases and feature updates.",
       ).click();
 
@@ -314,41 +315,35 @@ describe("scenarios > setup", () => {
       "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
     );
 
-    cy.log("English is the initial language");
-    cy.get("header")
-      .should("be.visible")
-      .findByLabelText("Select a language")
-      .should("have.value", "English")
-      .click();
-
-    H.popover().findByText("Dutch").should("be.visible").click();
+    cy.log("Change language to English (ZZ)");
+    selectLanguage("English (ZZ)");
 
     cy.log("Changing a language should be applied immediately");
     cy.findByTestId("setup-forms").within(() => {
       const password = "12341234";
       cy.findByDisplayValue("John").should("exist");
-      cy.findByLabelText("Maak een wachtwoord").type(password);
-      cy.findByLabelText("Bevestig je wachtwoord").type(password);
-      cy.button("Volgende").click();
+      cy.findByLabelText("[zz] Create a password").type(password);
+      cy.findByLabelText("[zz] Confirm your password").type(password);
+      cy.button("[zz] Next").click();
     });
 
     cy.findByTestId("setup-forms").within(() => {
-      cy.findByLabelText("Hallo, John. Leuk je te ontmoeten!").should(
+      cy.findByLabelText("[zz] Hi, John. Nice to meet you!").should(
         "be.visible",
       );
 
       if (IS_ENTERPRISE) {
-        cy.button("Ik activeer later").click();
+        cy.button("[zz] I'll activate later").click();
       }
 
-      cy.findByText("Voltooi").click();
-      cy.findByText("Breng me naar Metabase").click();
+      cy.findByText("[zz] Finish").click();
+      cy.findByText("[zz] Take me to Metabase").click();
     });
 
-    cy.log("Locale is preserved upon succesful setup");
+    cy.log("Locale is preserved upon successful setup");
     cy.location("pathname").should("eq", "/");
     H.main()
-      .findByText("Aan de slag met het opnemen van Metabase in uw app")
+      .findByText("[zz] Get started with Embedding Metabase in your app")
       .should("be.visible");
   });
 
@@ -359,57 +354,46 @@ describe("scenarios > setup", () => {
       "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
     );
 
-    cy.log("Change language to Dutch before user creation");
-    cy.get("header")
-      .should("be.visible")
-      .findByLabelText("Select a language")
-      .should("have.value", "English")
-      .click();
-
-    H.popover().findByText("Dutch").should("be.visible").click();
-
-    cy.log("Verify site locale does not get updated before a user is created");
+    cy.log("Switching language before user creation should not update setting");
+    selectLanguage("Dutch");
+    cy.get("@updateSiteLocale.all").should("have.length", 0);
+    selectLanguage("English (ZZ)");
     cy.get("@updateSiteLocale.all").should("have.length", 0);
 
     cy.findByTestId("setup-forms").within(() => {
       const password = "12341234";
 
       cy.findByDisplayValue("John").should("exist");
-      cy.findByLabelText("Maak een wachtwoord").type(password);
-      cy.findByLabelText("Bevestig je wachtwoord").type(password);
-      cy.button("Volgende").click();
+      cy.findByLabelText("[zz] Create a password").type(password);
+      cy.findByLabelText("[zz] Confirm your password").type(password);
+      cy.button("[zz] Next").click();
 
-      cy.findByLabelText("Hallo, John. Leuk je te ontmoeten!").should(
-        "be.visible",
-      );
+      cy.findByLabelText("[zz] Hi, John. Nice to meet you!")
+        .scrollIntoView()
+        .should("be.visible");
     });
 
-    cy.log("After user creation, change language to German");
-    cy.get("header")
-      .should("be.visible")
-      .findByLabelText("Selecteer een taal")
-      .should("have.value", "Dutch")
-      .click();
-
-    H.popover()
-      .findByText("German")
-      .scrollIntoView()
-      .should("be.visible")
-      .click();
+    cy.log(
+      "After user creation, switching the language should update the setting",
+    );
+    selectLanguage("English");
+    cy.get("@updateSiteLocale.all").should("have.length", 1);
+    selectLanguage("English (ZZ)");
+    cy.get("@updateSiteLocale.all").should("have.length", 2);
 
     cy.findByTestId("setup-forms").within(() => {
-      cy.findByText("Ich aktiviere später").click();
-      cy.findByText("Beenden").click();
-      cy.findByText("Führe mich zu Metabase").click();
+      if (IS_ENTERPRISE) {
+        cy.findByText("[zz] I'll activate later").click();
+      }
+      cy.findByText("[zz] Finish").click();
+      cy.findByText("[zz] Take me to Metabase").click();
     });
 
     cy.location("pathname").should("eq", "/");
 
-    cy.log("Verify final language (German) is preserved");
+    cy.log("Verify the final language English (ZZ) is preserved");
     H.main()
-      .findByText(
-        "Erste Schritte mit der Einbettung der Metabase in Ihre Anwendung",
-      )
+      .findByText("[zz] Get started with Embedding Metabase in your app")
       .should("be.visible");
   });
 
@@ -681,7 +665,7 @@ describe("scenarios > setup", () => {
         step: "completed",
       });
 
-      cy.findByText(
+      cy.findByLabelText(
         "Get infrequent emails about new releases and feature updates.",
       ).click();
 
@@ -691,7 +675,7 @@ describe("scenarios > setup", () => {
         event_detail: "opted-in",
       });
 
-      cy.findByText(
+      cy.findByLabelText(
         "Get infrequent emails about new releases and feature updates.",
       ).click();
 
@@ -792,4 +776,19 @@ const navigateToDatabaseStep = () => {
   });
 
   cy.log("We are now on the database step");
+};
+
+const selectLanguage = (targetLanguage: string) => {
+  cy.findByTestId("language-selector").click();
+
+  cy.log("Select language from dropdown");
+  H.popover()
+    .findByText(targetLanguage)
+    .scrollIntoView()
+    .should("be.visible")
+    .click();
+
+  if (targetLanguage !== "English") {
+    cy.wait("@getTranslations");
+  }
 };

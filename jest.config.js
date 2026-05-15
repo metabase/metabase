@@ -69,6 +69,7 @@ const baseConfig = {
     "<rootDir>/target/cljs_release/.*",
     "<rootDir>/resources/frontend_client",
     "<rootDir>/.*/__mocks__",
+    "<rootDir>/enterprise/frontend/src/custom-viz",
   ],
   setupFiles: [
     "<rootDir>/frontend/test/jest-setup.js",
@@ -120,13 +121,13 @@ const config = {
 
       setupFiles: [
         ...baseConfig.setupFiles,
-        "<rootDir>/frontend/src/embedding-sdk-shared/jest/setup-env.js",
+        "<rootDir>/frontend/src/embedding-sdk-shared/jest/setup-env.ts",
       ],
 
       setupFilesAfterEnv: [
         ...baseConfig.setupFilesAfterEnv,
-        "<rootDir>/frontend/src/embedding-sdk-shared/jest/setup-after-env.js",
-        "<rootDir>/frontend/src/embedding-sdk-shared/jest/console-restrictions.js",
+        "<rootDir>/frontend/src/embedding-sdk-shared/jest/setup-after-env.ts",
+        "<rootDir>/frontend/src/embedding-sdk-shared/jest/console-restrictions.ts",
       ],
     },
     {
@@ -138,6 +139,7 @@ const config = {
         "<rootDir>/frontend/src/embedding-sdk-shared",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-package",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-ee",
+        "<rootDir>/enterprise/frontend/src/custom-viz",
         "<rootDir>/frontend/lint/tests",
       ],
     },

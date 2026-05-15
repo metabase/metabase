@@ -1,5 +1,9 @@
 import { storybookSdkAuthDefaultConfig } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
 import {
+  ParametersPlayground,
+  useControlledParametersPlaygroundState,
+} from "embedding-sdk-bundle/test/ParametersPlayground";
+import {
   dashboardIdArgType,
   dashboardIds,
 } from "embedding-sdk-bundle/test/storybook-id-args";
@@ -313,6 +317,41 @@ export const WithInitialParameters = {
       // category: "electronics",
     },
     hiddenParameters: [],
+  },
+};
+
+const ControlledParametersPlayground = (args: SdkDashboardProps) => {
+  const playground = useControlledParametersPlaygroundState({
+    initialValues: args.parameters ?? args.initialParameters ?? {},
+  });
+
+  return (
+    <ComponentProvider authConfig={storybookSdkAuthDefaultConfig}>
+      <ParametersPlayground
+        {...playground}
+        title="Controlled parameters"
+        description="Push a parameter value into the dashboard without clicking its filter UI — mimics a barcode scanner or app-state reflection."
+        dashboard={
+          <SdkDashboard
+            {...args}
+            parameters={playground.parameters}
+            onParametersChange={playground.handleParametersChange}
+          />
+        }
+      />
+    </ComponentProvider>
+  );
+};
+
+export const ControlledParameters = {
+  render: (args: SdkDashboardProps) => (
+    <ControlledParametersPlayground {...args} />
+  ),
+  args: {
+    dashboardId: DASHBOARD_ID,
+    withTitle: true,
+    withCardTitle: true,
+    withDownloads: false,
   },
 };
 

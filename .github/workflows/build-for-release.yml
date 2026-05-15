@@ -64,7 +64,6 @@ jobs:
               }
             });
 
-
   check-version:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
@@ -182,6 +181,19 @@ jobs:
             node_version: requirements.node,
             build_process,
           };
+
+  manage-milestones:
+    # Close the milestone we're about to ship and open the next one BEFORE building,
+    # so any PRs that merge while the build is in flight are tagged with the next
+    # milestone (not the one about to be released). Gated on the preflight checks
+    # so a bad version/commit input doesn't rotate the milestone spuriously.
+    needs: [check-version, check-commit]
+    permissions:
+      contents: read
+      issues: write
+    uses: ./.github/workflows/release-milestone-manage.yml
+    with:
+      version: ${{ inputs.version }}
 
   build-uberjar-for-release:
     needs: [check-version, check-commit, get-build-requirements]

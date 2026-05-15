@@ -1,14 +1,14 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { Flex } from "metabase/ui";
-import type { Database, DatabaseData, DatabaseId } from "metabase-types/api";
-
 import {
   hasActionsEnabled,
   hasDbRoutingEnabled,
   hasFeature,
-} from "../../utils";
+} from "metabase/common/utils/database";
+import { Flex } from "metabase/ui";
+import type { Database, DatabaseData, DatabaseId } from "metabase-types/api";
+
 import { DatabaseInfoSection } from "../DatabaseInfoSection";
 
 import { ModelActionsSection } from "./ModelActionsSection";

@@ -28,12 +28,6 @@ export function filterAdvisories(
     if (filter.severity !== "all" && a.severity !== filter.severity) {
       return false;
     }
-    if (filter.status === "affected" && !isAffected(a)) {
-      return false;
-    }
-    if (filter.status === "not-affected" && isAffected(a)) {
-      return false;
-    }
     if (!filter.showAcknowledged && isAcknowledged(a)) {
       return false;
     }
@@ -62,26 +56,35 @@ export function getTargetUpgradeVersion(advisories: Advisory[]): string | null {
   return target;
 }
 
-export function sortAdvisories(advisories: Advisory[]): Advisory[] {
-  return [...advisories].sort((a, b) => {
-    const aAffected = isAffected(a);
-    const bAffected = isAffected(b);
+export interface SortedAdvisories {
+  affecting: Advisory[];
+  notAffecting: Advisory[];
+}
 
-    // Affected items first
-    if (aAffected !== bAffected) {
-      return aAffected ? -1 : 1;
+function sortBySeverityAndDate(a: Advisory, b: Advisory): number {
+  const severityDiff = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
+  if (severityDiff !== 0) {
+    return severityDiff;
+  }
+  return (
+    new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+  );
+}
+
+export function sortAdvisories(advisories: Advisory[]): SortedAdvisories {
+  const affecting: Advisory[] = [];
+  const notAffecting: Advisory[] = [];
+
+  for (const advisory of advisories) {
+    if (isAffected(advisory)) {
+      affecting.push(advisory);
+    } else {
+      notAffecting.push(advisory);
     }
+  }
 
-    // Then by severity (critical → low)
-    const severityDiff =
-      SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
-    if (severityDiff !== 0) {
-      return severityDiff;
-    }
+  affecting.sort(sortBySeverityAndDate);
+  notAffecting.sort(sortBySeverityAndDate);
 
-    // Then by published_at descending (newest first)
-    return (
-      new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
-    );
-  });
+  return { affecting, notAffecting };
 }

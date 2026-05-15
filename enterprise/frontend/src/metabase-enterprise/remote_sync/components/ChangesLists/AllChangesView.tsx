@@ -228,7 +228,7 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
           fz="sm"
           lh="sm"
           mt="sm"
-        >{t`Other instances using this library may have items that depend on the items you're removing.`}</Text>
+        >{t`Other instances using this synced collection may have items that depend on the items you're removing.`}</Text>
       )}
     </Box>
   );

@@ -1,17 +1,17 @@
-import type { User } from "./user";
+import type { UserId } from "./user";
 
 export type GroupId = number;
 
 export type Membership = {
-  user_id: number;
-  group_id: number;
+  user_id: UserId;
+  group_id: GroupId;
   membership_id: number;
   is_group_manager?: boolean;
 };
 
 export type Member = {
-  user_id: number;
-  group_id: number;
+  user_id: UserId;
+  group_id: GroupId;
   membership_id: number;
   email: string;
   first_name: string;
@@ -45,9 +45,9 @@ export type BaseGroupInfo = {
   is_tenant_group?: boolean;
 };
 
-export type ListUserMembershipsResponse = Record<User["id"], Membership[]>;
+export type ListUserMembershipsResponse = Record<UserId, Membership[]>;
 
 export type CreateMembershipRequest = {
-  user_id: User["id"];
+  user_id: UserId;
   group_id: GroupId;
 };

@@ -1,4 +1,7 @@
 (ns ^:mb/driver-tests metabase.embedding-rest.api.preview-embed-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.embedding-rest.api.preview-embed-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.embedding-rest.api.preview-embed-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.embedding-rest.api.preview-embed-test]}}}}}}
   (:require
    [buddy.sign.jwt :as jwt]
    [clojure.test :refer :all]
@@ -584,7 +587,7 @@
         (let [signed-token (dash-token dashboard)
               url            (format "preview_embed/dashboard/%s/params/%s/values" signed-token "_STATIC_CATEGORY_")]
           (testing "Should work if the param we're fetching values for is enabled"
-            (testing "\nGET /api/preview-embed/dashboard/:token/params/:param-key/values"
+            (testing "\nGET /api/preview_embed/dashboard/:token/params/:param-key/values"
               (is (= {:values          [["African"] ["American"] ["Asian"]]
                       :has_more_values false}
                      (mt/user-http-request :rasta :get 200 url))))))))))

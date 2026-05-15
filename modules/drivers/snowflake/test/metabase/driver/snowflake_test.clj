@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.snowflake-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.snowflake-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.snowflake-test]}}}}}}
   (:require
    [clojure.data :as data]
    [clojure.java.jdbc :as jdbc]
@@ -11,7 +13,7 @@
    [metabase.driver :as driver]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
    [metabase.driver.snowflake :as driver.snowflake]
-   [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -166,15 +168,19 @@
                                                                                             (assoc :host alternative-host)
                                                                                             (assoc :use-hostname use-hostname))]
                                                                             (sql-jdbc.conn/connection-details->spec :snowflake details))))
-        true nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        true "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        true "  " "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        true "snowflake.example.com/" "//snowflake.example.com/"
-        true "snowflake.example.com" "//snowflake.example.com/"
-        false nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        false "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        false "snowflake.example.com/" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        false "snowflake.example.com" "//ls10467.us-east-2.aws.snowflakecomputing.com/"))
+        true nil "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
+        true "" "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
+        true "  " "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
+        true "snowflake.example.com/" "//snowflake.example.com/?enablePutGet=false"
+        true "snowflake.example.com" "//snowflake.example.com/?enablePutGet=false"
+        false nil "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
+        false "" "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
+        false "snowflake.example.com/" "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
+        false "snowflake.example.com" "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"))
+    (testing "Unsafe options are removed"
+      (let [details (assoc details :additional-options "enablePutGet=true")
+            spec (sql-jdbc.conn/connection-details->spec :snowflake details)]
+        (is (re-find #"enablePutGet=false" (:subname spec)))))
     (testing "Application parameter is set to identify Metabase connections"
       (is (= "Metabase_Metabase"
              (:application (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
@@ -984,15 +990,17 @@
                  (:write_data_details db))))))))
 
 (deftest ^:parallel set-role-statement-test
-  (testing "set-role-statement should return a USE ROLE command, with the role quoted if it contains special characters"
-    ;; No special characters
-    (is (= "USE ROLE MY_ROLE;"        (driver.sql/set-role-statement :snowflake "MY_ROLE")))
-    (is (= "USE ROLE ROLE123;"        (driver.sql/set-role-statement :snowflake "ROLE123")))
-    (is (= "USE ROLE lowercase_role;" (driver.sql/set-role-statement :snowflake "lowercase_role")))
-
-    ;; Special characters
-    (is (= "USE ROLE \"Role.123\";"   (driver.sql/set-role-statement :snowflake "Role.123")))
-    (is (= "USE ROLE \"$role\";"      (driver.sql/set-role-statement :snowflake "$role")))))
+  (testing "set-role-statement should return a parameterized USE ROLE command"
+    (are [role expected] (= expected
+                            (driver.sql-jdbc/set-role-statement :snowflake nil role))
+      "MY_ROLE"                          ["USE ROLE identifier(?);" "MY_ROLE"]
+      "ROLE123"                          ["USE ROLE identifier(?);" "ROLE123"]
+      "lowercase_role"                   ["USE ROLE identifier(?);" "lowercase_role"]
+      "Role.123"                         ["USE ROLE identifier(?);" "\"Role.123\""]
+      "$role"                            ["USE ROLE identifier(?);" "\"$role\""]
+      "Role-X"                           ["USE ROLE identifier(?);" "\"Role-X\""]
+      ;; should escape quotes in role name
+      "Role-X\"); DROP * FROM TABLE; --" ["USE ROLE identifier(?);" "\"Role-X\"\"); DROP * FROM TABLE; --\""])))
 
 (deftest remark-test
   (testing "Queries should have a remark formatted as JSON appended to them with additional metadata"
@@ -1261,28 +1269,28 @@
         (testing "password takes precedence if use-password is true"
           (when (and password use-password)
             (is (= :password (first result))
-                [idxs result])))
+                (str [idxs result]))))
 
         (testing "password comes last if use-password is false or nil"
           (when (and password (not use-password))
             (is (= :password (last result))
-                [idxs result])))
+                (str [idxs result]))))
 
         (testing "path is preferred if options is local"
           (when (and (= "local" options) private-key-value private-key-path)
             (is (= :private-key-path (m/find-first #{:private-key-path :private-key-value} result))
-                [idxs result])))
+                (str [idxs result]))))
 
         (testing "value is preferred if options is nil or uploaded"
           (when (and (not= "local" options) private-key-value private-key-path)
             (is (= :private-key-value (m/find-first #{:private-key-path :private-key-value} result))
-                [idxs result])))
+                (str [idxs result]))))
 
         (testing "ID is checked last if path or value exists"
           (when (or (and private-key-value private-key-id)
                     (and private-key-path private-key-id))
             (is (= :private-key-id (m/find-first #{:private-key-path :private-key-value :private-key-id} (reverse result)))
-                [idxs result])))))))
+                (str [idxs result]))))))))
 
 (deftest have-select-privelege?-timeout-test
   (mt/test-driver :snowflake

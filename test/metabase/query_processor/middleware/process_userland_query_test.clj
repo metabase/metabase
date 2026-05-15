@@ -1,4 +1,7 @@
 (ns metabase.query-processor.middleware.process-userland-query-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.query-processor.middleware.process-userland-query-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.query-processor.middleware.process-userland-query-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.middleware.process-userland-query-test]}}}}}}
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.core.async :as a]
@@ -84,23 +87,26 @@
                :cached                 nil}
               (process-userland-query query))
           "Result should have query execution info")
-      (is (=? {:hash         (codecs/bytes->hex (qp.util/query-hash query))
-               :database_id  (mt/id)
-               :result_rows  0
-               :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
-               :executor_id  nil
-               :json_query   (dissoc (mt/userland-query query) :info)
-               :native       false
-               :pulse_id     nil
-               :card_id      nil
-               :action_id    nil
-               :is_sandboxed false
-               :context      nil
-               :running_time true
-               :cache_hit    false
-               :cache_hash   nil ;; this is filled only for eligible queries
-               :dashboard_id nil
-               :parameterized false}
+      (is (=? {:hash            (codecs/bytes->hex (qp.util/query-hash query))
+               :database_id     (mt/id)
+               :result_rows     0
+               :started_at      #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
+               :executor_id     nil
+               :json_query      (dissoc (mt/userland-query query) :info)
+               :native          false
+               :pulse_id        nil
+               :card_id         nil
+               :action_id       nil
+               :is_sandboxed    false
+               :is_impersonated false
+               :is_db_routed    false
+               :parameters      nil
+               :context         nil
+               :running_time    true
+               :cache_hit       false
+               :cache_hash      nil ;; this is filled only for eligible queries
+               :dashboard_id    nil
+               :parameterized   false}
               (qe))
           "QueryExecution should be saved"))))
 
@@ -159,6 +165,30 @@
       (with-query-execution! [qe query]
         (process-userland-query query)
         (is (=? {:parameterized true} (qe)))))))
+
+(deftest parameters-pii-gated-test
+  (testing ":parameters is only persisted when analytics-pii-retention-enabled is true"
+    (let [query (mt/query venues
+                  {:query      {:aggregation [[:count]]}
+                   :parameters [{:name   "price"
+                                 :type   :category
+                                 :target $price
+                                 :value  "4"}]})]
+      (mt/with-premium-features #{:audit-app}
+        (testing "PII retention enabled -> parameters populated"
+          (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
+            (with-query-execution! [qe query]
+              (process-userland-query query)
+              (is (=? {:parameterized true
+                       :parameters    some?}
+                      (qe))))))
+        (testing "PII retention disabled -> parameters nil, parameterized still set"
+          (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]
+            (with-query-execution! [qe query]
+              (process-userland-query query)
+              (is (=? {:parameterized true
+                       :parameters    nil}
+                      (qe))))))))))
 
 (def ^:private ^:dynamic *viewlog-call-count* nil)
 

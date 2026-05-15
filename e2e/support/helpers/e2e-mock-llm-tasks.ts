@@ -2,6 +2,23 @@ import http from "node:http";
 
 let server: http.Server | null = null;
 
+type MockLlmToolCall = {
+  name: string;
+  input: Record<string, unknown>;
+};
+
+type MockLlmServerOptions =
+  | {
+      port: number;
+      responseText: string;
+      toolCall?: never;
+    }
+  | {
+      port: number;
+      responseText?: never;
+      toolCall: MockLlmToolCall;
+    };
+
 /**
  * Build a raw Anthropic SSE response that streams the given text as a single
  * content_block_delta and then closes the message cleanly.
@@ -33,26 +50,52 @@ function buildAnthropicSSE(text: string): string {
   return lines.join("\n");
 }
 
+function buildAnthropicToolUseSSE({ name, input }: MockLlmToolCall): string {
+  const lines = [
+    "event: message_start",
+    `data: ${JSON.stringify({ type: "message_start", message: { id: "msg_mock", type: "message", role: "assistant", content: [], model: "claude-haiku-4-5", stop_reason: null, usage: { input_tokens: 10, output_tokens: 0 } } })}`,
+    "",
+    "event: content_block_start",
+    `data: ${JSON.stringify({ type: "content_block_start", index: 0, content_block: { type: "tool_use", id: "toolu_mock", name, input: {} } })}`,
+    "",
+    "event: content_block_delta",
+    `data: ${JSON.stringify({ type: "content_block_delta", index: 0, delta: { type: "input_json_delta", partial_json: JSON.stringify(input) } })}`,
+    "",
+    "event: content_block_stop",
+    `data: ${JSON.stringify({ type: "content_block_stop", index: 0 })}`,
+    "",
+    "event: message_delta",
+    `data: ${JSON.stringify({ type: "message_delta", delta: { stop_reason: "tool_use", stop_sequence: null }, usage: { output_tokens: 8 } })}`,
+    "",
+    "event: message_stop",
+    `data: ${JSON.stringify({ type: "message_stop" })}`,
+    "",
+  ];
+  return lines.join("\n");
+}
+
 /**
  * Start a mock server that impersonates the Anthropic Messages API.
  *
  * Every POST to /v1/messages responds with a valid SSE stream containing
- * the given `responseText`.  The server listens on `port`.
+ * either the given `responseText` or a tool-use call. The server listens on `port`.
  *
  * Call `stopMockLlmServer` to tear it down.
  */
-export function startMockLlmServer({
-  port,
-  responseText,
-}: {
-  port: number;
-  responseText: string;
-}): Promise<null> {
+export function startMockLlmServer(
+  options: MockLlmServerOptions,
+): Promise<null> {
+  const { port } = options;
+
   return new Promise((resolve, reject) => {
     if (server) {
       server.close();
       server = null;
     }
+
+    const response = options.toolCall
+      ? buildAnthropicToolUseSSE(options.toolCall)
+      : buildAnthropicSSE(options.responseText);
 
     server = http.createServer((_req, res) => {
       res.writeHead(200, {
@@ -60,7 +103,7 @@ export function startMockLlmServer({
         "cache-control": "no-cache",
         connection: "keep-alive",
       });
-      res.end(buildAnthropicSSE(responseText));
+      res.end(response);
     });
 
     server.on("error", reject);

@@ -1,4 +1,3 @@
-import { DashboardSharingMenu } from "metabase/embedding/components/SharingMenu/DashboardSharingMenu";
 import { Center, Divider } from "metabase/ui";
 
 import { DashboardBookmark } from "../../DashboardBookmark";
@@ -22,6 +21,7 @@ import { AddLinkOrEmbedButton } from "../buttons/AddLinkOrEmbedButton";
 import { DashboardSubscriptionsButton } from "../buttons/DashboardSubscriptionsButton";
 import { RefreshIndicator } from "../buttons/RefreshIndicator";
 
+import { DashboardSharingMenu } from "./DashboardSharingMenu/DashboardSharingMenu";
 import { DASHBOARD_ACTION } from "./dashboard-action-keys";
 import type { DashboardActionButton, DashboardActionKey } from "./types";
 

@@ -1,3 +1,5 @@
+import type { IconName } from "metabase-types/api";
+
 import ten_thousand_component from "./10k.svg?component";
 import ten_thousand_source from "./10k.svg?source";
 import one_million_component from "./1m.svg?component";
@@ -316,6 +318,8 @@ import mail_component from "./mail.svg?component";
 import mail_source from "./mail.svg?source";
 import mail_filled_component from "./mail_filled.svg?component";
 import mail_filled_source from "./mail_filled.svg?source";
+import mcp_component from "./mcp.svg?component";
+import mcp_source from "./mcp.svg?source";
 import medallion_component from "./medallion.svg?component";
 import medallion_source from "./medallion.svg?source";
 import message_circle_component from "./message_circle.svg?component";
@@ -410,6 +414,8 @@ import refresh_component from "./refresh.svg?component";
 import refresh_source from "./refresh.svg?source";
 import refresh_downstream_component from "./refresh_downstream.svg?component";
 import refresh_downstream_source from "./refresh_downstream.svg?source";
+import rename_component from "./rename.svg?component";
+import rename_source from "./rename.svg?source";
 import repository_component from "./repository.svg?component";
 import repository_source from "./repository.svg?source";
 import return_component from "./return.svg?component";
@@ -432,8 +438,6 @@ import section_component from "./section.svg?component";
 import section_source from "./section.svg?source";
 import segment_component from "./segment.svg?component";
 import segment_source from "./segment.svg?source";
-import segment2_component from "./segment2.svg?component";
-import segment2_source from "./segment2.svg?source";
 import send_component from "./send.svg?component";
 import send_source from "./send.svg?source";
 import settings_component from "./settings.svg?component";
@@ -1185,6 +1189,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: mail_filled_component,
       source: mail_filled_source,
     },
+    mcp: {
+      component: mcp_component,
+      source: mcp_source,
+    },
     medallion: {
       component: medallion_component,
       source: medallion_source,
@@ -1437,6 +1445,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: refresh_downstream_component,
       source: refresh_downstream_source,
     },
+    rename: {
+      component: rename_component,
+      source: rename_source,
+    },
     repository: {
       component: repository_component,
       source: repository_source,
@@ -1464,10 +1476,6 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     segment: {
       component: segment_component,
       source: segment_source,
-    },
-    segment2: {
-      component: segment2_component,
-      source: segment2_source,
     },
     send: {
       component: send_component,
@@ -1726,303 +1734,6 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     test_tube: { component: test_tube_component, source: test_tube_source },
     eye_filled: { component: eye_component, source: eye_source },
   };
-
-/**
- * We need a standalone type to prevent adding the `Icons` object (as a type) into `index.d.ts` of Embedding SDK dist
- */
-export type IconName =
-  | "add"
-  | "add_collection"
-  | "add_column"
-  | "add_data"
-  | "add_folder"
-  | "add_list"
-  | "add_row"
-  | "add_to_dash"
-  | "add_comment"
-  | "ai"
-  | "alert"
-  | "alert_filled"
-  | "alert_confirm"
-  | "archive"
-  | "area"
-  | "attachment"
-  | "arrow_up"
-  | "arrow_down"
-  | "arrow_left"
-  | "arrow_left_to_line"
-  | "arrow_right"
-  | "arrow_split"
-  | "audit"
-  | "badge"
-  | "ban"
-  | "bar"
-  | "bell"
-  | "birthday"
-  | "book_open"
-  | "bookmark"
-  | "bookmark_filled"
-  | "bolt"
-  | "bolt_filled"
-  | "boxplot"
-  | "breakout"
-  | "bubble"
-  | "broken_link"
-  | "burger"
-  | "calendar"
-  | "camera"
-  | "chart_layout_default"
-  | "chart_layout_stack"
-  | "check"
-  | "check_filled"
-  | "code_block"
-  | "chevrondown"
-  | "chevronleft"
-  | "chevronright"
-  | "chevronup"
-  | "click"
-  | "clipboard"
-  | "clock"
-  | "clone"
-  | "close"
-  | "cloud"
-  | "cloud_filled"
-  | "collection2"
-  | "compare"
-  | "combine"
-  | "company"
-  | "comment"
-  | "currency"
-  | "connections"
-  | "contract"
-  | "copy"
-  | "corner_up_right"
-  | "curved"
-  | "database"
-  | "database_routing"
-  | "dependencies"
-  | "data_studio"
-  | "dash"
-  | "dashboard"
-  | "curve"
-  | "document"
-  | "download"
-  | "dyno"
-  | "edit_document"
-  | "edit_document_outlined"
-  | "ellipsis"
-  | "embed"
-  | "embed_interactive"
-  | "embed_modular"
-  | "embed_static"
-  | "empty"
-  | "enter_or_return"
-  | "exit"
-  | "expand"
-  | "expand_arrow"
-  | "extract"
-  | "eye"
-  | "eye_crossed_out"
-  | "eye_outline"
-  | "factory"
-  | "field"
-  | "fields"
-  | "filter"
-  | "filter_plus"
-  | "find_replace"
-  | "bug"
-  | "format_code"
-  | "formula"
-  | "function"
-  | "funnel"
-  | "funnel_outline"
-  | "folder"
-  | "folder_database"
-  | "folder_filled"
-  | "gauge"
-  | "gear"
-  | "gear_settings_filled"
-  | "gem"
-  | "ghost"
-  | "globe"
-  | "glossary"
-  | "git_branch"
-  | "grabber"
-  | "grid"
-  | "grid_2x2"
-  | "grid_bordered"
-  | "group"
-  | "google"
-  | "google_drive"
-  | "google_sheet"
-  | "history"
-  | "home"
-  | "horizontal_bar"
-  | "hourglass"
-  | "info"
-  | "info_outline"
-  | "insight"
-  | "int"
-  | "io"
-  | "join_full_outer"
-  | "join_inner"
-  | "join_left_outer"
-  | "join_right_outer"
-  | "index"
-  | "key"
-  | "label"
-  | "layout_grid"
-  | "ldap"
-  | "learn"
-  | "lightbulb"
-  | "link"
-  | "line"
-  | "lines"
-  | "lineandbar"
-  | "line_style_dashed"
-  | "line_style_dotted"
-  | "line_style_solid"
-  | "list"
-  | "location"
-  | "lock"
-  | "lock_filled"
-  | "mail"
-  | "mail_filled"
-  | "medallion"
-  | "message_circle"
-  | "metabot"
-  | "metabot_sad"
-  | "metric"
-  | "mode"
-  | "model"
-  | "model_with_badge"
-  | "moon"
-  | "move"
-  | "move_card"
-  | "network"
-  | "new_folder"
-  | "notebook"
-  | "number"
-  | "octagon_alert"
-  | "package"
-  | "palette"
-  | "pause"
-  | "pencil"
-  | "pencil_lines"
-  | "permissions_limited"
-  | "person"
-  | "pie"
-  | "pie_slice"
-  | "pin"
-  | "pinmap"
-  | "pivot_table"
-  | "play"
-  | "play_outlined"
-  | "popover"
-  | "popular"
-  | "progress"
-  | "publish"
-  | "published"
-  | "pulse"
-  | "receipt"
-  | "recents"
-  | "revert"
-  | "sankey"
-  | "share"
-  | "send"
-  | "settings"
-  | "smile"
-  | "split"
-  | "sql"
-  | "subscription"
-  | "straight"
-  | "stepped"
-  | "sticky_note"
-  | "sort"
-  | "sort_arrows"
-  | "sum"
-  | "sync"
-  | "synced_collection"
-  | "transform"
-  | "question"
-  | "quote"
-  | "redo"
-  | "return"
-  | "reference"
-  | "refresh"
-  | "refresh_downstream"
-  | "repository"
-  | "rocket"
-  | "ruler"
-  | "schema"
-  | "search"
-  | "search_check"
-  | "section"
-  | "segment"
-  | "segment2"
-  | "shield"
-  | "shield_outline"
-  | "sidebar_closed"
-  | "sidebar_open"
-  | "slack"
-  | "slack_colorized"
-  | "smartscalar"
-  | "snail"
-  | "snippet"
-  | "sparkles"
-  | "star_filled"
-  | "star"
-  | "stop"
-  | "store"
-  | "string"
-  | "sun"
-  | "t-shirt"
-  | "tab"
-  | "table"
-  | "table2"
-  | "text_bold"
-  | "text_italic"
-  | "text_strike"
-  | "thumbs_down"
-  | "thumbs_up"
-  | "time_history"
-  | "trash"
-  | "trash_filled"
-  | "triangle_left"
-  | "triangle_right"
-  | "unarchive"
-  | "undo"
-  | "unknown"
-  | "unpin"
-  | "unpublish"
-  | "unreferenced"
-  | "unsubscribe"
-  | "upload"
-  | "variable"
-  | "verified"
-  | "official_collection"
-  | "open_folder"
-  | "ordered_list"
-  | "verified_filled"
-  | "verified_round"
-  | "view_archive"
-  | "warning"
-  | "warning_round_filled"
-  | "warning_triangle_filled"
-  | "waterfall"
-  | "webhook"
-  | "10k"
-  | "1m"
-  | "zap"
-  | "zoom_in"
-  | "zoom_out"
-  | "scalar"
-  | "cake"
-  | "external"
-  | "collection"
-  | "beaker"
-  | "test_tube"
-  | "eye_filled";
 
 export const iconNames = Object.keys(Icons) as unknown as IconName[];
 

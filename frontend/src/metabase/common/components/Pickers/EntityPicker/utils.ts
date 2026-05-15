@@ -1,7 +1,9 @@
+import { useCallback } from "react";
 import _ from "underscore";
 
+import type { IconData } from "metabase/common/utils/icon";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import type { ColorName } from "metabase/ui/colors/types";
-import { type IconData, getIcon } from "metabase/utils/icon";
 import type {
   CollectionItemModel,
   CollectionNamespace,
@@ -18,35 +20,42 @@ import {
   type PickerItemFunctions,
 } from "./types";
 
-export const getEntityPickerIcon = (
-  item: OmniPickerItem,
-  {
-    isSelected,
-    isTenantUser,
-  }: {
-    isSelected?: boolean;
-    isTenantUser?: boolean;
-  } = {},
-): IconData & { c?: ColorName } => {
-  const icon = getIcon(item, { isTenantUser });
+export const useGetEntityPickerIcon = () => {
+  const getIcon = useGetIcon();
 
-  if (item.id === "search-results") {
-    icon.name = "search";
-  }
+  return useCallback(
+    (
+      item: OmniPickerItem,
+      {
+        isSelected,
+        isTenantUser,
+      }: {
+        isSelected?: boolean;
+        isTenantUser?: boolean;
+      } = {},
+    ): IconData & { c?: ColorName } => {
+      const icon = getIcon(item, { isTenantUser });
 
-  if (isSelected && !icon.color) {
-    icon.color = "text-primary-inverse";
-  }
+      if (item.id === "search-results") {
+        icon.name = "search";
+      }
 
-  if (icon.name === "folder" && isSelected) {
-    icon.name = "folder_filled";
-  }
+      if (isSelected && !icon.color) {
+        icon.color = "text-primary-inverse";
+      }
 
-  if (item.id === "recents") {
-    icon.name = "clock";
-  }
+      if (icon.name === "folder" && isSelected) {
+        icon.name = "folder_filled";
+      }
 
-  return { ...icon, color: undefined, c: icon.color ?? "brand" };
+      if (item.id === "recents") {
+        icon.name = "clock";
+      }
+
+      return { ...icon, color: undefined, c: icon.color ?? "brand" };
+    },
+    [getIcon],
+  );
 };
 
 const isSameNamespace = (
@@ -107,6 +116,15 @@ export function getItemFunctions({
     if (
       item.model === OmniPickerFolderModel.Database ||
       item.model === OmniPickerFolderModel.Schema
+    ) {
+      return true;
+    }
+
+    if (
+      item.model === OmniPickerFolderModel.Table &&
+      modelSet.has("measure") &&
+      "measures" in item &&
+      (item.measures?.length ?? 0) > 0
     ) {
       return true;
     }
@@ -201,6 +219,7 @@ export const validCollectionModels = new Set<CollectionItemModel>([
   "table",
   "snippet",
   "transform",
+  "measure",
 ]);
 
 export const allCollectionModels = Array.from(validCollectionModels);

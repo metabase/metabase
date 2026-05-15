@@ -3,10 +3,15 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { isNative } from "metabase/common/utils/card";
 import CS from "metabase/css/core/index.css";
+import { getSubpathSafeUrl } from "metabase/urls";
 import { displayNameForColumn } from "metabase/utils/formatting";
 import type { OptionsType } from "metabase/utils/formatting/types";
-import { getSubpathSafeUrl } from "metabase/utils/urls";
+import {
+  trackTableFreezeColumnsEnabled,
+  trackTableFreezeRowsEnabled,
+} from "metabase/visualizations/analytics";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import { ChartSettingNumberInput } from "metabase/visualizations/components/settings/ChartSettingNumberInput";
 import {
@@ -29,7 +34,6 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import {
   isAvatarURL,
@@ -92,7 +96,7 @@ export class Table extends Component<TableProps, TableState> {
   static isPivoted = _isPivoted;
 
   static settings = {
-    ...columnSettings({ hidden: true }),
+    ...columnSettings({ getHidden: () => true }),
     "table.pagination": {
       get section() {
         return t`Columns`;
@@ -129,6 +133,11 @@ export class Table extends Component<TableProps, TableState> {
       getHidden: (series: Series, settings: ComputedVisualizationSettings) =>
         _isPivoted(series, settings),
       readDependencies: ["table.pivot"],
+      onUpdate: (value: boolean) => {
+        if (value) {
+          trackTableFreezeColumnsEnabled();
+        }
+      },
     },
     "table.freeze_columns_count": {
       get section() {
@@ -159,6 +168,11 @@ export class Table extends Component<TableProps, TableState> {
       getHidden: (series: Series, settings: ComputedVisualizationSettings) =>
         _isPivoted(series, settings),
       readDependencies: ["table.pivot"],
+      onUpdate: (value: boolean) => {
+        if (value) {
+          trackTableFreezeRowsEnabled();
+        }
+      },
     },
     "table.freeze_rows_count": {
       get section() {

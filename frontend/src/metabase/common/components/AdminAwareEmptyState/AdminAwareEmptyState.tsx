@@ -1,10 +1,9 @@
 import type { ReactNode } from "react";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
+import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
-import type { IconName } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
-
+import type { IconName } from "metabase-types/api";
 /*
  * AdminAwareEmptyState is a component that can
  *  1) Produce a custom message for admins in empty results

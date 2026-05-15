@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.driver.sql.parameters.substitute-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sql.parameters.substitute-test]}}}}}}
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -125,7 +127,8 @@
 
 (deftest ^:parallel substitute-field-filter-for-nested-field-test
   (testing "field filter for a nested field (with parent-id) should include parent field name in identifier (#47003)"
-    (mt/test-drivers (sql-parameters-engines)
+    (mt/test-drivers (set/intersection (sql-parameters-engines)
+                                       (mt/normal-drivers-with-feature :nested-field-columns))
       (let [;; Use high IDs that won't collide with existing test metadata
             parent-field-id 999901
             nested-field-id 999902

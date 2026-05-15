@@ -1,4 +1,5 @@
 (ns metabase.query-processor.middleware.add-remaps-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.add-remaps-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]

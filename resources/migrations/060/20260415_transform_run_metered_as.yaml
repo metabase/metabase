@@ -1,0 +1,22 @@
+## Record the meter bucket each transform run counts toward at run start time.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/060_update_migrations.yaml
+  - changeSet:
+      id: v60.2026-04-15T12:00:00
+      author: filipesilva
+      comment: Add metered_as column to transform_run for per-run billing attribution
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: metered_as
+                  type: varchar(50)
+                  remarks: The meter bucket this run counts toward (transform-basic, transform-advanced, or null)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: transform_run
+            columnName: metered_as
