@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-complexity-score.settings
   "Settings for the data-complexity-score module."
   (:require
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -26,6 +27,8 @@
   is removed."
   []
   (boolean (or (premium-features/enable-data-complexity-score?)
+               ;; Intentional call to the deprecated env-var-only fallback (see docstring above).
+               #_{:clj-kondo/ignore [:deprecated-var]}
                (data-complexity-scoring-enabled))))
 
 (defsetting data-complexity-scoring-last-fingerprint
