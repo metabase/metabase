@@ -35,12 +35,10 @@ const TextViz: VisualizationDefinition = {
       dashboard: false,
     },
     text: {
-      value: "",
       getDefault: () => "",
     },
     "text.align_vertical": {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      section: t`Display`,
+      getSection: () => t`Display`,
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       title: t`Vertical Alignment`,
       widget: "select",
@@ -54,8 +52,7 @@ const TextViz: VisualizationDefinition = {
       getDefault: () => "top",
     },
     "text.align_horizontal": {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      section: t`Display`,
+      getSection: () => t`Display`,
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       title: t`Horizontal Alignment`,
       widget: "select",
@@ -69,8 +66,7 @@ const TextViz: VisualizationDefinition = {
       getDefault: () => "left",
     },
     "dashcard.background": {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      section: t`Display`,
+      getSection: () => t`Display`,
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       title: t`Show background`,
       dashboard: true,

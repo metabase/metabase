@@ -69,7 +69,7 @@ const DEFAULT_GET_COLUMNS: GetColumnsFn = (series, _vizSettings) =>
 export interface ColumnSettingsOptions {
   getColumns?: GetColumnsFn;
   getHidden?: (series: Series, settings: VisualizationSettings) => boolean;
-  section?: string;
+  getSection?: () => string;
   readDependencies?: string[];
 }
 
@@ -78,7 +78,7 @@ export function columnSettings({
   ...def
 }: ColumnSettingsOptions = {}) {
   return nestedSettings<"column_settings", DatasetColumn>("column_settings", {
-    section: t`Formatting`,
+    getSection: () => t`Formatting`,
     objectName: "column",
     getObjects: getColumns,
     getObjectKey: getColumnKey,
@@ -536,9 +536,7 @@ export function tableColumnSettings({
 } = {}): VisualizationSettingsDefinitions {
   return {
     "table.columns": {
-      get section() {
-        return t`Columns`;
-      },
+      getSection: () => t`Columns`,
       // title: t`Columns`,
       widget: ChartSettingTableColumns,
       getHidden: (_series, vizSettings) => vizSettings["table.pivot"],

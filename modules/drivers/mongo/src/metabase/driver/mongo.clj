@@ -25,6 +25,7 @@
    [metabase.util.performance :refer [some mapv empty? get-in]]
    [taoensso.nippy :as nippy])
   (:import
+   (com.mongodb MongoCommandException MongoSecurityException)
    (com.mongodb.client MongoClient MongoDatabase)
    (org.bson.types Binary ObjectId)))
 
@@ -49,18 +50,25 @@
 
 (defmethod driver/can-connect? :mongo
   [_ db-details]
-  (mongo.connection/with-mongo-client [^MongoClient c db-details]
-    (let [db-names (mongo.util/list-database-names c)
-          db-name (mongo.db/db-name db-details)
-          db (mongo.util/database c db-name)
-          db-stats (mongo.util/run-command db {:dbStats 1} :keywordize true)]
-      (and
-       ;; 1. check db.dbStats command completes successfully
-       (= (float (:ok db-stats))
-          1.0)
-       ;; 2. check the database is actually on the server
-       ;; (this is required because (1) is true even if the database doesn't exist)
-       (boolean (some #(= % db-name) db-names))))))
+  (try
+    (mongo.connection/with-mongo-client [^MongoClient c db-details]
+      (let [db-names (mongo.util/list-database-names c)
+            db-name (mongo.db/db-name db-details)
+            db (mongo.util/database c db-name)
+            db-stats (mongo.util/run-command db {:dbStats 1} :keywordize true)]
+        (and
+         ;; 1. check db.dbStats command completes successfully
+         (= (float (:ok db-stats))
+            1.0)
+         ;; 2. check the database is actually on the server
+         ;; (this is required because (1) is true even if the database doesn't exist)
+         (boolean (some #(= % db-name) db-names)))))
+    (catch MongoSecurityException e
+      (let [cause (.getCause e)]
+        ;; the outer wrapper exception has a useless "Exception authenticating" message
+        (if (instance? MongoCommandException cause)
+          (throw cause)
+          (throw e))))))
 
 (defmethod driver/humanize-connection-error-message
   :mongo
