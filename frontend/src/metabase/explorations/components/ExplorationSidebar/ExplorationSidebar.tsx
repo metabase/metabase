@@ -52,6 +52,7 @@ export function ExplorationSidebar({
   setSelectedEntityId,
 }: ExplorationSidebarProps) {
   const treeRef = useRef<TreeHandle>(null);
+  const pendingKeyboardSelectionRef = useRef(false);
 
   const tree = useMemo(
     () => getExplorationSidebarTree(exploration),
@@ -101,12 +102,19 @@ export function ExplorationSidebar({
         direction,
       );
       if (nextItem != null && nextItem.id !== selectedEntityId.id) {
-        if (nextItem.data?.type === "group") {
+        if (
+          nextItem.data?.type !== "group" &&
+          nextItem.data?.type !== "document"
+        ) {
+          return;
+        }
+        if (nextItem.data.type === "group") {
           setSelectedEntityId({ type: "group", id: nextItem.data.group_id });
-        } else if (nextItem.data?.type === "document") {
+        } else if (nextItem.data.type === "document") {
           setSelectedEntityId({ type: "document", id: nextItem.data.id });
         }
         event.preventDefault();
+        pendingKeyboardSelectionRef.current = true;
         // prefetch the following item
         // if the user uses a keyboard shortcut once, they're likely to use it again
         const followingItem = getAdjacentById(
@@ -133,6 +141,17 @@ export function ExplorationSidebar({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [flatItems, selectedEntityId, setSelectedEntityId, handlePrefetch]);
 
+  const TreeNode = useCallback(
+    (props: TreeNodeProps<ExplorationTreeNode>) => (
+      <ExplorationTreeNode
+        {...props}
+        handlePrefetch={handlePrefetch}
+        pendingKeyboardSelectionRef={pendingKeyboardSelectionRef}
+      />
+    ),
+    [handlePrefetch],
+  );
+
   return (
     <Stack
       h="100%"
@@ -158,9 +177,7 @@ export function ExplorationSidebar({
               setSelectedEntityId({ type: "document", id: item.data.id });
             }
           }}
-          TreeNode={(props: TreeNodeProps<ExplorationTreeNode>) => (
-            <ExplorationTreeNode {...props} handlePrefetch={handlePrefetch} />
-          )}
+          TreeNode={TreeNode}
         />
       </Box>
     </Stack>
@@ -169,6 +186,7 @@ export function ExplorationSidebar({
 
 interface ExplorationTreeNodeProps extends TreeNodeProps<ExplorationTreeNode> {
   handlePrefetch: (item: ITreeNodeItem<ExplorationTreeNode>) => void;
+  pendingKeyboardSelectionRef: React.MutableRefObject<boolean>;
 }
 
 function ExplorationTreeNode(props: ExplorationTreeNodeProps) {
@@ -234,18 +252,18 @@ function ExplorationTreeItem({
   onSelect,
   depth,
   handlePrefetch,
+  pendingKeyboardSelectionRef,
 }: ExplorationTreeItemProps) {
   const itemRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    // if selected via keyboard shortcuts, scroll into view
-    // if selected by clicking, the item was already in view, so it's a no-op
-    if (isSelected) {
+    if (isSelected && pendingKeyboardSelectionRef.current) {
       itemRef.current?.scrollIntoView({
         block: "nearest",
       });
+      pendingKeyboardSelectionRef.current = false;
     }
-  }, [isSelected]);
+  }, [isSelected, pendingKeyboardSelectionRef]);
 
   const iconProps =
     typeof item.icon === "string" ? { name: item.icon } : item.icon;
