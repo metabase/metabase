@@ -38,8 +38,6 @@ interface FieldFormFields {
 
 interface FieldProps {
   databaseId: DatabaseId;
-  // Accept the redux-normalized shape; the inner pickers need the denormalized
-  // `Field` type, so we cast at those boundaries.
   field: ApiField | NormalizedField | StubbedField;
   url: string;
   icon?: IconName;
@@ -93,7 +91,7 @@ const Field = ({
                 comboboxProps={{
                   width: 300,
                 }}
-                field={field as ApiField}
+                field={field}
                 fw="bold"
                 value={semanticType ?? null}
                 onChange={(value) => {
@@ -137,7 +135,7 @@ const Field = ({
             <Box mt="sm">
               <FieldFkTargetPicker
                 databaseId={databaseId}
-                field={field as ApiField}
+                field={field}
                 value={
                   formField.fk_target_field_id.value ||
                   field.fk_target_field_id ||

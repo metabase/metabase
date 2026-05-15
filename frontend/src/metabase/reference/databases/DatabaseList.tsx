@@ -64,9 +64,7 @@ class DatabaseList extends Component<DatabaseListProps> {
                     <ListItem
                       key={database.id}
                       name={database.name}
-                      description={
-                        (database as { description?: string }).description
-                      }
+                      description={database.description}
                       url={`/reference/databases/${database.id}`}
                       icon="database"
                     />
