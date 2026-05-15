@@ -102,23 +102,23 @@
 
 (deftest ^:parallel rating-for-score-boundaries-test
   (testing "score buckets respect the inclusive upper bounds of `complexity-thresholds`"
-    (doseq [[score expected] [[0     {:rating "low"    :rating-label "Low complexity"    :rating-color "green"}]
-                              [999   {:rating "low"    :rating-label "Low complexity"    :rating-color "green"}]
-                              [1000  {:rating "medium" :rating-label "Medium complexity" :rating-color "orange"}]
-                              [9999  {:rating "medium" :rating-label "Medium complexity" :rating-color "orange"}]
-                              [10000 {:rating "high"   :rating-label "High complexity"   :rating-color "red"}]
-                              [1e9   {:rating "high"   :rating-label "High complexity"   :rating-color "red"}]
-                              [nil   {:rating nil      :rating-label nil                 :rating-color nil}]]]
+    (doseq [[score expected] [[0     {:rating "low"    :rating-label "Low complexity"}]
+                              [999   {:rating "low"    :rating-label "Low complexity"}]
+                              [1000  {:rating "medium" :rating-label "Medium complexity"}]
+                              [9999  {:rating "medium" :rating-label "Medium complexity"}]
+                              [10000 {:rating "high"   :rating-label "High complexity"}]
+                              [1e9   {:rating "high"   :rating-label "High complexity"}]
+                              [nil   {:rating nil      :rating-label nil}]]]
       (testing (str "score=" score)
         (is (= expected (complexity/rating-for-score score)))))))
 
 (deftest ^:parallel decorate-with-ratings-test
   (testing "catalog totals get rating fields; components get present-but-nil rating keys"
-    (is (=? {:library  {:total 0    :rating "low"    :rating-label "Low complexity"    :rating-color "green"
+    (is (=? {:library  {:total 0    :rating "low"    :rating-label "Low complexity"
                         :components {:entity-count {:measurement 0.0 :score 0
-                                                    :rating nil :rating-label nil :rating-color nil}}}
-             :universe {:total 1500 :rating "medium" :rating-label "Medium complexity" :rating-color "orange"}
-             :metabot  {:total nil  :rating nil      :rating-label nil                 :rating-color nil}}
+                                                    :rating nil :rating-label nil}}}
+             :universe {:total 1500 :rating "medium" :rating-label "Medium complexity"}
+             :metabot  {:total nil  :rating nil      :rating-label nil}}
             (complexity/decorate-with-ratings
              {:library  {:total 0    :components {:entity-count {:measurement 0.0 :score 0}}}
               :universe {:total 1500 :components {}}

@@ -36,25 +36,24 @@
 
 (def complexity-thresholds
   "Catalog-total rating bands. Applied at the API boundary, not persisted."
-  [{:rating "low"    :label "Low complexity"    :color "green"  :max 999}
-   {:rating "medium" :label "Medium complexity" :color "orange" :max 9999}
-   {:rating "high"   :label "High complexity"   :color "red"}])
+  [{:rating "low"    :label "Low complexity"    :max 999}
+   {:rating "medium" :label "Medium complexity" :max 9999}
+   {:rating "high"   :label "High complexity"}])
 
 (defn rating-for-score
-  "Nil score cascades nil through all three return keys."
+  "Nil score cascades nil through both return keys."
   [score]
   (let [band (when (some? score)
                (some (fn [{:keys [max] :as b}] (when (or (nil? max) (<= score max)) b))
                      complexity-thresholds))]
     {:rating       (:rating band)
-     :rating-label (:label band)
-     :rating-color (:color band)}))
+     :rating-label (:label band)}))
 
 (defn decorate-with-ratings
   "Annotate each catalog in a complexity-scores response with rating fields derived from its `:total`.
   Components get present-but-nil rating keys so the response shape is uniform."
   [score]
-  (let [nil-rating {:rating nil :rating-label nil :rating-color nil}
+  (let [nil-rating {:rating nil :rating-label nil}
         decorate   (fn [catalog]
                      (-> catalog
                          (merge (rating-for-score (:total catalog)))

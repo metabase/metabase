@@ -23,24 +23,21 @@
     [:measurement  number?]
     [:score        nat-int?]
     [:rating       nil?]
-    [:rating_label nil?]
-    [:rating_color nil?]]
+    [:rating_label nil?]]
    [:map {:closed true}
     [:measurement  nil?]
     [:score        nil?]
     [:error        string?]
     [:rating       nil?]
-    [:rating_label nil?]
-    [:rating_color nil?]]])
+    [:rating_label nil?]]])
 
 (def ^:private Catalog
   "One catalog's total + per-component breakdown.
-  A failed sub-score cascades nil through both the total and the three rating keys."
+  A failed sub-score cascades nil through both the total and the rating keys."
   [:map
    [:total        [:maybe nat-int?]]
    [:rating       [:maybe [:enum "low" "medium" "high"]]]
    [:rating_label [:maybe string?]]
-   [:rating_color [:maybe [:enum "green" "orange" "red"]]]
    [:components
     [:map
      [:entity_count      SubScore]
