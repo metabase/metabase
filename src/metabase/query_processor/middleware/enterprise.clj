@@ -78,15 +78,23 @@
   query)
 
 (defenterprise apply-workspace-remapping
-  "**Workspace remapping, Phase 1 — preprocess.** Mutates cached MBQL table metadata so
-   downstream middleware and HoneySQL compilation see workspace identifiers.
+  "**Workspace remapping — around middleware.** Binds [[metabase.workspaces.table-remapping/*table-remapper*]]
+   so that HoneySQL compilation emits workspace identifiers instead of canonical ones.
 
-   Phase 1 is for pipeline coherence; Phase 2 ([[apply-workspace-sql-remapping]]) is the
-   authoritative security boundary. Native SQL is intentionally untouched here. See the EE
-   impl namespace docstring for the full design rationale."
+   This is an around-middleware (wraps the entire inner pipeline: preprocess + compile +
+   execute) so the binding is active during compilation. Phase 2
+   ([[apply-workspace-sql-remapping]]) remains the authoritative security boundary for
+   native SQL. See the EE impl namespace docstring for the full design rationale."
   metabase-enterprise.workspaces.query-processor.middleware
-  [query]
-  query)
+  [qp]
+  qp)
+
+(defn apply-workspace-remapping-middleware
+  "Helper middleware wrapper for [[apply-workspace-remapping]] to make sure we do [[defenterprise]] dispatch
+  correctly on each QP run rather than just once when we combine all of the QP middleware."
+  [qp]
+  (fn [query rff]
+    ((apply-workspace-remapping qp) query rff)))
 
 ;;;; Execution middleware
 

@@ -1,7 +1,47 @@
 (ns metabase.workspaces.table-remapping
-  "The OSS namespace for workspace table remapping."
+  "The OSS namespace for workspace table remapping.
+
+   ## Emission-time remapping
+
+   [[*table-remapper*]] is the extension point for redirecting table references at
+   SQL-emission time. The default is [[identity-table-remapper]] which passes
+   coordinates through unchanged. Enterprise workspace middleware binds a remapper
+   that rewrites canonical coordinates to workspace-isolation coordinates.
+
+   SQL emission calls `(remap-table *table-remapper* schema table-name)` at every
+   table reference — both FROM/JOIN clauses and column qualifiers. The result is
+   always a map `{:schema s :name n}` (optionally `:db`) with the coordinates to
+   emit. No conditional logic at the call sites."
   (:require
    [metabase.premium-features.core :refer [defenterprise]]))
+
+;;; --------------------------------- Emission-time table remapping protocol ------------------------------------
+
+(defprotocol TableRemapper
+  "Protocol for remapping table coordinates at SQL-emission time. Given canonical
+   schema and table-name, returns `{:schema s :name n}` (optionally `:db`) with
+   the coordinates to emit in SQL. The identity implementation passes values
+   through unchanged; the enterprise workspace implementation may redirect to
+   an isolation schema."
+  (remap-table [this schema table-name]
+    "Given canonical `schema` (possibly nil) and `table-name`, return a map
+     `{:schema s :name n}` (optionally `:db`) with the coordinates to emit in SQL.
+     The identity implementation returns `{:schema schema :name table-name}`."))
+
+(def identity-table-remapper
+  "Default remapper that passes coordinates through unchanged."
+  (reify TableRemapper
+    (remap-table [_ schema table-name]
+      {:schema schema :name table-name})))
+
+(def ^:dynamic *table-remapper*
+  "The active [[TableRemapper]]. SQL emission calls [[remap-table]] on this at every
+   table reference. Defaults to [[identity-table-remapper]] (passthrough).
+
+   Enterprise workspace middleware binds this to a remapper that rewrites canonical
+   coordinates to workspace-isolation coordinates for the duration of the query
+   pipeline (preprocess + compile + execute)."
+  identity-table-remapper)
 
 (defenterprise workspace-remap-schema+name
   "In workspace mode, a Table at the canonical identity `from-spec` may be backed
