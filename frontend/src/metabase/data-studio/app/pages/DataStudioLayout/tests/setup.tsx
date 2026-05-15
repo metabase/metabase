@@ -177,6 +177,11 @@ export const setup = ({
   setupDirtyEndpoints({ dirty, collections });
   setupNavbarEndpoints(isNavbarOpened);
   setupLibraryEndpoints(false);
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "upsell-remote-sync-dev-instance",
+    value: false,
+  });
 
   const state = createStoreState({
     isAdmin,
