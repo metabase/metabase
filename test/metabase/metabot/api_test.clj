@@ -846,8 +846,28 @@
              :id     "call-1"
              :result {:output            "<result>XML</result>"
                       :resources         [{:id 1 :name "Orders" :columns [{:field_values [1 2 3]}]}]
-                      :structured-output {:result-type :search :data [{:id 1}]}
+                      :structured-output {:result-type :entity :data [{:id 1}]}
                       :data-parts        [{:type :data :data-type "navigate_to"}]}}))))
+  (testing "search-shaped tool results bypass the trim entirely so the quality scorer keeps the entity payload"
+    (let [search-part {:type   :tool-output
+                       :id     "call-search"
+                       :result {:output            "<result>...</result>"
+                                :structured-output {:result-type :search
+                                                    :data        [{:model "table" :id 1 :name "Orders"}
+                                                                  {:model "model" :id 2 :name "Customer LTV"}]
+                                                    :total_count 2}
+                                :data-parts        [{:type :data}]
+                                :reactions         [:noop]}}]
+      (is (= search-part
+             (metabot.persistence/strip-tool-output-bloat search-part)))))
+  (testing "non-search :result-type with a :data key still goes through the standard trim"
+    (is (= {:type :tool-output :id "call-entity" :result {:output "<result>...</result>"}}
+           (metabot.persistence/strip-tool-output-bloat
+            {:type   :tool-output
+             :id     "call-entity"
+             :result {:output            "<result>...</result>"
+                      :structured-output {:result-type :entity
+                                          :data        [{:id 1 :name "Orders"}]}}}))))
   (testing "keeps the query-related subset of :structured-output for analytics extraction"
     (let [query-map {:database 1 :type :native :native {:query "SELECT 1"}}]
       (is (= {:type   :tool-output

@@ -26,24 +26,51 @@
   (when (map? structured)
     (not-empty (select-keys structured persisted-structured-output-keys))))
 
+(defn- search-tool-result?
+  "True if `result` is a search-tool's `:result` map. Detected via
+  `:result-type :search` on `:structured-output` (or its `:structured_output`
+  snake-case alias from the Slackbot path). All four search vars
+  (`search-tool`, `sql-search-tool`, `nlq-search-tool`,
+  `transform-search-tool`) tag their structured-output with
+  `:result-type :search` via `do-search`, so this discriminator is the
+  reliable cross-cutting signal even though every search var registers
+  under the same `:tool-name \"search\"`."
+  [result]
+  (when (map? result)
+    (let [structured (or (:structured-output result) (:structured_output result))
+          rtype      (when (map? structured) (:result-type structured))]
+      (or (= :search rtype) (= "search" rtype)))))
+
+(defn- strip-non-search-result
+  "Keep `:output` and a trimmed `:structured-output` from a non-search
+  tool-output's `:result` map. The analytics extractor reads a small subset
+  of `:structured-output` off persisted messages (see
+  `persisted-structured-output-keys`); everything else (`:resources`,
+  `:data-parts`, `:reactions`, …) is dropped because that's where the bulk
+  of the bloat lives."
+  [r]
+  (cond-> (select-keys r [:output])
+    (trim-structured-output (:structured-output r))
+    (assoc :structured-output (trim-structured-output (:structured-output r)))
+    (trim-structured-output (:structured_output r))
+    (assoc :structured_output (trim-structured-output (:structured_output r)))))
+
 (defn strip-tool-output-bloat
-  "For :tool-output parts, keep `:output` and a trimmed `:structured-output` in
-  the result map. Both LLM adapters only read `(get-in part [:result :output])`
-  when replaying history, so `:output` is all they need. The analytics extractor,
-  however, reads a small subset of `:structured-output` off persisted messages
-  (see `persisted-structured-output-keys`), so we keep those four keys and drop
-  everything else (`:resources`, `:data-parts`, `:reactions`, …) — that's where
-  the bulk of the bloat lives."
-  [{:keys [type] :as part}]
-  (if (= :tool-output type)
-    (update part :result
-            (fn [r]
-              (cond-> (select-keys r [:output])
-                (trim-structured-output (:structured-output r))
-                (assoc :structured-output (trim-structured-output (:structured-output r)))
-                (trim-structured-output (:structured_output r))
-                (assoc :structured_output (trim-structured-output (:structured_output r))))))
-    part))
+  "For `:tool-output` parts, keep `:output` and a trimmed `:structured-output`.
+  Both LLM adapters only read `(get-in part [:result :output])` when replaying
+  history, so `:output` is all they need; the analytics extractor reads a
+  small whitelisted subset of `:structured-output` (see
+  `persisted-structured-output-keys`).
+
+  Search tool results bypass the trim entirely — the BOT-1515 quality scorer
+  needs the full entity payload (id, model, name, collection, verified flag,
+  data-layer, …) to compute the retrieval-discipline signals, and the live
+  in-loop and DB-scored paths must see the same shape."
+  [{:keys [type result] :as part}]
+  (cond
+    (not= :tool-output type)     part
+    (search-tool-result? result) part
+    :else                        (update part :result strip-non-search-result)))
 
 (defn extract-usage
   "Extract usage from parts, taking the last `:usage` per model.

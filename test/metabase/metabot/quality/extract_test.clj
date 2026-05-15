@@ -345,7 +345,7 @@
                :navigate-refs)))))
 
 ;; ---------------------------------------------------------------------------
-;; Search-hit harvest (relies on un-stripped result.structured-output.data)
+;; Search-hit harvest (search tool :structured-output survives persistence)
 ;; ---------------------------------------------------------------------------
 
 (deftest search-hits-test
@@ -369,16 +369,25 @@
       (testing "the source entity payload is preserved on the ref"
         (is (= "Orders" (get-in (first hits) [:entity :name])))))))
 
-(deftest search-hits-empty-when-stripped-test
-  (testing "no search hits when persistence has stripped :structured-output.data"
-    (is (= []
-           (-> [(assistant-msg 1 (ts 1)
-                               [(tool-input "search" {} "a")
-                                ;; post-strip-tool-output-bloat shape: only :output
-                                (tool-output "a" {:output "formatted text"})])]
-               extract/normalize
-               :entity-refs
-               :search-hits)))))
+(deftest search-hits-from-persisted-shape-test
+  (testing "search-tool :structured-output bypasses strip-tool-output-bloat, so the persisted shape still yields :search-hits"
+    ;; Mirrors the post-`strip-tool-output-bloat` shape for a search call:
+    ;; `:result-type :search` results pass through untouched, so the entity
+    ;; payload under `:data` is fully recoverable from the appdb.
+    (let [hits (-> [(assistant-msg 1 (ts 1)
+                                   [(tool-input "search" {} "a")
+                                    (tool-output "a"
+                                                 {:output "formatted text"
+                                                  :structured-output
+                                                  {:result-type :search
+                                                   :data [{:model "table" :id 7 :name "Products"}]
+                                                   :total_count 1}})])]
+                   extract/normalize
+                   :entity-refs
+                   :search-hits)]
+      (is (= [{:ref-type :table :ref-id 7}]
+             (mapv #(select-keys % [:ref-type :ref-id]) hits)))
+      (is (= "Products" (get-in (first hits) [:entity :name]))))))
 
 ;; ---------------------------------------------------------------------------
 ;; Tool-output pairing & sibling errors

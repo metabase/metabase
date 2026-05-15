@@ -385,12 +385,9 @@
   on the ref so downstream signals (`quality.governance/resolve-canonical-rank`)
   can read additional fields without going back to the source data.
 
-  Known limitation: the persistence path strips `:structured-output` to a tiny
-  key set in `metabot.persistence/strip-tool-output-bloat`, so the
-  scored-from-DB path will see no search hits here. The in-memory live path
-  still has the full payload. Phase 1G must either widen the persisted key set
-  or accept zero magnitudes from the search-hit-dependent signals — flagged in
-  the Phase 1C progress summary."
+  Search-tool `:structured-output` bypasses `strip-tool-output-bloat` in
+  `metabase.metabot.persistence`, so the in-loop and DB-scored paths see the
+  same shape."
   [{:keys [function result] :as call}]
   (when (contains? constants/search-tools function)
     (let [base (ref-base call)]
