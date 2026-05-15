@@ -1,13 +1,16 @@
 import cx from "classnames";
+import dayjs from "dayjs";
 import { getIn } from "icepick";
-import { memo, useCallback, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMount, useUpdateEffect } from "react-use";
+import { c, t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isActionCard } from "metabase/actions/utils";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { addParameter, duplicateCard } from "metabase/dashboard/actions";
+import { fetchCardData } from "metabase/dashboard/actions/data-fetching";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashcardData, getDashcardHref } from "metabase/dashboard/selectors";
@@ -23,7 +26,7 @@ import { useDispatch, useSelector, useStore } from "metabase/redux";
 import type { StoreDashcard } from "metabase/redux/store";
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box } from "metabase/ui";
+import { Box, Flex, Loader, Tooltip } from "metabase/ui";
 import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
@@ -188,6 +191,33 @@ function DashCardInner({
     () => isDashcardLoading(dashcard, dashcardData),
     [dashcard, dashcardData],
   );
+
+  const mainDataset =
+    mainCard.id != null ? dashcardData?.[mainCard.id] : undefined;
+  const isStale = !isLoading && mainDataset?.stale === true;
+
+  const staleTooltipLabel = useMemo(() => {
+    const date = mainDataset?.cached ? dayjs(mainDataset.cached) : null;
+    if (!date?.isValid()) {
+      return t`Showing stale results — refreshing`;
+    }
+    return c("{0} is a phrase like '1 minute ago' or '30 seconds ago'")
+      .t`Showing stale results from ${date.fromNow(false)} — refreshing`;
+  }, [mainDataset]);
+
+  // When the displayed result is stale, kick off a background refresh without
+  // clearing the card — the user keeps seeing data while the fresh query runs.
+  useEffect(() => {
+    if (!isStale) {
+      return;
+    }
+    dispatch(
+      fetchCardData(mainCard as Card, dashcard, {
+        reload: true,
+        ignoreCache: true,
+      }),
+    );
+  }, [isStale, dispatch, mainCard, dashcard]);
 
   const isAction = isActionCard(mainCard);
 
@@ -385,6 +415,18 @@ function DashCardInner({
             onAddParameter={handleAddParameter}
             onEditVisualization={onEditVisualizationClick}
           />
+        )}
+        {isStale && (
+          <Tooltip label={staleTooltipLabel} position="bottom">
+            <Flex
+              pos="absolute"
+              bottom="0.5rem"
+              right="0.5rem"
+              style={{ zIndex: 1, cursor: "default" }}
+            >
+              <Loader size="xs" />
+            </Flex>
+          </Tooltip>
         )}
         <DashCardVisualization
           dashcard={dashcard}

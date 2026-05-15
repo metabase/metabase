@@ -131,7 +131,8 @@
   "Reducing function for cached results. Merges the final object in the cached results, the `final-metdata` map, with
   the reduced value assuming it is a normal metadata map."
   [rff        :- ::qp.schema/rff
-   query-hash :- bytes?]
+   query-hash :- bytes?
+   stale?     :- :boolean]
   (fn [{:keys [last-ran], :as metadata}]
     (let [metadata       (dissoc metadata :last-ran :cache-version)
           rf             (rff metadata)
@@ -146,7 +147,7 @@
                result*        (-> (if normal-format?
                                     (m/deep-merge @final-metadata (unreduced result))
                                     (unreduced result))
-                                  (assoc :cache/details {:hash query-hash :cached true :updated_at last-ran}))]
+                                  (assoc :cache/details {:hash query-hash :cached true :updated_at last-ran :stale? stale?}))]
            (rf (cond-> result*
                  (reduced? result) reduced))))
 
@@ -177,15 +178,16 @@
     (or (when-not ignore-cache?
           (log/debugf "Looking for cached results for query with hash '%s' satisfying %s"
                       (i/short-hex-hash query-hash) (pr-str strategy))
-          (i/with-cached-results *backend* query-hash strategy [is]
+          (i/with-cached-results *backend* query-hash strategy [is stale?]
             (if is
               (impl/with-reducible-deserialized-results [[metadata reducible-rows] is]
-                (log/debugf "Found cached results for hash '%s'. Version: %s"
-                            (i/short-hex-hash query-hash) (pr-str (:cache-version metadata)))
+                (log/debugf "Found cached results for hash '%s'. Version: %s%s"
+                            (i/short-hex-hash query-hash) (pr-str (:cache-version metadata))
+                            (if stale? " (stale)" ""))
                 (when (and (= (:cache-version metadata) cache-version)
                            reducible-rows)
                   (log/trace "Reducing cached rows...")
-                  (let [result (qp.pipeline/*reduce* (cached-results-rff rff query-hash) metadata reducible-rows)]
+                  (let [result (qp.pipeline/*reduce* (cached-results-rff rff query-hash stale?) metadata reducible-rows)]
                     (log/trace "All cached rows reduced")
                     [::ok result])))
               (log/debugf "Not found cached results for hash '%s'" (i/short-hex-hash query-hash)))))

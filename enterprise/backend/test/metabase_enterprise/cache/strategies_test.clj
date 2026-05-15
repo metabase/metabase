@@ -19,9 +19,9 @@
   (mt/with-empty-h2-app-db!
     (mt/with-premium-features #{:cache-granular-controls}
       (let [query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 5})
-            mkres (fn [input]
+            mkres (fn [input & [stale?]]
                     {:cache/details (if input
-                                      {:cached true, :updated_at input, :hash some?}
+                                      {:cached true, :updated_at input, :hash some?, :stale? (boolean stale?)}
                                       {:stored true, :hash some?})
                      :row_count     5
                      :status        :completed})]
@@ -41,9 +41,9 @@
                 (mt/with-clock #t "2024-02-13T10:00:04Z"
                   (is (=? (mkres #t "2024-02-13T10:00:00Z")
                           (-> (qp/process-query query) (dissoc :data))))))
-              (testing "6 seconds later results are unavailable"
+              (testing "6 seconds later the expired entry is served as stale"
                 (mt/with-clock #t "2024-02-13T10:00:06Z"
-                  (is (=? (mkres nil)
+                  (is (=? (mkres #t "2024-02-13T10:00:00Z" true)
                           (-> (qp/process-query query) (dissoc :data)))))))))
         (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
           (testing "strategy = duration"
@@ -60,9 +60,11 @@
                 (mt/with-clock #t "2024-02-13T10:00:59Z"
                   (is (=? (mkres #t "2024-02-13T10:00:00Z")
                           (-> (qp/process-query query) (dissoc :data)))))
-                (mt/with-clock #t "2024-02-13T10:01:01Z"
-                  (is (=? (mkres nil)
-                          (-> (qp/process-query query) (dissoc :data)))))))))
+                (testing "1 minute later the expired entry is served as stale"
+                  (mt/with-clock #t "2024-02-13T10:01:01Z"
+                    (is (=? (mkres #t "2024-02-13T10:00:00Z" true)
+                            (-> (qp/process-query query) (dissoc :data))))))))))
+
         (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
           (testing "strategy = schedule"
             (let [query (assoc query :cache-strategy {:type           :schedule
@@ -75,13 +77,13 @@
                   (is (=? (mkres #t "2024-02-13T10:01:00Z")
                           (-> (qp/process-query query) (dissoc :data))))))
               (let [query (assoc-in query [:cache-strategy :invalidated-at] (t/offset-date-time #t "2024-02-13T10:02:00Z"))]
-                (testing "Cache is invalidated when schedule ran after the query"
+                (testing "Entry stored before schedule ran is served as stale"
                   (mt/with-clock #t "2024-02-13T10:03:00Z"
-                    (is (=? (mkres nil)
+                    (is (=? (mkres #t "2024-02-13T10:01:00Z" true)
                             (-> (qp/process-query query) (dissoc :data))))))
-                (testing "schedule did not run - cache is still intact"
+                (testing "Without a background refresh the stale entry persists"
                   (mt/with-clock #t "2024-02-13T10:08:00Z"
-                    (is (=? (mkres #t "2024-02-13T10:03:00Z")
+                    (is (=? (mkres #t "2024-02-13T10:01:00Z" true)
                             (-> (qp/process-query query) (dissoc :data))))))))))))))
 
 (deftest e2e-advanced-caching

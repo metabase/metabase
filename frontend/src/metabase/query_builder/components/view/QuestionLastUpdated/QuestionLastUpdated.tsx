@@ -1,13 +1,23 @@
 import { c } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { FixedSizeIcon, Flex, type FlexProps, Tooltip } from "metabase/ui";
+import {
+  FixedSizeIcon,
+  Flex,
+  type FlexProps,
+  Loader,
+  Tooltip,
+} from "metabase/ui";
 import type { Dataset } from "metabase-types/api";
 
-import { getAbbreviatedRelativeTimeStrings, getTimePassedSince } from "./utils";
+import {
+  getAbbreviatedRelativeTimeStrings,
+  getStaleCacheTooltipLabel,
+  getTimePassedSince,
+} from "./utils";
 
 export type QuestionLastUpdatedProps = {
-  result: Pick<Dataset, "cached">;
+  result: Pick<Dataset, "cached" | "stale">;
 } & FlexProps;
 
 export const QuestionLastUpdated = ({
@@ -21,25 +31,30 @@ export const QuestionLastUpdated = ({
   // utility function can throw an Error. Hence the ErrorBoundary here
   return (
     <ErrorBoundary>
-      <QuestionLastUpdatedBody timestamp={result.cached} {...flexProps} />
+      <QuestionLastUpdatedBody
+        timestamp={result.cached}
+        stale={result.stale}
+        {...flexProps}
+      />
     </ErrorBoundary>
   );
 };
 
 const QuestionLastUpdatedBody = ({
   timestamp,
+  stale,
   ...flexProps
-}: { timestamp?: string | null } & FlexProps) => {
-  const shortExplanation = getTimePassedSince({
-    timestamp,
-    relativeTimeStrings: getAbbreviatedRelativeTimeStrings(),
-  });
-  const longExplanation = c(
-    "{0} is a phrase like '1 minute ago' or '30 seconds ago'",
-  ).t`Showing cached results from ${getTimePassedSince({
-    timestamp,
-    withoutSuffix: false,
-  })}`;
+}: { timestamp?: string | null; stale?: boolean } & FlexProps) => {
+  const shortExplanation = stale
+    ? null
+    : getTimePassedSince({
+        timestamp,
+        relativeTimeStrings: getAbbreviatedRelativeTimeStrings(),
+      });
+  const longExplanation = stale
+    ? getStaleCacheTooltipLabel(timestamp)
+    : c("{0} is a phrase like '1 minute ago' or '30 seconds ago'")
+        .t`Showing cached results from ${getTimePassedSince({ timestamp, withoutSuffix: false })}`;
   return (
     <Tooltip label={longExplanation}>
       <Flex
@@ -49,8 +64,14 @@ const QuestionLastUpdatedBody = ({
         aria-label={longExplanation}
         {...flexProps}
       >
-        <FixedSizeIcon name="time_history" />
-        {shortExplanation}
+        {stale ? (
+          <Loader size="xs" />
+        ) : (
+          <>
+            <FixedSizeIcon name="time_history" />
+            {shortExplanation}
+          </>
+        )}
       </Flex>
     </Tooltip>
   );

@@ -104,6 +104,7 @@
                :parameterized :parameters))
    (dissoc result :cache/details)
    {:cached                 (when (:cached cache) (:updated_at cache))
+    :stale                  (when (:cached cache) (boolean (:stale? cache)))
     :status                 :completed
     :average_execution_time (when (:cached cache)
                               (query/average-execution-time-ms query-hash))}))
