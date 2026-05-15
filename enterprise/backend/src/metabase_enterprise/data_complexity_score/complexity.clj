@@ -195,8 +195,12 @@
 (defn- verified-card-id-set
   "Set of Card ids whose most-recent moderation review is `verified`.
 
-   Tolerates missing schema (very old appdbs) by falling back to an empty set; the metabot
-   catalog will be widened relative to an honest curated-only filter on those instances."
+   Tolerates missing schema (very old appdbs) by falling back to an empty set. Because the
+   downstream consumer requires both `curated-only?` to hold AND `verified-ids` to be non-empty
+   before installing the metabot-card predicate, an empty fallback under `curated-only? true`
+   short-circuits to no predicate and the metabot Card catalog becomes empty. That's a deliberate
+   safe-default: we can't honestly tell which Cards are curated, so the metabot Card catalog
+   stays empty rather than silently widening to everything."
   []
   ;; Called only when `metabot-scope` requests curated-only filtering — avoids a `moderation_review`
   ;; join on the universe Card select by pushing the check into a small auxiliary lookup.
