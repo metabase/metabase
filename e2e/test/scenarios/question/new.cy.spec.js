@@ -357,7 +357,7 @@ describe("scenarios > question > new", () => {
 
   it(
     "should be able to save a question to a collection created on the go",
-    { tags: "@smoke" },
+    { tags: "@prerelease" },
     () => {
       H.visitCollection(THIRD_COLLECTION_ID);
 
@@ -408,7 +408,7 @@ describe("scenarios > question > new", () => {
 
   it(
     "should be able to save a question to a dashboard created on the go",
-    { tags: "@smoke" },
+    { tags: "@prerelease" },
     () => {
       H.visitCollection(THIRD_COLLECTION_ID);
 
@@ -723,7 +723,7 @@ describe("scenarios > question > new", () => {
 // model-less behavior
 describe(
   "scenarios > question > new > data picker > without models",
-  { tags: ["@OSS", "@smoke"] },
+  { tags: ["@OSS", "@prerelease"] },
   () => {
     beforeEach(() => {
       H.restore("without-models");
