@@ -2,6 +2,7 @@
   "Read-side helpers over usage-metadata rollups — consumer of the batch pipeline."
   (:require
    [clojure.core.memoize :as memoize]
+   [clojure.walk :as walk]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.usage-metadata.extract :as usage-metadata.extract]
@@ -16,11 +17,26 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- seqs->vecs
+  "Recursively convert non-map-entry `seq?` nodes to vectors.
+  `json/decode+kw` returns LazySeqs for JSON arrays, and `lib/normalize` only
+  reliably normalizes some clause tags (e.g. `:=`) from a LazySeq — others
+  (e.g. `:>`) silently pass through with string operators. Forcing vectors
+  before normalize is the simplest fix."
+  [x]
+  (walk/postwalk
+   (fn [node]
+     (if (and (seq? node) (not (map-entry? node)))
+       (vec node)
+       node))
+   x))
+
 (defn- decode-predicate
   "Parse a canonicalized predicate JSON string back into an MBQL 5 clause."
   [predicate-json]
   (some-> predicate-json
           json/decode+kw
+          seqs->vecs
           lib/normalize))
 
 (defn- decode-binning
@@ -485,7 +501,7 @@
                     (keep decode-predicate)
                     fingerprints)]
     (when (>= (count atoms) fim-k-min)
-      (into [:and] atoms))))
+      (lib/expression-clause :and atoms nil))))
 
 (defn- existing-composite-atomsets*
   [[source-type source-id]]
