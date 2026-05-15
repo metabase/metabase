@@ -4,7 +4,6 @@
     :universe — everything (library entities + all active physical tables)
     :metabot  — what the internal Metabot can surface, narrowed by a caller-supplied scope."
   (:require
-   [clojure.pprint :as pprint]
    [clojure.string :as str]
    [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
    [metabase.analytics-interface.core :as analytics.interface]
@@ -56,30 +55,36 @@
 
 ;;; ----------------------------------- enumeration -----------------------------------
 ;;;
+(def ^:private ^:const in-clause-chunk-size
+  "Cap on the number of table-ids we put into a single `IN (...)` query. PostgreSQL prepared
+   statements top out at 65,535 parameters and we leave headroom for other clauses."
+  50000)
+
 (defn- table-field-counts
-  "Return `{table-id field-count}` for active fields on the given `table-ids`. Single group-by query."
+  "Return `{table-id field-count}` for active fields on the given `table-ids`."
   [table-ids]
-  (if (empty? table-ids)
-    {}
-    (into {}
-          (map (juxt :table_id :field_count))
-          (t2/query {:select   [:table_id [:%count.* :field_count]]
-                     :from     [:metabase_field]
-                     :where    [:and
-                                [:= :active true]
-                                [:in :table_id table-ids]]
-                     :group-by [:table_id]}))))
+  (into {}
+        (mapcat (fn [chunk]
+                  (map (juxt :table_id :field_count)
+                       (t2/query {:select   [:table_id [:%count.* :field_count]]
+                                  :from     [:metabase_field]
+                                  :where    [:and
+                                             [:= :active true]
+                                             [:in :table_id chunk]]
+                                  :group-by [:table_id]}))))
+        (partition-all in-clause-chunk-size table-ids)))
 
 (defn- table-measure-names
-  "Return `{table-id [measure-name ...]}` for non-archived Measures on the given `table-ids`. A
-   measure is a named MBQL aggregation attached to a Table — see [[metabase.measures.models.measure]]."
+  "Return `{table-id [measure-name ...]}` for non-archived Measures on the given `table-ids`.
+  A measure is a named MBQL aggregation attached to a Table — see [[metabase.measures.models.measure]]."
   [table-ids]
-  (if (empty? table-ids)
-    {}
-    (u/group-by :table_id :name
-                (t2/select [:model/Measure :table_id :name]
-                           :archived false
-                           :table_id [:in table-ids]))))
+  (into {}
+        (mapcat (fn [chunk]
+                  (u/group-by :table_id :name
+                              (t2/select [:model/Measure :table_id :name]
+                                         :archived false
+                                         :table_id [:in chunk]))))
+        (partition-all in-clause-chunk-size table-ids)))
 
 (defn- ->card-entity
   "Shape a Card row into an entity map for scoring. Cards don't contribute to `:field-count` in
@@ -334,14 +339,6 @@
 
 ;;; ----------------------------------- public API ------------------------------------
 
-(defn- log-scores!
-  "Log the result at :info so operators see the score in app logs even when Snowplow is off."
-  [result]
-  (log/info (str "Semantic complexity score:\n"
-                 ;; `pprint` goes through `with-out-str`, not `*out*`, so the "use metabase.util.log" lint is n/a.
-                 #_{:clj-kondo/ignore [:discouraged-var]}
-                 (with-out-str (pprint/pprint result)))))
-
 (defn- snake ^String [x]
   (str/replace (name x) "-" "_"))
 
@@ -485,8 +482,10 @@
                               to omit (the search-index path passes nil because its preprocessing
                               isn't a single named variant).
     `:metabot-scope`        — `{:verified-only? <bool> :collection-id <nil|Long>}` describing how
-                              the internal Metabot filters Cards."
-  [& {:keys [embedder embedding-model-meta text-variant metabot-scope]}]
+                              the internal Metabot filters Cards.
+    `:emit-snowplow?`       — whether to publish per-score Snowplow events. Defaults true."
+  [& {:keys [embedder embedding-model-meta text-variant metabot-scope emit-snowplow?]
+      :or {emit-snowplow? true}}]
   ;;; NOTE: we fully materialize vectors of the relevant entities.
   ;;; For very large instances that means holding large lists in memory, but each catalog is consumed
   ;;; by many sub-score functions that each walk the collection, so making this reducible would
@@ -509,20 +508,20 @@
                             :meta     (cond-> {:formula-version   formula-version
                                                :synonym-threshold synonym-similarity-threshold}
                                         embedding-model-meta (assoc :embedding-model embedding-model-meta)
-                                        text-variant         (assoc :text-variant    text-variant))}]
-        (log-scores! result)
-        (let [published? (time-phase! "publish" "all"
-                                      (fn []
-                                        (try
-                                          (emit-snowplow! result)
-                                          (catch Throwable t
-                                            (log/warn t "Failed to publish complexity score to Snowplow")
-                                            false))))]
-          ;; `emit-snowplow!` returns true only when every event reached the tracker (false when
-          ;; Snowplow is disabled or any emission failed) — scheduler/boot callers gate
-          ;; `data-complexity-scoring-last-fingerprint` on this so a disabled collector or any
-          ;; partial failure doesn't silently mark the fingerprint as published.
-          (with-meta result {::snowplow-published? published?})))
+                                        text-variant         (assoc :text-variant    text-variant))}
+            ;; `emit-snowplow!` returns true only when every event reached the tracker (false when
+            ;; Snowplow is disabled or any emission failed) — scheduler/boot callers gate
+            ;; `data-complexity-scoring-last-fingerprint` on this so a disabled collector or any
+            ;; partial failure doesn't silently mark the fingerprint as published.
+            published?     (time-phase! "publish" "all"
+                                        (fn []
+                                          (boolean
+                                           (when emit-snowplow?
+                                             (try
+                                               (emit-snowplow! result)
+                                               (catch Throwable t
+                                                 (log/warn t "Failed to publish complexity score to Snowplow")))))))]
+        (with-meta result {::snowplow-published? published?}))
       (finally
         (analytics.interface/observe! :metabase-data-complexity/scoring-duration-ms
                                       (u/since-ms total-timer))))))
