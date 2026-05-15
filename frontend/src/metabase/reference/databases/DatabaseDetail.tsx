@@ -23,7 +23,11 @@ import {
   getLoading,
   getUser,
 } from "../selectors";
-import type { StubbedDatabase } from "../types";
+import type { BaseDetailFormFields, StubbedDatabase } from "../types";
+
+interface DatabaseDetailFormFields extends BaseDetailFormFields {
+  revision_message?: string;
+}
 
 const mapStateToProps = (
   state: StateWithReference,
@@ -61,7 +65,7 @@ interface DatabaseDetailProps {
   loading?: boolean;
   loadingError?: unknown;
   // The action handler in reference.ts types its own props parameter.
-  onSubmit: (fields: Record<string, unknown>, props: any) => void;
+  onSubmit: (fields: DatabaseDetailFormFields, props: any) => void;
 }
 
 const DatabaseDetail = (props: DatabaseDetailProps) => {
@@ -83,7 +87,7 @@ const DatabaseDetail = (props: DatabaseDetailProps) => {
     getFieldMeta,
     handleSubmit,
     handleReset,
-  } = useFormik<Record<string, unknown>>({
+  } = useFormik<DatabaseDetailFormFields>({
     initialValues: {},
     onSubmit: (fields): void => {
       onSubmit(fields, { ...props, resetForm: handleReset });

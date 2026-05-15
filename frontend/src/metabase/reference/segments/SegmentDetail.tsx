@@ -33,8 +33,16 @@ import {
   getTable,
   getUser,
 } from "../selectors";
-import type { StubbedSegment, StubbedTable } from "../types";
+import type {
+  BaseDetailFormFields,
+  StubbedSegment,
+  StubbedTable,
+} from "../types";
 import { getQuestionUrl } from "../utils";
+
+interface SegmentDetailFormFields extends BaseDetailFormFields {
+  revision_message?: string;
+}
 
 const interestingQuestions = (
   table: StubbedTable,
@@ -93,7 +101,7 @@ const mapDispatchToProps = {
   onSubmit: actions.rUpdateSegmentDetail,
 };
 
-const validate = (values: { revision_message?: string }) =>
+const validate = (values: SegmentDetailFormFields) =>
   !values.revision_message
     ? { revision_message: t`Please enter a revision message` }
     : {};
@@ -113,7 +121,7 @@ interface SegmentDetailProps {
   loadingError?: unknown;
   metadata: Metadata;
 
-  onSubmit: (fields: Record<string, unknown>, props: any) => void;
+  onSubmit: (fields: SegmentDetailFormFields, props: any) => void;
 }
 
 const SegmentDetail = (props: SegmentDetailProps) => {
@@ -140,7 +148,7 @@ const SegmentDetail = (props: SegmentDetailProps) => {
     getFieldMeta,
     handleSubmit,
     handleReset,
-  } = useFormik<Record<string, unknown>>({
+  } = useFormik<SegmentDetailFormFields>({
     validate,
     initialValues: {},
     initialErrors: validate({}),

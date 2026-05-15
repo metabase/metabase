@@ -30,8 +30,12 @@ import {
   getTable,
   getUser,
 } from "../selectors";
-import type { StubbedTable } from "../types";
+import type { BaseDetailFormFields, StubbedTable } from "../types";
 import { getQuestionUrl } from "../utils";
+
+interface TableDetailFormFields extends BaseDetailFormFields {
+  revision_message?: string;
+}
 
 const interestingQuestions = (table: StubbedTable, metadata: Metadata) => {
   return [
@@ -99,7 +103,7 @@ interface TableDetailProps {
   loadingError?: unknown;
   metadata: Metadata;
 
-  onSubmit: (fields: Record<string, unknown>, props: any) => void;
+  onSubmit: (fields: TableDetailFormFields, props: any) => void;
 }
 
 const TableDetail = (props: TableDetailProps) => {
@@ -124,7 +128,7 @@ const TableDetail = (props: TableDetailProps) => {
     getFieldMeta,
     handleSubmit,
     handleReset,
-  } = useFormik<Record<string, unknown>>({
+  } = useFormik<TableDetailFormFields>({
     initialValues: {},
     onSubmit: (fields): void => {
       onSubmit(fields, { ...props, resetForm: handleReset });

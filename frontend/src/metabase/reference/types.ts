@@ -4,6 +4,8 @@
 
 import type {
   DatabaseId,
+  FieldFormattingSettings,
+  FieldId,
   NormalizedDatabase,
   NormalizedField,
   NormalizedSegment,
@@ -26,4 +28,27 @@ export interface FormFieldEntry<T = unknown> {
   value?: T;
 
   onChange: (...args: any[]) => void;
+}
+
+// Common editable text fields shared by all entity Detail forms.
+// Index signature allows formik to carry arbitrary extra keys and lets these
+// satisfy `Record<string, unknown>` at action-handler boundaries without casts.
+export interface BaseDetailFormFields {
+  display_name?: string;
+  name?: string;
+  description?: string | null;
+  points_of_interest?: string;
+  caveats?: string;
+  [key: string]: unknown;
+}
+
+// Field-specific editable values used by FieldDetail / SegmentFieldDetail
+// directly and by FieldList / SegmentFieldList nested per-field.
+export interface FieldFormFieldsValues {
+  display_name?: string;
+  description?: string | null;
+  semantic_type?: string | null;
+  fk_target_field_id?: FieldId | null;
+  settings?: FieldFormattingSettings;
+  [key: string]: unknown;
 }

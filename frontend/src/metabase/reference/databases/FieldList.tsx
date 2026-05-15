@@ -31,7 +31,9 @@ import {
   getTable,
   getUser,
 } from "../selectors";
-import type { StubbedTable } from "../types";
+import type { FieldFormFieldsValues, StubbedTable } from "../types";
+
+type FieldListFormFields = Record<string, FieldFormFieldsValues>;
 
 const emptyStateData = {
   get message() {
@@ -75,7 +77,7 @@ interface FieldListProps {
   // The action handler in reference.ts types its own props parameter.
   onSubmit: (
     entities: Record<string, NormalizedField>,
-    fields: Record<string, unknown>,
+    fields: FieldListFormFields,
     props: any,
   ) => void;
   "data-testid"?: string;
@@ -101,7 +103,7 @@ const FieldList = (props: FieldListProps) => {
     getFieldMeta,
     handleSubmit,
     handleReset,
-  } = useFormik<Record<string, unknown>>({
+  } = useFormik<FieldListFormFields>({
     initialValues: {},
     onSubmit: (fields): void => {
       onSubmit(entities, fields, { ...props, resetForm: handleReset });

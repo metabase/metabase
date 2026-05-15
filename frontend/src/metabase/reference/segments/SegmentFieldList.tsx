@@ -33,7 +33,13 @@ import {
   getSegment,
   getUser,
 } from "../selectors";
-import type { StubbedSegment, StubbedTable } from "../types";
+import type {
+  FieldFormFieldsValues,
+  StubbedSegment,
+  StubbedTable,
+} from "../types";
+
+type SegmentFieldListFormFields = Record<string, FieldFormFieldsValues>;
 
 const emptyStateData = {
   get message() {
@@ -77,7 +83,7 @@ interface SegmentFieldListProps {
   // The action handler in reference.ts types its own props parameter.
   onSubmit?: (
     entities: Record<string, NormalizedField>,
-    fields: Record<string, unknown>,
+    fields: SegmentFieldListFormFields,
     props: any,
   ) => void;
 }
@@ -103,7 +109,7 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
     getFieldMeta,
     handleSubmit,
     handleReset,
-  } = useFormik<Record<string, unknown>>({
+  } = useFormik<SegmentFieldListFormFields>({
     initialValues: {},
     onSubmit: (fields): void => {
       onSubmit?.(entities, fields, { ...props, resetForm: handleReset });

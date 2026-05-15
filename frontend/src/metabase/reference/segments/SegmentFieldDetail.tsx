@@ -28,8 +28,18 @@ import {
   getTable,
   getUser,
 } from "../selectors";
-import type { StubbedField, StubbedTable } from "../types";
+import type {
+  BaseDetailFormFields,
+  FieldFormFieldsValues,
+  StubbedField,
+  StubbedTable,
+} from "../types";
 import { getQuestionUrl } from "../utils";
+
+interface SegmentFieldDetailFormFields
+  extends BaseDetailFormFields, FieldFormFieldsValues {
+  revision_message?: string;
+}
 
 const interestingQuestions = (
   table: StubbedTable,
@@ -100,7 +110,7 @@ interface SegmentFieldDetailProps {
   loadingError?: unknown;
   metadata: Metadata;
 
-  onSubmit: (fields: Record<string, unknown>, props: any) => void;
+  onSubmit: (fields: SegmentFieldDetailFormFields, props: any) => void;
 }
 
 const SegmentFieldDetail = (props: SegmentFieldDetailProps) => {
@@ -124,7 +134,7 @@ const SegmentFieldDetail = (props: SegmentFieldDetailProps) => {
     getFieldMeta,
     handleSubmit,
     handleReset,
-  } = useFormik<Record<string, unknown>>({
+  } = useFormik<SegmentFieldDetailFormFields>({
     initialValues: {},
     onSubmit: (fields): void => {
       onSubmit(fields, { ...props, resetForm: handleReset });

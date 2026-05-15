@@ -28,8 +28,19 @@ import {
   getTable,
   getUser,
 } from "../selectors";
-import type { StubbedDatabase, StubbedField, StubbedTable } from "../types";
+import type {
+  BaseDetailFormFields,
+  FieldFormFieldsValues,
+  StubbedDatabase,
+  StubbedField,
+  StubbedTable,
+} from "../types";
 import { getQuestionUrl } from "../utils";
+
+interface FieldDetailFormFields
+  extends BaseDetailFormFields, FieldFormFieldsValues {
+  revision_message?: string;
+}
 
 const interestingQuestions = (
   database: StubbedDatabase,
@@ -116,7 +127,7 @@ interface FieldDetailProps {
   loadingError?: unknown;
   metadata: Metadata;
 
-  onSubmit: (fields: Record<string, unknown>, props: any) => void;
+  onSubmit: (fields: FieldDetailFormFields, props: any) => void;
 }
 
 const FieldDetail = (props: FieldDetailProps) => {
@@ -140,7 +151,7 @@ const FieldDetail = (props: FieldDetailProps) => {
     getFieldMeta,
     handleSubmit,
     handleReset,
-  } = useFormik<Record<string, unknown>>({
+  } = useFormik<FieldDetailFormFields>({
     initialValues: {},
     onSubmit: (fields): void => {
       onSubmit(fields, { ...props, resetForm: handleReset });
