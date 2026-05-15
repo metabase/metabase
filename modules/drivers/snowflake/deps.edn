@@ -14,7 +14,8 @@
                                                    ;; Azure-backed Snowflake stages, which Metabase never does
                                                    ;; (read-only SQL driver). Excluding the Netty transport removes
                                                    ;; the entire reactor-netty + transitive Netty 4.1.x chain.
-                                                   com.azure/azure-core-http-netty]}
+                                                   com.azure/azure-core-http-netty
+                                                   com.google.code.gson/gson]}
   ;; drop when snowflake update driver to the one without the vulnerabilities
   io.grpc/grpc-netty-shaded         {:mvn/version "1.77.0"}
   ;; pin Bouncy Castle explicitly so the bundled driver JAR uses the patched version
