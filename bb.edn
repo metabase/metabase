@@ -217,12 +217,6 @@
    :options [[nil "--pure" "Skip rebuilding the SDK package (typedoc-only)"]]
    :task (task! (docs/generate-embedding parsed))}
 
-  docs-ensure-generated
-  {:doc "Lazily generate the docs artifacts that the Astro build depends on (typedoc snippets, OpenAPI spec)"
-   :examples [["./bin/mage docs-ensure-generated" "Generate missing artifacts; skip ones already present"]]
-   :requires [[mage.docs :as docs]]
-   :task (task! (docs/ensure-generated parsed))}
-
   docs-clean-worktrees
   {:doc "List or remove leftover __worktrees/docs-* directories from docs-build-branch runs"
    :examples [["./bin/mage docs-clean-worktrees" "List leftover worktrees (dry-run)"]
@@ -233,8 +227,12 @@
 
   docs-help
   {:doc "Print the list of docs commands (bun aliases and what they do)"
-   :examples [["./bin/mage docs-help" "List all docs:* commands with descriptions"]]
+   :examples [["./bin/mage docs-help" "List all docs:* commands with descriptions"]
+              ["./bin/mage docs-help --format md" "Print the dev-guide markdown table to stdout"]
+              ["./bin/mage docs-help --write" "Rewrite the bracketed table in docs/developers-guide/docs.md"]]
    :requires [[mage.docs :as docs]]
+   :options [[nil "--format FMT" "Output format. Omit for terminal (default), 'md' for the dev-guide markdown table."]
+             [nil "--write" "Rewrite the docs-help-table block in docs/developers-guide/docs.md in place"]]
    :task (task! (docs/print-help! parsed))}
 
   jar-download

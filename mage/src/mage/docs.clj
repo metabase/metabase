@@ -1,8 +1,7 @@
 (ns mage.docs
   "Build the Metabase docs site and regenerate the auto-derived source content
   it depends on. Implementations for the `docs-build`, `docs-build-branch`,
-  `docs-generate`, `docs-generate-embedding`, and `docs-ensure-generated` mage
-  tasks."
+  `docs-generate`, and `docs-generate-embedding` mage tasks."
   (:require
    [babashka.fs :as fs]
    [clojure.string :as str]
@@ -70,11 +69,24 @@
 ;; ---------------------------------------------------------------------------
 
 (def ^:private generators
-  "Ordered list of auto-doc generators. `:writes` paths are informational —
-  the actual sinks are in each generator's source — but they're surfaced in
-  log output so users can see where the diff is going to land. Keep the order
-  stable: the original generate-docs.sh ran them in this order, and some
-  users rely on the deterministic output order."
+  "Single source of truth for auto-doc artifacts. Each entry has:
+
+    :tag      — keyword used by --<tag> CLI flag selection and for tests
+    :msg      — log line when generating
+    :cmd      — shell vector to regenerate (nil for `standalone` entries
+                that are only reached via the lazy pre-flight, never by
+                `docs-generate`)
+    :writes   — output paths (informational, surfaced in log output)
+    :lazy     — optional pre-flight spec for the `docs-build --lazy` path:
+                  :check       — file the lazy path will probe for existence
+                  :missing-msg — log line when the check fails
+                  :regen       — optional override invocation; defaults to
+                                 running this entry's :cmd
+
+  Order is stable: it's the deterministic generate sequence the original
+  shell script used, and some users rely on the resulting diff order.
+  Freshness is mere existence, not source-mtime — if you edit an SDK type
+  and need the typedoc to refresh, run `bun run docs:generate:embedding`."
   [{:tag :env-vars
     :msg "Generating environment variables documentation"
     :cmd ["clojure" "-M:ee:doc" "environment-variables-documentation"]
@@ -86,7 +98,9 @@
    {:tag :api
     :msg "Generating REST API documentation"
     :cmd ["clojure" "-M:ee:doc" "api-documentation"]
-    :writes ["docs/api.json"]}
+    :writes ["docs/api.json"]
+    :lazy {:check       "docs/api.json"
+           :missing-msg "OpenAPI spec missing, regenerating..."}}
    {:tag :commands
     :msg "Generating CLI command documentation"
     :cmd ["clojure" "-M:ee:doc" "command-documentation"]
@@ -98,12 +112,27 @@
    {:tag :country-codes
     :msg "Generating country code reference documentation"
     :cmd ["./bin/generate-country-code-docs.bb"]
-    :writes ["docs/questions/visualizations/country-codes.md"]}])
+    :writes ["docs/questions/visualizations/country-codes.md"]}
+   ;; Pre-flight-only artifacts (no `:cmd`, so `docs-generate` ignores them).
+   ;; The SDK typedoc has a fast `--pure` regen distinct from the full SDK
+   ;; rebuild used in `docs-build` non-lazy mode, so it carries an explicit
+   ;; `:regen` override.
+   {:tag :sdk-typedoc
+    :writes ["docs/embedding/sdk/api/snippets/index.md"]
+    :lazy {:check       "docs/embedding/sdk/api/snippets/index.md"
+           :missing-msg "embedding docs missing, regenerating (typedoc --pure)..."
+           :regen       #(run-generate-embedding! true)}}
+   {:tag :sdk-html
+    :writes ["docs-build/public/embedding/sdk/api/index.html"]
+    :lazy {:check       "docs-build/public/embedding/sdk/api/index.html"
+           :missing-msg "embedding HTML API reference missing, regenerating..."
+           :regen       #(shell/sh {:dir u/project-root-directory}
+                                   "bun" "run" "embedding-sdk:docs:generate:html:pure")}}])
 
 (defn- run-generate! [selected]
   (let [root u/project-root-directory]
     (doseq [{:keys [tag msg cmd writes]} generators
-            :when (contains? selected tag)]
+            :when (and cmd (contains? selected tag))]
       (step msg)
       (doseq [path writes]
         (println (str "    → " path)))
@@ -114,13 +143,14 @@
 
 (defn generate [parsed]
   (let [opts        (:options parsed)
-        all-tags    (set (map :tag generators))
+        runnable    (filter :cmd generators)
+        all-tags    (set (map :tag runnable))
         chosen      (->> all-tags (filter #(get opts %)) set)
         run-tags    (if (seq chosen) chosen all-tags)]
     (run-generate! run-tags)))
 
 ;; ---------------------------------------------------------------------------
-;; docs-ensure-generated
+;; Lazy artifact pre-flight (used by `docs-build --lazy`)
 ;; ---------------------------------------------------------------------------
 
 (defn artifact-present?
@@ -128,37 +158,24 @@
   [root rel-path]
   (.exists (java.io.File. (str root "/" rel-path))))
 
-(def ^:private generated-artifacts
-  "Files the docs build expects to find on disk, paired with the command that
-  regenerates them. Used by `docs-ensure-generated` (and the lazy regen path
-  inside `build`) as a pre-flight: anything missing gets regenerated before
-  the build. Add new auto-generated artifacts here so the pre-flight stays in
-  sync.
+(defn- lazy-entries
+  "Generator entries that participate in the `docs-build --lazy` pre-flight,
+  in generator order. Derived from `generators` so adding a new
+  auto-generated artifact is a one-place edit."
+  []
+  (filter :lazy generators))
 
-  Freshness is mere existence, not source-mtime — if you edit an SDK type and
-  need the typedoc to refresh, run `bun run docs:generate:embedding`."
-  [{:path        "docs/embedding/sdk/api/snippets/index.md"
-    :missing-msg "embedding docs missing, regenerating (typedoc --pure)..."
-    :regen       #(run-generate-embedding! true)}
-   {:path        "docs-build/public/embedding/sdk/api/index.html"
-    :missing-msg "embedding HTML API reference missing, regenerating..."
-    :regen       #(shell/sh {:dir u/project-root-directory}
-                            "bun" "run" "embedding-sdk:docs:generate:html:pure")}
-   {:path        "docs/api.json"
-    :missing-msg "OpenAPI spec missing, regenerating..."
-    :regen       #(run-generate! #{:api})}])
-
-(defn- ensure-artifact! [{:keys [path missing-msg regen]}]
-  (when-not (artifact-present? u/project-root-directory path)
-    (println (str "→ " missing-msg))
-    (regen)))
+(defn- ensure-artifact! [{:keys [tag lazy]}]
+  (let [{:keys [check missing-msg regen]} lazy]
+    (when-not (artifact-present? u/project-root-directory check)
+      (println (str "→ " missing-msg))
+      (if regen
+        (regen)
+        (run-generate! #{tag})))))
 
 (defn- ensure-all-artifacts! []
-  (doseq [artifact generated-artifacts]
-    (ensure-artifact! artifact)))
-
-(defn ensure-generated [_parsed]
-  (ensure-all-artifacts!))
+  (doseq [entry (lazy-entries)]
+    (ensure-artifact! entry)))
 
 ;; ---------------------------------------------------------------------------
 ;; docs-build (also serves docs-preview via --preview --lazy)
@@ -403,26 +420,86 @@
 ;; ---------------------------------------------------------------------------
 
 (def ^:private help-rows
-  "Bun aliases and what they do. Mirrors the table in docs/developers-guide/docs.md;
-  keep the two in sync when adding or renaming a command."
-  [["bun run docs:dev"                "Hot-reload Astro dev server (skips auto-generated artifacts)"]
-   ["bun run docs:dev:clean"          "Kill orphaned dev server on port 4321 and restart"]
-   ["bun run docs:preview"            "Lazy-regen production build + Astro preview server"]
-   ["bun run docs:build"              "Full production build (what CI runs)"]
-   ["bun run docs:generate"           "Regenerate auto-derived backend docs (env vars, config, …)"]
-   ["bun run docs:generate:embedding" "Regenerate SDK / Embed.js typedoc reference"]
-   ["bun run docs:check"              "Astro/TypeScript check + nav.yml reference validator"]
-   ["bun run docs:test"               "Unit tests for the custom remark/rehype plugins"]
-   ["bun run docs:help"               "Print this listing"]])
+  "Bun aliases for the docs pipeline. Three columns:
+    1. The `bun run docs:*` alias.
+    2. A one-line purpose (terminal help and dev-guide markdown).
+    3. The implementer for the dev-guide \"Implemented by\" column —
+       backticked code identifiers, bare words for plain text like Astro / Node.
 
-(defn print-help!
-  "Print every `bun run docs:*` alias and a one-line description."
-  [_parsed]
+  This is the single source of truth: the terminal help output uses cols 1
+  and 2, and the markdown table in docs/developers-guide/docs.md is the
+  output of `docs-help --format md` (regenerate with `docs-help --write`).
+  `mage.docs-test` asserts the dev guide's bracketed block matches the
+  generated markdown so drift is a CI failure."
+  [["bun run docs:dev"                "Hot-reload Astro dev server (skips auto-generated artifacts)" "Astro"]
+   ["bun run docs:dev:clean"          "Kill orphaned dev server on port 4321 and restart"            "Astro"]
+   ["bun run docs:preview"            "Lazy-regen production build + Astro preview server"           "`./bin/mage docs-build --preview --lazy`"]
+   ["bun run docs:build"              "Full production build (what CI runs)"                         "`./bin/mage docs-build`"]
+   ["bun run docs:generate"           "Regenerate auto-derived backend docs (env vars, config, …)"   "`./bin/mage docs-generate`"]
+   ["bun run docs:generate:embedding" "Regenerate SDK / Embed.js typedoc reference"                  "`./bin/mage docs-generate-embedding`"]
+   ["bun run docs:check"              "Astro/TypeScript check + nav.yml reference validator"        "Astro"]
+   ["bun run docs:test"               "Unit tests for the custom remark/rehype plugins"             "Node"]
+   ["bun run docs:help"               "Print this listing in the terminal"                          "`./bin/mage docs-help`"]])
+
+(def ^:private dev-guide-relpath "docs/developers-guide/docs.md")
+(def ^:private help-table-begin "<!-- BEGIN docs-help-table -->")
+(def ^:private help-table-end "<!-- END docs-help-table -->")
+
+(defn- pad-right [s width]
+  (str s (apply str (repeat (- width (count s)) \space))))
+
+(defn help-table-markdown
+  "Return the dev-guide markdown table, bracketed by BEGIN/END HTML
+  comments, padded so columns line up visually (cosmetic only — renderers
+  ignore the padding)."
+  []
+  (let [headers ["Command" "Purpose" "Implemented by"]
+        rows    (mapv (fn [[cmd purpose impl]] [(str "`" cmd "`") purpose impl])
+                      help-rows)
+        col     (fn [i] (cons (nth headers i) (map #(nth % i) rows)))
+        widths  (mapv #(apply max (map count (col %)))
+                      (range (count headers)))
+        format-row (fn [r]
+                     (str "| "
+                          (str/join " | " (map pad-right r widths))
+                          " |"))
+        separator  (str "| "
+                        (str/join " | "
+                                  (map #(apply str (repeat % \-)) widths))
+                        " |")]
+    (str/join "\n"
+              (concat [help-table-begin
+                       (format-row headers)
+                       separator]
+                      (map format-row rows)
+                      [help-table-end]))))
+
+(defn- rewrite-dev-guide-block!
+  "Replace the BEGIN/END-bracketed block in the dev guide with the current
+  generated markdown. Throws if the markers can't be found — we don't want
+  to silently produce an empty diff after someone removes them. A no-op
+  rewrite (block already matches generated output) is success, not failure."
+  []
+  (let [path (str u/project-root-directory "/" dev-guide-relpath)
+        text (slurp path)
+        re   #"(?s)<!-- BEGIN docs-help-table -->.*?<!-- END docs-help-table -->"]
+    (when-not (re-find re text)
+      (throw (ex-info (str "Couldn't find docs-help-table markers in " path
+                           "; add `" help-table-begin "` / `" help-table-end
+                           "` around the table.")
+                      {:path path :babashka/exit 1})))
+    (let [replaced (str/replace text re (help-table-markdown))]
+      (if (= text replaced)
+        (println (str dev-guide-relpath " already up to date."))
+        (do (spit path replaced)
+            (println (str "Updated " dev-guide-relpath)))))))
+
+(defn- print-terminal-help! []
   (let [width (apply max (map (comp count first) help-rows))]
     (println)
     (println (c/bold "Metabase docs commands"))
     (println)
-    (doseq [[cmd desc] help-rows]
+    (doseq [[cmd desc _] help-rows]
       (println (str "  "
                     (c/cyan cmd)
                     (apply str (repeat (inc (- width (count cmd))) \space))
@@ -432,3 +509,15 @@
                   " for flag-level help on commands that wrap a mage task"))
     (println "(docs-build, docs-generate, docs-generate-embedding).")
     (println)))
+
+(defn print-help!
+  "Print the docs commands. Default: colorized two-column terminal listing.
+  With `--format md`: print the dev-guide markdown table to stdout.
+  With `--write`: rewrite the bracketed block in docs/developers-guide/docs.md
+  in place."
+  [parsed]
+  (let [opts (:options parsed)]
+    (cond
+      (:write opts)         (rewrite-dev-guide-block!)
+      (= "md" (:format opts)) (println (help-table-markdown))
+      :else                 (print-terminal-help!))))
