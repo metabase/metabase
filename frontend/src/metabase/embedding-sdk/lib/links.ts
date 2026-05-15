@@ -7,30 +7,55 @@ import type { ClickBehavior, VisualizationSettings } from "metabase-types/api";
  */
 export function removeInternalClickBehaviors(
   computedSettings: VisualizationSettings,
-) {
-  let nextSettings = computedSettings;
+): VisualizationSettings {
+  const { click_behavior, column_settings } = computedSettings;
 
-  if (isInternalLinkClickBehavior(computedSettings.click_behavior)) {
-    nextSettings = { ...nextSettings, click_behavior: undefined };
+  const nextClickBehavior = stripIfInternal(click_behavior);
+  const nextColumnSettings = mapColumnSettings(column_settings);
+
+  if (
+    nextClickBehavior === click_behavior &&
+    nextColumnSettings === column_settings
+  ) {
+    return computedSettings;
   }
 
-  if (computedSettings.column_settings) {
-    const columnSettings = Object.fromEntries(
-      Object.entries(computedSettings.column_settings).map(
-        ([key, settings]) => {
-          if (!isInternalLinkClickBehavior(settings.click_behavior)) {
-            return [key, settings];
-          }
+  return {
+    ...computedSettings,
+    click_behavior: nextClickBehavior,
+    column_settings: nextColumnSettings,
+  };
+}
 
-          return [key, { ...settings, click_behavior: undefined }];
-        },
-      ),
-    );
-
-    nextSettings = { ...nextSettings, column_settings: columnSettings };
+function mapColumnSettings(
+  columnSettings: VisualizationSettings["column_settings"],
+): VisualizationSettings["column_settings"] {
+  if (!columnSettings) {
+    return columnSettings;
   }
 
-  return nextSettings;
+  const entries = Object.entries(columnSettings);
+  const hasInternal = entries.some(([, settings]) =>
+    isInternalLinkClickBehavior(settings.click_behavior),
+  );
+
+  if (!hasInternal) {
+    return columnSettings;
+  }
+
+  return Object.fromEntries(
+    entries.map(([key, settings]) => {
+      if (!isInternalLinkClickBehavior(settings.click_behavior)) {
+        return [key, settings];
+      }
+
+      return [key, { ...settings, click_behavior: undefined }];
+    }),
+  );
+}
+
+function stripIfInternal(clickBehavior: ClickBehavior | undefined) {
+  return isInternalLinkClickBehavior(clickBehavior) ? undefined : clickBehavior;
 }
 
 function isInternalLinkClickBehavior(clickBehavior: ClickBehavior | undefined) {
