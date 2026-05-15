@@ -115,11 +115,14 @@ describe("getShouldShowTransformPermissions", () => {
 
 describe("getDatabasesPermissionEditor", () => {
   it("does not crash when the selected group has no member count (#74290)", () => {
-    const groupWithoutMemberCount = createMockGroup({
-      id: 1,
-      name: "All Users",
-      magic_group_type: "all-internal-users",
-    });
+    const groupWithoutMemberCount = {
+      ...createMockGroup({
+        id: 1,
+        name: "All Users",
+        magic_group_type: "all-internal-users",
+      }),
+      members: [],
+    };
     Reflect.deleteProperty(groupWithoutMemberCount, "member_count");
 
     const permissions: GroupsPermissions = {
@@ -139,23 +142,33 @@ describe("getDatabasesPermissionEditor", () => {
           originalDataPermissions: permissions,
         }),
       }),
-      entities: createMockEntitiesState({
-        databases: [
-          createMockDatabase({
-            id: 3,
-            name: "Test Database",
-            tables: [
-              createMockTable({
-                id: 10,
-                db_id: 3,
-                display_name: "People",
-                schema: "public",
-              }),
-            ],
-          }),
-        ],
-        schemas: [createMockSchema({ id: "3:public", name: "public" })],
-      }),
+      entities: {
+        ...createMockEntitiesState({
+          databases: [
+            createMockDatabase({
+              id: 3,
+              name: "Test Database",
+              tables: [
+                createMockTable({
+                  id: 10,
+                  db_id: 3,
+                  display_name: "People",
+                  schema: "public",
+                }),
+              ],
+            }),
+          ],
+          schemas: [createMockSchema({ id: "3:public", name: "public" })],
+        }),
+        groups: {
+          [groupWithoutMemberCount.id]: groupWithoutMemberCount,
+        },
+        groups_list: {
+          null: {
+            list: [groupWithoutMemberCount.id],
+          },
+        },
+      },
       "metabase-api": {
         ...createMockApiState(),
         queries: {
