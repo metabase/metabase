@@ -150,4 +150,3 @@
             (is (not (contains? nudge-rows 3)))
             (is (not (contains? nudge-rows 5)))))
         (finally (delete-tree! tmp-dir))))))
-
