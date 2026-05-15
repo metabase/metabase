@@ -52,19 +52,25 @@
 
 (mu/defn universe-cards
   "The ID, name, type, and Collection of the unarchived metric and model Cards outside the Database with
-  `audit-database-id`."
+  `audit-database-id`. A raw query, so no `:model/Card` hooks run and only these columns need to exist; `:type`
+  comes back as a string."
   [audit-database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Card :id :name :type :collection_id]
-             :type        [:in ["metric" "model"]]
-             :archived    false
-             :database_id [:not= audit-database-id]))
+  (t2/query {:select [:id :name :type :collection_id]
+             :from   [(t2/table-name :model/Card)]
+             :where  [:and
+                      [:in :type ["metric" "model"]]
+                      [:= :archived false]
+                      [:not= :database_id audit-database-id]]}))
 
 (mu/defn universe-tables
-  "The scoring columns of the active Tables outside the Database with `audit-database-id`."
+  "The scoring columns of the active Tables outside the Database with `audit-database-id`, with user settings
+  applied. A raw query, so no `:model/Table` hooks run; text columns come back as strings."
   [audit-database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Table :id :name :collection_id :is_published :visibility_type :db_id :data_layer :data_authority]
-             :active true
-             :db_id  [:not= audit-database-id]))
+  (t2/query {:select [:id :name :collection_id :is_published :visibility_type :db_id :data_layer :data_authority]
+             :from   [(t2/table-name :model/Table)]
+             :where  [:and
+                      [:= :active true]
+                      [:not= :db_id audit-database-id]]}))
 
 (mu/defn metabot-by-entity-id
   "The Metabot with `entity-id`, or nil."

@@ -250,9 +250,15 @@
         ;; Extra columns (`:collection_id`, `:is_published`, `:visibility_type`, `:db_id`,
         ;; `:data_layer`, `:data_authority`) are selected purely to drive the in-memory
         ;; library/metabot derivations below — they're ignored by `->card-entity` /
-        ;; `->table-entity`.
-        universe-cards    (data-complexity-score.db/universe-cards audit/audit-db-id)
-        universe-tables   (data-complexity-score.db/universe-tables audit/audit-db-id)
+        ;; `->table-entity`. Both reads fall back to an empty catalog when the CLI is pointed at an
+        ;; appdb missing one of these columns; cron / API (with
+        ;; [[appdb-source/*tolerate-missing-relations?*]] off) still raise.
+        universe-cards    (appdb-source/with-missing-relation-fallback
+                            ::universe-cards []
+                            #(data-complexity-score.db/universe-cards audit/audit-db-id))
+        universe-tables   (appdb-source/with-missing-relation-fallback
+                            ::universe-tables []
+                            #(data-complexity-score.db/universe-tables audit/audit-db-id))
         field-counts      (table-field-counts  (mapv :id universe-tables))
         measure-names     (table-measure-names (mapv :id universe-tables))
         card-entities     (mapv ->card-entity universe-cards)
