@@ -3,6 +3,18 @@ import _ from "underscore";
 
 import type { Collection, CollectionItem } from "metabase-types/api";
 
+// Models that participate in the trash lifecycle (restore + permanent delete).
+// A superset of ArchivableItem.model exists in metabase/common/hooks/use-set-archive.ts —
+// items like snippets and timelines can be archived but not surfaced in the trash UI.
+export const TRASHABLE_MODELS = new Set<string>([
+  "card",
+  "dataset",
+  "metric",
+  "dashboard",
+  "collection",
+  "document",
+]);
+
 /**
  * @param  updateActionResult - result value of await dispatch(Entity.action.update(...))
  */

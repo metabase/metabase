@@ -10,6 +10,7 @@ import {
   useUpdateDocumentMutation,
 } from "metabase/api";
 import { listTag } from "metabase/api/tags";
+import { TRASHABLE_MODELS } from "metabase/archive/utils";
 import { useDispatch } from "metabase/redux";
 import type {
   Card,
@@ -39,17 +40,8 @@ export type RestorableItem =
 
 export type RestorableModel = RestorableItem["model"];
 
-const RESTORABLE_MODELS = new Set<string>([
-  "card",
-  "dataset",
-  "metric",
-  "dashboard",
-  "collection",
-  "document",
-]);
-
 export function isRestorable(item: { model: string }): item is RestorableItem {
-  return RESTORABLE_MODELS.has(item.model);
+  return TRASHABLE_MODELS.has(item.model);
 }
 
 export function canRestore(item: {

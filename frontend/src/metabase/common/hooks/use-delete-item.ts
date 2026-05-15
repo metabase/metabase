@@ -7,6 +7,7 @@ import {
   useDeleteDashboardMutation,
   useDeleteDocumentMutation,
 } from "metabase/api";
+import { TRASHABLE_MODELS } from "metabase/archive/utils";
 import type {
   CardId,
   DashboardId,
@@ -30,20 +31,15 @@ export type DeletableItem =
 
 export type DeletableModel = DeletableItem["model"];
 
-const DELETABLE_MODELS = new Set<string>([
-  "card",
-  "dataset",
-  "metric",
-  "dashboard",
-  "collection",
-  "document",
-]);
+export function isDeletable(item: { model: string }): item is DeletableItem {
+  return TRASHABLE_MODELS.has(item.model);
+}
 
 export function canDelete(item: {
   model: string;
   can_delete?: boolean;
 }): item is DeletableItem {
-  return item.can_delete === true && DELETABLE_MODELS.has(item.model);
+  return item.can_delete === true && isDeletable(item);
 }
 
 export function useDeleteItem() {
