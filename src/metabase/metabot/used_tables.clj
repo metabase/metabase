@@ -13,20 +13,17 @@
     by id; Python source is not parsed).
 
   Both query paths feed a single recursive collector that, for each `[db-id, query]`
-  pair, normalizes the query to MBQL 5 and:
-  - Collects `:source-table` ids via [[metabase.lib.walk.util/all-source-table-ids]].
-  - Collects every `:field` id via [[metabase.lib.walk.util/all-field-ids]] and
-    resolves them to their parent tables in one batched lookup at the end of
-    the BFS. This recovers implicit-join targets (a breakout/filter like
-    `[:field {:source-field <fk>} <field-in-joined-table>]` references a field
-    whose table is not otherwise named in the query) — see the
-    `MetabotAgentDataSourcePills` UI which uses the same trick via
-    `field-ids->table-ids`.
-  - Collects card refs — `:source-card` ids, template-tag `:card-id`s, and
-    `:metric` ref ids — via [[metabase.lib.walk.util/all-source-card-ids]],
-    then enqueues each unseen card's `:dataset_query` for recursive walking.
-    This collapses questions, models, models-on-questions, metric refs, etc.
-    down to their underlying source tables.
+  pair, attaches an application-DB metadata provider and:
+  - Collects table and card ids via [[metabase.lib.core/all-referenced-entity-ids]],
+    which folds in source-tables, template-tag table/card refs, and the
+    parent tables of implicit-join targets (resolved internally via
+    `bulk-metadata` on the attached metadata provider). The provider is
+    shared across BFS iterations via [[metabase.lib-be.core/with-metadata-provider-cache]],
+    so per-database field/table lookups are memoized.
+  - Treats `:metric` refs as cards for recursion — metric models live in the
+    `Card` table, so enqueueing their `:dataset_query` collapses metric
+    references down to their underlying source tables alongside questions
+    and models.
   - For native stages, runs the macaw parser via
     [[metabase.metabot.query-analyzer/tables-for-native]] to recover tables
     the lib walker cannot see inside raw SQL text.
@@ -42,6 +39,7 @@
   which is not persisted."
   (:require
    [clojure.set :as set]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.query-analyzer :as nqa]
    [metabase.metabot.tools :as metabot.tools]
@@ -125,37 +123,24 @@
 
 (defn- query-tables-and-cards
   "Walk one query (legacy or MBQL 5) and return
-  `{:tables #{table-id ...} :cards #{card-id ...} :fields #{field-id ...}}`.
-  `:cards` includes any `:source-card`, template-tag `:card-id`, and `:metric`
-  ref ids; the outer loop in [[collect-tables]] follows them recursively.
-  `:fields` is the set of every `:field` id referenced; the outer loop
-  resolves these to parent table ids in one batched lookup so we surface
-  implicit-join targets (which have no `:source-table` of their own — the
-  joined table is only named via `:source-field` on a field ref)."
+  `{:tables #{table-id ...} :cards #{card-id ...}}`. `:tables` includes
+  `:source-table` ids, template-tag table ids, the parent tables of
+  implicitly-joined field refs (resolved internally via `bulk-metadata`
+  through the attached metadata provider), and any tables found by macaw
+  in native stages. `:cards` includes `:source-card`, template-tag
+  `:card-id`, and `:metric` ref ids (metric models live in `Card`, so the
+  outer loop follows them as cards)."
   [database-id query]
   (try
-    (let [mbql5 (lib/->mbql5 query)]
-      {:tables (set/union (or (lib/all-source-table-ids mbql5) #{})
+    (let [mp     (lib-be/application-database-metadata-provider database-id)
+          mbql5  (lib/query mp query)
+          ids    (lib/all-referenced-entity-ids [mbql5])]
+      {:tables (set/union (:table ids)
                           (native-stage-tables database-id mbql5))
-       :cards  (or (lib/all-source-card-ids mbql5) #{})
-       :fields (or (lib/all-field-ids mbql5) #{})})
+       :cards  (set/union (:card ids) (:metric ids))})
     (catch Exception e
       (log/warn e "Failed to walk query for used-table extraction")
-      {:tables #{} :cards #{} :fields #{}})))
-
-(defn- resolve-field-table-ids
-  "Batch-resolve field ids to their parent table ids. Returns `#{}` on empty
-  input or failure — never throws."
-  [field-ids]
-  (if (seq field-ids)
-    (try
-      (into #{}
-            (keep :table_id)
-            (t2/select [:model/Field :id :table_id] :id [:in field-ids]))
-      (catch Exception e
-        (log/warn e "Failed to resolve field ids to table ids for used-table extraction")
-        #{}))
-    #{}))
+      {:tables #{} :cards #{}})))
 
 (defn- card-info
   "Fetch a card's `:dataset_query` and `:database_id` by id. Warns and returns
@@ -173,30 +158,30 @@
 
 (defn- collect-tables
   "BFS over a queue of `[db-id, query]` pairs, accumulating underlying table
-  ids. Field ids referenced anywhere in the walked queries are accumulated and
-  resolved to parent tables in a single batched lookup at the end (this is how
-  we capture implicit-join targets). Tracks visited card ids to break cycles.
-  Never throws."
+  ids. Implicit-join targets are recovered by [[query-tables-and-cards]] via
+  the attached metadata provider's `bulk-metadata`. The provider cache is
+  shared across iterations so repeated walks against the same database
+  reuse one cached provider instance. Tracks visited card ids to break
+  cycles. Never throws."
   [initial-pairs]
-  (loop [tables  #{}
-         fields  #{}
-         queue   (vec initial-pairs)
-         visited #{}]
-    (if (empty? queue)
-      (into tables (resolve-field-table-ids fields))
-      (let [[db-id query]                     (first queue)
-            queue'                            (subvec queue 1)
-            {ts :tables cs :cards fs :fields} (query-tables-and-cards db-id query)
-            new-cards                         (set/difference cs visited)
-            new-pairs                         (keep (fn [card-id]
-                                                      (when-let [{:keys [dataset-query database-id]} (card-info card-id)]
-                                                        (when dataset-query
-                                                          [(or database-id db-id) dataset-query])))
-                                                    new-cards)]
-        (recur (into tables ts)
-               (into fields fs)
-               (into queue' new-pairs)
-               (into visited new-cards))))))
+  (lib-be/with-metadata-provider-cache
+    (loop [tables  #{}
+           queue   (vec initial-pairs)
+           visited #{}]
+      (if (empty? queue)
+        tables
+        (let [[db-id query]          (first queue)
+              queue'                 (subvec queue 1)
+              {ts :tables cs :cards} (query-tables-and-cards db-id query)
+              new-cards              (set/difference cs visited)
+              new-pairs              (keep (fn [card-id]
+                                             (when-let [{:keys [dataset-query database-id]} (card-info card-id)]
+                                               (when dataset-query
+                                                 [(or database-id db-id) dataset-query])))
+                                           new-cards)]
+          (recur (into tables ts)
+                 (into queue' new-pairs)
+                 (into visited new-cards)))))))
 
 (defn- notebook-starting-point
   "Starting `[db-id query]` for a `construct_notebook_query` tool output."
