@@ -49,7 +49,7 @@ jest.mock("metabase/redux", () => ({
   useSelector: (selector: () => unknown) => selector(),
 }));
 
-jest.mock("metabase/utils/urls", () => ({
+jest.mock("metabase/urls", () => ({
   documentWithAnchor: jest.fn().mockReturnValue("/document/1/anchor/test-id"),
 }));
 

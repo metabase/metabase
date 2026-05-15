@@ -25,6 +25,7 @@ import {
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "metabase/documents/components/Editor/constants";
 import { MAX_GROUP_SIZE } from "metabase/documents/constants";
 import { useExternalCardData } from "metabase/documents/contexts/ExternalCardDataContext";
+import { usePrefetchQueue } from "metabase/documents/contexts/PrefetchQueueContext";
 import {
   loadMetadataForDocumentCard,
   openVizSettingsSidebar,
@@ -176,12 +177,16 @@ export const CardEmbedComponent = memo(
     getPos,
     deleteNode,
   }: NodeViewProps) => {
-    const { ref: viewportRef, isInViewport } = useNodeInViewport();
+    const { _id } = node.attrs;
+    const {
+      ref: viewportRef,
+      isInViewport,
+      shouldLoadData,
+    } = useNodeInViewport(_id);
     const childTargetId = useSelector(getChildTargetId);
     const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
     const document = useSelector(getCurrentDocument);
     const externalCardData = useExternalCardData();
-    const { _id } = node.attrs;
     const unresolvedCommentsCount = useUnresolvedCommentsCount(_id, {
       skip: !isInViewport,
     });
@@ -208,14 +213,23 @@ export const CardEmbedComponent = memo(
 
     // Use external hook when viewing an externally-rendered document (e.g. public), otherwise use regular hook
     const isExternalDocument = externalCardData != null;
-    const regularCardData = useCardData({ id, skip: !isInViewport });
+    const regularCardData = useCardData({ id, skip: !shouldLoadData });
     const externalCardDataResult = useExternalCardDataLoader(id, {
-      skip: !isInViewport,
+      skip: !shouldLoadData,
     });
 
     const { card, dataset, isLoading, series, error } = isExternalDocument
       ? externalCardDataResult
       : regularCardData;
+
+    const prefetchQueue = usePrefetchQueue();
+    useEffect(() => {
+      if (!prefetchQueue) {
+        return;
+      }
+      prefetchQueue.reportLoading(_id, isLoading);
+      return () => prefetchQueue.reportLoading(_id, false);
+    }, [prefetchQueue, _id, isLoading]);
 
     const metadata = useSelector(getMetadata);
     const datasetError = dataset && getDatasetError(dataset);

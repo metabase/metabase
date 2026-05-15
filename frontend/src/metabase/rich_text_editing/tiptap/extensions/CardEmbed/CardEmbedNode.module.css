@@ -2,6 +2,16 @@
   display: block;
   width: 100%;
   height: 100%;
+  /*
+   * Let the browser skip layout/paint (and ResizeObserver firing) for
+   * off-screen card embeds. Pairs with the JS-side isInViewport gating:
+   * JS keeps Visualization unmounted and the data fetch skipped; CV
+   * removes the residual browser cost of the skeleton + wrapper for
+   * every off-screen card. The intrinsic-size hint matches a typical
+   * card so the scrollbar stays accurate before first layout.
+   */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 400px;
 }
 
 .cardEmbed {
