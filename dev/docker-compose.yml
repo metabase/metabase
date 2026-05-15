@@ -67,16 +67,21 @@ services:
   # Builds the frontend with hot reload. Mounts local dev so nothing else
   # needed.
   fe-builder:
-    # Reuses the repo's devcontainer image (JDK 21 + Node 22 + Bun + Clojure
+    # Reuses the repo's devcontainer image (JDK + Node + Bun + Clojure
     # CLI) so the FE/CLJS toolchain is maintained in exactly one place.
     build:
       context: ../.devcontainer
       dockerfile: Dockerfile
     container_name: fe-builder
     working_dir: /dev/metabase
+    # In hot mode rspack inlines an absolute publicPath of
+    # http://localhost:8080/ into index.html (see rspack.main.config.js), so
+    # the browser loads the bundle from the host's :8080 — it must be
+    # published, not just exposed on the docker network.
+    ports:
+      - "8080:8080"
     volumes:
       - ../:/dev/metabase
-      - ~/.npm:/root/.npm
       - ~/.bun/install/cache:/root/.bun/install/cache
     command:
       - /bin/sh
