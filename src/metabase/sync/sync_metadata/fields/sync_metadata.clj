@@ -42,6 +42,8 @@
    metabase-field :- common/TableMetadataFieldWithID]
   (let [{old-database-type              :database-type
          old-base-type                  :base-type
+         old-effective-type             :effective-type
+         old-coercion-strategy          :coercion-strategy
          old-field-comment              :field-comment
          old-semantic-type              :semantic-type
          old-database-position          :database-position
@@ -137,6 +139,22 @@
              :semantic_type       nil}
              ;; we must override user-set values
              (->> (schema.field-user-settings/upsert-user-settings metabase-field))))
+         ;; GHY-3388 self-heal: a Field with no coercion_strategy must have effective_type=base_type.
+         ;; We've observed customer instances where these drifted apart (likely from older Metabase
+         ;; versions). When base_type didn't change at this sync but the row is in the broken state,
+         ;; repair it. Wipe user-settings's stale effective_type too so sync-user-settings's merge-back
+         ;; doesn't re-introduce drift on the next field update.
+         (when (and (not new-base-type?)
+                    (nil? old-coercion-strategy)
+                    (some? old-effective-type)
+                    (not= old-effective-type new-base-type))
+           (log/warnf "Healing %s: effective_type %s ≠ base_type %s with no coercion_strategy. Resetting effective_type to match base_type."
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-effective-type
+                      new-base-type)
+           (let [et {:effective_type new-base-type}]
+             (schema.field-user-settings/upsert-user-settings metabase-field et)
+             et))
          (when new-semantic-type?
            (log/infof "Semantic type of %s has changed from '%s' to '%s'."
                       (common/field-metadata-name-for-logging table metabase-field)
@@ -170,7 +188,7 @@
            ;; this guard avoids spamming logs with pk changes when people first upgrade to support database_is_pk
            (when (or ;; if we have any value for the old database_is_pk we have upgraded already, and can log regardless
                   (some? old-pk)
-                     ;; otherwise, log only if logical pk status has changed
+                  ;; otherwise, log only if logical pk status has changed
                   (not= new-pk (= old-semantic-type :type/PK)))
              (log/infof "Database pk of %s has changed from '%s' to '%s'"
                         (common/field-metadata-name-for-logging table metabase-field)

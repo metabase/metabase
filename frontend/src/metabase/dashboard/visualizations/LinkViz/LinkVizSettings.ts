@@ -29,9 +29,6 @@ export const settings: VisualizationDefinition = {
       dashboard: false,
     },
     link: {
-      value: {
-        url: "",
-      },
       getDefault: () => ({
         url: "",
       }),
