@@ -43,6 +43,28 @@ describe("admin > MCP apps settings > Cursor install link", () => {
           expect(decoded.url).to.eq(`${Cypress.config("baseUrl")}/api/mcp`);
         });
 
+      cy.log(
+        "link is hoverable — :hover styles apply when the pointer is on it",
+      );
+      cy.findByRole("link", { name: "Install in Cursor" })
+        .should("have.css", "text-decoration-line", "none")
+        .realHover()
+        // Mantine Anchor (underline="hover") underlines on :hover. If the switch
+        // track is covering the link, :hover never fires and this stays "none".
+        .should("have.css", "text-decoration-line", "underline");
+
+      cy.log("clicking the link does not toggle the parent switch");
+      cy.findByRole("link", { name: "Install in Cursor" })
+        .then(($link) => {
+          // Prevent the cursor:// deeplink from being followed during the test
+          $link.on("click", (event) => event.preventDefault());
+        })
+        .click();
+
+      cy.findByRole("switch", { name: /cursor and vs code/i }).should(
+        "be.checked",
+      );
+
       cy.log("disable Cursor and VS Code");
       cy.findByRole("switch", { name: /cursor and vs code/i }).click({
         force: true,
