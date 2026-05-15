@@ -11,13 +11,13 @@ import type { GroupListQuery } from "metabase-types/api";
 
 import type { FilterUrlState } from "./url-state";
 
-export const DEFAULT_DATE = "past30days";
+export const DEFAULT_DATE = "past29days~";
 export const DEFAULT_GROUP = "1"; // All Users group
 export const ALL_USERS_SYNTHETIC = "all";
 
 export const DEFAULT_DATE_FILTER: DateFilterValue = {
   type: "relative",
-  value: -30,
+  value: -29,
   unit: "day",
   options: { includeCurrent: true },
 };

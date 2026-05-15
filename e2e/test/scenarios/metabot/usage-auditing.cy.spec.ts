@@ -94,20 +94,15 @@ const ROBERT_CHART_LABELS: CompleteChartLabels = {
   ip: ["10.0.0.3", "10.0.0.4", "10.0.0.5"],
 };
 
-const DATE_FILTER_SHORTCUTS = [
-  "Today",
-  "Yesterday",
-  "Previous week",
-  "Previous 7 days",
-  "Previous 30 days",
-  "Previous month",
-  "Previous 3 months",
-  "Previous 12 months",
-] as const;
-
-type DateFilterLabel = (typeof DATE_FILTER_SHORTCUTS)[number];
-
-const DATE_FILTER_BUTTON_LABEL = new RegExp(DATE_FILTER_SHORTCUTS.join("|"));
+type DateFilterLabel =
+  | "Today"
+  | "Yesterday"
+  | "Previous week"
+  | "Previous 7 days"
+  | "Previous 30 days"
+  | "Previous month"
+  | "Previous 3 months"
+  | "Previous 12 months";
 
 const TODAY_CHART_LABELS: CompleteChartLabels = {
   source: ["Slackbot", "Metabot"],
@@ -540,9 +535,11 @@ function selectDateFilter(
   dateLabel: DateFilterLabel,
   waitAlias = "@dataset",
 ): void {
-  H.main().findByRole("button", { name: DATE_FILTER_BUTTON_LABEL }).realClick();
-  H.popover().findByRole("button", { name: dateLabel }).realClick();
-  H.main().findByRole("button", { name: dateLabel }).should("be.visible");
+  H.main().findByTestId("conversation-filters-date-select").realClick();
+  H.selectDropdown().findByText(dateLabel).realClick();
+  H.main()
+    .findByTestId("conversation-filters-date-select")
+    .should("contain", dateLabel);
   cy.wait(waitAlias);
 }
 
