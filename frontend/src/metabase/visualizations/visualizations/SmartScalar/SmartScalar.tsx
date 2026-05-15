@@ -165,15 +165,13 @@ export function SmartScalar({
 
 export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   ...fieldSetting("scalar.field", {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    section: t`Data`,
+    getSection: () => t`Data`,
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Primary number`,
     fieldFilter: isSuitableScalarColumn,
   }),
   "scalar.comparisons": {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    section: t`Data`,
+    getSection: () => t`Data`,
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Comparisons`,
     widget: SmartScalarComparisonWidget,
@@ -194,8 +192,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     readDependencies: ["scalar.field"],
   },
   "scalar.switch_positive_negative": {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    section: t`Display`,
+    getSection: () => t`Display`,
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Switch positive / negative colors?`,
     widget: "toggle",
@@ -203,8 +200,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     getDefault: () => VIZ_SETTINGS_DEFAULTS["scalar.switch_positive_negative"],
   },
   "scalar.compact_primary_number": {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    section: t`Display`,
+    getSection: () => t`Display`,
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Compact number`,
     widget: "toggle",
@@ -212,8 +208,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     getDefault: () => VIZ_SETTINGS_DEFAULTS["scalar.compact_primary_number"],
   },
   ...columnSettings({
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    section: t`Display`,
+    getSection: () => t`Display`,
     getColumns: (
       [
         {

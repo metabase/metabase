@@ -51,22 +51,19 @@ const WaterfallViz: Omit<VisualizationDefinition, "checkRenderable"> = {
     ...GRAPH_AXIS_SETTINGS,
     ...GRAPH_GOAL_SETTINGS,
     "waterfall.increase_color": {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      section: t`Display`,
+      getSection: () => t`Display`,
       getProps: () => ({ title: t`Increase color` }),
       widget: "color",
       getDefault: () => color("accent1"),
     },
     "waterfall.decrease_color": {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      section: t`Display`,
+      getSection: () => t`Display`,
       getProps: () => ({ title: t`Decrease color` }),
       widget: "color",
       getDefault: () => color("accent3"),
     },
     "waterfall.show_total": {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      section: t`Display`,
+      getSection: () => t`Display`,
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       title: t`Show total`,
       widget: "toggle",
@@ -74,8 +71,7 @@ const WaterfallViz: Omit<VisualizationDefinition, "checkRenderable"> = {
       inline: true,
     },
     "waterfall.total_color": {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      section: t`Display`,
+      getSection: () => t`Display`,
       getProps: () => ({ title: t`Total color` }),
       widget: "color",
       // Unfortunately, to get static viz to look right, we need to avoid using alpha colors here

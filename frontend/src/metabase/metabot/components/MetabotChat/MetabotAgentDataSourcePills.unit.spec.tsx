@@ -10,6 +10,7 @@ import type {
 } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCollection,
   createMockDatabase,
   createMockTable,
 } from "metabase-types/api/mocks";
@@ -328,6 +329,46 @@ describe("MetabotAgentDataSourcePills", () => {
         }),
       ).toHaveLength(1),
     );
+  });
+
+  it("does not show Library in a model source path for normal collections", async () => {
+    const sql = "SELECT * FROM {{#4-revenue_model}}";
+    const templateTags: TemplateTags = {
+      "#4-revenue_model": {
+        id: "1",
+        name: "#4-revenue_model",
+        "display-name": "Revenue Model",
+        type: "card",
+        "card-id": 4,
+      },
+    };
+    fetchMock.post(EXTRACT_SOURCES_ENDPOINT, {
+      tables: [],
+      card_ids: [4],
+    });
+    fetchMock.get(
+      "path:/api/card/4",
+      createMockCard({
+        id: 4,
+        name: "Revenue Model",
+        type: "model",
+        collection: createMockCollection({
+          id: 10,
+          name: "Marketing & Growth",
+        }),
+      }),
+    );
+    fetchMock.get("path:/api/database/1", DATABASE);
+
+    renderWithProviders(
+      <NavigateToTablePills path={createNativePath(sql, 1, templateTags)} />,
+    );
+
+    expect(
+      await screen.findByRole("link", { name: "Revenue Model" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Marketing & Growth")).toBeInTheDocument();
+    expect(screen.queryByText("Library")).not.toBeInTheDocument();
   });
 
   it("shows source links without feedback buttons when message id is not provided", async () => {

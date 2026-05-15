@@ -93,6 +93,8 @@
   [_db container-name resolved-version port]
   ["docker" "run"
    "-d"
+   "-e" "MONGO_INITDB_ROOT_USERNAME=metabase"
+   "-e" "MONGO_INITDB_ROOT_PASSWORD=metasample123"
    "-p" (str port ":27017")
    "--name" container-name
    (str "mongo:" resolved-version)])

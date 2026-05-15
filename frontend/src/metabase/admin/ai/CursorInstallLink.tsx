@@ -30,6 +30,7 @@ export const CursorInstallLink = () => {
       href={buildCursorInstallUrl(mcpUrl)}
       fz="sm"
       w="fit-content"
+      pos="relative"
       onClick={(event) => event.stopPropagation()}
     >
       {t`Install in Cursor`}
