@@ -269,7 +269,8 @@
                       {:setting "ee-embedding-service-api-key"})))
     [(str base-url "/v1/embeddings") api-key]))
 
-(defmethod get-embedding "ai-service" [{:keys [model-name]} text & {:as opts}]
+(defmethod get-embedding "ai-service"
+  [{:keys [model-name]} text & {:keys [record-tokens? type]}]
   (let [[endpoint api-key] (embedding-service-resolve-config!)]
     (first (openai-compatible-get-embeddings-batch
             {:provider       "ai-service"
@@ -278,10 +279,11 @@
              :model-name     model-name
              :texts          [text]
              :snowplow?      true
-             :record-tokens? (get opts :record-tokens? true)
-             :type           (:type opts)}))))
+             :record-tokens? record-tokens?
+             :type           type}))))
 
-(defmethod get-embeddings-batch "ai-service" [{:keys [model-name]} texts & {:as opts}]
+(defmethod get-embeddings-batch "ai-service"
+  [{:keys [model-name]} texts & {:keys [record-tokens? type]}]
   (let [[endpoint api-key] (embedding-service-resolve-config!)]
     (openai-compatible-get-embeddings-batch
      {:provider       "ai-service"
@@ -290,8 +292,8 @@
       :model-name     model-name
       :texts          texts
       :snowplow?      true
-      :record-tokens? (get opts :record-tokens? true)
-      :type           (:type opts)})))
+      :record-tokens? record-tokens?
+      :type           type})))
 
 (defmethod pull-model "ai-service" [_]
   (log/debug "ai-service provider does not require pulling a model"))
@@ -306,7 +308,8 @@
       (throw (ex-info "OpenAI API key not configured" {:setting "llm-openai-api-key"})))
     [(str (semantic-settings/openai-api-base-url) "/v1/embeddings") api-key]))
 
-(defmethod get-embedding "openai" [embedding-model text & {:as opts}]
+(defmethod get-embedding "openai"
+  [embedding-model text & {:keys [record-tokens? type]}]
   (let [[endpoint api-key] (openai-resolve-config!)]
     (first (openai-compatible-get-embeddings-batch
             {:provider       "openai"
@@ -314,12 +317,13 @@
              :api-key        api-key
              :model-name     (:model-name embedding-model)
              :texts          [text]
-             :record-tokens? (get opts :record-tokens? true)
+             :record-tokens? record-tokens?
              :extra-body     (when (supports-dimensions? embedding-model)
                                {:dimensions (:vector-dimensions embedding-model)})
-             :type           (:type opts)}))))
+             :type           type}))))
 
-(defmethod get-embeddings-batch "openai" [embedding-model texts & {:as opts}]
+(defmethod get-embeddings-batch "openai"
+  [embedding-model texts & {:keys [record-tokens? type]}]
   (let [[endpoint api-key] (openai-resolve-config!)]
     (openai-compatible-get-embeddings-batch
      {:provider       "openai"
@@ -327,10 +331,10 @@
       :api-key        api-key
       :model-name     (:model-name embedding-model)
       :texts          texts
-      :record-tokens? (get opts :record-tokens? true)
+      :record-tokens? record-tokens?
       :extra-body     (when (supports-dimensions? embedding-model)
                         {:dimensions (:vector-dimensions embedding-model)})
-      :type           (:type opts)})))
+      :type           type})))
 
 (defmethod pull-model "openai" [_]
   (log/debug "OpenAI provider does not require pulling a model"))
