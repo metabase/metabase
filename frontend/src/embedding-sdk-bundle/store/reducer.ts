@@ -9,6 +9,7 @@ import type {
 } from "embedding-sdk-bundle/types/ui";
 import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
 import type { MetabaseFetchRequestTokenFn } from "metabase/embedding-sdk/types/refresh-token";
+import type { DashboardTabId } from "metabase-types/api";
 
 import { initAuth, refreshTokenAsync } from "./auth";
 import { initGuestEmbed } from "./guest-embed";
@@ -55,6 +56,11 @@ export const setUsageProblem = createAction<SdkUsageProblem | null>(
 const SET_PLUGINS_READY = "sdk/SET_PLUGINS_READY";
 export const setPluginsReady = createAction<boolean>(SET_PLUGINS_READY);
 
+const SET_INITIAL_DASHBOARD_TAB_ID = "sdk/SET_INITIAL_DASHBOARD_TAB_ID";
+export const setInitialDashboardTabId = createAction<DashboardTabId | null>(
+  SET_INITIAL_DASHBOARD_TAB_ID,
+);
+
 const initialState: SdkState = {
   isGuestEmbed: null,
   metabaseInstanceUrl: "",
@@ -72,6 +78,7 @@ const initialState: SdkState = {
   errorComponent: null,
   fetchRefreshTokenFn: null,
   pluginsReady: false,
+  initialDashboardTabId: null,
 };
 
 export const sdk = createReducer(initialState, (builder) => {
@@ -159,5 +166,9 @@ export const sdk = createReducer(initialState, (builder) => {
 
   builder.addCase(setPluginsReady, (state, action) => {
     state.pluginsReady = action.payload;
+  });
+
+  builder.addCase(setInitialDashboardTabId, (state, action) => {
+    state.initialDashboardTabId = action.payload;
   });
 });

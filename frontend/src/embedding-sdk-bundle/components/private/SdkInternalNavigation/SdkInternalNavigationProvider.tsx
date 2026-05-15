@@ -9,7 +9,15 @@ import {
 import { match } from "ts-pattern";
 
 import { SdkDashboardStyledWrapper } from "embedding-sdk-bundle/components/public/dashboard/SdkDashboardStyleWrapper";
+import { useSdkDispatch } from "embedding-sdk-bundle/store";
+import { setInitialDashboardTabId } from "embedding-sdk-bundle/store/reducer";
 import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
+import { selectTab, setParameterValue } from "metabase/dashboard/actions";
+import {
+  getDashboardComplete,
+  getSelectedTabId,
+} from "metabase/dashboard/selectors";
+import { useSelector } from "metabase/lib/redux";
 import { Stack } from "metabase/ui";
 
 import { SdkQuestion } from "../../public/SdkQuestion";
@@ -49,10 +57,54 @@ const SdkInternalNavigationProviderInner = ({
   keepChildrenMounted = false,
 }: Props) => {
   const [stack, setStack] = useState<SdkInternalNavigationEntry[]>([]);
+  const dispatch = useSdkDispatch();
+  const currentDashboard = useSelector(getDashboardComplete);
+  const selectedTabId = useSelector(getSelectedTabId);
 
-  const push = useCallback((entry: SdkInternalNavigationEntry) => {
-    setStack((prev) => [...prev, entry]);
-  }, []);
+  const push = useCallback(
+    (entry: SdkInternalNavigationEntry) => {
+      // Click behaviors that target the currently loaded dashboard should
+      // switch tab / apply parameters in place rather than push a new stack
+      // entry (which would re-mount the dashboard from scratch and lose the
+      // requested tab).
+      if (
+        entry.type === "dashboard" &&
+        currentDashboard != null &&
+        entry.id === currentDashboard.id
+      ) {
+        if (entry.tabId != null) {
+          dispatch(selectTab({ tabId: entry.tabId }));
+        }
+        if (entry.parameterIdValuePairs) {
+          // Merge per-parameter (matches core app DashboardClickAction) so
+          // unrelated filters keep their current values.
+          for (const [id, value] of entry.parameterIdValuePairs) {
+            dispatch(setParameterValue(id, value));
+          }
+        }
+        return;
+      }
+      // Handle cross dashboard navigation with initial tab.
+      if (entry.type === "dashboard") {
+        dispatch(setInitialDashboardTabId(entry.tabId ?? null));
+      }
+      setStack((prev) => {
+        const top = prev.at(-1);
+        // Capture the live selected tab onto the outgoing dashboard entry so
+        // that popping back restores the tab the user was actually viewing
+        // (which may differ from the tab the entry was opened on).
+        const updated =
+          top?.type === "dashboard"
+            ? [
+                ...prev.slice(0, -1),
+                { ...top, tabId: selectedTabId ?? top.tabId },
+              ]
+            : prev;
+        return [...updated, entry];
+      });
+    },
+    [dispatch, currentDashboard, selectedTabId],
+  );
 
   const pop = useCallback(() => {
     setStack((prev) => {
@@ -61,9 +113,16 @@ const SdkInternalNavigationProviderInner = ({
       if (poppedEntry && "onPop" in poppedEntry && poppedEntry.onPop) {
         poppedEntry.onPop();
       }
-      return prev.slice(0, -1);
+      const next = prev.slice(0, -1);
+      const newTop = next.at(-1);
+      if (newTop?.type === "dashboard") {
+        // Seed the initial tab so the re-mounted dashboard lands on the tab
+        // the user was last viewing instead of defaulting to the first tab.
+        dispatch(setInitialDashboardTabId(newTop.tabId ?? null));
+      }
+      return next;
     });
-  }, []);
+  }, [dispatch]);
 
   // Initialize the stack with a dashboard entry (called by dashboard components when the dashboard loads and we have the name)
   const initWithDashboard = useCallback(
