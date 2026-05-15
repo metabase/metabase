@@ -137,6 +137,8 @@
   data_complexity_score`, no transforms, no fingerprint setting advance, no Snowplow event."
   [write?]
   (mdb/setup-db-without-migrations!)
+  (when write?
+    (appdb-source/verify-write-target-shape!))
   ;; `metabase.core.core/init!` does this on the server, but standalone modes skip it. Without it a synonym axis
   ;; configured for the `in-process` provider finds nothing registered and fails with `:provider-not-registered`.
   (embeddings.startup/ensure-in-process-provider!)
@@ -154,7 +156,8 @@
   uses, stamped `\"representation:<digest>\"`."
   [{:keys [representation-dir embeddings]} write?]
   (when write?
-    (mdb/setup-db-without-migrations!))
+    (mdb/setup-db-without-migrations!)
+    (appdb-source/verify-write-target-shape!))
   (let [{:keys [library universe embedder digest]} (representation/load-dir representation-dir
                                                                             :embeddings-path embeddings)
         result                                     (complexity/score-from-entities library universe embedder {})]
