@@ -60,6 +60,11 @@ jobs:
               commitHash,
             });
 
+            if (issueCount === undefined) {
+              // checkMilestoneForRelease returns undefined for patches, which have nothing to check.
+              return;
+            }
+
             await sendMilestoneCheckMessage({
               channelName: process.env.SLACK_RELEASE_CHANNEL,
               issueCount,
