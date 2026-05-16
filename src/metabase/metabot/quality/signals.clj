@@ -9,8 +9,7 @@
   not here.
 
   Phase 1E covers Family 1 (retrieval discipline) and Family 2 (iteration).
-  Family 3 (per-turn efficiency) and Family 4 (failure outcomes) are added in
-  Phase 1F.
+  Phase 1F adds Family 3 (per-turn efficiency) and Family 4 (failure outcomes).
 
   Cross-reference:
     - signal panel: notes/bot-1515-conversation-score/strategy-v3-signals-ref-v2.md §3
@@ -179,4 +178,184 @@
                    (and (some? cap)
                         (pos? iter)
                         (>= iter cap)))))
+       count))
+
+;; ---------------------------------------------------------------------------
+;; Family 3 — Per-turn efficiency
+;; ---------------------------------------------------------------------------
+
+(defn- assistant-messages
+  [normalized]
+  (filter #(= :assistant (:role %)) (:messages normalized)))
+
+(defn turn-thrash-magnitude
+  "Signals-ref §3.6. Σ over assistant turns of
+  `max(0, n_data_retrieval(T) - turn-thrash-baseline)`.
+
+  Pre-aggregated excess: per-turn baseline subtraction happens here rather than
+  in `quality.compose/signal-contribution`. The signal is registered as
+  `:kind :event-count` in `constants/signal-params` for that reason — the
+  magnitude returned here is already post-baseline, and `signal-contribution`
+  just multiplies by `k`."
+  [normalized]
+  (transduce
+   (map (fn [m]
+          (let [n (count (filter #(contains? constants/data-retrieval-tools (:function %))
+                                 (:tool-calls m)))]
+            (max 0 (- n constants/turn-thrash-baseline)))))
+   +
+   0
+   (assistant-messages normalized)))
+
+(defn- search-dominance
+  "Bucketize a turn for the expensive-{search,tool}-turn pair (signals-ref §1.4).
+  Returns one of:
+    `:search-dominant`     — ≥ 50% of tool calls are in `search-tools`
+    `:non-search-dominant` — has ≥ 1 tool call but is not search-dominant
+    `:no-tool-calls`       — has 0 tool calls; ineligible for either signal"
+  [msg]
+  (let [calls (:tool-calls msg)
+        n     (count calls)]
+    (if (zero? n)
+      :no-tool-calls
+      (let [s (count (filter #(contains? constants/search-tools (:function %)) calls))]
+        (if (>= (* 2 s) n)
+          :search-dominant
+          :non-search-dominant)))))
+
+(defn- max-tokens-where
+  "MAX `:total-tokens` across assistant turns satisfying `pred`. Returns 0 when
+  no turn satisfies it (matches signals-ref §3.7/§3.8's 'else 0'). A turn whose
+  `:total-tokens` is itself 0 contributes nothing to the max but is still
+  considered for membership."
+  [normalized pred]
+  (->> (assistant-messages normalized)
+       (filter pred)
+       (map #(or (:total-tokens %) 0))
+       (reduce max 0)))
+
+(defn expensive-search-turn-magnitude
+  "Signals-ref §3.7. Raw max `total_tokens` across search-dominant turns.
+  Baseline (30 000) subtraction happens in `quality.compose/signal-contribution`,
+  so the value returned here is the underlying token count — what consumers see
+  in `quality_breakdown.signals.expensive_search_turn`."
+  [normalized]
+  (max-tokens-where normalized #(= :search-dominant (search-dominance %))))
+
+(defn expensive-tool-turn-magnitude
+  "Signals-ref §3.8. Raw max `total_tokens` across non-search-dominant turns
+  with ≥ 1 tool call. Disjoint from `expensive-search-turn-magnitude` by
+  construction — every assistant turn falls in exactly one of `:search-dominant`,
+  `:non-search-dominant`, or `:no-tool-calls`, and the latter is excluded from
+  both signals."
+  [normalized]
+  (max-tokens-where normalized #(= :non-search-dominant (search-dominance %))))
+
+(defn- query-id-for-event
+  "Per signals-ref §3.9 query-id resolution:
+    edit_sql_query / replace_sql_query → `arguments.query_id`
+    create_sql_query / construct_notebook_query / write_transform_* /
+      document_construct_* → `result.structured-output.query-id`
+
+  `:query-id` is in `metabot.persistence/persisted-structured-output-keys`,
+  so the second branch survives the post-persistence shape unchanged. Authoring
+  tools with no resolvable query-id (chart-only variants, for example) return
+  nil and are dropped by the caller."
+  [{:keys [function arguments result]}]
+  (case function
+    ("edit_sql_query" "replace_sql_query")
+    (:query_id arguments)
+
+    ("create_sql_query"
+     "construct_notebook_query"
+     "write_transform_sql"
+     "write_transform_python"
+     "document_construct_sql_chart"
+     "document_construct_model_chart")
+    (get-in result [:structured-output :query-id])
+
+    nil))
+
+(defn- in-window?
+  "Half-open membership test for a `user-turn-window`: `start ≤ order-key < end`,
+  with `nil end` meaning 'extends to the end of the conversation'.
+
+  Compares on the `[ts id]` prefix of the event's `order-key` because window
+  boundaries are length-2 (`ordered-key` from extract.clj) while events are
+  length-3 (`[ts id part-idx]`). Clojure's vector compare is length-first when
+  lengths differ, so we have to drop the part-index before comparing —
+  otherwise every event compares 'greater' than every boundary regardless of
+  its actual time/id, and events fall through to the last window.
+
+  Since events come from assistant messages and boundaries come from user
+  messages, the `[ts id]` prefixes never collide (a placeholder assistant row
+  shares `:created_at` with its user prompt per PR 74056, but the row ids
+  always differ)."
+  [{:keys [start end]} order-key]
+  (let [prefix (subvec order-key 0 2)]
+    (and (not (neg? (compare prefix start)))
+         (or (nil? end) (neg? (compare prefix end))))))
+
+(defn query-thrash-magnitude
+  "Signals-ref §3.9. Raw max count of authoring tool calls within a single
+  `(user-turn, query-id)` bucket. Baseline (2) subtraction happens in
+  `quality.compose/signal-contribution`, so this returns the underlying count
+  — `2` for a healthy create+fix, `3+` for the inflection into thrash.
+
+  Authoring events that fall outside every user-turn window or have no
+  resolvable query-id are dropped before bucketing."
+  [normalized]
+  (let [windows (:user-turn-windows normalized)
+        events  (filter #(contains? constants/authoring-tools (:function %))
+                        (:tool-events normalized))]
+    (->> events
+         (keep (fn [ev]
+                 (when-let [qid (query-id-for-event ev)]
+                   (when-let [win (some #(when (in-window? % (:order-key ev)) %)
+                                        windows)]
+                     [(:user-msg-id win) qid]))))
+         frequencies
+         vals
+         (reduce max 0))))
+
+;; ---------------------------------------------------------------------------
+;; Family 4 — Failure outcomes
+;; ---------------------------------------------------------------------------
+
+(defn- error-present?
+  "Mirrors signals-ref's `COALESCE(elem ->> 'error', '') <> ''` over the
+  *decoded* shape extract.clj produces: nil, empty strings, and empty
+  collections (`{}`, `[]`) read as 'no error'; anything else is a real
+  payload."
+  [e]
+  (cond
+    (nil? e)    false
+    (string? e) (not= "" e)
+    (coll? e)   (boolean (seq e))
+    :else       true))
+
+(defn tool-error-magnitude
+  "Signals-ref §3.10. Count of tool-output parts whose sibling `error` field
+  *or* nested `result.error` field carries a real payload. The two branches are
+  ORed per tool call, so a result with both populated contributes 1, not 2 —
+  this is one call that failed in two redundant ways, not two calls."
+  [normalized]
+  (->> (:tool-events normalized)
+       (filter (fn [{:keys [result output-error]}]
+                 (or (error-present? output-error)
+                     (error-present? (:error result)))))
+       count))
+
+(defn turn-broken-magnitude
+  "Signals-ref §3.11. Count of message rows where `finished = false` OR
+  `error IS NOT NULL`.
+
+  `finished IS NULL` (in-flight placeholder or crashed-and-never-finalized
+  row) contributes 0 per impl plan §9.3 — we deliberately do not couple the
+  score to any wall-clock-relative interpretation of stale NULLs."
+  [normalized]
+  (->> (:messages normalized)
+       (filter (fn [m]
+                 (or (false? (:finished m))
+                     (some? (:error m)))))
        count))

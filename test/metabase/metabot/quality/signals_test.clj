@@ -481,3 +481,384 @@
                       [(user-msg 1 (ts 1))
                        (user-msg 2 (ts 2))])]
       (is (= 0 (signals/iter-cap-burned-magnitude normalized))))))
+
+;; ---------------------------------------------------------------------------
+;; Family 3, Signal 6 — turn-thrash
+;; ---------------------------------------------------------------------------
+
+(defn- retrieval-turn
+  "Build an assistant message whose parts are `n` data-retrieval tool calls.
+  Each call is `read_resource` (a data-retrieval tool) so all `n` count."
+  [id ts-val n]
+  (let [parts (into []
+                    (mapcat (fn [i]
+                              [(tool-input "read_resource"
+                                           {:uris [(str "metabase://table/" i)]}
+                                           (str "r" i))
+                               (tool-output (str "r" i))]))
+                    (range n))]
+    (assistant-msg id ts-val parts)))
+
+(deftest turn-thrash-zero-below-baseline-test
+  (testing "a turn at the baseline (5 retrievals) contributes 0"
+    (let [normalized (normalize [(user-msg 1 (ts 1))
+                                 (retrieval-turn 2 (ts 2) 5)])]
+      (is (= 0 (signals/turn-thrash-magnitude normalized))))))
+
+(deftest turn-thrash-single-turn-excess-test
+  (testing "a turn with 15 retrievals contributes 10 (per-turn excess)"
+    (let [normalized (normalize [(user-msg 1 (ts 1))
+                                 (retrieval-turn 2 (ts 2) 15)])]
+      (is (= 10 (signals/turn-thrash-magnitude normalized))))))
+
+(deftest turn-thrash-sums-across-turns-test
+  (testing "multiple thrashy turns sum (not max): two 15-retrieval turns → 20"
+    (let [normalized (normalize [(user-msg 1 (ts 1))
+                                 (retrieval-turn 2 (ts 2) 15)
+                                 (user-msg 3 (ts 3))
+                                 (retrieval-turn 4 (ts 4) 15)])]
+      (is (= 20 (signals/turn-thrash-magnitude normalized))))))
+
+(deftest turn-thrash-mixed-tool-families-test
+  (testing "only data-retrieval tools count; authoring/error/text parts don't"
+    ;; 3 search + 3 read_resource = 6 retrieval → excess 1
+    ;; Plus 4 create_sql_query (authoring, not retrieval) — ignored
+    (let [parts (concat
+                 (mapcat (fn [i]
+                           [(tool-input "search" {} (str "s" i))
+                            (search-output (str "s" i) [{:model "table" :id i}])])
+                         (range 3))
+                 (mapcat (fn [i]
+                           [(tool-input "read_resource"
+                                        {:uris [(str "metabase://table/" (+ 10 i))]}
+                                        (str "r" i))
+                            (tool-output (str "r" i))])
+                         (range 3))
+                 (mapcat (fn [i]
+                           [(tool-input "create_sql_query"
+                                        {:database_id 1 :sql_query "SELECT 1"}
+                                        (str "c" i))
+                            (tool-output (str "c" i))])
+                         (range 4)))
+          normalized (normalize [(user-msg 1 (ts 1))
+                                 (assistant-msg 2 (ts 2) (vec parts))])]
+      (is (= 1 (signals/turn-thrash-magnitude normalized))))))
+
+(deftest turn-thrash-user-rows-ignored-test
+  (testing "user rows don't contribute (no :tool-calls field)"
+    (let [normalized (normalize [(user-msg 1 (ts 1))
+                                 (user-msg 2 (ts 2))])]
+      (is (= 0 (signals/turn-thrash-magnitude normalized))))))
+
+;; ---------------------------------------------------------------------------
+;; Family 3, Signal 7 — expensive-search-turn
+;; ---------------------------------------------------------------------------
+
+(defn- assistant-tokens
+  "Build an assistant message with the given total_tokens value and `parts`."
+  [id ts-val tokens parts]
+  (assoc (assistant-msg id ts-val parts) :total_tokens tokens))
+
+(deftest expensive-search-turn-zero-when-no-search-dominant-test
+  (testing "no search-dominant turn → magnitude 0 even with high token counts"
+    (let [normalized (normalize
+                      [(user-msg 1 (ts 1))
+                       ;; 3 authoring calls — non-search-dominant
+                       (assistant-tokens 2 (ts 2) 100000
+                                         [(tool-input "create_sql_query"
+                                                      {:database_id 1 :sql_query "SELECT 1"} "c1")
+                                          (tool-output "c1")
+                                          (tool-input "edit_sql_query"
+                                                      {:query_id "q1" :edits []} "c2")
+                                          (tool-output "c2")])])]
+      (is (= 0 (signals/expensive-search-turn-magnitude normalized))))))
+
+(deftest expensive-search-turn-returns-raw-tokens-test
+  (testing "returns raw total_tokens of the worst search-dominant turn"
+    (let [normalized (normalize
+                      [(user-msg 1 (ts 1))
+                       (assistant-tokens 2 (ts 2) 45000
+                                         [(tool-input "search" {} "s1")
+                                          (search-output "s1" [{:model "table" :id 1}])])
+                       (user-msg 3 (ts 3))
+                       (assistant-tokens 4 (ts 4) 80000
+                                         [(tool-input "search" {} "s2")
+                                          (search-output "s2" [{:model "table" :id 2}])])])]
+      ;; raw max (pre-baseline): 80 000
+      (is (= 80000 (signals/expensive-search-turn-magnitude normalized))))))
+
+(deftest expensive-search-turn-fifty-percent-counts-test
+  (testing "exactly 50% search calls qualifies as search-dominant (≥ 50% rule)"
+    (let [normalized (normalize
+                      [(user-msg 1 (ts 1))
+                       ;; 1 search + 1 read_resource = 50% search → search-dominant
+                       (assistant-tokens 2 (ts 2) 60000
+                                         [(tool-input "search" {} "s1")
+                                          (search-output "s1" [{:model "table" :id 1}])
+                                          (tool-input "read_resource"
+                                                      {:uris ["metabase://table/1"]} "r1")
+                                          (tool-output "r1")])])]
+      (is (= 60000 (signals/expensive-search-turn-magnitude normalized))))))
+
+(deftest expensive-search-turn-no-tool-calls-ineligible-test
+  (testing "a turn with 0 tool calls is :no-tool-calls — ineligible for either signal"
+    (let [normalized (normalize
+                      [(user-msg 1 (ts 1))
+                       (assistant-tokens 2 (ts 2) 50000
+                                         [{:type :text :text "just a reply"}])])]
+      (is (= 0 (signals/expensive-search-turn-magnitude normalized)))
+      (is (= 0 (signals/expensive-tool-turn-magnitude normalized))))))
+
+;; ---------------------------------------------------------------------------
+;; Family 3, Signal 8 — expensive-tool-turn
+;; ---------------------------------------------------------------------------
+
+(deftest expensive-tool-turn-returns-raw-tokens-test
+  (testing "returns raw total_tokens of the worst non-search-dominant turn"
+    (let [normalized (normalize
+                      [(user-msg 1 (ts 1))
+                       (assistant-tokens 2 (ts 2) 50000
+                                         [(tool-input "create_sql_query"
+                                                      {:database_id 1 :sql_query "SELECT 1"} "c1")
+                                          (tool-output "c1")])])]
+      (is (= 50000 (signals/expensive-tool-turn-magnitude normalized))))))
+
+(deftest expensive-tool-turn-zero-when-only-search-dominant-test
+  (testing "if every turn is search-dominant, expensive-tool-turn is 0"
+    (let [normalized (normalize
+                      [(user-msg 1 (ts 1))
+                       (assistant-tokens 2 (ts 2) 90000
+                                         [(tool-input "search" {} "s1")
+                                          (search-output "s1" [{:model "table" :id 1}])])])]
+      (is (= 0 (signals/expensive-tool-turn-magnitude normalized)))
+      (is (= 90000 (signals/expensive-search-turn-magnitude normalized))))))
+
+(deftest expensive-turn-partition-disjoint-test
+  (testing "search-dominant and non-search-dominant turns never double-count"
+    (let [normalized (normalize
+                      [(user-msg 1 (ts 1))
+                       ;; search-dominant 70K
+                       (assistant-tokens 2 (ts 2) 70000
+                                         [(tool-input "search" {} "s1")
+                                          (search-output "s1" [{:model "table" :id 1}])])
+                       (user-msg 3 (ts 3))
+                       ;; non-search-dominant 50K (authoring)
+                       (assistant-tokens 4 (ts 4) 50000
+                                         [(tool-input "create_sql_query"
+                                                      {:database_id 1 :sql_query "SELECT 1"} "c1")
+                                          (tool-output "c1")])])]
+      (is (= 70000 (signals/expensive-search-turn-magnitude normalized)))
+      (is (= 50000 (signals/expensive-tool-turn-magnitude normalized))))))
+
+;; ---------------------------------------------------------------------------
+;; Family 3, Signal 9 — query-thrash
+;; ---------------------------------------------------------------------------
+
+(defn- create-with-qid
+  "Tool-input/output pair for `create_sql_query` that returns `qid` in
+  structured-output. Mirrors the post-strip persisted shape."
+  [tid qid]
+  [(tool-input "create_sql_query"
+               {:database_id 1 :sql_query "SELECT 1"} tid)
+   (tool-output tid {:output "..."
+                     :structured-output {:query-id qid}})])
+
+(defn- edit-on-qid
+  "Tool-input/output pair for `edit_sql_query` targeting an existing query id."
+  [tid qid]
+  [(tool-input "edit_sql_query" {:query_id qid :edits []} tid)
+   (tool-output tid)])
+
+(deftest query-thrash-zero-on-single-authoring-test
+  (testing "a single create returns magnitude 1 (raw count, pre-baseline)"
+    (let [normalized (normalize
+                      [(user-msg 1 (ts 1))
+                       (assistant-msg 2 (ts 2)
+                                      (vec (create-with-qid "c1" "q-a")))])]
+      (is (= 1 (signals/query-thrash-magnitude normalized))))))
+
+(deftest query-thrash-create-plus-fix-test
+  (testing "create + immediate fix on the same query → magnitude 2 (still at baseline)"
+    (let [parts (vec (concat (create-with-qid "c1" "q-a")
+                             (edit-on-qid "e1" "q-a")))
+          normalized (normalize
+                      [(user-msg 1 (ts 1))
+                       (assistant-msg 2 (ts 2) parts)])]
+      (is (= 2 (signals/query-thrash-magnitude normalized))))))
+
+(deftest query-thrash-third-authoring-test
+  (testing "create + 2 fixes on the same query → magnitude 3 (inflection past baseline)"
+    (let [parts (vec (concat (create-with-qid "c1" "q-a")
+                             (edit-on-qid "e1" "q-a")
+                             (edit-on-qid "e2" "q-a")))
+          normalized (normalize
+                      [(user-msg 1 (ts 1))
+                       (assistant-msg 2 (ts 2) parts)])]
+      (is (= 3 (signals/query-thrash-magnitude normalized))))))
+
+(deftest query-thrash-bucketed-per-user-turn-test
+  (testing "the same query-id authored in different user-turns does NOT combine into a single bucket"
+    ;; First user-turn: 2 authorings on q-a (create + fix)
+    ;; Second user-turn: 2 authorings on q-a (more fixes)
+    ;; Max within any one (user-turn, query-id) bucket = 2, not 4
+    (let [parts1 (vec (concat (create-with-qid "c1" "q-a")
+                              (edit-on-qid "e1" "q-a")))
+          parts2 (vec (concat (edit-on-qid "e2" "q-a")
+                              (edit-on-qid "e3" "q-a")))
+          normalized (normalize
+                      [(user-msg 1 (ts 1))
+                       (assistant-msg 2 (ts 2) parts1)
+                       (user-msg 3 (ts 3))
+                       (assistant-msg 4 (ts 4) parts2)])]
+      (is (= 2 (signals/query-thrash-magnitude normalized))))))
+
+(deftest query-thrash-bucketed-per-query-id-test
+  (testing "different query-ids in the same user-turn → magnitude is max-per-bucket, not sum"
+    (let [parts (vec (concat (create-with-qid "c1" "q-a")
+                             (edit-on-qid "e1" "q-a")
+                             (edit-on-qid "e2" "q-a")     ; q-a: 3
+                             (create-with-qid "c2" "q-b") ; q-b: 1
+                             (edit-on-qid "e3" "q-b")))   ; q-b: 2 (total)
+          normalized (normalize
+                      [(user-msg 1 (ts 1))
+                       (assistant-msg 2 (ts 2) parts)])]
+      (is (= 3 (signals/query-thrash-magnitude normalized))))))
+
+(deftest query-thrash-no-query-id-dropped-test
+  (testing "authoring events without a resolvable query-id don't contribute"
+    ;; create_sql_query with no structured-output query-id, edit with no query_id arg
+    (let [parts [(tool-input "create_sql_query"
+                             {:database_id 1 :sql_query "SELECT 1"} "c1")
+                 (tool-output "c1" {:output "..."})  ; no structured-output
+                 (tool-input "edit_sql_query" {:edits []} "e1")
+                 (tool-output "e1")]
+          normalized (normalize
+                      [(user-msg 1 (ts 1))
+                       (assistant-msg 2 (ts 2) parts)])]
+      (is (= 0 (signals/query-thrash-magnitude normalized))))))
+
+(deftest query-thrash-non-authoring-tools-ignored-test
+  (testing "search/inspect tool calls don't count toward query-thrash"
+    (let [parts [(tool-input "search" {} "s1")
+                 (search-output "s1" [{:model "table" :id 1}])
+                 (tool-input "search" {} "s2")
+                 (search-output "s2" [{:model "table" :id 2}])
+                 (tool-input "search" {} "s3")
+                 (search-output "s3" [{:model "table" :id 3}])]
+          normalized (normalize
+                      [(user-msg 1 (ts 1))
+                       (assistant-msg 2 (ts 2) parts)])]
+      (is (= 0 (signals/query-thrash-magnitude normalized))))))
+
+;; ---------------------------------------------------------------------------
+;; Family 4, Signal 10 — tool-error-magnitude
+;; ---------------------------------------------------------------------------
+
+(deftest tool-error-zero-on-clean-conversation-test
+  (testing "no tool errors → magnitude 0"
+    (let [normalized (normalize
+                      [(user-msg 1 (ts 1))
+                       (assistant-msg 2 (ts 2)
+                                      [(tool-input "search" {} "s1")
+                                       (search-output "s1" [{:model "table" :id 10}])])])]
+      (is (= 0 (signals/tool-error-magnitude normalized))))))
+
+(deftest tool-error-sibling-error-counts-test
+  (testing "sibling :error on tool-output (new-format) contributes"
+    (let [parts [(tool-input "create_sql_query"
+                             {:database_id 1 :sql_query "SELECT 1"} "c1")
+                 {:type :tool-output :id "c1" :result nil
+                  :error {:type "validation" :message "bad SQL"}}]
+          normalized (normalize [(user-msg 1 (ts 1))
+                                 (assistant-msg 2 (ts 2) parts)])]
+      (is (= 1 (signals/tool-error-magnitude normalized))))))
+
+(deftest tool-error-nested-result-error-counts-test
+  (testing "nested :result.error on tool-output contributes"
+    (let [parts [(tool-input "create_sql_query"
+                             {:database_id 1 :sql_query "SELECT 1"} "c1")
+                 (tool-output "c1" {:output "..." :error "oops"})]
+          normalized (normalize [(user-msg 1 (ts 1))
+                                 (assistant-msg 2 (ts 2) parts)])]
+      (is (= 1 (signals/tool-error-magnitude normalized))))))
+
+(deftest tool-error-both-branches-counted-once-test
+  (testing "a tool call with BOTH sibling :error and :result.error contributes 1 (per call), not 2"
+    (let [parts [(tool-input "create_sql_query"
+                             {:database_id 1 :sql_query "SELECT 1"} "c1")
+                 {:type :tool-output :id "c1"
+                  :result {:output "..." :error "nested oops"}
+                  :error  {:type "exception" :message "sibling oops"}}]
+          normalized (normalize [(user-msg 1 (ts 1))
+                                 (assistant-msg 2 (ts 2) parts)])]
+      (is (= 1 (signals/tool-error-magnitude normalized))))))
+
+(deftest tool-error-empty-payloads-not-counted-test
+  (testing "empty-string and empty-map error payloads read as 'no error'"
+    (let [parts [(tool-input "search" {} "s1")
+                 {:type :tool-output :id "s1" :result {:output "ok"} :error ""}
+                 (tool-input "search" {} "s2")
+                 {:type :tool-output :id "s2" :result {:output "ok" :error ""} :error nil}]
+          normalized (normalize [(user-msg 1 (ts 1))
+                                 (assistant-msg 2 (ts 2) parts)])]
+      (is (= 0 (signals/tool-error-magnitude normalized))))))
+
+(deftest tool-error-multiple-counts-test
+  (testing "3 distinct tool errors in one conversation → magnitude 3"
+    (let [parts [(tool-input "search" {} "s1")
+                 {:type :tool-output :id "s1" :error {:message "a"}}
+                 (tool-input "search" {} "s2")
+                 {:type :tool-output :id "s2" :error {:message "b"}}
+                 (tool-input "search" {} "s3")
+                 (tool-output "s3" {:output "..." :error "c"})]
+          normalized (normalize [(user-msg 1 (ts 1))
+                                 (assistant-msg 2 (ts 2) parts)])]
+      (is (= 3 (signals/tool-error-magnitude normalized))))))
+
+;; ---------------------------------------------------------------------------
+;; Family 4, Signal 11 — turn-broken
+;; ---------------------------------------------------------------------------
+
+(deftest turn-broken-zero-on-healthy-conversation-test
+  (testing "all rows finished=true, error=nil → magnitude 0 (matches the historical-backfill default)"
+    (let [normalized (normalize
+                      [(user-msg 1 (ts 1))
+                       (assistant-msg 2 (ts 2)
+                                      [(tool-input "search" {} "s1")
+                                       (search-output "s1" [{:model "table" :id 1}])])])]
+      (is (= 0 (signals/turn-broken-magnitude normalized))))))
+
+(deftest turn-broken-finished-false-counts-test
+  (testing "a row with finished=false (client abort) contributes"
+    (let [msg-aborted (-> (assistant-msg 2 (ts 2)
+                                         [(tool-input "search" {} "s1")
+                                          (search-output "s1" [{:model "table" :id 1}])])
+                          (assoc :finished false))
+          normalized  (normalize [(user-msg 1 (ts 1)) msg-aborted])]
+      (is (= 1 (signals/turn-broken-magnitude normalized))))))
+
+(deftest turn-broken-error-not-null-counts-test
+  (testing "a row with error IS NOT NULL contributes (regardless of finished)"
+    (let [msg-errored (-> (assistant-msg 2 (ts 2) [])
+                          (assoc :error "{\"type\":\"exception\",\"message\":\"boom\"}"))
+          normalized  (normalize [(user-msg 1 (ts 1)) msg-errored])]
+      (is (= 1 (signals/turn-broken-magnitude normalized))))))
+
+(deftest turn-broken-finished-null-does-not-count-test
+  (testing "finished IS NULL (in-flight / placeholder) does NOT contribute (impl plan §9.3)"
+    (let [msg-inflight (-> (assistant-msg 2 (ts 2) [])
+                           (assoc :finished nil :error nil))
+          normalized   (normalize [(user-msg 1 (ts 1)) msg-inflight])]
+      (is (= 0 (signals/turn-broken-magnitude normalized))))))
+
+(deftest turn-broken-sums-across-rows-test
+  (testing "multiple broken rows sum (one finished=false + one error-bearing → 2)"
+    (let [m-abort  (-> (assistant-msg 2 (ts 2) [])
+                       (assoc :finished false))
+          m-err    (-> (assistant-msg 4 (ts 4) [])
+                       (assoc :error "{\"type\":\"x\"}"))
+          normalized (normalize [(user-msg 1 (ts 1))
+                                 m-abort
+                                 (user-msg 3 (ts 3))
+                                 m-err])]
+      (is (= 2 (signals/turn-broken-magnitude normalized))))))
