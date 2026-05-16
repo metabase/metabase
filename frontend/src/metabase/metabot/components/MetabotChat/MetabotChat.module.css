@@ -94,6 +94,32 @@
   opacity: 1;
 }
 
+.agentPartCard {
+  transition: background 150ms ease;
+}
+
+.agentPartClickable {
+  cursor: pointer;
+}
+
+.agentPartClickable:hover {
+  background: var(--mb-color-background-secondary);
+}
+
+.agentPartActions {
+  opacity: 0;
+  transition: opacity 150ms linear;
+}
+
+.agentPartActionIcon:hover {
+  background-color: var(--mb-color-background-tertiary) !important;
+}
+
+.agentPartCard:hover .agentPartActions,
+.agentPartCard:focus-within .agentPartActions {
+  opacity: 1;
+}
+
 .promptSuggestionsContainer {
   /* height if there's 3 single-line suggestions
    * this prevents a jump once suggestions have loaded in most cases */

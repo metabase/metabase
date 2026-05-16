@@ -56,7 +56,6 @@ const isUserVisibleDataPartMessage = (
 const isUserVisibleMessage = (message: MetabotChatMessage): boolean =>
   match(message)
     .with({ type: "text" }, () => true)
-    .with({ type: "action" }, () => true)
     .with({ type: "data_part" }, (message) =>
       isUserVisibleDataPartMessage(message),
     )

@@ -1,4 +1,5 @@
 import { useClipboard } from "@mantine/hooks";
+import cx from "classnames";
 import { useMemo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
@@ -6,16 +7,7 @@ import { t } from "ttag";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import type { MetabotAgentDataPartMessage } from "metabase/metabot/state";
-import {
-  ActionIcon,
-  Badge,
-  Box,
-  Button,
-  Flex,
-  Icon,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { ActionIcon, Badge, Box, Flex, Icon, Stack, Text } from "metabase/ui";
 import type { MetabotCodeEdit } from "metabase-types/api";
 
 import {
@@ -24,6 +16,7 @@ import {
 } from "./MetabotAgentDataSourcePills";
 import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
 import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
+import Styles from "./MetabotChat.module.css";
 
 type AgentDataPartMessageProps = {
   message: MetabotAgentDataPartMessage;
@@ -102,7 +95,11 @@ const DataPartJsonCard = ({
   }, [value]);
 
   return (
-    <Box bd="1px solid var(--mb-color-border)" bdrs="sm">
+    <Box
+      bd="1px solid var(--mb-color-border)"
+      bdrs="sm"
+      className={Styles.agentPartCard}
+    >
       <Flex
         py="sm"
         px="md"
@@ -114,7 +111,11 @@ const DataPartJsonCard = ({
           <Icon name="document" c="text-secondary" mr="sm" />
           <Text fw="bold">{type}</Text>
         </Flex>
-        <ActionIcon h="sm" onClick={() => clipboard.copy(formatted)}>
+        <ActionIcon
+          h="sm"
+          onClick={() => clipboard.copy(formatted)}
+          className={cx(Styles.agentPartActions, Styles.agentPartActionIcon)}
+        >
           <Icon name="copy" size="1rem" />
         </ActionIcon>
       </Flex>
@@ -147,26 +148,29 @@ const DataPartJsonCard = ({
 
 const NavigateToDataPart = ({ type, path }: { type: string; path: string }) => (
   <Flex
-    py="sm"
-    px="md"
-    bd="1px solid var(--mb-color-border)"
-    bdrs="sm"
     direction="row"
     align="center"
     justify="space-between"
-    gap="sm"
+    bd="1px solid var(--mb-color-border)"
+    bdrs="sm"
+    className={Styles.agentPartCard}
+    p="sm"
+    pl="md"
   >
-    <Flex align="center" gap="sm" style={{ minWidth: 0, flex: 1 }}>
-      <Icon name="document" c="text-secondary" />
+    <Flex align="center">
+      <Icon name="document" c="text-secondary" mr="sm" />
       <Text fw="bold">{type}</Text>
     </Flex>
-    <Button
+    <ActionIcon
       component={ForwardRefLink}
       to={path}
       target="_blank"
-      variant="light"
-      size="compact-xs"
-    >{t`Visit`}</Button>
+      h="sm"
+      aria-label={t`Visit`}
+      className={cx(Styles.agentPartActions, Styles.agentPartActionIcon)}
+    >
+      <Icon name="external" size="1rem" />
+    </ActionIcon>
   </Flex>
 );
 
@@ -180,7 +184,11 @@ const CodeEditDataPart = ({
   const clipboard = useClipboard();
 
   return (
-    <Box bd="1px solid var(--mb-color-border)" bdrs="sm">
+    <Box
+      bd="1px solid var(--mb-color-border)"
+      bdrs="sm"
+      className={Styles.agentPartCard}
+    >
       <Flex
         py="sm"
         px="md"
@@ -196,7 +204,11 @@ const CodeEditDataPart = ({
             {value.mode}
           </Badge>
         </Flex>
-        <ActionIcon h="sm" onClick={() => clipboard.copy(value.value)}>
+        <ActionIcon
+          h="sm"
+          onClick={() => clipboard.copy(value.value)}
+          className={cx(Styles.agentPartActions, Styles.agentPartActionIcon)}
+        >
           <Icon name="copy" size="1rem" />
         </ActionIcon>
       </Flex>
