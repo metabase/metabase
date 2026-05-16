@@ -351,7 +351,15 @@
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
     (if-let [conn (:connection db-or-id-or-spec)]
       (f conn)
-      (let [get-conn (^:once fn* [] (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options)))]
+      (let [get-conn (^:once fn* []
+                       (let [conn-data-source (do-with-resolved-connection-data-source driver db-or-id-or-spec options)]
+                         (try
+                           (.getConnection conn-data-source)
+                           (catch Throwable e
+                             (throw (ex-info (tru "Unable to connect to the database: {0}" (ex-message e))
+                                             {:type   driver-api/qp.error-type.unable-to-acquire-connection
+                                              :driver driver}
+                                             e))))))]
         (if (:keep-open? options)
           (f (get-conn))
           (with-open [conn ^Connection (get-conn)]

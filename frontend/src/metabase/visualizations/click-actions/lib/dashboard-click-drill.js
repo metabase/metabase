@@ -194,7 +194,7 @@ export function getClickBehaviorData(clicked, clickBehavior) {
   return { type, linkType, data, extraData, parameterMapping, tabId, targetId };
 }
 
-function getParameterIdValuePairs(
+export function getParameterIdValuePairs(
   parameterMapping,
   { data, extraData, clickBehavior },
 ) {

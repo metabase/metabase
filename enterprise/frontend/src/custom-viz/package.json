@@ -1,6 +1,6 @@
 {
   "name": "@metabase/custom-viz",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Creating custom visualizations for Metabase",
   "type": "module",
   "bin": {
