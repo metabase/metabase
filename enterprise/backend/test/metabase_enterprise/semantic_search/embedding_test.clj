@@ -209,11 +209,13 @@
             (is (= mock-embedding (vec (#'embedding/get-embedding {:provider          provider
                                                                    :model-name        "some-model"
                                                                    :vector-dimensions 4}
-                                                                  "hello"))))
+                                                                  "hello"
+                                                                  {:record-tokens? true}))))
             (is (= [mock-embedding] (mapv vec (#'embedding/get-embeddings-batch {:provider          provider
                                                                                  :model-name        "some-model"
                                                                                  :vector-dimensions 4}
-                                                                                ["hello"]))))
+                                                                                ["hello"]
+                                                                                {:record-tokens? true}))))
             (when counts-tokens?
               (let [tokens-calls (filter #(= :metabase-search/semantic-embedding-tokens (first %)) @analytics-calls)]
                 (is (= 2 (count tokens-calls)))
@@ -264,7 +266,8 @@
             (embedding/get-embeddings-batch {:provider         "ai-service"
                                              :model-name       "test-model"
                                              :vector-dimensions 3}
-                                            ["hello world"]))
+                                            ["hello world"]
+                                            {:record-tokens? true}))
           (let [events (->> (snowplow-test/pop-event-data-and-user-id!)
                             ;; Filter out unrelated setup events (e.g. new_instance_created
                             ;; triggered by instance-creation setting being read for the first time)

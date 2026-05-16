@@ -2884,6 +2884,7 @@
            audit-app
            collections
            config
+           driver
            metabot
            models
            premium-features

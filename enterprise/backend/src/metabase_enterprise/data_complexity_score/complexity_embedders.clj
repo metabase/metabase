@@ -106,6 +106,11 @@
   single oversized HTTP request — `get-embeddings-batch` does no chunking of its own for the
   ai-service / openai providers.
 
+  Passes `:record-tokens? false` so complexity-score runs don't write to
+  `semantic_search_token_tracking` — the score is its own analytics signal and the embedding
+  calls here aren't user-driven search traffic. Holds for the CLI, the Quartz cron, and the
+  API endpoint alike.
+
   Errors from the provider bubble up — `score-synonym-pairs` converts them into `nil`
   measurements + an `:error` field so a broken run is visible downstream."
   [model-descriptor]
@@ -120,7 +125,8 @@
       (when (seq names)
         (let [texts   (mapv #(split-for-embedding (get name->raw %)) names)
               vectors (into []
-                            (mapcat #(embeddings/get-embeddings-batch model-descriptor %))
+                            (mapcat #(embeddings/get-embeddings-batch
+                                      model-descriptor % :record-tokens? false))
                             (partition-all provider-batch-size texts))]
           (into {}
                 (keep (fn [[n v]] (when v [n (ensure-floats v)])))
