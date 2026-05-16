@@ -27,7 +27,7 @@ describe("AI Controls > Metabot access and customization", () => {
         "updatePermissions",
       );
 
-      cy.visit("/admin/metabot/1/usage-controls/ai-feature-access");
+      cy.visit("/admin/metabot/usage-controls/ai-feature-access");
 
       cy.wait("@getPermissions");
 
@@ -119,7 +119,7 @@ describe("AI Controls > Metabot access and customization", () => {
     it("should save a custom Metabot name", () => {
       cy.intercept("PUT", "/api/setting/metabot-name").as("saveName");
 
-      cy.visit("/admin/metabot/1/customization");
+      cy.visit("/admin/metabot/customization");
 
       cy.findByRole("heading", { name: "Customization", level: 1 }).should(
         "be.visible",
@@ -140,7 +140,7 @@ describe("AI Controls > Metabot access and customization", () => {
     it("should upload a custom Metabot icon and show the illustrations section", () => {
       cy.intercept("PUT", "/api/setting/metabot-icon").as("saveIcon");
 
-      cy.visit("/admin/metabot/1/customization");
+      cy.visit("/admin/metabot/customization");
 
       H.main().findByText("AI agent's icon").should("be.visible");
       cy.findByRole("button", { name: "Upload a custom icon" }).should(
@@ -187,7 +187,7 @@ describe("AI Controls > Metabot access and customization", () => {
         "saveIllustrations",
       );
 
-      cy.visit("/admin/metabot/1/customization");
+      cy.visit("/admin/metabot/customization");
 
       H.main().findByText("Metabot illustrations").should("be.visible");
 
@@ -219,9 +219,9 @@ describe("AI Controls > Metabot access and customization", () => {
       cy.findByTestId("metabot-empty-chat-info")
         .find("svg")
         .should("not.exist");
-      // But the hint text should still be visible
+      // But the hint text should still be visible, with the no-illustration copy
       cy.findByTestId("metabot-empty-chat-info")
-        .findByText(/I can help you/)
+        .findByText(/Explore your metrics and models with AI/)
         .should("be.visible");
     });
 
@@ -259,7 +259,7 @@ describe("AI Controls > Metabot access and customization", () => {
         "savePrompt",
       );
 
-      cy.visit("/admin/metabot/1/system-prompts/metabot-chat");
+      cy.visit("/admin/metabot/system-prompts/metabot-chat");
 
       cy.findByRole("heading", {
         name: "AI chat prompt instructions",
@@ -269,7 +269,8 @@ describe("AI Controls > Metabot access and customization", () => {
       cy.findByRole("textbox", { name: /AI chat prompt instructions/ })
         .should("be.visible")
         .click()
-        .type("Be concise and helpful.");
+        .type("Be concise and helpful.")
+        .blur();
 
       cy.wait("@savePrompt").its("response.statusCode").should("eq", 204);
 
@@ -285,7 +286,7 @@ describe("AI Controls > Metabot access and customization", () => {
         "saveSqlPrompt",
       );
 
-      cy.visit("/admin/metabot/1/system-prompts/sql-generation");
+      cy.visit("/admin/metabot/system-prompts/sql-generation");
 
       cy.findByRole("heading", {
         name: "SQL generation prompt instructions",
@@ -297,7 +298,8 @@ describe("AI Controls > Metabot access and customization", () => {
       })
         .should("be.visible")
         .click()
-        .type("Always use uppercase SQL keywords.");
+        .type("Always use uppercase SQL keywords.")
+        .blur();
 
       cy.wait("@saveSqlPrompt").its("response.statusCode").should("eq", 204);
 
@@ -310,7 +312,7 @@ describe("AI Controls > Metabot access and customization", () => {
 });
 
 describe("AI controls > AI usage limits", () => {
-  const AI_USAGE_LIMITS_URL = "/admin/metabot/1/usage-controls/ai-usage-limits";
+  const AI_USAGE_LIMITS_URL = "/admin/metabot/usage-controls/ai-usage-limits";
 
   beforeEach(() => {
     H.restore();
@@ -364,7 +366,7 @@ describe("AI controls > AI usage limits", () => {
       });
 
       // Type an instance limit value
-      cy.findByLabelText(/Total weekly instance limit/).type("500");
+      cy.findByLabelText("Total weekly instance message limit").type("500");
       cy.wait("@updateInstanceLimit").then(({ request }) => {
         expect(request.body).to.deep.equal({ max_usage: 500 });
       });
@@ -390,7 +392,7 @@ describe("AI controls > AI usage limits", () => {
       cy.wait("@getInstanceLimit");
 
       cy.findByRole("textbox", {
-        name: /Total monthly instance limit/,
+        name: "Total monthly instance token limit",
       }).clear();
       cy.wait("@updateInstanceLimit").then(({ request }) => {
         expect(request.body).to.deep.equal({ max_usage: null });
@@ -655,7 +657,7 @@ describe("AI Controls > Tenant usage limits", () => {
   });
 
   it("should allow updating tenant limits when tenants are enabled", () => {
-    cy.visit("/admin/metabot/1/usage-controls/ai-usage-limits");
+    cy.visit("/admin/metabot/usage-controls/ai-usage-limits");
 
     cy.findByRole("tab", { name: "Specific tenants" }).click();
 
@@ -663,9 +665,7 @@ describe("AI Controls > Tenant usage limits", () => {
     cy.findByTestId("tenant-limits-tab")
       .findByText("Test Corp")
       .should("be.visible");
-    cy.findByLabelText(
-      "Max total monthly tokens for Test Corp (millions)",
-    ).type("10");
+    cy.findByLabelText("Max total monthly tokens for Test Corp").type("10");
     cy.wait("@updateTenantLimit").its("response.statusCode").should("eq", 200);
   });
 

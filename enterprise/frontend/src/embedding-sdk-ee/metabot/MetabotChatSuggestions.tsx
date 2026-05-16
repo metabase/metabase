@@ -18,7 +18,6 @@ export const MetabotChatSuggestions = () => {
 
   const shouldShowSuggestedPrompts =
     metabot.messages.length === 0 &&
-    metabot.errorMessages.length === 0 &&
     !metabot.isDoingScience &&
     suggestedPrompts.length > 0;
 

@@ -8,7 +8,7 @@
    [metabase.test.data.clickhouse :as ctd]
    [metabase.util :as u]
    [schema.core :as s])
-  (:import (java.time LocalDate LocalDateTime)))
+  (:import (java.time Clock LocalDate LocalDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -31,7 +31,7 @@
                    :target ["dimension" ["template-tag" "x"]]
                    :id uuid}]}))
 
-(def ^:private clock (t/mock-clock (t/instant "2019-11-30T23:00:00Z") (t/zone-id "UTC")))
+(def ^:private ^Clock clock (t/mock-clock (t/instant "2019-11-30T23:00:00Z") (t/zone-id "UTC")))
 (s/defn ^:private local-date-now      :- LocalDate     [] (LocalDate/now clock))
 (s/defn ^:private local-date-time-now :- LocalDateTime [] (LocalDateTime/now clock))
 

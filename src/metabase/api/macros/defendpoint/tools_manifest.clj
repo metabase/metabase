@@ -160,11 +160,13 @@
    :open-world?  :openWorldHint})
 
 (defn- method-default-annotations
-  "Infer default MCP ToolAnnotations from HTTP method."
+  "Infer default MCP ToolAnnotations from HTTP method. POST defaults to non-destructive — opt
+   in with `:destructive? true` for endpoints that actually destroy data."
   [method]
   (case method
-    (:get :head) {:readOnlyHint   true
-                  :idempotentHint true}
+    (:get :head) {:readOnlyHint    true
+                  :idempotentHint  true}
+    :post        {:destructiveHint false}
     :put         {:destructiveHint false
                   :idempotentHint  true}
     :delete      {:destructiveHint true
@@ -172,15 +174,36 @@
     {}))
 
 (defn infer-annotations
-  "Build MCP ToolAnnotations from HTTP method defaults merged with explicit `:annotations` from `:tool` metadata."
+  "Compute MCP ToolAnnotations from HTTP method defaults merged with explicit `:annotations`.
+   Returns `{:annotations <merged> :redundant <pairs> :contradictory? <bool>}`. Callers should
+   reject `:redundant` entries (explicit declarations must add information beyond the
+   HTTP-method default) and `:contradictory?` (a tool can't be both read-only and destructive).
+
+   `destructiveHint` is dropped from `:annotations` when `readOnlyHint` is true since per the
+   MCP spec it's only meaningful for non-read-only tools — but if both were `true` before the
+   drop, the result is flagged `:contradictory?` rather than silently coalesced."
   [method explicit-annotations]
-  (let [defaults (method-default-annotations method)
-        explicit (into {}
-                       (keep (fn [[k v]]
-                               (when-let [mcp-key (annotation-key-mapping k)]
-                                 [mcp-key v])))
-                       explicit-annotations)]
-    (merge defaults explicit)))
+  (let [method-defaults (method-default-annotations method)
+        explicit        (into {}
+                              (keep (fn [[k v]]
+                                      (when-let [mcp-key (annotation-key-mapping k)]
+                                        [mcp-key v])))
+                              explicit-annotations)
+        merged          (merge method-defaults explicit)
+        read-only?      (true? (:readOnlyHint merged))
+        ;; Report redundancies with the developer's original key (e.g. :read-only?), not the
+        ;; translated MCP key, so the error points at what they actually wrote.
+        redundant       (into {}
+                              (keep (fn [[k v]]
+                                      (when-let [mcp-key (annotation-key-mapping k)]
+                                        (when (= v (get method-defaults mcp-key))
+                                          [k v]))))
+                              explicit-annotations)]
+    (cond-> {:annotations (cond-> merged
+                            read-only? (dissoc :destructiveHint))
+             :redundant   redundant}
+      (and read-only? (true? (:destructiveHint merged)))
+      (assoc :contradictory? true))))
 
 (defn- schema->properties-and-required
   "Extract `:properties` and `:required` from a malli schema's JSON Schema.
@@ -230,23 +253,61 @@
   [path]
   (str/replace path #":([^/]+)" "{$1}"))
 
+(defn- name->title
+  "Default convention: convert a snake_case tool name to a Title Case title.
+   `get_table` → `Get Table`."
+  [tool-name]
+  (->> (str/split tool-name #"_")
+       (map str/capitalize)
+       (str/join " ")))
+
+(defn- assert-claude-connector-compliant!
+  "Throw if `annotations` lack the readOnlyHint or destructiveHint that the Claude
+   connector requires (every tool must declare one or the other)."
+  [tool-name annotations]
+  (let [{:keys [readOnlyHint destructiveHint]} annotations]
+    (when-not (or (true? readOnlyHint) (boolean? destructiveHint))
+      (throw (ex-info (str "Tool " tool-name
+                           " must declare :read-only? true or :destructive? <boolean> "
+                           "(Claude connector requirement).")
+                      {:tool tool-name :annotations annotations})))))
+
 (defn endpoint->tool-definition
   "Convert a single endpoint info + prefix to a tool definition map."
   [prefix {:keys [form]}]
-  (let [method       (:method form)
-        route-path   (get-in form [:route :path])
-        tool-md      (get-in form [:metadata :tool])
-        tool-name    (:name tool-md)
-        _            (assert (string? tool-name) "Tool :name must be a string")
-        description  (or (:description tool-md)
-                         (:docstr form))
-        full-path    (str prefix (route-path->endpoint-path route-path))
-        input-schema (merge-input-schemas form)
-        resp-schema  (response-schema->json-schema (:response-schema form))
-        annotations  (infer-annotations method (:annotations tool-md))
-        task-support (:task-support tool-md)
-        scope        (get-in form [:metadata :scope])]
+  (let [method         (:method form)
+        route-path     (get-in form [:route :path])
+        tool-md        (get-in form [:metadata :tool])
+        tool-name      (:name tool-md)
+        _              (assert (string? tool-name) "Tool :name must be a string")
+        explicit-title (:title tool-md)
+        inferred-title (name->title tool-name)
+        _              (when (= explicit-title inferred-title)
+                         (throw (ex-info (str "Tool " tool-name " has redundant :title "
+                                              (pr-str explicit-title)
+                                              " — matches the title we'd infer from the name.")
+                                         {:tool tool-name :title explicit-title})))
+        description    (or (:description tool-md)
+                           (:docstr form))
+        full-path      (str prefix (route-path->endpoint-path route-path))
+        input-schema   (merge-input-schemas form)
+        resp-schema    (response-schema->json-schema (:response-schema form))
+        inferred       (infer-annotations method (:annotations tool-md))
+        annotations    (:annotations inferred)
+        _              (when (:contradictory? inferred)
+                         (throw (ex-info (str "Tool " tool-name
+                                              " is marked both read-only and destructive — these can't both be true.")
+                                         {:tool tool-name :method method})))
+        _              (when (seq (:redundant inferred))
+                         (throw (ex-info (str "Tool " tool-name
+                                              " has redundant :annotations matching defaults: "
+                                              (pr-str (:redundant inferred)))
+                                         {:tool tool-name :method method :redundant (:redundant inferred)})))
+        _              (assert-claude-connector-compliant! tool-name annotations)
+        task-support   (:task-support tool-md)
+        scope          (get-in form [:metadata :scope])]
     (cond-> {:name        tool-name
+             :title       (or explicit-title inferred-title)
              :description description
              :endpoint    {:method (u/upper-case-en (name method))
                            :path   full-path}}

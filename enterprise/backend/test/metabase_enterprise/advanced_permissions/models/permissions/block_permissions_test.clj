@@ -1,4 +1,5 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]

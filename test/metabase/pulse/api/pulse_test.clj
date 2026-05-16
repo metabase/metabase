@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.pulse.api.pulse-test
   "Tests for /api/pulse endpoints."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.pulse.api.pulse-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

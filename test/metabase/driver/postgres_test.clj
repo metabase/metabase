@@ -1,5 +1,8 @@
 (ns metabase.driver.postgres-test
   "Tests for features/capabilities specific to PostgreSQL driver, such as support for Postgres UUID or enum types."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.driver.postgres-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.driver.postgres-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.postgres-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.java.jdbc :as jdbc]
@@ -16,6 +19,7 @@
    [metabase.driver.postgres :as postgres]
    [metabase.driver.postgres.actions :as postgres.actions]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
@@ -392,20 +396,38 @@
                 "decimal"
                 [:meh]]
                (#'sql.qp/json-query :postgres boop-identifier boop-field)))
-        (is (= ["(boop.bleh#>> array[?]::text[])::decimal" "meh"]
+        (is (= ["(boop.bleh#>> (array[?]::text[]))::decimal" "meh"]
                (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boop-field))))))
     (testing "What if types are weird and we have lists"
       (let [weird-field {:nfc-path [:bleh "meh" :foobar 1234] :database-type "bigint"}]
-        (is (= ["(boop.bleh#>> array[?, ?, 1234]::text[])::bigint" "meh" "foobar"]
+        (is (= ["(boop.bleh#>> (array[?, ?, 1234]::text[]))::bigint" "meh" "foobar"]
                (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier weird-field))))))
     (testing "Give us a boolean cast when the field is boolean"
       (let [boolean-boop-field {:database-type "boolean" :nfc-path [:bleh "boop" :foobar 1234]}]
-        (is (= ["(boop.bleh#>> array[?, ?, 1234]::text[])::boolean" "boop" "foobar"]
+        (is (= ["(boop.bleh#>> (array[?, ?, 1234]::text[]))::boolean" "boop" "foobar"]
                (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boolean-boop-field))))))
     (testing "Give us a bigint cast when the field is bigint (#22732)"
       (let [boolean-boop-field {:database-type "bigint" :nfc-path [:bleh "boop" :foobar 1234]}]
-        (is (= ["(boop.bleh#>> array[?, ?, 1234]::text[])::bigint" "boop" "foobar"]
+        (is (= ["(boop.bleh#>> (array[?, ?, 1234]::text[]))::bigint" "boop" "foobar"]
                (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boolean-boop-field))))))))
+
+(deftest ^:parallel json-query-survives-impersonation-validation-test
+  (testing "JSON-extracted field SQL still extracts the same value after `validate-impersonated-query*` re-emits it (#73776)"
+    ;; `validate-impersonated-query*` runs the native SQL through sqlglot's parse-and-emit
+    ;; canonicalization. We need its reconstruction of our `(parent #>> path)::field-type`
+    ;; expression to keep the inner `::text[]` cast on the path argument — not on the result
+    ;; of `#>>`, which would tell Postgres to read text values as array literals and fail.
+    (let [parent     (h2x/identifier :field "public" "test_table" "data")
+          nfc-field  {:nfc-path ["data" "key"] :database-type "text"}
+          [json-sql] (sql/format-expr (#'sql.qp/json-query :postgres parent nfc-field))
+          stage      {:lib/type :mbql.stage/native :native (str "SELECT " json-sql " AS k FROM t")}
+          out-sql    (-> (driver.sql/validate-impersonated-query* :postgres {:stages [stage]})
+                         :stages first :native)]
+      ;; The broken reconstruction looks like `CAST(parent #>> array[?] AS TEXT[])` — i.e.
+      ;; the cast wraps the entire `#>>` expression instead of just the path argument.
+      (is (not (re-find #"(?i)#>>\s+array\s*\[\?\]\s+AS\s+TEXT\s*\[\s*\]" out-sql))
+          (str "validate-impersonated-query* placed the TEXT[] cast on the result of #>> "
+               "rather than on the array path argument:\n  " out-sql)))))
 
 (deftest ^:parallel json-field-test
   (mt/test-driver :postgres
@@ -428,7 +450,7 @@
                                        :min-value 0.75
                                        :max-value 54.0
                                        :bin-width 0.75}}]]
-          (is (= ["((FLOOR((((complicated_identifiers.jsons#>> array[?, ?]::text[])::integer - 0.75) / 0.75)) * 0.75) + 0.75)"
+          (is (= ["((FLOOR((((complicated_identifiers.jsons#>> (array[?, ?]::text[]))::integer - 0.75) / 0.75)) * 0.75) + 0.75)"
                   "values" "qty"]
                  (sql/format-expr (sql.qp/->honeysql :postgres field-clause) {:nested true}))))))))
 
@@ -471,7 +493,7 @@
                   "  DATE_TRUNC("
                   "    'month',"
                   "    CAST("
-                  "      (\"json_alias_test\".\"bob\" #>> array [ ?, ? ] :: text [ ]) :: VARCHAR AS timestamp"
+                  "      (\"json_alias_test\".\"bob\" #>> (array [ ?, ? ] :: text [ ])) :: VARCHAR AS timestamp"
                   "    )"
                   "  ) AS \"json_alias_test\","
                   "  COUNT(*) AS \"count\""
@@ -497,7 +519,7 @@
                                :query    {:source-table 1
                                           :order-by     [[:asc field-ordinary]]}})]
           (is (= ["SELECT"
-                  "  (\"json_alias_test\".\"bob\" #>> array [ ?, ? ] :: text [ ]) :: VARCHAR AS \"json_alias_test\""
+                  "  (\"json_alias_test\".\"bob\" #>> (array [ ?, ? ] :: text [ ])) :: VARCHAR AS \"json_alias_test\""
                   "FROM"
                   "  \"json_alias_test\""
                   "ORDER BY"
@@ -533,7 +555,7 @@
                   "FROM"
                   "  ("
                   "    SELECT"
-                  "      (\"json_alias_test\".\"bob\" #>> array [ ?, ? ] :: text [ ]) :: VARCHAR AS \"json_alias_test\","
+                  "      (\"json_alias_test\".\"bob\" #>> (array [ ?, ? ] :: text [ ])) :: VARCHAR AS \"json_alias_test\","
                   "      COUNT(*) AS \"count\""
                   "    FROM"
                   "      \"json_alias_test\""
@@ -545,6 +567,42 @@
                   "LIMIT"
                   "  1048575"]
                  (str/split-lines (driver/prettify-native-form :postgres (:query nested))))))))))
+
+;;; Postgres `:contains`/`:starts-with`/`:ends-with` must produce SQL that the PostgreSQL JDBC
+;;; driver can prepare regardless of the server's `standard_conforming_strings` setting. With
+;;; that setting off, PGJDBC's parser treats `\` as an escape inside string literals, so the
+;;; `'\'` in `LIKE ? ESCAPE '\'` is parsed as an unterminated literal and the query crashes with
+;;; `Unterminated string literal started at position N` before the SQL ever reaches the server
+;;; (#73721).
+(deftest contains-filter-jdbc-parser-test
+  (mt/test-driver :postgres
+    (testing "PGJDBC parses :contains/:starts-with/:ends-with SQL regardless of standard_conforming_strings (#73721)"
+      (let [mp       (mt/metadata-provider)
+            venues   (lib.metadata/table mp (mt/id :venues))
+            name-col (lib.metadata/field mp (mt/id :venues :name))]
+        (doseq [scs ["on" "off"]]
+          (testing (str "standard_conforming_strings = " scs)
+            ;; Fresh non-pooled connection per setting (the pool is bypassed because we pass a
+            ;; raw JDBC spec rather than a Database ID), so:
+            ;; - the session-scoped `SET` can't contaminate the shared pool, and
+            ;; - PGJDBC's per-connection parsed-query cache starts empty, so each
+            ;;   `prepareStatement` actually exercises the parser.
+            (sql-jdbc.execute/do-with-connection-with-options
+             :postgres
+             (sql-jdbc.conn/connection-details->spec :postgres (:details (mt/db)))
+             nil
+             (fn [^Connection conn]
+               (with-open [stmt (.createStatement conn)]
+                 (.execute stmt (str "SET standard_conforming_strings TO " scs)))
+               (doseq [[op-name op-fn] {:contains    lib/contains
+                                        :starts-with lib/starts-with
+                                        :ends-with   lib/ends-with}]
+                 (testing op-name
+                   (let [query (-> (lib/query mp venues)
+                                   (lib/filter (op-fn name-col "Foo")))
+                         {sql :query} (qp.compile/compile query)]
+                     (is (some? (with-open [pstmt (.prepareStatement conn sql)] pstmt))
+                         (str "PGJDBC should prepare the SQL; got SQL: " sql)))))))))))))
 
 (deftest describe-nested-field-columns-identifier-test
   (mt/test-driver :postgres

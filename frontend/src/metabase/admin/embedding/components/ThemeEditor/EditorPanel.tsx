@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import type { EmbeddingThemeEditorResult } from "metabase/admin/embedding/hooks/use-embedding-theme-editor";
-import type { MetabaseFontFamily } from "metabase/embedding-sdk/theme/fonts";
 import {
   Box,
   Button,
@@ -15,8 +14,10 @@ import {
   Stack,
   Text,
   TextInput,
+  Tooltip,
   UnstyledButton,
 } from "metabase/ui";
+import type { MetabaseFontFamily } from "metabase/ui/fonts";
 
 import { ColorSwatchCard } from "./ColorSwatchCard";
 import {
@@ -104,15 +105,17 @@ export function EditorPanel({
             <Flex mb="sm" h="26" align="center" justify="space-between">
               <Text fw={600}>{t`Main colors`}</Text>
               {editor.hasMainColorChanges && (
-                <Button
-                  variant="subtle"
-                  pt="5"
-                  size="compact-sm"
-                  aria-label={t`Revert to default main colors`}
-                  onClick={editor.resetMainColors}
-                >
-                  <Icon name="revert" size={16} />
-                </Button>
+                <Tooltip label={t`Reset main colors to defaults`}>
+                  <Button
+                    variant="subtle"
+                    pt="5"
+                    size="compact-sm"
+                    aria-label={t`Reset main colors to defaults`}
+                    onClick={editor.resetMainColors}
+                  >
+                    <Icon name="revert" size={16} />
+                  </Button>
+                </Tooltip>
               )}
             </Flex>
             <Flex gap="sm">
@@ -143,15 +146,19 @@ export function EditorPanel({
                 </Flex>
               </UnstyledButton>
 
-              {editor.hasAdditionalColorChanges && (
-                <Button
-                  variant="subtle"
-                  size="compact-sm"
-                  aria-label={t`Revert to default additional colors`}
-                  onClick={editor.resetAdditionalColors}
+              {editor.hasOutOfSyncAdditionalColors && (
+                <Tooltip
+                  label={t`Regenerate filter, summarize, positive, negative, and chart colors from the brand color`}
                 >
-                  <Icon name="revert" size={16} />
-                </Button>
+                  <Button
+                    variant="subtle"
+                    size="compact-sm"
+                    aria-label={t`Regenerate from brand color`}
+                    onClick={editor.regenerateAdditionalColorsFromBrand}
+                  >
+                    <Icon name="revert" size={16} />
+                  </Button>
+                </Tooltip>
               )}
             </Flex>
 

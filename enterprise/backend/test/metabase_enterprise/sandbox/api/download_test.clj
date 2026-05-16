@@ -1,4 +1,5 @@
 (ns metabase-enterprise.sandbox.api.download-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.sandbox.api.download-test]}}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.test :refer :all]

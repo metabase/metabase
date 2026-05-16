@@ -41,6 +41,10 @@
    [:search_count            ms/IntGreaterThanOrEqualToZero]
    [:query_count             ms/IntGreaterThanOrEqualToZero]
    [:ip_address              [:maybe :string]]
+   [:embedding_hostname      [:maybe :string]]
+   [:embedding_path          [:maybe :string]]
+   [:user_agent              [:maybe :string]]
+   [:sanitized_user_agent    [:maybe :string]]
    [:user                    [:maybe UserInfo]]])
 
 (def ^:private SortColumn
@@ -108,8 +112,12 @@
    [:queries         [:sequential GeneratedQuery]]
    [:search_count    ms/IntGreaterThanOrEqualToZero]
    [:query_count     ms/IntGreaterThanOrEqualToZero]
-   [:ip_address      [:maybe :string]]
-   [:feedback        [:sequential ConversationFeedback]]])
+   [:ip_address           [:maybe :string]]
+   [:embedding_hostname   [:maybe :string]]
+   [:embedding_path       [:maybe :string]]
+   [:user_agent           [:maybe :string]]
+   [:sanitized_user_agent [:maybe :string]]
+   [:feedback             [:sequential ConversationFeedback]]])
 
 (def ^:private ListConversationsResponse
   "Response schema for `GET /conversations`."

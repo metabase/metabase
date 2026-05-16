@@ -2,11 +2,13 @@ import { createSelector } from "@reduxjs/toolkit";
 import { createCachedSelector } from "re-reselect";
 import _ from "underscore";
 
+import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
+import type { EmbeddingParameterVisibility } from "metabase/embedding/types";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   getDashboardQuestions,
@@ -15,7 +17,6 @@ import {
 } from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
-import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import type {
   ClickBehaviorSidebarState,
   EditParameterSidebarState,
@@ -45,6 +46,7 @@ import type {
   DashboardCard,
   DashboardId,
   DashboardParameterMapping,
+  DashboardTabId,
   ParameterId,
   VirtualCard,
 } from "metabase-types/api";
@@ -571,13 +573,19 @@ export const getSelectedTabId = createSelector(
     (state) => getSetting(state, "site-url"),
     getDashboard,
     (state) => state.dashboard.selectedTabId,
+    (state: State) =>
+      (state as Partial<SdkStoreState>).sdk?.initialDashboardTabId,
   ],
-  (isWebApp, siteUrl, dashboard, selectedTabId) => {
+  (isWebApp, siteUrl, dashboard, selectedTabId, sdkInitialDashboardTabId) => {
     if (dashboard && selectedTabId === null) {
-      return getInitialSelectedTabId(dashboard, siteUrl, isWebApp);
+      if (isEmbeddingSdk()) {
+        return getSdkInitialDashboardTabId(dashboard, sdkInitialDashboardTabId);
+      } else {
+        return getInitialSelectedTabId(dashboard, siteUrl, isWebApp);
+      }
+    } else {
+      return selectedTabId;
     }
-
-    return selectedTabId;
   },
 );
 
@@ -591,7 +599,7 @@ export const getSelectedTab = createSelector(
   },
 );
 
-export function getInitialSelectedTabId(
+function getInitialSelectedTabId(
   dashboard: Dashboard | StoreDashboard,
   siteUrl: string,
   isWebApp: boolean,
@@ -615,6 +623,19 @@ export function getInitialSelectedTabId(
   }
 
   return dashboard.tabs?.[0]?.id || null;
+}
+
+function getSdkInitialDashboardTabId(
+  dashboard: Dashboard | StoreDashboard,
+  sdkInitialDashboardTabId: DashboardTabId | null | undefined,
+) {
+  const hasTab = dashboard.tabs?.some(
+    (tab) => tab.id === sdkInitialDashboardTabId,
+  );
+  if (hasTab) {
+    return sdkInitialDashboardTabId ?? null;
+  }
+  return dashboard.tabs?.[0]?.id ?? null;
 }
 
 export const getCurrentTabDashcards = createSelector(

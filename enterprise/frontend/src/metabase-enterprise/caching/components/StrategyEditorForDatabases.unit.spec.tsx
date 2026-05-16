@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { act, screen } from "__support__/ui";
+import { act, screen, within } from "__support__/ui";
 import type { SetupOpts } from "metabase/admin/performance/components/test-utils";
 import {
   setupStrategyEditorForDatabases as baseSetup,
@@ -31,6 +31,21 @@ describe("StrategyEditorForDatabases", () => {
 
   it("lets user override root strategy on enterprise instance", async () => {
     expect(PLUGIN_CACHING.canOverrideRootStrategy).toBe(true);
+  });
+
+  it("shows four policy options for the default policy", async () => {
+    await userEvent.click(await screen.findByLabelText(/Edit default policy/));
+    expect(await screen.findAllByRole("radio")).toHaveLength(4);
+  });
+
+  it("shows five policy options for a database (adds 'Use default')", async () => {
+    await userEvent.click(
+      await screen.findByLabelText(/Edit policy for database 'Database 1'/),
+    );
+    expect(await screen.findAllByRole("radio")).toHaveLength(5);
+    expect(
+      screen.getByRole("radio", { name: /Use default/i }),
+    ).toBeInTheDocument();
   });
 
   it("should show strategy form launchers", async () => {
@@ -209,6 +224,45 @@ describe("StrategyEditorForDatabases", () => {
     ).toBeInTheDocument();
   });
 
+  // The Schedule UI -> cron mapping is exhaustively unit-tested in
+  // Schedule.unit.spec.tsx. This case is the integration: picking a
+  // frequency/day/time in the Schedule fields must flow through Formik's
+  // `setFieldValue("schedule", ...)` and end up in the saved strategy, which
+  // the launcher label then reads back.
+  it("saves a weekly Monday 8 AM schedule and round-trips it through the launcher label", async () => {
+    await userEvent.click(
+      await screen.findByLabelText(
+        `Edit policy for database 'Database 1' (currently: Adaptive)`,
+      ),
+    );
+
+    await userEvent.click(
+      await screen.findByRole("radio", { name: /Schedule/i }),
+    );
+
+    const pickOption = async (testId: string, optionName: string) => {
+      await userEvent.click(screen.getByTestId(testId));
+      const listbox = await screen.findByRole("listbox");
+      await userEvent.click(
+        within(listbox).getByRole("option", { name: optionName }),
+      );
+    };
+
+    await pickOption("select-frequency", "weekly");
+    await pickOption("select-weekday", "Monday");
+    await pickOption("select-time", "8:00");
+
+    await userEvent.click(
+      await screen.findByTestId("strategy-form-submit-button"),
+    );
+
+    expect(
+      await screen.findByLabelText(
+        `Edit policy for database 'Database 1' (currently: Scheduled: weekly)`,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("can abbreviate a 'Schedule' strategy", () => {
     const strategy: ScheduleStrategy = {
       type: "schedule",
@@ -229,4 +283,35 @@ describe("StrategyEditorForDatabases", () => {
     const result = getShortStrategyLabel(strategy);
     expect(result).toBe("Duration: 5h");
   });
+});
+
+describe("StrategyEditorForDatabases (cache_preemptive enabled)", () => {
+  beforeEach(() => {
+    setup({
+      tokenFeatures: createMockTokenFeatures({
+        cache_granular_controls: true,
+        cache_preemptive: true,
+      }),
+    });
+  });
+
+  // The preemptive caching switch only renders for question/dashboard targets.
+  // Root and database forms must not show it, regardless of strategy.
+  it.each([
+    ["default policy", /Edit default policy/, /Duration/i],
+    ["default policy", /Edit default policy/, /Schedule/i],
+    ["a database", /Edit policy for database 'Database 1'/, /Duration/i],
+    ["a database", /Edit policy for database 'Database 1'/, /Schedule/i],
+  ])(
+    "does not show the preemptive caching switch for %s with %p strategy",
+    async (_label, launcherLabel, strategyName) => {
+      await userEvent.click(await screen.findByLabelText(launcherLabel));
+      await userEvent.click(
+        await screen.findByRole("radio", { name: strategyName }),
+      );
+      expect(
+        screen.queryByTestId("preemptive-caching-switch"),
+      ).not.toBeInTheDocument();
+    },
+  );
 });

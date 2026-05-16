@@ -35,6 +35,9 @@
   "Schema for a valid `Field` visibility type."
   (into [:enum] (map name field/visibility-types)))
 
+(def ^:private max-field-ids-for-table-id-lookup
+  1000)
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
@@ -50,6 +53,17 @@
    {include-editable-data-model? :include_editable_data_model} :- [:map
                                                                    [:include_editable_data_model {:default false} ms/BooleanValue]]]
   (schema.field/get-field id {:include-editable-data-model? include-editable-data-model?}))
+
+(api.macros/defendpoint :post "/table-ids" :- [:map
+                                               [:table_ids [:sequential ms/PositiveInt]]]
+  "Get unique Table IDs for a list of Field IDs."
+  [_route-params
+   _query-params
+   {:keys [field_ids]} :- [:map
+                           [:field_ids [:sequential ms/PositiveInt]]]]
+  (api/check-400 (<= (count field_ids) max-field-ids-for-table-id-lookup)
+                 (format "field_ids may contain at most %d IDs." max-field-ids-for-table-id-lookup))
+  {:table_ids (schema.field/field-ids->table-ids field_ids)})
 
 (defn- check-field-in-same-database!
   "Check that `target-field-id` is a valid field in the same database as `source-field-id`. Throws a 400 if

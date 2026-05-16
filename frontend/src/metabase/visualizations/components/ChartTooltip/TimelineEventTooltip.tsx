@@ -1,7 +1,7 @@
 import { DateTime } from "metabase/common/components/DateTime";
-import type { IconName } from "metabase/ui";
 import { Flex, Icon, Stack, Text } from "metabase/ui";
 import type { HoveredTimelineEvent } from "metabase/visualizations/types";
+import type { IconName } from "metabase-types/api";
 
 import S from "./TimelineEventTooltip.module.css";
 
@@ -14,7 +14,7 @@ const TimelineEventTooltip = (props: TimelineEventTooltipProps) => {
   const { timelineEvents } = hovered;
 
   return (
-    <ul className={S.timelineEventList}>
+    <ul className={S.timelineEventList} data-testid="timeline-event-tooltip">
       {timelineEvents.map((event) => (
         <li key={event.id}>
           <Flex>
@@ -22,7 +22,7 @@ const TimelineEventTooltip = (props: TimelineEventTooltipProps) => {
               <Icon name={event.icon as unknown as IconName} />
             </Flex>
             <Stack gap={0}>
-              <Text component="span" fz="md" fw="bold">
+              <Text component="span" c="inherit" fz="md" fw="bold">
                 {event.name}
               </Text>
               <DateTime

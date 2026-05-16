@@ -14,7 +14,7 @@
   "Returns `:query-builder` permission if table is published and user has collection access.
   OSS implementation always returns nil - published tables only grant access in EE."
   metabase-enterprise.data-studio.permissions.published-tables
-  [_perm-type _table-id]
+  [_user-id _perm-type _table-id]
   nil)
 
 (defenterprise user-has-any-published-table-permission?

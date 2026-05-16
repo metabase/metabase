@@ -1,48 +1,51 @@
-import _ from "underscore";
-
-import { Collections, ROOT_COLLECTION } from "metabase/entities/collections";
-import { TimelineEvents } from "metabase/entities/timeline-events";
-import { Timelines } from "metabase/entities/timelines";
-import type { State } from "metabase/redux/store";
+import {
+  useGetCollectionQuery,
+  useGetTimelineEventQuery,
+  useListTimelinesQuery,
+} from "metabase/api";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import MoveEventModal, {
   type MoveEventModalProps,
 } from "metabase/timelines/common/components/MoveEventModal";
 import { useSetTimeline } from "metabase/timelines/common/hooks";
-import type { Timeline, TimelineEvent } from "metabase-types/api";
+import type { CollectionId, Timeline, TimelineEvent } from "metabase-types/api";
 
-interface OwnProps {
+type ContainerProps = Omit<
+  MoveEventModalProps,
+  "event" | "timelines" | "collection" | "onSubmit" | "onSubmitSuccess"
+> & {
   eventId: number;
-  collectionId?: number;
+  collectionId?: CollectionId | null;
   onClose?: () => void;
-}
-
-const timelinesProps = {
-  query: { include: "events" },
 };
 
-const timelineEventProps = {
-  id: (state: State, props: OwnProps) => props.eventId,
-  entityAlias: "event",
-};
-
-const collectionProps = {
-  id: (state: State, props: OwnProps) => {
-    return props.collectionId ?? ROOT_COLLECTION.id;
-  },
-};
-
-type ContainerProps = Omit<MoveEventModalProps, "onSubmit" | "onSubmitSuccess">;
-
-function MoveEventModalContainer(props: ContainerProps) {
+function MoveEventModalContainer({
+  eventId,
+  collectionId,
+  ...props
+}: ContainerProps) {
   const setTimeline = useSetTimeline();
+  const { data: event } = useGetTimelineEventQuery(eventId);
+  const { data: timelines = [] } = useListTimelinesQuery({ include: "events" });
+  const { data: collection } = useGetCollectionQuery({
+    id: collectionId == null ? ROOT_COLLECTION.id : collectionId,
+  });
   const handleSubmit = async (event: TimelineEvent, newTimeline?: Timeline) => {
     if (newTimeline) {
       await setTimeline(event, newTimeline);
     }
   };
+
+  if (!event) {
+    return null;
+  }
+
   return (
     <MoveEventModal
       {...props}
+      event={event}
+      timelines={timelines}
+      collection={collection}
       onSubmit={handleSubmit}
       onSubmitSuccess={props.onClose}
     />
@@ -50,8 +53,4 @@ function MoveEventModalContainer(props: ContainerProps) {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Timelines.loadList(timelinesProps),
-  TimelineEvents.load(timelineEventProps),
-  Collections.load(collectionProps),
-)(MoveEventModalContainer);
+export default MoveEventModalContainer;

@@ -263,6 +263,7 @@ jobs:
       with:
         compose-file: "modules/drivers/clickhouse/docker-compose.yml"
         down-flags: "--volumes"
+        up-flags: "--pull always"
         services: |
           clickhouse
           clickhouse_tls

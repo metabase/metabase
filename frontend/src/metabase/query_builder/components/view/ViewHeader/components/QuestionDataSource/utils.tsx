@@ -1,8 +1,6 @@
 import { type ReactElement, isValidElement } from "react";
 
 import { TableInfoIcon } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
-import { getIcon } from "metabase/common/utils/icon";
-import type { IconName } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -14,6 +12,7 @@ import {
   isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import type { IconName } from "metabase-types/api";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 import HeaderS from "../HeaderBreadcrumbs/HeaderBreadcrumbs.module.css";
@@ -191,8 +190,4 @@ function getTableURL(table: Table) {
     }
   }
   return Urls.question(table.newQuestion());
-}
-
-export function getQuestionIcon(question: Question): IconName {
-  return getIcon({ model: "card", type: question.type() }).name;
 }

@@ -61,6 +61,7 @@
    [goog.object :as gobject]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics.interface]
+   [metabase.analytics.experiment]
    [metabase.analytics.impl]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -98,8 +99,10 @@
 
 ;;; This ensures that all of metabase.lib.* is loaded, so all the `defmethod`s are properly registered.
 ;;; metabase.analytics.impl registers the CLJS reporter for [[metabase.analytics-interface.core]].
+;;; metabase.analytics.experiment wires the default experiment report fn.
 
 (comment lib.core/keep-me
+         metabase.analytics.experiment/keep-me
          metabase.analytics.impl/keep-me)
 
 ;; Expose for E2E testing
@@ -2594,6 +2597,21 @@
   > **Code health:** Healthy"
   [a-query card-id card-type]
   (clj->js (lib.core/dependent-metadata a-query card-id (keyword card-type))))
+
+(defn ^:export all-source-table-ids
+  "Return a JS array of all source table IDs referenced anywhere in `a-query`."
+  [a-query]
+  (clj->js (vec (or (lib.core/all-source-table-ids a-query) #{}))))
+
+(defn ^:export all-source-card-ids
+  "Return a JS array of all source card IDs referenced anywhere in `a-query`."
+  [a-query]
+  (clj->js (vec (or (lib.core/all-source-card-ids a-query) #{}))))
+
+(defn ^:export all-field-ids
+  "Return a JS array of all field IDs referenced anywhere in `a-query`."
+  [a-query]
+  (clj->js (vec (or (lib.core/all-field-ids a-query) #{}))))
 
 (defn ^:export can-run
   "Returns true if the query is runnable.

@@ -44,7 +44,7 @@ export const SettingsPage = (): JSX.Element => {
   );
 
   return (
-    <div data-testid="setup-forms">
+    <div data-testid="setup-forms" className={S.Page}>
       <Box component="header" className={S.PageHeader}>
         <Flex align="center" justify="space-between">
           <Box w={SELECT_WIDTH} className={S.Decoy} />

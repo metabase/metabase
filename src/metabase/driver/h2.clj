@@ -32,7 +32,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [every? some]])
   (:import
-   (java.sql Clob Connection ResultSet ResultSetMetaData SQLException Statement)
+   (java.sql Clob Connection ResultSet ResultSetMetaData SQLException Statement Types)
    (java.time OffsetTime)
    (org.h2.command CommandInterface Parser)
    (org.h2.engine SessionLocal)))
@@ -43,6 +43,12 @@
 (comment h2.actions/keep-me)
 
 (driver/register! :h2, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
+
+;; h2 can be used to generate mbql5 natively, but this is not the default yet.
+;; we need to gather more data from the experiment (see query-processor/mbql->honeysql)
+;; before we can switch this over. once that happens, make regular :h2 have
+;; :sql-mbql5 as a parent and move the :h2-mbql5 methods below to just :h2.
+(driver/register! :h2-mbql5, :parent #{:h2 :sql-mbql5})
 
 ;;; this will prevent the H2 driver from showing up in the list of options when adding a new Database.
 (defmethod driver/superseded-by :h2 [_driver] :deprecated)
@@ -92,6 +98,10 @@
 
 (defmethod sql.qp/->honeysql [:h2 :regex-match-first]
   [driver [_ arg pattern]]
+  [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
+
+(defmethod sql.qp/->honeysql [:h2-mbql5 :regex-match-first]
+  [driver [_ _opts arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defmethod driver/connection-properties :h2
@@ -419,8 +429,23 @@
   [driver [_ field]]
   [:log10 (sql.qp/->honeysql driver field)])
 
+(defmethod sql.qp/->honeysql [:h2-mbql5 :log]
+  [driver [_ _opts field]]
+  [:log10 (sql.qp/->honeysql driver field)])
+
 (defmethod sql.qp/->honeysql [:h2 ::sql.qp/expression-literal-text-value]
   [driver [_ value]]
+  ;; A literal text value gets compiled to a parameter placeholder like "?". H2 attempts to compile the prepared
+  ;; statement immediately, presumably before the types of the params are known, and sometimes raises an "Unknown
+  ;; data type" error if it can't deduce the type. The recommended workaround is to insert an explicit CAST.
+  ;;
+  ;; https://linear.app/metabase/issue/QUE-726/
+  ;; https://github.com/h2database/h2database/issues/1383
+  (->> (sql.qp/->honeysql driver value)
+       (h2x/cast :text)))
+
+(defmethod sql.qp/->honeysql [:h2-mbql5 ::sql.qp/expression-literal-text-value]
+  [driver [_ _opts value]]
   ;; A literal text value gets compiled to a parameter placeholder like "?". H2 attempts to compile the prepared
   ;; statement immediately, presumably before the types of the params are known, and sometimes raises an "Unknown
   ;; data type" error if it can't deduce the type. The recommended workaround is to insert an explicit CAST.
@@ -580,13 +605,19 @@
 ;; de-CLOB any CLOB values that come back
 (defmethod sql-jdbc.execute/read-column-thunk :h2
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
-  (let [classname (some-> (.getColumnClassName rsmeta i)
-                          (Class/forName true (driver-api/the-classloader)))]
-    (if (isa? classname Clob)
-      (fn []
-        (driver-api/clob->str (.getObject rs i)))
-      (fn []
-        (.getObject rs i)))))
+  (let [col-type (.getColumnType rsmeta i)]
+    (when (= col-type Types/JAVA_OBJECT)
+      (throw (ex-info "Unable to parse jdbc type"
+                      {:column-index i
+                       :column-name  (.getColumnName rsmeta i)
+                       :column-type  col-type})))
+    (let [classname (some-> (.getColumnClassName rsmeta i)
+                            (Class/forName true (driver-api/the-classloader)))]
+      (if (isa? classname Clob)
+        (fn []
+          (driver-api/clob->str (.getObject rs i)))
+        (fn []
+          (.getObject rs i))))))
 
 (defmethod sql-jdbc.execute/set-parameter [:h2 OffsetTime]
   [driver prepared-statement i t]
