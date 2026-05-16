@@ -28,13 +28,16 @@
   (let [provider (mp)]
     (lib/query provider (lib.metadata/card provider card-id))))
 
-(defn- legacy-query-on-card-id
-  "Legacy MBQL query referencing a Card by id without a metadata lookup —
-  necessary for tests that simulate a deleted/non-existent Card or that wire
-  one card up as another card's source. The production extractor converts this
-  through `lib/query` like any other query."
+(defn- query-on-absent-card-id
+  "MBQL 5 query whose first stage's `:source-card` points at a card id that
+  may not exist in the appdb — used to simulate a deleted card. We construct
+  the query map directly rather than going through
+  `(lib/query provider (lib.metadata/card provider card-id))` because that
+  path requires the card to actually exist."
   [card-id]
-  (mt/mbql-query orders {:source-table (str "card__" card-id)}))
+  {:lib/type :mbql/query
+   :database (mt/id)
+   :stages   [{:lib/type :mbql.stage/mbql :source-card card-id}]})
 
 (defn- native-query
   "MBQL 5 native query against the test database. Template tags are
@@ -126,7 +129,7 @@
   (testing ":source-card pointing at a question Card collapses to the question's underlying table"
     (mt/with-temp [:model/Card {card-id :id} {:type          :question
                                               :database_id   (mt/id)
-                                              :dataset_query (mt/mbql-query orders)}]
+                                              :dataset_query (table-query (mt/id :orders))}]
       (let [parts [(notebook-input "c1") (notebook-output "c1" (card-query card-id))]
             rows  (used-tables/extract-used-tables 99 parts)]
         (is (= [{:message_id 99 :table_id (mt/id :orders)}] rows))))))
@@ -135,7 +138,7 @@
   (testing ":source-card pointing at a model Card collapses to the model's underlying table"
     (mt/with-temp [:model/Card {card-id :id} {:type          :model
                                               :database_id   (mt/id)
-                                              :dataset_query (mt/mbql-query orders)}]
+                                              :dataset_query (table-query (mt/id :orders))}]
       (let [parts [(notebook-input "c1") (notebook-output "c1" (card-query card-id))]
             rows  (used-tables/extract-used-tables 99 parts)]
         (is (= [{:message_id 99 :table_id (mt/id :orders)}] rows))))))
@@ -144,8 +147,8 @@
   (testing ":source-card pointing at a metric Card collapses to the metric's underlying table"
     (mt/with-temp [:model/Card {card-id :id} {:type          :metric
                                               :database_id   (mt/id)
-                                              :dataset_query (mt/mbql-query orders
-                                                               {:aggregation [[:count]]})}]
+                                              :dataset_query (-> (table-query (mt/id :orders))
+                                                                 (lib/aggregate (lib/count)))}]
       (let [parts [(notebook-input "c1") (notebook-output "c1" (card-query card-id))]
             rows  (used-tables/extract-used-tables 99 parts)]
         (is (= [{:message_id 99 :table_id (mt/id :orders)}] rows))))))
@@ -154,10 +157,10 @@
   (testing "card A on card B on table T collapses all the way down to T"
     (mt/with-temp [:model/Card {b-id :id} {:type          :question
                                            :database_id   (mt/id)
-                                           :dataset_query (mt/mbql-query orders)}
+                                           :dataset_query (table-query (mt/id :orders))}
                    :model/Card {a-id :id} {:type          :question
                                            :database_id   (mt/id)
-                                           :dataset_query (legacy-query-on-card-id b-id)}]
+                                           :dataset_query (card-query b-id)}]
       (let [parts [(notebook-input "c1") (notebook-output "c1" (card-query a-id))]
             rows  (used-tables/extract-used-tables 99 parts)]
         (is (= [{:message_id 99 :table_id (mt/id :orders)}] rows))))))
@@ -166,7 +169,7 @@
   (testing "a :source-card id that doesn't exist yields no row and logs a warn"
     (let [absent-id (+ 1000000 (rand-int 1000000))
           parts     [(notebook-input "c1")
-                     (notebook-output "c1" (legacy-query-on-card-id absent-id))]]
+                     (notebook-output "c1" (query-on-absent-card-id absent-id))]]
       (log.capture/with-log-messages-for-level [logs [metabase.metabot.used-tables :warn]]
         (let [rows (used-tables/extract-used-tables 99 parts)]
           (is (= [] rows))
@@ -179,13 +182,13 @@
   (testing "card -> card -> card -> table collapses all the way down to the table"
     (mt/with-temp [:model/Card {c-id :id} {:type          :question
                                            :database_id   (mt/id)
-                                           :dataset_query (mt/mbql-query orders)}
+                                           :dataset_query (table-query (mt/id :orders))}
                    :model/Card {b-id :id} {:type          :question
                                            :database_id   (mt/id)
-                                           :dataset_query (legacy-query-on-card-id c-id)}
+                                           :dataset_query (card-query c-id)}
                    :model/Card {a-id :id} {:type          :question
                                            :database_id   (mt/id)
-                                           :dataset_query (legacy-query-on-card-id b-id)}]
+                                           :dataset_query (card-query b-id)}]
       (let [parts [(notebook-input "c1") (notebook-output "c1" (card-query a-id))]
             rows  (used-tables/extract-used-tables 99 parts)]
         (is (= #{(mt/id :orders)} (table-ids rows)))))))
@@ -194,10 +197,10 @@
   (testing "a model whose source is a question Card still resolves to the underlying table"
     (mt/with-temp [:model/Card {q-id :id} {:type          :question
                                            :database_id   (mt/id)
-                                           :dataset_query (mt/mbql-query orders)}
+                                           :dataset_query (table-query (mt/id :orders))}
                    :model/Card {m-id :id} {:type          :model
                                            :database_id   (mt/id)
-                                           :dataset_query (legacy-query-on-card-id q-id)}]
+                                           :dataset_query (card-query q-id)}]
       (let [parts [(notebook-input "c1") (notebook-output "c1" (card-query m-id))]
             rows  (used-tables/extract-used-tables 99 parts)]
         (is (= #{(mt/id :orders)} (table-ids rows)))))))
@@ -206,10 +209,10 @@
   (testing "a question whose source is a model resolves to the underlying table"
     (mt/with-temp [:model/Card {m-id :id} {:type          :model
                                            :database_id   (mt/id)
-                                           :dataset_query (mt/mbql-query orders)}
+                                           :dataset_query (table-query (mt/id :orders))}
                    :model/Card {q-id :id} {:type          :question
                                            :database_id   (mt/id)
-                                           :dataset_query (legacy-query-on-card-id m-id)}]
+                                           :dataset_query (card-query m-id)}]
       (let [parts [(notebook-input "c1") (notebook-output "c1" (card-query q-id))]
             rows  (used-tables/extract-used-tables 99 parts)]
         (is (= #{(mt/id :orders)} (table-ids rows)))))))
@@ -227,69 +230,62 @@
 
 (deftest notebook-explicit-join-against-table-test
   (testing "an explicit join against another table surfaces both the source and joined tables"
-    (let [query (mt/mbql-query orders
-                  {:joins [{:source-table $$people
-                            :alias        "P"
-                            :condition    [:= $user_id &P.people.id]}]})
-          parts [(notebook-input "c1") (notebook-output "c1" query)]
-          rows  (used-tables/extract-used-tables 99 parts)]
+    (let [provider (mp)
+          query    (-> (lib/query provider (lib.metadata/table provider (mt/id :orders)))
+                       (lib/join (lib.metadata/table provider (mt/id :people))))
+          parts    [(notebook-input "c1") (notebook-output "c1" query)]
+          rows     (used-tables/extract-used-tables 99 parts)]
       (is (= #{(mt/id :orders) (mt/id :people)} (table-ids rows))))))
 
 (deftest notebook-explicit-join-against-card-test
   (testing "an explicit join against a question Card surfaces both the source table and the card's underlying table"
     (mt/with-temp [:model/Card {card-id :id} {:type          :question
                                               :database_id   (mt/id)
-                                              :dataset_query (mt/mbql-query people)}]
-      (let [query (mt/mbql-query orders
-                    {:joins [{:source-table (str "card__" card-id)
-                              :alias        "P"
-                              :condition    [:= $user_id [:field "id" {:join-alias "P"
-                                                                       :base-type  :type/Integer}]]}]})
-            parts [(notebook-input "c1") (notebook-output "c1" query)]
-            rows  (used-tables/extract-used-tables 99 parts)]
+                                              :dataset_query (table-query (mt/id :people))}]
+      (let [provider (mp)
+            query    (-> (lib/query provider (lib.metadata/table provider (mt/id :orders)))
+                         (lib/join (lib.metadata/card provider card-id)))
+            parts    [(notebook-input "c1") (notebook-output "c1" query)]
+            rows     (used-tables/extract-used-tables 99 parts)]
         (is (= #{(mt/id :orders) (mt/id :people)} (table-ids rows)))))))
 
 (deftest notebook-explicit-join-against-model-test
   (testing "an explicit join against a model Card surfaces both the source table and the model's underlying table"
     (mt/with-temp [:model/Card {model-id :id} {:type          :model
                                                :database_id   (mt/id)
-                                               :dataset_query (mt/mbql-query people)}]
-      (let [query (mt/mbql-query orders
-                    {:joins [{:source-table (str "card__" model-id)
-                              :alias        "P"
-                              :condition    [:= $user_id [:field "id" {:join-alias "P"
-                                                                       :base-type  :type/Integer}]]}]})
-            parts [(notebook-input "c1") (notebook-output "c1" query)]
-            rows  (used-tables/extract-used-tables 99 parts)]
+                                               :dataset_query (table-query (mt/id :people))}]
+      (let [provider (mp)
+            query    (-> (lib/query provider (lib.metadata/table provider (mt/id :orders)))
+                         (lib/join (lib.metadata/card provider model-id)))
+            parts    [(notebook-input "c1") (notebook-output "c1" query)]
+            rows     (used-tables/extract-used-tables 99 parts)]
         (is (= #{(mt/id :orders) (mt/id :people)} (table-ids rows)))))))
 
 (deftest notebook-recurses-into-card-with-joins-test
   (testing "recursing into a Card whose own query has joins picks up all of the card's tables"
-    (mt/with-temp [:model/Card {card-id :id} {:type          :question
-                                              :database_id   (mt/id)
-                                              :dataset_query (mt/mbql-query orders
-                                                               {:joins [{:source-table $$people
-                                                                         :alias        "P"
-                                                                         :condition    [:= $user_id &P.people.id]}]})}]
-      (let [parts [(notebook-input "c1") (notebook-output "c1" (card-query card-id))]
-            rows  (used-tables/extract-used-tables 99 parts)]
-        (is (= #{(mt/id :orders) (mt/id :people)} (table-ids rows)))))))
+    (let [provider   (mp)
+          card-query-with-join (-> (lib/query provider (lib.metadata/table provider (mt/id :orders)))
+                                   (lib/join (lib.metadata/table provider (mt/id :people))))]
+      (mt/with-temp [:model/Card {card-id :id} {:type          :question
+                                                :database_id   (mt/id)
+                                                :dataset_query card-query-with-join}]
+        (let [parts [(notebook-input "c1") (notebook-output "c1" (card-query card-id))]
+              rows  (used-tables/extract-used-tables 99 parts)]
+          (is (= #{(mt/id :orders) (mt/id :people)} (table-ids rows))))))))
 
 (deftest notebook-source-table-with-join-to-card-on-card-test
   (testing "an outer query with both :source-table and a join to a chain of cards captures everything"
     (mt/with-temp [:model/Card {leaf :id} {:type          :question
                                            :database_id   (mt/id)
-                                           :dataset_query (mt/mbql-query people)}
+                                           :dataset_query (table-query (mt/id :people))}
                    :model/Card {mid  :id} {:type          :question
                                            :database_id   (mt/id)
-                                           :dataset_query (legacy-query-on-card-id leaf)}]
-      (let [query (mt/mbql-query orders
-                    {:joins [{:source-table (str "card__" mid)
-                              :alias        "P"
-                              :condition    [:= $user_id [:field "id" {:join-alias "P"
-                                                                       :base-type  :type/Integer}]]}]})
-            parts [(notebook-input "c1") (notebook-output "c1" query)]
-            rows  (used-tables/extract-used-tables 99 parts)]
+                                           :dataset_query (card-query leaf)}]
+      (let [provider (mp)
+            query    (-> (lib/query provider (lib.metadata/table provider (mt/id :orders)))
+                         (lib/join (lib.metadata/card provider mid)))
+            parts    [(notebook-input "c1") (notebook-output "c1" query)]
+            rows     (used-tables/extract-used-tables 99 parts)]
         (is (= #{(mt/id :orders) (mt/id :people)} (table-ids rows)))))))
 
 (deftest notebook-implicit-join-via-source-field-breakout-test
@@ -319,16 +315,17 @@
 
 (deftest notebook-implicit-join-inside-nested-card-test
   (testing "implicit joins inside a recursively-walked card's dataset_query also surface"
-    (mt/with-temp [:model/Card {card-id :id}
-                   {:type          :question
-                    :database_id   (mt/id)
-                    :dataset_query (mt/mbql-query orders
-                                     {:aggregation [[:count]]
-                                      :breakout    [[:field (mt/id :products :category)
-                                                     {:source-field (mt/id :orders :product_id)}]]})}]
-      (let [parts [(notebook-input "c1") (notebook-output "c1" (card-query card-id))]
-            rows  (used-tables/extract-used-tables 99 parts)]
-        (is (= #{(mt/id :orders) (mt/id :products)} (table-ids rows)))))))
+    (let [base    (-> (table-query (mt/id :orders))
+                      (lib/aggregate (lib/count)))
+          cat-col (m/find-first #(= (:id %) (mt/id :products :category))
+                                (lib/breakoutable-columns base))
+          inner   (lib/breakout base cat-col)]
+      (mt/with-temp [:model/Card {card-id :id} {:type          :question
+                                                :database_id   (mt/id)
+                                                :dataset_query inner}]
+        (let [parts [(notebook-input "c1") (notebook-output "c1" (card-query card-id))]
+              rows  (used-tables/extract-used-tables 99 parts)]
+          (is (= #{(mt/id :orders) (mt/id :products)} (table-ids rows))))))))
 
 ;;; ---------------------------------------- native (SQL) ----------------------------------------
 
@@ -348,7 +345,7 @@
   (testing "card-type template tag in native SQL recursively expands to its underlying table"
     (mt/with-temp [:model/Card {card-id :id} {:type          :question
                                               :database_id   (mt/id)
-                                              :dataset_query (mt/mbql-query orders)}]
+                                              :dataset_query (table-query (mt/id :orders))}]
       (with-redefs [nqa/tables-for-native (fn [_ & _] {:tables []})]
         (let [;; `{{#N}}` syntax produces a card-type template tag with :card-id N
               sql   (format "SELECT * FROM {{#%s}}" card-id)
@@ -420,7 +417,7 @@
     (mt/with-temp [:model/Card {card-id :id}
                    {:type          :question
                     :database_id   (mt/id)
-                    :dataset_query (mt/mbql-query products)}]
+                    :dataset_query (table-query (mt/id :products))}]
       (let [tag-name (str "#" card-id)
             sql      (format "SELECT * FROM orders WHERE product_id IN (SELECT id FROM {{%s}})" tag-name)
             parts    [(sql-input "s1" "create_sql_query"
