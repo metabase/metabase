@@ -1,12 +1,48 @@
 (ns metabase.metabot.used-tables-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [medley.core :as m]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.query-analyzer :as nqa]
    [metabase.metabot.used-tables :as used-tables]
    [metabase.test :as mt]
    [metabase.util.log.capture :as log.capture]))
 
 (set! *warn-on-reflection* true)
+
+;;; ---------------------------------------- query construction helpers ----------------------------------------
+
+(defn- mp [] (mt/metadata-provider))
+
+(defn- table-query
+  "MBQL 5 query whose first stage's source is `table-id`."
+  [table-id]
+  (let [provider (mp)]
+    (lib/query provider (lib.metadata/table provider table-id))))
+
+(defn- card-query
+  "MBQL 5 query whose first stage's source is the given Card. The Card must
+  exist in the appdb."
+  [card-id]
+  (let [provider (mp)]
+    (lib/query provider (lib.metadata/card provider card-id))))
+
+(defn- legacy-query-on-card-id
+  "Legacy MBQL query referencing a Card by id without a metadata lookup —
+  necessary for tests that simulate a deleted/non-existent Card or that wire
+  one card up as another card's source. The production extractor converts this
+  through `lib/query` like any other query."
+  [card-id]
+  (mt/mbql-query orders {:source-table (str "card__" card-id)}))
+
+(defn- native-query
+  "MBQL 5 native query against the test database. Template tags are
+  auto-extracted from the SQL text (`{{name}}`, `{{#card-id}}`, etc.)."
+  [sql]
+  (lib/native-query (mp) sql))
+
+;;; ---------------------------------------- tool-input/output helpers ----------------------------------------
 
 (defn- notebook-input
   "Build a `construct_notebook_query` tool-input part."
@@ -17,7 +53,7 @@
    :arguments {:reasoning "x"}})
 
 (defn- notebook-output
-  "Build a `construct_notebook_query` tool-output part with the given MBQL 5 query."
+  "Build a `construct_notebook_query` tool-output part with the given query."
   [id query]
   {:type   :tool-output
    :id     id
@@ -31,41 +67,16 @@
    {:type :tool-input :id id :function fn-name :arguments args}))
 
 (defn- sql-output
-  [id sql db-id & {:keys [template-tags]}]
+  "Build a SQL tool-output. `query` is an already-constructed MBQL 5 native
+  query (built via [[native-query]] in the test)."
+  [id sql db-id query]
   {:type   :tool-output
    :id     id
    :result {:output            "<result>...</result>"
             :structured-output {:query-id      "qid"
                                 :query-content sql
                                 :database      db-id
-                                :query         (cond-> {:database db-id
-                                                        :type     :native
-                                                        :native   {:query sql}}
-                                                 template-tags
-                                                 (assoc-in [:native :template-tags] template-tags))}}})
-
-(defn- mbql5-source-table
-  "MBQL 5 query satisfying `::lib.schema/query` with the given source table id."
-  [source-table-id]
-  {:lib/type :mbql/query
-   :database (mt/id)
-   :stages   [{:lib/type     :mbql.stage/mbql
-               :source-table source-table-id}]})
-
-(defn- mbql5-source-card
-  "MBQL 5 query with a `:source-card` stage."
-  [card-id]
-  {:lib/type :mbql/query
-   :database (mt/id)
-   :stages   [{:lib/type    :mbql.stage/mbql
-               :source-card card-id}]})
-
-(defn- legacy-query-on-card
-  "Build a legacy-MBQL `:dataset_query` whose source is another card."
-  [card-id]
-  {:database (mt/id)
-   :type     :query
-   :query    {:source-table (str "card__" card-id)}})
+                                :query         query}}})
 
 (defn- table-ids
   "Return the set of `:table_id`s in the resulting rows."
@@ -85,10 +96,10 @@
                            :structured-output {:query-id "ignored"}}}]]
       (is (= [] (used-tables/extract-used-tables 1 parts))))))
 
-(deftest ^:parallel errored-tool-output-skipped-test
+(deftest errored-tool-output-skipped-test
   (testing "tool outputs with :error are dropped even with structured-output"
     (let [parts [(notebook-input "c1")
-                 (assoc (notebook-output "c1" (mbql5-source-table 7)) :error "exploded")]]
+                 (assoc (notebook-output "c1" (table-query (mt/id :orders))) :error "exploded")]]
       (is (= [] (used-tables/extract-used-tables 1 parts))))))
 
 (deftest ^:parallel missing-structured-output-skipped-test
@@ -107,7 +118,7 @@
 (deftest notebook-source-table-test
   (testing "construct_notebook_query MBQL 5 with :source-table yields one table row"
     (let [parts [(notebook-input "c1")
-                 (notebook-output "c1" (mbql5-source-table (mt/id :orders)))]
+                 (notebook-output "c1" (table-query (mt/id :orders)))]
           rows  (used-tables/extract-used-tables 99 parts)]
       (is (= [{:message_id 99 :table_id (mt/id :orders)}] rows)))))
 
@@ -116,7 +127,7 @@
     (mt/with-temp [:model/Card {card-id :id} {:type          :question
                                               :database_id   (mt/id)
                                               :dataset_query (mt/mbql-query orders)}]
-      (let [parts [(notebook-input "c1") (notebook-output "c1" (mbql5-source-card card-id))]
+      (let [parts [(notebook-input "c1") (notebook-output "c1" (card-query card-id))]
             rows  (used-tables/extract-used-tables 99 parts)]
         (is (= [{:message_id 99 :table_id (mt/id :orders)}] rows))))))
 
@@ -125,7 +136,7 @@
     (mt/with-temp [:model/Card {card-id :id} {:type          :model
                                               :database_id   (mt/id)
                                               :dataset_query (mt/mbql-query orders)}]
-      (let [parts [(notebook-input "c1") (notebook-output "c1" (mbql5-source-card card-id))]
+      (let [parts [(notebook-input "c1") (notebook-output "c1" (card-query card-id))]
             rows  (used-tables/extract-used-tables 99 parts)]
         (is (= [{:message_id 99 :table_id (mt/id :orders)}] rows))))))
 
@@ -135,7 +146,7 @@
                                               :database_id   (mt/id)
                                               :dataset_query (mt/mbql-query orders
                                                                {:aggregation [[:count]]})}]
-      (let [parts [(notebook-input "c1") (notebook-output "c1" (mbql5-source-card card-id))]
+      (let [parts [(notebook-input "c1") (notebook-output "c1" (card-query card-id))]
             rows  (used-tables/extract-used-tables 99 parts)]
         (is (= [{:message_id 99 :table_id (mt/id :orders)}] rows))))))
 
@@ -146,17 +157,16 @@
                                            :dataset_query (mt/mbql-query orders)}
                    :model/Card {a-id :id} {:type          :question
                                            :database_id   (mt/id)
-                                           :dataset_query {:database (mt/id)
-                                                           :type     :query
-                                                           :query    {:source-table (str "card__" b-id)}}}]
-      (let [parts [(notebook-input "c1") (notebook-output "c1" (mbql5-source-card a-id))]
+                                           :dataset_query (legacy-query-on-card-id b-id)}]
+      (let [parts [(notebook-input "c1") (notebook-output "c1" (card-query a-id))]
             rows  (used-tables/extract-used-tables 99 parts)]
         (is (= [{:message_id 99 :table_id (mt/id :orders)}] rows))))))
 
 (deftest notebook-deleted-card-warns-test
   (testing "a :source-card id that doesn't exist yields no row and logs a warn"
     (let [absent-id (+ 1000000 (rand-int 1000000))
-          parts     [(notebook-input "c1") (notebook-output "c1" (mbql5-source-card absent-id))]]
+          parts     [(notebook-input "c1")
+                     (notebook-output "c1" (legacy-query-on-card-id absent-id))]]
       (log.capture/with-log-messages-for-level [logs [metabase.metabot.used-tables :warn]]
         (let [rows (used-tables/extract-used-tables 99 parts)]
           (is (= [] rows))
@@ -172,11 +182,11 @@
                                            :dataset_query (mt/mbql-query orders)}
                    :model/Card {b-id :id} {:type          :question
                                            :database_id   (mt/id)
-                                           :dataset_query (legacy-query-on-card c-id)}
+                                           :dataset_query (legacy-query-on-card-id c-id)}
                    :model/Card {a-id :id} {:type          :question
                                            :database_id   (mt/id)
-                                           :dataset_query (legacy-query-on-card b-id)}]
-      (let [parts [(notebook-input "c1") (notebook-output "c1" (mbql5-source-card a-id))]
+                                           :dataset_query (legacy-query-on-card-id b-id)}]
+      (let [parts [(notebook-input "c1") (notebook-output "c1" (card-query a-id))]
             rows  (used-tables/extract-used-tables 99 parts)]
         (is (= #{(mt/id :orders)} (table-ids rows)))))))
 
@@ -187,8 +197,8 @@
                                            :dataset_query (mt/mbql-query orders)}
                    :model/Card {m-id :id} {:type          :model
                                            :database_id   (mt/id)
-                                           :dataset_query (legacy-query-on-card q-id)}]
-      (let [parts [(notebook-input "c1") (notebook-output "c1" (mbql5-source-card m-id))]
+                                           :dataset_query (legacy-query-on-card-id q-id)}]
+      (let [parts [(notebook-input "c1") (notebook-output "c1" (card-query m-id))]
             rows  (used-tables/extract-used-tables 99 parts)]
         (is (= #{(mt/id :orders)} (table-ids rows)))))))
 
@@ -199,19 +209,16 @@
                                            :dataset_query (mt/mbql-query orders)}
                    :model/Card {q-id :id} {:type          :question
                                            :database_id   (mt/id)
-                                           :dataset_query (legacy-query-on-card m-id)}]
-      (let [parts [(notebook-input "c1") (notebook-output "c1" (mbql5-source-card q-id))]
+                                           :dataset_query (legacy-query-on-card-id m-id)}]
+      (let [parts [(notebook-input "c1") (notebook-output "c1" (card-query q-id))]
             rows  (used-tables/extract-used-tables 99 parts)]
         (is (= #{(mt/id :orders)} (table-ids rows)))))))
 
 (deftest notebook-multi-stage-source-table-test
   (testing "a query with multiple stages still surfaces the first-stage :source-table"
-    (let [query {:lib/type :mbql/query
-                 :database (mt/id)
-                 :stages   [{:lib/type     :mbql.stage/mbql
-                             :source-table (mt/id :orders)
-                             :aggregation  [[:count {:lib/uuid (str (random-uuid))}]]}
-                            {:lib/type :mbql.stage/mbql}]}
+    (let [query (-> (table-query (mt/id :orders))
+                    (lib/aggregate (lib/count))
+                    lib/append-stage)
           parts [(notebook-input "c1") (notebook-output "c1" query)]
           rows  (used-tables/extract-used-tables 99 parts)]
       (is (= #{(mt/id :orders)} (table-ids rows))))))
@@ -264,7 +271,7 @@
                                                                {:joins [{:source-table $$people
                                                                          :alias        "P"
                                                                          :condition    [:= $user_id &P.people.id]}]})}]
-      (let [parts [(notebook-input "c1") (notebook-output "c1" (mbql5-source-card card-id))]
+      (let [parts [(notebook-input "c1") (notebook-output "c1" (card-query card-id))]
             rows  (used-tables/extract-used-tables 99 parts)]
         (is (= #{(mt/id :orders) (mt/id :people)} (table-ids rows)))))))
 
@@ -275,7 +282,7 @@
                                            :dataset_query (mt/mbql-query people)}
                    :model/Card {mid  :id} {:type          :question
                                            :database_id   (mt/id)
-                                           :dataset_query (legacy-query-on-card leaf)}]
+                                           :dataset_query (legacy-query-on-card-id leaf)}]
       (let [query (mt/mbql-query orders
                     {:joins [{:source-table (str "card__" mid)
                               :alias        "P"
@@ -287,34 +294,27 @@
 
 (deftest notebook-implicit-join-via-source-field-breakout-test
   (testing (str "a breakout with :source-field (implicit join) surfaces the joined table — "
-                "the MBQL has no :source-table for products, only a [:field {:source-field <fk>} <field-in-products>]")
-    (let [query {:lib/type :mbql/query
-                 :database (mt/id)
-                 :stages   [{:lib/type     :mbql.stage/mbql
-                             :source-table (mt/id :orders)
-                             :aggregation  [[:count {:lib/uuid (str (random-uuid))}]]
-                             :breakout     [[:field {:lib/uuid     (str (random-uuid))
-                                                     :base-type    :type/Text
-                                                     :source-field (mt/id :orders :product_id)}
-                                             (mt/id :products :category)]]}]}
-          parts [(notebook-input "c1") (notebook-output "c1" query)]
-          rows  (used-tables/extract-used-tables 99 parts)]
+                "the field reaches into products via the orders.product_id FK without "
+                "any explicit :source-table for products")
+    (let [base    (-> (table-query (mt/id :orders))
+                      (lib/aggregate (lib/count)))
+          ;; pick the implicitly-joinable products.category column reachable
+          ;; via the FK orders.product_id -> products.id
+          cat-col (m/find-first #(= (:id %) (mt/id :products :category))
+                                (lib/breakoutable-columns base))
+          query   (lib/breakout base cat-col)
+          parts   [(notebook-input "c1") (notebook-output "c1" query)]
+          rows    (used-tables/extract-used-tables 99 parts)]
       (is (= #{(mt/id :orders) (mt/id :products)} (table-ids rows))))))
 
 (deftest notebook-implicit-join-via-source-field-filter-test
   (testing "an implicit-join field reference inside a filter clause also surfaces the joined table"
-    (let [query {:lib/type :mbql/query
-                 :database (mt/id)
-                 :stages   [{:lib/type     :mbql.stage/mbql
-                             :source-table (mt/id :orders)
-                             :filters      [[:= {:lib/uuid (str (random-uuid))}
-                                             [:field {:lib/uuid     (str (random-uuid))
-                                                      :base-type    :type/Text
-                                                      :source-field (mt/id :orders :product_id)}
-                                              (mt/id :products :category)]
-                                             "Widget"]]}]}
-          parts [(notebook-input "c1") (notebook-output "c1" query)]
-          rows  (used-tables/extract-used-tables 99 parts)]
+    (let [base    (table-query (mt/id :orders))
+          cat-col (m/find-first #(= (:id %) (mt/id :products :category))
+                                (lib/filterable-columns base))
+          query   (lib/filter base (lib/= cat-col "Widget"))
+          parts   [(notebook-input "c1") (notebook-output "c1" query)]
+          rows    (used-tables/extract-used-tables 99 parts)]
       (is (= #{(mt/id :orders) (mt/id :products)} (table-ids rows))))))
 
 (deftest notebook-implicit-join-inside-nested-card-test
@@ -326,7 +326,7 @@
                                      {:aggregation [[:count]]
                                       :breakout    [[:field (mt/id :products :category)
                                                      {:source-field (mt/id :orders :product_id)}]]})}]
-      (let [parts [(notebook-input "c1") (notebook-output "c1" (mbql5-source-card card-id))]
+      (let [parts [(notebook-input "c1") (notebook-output "c1" (card-query card-id))]
             rows  (used-tables/extract-used-tables 99 parts)]
         (is (= #{(mt/id :orders) (mt/id :products)} (table-ids rows)))))))
 
@@ -334,12 +334,13 @@
 
 (deftest sql-extracts-macaw-tables-test
   (testing "native SQL is parsed by macaw and the underlying tables come through"
-    (let [order-id (mt/id :orders)]
+    (let [order-id (mt/id :orders)
+          sql      "SELECT * FROM orders"]
       (with-redefs [nqa/tables-for-native (fn [_ & _]
                                             {:tables [{:table-id order-id}]})]
         (let [parts [(sql-input "s1" "create_sql_query"
-                                {:database_id (mt/id) :sql_query "SELECT * FROM orders"})
-                     (sql-output "s1" "SELECT * FROM orders" (mt/id))]
+                                {:database_id (mt/id) :sql_query sql})
+                     (sql-output "s1" sql (mt/id) (native-query sql))]
               rows  (used-tables/extract-used-tables 99 parts)]
           (is (= [{:message_id 99 :table_id order-id}] rows)))))))
 
@@ -349,14 +350,11 @@
                                               :database_id   (mt/id)
                                               :dataset_query (mt/mbql-query orders)}]
       (with-redefs [nqa/tables-for-native (fn [_ & _] {:tables []})]
-        (let [tags  {"c1" {:id           "c1"
-                           :name         "c1"
-                           :display-name "C1"
-                           :type         :card
-                           :card-id      card-id}}
+        (let [;; `{{#N}}` syntax produces a card-type template tag with :card-id N
+              sql   (format "SELECT * FROM {{#%s}}" card-id)
               parts [(sql-input "s1" "create_sql_query"
-                                {:database_id (mt/id) :sql_query "SELECT 1"})
-                     (sql-output "s1" "SELECT 1" (mt/id) :template-tags tags)]
+                                {:database_id (mt/id) :sql_query sql})
+                     (sql-output "s1" sql (mt/id) (native-query sql))]
               rows  (used-tables/extract-used-tables 99 parts)]
           (is (some #(= % {:message_id 99 :table_id (mt/id :orders)}) rows)))))))
 
@@ -364,43 +362,39 @@
   (testing "template tag pointing at a native-query Card recurses and macaw parses the inner SQL"
     (let [orders-id     (mt/id :orders)
           people-id     (mt/id :people)
-          outer-sql     "SELECT 1"
           inner-sql     "SELECT * FROM people"
           inner-tables  (atom nil)]
       (mt/with-temp [:model/Card {card-id :id} {:type          :question
                                                 :database_id   (mt/id)
-                                                :dataset_query {:database (mt/id)
-                                                                :type     :native
-                                                                :native   {:query inner-sql}}}]
-        (with-redefs [nqa/tables-for-native (fn [query & _]
-                                              ;; production extractor converts to MBQL 5
-                                              ;; before calling, so SQL lives on the stage
-                                              (let [sql (-> query :stages first :native)]
-                                                (cond
-                                                  (= sql outer-sql) {:tables [{:table-id orders-id}]}
-                                                  (= sql inner-sql) (do (reset! inner-tables true)
-                                                                        {:tables [{:table-id people-id}]})
-                                                  :else             {:tables []})))]
-          (let [tags  {"c1" {:id           "c1"
-                             :name         "c1"
-                             :display-name "C1"
-                             :type         :card
-                             :card-id      card-id}}
-                parts [(sql-input "s1" "create_sql_query"
-                                  {:database_id (mt/id) :sql_query outer-sql})
-                       (sql-output "s1" outer-sql (mt/id) :template-tags tags)]
-                rows  (used-tables/extract-used-tables 99 parts)]
-            (is (true? @inner-tables) "macaw was invoked on the inner card's native SQL")
-            (is (= #{orders-id people-id} (table-ids rows))
-                "outer and inner native tables both make it into the result")))))))
+                                                :dataset_query (mt/native-query {:query inner-sql})}]
+        ;; outer SQL must contain the `{{#N}}` template tag for the card so that
+        ;; `lib/native-query` auto-extracts a card-type tag pointing at the card
+        (let [outer-sql (format "SELECT * FROM {{#%s}}" card-id)]
+          (with-redefs [nqa/tables-for-native (fn [query & _]
+                                                ;; production extractor converts to MBQL 5
+                                                ;; before calling, so query is an MBQL 5 query
+                                                (let [sql (lib/raw-native-query query)]
+                                                  (cond
+                                                    (= sql outer-sql) {:tables [{:table-id orders-id}]}
+                                                    (= sql inner-sql) (do (reset! inner-tables true)
+                                                                          {:tables [{:table-id people-id}]})
+                                                    :else             {:tables []})))]
+            (let [parts [(sql-input "s1" "create_sql_query"
+                                    {:database_id (mt/id) :sql_query outer-sql})
+                         (sql-output "s1" outer-sql (mt/id) (native-query outer-sql))]
+                  rows  (used-tables/extract-used-tables 99 parts)]
+              (is (true? @inner-tables) "macaw was invoked on the inner card's native SQL")
+              (is (= #{orders-id people-id} (table-ids rows))
+                  "outer and inner native tables both make it into the result"))))))))
 
 (deftest sql-parse-error-logged-test
   (testing "tables-for-native error yields no rows and logs a warn"
     (with-redefs [nqa/tables-for-native (fn [_ & _]
                                           {:error :query-analysis.error/parse-failed})]
-      (let [parts [(sql-input "s1" "create_sql_query"
-                              {:database_id (mt/id) :sql_query "SELEKT bad"})
-                   (sql-output "s1" "SELEKT bad" (mt/id))]]
+      (let [sql   "SELEKT bad"
+            parts [(sql-input "s1" "create_sql_query"
+                              {:database_id (mt/id) :sql_query sql})
+                   (sql-output "s1" sql (mt/id) (native-query sql))]]
         (log.capture/with-log-messages-for-level [logs [metabase.metabot.used-tables :warn]]
           (is (= [] (used-tables/extract-used-tables 99 parts)))
           (is (some #(re-find #"tables-for-native error" (:message %)) (logs))))))))
@@ -416,7 +410,7 @@
     (let [sql "SELECT o.id FROM orders o JOIN products p ON o.product_id = p.id WHERE p.category = 'Widget'"
           parts [(sql-input "s1" "create_sql_query"
                             {:database_id (mt/id) :sql_query sql})
-                 (sql-output "s1" sql (mt/id))]
+                 (sql-output "s1" sql (mt/id) (native-query sql))]
           rows  (used-tables/extract-used-tables 99 parts)]
       (is (= #{(mt/id :orders) (mt/id :products)} (table-ids rows))))))
 
@@ -429,14 +423,9 @@
                     :dataset_query (mt/mbql-query products)}]
       (let [tag-name (str "#" card-id)
             sql      (format "SELECT * FROM orders WHERE product_id IN (SELECT id FROM {{%s}})" tag-name)
-            tags     {tag-name {:id           tag-name
-                                :name         tag-name
-                                :display-name tag-name
-                                :type         :card
-                                :card-id      card-id}}
             parts    [(sql-input "s1" "create_sql_query"
                                  {:database_id (mt/id) :sql_query sql})
-                      (sql-output "s1" sql (mt/id) :template-tags tags)]
+                      (sql-output "s1" sql (mt/id) (native-query sql))]
             rows     (used-tables/extract-used-tables 99 parts)]
         (is (= #{(mt/id :orders) (mt/id :products)} (table-ids rows))
             "outer macaw walk finds orders; template-tag substitution + card recursion both reach products")))))
@@ -456,10 +445,9 @@
 
 (defn- transform-sql-output
   "Build a `write_transform_sql` tool-output whose suggested transform's
-  `[:source :query]` is an MBQL 5 native query. `sql` is the raw native text
-  that macaw would parse (the production tool produces this via
-  `lib/native-query` + `lib/with-native-query`)."
-  [id sql db-id]
+  `[:source :query]` is an MBQL 5 native query (built via [[native-query]]
+  by the test caller)."
+  [id db-id query]
   {:type :tool-output :id id
    :result {:output "ok"
             :structured-output
@@ -468,10 +456,7 @@
                          :description ""
                          :target {:type "table" :name "" :database db-id :schema nil}
                          :source {:type "query"
-                                  :query {:lib/type :mbql/query
-                                          :database db-id
-                                          :stages   [{:lib/type :mbql.stage/native
-                                                      :native   {:query sql}}]}}}
+                                  :query query}}
              :thinking "x"
              :message "Transform SQL updated successfully."}}})
 
@@ -497,10 +482,11 @@
 
 (deftest transform-sql-extracts-macaw-tables-from-structured-output-test
   (testing "write_transform_sql walks the suggested transform's MBQL 5 native query through macaw"
-    (let [orders-id (mt/id :orders)]
+    (let [orders-id (mt/id :orders)
+          sql       "SELECT * FROM orders"]
       (with-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id orders-id}]})]
         (let [parts [(transform-sql-input "t1")
-                     (transform-sql-output "t1" "SELECT * FROM orders" (mt/id))]
+                     (transform-sql-output "t1" (mt/id) (native-query sql))]
               rows  (used-tables/extract-used-tables 99 parts)]
           (is (= [{:message_id 99 :table_id orders-id}] rows)))))))
 
@@ -508,14 +494,15 @@
   (testing "write_transform_sql also picks up `:source_tables` from arguments when present,
             and dedupes against macaw-derived ids — guards against a future schema relaxation"
     (let [orders-id (mt/id :orders)
-          people-id (mt/id :people)]
+          people-id (mt/id :people)
+          sql       "SELECT * FROM orders"]
       (with-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id orders-id}]})]
         (let [parts [(transform-sql-input "t1"
                                           {:source_tables [{:alias "o" :table_id orders-id
                                                             :schema "PUBLIC" :database_id (mt/id)}
                                                            {:alias "p" :table_id people-id
                                                             :schema "PUBLIC" :database_id (mt/id)}]})
-                     (transform-sql-output "t1" "SELECT * FROM orders" (mt/id))]
+                     (transform-sql-output "t1" (mt/id) (native-query sql))]
               rows  (used-tables/extract-used-tables 99 parts)]
           (is (= #{orders-id people-id} (table-ids rows))
               "macaw-derived `orders` and arg-declared `people` both surface, deduped")
@@ -525,7 +512,7 @@
   (testing "an errored write_transform_sql output yields no rows"
     (with-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id (mt/id :orders)}]})]
       (let [parts [(transform-sql-input "t1")
-                   (assoc (transform-sql-output "t1" "SELECT 1" (mt/id))
+                   (assoc (transform-sql-output "t1" (mt/id) (native-query "SELECT 1"))
                           :error "boom")]]
         (is (= [] (used-tables/extract-used-tables 99 parts)))))))
 
@@ -584,7 +571,7 @@
                   [{:alias "p" :table_id people-id :schema "PUBLIC" :database_id (mt/id)}])
                  (transform-python-output "t1")
                  (notebook-input "n1")
-                 (notebook-output "n1" (mbql5-source-table orders-id))]
+                 (notebook-output "n1" (table-query orders-id))]
           rows  (used-tables/extract-used-tables 99 parts)]
       (is (= #{orders-id people-id} (table-ids rows))))))
 
@@ -592,16 +579,15 @@
 
 (deftest dedupes-within-message-test
   (testing "two notebook tool calls referencing the same table yield a single row"
-    (let [parts [(notebook-input "c1") (notebook-output "c1" (mbql5-source-table (mt/id :orders)))
-                 (notebook-input "c2") (notebook-output "c2" (mbql5-source-table (mt/id :orders)))]
+    (let [parts [(notebook-input "c1") (notebook-output "c1" (table-query (mt/id :orders)))
+                 (notebook-input "c2") (notebook-output "c2" (table-query (mt/id :orders)))]
           rows  (used-tables/extract-used-tables 99 parts)]
       (is (= [{:message_id 99 :table_id (mt/id :orders)}] rows)))))
 
 (deftest stamps-message-id-test
   (testing "every returned row has :message_id set to the value passed in"
-    (let [parts [(notebook-input "c1") (notebook-output "c1" (mbql5-source-table (mt/id :orders)))
-                 (notebook-input "c2") (notebook-output "c2" (mbql5-source-table (mt/id :people)))]
+    (let [parts [(notebook-input "c1") (notebook-output "c1" (table-query (mt/id :orders)))
+                 (notebook-input "c2") (notebook-output "c2" (table-query (mt/id :people)))]
           rows  (used-tables/extract-used-tables 42 parts)]
       (is (every? #(= 42 (:message_id %)) rows))
       (is (= 2 (count rows))))))
-

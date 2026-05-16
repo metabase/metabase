@@ -1,6 +1,8 @@
 (ns metabase.metabot.persistence-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.persistence :as metabot-persistence]
    [metabase.metabot.query-analyzer :as nqa]
    [metabase.metabot.used-tables :as used-tables]
@@ -636,18 +638,17 @@
   "Build a minimal `construct_notebook_query` tool-input/output pair whose MBQL 5
   query references the given table id."
   [call-id source-table-id]
-  [{:type     :tool-input
-    :id       call-id
-    :function "construct_notebook_query"
-    :arguments {:reasoning "x"}}
-   {:type   :tool-output
-    :id     call-id
-    :result {:output "<result>...</result>"
-             :structured-output {:query-id "qid"
-                                 :query    {:lib/type :mbql/query
-                                            :database (mt/id)
-                                            :stages   [{:lib/type     :mbql.stage/mbql
-                                                        :source-table source-table-id}]}}}}])
+  (let [provider (mt/metadata-provider)
+        query    (lib/query provider (lib.metadata/table provider source-table-id))]
+    [{:type     :tool-input
+      :id       call-id
+      :function "construct_notebook_query"
+      :arguments {:reasoning "x"}}
+     {:type   :tool-output
+      :id     call-id
+      :result {:output "<result>...</result>"
+               :structured-output {:query-id "qid"
+                                   :query    query}}}]))
 
 (deftest finalize-records-used-tables-test
   (testing "finalize-assistant-turn! inserts metabot_used_table rows for successful query-generating tool calls"
@@ -695,24 +696,22 @@
   output's `:transform` key is dropped by `strip-tool-output-bloat`, so this
   pair exercises finalize's pre-strip extraction path."
   [call-id db-id sql]
-  [{:type     :tool-input
-    :id       call-id
-    :function "write_transform_sql"
-    :arguments {:database_id db-id
-                :edit_action {:mode "replace" :new_content sql}}}
-   {:type   :tool-output
-    :id     call-id
-    :result {:output "ok"
-             :structured-output
-             {:transform {:id nil :name "T" :description ""
-                          :target {:type "table" :name "" :database db-id :schema nil}
-                          :source {:type "query"
-                                   :query {:lib/type :mbql/query
-                                           :database db-id
-                                           :stages   [{:lib/type :mbql.stage/native
-                                                       :native   {:query sql}}]}}}
-              :thinking "x"
-              :message "Transform SQL updated successfully."}}}])
+  (let [query (lib/native-query (mt/metadata-provider) sql)]
+    [{:type     :tool-input
+      :id       call-id
+      :function "write_transform_sql"
+      :arguments {:database_id db-id
+                  :edit_action {:mode "replace" :new_content sql}}}
+     {:type   :tool-output
+      :id     call-id
+      :result {:output "ok"
+               :structured-output
+               {:transform {:id nil :name "T" :description ""
+                            :target {:type "table" :name "" :database db-id :schema nil}
+                            :source {:type "query"
+                                     :query query}}
+                :thinking "x"
+                :message "Transform SQL updated successfully."}}}]))
 
 (deftest finalize-records-used-tables-for-python-transform-test
   (testing "finalize-assistant-turn! records `metabot_used_table` rows for a
