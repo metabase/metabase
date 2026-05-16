@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
+import _ from "underscore";
 
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
@@ -8,7 +9,10 @@ import {
   useListPermissionsGroupsQuery,
   useListUserMembershipsQuery,
 } from "metabase/api";
-import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
+import {
+  Breadcrumbs,
+  type Crumb,
+} from "metabase/common/components/Breadcrumbs";
 import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
@@ -49,16 +53,22 @@ export function ConversationHeader({
   const firstName = conversation.user?.first_name?.trim() || userName;
   const firstProfile = conversation.profile_id ?? undefined;
 
+  const crumbs = useMemo<Crumb[]>(
+    () =>
+      _.compact([
+        [t`Conversations`, "/admin/metabot/usage-auditing/conversations"],
+        conversation.user && [
+          userName,
+          `/admin/metabot/usage-auditing/conversations?user=${conversation.user.id}`,
+        ],
+        <DateTime key="created_at" value={conversation.created_at} />,
+      ]),
+    [conversation.user, conversation.created_at, userName],
+  );
+
   return (
     <>
-      <Breadcrumbs
-        crumbs={[
-          [t`Conversations`, "/admin/metabot/usage-auditing/conversations"],
-          <>
-            {userName}, <DateTime value={conversation.created_at} />
-          </>,
-        ]}
-      />
+      <Breadcrumbs crumbs={crumbs} />
 
       <Flex justify="space-between" align="flex-start" gap="md">
         <Stack gap="sm">
@@ -76,12 +86,6 @@ export function ConversationHeader({
                   </ActionIcon>
                 </Menu.Target>
                 <Menu.Dropdown>
-                  <Menu.Item
-                    component={ForwardRefLink}
-                    to={`/admin/metabot/usage-auditing/conversations?user=${conversation.user.id}`}
-                  >
-                    {t`See all of ${firstName}'s conversations`}
-                  </Menu.Item>
                   <Menu.Item
                     component={ForwardRefLink}
                     to={Urls.editUser(conversation.user)}
