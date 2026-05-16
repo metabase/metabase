@@ -1,4 +1,6 @@
 (ns metabase.analyze.query-results-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.analyze.query-results-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.analyze.query-results-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]

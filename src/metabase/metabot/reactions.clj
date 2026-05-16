@@ -11,7 +11,7 @@
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::reaction-type
-  "A MetaBot v3 reaction type keyword e.g. `:metabot.reaction/message`"
+  "A Metabot reaction type keyword e.g. `:metabot.reaction/message`"
   [:fn
    {:error/message "Reaction type must be a kebab-case keyword starting whose namespace is `metabot.reaction`."}
    (fn [x]

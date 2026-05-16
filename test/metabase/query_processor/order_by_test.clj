@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.order-by-test
   "Tests for the `:order-by` clause."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.order-by-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.order-by-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]

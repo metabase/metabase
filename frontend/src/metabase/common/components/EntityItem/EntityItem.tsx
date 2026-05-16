@@ -27,10 +27,10 @@ import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { Swapper } from "metabase/common/components/Swapper";
 import type { IconData } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
-import type { IconName, IconProps } from "metabase/ui";
+import type { IconProps } from "metabase/ui";
 import { Ellipsified } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { CollectionItem } from "metabase-types/api";
+import type { CollectionItem, IconName } from "metabase-types/api";
 
 import {
   EntityIconWrapper,

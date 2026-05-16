@@ -147,7 +147,8 @@
   (testing "hydrates status"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))
           hydrated-task (t2/hydrate task :status)]
-      (is (= :running (:status hydrated-task))))))
+      (is (= :running (:status hydrated-task)))
+      (rst/complete-sync-task! (:id task)))))
 
 ;;; ------------------------------------------------------------------------------------------------
 ;;; Tests for Edge Cases and Error Handling
@@ -392,3 +393,78 @@
           (rst/complete-sync-task! (:id new-task))
           (rst/set-version! (:id new-task) "version 2")
           (is (= "version 2" (rst/last-version))))))))
+
+;;; ------------------------------------------------------------------------------------------------
+;;; Tests for supersede-stale-tasks!
+;;; ------------------------------------------------------------------------------------------------
+;;;
+;;; Used by `create-task-with-lock!` (auto-import path) to clean up rows whose owning JVM/thread
+;;; is gone or hung. Must NOT supersede brand-new tasks that haven't reported progress yet.
+
+(defn- insert-task!
+  "Helper: insert a RemoteSyncTask row with the given fields, bypassing the create-sync-task!
+   helper so we can set arbitrary timestamps for staleness testing."
+  [fields]
+  (t2/insert-returning-instance! :model/RemoteSyncTask
+                                 (merge {:sync_task_type "import"
+                                         :initiated_by (mt/user->id :rasta)
+                                         :progress 0}
+                                        fields)))
+
+(deftest supersede-stale-tasks!-marks-stale-task-cancelled-test
+  (testing "supersede-stale-tasks! marks a stale task (last_progress_report_at older than the
+            timeout) as cancelled and terminated"
+    (let [old-time (t/minus (t/offset-date-time) (t/hours 1))
+          stale-task (insert-task! {:started_at old-time
+                                    :last_progress_report_at old-time
+                                    :progress 0.5})]
+      (rst/supersede-stale-tasks!)
+      (let [after (t2/select-one :model/RemoteSyncTask :id (:id stale-task))]
+        (is (true? (:cancelled after)))
+        (is (some? (:ended_at after)))
+        (is (= "Superseded after staleness timeout" (:error_message after)))))))
+
+(deftest supersede-stale-tasks!-leaves-brand-new-tasks-alone-test
+  (testing "supersede-stale-tasks! must NOT mark a brand-new task that just inserted —
+            protects against superseding tasks created moments ago by another node in the
+            cluster (the DB defaults last_progress_report_at to current_timestamp on insert)"
+    (let [now (t/offset-date-time)
+          new-task (insert-task! {:started_at              now
+                                  :last_progress_report_at now})]
+      (rst/supersede-stale-tasks!)
+      (let [after (t2/select-one :model/RemoteSyncTask :id (:id new-task))]
+        (is (false? (:cancelled after))
+            "brand-new task must remain unchanged")
+        (is (nil? (:ended_at after))
+            "brand-new task must not be terminated"))
+      (rst/complete-sync-task! (:id new-task)))))
+
+(deftest supersede-stale-tasks!-leaves-active-tasks-alone-test
+  (testing "supersede-stale-tasks! must NOT mark a task that has reported progress recently"
+    (let [now (t/offset-date-time)
+          old-start (t/minus now (t/hours 1))
+          active-task (insert-task! {:started_at old-start
+                                     :last_progress_report_at now
+                                     :progress 0.7})]
+      (rst/supersede-stale-tasks!)
+      (let [after (t2/select-one :model/RemoteSyncTask :id (:id active-task))]
+        (is (false? (:cancelled after))
+            "task with recent progress must remain unchanged")
+        (is (nil? (:ended_at after))
+            "task with recent progress must not be terminated"))
+      (rst/complete-sync-task! (:id active-task)))))
+
+(deftest supersede-stale-tasks!-leaves-terminated-tasks-alone-test
+  (testing "supersede-stale-tasks! must NOT touch tasks that already have ended_at set"
+    (let [old-time   (t/minus (t/offset-date-time) (t/hours 1))
+          ended-task (insert-task! {:started_at old-time
+                                    :ended_at  old-time
+                                    :progress  1.0})
+          ;; Capture the post-insert ended_at so the comparison is done at the DB's precision
+          ;; (Postgres/MySQL truncate nanoseconds to microseconds; H2 keeps full nanos).
+          before     (t2/select-one :model/RemoteSyncTask :id (:id ended-task))]
+      (rst/supersede-stale-tasks!)
+      (let [after (t2/select-one :model/RemoteSyncTask :id (:id ended-task))]
+        (is (false? (:cancelled after)))
+        (is (= (:ended_at before) (:ended_at after))
+            "ended_at must not be overwritten")))))

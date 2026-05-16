@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [diehard.core :as dh]
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
@@ -220,18 +221,36 @@
     {:conflicts (vec all-conflicts)
      :summary (into #{} (map :category) all-conflicts)}))
 
+(defn- branch-changed-since-scheduling?
+  "Returns true if `pre-task-branch` was captured by the async-* function and the
+   `remote-sync-branch` setting has since drifted to a different value. Used as a
+   defense-in-depth check against any future code path that bypasses the operation-level
+   guards and mutates the setting between scheduling and the work running."
+  [pre-task-branch]
+  (and (some? pre-task-branch)
+       (not= pre-task-branch (settings/remote-sync-branch))))
+
 (defn import!
   "Imports and reloads Metabase entities from a remote snapshot.
 
   Takes a SourceSnapshot instance, a RemoteSyncTask ID for progress tracking, and optional keyword arguments:
   - :force? - forces import even when the snapshot version matches the last imported version
+  - :pre-task-branch - the value of `remote-sync-branch` at scheduling time; if it differs
+    from the current setting at task start, the import aborts with `:error` to protect data
+    integrity (the load mutates the app DB, so we refuse to proceed when state has drifted)
 
   Loads serialized entities, removes entities not in the import, syncs the remote-sync-object table, and
   optionally creates a remote-synced collection.
 
   Returns a map with :status (either :success or :error), :version, and :message keys. Various exceptions may be
   thrown during import and are caught and converted to error status maps."
-  [^SourceSnapshot snapshot task-id & {:keys [force?]}]
+  [^SourceSnapshot snapshot task-id & {:keys [force? pre-task-branch]}]
+  (when (branch-changed-since-scheduling? pre-task-branch)
+    (log/warnf "Aborting import: remote-sync-branch changed from %s to %s since task was scheduled"
+               pre-task-branch (settings/remote-sync-branch))
+    (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
+                    {:pre-task-branch pre-task-branch
+                     :current-branch  (settings/remote-sync-branch)})))
   (log/info "Reloading remote entities from the remote source")
   (analytics/inc! :metabase-remote-sync/imports)
   (let [sync-timestamp (t/instant)]
@@ -296,13 +315,24 @@
 (defn export!
   "Exports remote-synced collections to a remote source repository.
 
-  Takes a SourceSnapshot instance, a RemoteSyncTask ID for progress tracking, and a commit message string. Extracts all
-  remote-synced collections, serializes their content, writes the files to the source, and updates all
-  RemoteSyncObject statuses to 'synced'.
+  Takes a SourceSnapshot instance, a RemoteSyncTask ID for progress tracking, a commit message string, and
+  optional keyword arguments:
+  - :pre-task-branch - the value of `remote-sync-branch` at scheduling time; if it differs
+    from the current setting at task start, the export aborts with `:error` (defense-in-depth
+    against any path that mutates the setting between scheduling and the work running).
+
+  Extracts all remote-synced collections, serializes their content, writes the files to the source, and
+  updates all RemoteSyncObject statuses to 'synced'.
 
   Returns a map with :status (either :success or :error), :version, and optionally :message keys. Various
   exceptions may be thrown during export and are caught and converted to error status maps."
-  [^SourceSnapshot snapshot task-id message]
+  [^SourceSnapshot snapshot task-id message & {:keys [pre-task-branch]}]
+  (when (branch-changed-since-scheduling? pre-task-branch)
+    (log/warnf "Aborting export: remote-sync-branch changed from %s to %s since task was scheduled"
+               pre-task-branch (settings/remote-sync-branch))
+    (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
+                    {:pre-task-branch pre-task-branch
+                     :current-branch  (settings/remote-sync-branch)})))
   (if snapshot
     (let [sync-timestamp (t/instant)]
       (try
@@ -337,13 +367,21 @@
   "Takes a cluster-wide lock and either returns an existing in-progress RemoteSyncTask ID or creates a new one.
 
   Takes a task-type string (either 'import' or 'export'). Returns a RemoteSyncTask with an optional :existing? key.
-  If a task is already running, returns (assoc existing-task :existing? true). Otherwise creates a new task and
-  returns it."
+  If a task is already running (per `current-task`, which uses the staleness window), returns
+  `(assoc existing-task :existing? true)`. Otherwise — i.e., no current task, but stale rows might still
+  be hanging around — calls `supersede-stale-tasks!` to mark them terminated, then creates a new task.
+
+  Used directly by the auto-import Quartz job, so auto-imports self-heal after a stale task. User-driven
+  endpoints go through `ensure-no-active-task!` first (in `async-import!` / `async-export!` / etc.), which
+  uses the stricter `task-running?` predicate and refuses if any task — including stale — is alive. So
+  this function only reaches the supersession branch on the auto-import path."
   [task-type]
   (cluster-lock/with-cluster-lock ::remote-sync-task
     (if-let [task (remote-sync.task/current-task)]
       (assoc task :existing? true)
-      (remote-sync.task/create-sync-task! task-type api/*current-user-id*))))
+      (do
+        (remote-sync.task/supersede-stale-tasks!)
+        (remote-sync.task/create-sync-task! task-type api/*current-user-id*)))))
 
 ;;; ------------------------------------------- Remote Changes Check -------------------------------------------
 
@@ -417,20 +455,44 @@
   RemoteSyncTask ID, and an optional branch name. On success, updates the remote-sync-branch setting (if branch
   provided), marks the task complete, and invalidates the remote changes cache. On conflict, sets the version and
   stores the conflicts. On error, marks the task as failed with the error message. For any other status, marks the
-  task as failed with 'Unexpected Error'."
+  task as failed with 'Unexpected Error'.
+
+  If the task has already been terminated (`ended_at` is set, e.g., because an admin cancelled it
+  via POST /current-task/cancel while the virtual thread was still running), this function logs a
+  warning and returns without writing anything. This prevents a still-running thread from clobbering
+  the cancellation bookkeeping or stomping the branch setting via its captured value.
+
+  The read and the subsequent write happen in a single transaction with `SELECT ... FOR UPDATE` so
+  a concurrent cancel cannot slip in between the terminated-check and the result-write."
   [result task-id & [branch]]
-  (case (:status result)
-    :success (do
-               (t2/with-transaction [_conn]
-                 (when branch
-                   (settings/remote-sync-branch! branch))
-                 (remote-sync.task/complete-sync-task! task-id))
-               (invalidate-remote-changes-cache!))
-    :conflict (do
-                (remote-sync.task/set-version! task-id (:version result))
-                (remote-sync.task/conflict-sync-task! task-id (:conflicts result)))
-    :error (remote-sync.task/fail-sync-task! task-id (:message result))
-    (remote-sync.task/fail-sync-task! task-id "Unexpected Error")))
+  (let [proceed?
+        (t2/with-transaction [_conn]
+          (let [task (t2/select-one :model/RemoteSyncTask :id task-id {:for :update})]
+            (cond
+              (nil? task)
+              (do (log/warnf "Task %s missing during result handling; skipping" task-id)
+                  false)
+
+              (some? (:ended_at task))
+              (do (log/warnf "Task %s already terminated (ended_at=%s); skipping result handling to preserve state"
+                             task-id (:ended_at task))
+                  false)
+
+              :else
+              (do
+                (case (:status result)
+                  :success (do
+                             (when branch
+                               (settings/remote-sync-branch! branch))
+                             (remote-sync.task/complete-sync-task! task-id))
+                  :conflict (do
+                              (remote-sync.task/set-version! task-id (:version result))
+                              (remote-sync.task/conflict-sync-task! task-id (:conflicts result)))
+                  :error (remote-sync.task/fail-sync-task! task-id (:message result))
+                  (remote-sync.task/fail-sync-task! task-id "Unexpected Error"))
+                true))))]
+    (when (and proceed? (= (:status result) :success))
+      (invalidate-remote-changes-cache!))))
 
 (defn- run-async!
   "Executes a remote sync task asynchronously in a virtual thread.
@@ -466,13 +528,20 @@
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 and :conflicts true if there
   are unsaved changes and force? is false."
   [branch force? import-args]
-  (let [source (source/source-from-settings branch)
-        has-dirty? (remote-sync.object/dirty?)]
+  (guards/ensure-no-active-task!)
+  (let [pre-task-branch (settings/remote-sync-branch)
+        source          (source/source-from-settings branch)
+        has-dirty?      (remote-sync.object/dirty?)]
     (when (and has-dirty? (not force?))
       (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
                       {:status-code 400
                        :conflicts true})))
-    (run-async! "import" branch (fn [task-id] (import! (source.p/snapshot source) task-id (assoc import-args :force? force?))))))
+    (run-async! "import" branch
+                (fn [task-id]
+                  (import! (source.p/snapshot source) task-id
+                           (assoc import-args
+                                  :force?           force?
+                                  :pre-task-branch  pre-task-branch))))))
 
 (defn async-export!
   "Exports the remote-synced collections to the remote source repository asynchronously.
@@ -484,15 +553,38 @@
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 and :conflicts true if there
   are new remote changes and force? is false."
   [branch force? message]
-  (let [source (source/source-from-settings branch)
-        last-task-version (remote-sync.task/last-version)
-        snapshot (source.p/snapshot source)
+  (guards/ensure-no-active-task!)
+  (let [pre-task-branch        (settings/remote-sync-branch)
+        source                 (source/source-from-settings branch)
+        last-task-version      (remote-sync.task/last-version)
+        snapshot               (source.p/snapshot source)
         current-source-version (source.p/version snapshot)]
     (when (and (not force?) (some? last-task-version) (not= last-task-version current-source-version))
       (throw (ex-info "Cannot export changes that will overwrite new changes in the branch."
                       {:status-code 400
                        :conflicts true})))
-    (run-async! "export" branch (fn [task-id] (export! snapshot task-id message)))))
+    (run-async! "export" branch
+                (fn [task-id]
+                  (export! snapshot task-id message :pre-task-branch pre-task-branch)))))
+
+(defn create-branch!
+  "Creates a new remote branch from `base-branch` and switches `remote-sync-branch`
+   to the new name. Does not publish events or return a response map; the caller
+   is responsible for those concerns."
+  [name base-branch]
+  (guards/ensure-no-active-task!)
+  (let [source (source/source-from-settings)]
+    (source.p/create-branch source name base-branch)
+    (settings/remote-sync-branch! name)))
+
+(defn stash!
+  "Creates a new remote branch from the current `remote-sync-branch` and starts an
+   async export to it. Returns the resulting RemoteSyncTask. Does not publish events."
+  [new-branch message]
+  (guards/ensure-no-active-task!)
+  (let [source (source/source-from-settings)]
+    (source.p/create-branch source new-branch (settings/remote-sync-branch))
+    (async-export! new-branch false message)))
 
 (defn finish-remote-config!
   "Based on the current configuration, fill in any missing settings and finalize remote sync setup.

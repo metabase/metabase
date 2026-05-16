@@ -1,4 +1,5 @@
 (ns metabase.query-processor.middleware.add-rows-truncated-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.add-rows-truncated-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.test-metadata :as meta]

@@ -1,4 +1,5 @@
 (ns metabase-enterprise.tenants.api-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.tenants.api-test]}}}}}}
   (:require
    [clojure.test :refer [deftest testing is use-fixtures]]
    [metabase.collections.models.collection :as collection]

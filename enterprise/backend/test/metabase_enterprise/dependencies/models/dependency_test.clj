@@ -1,4 +1,5 @@
 (ns metabase-enterprise.dependencies.models.dependency-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.dependencies.models.dependency-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]

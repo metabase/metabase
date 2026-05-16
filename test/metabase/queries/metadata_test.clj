@@ -1,4 +1,5 @@
 (ns metabase.queries.metadata-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.queries.metadata-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]

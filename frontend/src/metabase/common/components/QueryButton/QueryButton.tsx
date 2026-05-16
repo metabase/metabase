@@ -3,8 +3,8 @@ import { memo } from "react";
 import { Link } from "react-router";
 
 import CS from "metabase/css/core/index.css";
-import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./QueryButton.module.css";
 

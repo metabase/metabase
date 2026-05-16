@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.breakout-test
   "Tests for the `:breakout` clause."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.breakout-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.breakout-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]

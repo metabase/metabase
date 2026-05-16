@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { jt, t } from "ttag";
 
-import { trackCustomHomepageDashboardEnabled } from "metabase/admin/settings/analytics";
+import { trackCustomHomepageDashboardEnabled } from "metabase/common/analytics";
 import { DashboardSelector } from "metabase/common/components/DashboardSelector/DashboardSelector";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";

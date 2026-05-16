@@ -255,8 +255,7 @@ export const getDatabasesPermissionEditor = createSelector(
         ? database.getSchemas()[0]
         : (database.schema(schemaName) as Schema);
       permissionSubject = "fields";
-      entities = schema
-        .getTables()
+      entities = (schema.tables ?? [])
         .sort((a, b) => a.display_name.localeCompare(b.display_name))
         .map((table) => {
           const entityId = getTableEntityId(table);
@@ -366,7 +365,7 @@ export const getDatabasesPermissionEditor = createSelector(
       title,
       breadcrumbs,
       description:
-        group != null
+        typeof group?.member_count === "number"
           ? ngettext(
               msgid`${group.member_count} person`,
               `${group.member_count} people`,

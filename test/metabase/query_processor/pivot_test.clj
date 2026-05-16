@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor.pivot-test
   "Tests for pivot table actions for the query processor"
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.pivot-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]

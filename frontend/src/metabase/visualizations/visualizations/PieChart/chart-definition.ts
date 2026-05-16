@@ -88,18 +88,16 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
   hasEmptyState: true,
   settings: {
     ...metricSetting("pie.metric", {
-      get section() {
-        return t`Data`;
-      },
+      getSection: () => t`Data`,
       get title() {
         return t`Measure`;
       },
       showColumnSetting: true,
       getDefault: (rawSeries) => getDefaultPieColumns(rawSeries).metric,
     }),
-    ...columnSettings({ hidden: true }),
+    ...columnSettings({ getHidden: () => true }),
     ...dimensionSetting("pie.dimension", {
-      hidden: true,
+      getHidden: () => true,
       get title() {
         return t`Dimension`;
       },
@@ -107,7 +105,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       getDefault: (rawSeries) => getDefaultPieColumns(rawSeries).dimension,
     }),
     "pie.rows": {
-      hidden: true,
+      getHidden: () => true,
       getValue: _.memoize(
         (series, settings) => {
           return getPieRows(series, settings, (value, options) =>
@@ -136,7 +134,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       readDependencies: ["pie.sort_rows", "pie.dimension"],
     },
     "pie.sort_rows": {
-      hidden: true,
+      getHidden: () => true,
       getDefault: getDefaultSortRows,
     },
     ...nestedSettings<
@@ -178,9 +176,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
     }),
 
     "pie._dimensions_widget": {
-      get section() {
-        return t`Data`;
-      },
+      getSection: () => t`Data`,
       widget: DimensionsWidget,
       getProps: (rawSeries, settings, _onChange, _extra, onChangeSettings) => ({
         rawSeries,
@@ -190,9 +186,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       readDependencies: ["pie.dimension", "pie.rows"],
     },
     "pie.show_legend": {
-      get section() {
-        return t`Display`;
-      },
+      getSection: () => t`Display`,
       get title() {
         return t`Show legend`;
       },
@@ -204,9 +198,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       }),
     },
     "pie.show_total": {
-      get section() {
-        return t`Display`;
-      },
+      getSection: () => t`Display`,
       get title() {
         return t`Show total`;
       },
@@ -218,9 +210,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       }),
     },
     "pie.show_labels": {
-      get section() {
-        return t`Display`;
-      },
+      getSection: () => t`Display`,
       get title() {
         return t`Show labels`;
       },
@@ -229,9 +219,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       inline: true,
     },
     "pie.percent_visibility": {
-      get section() {
-        return t`Display`;
-      },
+      getSection: () => t`Display`,
       get title() {
         return t`Show percentages`;
       },
@@ -267,9 +255,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       }),
     },
     "pie.decimal_places": {
-      get section() {
-        return t`Display`;
-      },
+      getSection: () => t`Display`,
       get title() {
         return t`Number of decimal places`;
       },
@@ -286,9 +272,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       readDependencies: ["pie.percent_visibility"],
     },
     "pie.slice_threshold": {
-      get section() {
-        return t`Display`;
-      },
+      getSection: () => t`Display`,
       get title() {
         return t`Minimum slice percentage`;
       },

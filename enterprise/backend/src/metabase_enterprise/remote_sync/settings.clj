@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase.collections.models.collection :as collection]
    [metabase.settings.core :as setting :refer [defsetting]]
@@ -205,6 +206,7 @@
 
   Throws ExceptionInfo if the git settings are invalid or if unable to connect to the repository."
   [{:keys [remote-sync-url remote-sync-token] :as settings}]
+  (guards/ensure-no-active-task!)
   (let [git-related-keys #{:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch}
         updating-git-settings? (some git-related-keys (keys settings))
         env-set-url    (= :env (setting/get-raw-value-source :remote-sync-url))
