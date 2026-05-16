@@ -1,6 +1,7 @@
 import _ from "underscore";
 
-import { invalidateNotificationsApiCache, revisionApi } from "metabase/api";
+import { invalidateNotificationsApiCache } from "metabase/api/notification";
+import { revisionApi } from "metabase/api/revision";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,

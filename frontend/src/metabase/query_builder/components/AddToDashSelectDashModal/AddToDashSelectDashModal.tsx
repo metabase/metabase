@@ -4,7 +4,7 @@ import { t } from "ttag";
 import {
   type OmniPickerItem,
   isInDbTree,
-} from "metabase/common/components/Pickers";
+} from "metabase/common/components/Pickers/EntityPicker/types";
 import { DashboardPickerModal } from "metabase/common/components/Pickers/DashboardPicker";
 import { getCollectionType } from "metabase/common/components/Pickers/EntityPicker/utils";
 import { canPlaceEntityInCollectionOrDescendants } from "metabase/data-studio/utils";

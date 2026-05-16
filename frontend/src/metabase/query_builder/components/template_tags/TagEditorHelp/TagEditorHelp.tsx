@@ -3,7 +3,7 @@ import { jt, t } from "ttag";
 
 import { Button } from "metabase/common/components/Button";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks/use-docs-url";
 import CS from "metabase/css/core/index.css";
 import { Code } from "metabase/ui";
 import { uuid } from "metabase/utils/uuid";
@@ -204,7 +204,7 @@ interface TagExampleProps {
 const TagExample = ({ datasetQuery, setDatasetQuery }: TagExampleProps) => (
   <div>
     <h5>{t`Example:`}</h5>
-    <p>
+    <div>
       <Code block>{datasetQuery.native.query}</Code>
       {setDatasetQuery && (
         <Button
@@ -215,7 +215,7 @@ const TagExample = ({ datasetQuery, setDatasetQuery }: TagExampleProps) => (
           {t`Try it`}
         </Button>
       )}
-    </p>
+    </div>
   </div>
 );
 

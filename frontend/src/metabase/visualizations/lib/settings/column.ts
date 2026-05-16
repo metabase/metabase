@@ -20,7 +20,7 @@ import {
   getDateFormatFromStyle,
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
-} from "metabase/visualizations/lib/formatting";
+} from "metabase/visualizations/lib/formatting/date";
 import { getDeduplicatedTableColumnSettings } from "metabase/visualizations/lib/settings/utils";
 import {
   getDefaultCurrency,

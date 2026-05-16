@@ -10,7 +10,7 @@ import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { CreateOrEditQuestionAlertModalWithQuestion } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal";
 import { ALERT_TYPE_ROWS, getAlertType } from "metabase/notifications/utils";
-import { zoomInRow } from "metabase/query_builder/actions";
+import { zoomInRow } from "metabase/query_builder/actions/zoom";
 import {
   getIsShowingRawTable,
   getUiControls,

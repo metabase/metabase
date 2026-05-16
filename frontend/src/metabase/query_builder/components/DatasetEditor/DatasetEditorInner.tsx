@@ -13,7 +13,7 @@ import {
 import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 
-import { useListModelIndexesQuery } from "metabase/api";
+import { useListModelIndexesQuery } from "metabase/api/model-index";
 import {
   ActionButton,
   type ActionButtonHandle,
@@ -26,10 +26,8 @@ import { getSemanticTypeIcon } from "metabase/common/utils/fields";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import {
-  setDatasetEditorTab,
-  updateQuestion as updateQuestionAction,
-} from "metabase/query_builder/actions";
+import { updateQuestion as updateQuestionAction } from "metabase/query_builder/actions/core/updateQuestion";
+import { setDatasetEditorTab } from "metabase/query_builder/actions/models";
 import { getInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
 import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
 import { ViewSidebar } from "metabase/query_builder/components/view/ViewSidebar";

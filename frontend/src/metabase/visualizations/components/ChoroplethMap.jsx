@@ -17,7 +17,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { Flex, Text } from "metabase/ui";
 import MetabaseSettings from "metabase/utils/settings";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
-import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatValue } from "metabase/visualizations/lib/formatting/value";
 import {
   computeMinimalBounds,
   getCanonicalRowKey,

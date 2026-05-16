@@ -8,7 +8,7 @@ import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { Box, Ellipsified } from "metabase/ui";
 import { displayNameForColumn } from "metabase/utils/formatting";
-import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatValue } from "metabase/visualizations/lib/formatting/value";
 import type { ClickObject } from "metabase-lib";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import { TYPE } from "metabase-lib/v1/types/constants";

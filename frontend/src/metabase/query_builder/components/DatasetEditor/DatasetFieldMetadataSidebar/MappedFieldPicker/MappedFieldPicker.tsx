@@ -3,7 +3,7 @@ import { useField } from "formik";
 import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 
-import { useGetFieldQuery } from "metabase/api";
+import { useGetFieldQuery } from "metabase/api/field";
 import { SelectButton } from "metabase/common/components/SelectButton";
 import CS from "metabase/css/core/index.css";
 import { SchemaTableAndFieldDataSelector } from "metabase/querying/common/components/DataSelector";

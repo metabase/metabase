@@ -1,7 +1,7 @@
 import { type FormEvent, type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/common/hooks/use-setting";
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,

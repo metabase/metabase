@@ -16,9 +16,20 @@ beforeEach(() => {
   fetchMock.post("path:/api/frontend-errors", 200);
 });
 
+function clearCljsAnalyticsInterval() {
+  const analyticsImpl = globalThis.metabase?.analytics?.impl;
+  const interval = analyticsImpl?._interval;
+
+  if (interval) {
+    clearInterval(interval);
+    analyticsImpl._interval = undefined;
+  }
+}
+
 afterEach(async () => {
   // Cleanup React components FIRST to trigger any unmount effects
   cleanup();
+  clearCljsAnalyticsInterval();
   // Wait for any pending fetch requests to complete
   await fetchMock.callHistory.flush();
 
@@ -38,4 +49,8 @@ afterEach(async () => {
       `Test completed with unmocked routes:\n${errors.join("\n")}`,
     );
   }
+});
+
+afterAll(() => {
+  clearCljsAnalyticsInterval();
 });

@@ -3,13 +3,13 @@ import { useCallback, useMemo } from "react";
 import slugg from "slugg";
 import { t } from "ttag";
 
+import { useLazyGetCardQuery } from "metabase/api/card";
 import {
-  useLazyGetCardQuery,
   useLazyListAutocompleteSuggestionsQuery,
   useLazyListCardAutocompleteSuggestionsQuery,
-  useListSnippetsQuery,
-} from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
+} from "metabase/api/database";
+import { useListSnippetsQuery } from "metabase/api/snippet";
+import { useSetting } from "metabase/common/hooks/use-setting";
 import { isNotNull } from "metabase/utils/types";
 import type { Card, CardId, DatabaseId, Field } from "metabase-types/api";
 

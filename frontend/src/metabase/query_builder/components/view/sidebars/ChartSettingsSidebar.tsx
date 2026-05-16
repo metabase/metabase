@@ -4,7 +4,7 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import CS from "metabase/css/core/index.css";
-import { onReplaceAllVisualizationSettings } from "metabase/query_builder/actions";
+import { onReplaceAllVisualizationSettings } from "metabase/query_builder/actions/visualization-settings";
 import {
   getUiControls,
   getVisualizationSettings,

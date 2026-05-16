@@ -1,4 +1,4 @@
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/common/hooks/use-setting";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 

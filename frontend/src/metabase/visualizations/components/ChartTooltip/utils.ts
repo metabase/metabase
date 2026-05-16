@@ -1,6 +1,6 @@
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import type { OptionsType } from "metabase/utils/formatting/types";
-import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatValue } from "metabase/visualizations/lib/formatting/value";
 import type {
   ComputedVisualizationSettings,
   RemappingHydratedDatasetColumn,

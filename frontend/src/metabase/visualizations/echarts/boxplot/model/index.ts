@@ -31,7 +31,7 @@ import type {
   YAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { ShowWarning } from "metabase/visualizations/echarts/types";
-import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatValue } from "metabase/visualizations/lib/formatting/value";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type {

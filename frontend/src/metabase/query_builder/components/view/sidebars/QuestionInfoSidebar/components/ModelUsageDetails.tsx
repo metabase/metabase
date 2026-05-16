@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useListCardsQuery } from "metabase/api";
+import { useListCardsQuery } from "metabase/api/card";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useGetIcon } from "metabase/hooks/use-icon";

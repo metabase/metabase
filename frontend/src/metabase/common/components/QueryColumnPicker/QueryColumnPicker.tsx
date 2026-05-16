@@ -10,7 +10,7 @@ import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
-import { useLocale } from "metabase/common/hooks";
+import { useLocale } from "metabase/common/hooks/use-locale";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";

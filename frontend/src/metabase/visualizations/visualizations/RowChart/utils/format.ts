@@ -3,7 +3,7 @@ import type { NumberLike, StringLike } from "@visx/scale";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { isEmpty } from "metabase/utils/validate";
 import { getFormattingOptionsWithoutScaling } from "metabase/visualizations/echarts/cartesian/model/util";
-import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatValue } from "metabase/visualizations/lib/formatting/value";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import type {

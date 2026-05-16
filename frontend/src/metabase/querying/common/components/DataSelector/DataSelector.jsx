@@ -5,7 +5,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useSearchQuery } from "metabase/api";
+import { useSearchQuery } from "metabase/api/search";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";

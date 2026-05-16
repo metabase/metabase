@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
-import { turnQuestionIntoModel } from "metabase/query_builder/actions";
+import { turnQuestionIntoModel } from "metabase/query_builder/actions/models";
 import { useDispatch } from "metabase/redux";
 import { Box, Button, Text } from "metabase/ui";
 

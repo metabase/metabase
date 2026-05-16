@@ -3,15 +3,15 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getDashboard } from "metabase/api";
+import { getDashboard } from "metabase/api/dashboard";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { Modal } from "metabase/common/components/Modal";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
-import { type ToastArgs, useToast } from "metabase/common/hooks";
+import { type ToastArgs, useToast } from "metabase/common/hooks/use-toast";
 import { QuestionEmbedWidget } from "metabase/embedding/components/QuestionEmbedWidget";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { QuestionAlertListModal } from "metabase/notifications/modals";
-import { setArchivedQuestion } from "metabase/query_builder/actions";
+import { setArchivedQuestion } from "metabase/query_builder/actions/core/updateQuestion";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import { NewDatasetModal } from "metabase/query_builder/components/NewDatasetModal";
 import { PreviewQueryModal } from "metabase/query_builder/components/view/PreviewQueryModal";

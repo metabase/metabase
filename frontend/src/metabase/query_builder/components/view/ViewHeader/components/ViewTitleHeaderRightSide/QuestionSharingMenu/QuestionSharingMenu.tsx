@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/common/hooks/use-setting";
 import { EmbedMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/EmbedMenuItem";
 import { PublicLinkMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/PublicLinkMenuItem";
 import {

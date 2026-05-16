@@ -11,7 +11,7 @@ import {
   HoverParent,
   TableInfoIcon,
 } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks/use-docs-url";
 import CS from "metabase/css/core/index.css";
 import { Box, DelayGroup, Flex, Icon, rem } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";

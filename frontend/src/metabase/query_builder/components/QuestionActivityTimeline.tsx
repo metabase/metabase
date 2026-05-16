@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 
-import { useListRevisionsQuery } from "metabase/api";
+import { useListRevisionsQuery } from "metabase/api/revision";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
 import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { revertToRevision } from "metabase/query_builder/actions";
+import { revertToRevision } from "metabase/query_builder/actions/core/core";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import type Question from "metabase-lib/v1/Question";

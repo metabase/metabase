@@ -5,7 +5,7 @@ import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
 
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
-import { setNotebookNativePreviewSidebarWidth } from "metabase/query_builder/actions";
+import { setNotebookNativePreviewSidebarWidth } from "metabase/query_builder/actions/ui";
 import { getUiControls } from "metabase/query_builder/selectors";
 import {
   Notebook,

@@ -1,7 +1,9 @@
 import "metabase/css/vendor.css";
 import "metabase/css/index.module.css";
 
-window.MetabaseBootstrap = {
+const bootstrapTarget = typeof window !== "undefined" ? window : globalThis;
+
+bootstrapTarget.MetabaseBootstrap = {
   "enable-xrays": true,
   "available-timezones": [
     "GMT",

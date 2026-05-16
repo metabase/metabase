@@ -21,7 +21,7 @@ import type {
   WaterFallChartDataDensity,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getHexColor } from "metabase/visualizations/lib/color";
-import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatValue } from "metabase/visualizations/lib/formatting/value";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import {
   SERIES_COLORS_SETTING_KEY,

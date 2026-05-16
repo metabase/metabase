@@ -8,7 +8,7 @@ import type React from "react";
 import _ from "underscore";
 
 import { DELETE, GET, POST, PUT } from "metabase/api/legacy-client";
-import { PLUGIN_ENTITIES } from "metabase/plugins";
+import { PLUGIN_ENTITIES } from "metabase/plugins/oss/entities";
 import { combineReducers, compose, withAction } from "metabase/redux";
 import {
   type RequestsStateTree,
@@ -397,7 +397,9 @@ export function createEntity(def: EntityDef): Entity {
   entity.getObjectStatePath = getObjectStatePath;
   entity.getListStatePath = getListStatePath;
 
-  const getWritableProperties = (object: EntityObject): Partial<EntityObject> =>
+  const getWritableProperties = (
+    object: EntityObject,
+  ): Partial<EntityObject> =>
     entity.writableProperties != null
       ? _.pick(object, "id", ...entity.writableProperties)
       : object;

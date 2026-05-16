@@ -10,7 +10,7 @@ import { useMergedRef } from "@mantine/hooks";
 import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
-import { useDndSensors } from "metabase/common/hooks";
+import { useDndSensors } from "metabase/common/hooks/use-dnd-sensors";
 import { Icon } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 

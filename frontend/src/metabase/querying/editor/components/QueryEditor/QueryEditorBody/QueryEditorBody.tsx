@@ -5,7 +5,7 @@ import { useWindowSize } from "react-use";
 
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { ResizeHandle } from "metabase/common/components/ResizeHandle";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/common/hooks/use-setting";
 import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box } from "metabase/ui";

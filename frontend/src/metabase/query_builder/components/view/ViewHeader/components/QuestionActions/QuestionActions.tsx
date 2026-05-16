@@ -6,7 +6,7 @@ import { BookmarkToggle } from "metabase/common/components/BookmarkToggle";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { UploadInput } from "metabase/common/components/upload";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { runQuestionQuery } from "metabase/query_builder/actions";
+import { runQuestionQuery } from "metabase/query_builder/actions/querying";
 import { QuestionMoreActionsMenu } from "metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu";
 import type { QueryModalType } from "metabase/querying/constants";
 import { useDispatch } from "metabase/redux";

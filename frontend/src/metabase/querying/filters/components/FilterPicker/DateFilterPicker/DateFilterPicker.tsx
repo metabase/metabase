@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useLocale } from "metabase/common/hooks";
+import { useLocale } from "metabase/common/hooks/use-locale";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { DatePicker } from "metabase/querying/common/components/DatePicker";

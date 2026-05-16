@@ -1,4 +1,4 @@
-import { useAsync } from "react-use";
+import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import type { ExportFormat } from "metabase/common/types/export";
@@ -35,12 +35,38 @@ export const PublicLinkPopover = ({
 }: PublicLinkPopoverProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const { loading } = useAsync(async () => {
-    if (isOpen && !url) {
-      return createPublicLink();
+  const [loading, setLoading] = useState(false);
+  const createPublicLinkRef = useRef(createPublicLink);
+
+  useEffect(() => {
+    createPublicLinkRef.current = createPublicLink;
+  }, [createPublicLink]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!isOpen || url) {
+      setLoading(false);
+      return;
     }
-    return null;
-  }, [url, isOpen]);
+
+    setLoading(true);
+    const createPublicLinkResult = createPublicLinkRef.current();
+    if (createPublicLinkResult == null) {
+      setLoading(false);
+      return;
+    }
+
+    Promise.resolve(createPublicLinkResult).finally(() => {
+      if (isMounted) {
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, url]);
 
   const onRemoveLink = () => {
     onClose();

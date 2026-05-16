@@ -4,7 +4,7 @@ import { type Ref, forwardRef, useMemo, useRef } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import { useLocale } from "metabase/common/hooks";
+import { useLocale } from "metabase/common/hooks/use-locale";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";

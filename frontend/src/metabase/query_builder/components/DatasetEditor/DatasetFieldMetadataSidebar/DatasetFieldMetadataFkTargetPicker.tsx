@@ -1,6 +1,6 @@
 import { useField } from "formik";
 
-import { useListDatabaseIdFieldsQuery } from "metabase/api";
+import { useListDatabaseIdFieldsQuery } from "metabase/api/database";
 import { FkTargetPicker } from "metabase/metadata/components";
 import type { DatabaseId, Field, FieldId } from "metabase-types/api";
 

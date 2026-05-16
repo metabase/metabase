@@ -4,7 +4,7 @@ import * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useListCollectionItemsQuery } from "metabase/api";
+import { useListCollectionItemsQuery } from "metabase/api/collection";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarContent } from "metabase/common/components/SidebarContent";

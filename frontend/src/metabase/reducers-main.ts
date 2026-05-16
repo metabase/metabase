@@ -4,7 +4,7 @@ import { combineReducers } from "@reduxjs/toolkit";
 
 import { admin } from "metabase/admin/admin";
 import * as pulse from "metabase/notifications/pulse/reducers";
-import { PLUGIN_REDUCERS } from "metabase/plugins";
+import { PLUGIN_REDUCERS } from "metabase/plugins/oss/core";
 import * as qb from "metabase/query_builder/reducers";
 import revisions from "metabase/redux/revisions";
 import reference from "metabase/reference/reference";

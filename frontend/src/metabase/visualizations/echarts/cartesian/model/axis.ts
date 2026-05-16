@@ -38,7 +38,7 @@ import {
   normalizeDate,
   tryGetDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
-import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatValue } from "metabase/visualizations/lib/formatting/value";
 import { computeNumericDataInterval } from "metabase/visualizations/lib/numeric";
 import { getLineAreaBarComparisonSettings } from "metabase/visualizations/lib/settings";
 import type {

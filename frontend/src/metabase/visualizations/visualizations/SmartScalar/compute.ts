@@ -5,7 +5,7 @@ import type { ColorGetter } from "metabase/ui/colors/types";
 import type { OptionsType } from "metabase/utils/formatting/types";
 import { isNumber } from "metabase/utils/types";
 import { isEmpty } from "metabase/utils/validate";
-import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatValue } from "metabase/visualizations/lib/formatting/value";
 import { formatDateTimeRangeWithUnit } from "metabase/visualizations/lib/formatting/date";
 import { computeChange } from "metabase/visualizations/lib/numeric";
 import { findPreviousNonEmptyRowIndex } from "metabase/visualizations/lib/trend-helpers";

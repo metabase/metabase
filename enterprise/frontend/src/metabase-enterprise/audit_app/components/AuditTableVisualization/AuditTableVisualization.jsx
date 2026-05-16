@@ -12,7 +12,7 @@ import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 import { displayNameForColumn } from "metabase/utils/formatting";
 import { registerVisualization } from "metabase/visualizations/index";
-import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatValue } from "metabase/visualizations/lib/formatting/value";
 import { isColumnRightAligned } from "metabase/visualizations/lib/table";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
 

@@ -7,7 +7,7 @@ import { FormMessage } from "metabase/forms";
 import { formatChannelRecipients } from "metabase/pulse";
 import { Box, Stack } from "metabase/ui";
 import Settings from "metabase/utils/settings";
-import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
+import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting/date";
 import type { Alert, DashboardSubscription, User } from "metabase-types/api";
 
 import type { NotificationType } from "../../types";

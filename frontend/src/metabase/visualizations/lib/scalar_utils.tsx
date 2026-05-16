@@ -2,7 +2,7 @@ import { ColorPill } from "metabase/common/components/ColorPill";
 import { Text } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 import type { OptionsType } from "metabase/utils/formatting/types";
-import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatValue } from "metabase/visualizations/lib/formatting/value";
 import type { RowValue, ScalarSegment } from "metabase-types/api";
 
 export const COMPACT_MAX_WIDTH = 250;

@@ -7,11 +7,11 @@ import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { softReloadCard } from "metabase/query_builder/actions/core/core";
 import {
-  softReloadCard,
   turnModelIntoQuestion,
   turnQuestionIntoModel,
-} from "metabase/query_builder/actions";
+} from "metabase/query_builder/actions/models";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
 import { DatasetMetadataStrengthIndicator } from "metabase/query_builder/components/view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator";
 import { shouldShowQuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";

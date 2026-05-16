@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import { useLocale } from "metabase/common/hooks";
+import { useLocale } from "metabase/common/hooks/use-locale";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { getTranslatedFilterDisplayName } from "metabase/querying/filters/utils/display";

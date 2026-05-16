@@ -8,7 +8,7 @@ import { useMount, usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useListTimelinesQuery } from "metabase/api";
+import { useListTimelinesQuery } from "metabase/api/timeline";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";

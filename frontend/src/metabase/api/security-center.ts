@@ -1,4 +1,4 @@
-import { Api } from "metabase/api";
+import { Api } from "metabase/api/api";
 import type {
   AcknowledgeAdvisoriesResponse,
   AcknowledgeAdvisoryResponse,

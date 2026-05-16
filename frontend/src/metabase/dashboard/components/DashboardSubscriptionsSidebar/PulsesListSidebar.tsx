@@ -13,7 +13,7 @@ import type { State } from "metabase/redux/store";
 import { Button, Icon, Tooltip } from "metabase/ui";
 import { conjunct, formatTimeWithUnit } from "metabase/utils/formatting";
 import { formatFrame } from "metabase/utils/time-dayjs";
-import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
+import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting/date";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,

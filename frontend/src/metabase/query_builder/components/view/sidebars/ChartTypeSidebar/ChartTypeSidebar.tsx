@@ -3,10 +3,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
-import { useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks/use-toast";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
-import { updateQuestion } from "metabase/query_builder/actions";
+import { updateQuestion } from "metabase/query_builder/actions/core/updateQuestion";
 import {
   ChartTypeSettings,
   type GetSensibleVisualizationsProps,

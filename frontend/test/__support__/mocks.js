@@ -1,30 +1,32 @@
 global.ga = () => {};
 global.snowplow = () => {};
 
-global.window.matchMedia = () => ({
-  addEventListener: () => {},
-  removeEventListener: () => {},
-});
+if (typeof global.window !== "undefined") {
+  global.window.matchMedia = () => ({
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  });
 
-/**
- * jsdom doesn't have scrollBy or scrollTo, so we need to mock it.
- */
-global.window.HTMLElement.prototype.scrollBy = jest.fn();
-global.window.HTMLElement.prototype.scrollTo = jest.fn();
+  /**
+   * jsdom doesn't have scrollBy or scrollTo, so we need to mock it.
+   */
+  global.window.HTMLElement.prototype.scrollBy = jest.fn();
+  global.window.HTMLElement.prototype.scrollTo = jest.fn();
 
-/**
- * jsdom doesn't have scrollIntoView, so we need to mock it.
- * Used e.g. under the hood in Mantine's Select component.
- */
-global.window.HTMLElement.prototype.scrollIntoView = jest.fn();
+  /**
+   * jsdom doesn't have scrollIntoView, so we need to mock it.
+   * Used e.g. under the hood in Mantine's Select component.
+   */
+  global.window.HTMLElement.prototype.scrollIntoView = jest.fn();
 
-global.window.ResizeObserver = class ResizeObserver {
-  observe() {}
+  global.window.ResizeObserver = class ResizeObserver {
+    observe() {}
 
-  unobserve() {}
+    unobserve() {}
 
-  disconnect() {}
-};
+    disconnect() {}
+  };
+}
 
 jest.mock("metabase/analytics");
 
