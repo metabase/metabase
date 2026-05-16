@@ -647,6 +647,8 @@
    (prometheus/counter :metabase-metabot/turn-started
                        {:description "A metabot turn was started (user row + assistant placeholder inserted)"
                         :labels [:profile-id]})
+   (prometheus/counter :metabase-metabot/quality-score-errors
+                       {:description "Errors raised by the conversation quality-score compute hook"})
 
    ;; release dashboard metrics
    (prometheus/counter :metabase-sync/failures

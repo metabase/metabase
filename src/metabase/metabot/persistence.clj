@@ -6,6 +6,8 @@
    [metabase.app-db.core :as app-db]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.provider-util :as provider-util]
+   [metabase.metabot.quality.core :as quality.core]
+   [metabase.metabot.quality.message-stats :as quality.message-stats]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -272,16 +274,20 @@
       (when state-part
         (t2/update! :model/MetabotConversation conversation-id
                     {:state (:data state-part)}))
-      (t2/update! :model/MetabotMessage assistant-msg-id
-                  (cond-> {:data         content
-                           :usage        usage
-                           :total_tokens (->> (vals usage)
-                                              (map #(+ (:prompt %) (:completion %)))
-                                              (reduce + 0))
-                           :finished     (boolean finished?)
-                           :error        (safe-encode-error error)}
-                    slack-msg-id (assoc :slack_msg_id slack-msg-id)
-                    channel-id   (assoc :channel_id channel-id))))))
+      (let [{:keys [query_modified query_count]} (quality.message-stats/message-stats content)]
+        (t2/update! :model/MetabotMessage assistant-msg-id
+                    (cond-> {:data           content
+                             :usage          usage
+                             :total_tokens   (->> (vals usage)
+                                                  (map #(+ (:prompt %) (:completion %)))
+                                                  (reduce + 0))
+                             :finished       (boolean finished?)
+                             :error          (safe-encode-error error)
+                             :query_modified query_modified
+                             :query_count    query_count}
+                      slack-msg-id (assoc :slack_msg_id slack-msg-id)
+                      channel-id   (assoc :channel_id channel-id))))
+      (quality.core/score-conversation! conversation-id))))
 
 (defn set-response-slack-msg-id!
   "Backfill slack_msg_id on a MetabotMessage by primary key."
