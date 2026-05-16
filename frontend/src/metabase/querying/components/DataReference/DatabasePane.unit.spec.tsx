@@ -1,15 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
-import {
-  setupDatabaseEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
+import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { getNextId } from "__support__/utils";
 import { checkNotNull } from "metabase/utils/types";
 import {

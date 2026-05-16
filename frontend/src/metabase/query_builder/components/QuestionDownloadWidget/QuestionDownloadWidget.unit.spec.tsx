@@ -1,12 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupCardQueryDownloadEndpoint,
-  setupLastDownloadFormatEndpoints,
-} from "__support__/server-mocks";
+import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks/card";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { act, renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui-with-store";
 import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -50,6 +47,7 @@ const setup = ({
     entities: createMockEntitiesState({
       questions: [card],
     }),
+    currentUser: null,
     settings: mockSettings(settings),
   });
 
@@ -57,7 +55,6 @@ const setup = ({
   const question = checkNotNull(metadata.question(card.id));
 
   setupCardQueryDownloadEndpoint(card, "json");
-  setupLastDownloadFormatEndpoints();
 
   renderWithProviders(
     <QuestionDownloadWidget

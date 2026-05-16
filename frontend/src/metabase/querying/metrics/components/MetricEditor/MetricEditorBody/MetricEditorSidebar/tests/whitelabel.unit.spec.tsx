@@ -1,4 +1,4 @@
-import { screen } from "__support__/ui";
+import { screen } from "__support__/ui-minimal";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";
 

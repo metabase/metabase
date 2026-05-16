@@ -1,3 +1,5 @@
+/** @jest-environment node */
+
 import expression from "ts-dedent";
 
 import { enclosingFunction } from "./position";

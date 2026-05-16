@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { screen } from "__support__/ui-minimal";
 import { createMockCollection } from "metabase-types/api/mocks";
 
 import { setupQuestionSharingMenu } from "./tests/setup";

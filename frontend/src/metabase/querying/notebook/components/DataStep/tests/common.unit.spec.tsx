@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
-import { fireEvent, getIcon, screen } from "__support__/ui";
+import { fireEvent, getIcon, screen } from "__support__/ui-minimal";
 import type { IconName } from "metabase/ui";
 import { METAKEY } from "metabase/utils/browser";
 import { checkNotNull } from "metabase/utils/types";

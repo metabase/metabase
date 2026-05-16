@@ -1,13 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks/activity";
 import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -15,7 +15,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import type { RecentMetric } from "metabase/browse/metrics";
 import {
   createMockMetricResult,

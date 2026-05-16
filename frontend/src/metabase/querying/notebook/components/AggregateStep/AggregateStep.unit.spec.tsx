@@ -5,7 +5,7 @@ import {
   queryIcon,
   renderWithProviders,
   screen,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import {
   createMockQueryBuilderState,
   createMockState,

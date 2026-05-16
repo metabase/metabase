@@ -1,17 +1,19 @@
+import { combineReducers } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupDatabasesEndpoints,
   setupUnauthorizedDatabasesEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/database";
 import { createMockEntitiesState } from "__support__/store";
 import {
   fireEvent,
   renderWithProviders,
   screen,
   waitFor,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
+import * as qb from "metabase/query_builder/reducers";
 import { createMockQueryBuilderState } from "metabase/redux/store/mocks";
 import { formatNumber } from "metabase/utils/formatting";
 import { checkNotNull } from "metabase/utils/types";
@@ -96,6 +98,9 @@ async function setup({
         databases: isReadOnly ? [] : databases,
         questions: "id" in card ? [card] : [],
       }),
+    },
+    customReducers: {
+      qb: combineReducers(qb),
     },
   });
 

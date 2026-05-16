@@ -1,18 +1,26 @@
 import userEvent from "@testing-library/user-event";
 
+jest.mock(
+  "metabase/querying/common/components/FieldValuePicker/SearchValuePicker/constants",
+  () => ({
+    SEARCH_DEBOUNCE: 20,
+    SEARCH_LIMIT: 100,
+  }),
+);
+
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupFieldSearchValuesEndpoint,
   setupFieldValuesEndpoint,
   setupRemappedFieldValueEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/field";
 import {
   createMockClipboardData,
   renderWithProviders,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,
@@ -773,7 +781,7 @@ describe("StringFilterValuePicker", () => {
 
       const input = screen.getByRole("combobox", { name: "Filter value" });
       await userEvent.type(input, "a@b.com");
-      input.blur();
+      await userEvent.tab();
       expect(onChange).toHaveBeenLastCalledWith(["a@b.com"]);
     });
 

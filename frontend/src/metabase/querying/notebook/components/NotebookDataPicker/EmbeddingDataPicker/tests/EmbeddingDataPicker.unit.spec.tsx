@@ -1,13 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
-import { screen } from "__support__/ui";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { screen } from "__support__/ui-minimal";
 
 import { setup } from "./setup";
 
 describe("EmbeddingDataPicker", () => {
   beforeEach(() => {
-    setupEnterprisePlugins();
+    setupEnterpriseOnlyPlugin("embedding");
   });
 
   describe("multi-stage data picker", () => {

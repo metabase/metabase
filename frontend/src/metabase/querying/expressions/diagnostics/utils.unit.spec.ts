@@ -1,3 +1,5 @@
+/** @jest-environment node */
+
 import { CALL, Token } from "../pratt";
 
 import { position } from "./utils";

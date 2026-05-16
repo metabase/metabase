@@ -4,11 +4,15 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
-  setupNativeQuerySnippetEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/collection";
+import { setupNativeQuerySnippetEndpoints } from "__support__/server-mocks/native-query-snippet";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import {
+  renderWithProviders,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
+import { modal } from "metabase/redux/ui";
 import type { TokenFeatures, User } from "metabase-types/api";
 import {
   createMockCollection,
@@ -65,6 +69,9 @@ export async function setup({
     />,
     {
       storeInitialState: state,
+      customReducers: {
+        modal,
+      },
     },
   );
   await waitForLoaderToBeRemoved();

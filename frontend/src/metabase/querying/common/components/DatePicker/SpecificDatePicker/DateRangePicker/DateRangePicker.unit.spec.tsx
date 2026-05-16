@@ -1,6 +1,6 @@
 import _userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui-with-store";
 
 import { DateRangePicker } from "./DateRangePicker";
 import type { DateRangePickerValue } from "./types";

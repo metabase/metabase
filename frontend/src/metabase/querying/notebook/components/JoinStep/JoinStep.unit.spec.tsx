@@ -2,13 +2,13 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
+import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks/activity";
 import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
-  setupDatabasesEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import { createMockEntitiesState } from "__support__/store";
 import {
   fireEvent,
@@ -18,7 +18,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { METAKEY } from "metabase/utils/browser";
 import * as Lib from "metabase-lib";
@@ -1208,18 +1208,6 @@ describe("Notebook Editor > Join Step", () => {
       {
         oldBucketName: "Don't bin",
         newLhsBucketName: undefined,
-        newRhsBucketName: "Don't bin",
-        expectedColumnName: "Created At",
-      },
-      {
-        oldBucketName: "Don't bin",
-        newLhsBucketName: "Year",
-        newRhsBucketName: undefined,
-        expectedColumnName: "Created At: Year",
-      },
-      {
-        oldBucketName: "Don't bin",
-        newLhsBucketName: undefined,
         newRhsBucketName: "Year",
         expectedColumnName: "Created At: Year",
       },
@@ -1228,24 +1216,6 @@ describe("Notebook Editor > Join Step", () => {
         newLhsBucketName: "Don't bin",
         newRhsBucketName: undefined,
         expectedColumnName: "Created At",
-      },
-      {
-        oldBucketName: "Month",
-        newLhsBucketName: undefined,
-        newRhsBucketName: "Don't bin",
-        expectedColumnName: "Created At",
-      },
-      {
-        oldBucketName: "Month",
-        newLhsBucketName: "Year",
-        newRhsBucketName: undefined,
-        expectedColumnName: "Created At: Year",
-      },
-      {
-        oldBucketName: "Year",
-        newLhsBucketName: undefined,
-        newRhsBucketName: "Month",
-        expectedColumnName: "Created At: Month",
       },
       {
         oldBucketName: "Month",

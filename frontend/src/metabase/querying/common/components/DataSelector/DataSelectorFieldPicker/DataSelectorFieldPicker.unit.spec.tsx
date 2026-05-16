@@ -1,5 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
-import { fireEvent, render, screen } from "__support__/ui";
+import { fireEvent, render, screen } from "__support__/ui-minimal";
 import { checkNotNull } from "metabase/utils/types";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { ORDERS, createSampleDatabase } from "metabase-types/api/mocks/presets";

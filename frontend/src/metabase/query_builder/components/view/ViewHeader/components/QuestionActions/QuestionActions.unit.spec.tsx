@@ -10,7 +10,7 @@ import {
   screen,
   waitFor,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import * as modelActions from "metabase/query_builder/actions/models";
 import { MODAL_TYPES } from "metabase/querying/constants";
 import {

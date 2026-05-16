@@ -2,7 +2,7 @@ import type { ComponentProps } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import {
   createMockQueryBuilderState,
   createMockState,

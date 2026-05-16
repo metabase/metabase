@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, queryIcon, screen } from "__support__/ui";
+import { getIcon, queryIcon, screen } from "__support__/ui-minimal";
 
 import { setup } from "./setup";
 

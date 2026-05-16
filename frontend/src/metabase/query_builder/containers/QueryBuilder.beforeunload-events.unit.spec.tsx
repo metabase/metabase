@@ -1,8 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import { callMockEvent } from "__support__/events";
-import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
-import { screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks/user-key-value";
+import {
+  screen,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui-minimal";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
 import registerVisualizations from "metabase/visualizations/register";
 

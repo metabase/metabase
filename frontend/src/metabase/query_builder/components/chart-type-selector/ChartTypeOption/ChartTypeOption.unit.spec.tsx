@@ -5,7 +5,7 @@ import {
   queryIcon,
   renderWithProviders,
   screen,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import type { IconName } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import type { CardDisplayType } from "metabase-types/api";

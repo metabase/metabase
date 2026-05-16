@@ -1,11 +1,9 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupCollectionByIdEndpoint,
-  setupDatabasesEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
-import { renderWithProviders } from "__support__/ui";
+import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks/activity";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
+import { renderWithProviders } from "__support__/ui-with-store";
 import { createMockModelResult } from "metabase/browse/models/test-utils";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as Lib from "metabase-lib";

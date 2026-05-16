@@ -1,4 +1,4 @@
-import { fireEvent, getIcon, render, screen } from "__support__/ui";
+import { fireEvent, getIcon, render, screen } from "__support__/ui-minimal";
 import { VisibilityToggler } from "metabase/query_builder/components/NativeQueryEditor/VisibilityToggler";
 
 describe("VisibilityToggler", () => {

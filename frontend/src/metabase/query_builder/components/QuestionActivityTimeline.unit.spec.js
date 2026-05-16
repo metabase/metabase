@@ -1,12 +1,10 @@
-import {
-  setupRevisionsEndpoints,
-  setupUsersEndpoints,
-} from "__support__/server-mocks";
+import { setupRevisionsEndpoints } from "__support__/server-mocks/revision";
+import { setupUsersEndpoints } from "__support__/server-mocks/user";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
 import { createMockUser, createMockUserInfo } from "metabase-types/api/mocks";
 import { createMockRevision } from "metabase-types/api/mocks/revision";

@@ -1,3 +1,5 @@
+/** @jest-environment node */
+
 import { quoteString, unquoteString } from "./string";
 
 const dq = (str: string) => quoteString(str, '"');

@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { testDataset } from "__support__/testDataset";
-import { screen, within } from "__support__/ui";
+import { screen, within } from "__support__/ui-minimal";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";

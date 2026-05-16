@@ -1,12 +1,14 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupDatabasesEndpoints,
-  setupParameterValuesEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupParameterValuesEndpoints } from "__support__/server-mocks/dataset";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import {
   createMockQueryBuilderState,
   createMockState,

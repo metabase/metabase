@@ -1,3 +1,5 @@
+/** @jest-environment node */
+
 import { complete } from "./__support__";
 import { suggestLiterals } from "./literals";
 

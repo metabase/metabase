@@ -1,11 +1,11 @@
 import fetchMock from "fetch-mock";
 
-import { setupCollectionsEndpoints } from "__support__/server-mocks";
+import { setupCollectionsEndpoints } from "__support__/server-mocks/collection";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import {
   createMockCollection,
   createMockCollectionItem,

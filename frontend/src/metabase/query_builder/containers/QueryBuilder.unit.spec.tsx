@@ -2,16 +2,14 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { setupJestCanvasMock } from "jest-canvas-mock";
 
-import {
-  setupLastDownloadFormatEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+import { setupSettingsEndpoints } from "__support__/server-mocks/settings";
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks/user-key-value";
 import {
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-minimal";
 import registerVisualizations from "metabase/visualizations/register";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 

@@ -3,7 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
 import { mockSettings } from "__support__/settings";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import {
+  fireEvent,
+  getIcon,
+  renderWithProviders,
+  screen,
+} from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import Question from "metabase-lib/v1/Question";
 import {
@@ -62,7 +67,7 @@ describe("SavedQuestionHeaderButton", () => {
 
     const titleInput = screen.getByTestId("saved-question-header-title");
     await userEvent.type(titleInput, "1");
-    titleInput.blur();
+    fireEvent.blur(titleInput);
 
     expect(onSave).toHaveBeenCalled();
   });
@@ -73,7 +78,7 @@ describe("SavedQuestionHeaderButton", () => {
     const titleInput = screen.getByTestId("saved-question-header-title");
     await userEvent.clear(titleInput);
     await userEvent.paste("A".repeat(300));
-    titleInput.blur();
+    fireEvent.blur(titleInput);
 
     expect(onSave).toHaveBeenCalledWith("A".repeat(254));
   });

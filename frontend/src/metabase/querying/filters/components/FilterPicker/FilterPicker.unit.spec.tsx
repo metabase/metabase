@@ -1,13 +1,13 @@
 import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 
-import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
+import { setupFieldsValuesEndpoints } from "__support__/server-mocks/field";
 import {
   renderWithProviders,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
@@ -184,6 +184,14 @@ function setup({ query = createQuery(), filter }: SetupOpts = {}) {
   };
 }
 
+async function waitForExpressionEditorToBeReady() {
+  const input = screen.getByTestId("custom-expression-query-editor");
+
+  await waitFor(() => expect(input).toHaveProperty("readOnly", false));
+
+  return input;
+}
+
 describe("FilterPicker", () => {
   describe("without a filter", () => {
     it("should list filterable columns", async () => {
@@ -340,7 +348,7 @@ describe("FilterPicker", () => {
         expect(screen.getByTestId("date-filter-picker")).toBeInTheDocument();
       });
 
-      it("should open the expression editor when column type isn't supported", () => {
+      it("should open the expression editor when column type isn't supported", async () => {
         const query = Lib.filter(
           createQuery(),
           -1,
@@ -349,7 +357,7 @@ describe("FilterPicker", () => {
         const [filter] = Lib.filters(query, -1);
 
         setup({ query, filter });
-        expect(screen.getByText(/Custom expression/i)).toBeInTheDocument();
+        expect(await waitForExpressionEditorToBeReady()).toBeInTheDocument();
       });
     });
 
@@ -412,13 +420,11 @@ describe("FilterPicker", () => {
       text: string,
       { delay }: { delay: number } = { delay: 0 },
     ) {
-      const input = screen.getByTestId("custom-expression-query-editor");
+      const input = await waitForExpressionEditorToBeReady();
       const button = screen.getByRole("button", { name: /(Done|Update)/ });
 
       // The expression editor applies changes on blur,
       // but for some reason it doesn't work without `act`.
-      await waitFor(() => expect(input).toHaveProperty("readOnly", false));
-
       await userEvent.clear(input);
       await userEvent.type(input, text, { delay });
       await userEvent.tab();
@@ -442,9 +448,7 @@ describe("FilterPicker", () => {
 
     it("should open the expression editor for unsupported expressions", async () => {
       setup(createQueryWithNullStringFilter());
-      expect(
-        screen.getByTestId("custom-expression-query-editor"),
-      ).toBeInTheDocument();
+      expect(await waitForExpressionEditorToBeReady()).toBeInTheDocument();
     });
 
     it("should update a filter with a numeric custom expression", async () => {

@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 

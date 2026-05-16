@@ -2,7 +2,7 @@ import {
   createMockMediaQueryList,
   renderWithProviders,
   screen,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import type { CardId, Parameter } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 

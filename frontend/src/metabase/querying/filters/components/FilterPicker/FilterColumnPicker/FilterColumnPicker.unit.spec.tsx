@@ -1,5 +1,9 @@
-import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { setupFieldsValuesEndpoints } from "__support__/server-mocks/field";
+import {
+  fireEvent,
+  renderWithProviders,
+  screen,
+} from "__support__/ui-with-store";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { SAMPLE_DB_FIELD_VALUES } from "metabase-types/api/mocks/presets";
@@ -40,7 +44,7 @@ describe("FilterColumnPicker", () => {
     const stageIndexes = [0];
     setup({ query, stageIndexes });
 
-    screen.getByText("User").click();
+    fireEvent.click(screen.getByText("User"));
     fireEvent.change(screen.getByTestId("list-search-field"), {
       target: { value: "Birth Date" },
     });

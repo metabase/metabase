@@ -1,5 +1,9 @@
-import { setupCardDataset } from "__support__/server-mocks";
-import { renderHookWithProviders, waitFor } from "__support__/ui";
+import { setupCardDataset } from "__support__/server-mocks/dataset";
+import {
+  act,
+  renderHookWithProviders,
+  waitFor,
+} from "__support__/ui-with-store";
 import Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 import { createMockDataset } from "metabase-types/api/mocks";
@@ -62,7 +66,9 @@ describe("useQueryResults", () => {
       onChangeUiState,
     });
 
-    await result.current.runQuery();
+    await act(async () => {
+      await result.current.runQuery();
+    });
 
     await waitFor(() => {
       expect(onChangeUiState).toHaveBeenCalled();
@@ -80,7 +86,9 @@ describe("useQueryResults", () => {
       mockResponse: { status: 400, dataset: ERROR_DATASET },
     });
 
-    await result.current.runQuery();
+    await act(async () => {
+      await result.current.runQuery();
+    });
 
     await waitFor(() => {
       expect(onChangeUiState).toHaveBeenCalled();

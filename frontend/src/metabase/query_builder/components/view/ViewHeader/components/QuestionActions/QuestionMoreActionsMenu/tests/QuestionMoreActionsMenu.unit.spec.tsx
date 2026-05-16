@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { screen } from "__support__/ui-minimal";
 import { createMockNotification } from "metabase-types/api/mocks";
 
 import { openMenu, setup } from "./setup";

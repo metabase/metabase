@@ -8,7 +8,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { checkNotNull } from "metabase/utils/types";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 import { getMockModelCacheInfo } from "metabase-types/api/mocks";

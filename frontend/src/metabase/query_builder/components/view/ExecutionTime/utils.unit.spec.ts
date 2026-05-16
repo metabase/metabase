@@ -1,3 +1,5 @@
+/** @jest-environment node */
+
 import { formatDuration } from "./utils";
 
 describe("formatDuration", () => {

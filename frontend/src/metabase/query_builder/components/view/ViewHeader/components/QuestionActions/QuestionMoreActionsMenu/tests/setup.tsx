@@ -2,12 +2,12 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { useState } from "react";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
+import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { QuestionAlertListModal } from "metabase/notifications/modals";
 import { createMockState } from "metabase/redux/store/mocks";
 import Question from "metabase-lib/v1/Question";
@@ -84,7 +84,8 @@ export function setup({
   });
 
   if (isEnterprise) {
-    setupEnterprisePlugins();
+    setupEnterpriseOnlyPlugin("application_permissions");
+    setupEnterpriseOnlyPlugin("moderation");
   }
 
   renderWithProviders(<TestComponent card={card} />, {

@@ -6,7 +6,7 @@ import { EditorState } from "@codemirror/state";
 import fetchMock from "fetch-mock";
 
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, waitFor } from "__support__/ui";
+import { act, renderWithProviders, waitFor } from "__support__/ui-with-store";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { isNotNull } from "metabase/utils/types";
@@ -43,7 +43,7 @@ function completer(
     storeInitialState: state,
   });
 
-  return (doc: string) => {
+  return async (doc: string) => {
     if (!completer) {
       return null;
     }
@@ -61,7 +61,11 @@ function completer(
     });
 
     const ctx = new CompletionContext(state, cur, false);
-    return completer(ctx);
+    let result: Awaited<ReturnType<CompletionSource>> = null;
+    await act(async () => {
+      result = await completer(ctx);
+    });
+    return result;
   };
 }
 

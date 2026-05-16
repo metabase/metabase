@@ -1,12 +1,10 @@
 import fetchMock from "fetch-mock";
 
-import {
-  setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
-  setupNativeQuerySnippetEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-} from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks/activity";
+import { setupCollectionsEndpoints } from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupNativeQuerySnippetEndpoints } from "__support__/server-mocks/native-query-snippet";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { DatasetEditor } from "metabase/query_builder/components/DatasetEditor";
 import Question from "metabase-lib/v1/Question";
 import type { Card, UnsavedCard } from "metabase-types/api";

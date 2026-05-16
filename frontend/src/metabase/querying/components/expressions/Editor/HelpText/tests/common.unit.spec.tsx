@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 
-import { getBrokenUpTextMatcher, waitFor } from "__support__/ui";
+import { getBrokenUpTextMatcher, waitFor } from "__support__/ui-minimal";
 
 import { setup } from "./setup";
 

@@ -1,3 +1,5 @@
+/** @jest-environment node */
+
 import { lexify } from "./lexifier";
 import type { NodeType } from "./node";
 import {

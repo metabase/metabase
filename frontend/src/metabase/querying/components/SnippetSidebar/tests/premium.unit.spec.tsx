@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, screen } from "__support__/ui";
+import { getIcon, screen } from "__support__/ui-minimal";
 // TODO remove this and use proper reset functions once
 // plugins initialization functions return proper teardown functions
 // eslint-disable-next-line no-restricted-imports

@@ -1,7 +1,13 @@
 import _userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui-with-store";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 
@@ -91,15 +97,36 @@ function setup({
 }
 
 async function setOperator(operator: string) {
-  await userEvent.click(screen.getByLabelText("Filter operator"));
-  await userEvent.click(
-    await screen.findByRole("menuitem", { name: operator }),
+  await openOperatorMenu();
+  await userEvent.click(screen.getByRole("menuitem", { name: operator }));
+  await waitFor(() =>
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument(),
   );
+  await waitForFloatingUi();
+}
+
+async function openOperatorMenu() {
+  await userEvent.click(screen.getByLabelText("Filter operator"));
+  return await screen.findByRole("menu");
+}
+
+async function closeOperatorMenu() {
+  await userEvent.keyboard("{Escape}");
+  await waitFor(() =>
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument(),
+  );
+  await waitForFloatingUi();
+}
+
+async function waitForFloatingUi() {
+  await act(async () => {
+    jest.runOnlyPendingTimers();
+  });
 }
 
 describe("TimeFilterPicker", () => {
   beforeAll(() => {
-    jest.useFakeTimers();
+    jest.useFakeTimers({ advanceTimers: true });
     jest.setSystemTime(new Date(2020, 0, 1));
   });
 
@@ -116,14 +143,14 @@ describe("TimeFilterPicker", () => {
     it("should list operators", async () => {
       setup();
 
-      await userEvent.click(screen.getByText("Before"));
-      const menu = await screen.findByRole("menu");
+      const menu = await openOperatorMenu();
       const menuItems = within(menu).getAllByRole("menuitem");
 
       expect(menuItems).toHaveLength(EXPECTED_OPERATORS.length);
       EXPECTED_OPERATORS.forEach((operatorName) =>
         expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
       );
+      await closeOperatorMenu();
     });
 
     it("should apply a default filter", async () => {
@@ -431,14 +458,14 @@ describe("TimeFilterPicker", () => {
     it("should list operators", async () => {
       setup(createQueryWithTimeFilter({ operator: "<" }));
 
-      await userEvent.click(screen.getByText("Before"));
-      const menu = await screen.findByRole("menu");
+      const menu = await openOperatorMenu();
       const menuItems = within(menu).getAllByRole("menuitem");
 
       expect(menuItems).toHaveLength(EXPECTED_OPERATORS.length);
       EXPECTED_OPERATORS.forEach((operatorName) =>
         expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
       );
+      await closeOperatorMenu();
     });
 
     it("should change an operator", async () => {

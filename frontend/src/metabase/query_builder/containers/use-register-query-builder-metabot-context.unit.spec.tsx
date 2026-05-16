@@ -1,8 +1,8 @@
 import _ from "underscore";
 
-import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
-import { renderHookWithProviders } from "__support__/ui";
+import { renderHookWithProviders } from "__support__/ui-with-store";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type {

@@ -6,7 +6,6 @@ import * as CardLib from "metabase/common/utils/card";
 import { Databases } from "metabase/entities/databases";
 import { Snippets } from "metabase/entities/snippets";
 import * as questionActions from "metabase/questions/actions";
-import { setErrorPage } from "metabase/redux/app";
 import * as sharedQB from "metabase/redux/query-builder";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -57,6 +56,23 @@ type BaseSetupOpts = {
 };
 
 const SEGMENT = createMockSegment();
+const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
+
+function getSetErrorPageAction(error: unknown) {
+  return {
+    type: SET_ERROR_PAGE,
+    payload: error,
+  };
+}
+
+function muteExpectedErrorPageLogs() {
+  const consoleError = console.error;
+  jest.spyOn(console, "error").mockImplementation((...args) => {
+    if (args[0] !== "Error:") {
+      consoleError(...args);
+    }
+  });
+}
 
 async function baseSetup({
   user,
@@ -363,11 +379,12 @@ describe("QB Actions > initializeQB", () => {
 
         describe("archived card", () => {
           const baseParams = { card: { ...card, archived: true } };
-          const archiveError = setErrorPage(
+          const archiveError = getSetErrorPageAction(
             expect.objectContaining({ data: { error_code: "archived" } }),
           );
 
           it("throws error for archived card if user is not logged in", async () => {
+            muteExpectedErrorPageLogs();
             const loggedOut = await setup({ ...baseParams, user: null });
             expect(loggedOut.dispatch).toHaveBeenCalledWith(archiveError);
           });
@@ -392,13 +409,14 @@ describe("QB Actions > initializeQB", () => {
         });
 
         it("throws not found error when opening question with /model URL", async () => {
+          muteExpectedErrorPageLogs();
           const { dispatch } = await setup({
             card: card,
             location: { pathname: `/model/${card}` },
           });
 
           expect(dispatch).toHaveBeenCalledWith(
-            setErrorPage(
+            getSetErrorPageAction(
               expect.objectContaining({ data: { error_code: "not-found" } }),
             ),
           );
@@ -489,6 +507,7 @@ describe("QB Actions > initializeQB", () => {
         });
 
         it("handles error if couldn't deserialize card hash", async () => {
+          muteExpectedErrorPageLogs();
           const error = new Error("failed to deserialize card");
           jest.spyOn(CardLib, "deserializeCard").mockImplementation(() => {
             throw error;
@@ -496,7 +515,7 @@ describe("QB Actions > initializeQB", () => {
 
           const { dispatch } = await setup({ card: card });
 
-          expect(dispatch).toHaveBeenCalledWith(setErrorPage(error));
+          expect(dispatch).toHaveBeenCalledWith(getSetErrorPageAction(error));
         });
       });
     });

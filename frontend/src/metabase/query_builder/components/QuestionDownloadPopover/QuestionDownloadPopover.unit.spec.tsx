@@ -1,11 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupCardQueryDownloadEndpoint,
-  setupLastDownloadFormatEndpoints,
-} from "__support__/server-mocks";
+import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks/card";
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks/user-key-value";
 import { createMockEntitiesState } from "__support__/store";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import {
+  getIcon,
+  renderWithProviders,
+  screen,
+} from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";

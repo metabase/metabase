@@ -1,7 +1,11 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { getHelpText } from "metabase/querying/expressions";
 import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
@@ -68,15 +72,21 @@ export async function setup({
     enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
-  renderWithProviders(<HelpText {...props} />, {
-    storeInitialState: state,
-  });
-
   const helpText = getHelpText(
     checkNotNull(enclosingFunction?.name),
     database,
     reportTimezone,
   );
+
+  renderWithProviders(<HelpText {...props} />, {
+    storeInitialState: state,
+  });
+
+  if (helpText?.example != null) {
+    await waitFor(() => {
+      expect(screen.getByTestId("helptext-example")).not.toHaveTextContent("");
+    });
+  }
 
   return { database, metadata, helpText };
 }

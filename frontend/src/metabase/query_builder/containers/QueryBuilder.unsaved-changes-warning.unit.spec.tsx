@@ -7,14 +7,14 @@ import {
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/card";
 import {
   act,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-minimal";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import registerVisualizations from "metabase/visualizations/register";
 import {

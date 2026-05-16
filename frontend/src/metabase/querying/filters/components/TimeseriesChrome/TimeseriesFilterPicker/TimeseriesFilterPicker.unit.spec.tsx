@@ -1,6 +1,6 @@
 import _userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui-with-store";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,
@@ -45,6 +45,12 @@ const userEvent = _userEvent.setup({
   advanceTimers: jest.advanceTimersByTime,
 });
 
+async function waitForPopoverPosition() {
+  await act(async () => {
+    await Promise.resolve();
+  });
+}
+
 function setup({
   query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
   column = findDateColumn(query),
@@ -80,6 +86,7 @@ describe("TimeseriesFilterPicker", () => {
     const { getNextFilterParts } = setup();
 
     await userEvent.click(screen.getByText("All time"));
+    await waitForPopoverPosition();
     await userEvent.click(await screen.findByDisplayValue("All time"));
     await userEvent.click(await screen.findByText("Current"));
     await userEvent.click(screen.getByText("Apply"));
@@ -94,6 +101,7 @@ describe("TimeseriesFilterPicker", () => {
     const { getNextFilterParts } = setup({ query, column, filter });
 
     await userEvent.click(screen.getByText("Jan 10, 2020"));
+    await waitForPopoverPosition();
     const input = await screen.findByLabelText("Date");
     await userEvent.clear(input);
     await userEvent.type(input, "Feb 20, 2020");
@@ -111,6 +119,7 @@ describe("TimeseriesFilterPicker", () => {
     const { getNextFilterParts } = setup({ query, column, filter });
 
     await userEvent.click(screen.getByText("Jan 10, 2020"));
+    await waitForPopoverPosition();
     await userEvent.click(await screen.findByDisplayValue("On"));
     await userEvent.click(await screen.findByText("All time"));
     await userEvent.click(screen.getByText("Apply"));

@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, screen } from "__support__/ui";
+import { fireEvent, screen } from "__support__/ui-minimal";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";
@@ -19,9 +19,17 @@ describe("DataStep", () => {
   beforeAll(() => {
     HTMLElement.prototype.scrollBy = jest.fn();
     // needed for @tanstack/react-virtual, see https://github.com/TanStack/virtual/issues/29#issuecomment-657519522
-    HTMLElement.prototype.getBoundingClientRect = jest
-      .fn()
-      .mockReturnValue({ height: 1, width: 1 });
+    HTMLElement.prototype.getBoundingClientRect = jest.fn().mockReturnValue({
+      bottom: 1,
+      height: 1,
+      left: 0,
+      right: 1,
+      top: 0,
+      width: 1,
+      x: 0,
+      y: 0,
+      toJSON: jest.fn(),
+    });
   });
 
   afterAll(() => {

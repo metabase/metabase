@@ -1,13 +1,17 @@
+import fetchMock from "fetch-mock";
 import _ from "underscore";
 
-import {
-  setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
-  setupNativeQuerySnippetEndpoints,
-  setupUserMetabotPermissionsEndpoint,
-} from "__support__/server-mocks";
+import { setupCollectionsEndpoints } from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks/metabot";
+import { setupNativeQuerySnippetEndpoints } from "__support__/server-mocks/native-query-snippet";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
+import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
@@ -57,6 +61,7 @@ const setup = async ({
       databases: [createSampleDatabase()],
       questions: [card],
     }),
+    metabot: getMetabotInitialState(),
   });
   const metadata = getMetadata(storeInitialState);
   const question = checkNotNull(metadata.question(card.id));
@@ -75,7 +80,15 @@ const setup = async ({
       onSetDatabaseId={onSetDatabaseId}
       isNativeEditorOpen
     />,
+    { storeInitialState },
   );
+
+  await waitFor(() => {
+    expect(
+      fetchMock.callHistory.calls("path:/api/native-query-snippet"),
+    ).toHaveLength(1);
+    expect(fetchMock.callHistory.calls("path:/api/collection")).toHaveLength(1);
+  });
 
   return { query, question, rerender };
 };

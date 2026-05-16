@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui-with-store";
 import { modelIconMap } from "metabase/common/utils/icon";
 import {
   createMockQueryBuilderState,

@@ -1,10 +1,17 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 
 import { VisualizationPreview } from "./NotebookStepPreview";
 
+jest.mock("metabase/visualizations/components/Visualization", () => ({
+  __esModule: true,
+  default: ({ error }: { error?: string | null }) => {
+    return error ? <div>{error}</div> : <div data-testid="visualization" />;
+  },
+}));
+
 describe("VisualizationPreview", () => {
   it("should render an error message when an error occurs (metabase#40724)", () => {
-    renderWithProviders(
+    render(
       <VisualizationPreview
         rawSeries={null}
         result={null}
@@ -16,7 +23,7 @@ describe("VisualizationPreview", () => {
 
   it("should render a custom error message when an error occurs (metabase#40724)", () => {
     const message = "This is a custom message";
-    renderWithProviders(
+    render(
       <VisualizationPreview
         rawSeries={null}
         result={null}
@@ -28,7 +35,7 @@ describe("VisualizationPreview", () => {
 
   it("should render an error message when an error is passed from the results (metabase#40724)", () => {
     const message = "This is a custom message";
-    renderWithProviders(
+    render(
       <VisualizationPreview
         rawSeries={null}
         result={{ error: message }}

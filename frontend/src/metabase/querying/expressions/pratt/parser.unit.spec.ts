@@ -1,3 +1,5 @@
+/** @jest-environment node */
+
 import { lexify, parse } from ".";
 
 describe("pratt/parser", () => {

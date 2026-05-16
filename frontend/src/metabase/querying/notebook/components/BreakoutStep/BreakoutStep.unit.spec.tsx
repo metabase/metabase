@@ -8,7 +8,7 @@ import {
   renderWithProviders,
   screen,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";

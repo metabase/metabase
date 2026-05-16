@@ -1,4 +1,4 @@
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui-with-store";
 import registerVisualizations from "metabase/visualizations/register";
 import type { Dataset } from "metabase-types/api";
 import { createMockDataset } from "metabase-types/api/mocks";

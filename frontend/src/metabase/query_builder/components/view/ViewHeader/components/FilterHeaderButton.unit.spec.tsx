@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,

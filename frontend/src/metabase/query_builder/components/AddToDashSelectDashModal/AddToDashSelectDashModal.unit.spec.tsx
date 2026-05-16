@@ -3,21 +3,23 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import {
+  setupMostRecentlyViewedDashboard,
+  setupRecentViewsAndSelectionsEndpoints,
+} from "__support__/server-mocks/activity";
+import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
-  setupMostRecentlyViewedDashboard,
-  setupRecentViewsAndSelectionsEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import { checkNotNull, isNotNull } from "metabase/utils/types";

@@ -3,14 +3,14 @@ import userEvent from "@testing-library/user-event";
 import {
   setupFieldSearchValuesEndpoint,
   setupFieldsValuesEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/field";
 import {
   renderWithProviders,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {

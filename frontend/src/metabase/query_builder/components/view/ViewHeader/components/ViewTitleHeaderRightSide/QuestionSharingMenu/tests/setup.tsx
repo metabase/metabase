@@ -1,15 +1,15 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupNotificationChannelsEndpoints,
-  setupUserRecipientsEndpoint,
-  setupUsersEndpoints,
-} from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
+import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import {
+  setupUserRecipientsEndpoint,
+  setupUsersEndpoints,
+} from "__support__/server-mocks/user";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { useSelector } from "metabase/redux";
 import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";

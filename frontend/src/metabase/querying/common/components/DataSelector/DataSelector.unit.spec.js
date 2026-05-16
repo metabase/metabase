@@ -1,8 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
-import { getIcon, render, renderWithProviders, screen } from "__support__/ui";
-import { delay } from "__support__/utils";
+import {
+  act,
+  getIcon,
+  render,
+  renderWithProviders,
+  screen,
+} from "__support__/ui-with-store";
 import { UnconnectedDataSelector as DataSelector } from "metabase/querying/common/components/DataSelector";
 import {
   createMockSettingsState,
@@ -27,6 +32,18 @@ const OTHER_MULTI_SCHEMA_TABLE1_ID = 200;
 const OTHER_MULTI_SCHEMA_TABLE2_ID = 201;
 
 const EMPTY_DB_ID = 4;
+
+async function waitForDataSelector() {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
+function getSectionHeader(name) {
+  return screen.getByText(name).closest("[data-testid='list-section-header']");
+}
 
 describe("DataSelector", () => {
   const databases = [
@@ -101,6 +118,7 @@ describe("DataSelector", () => {
         setSourceTableFn={setTable}
       />,
     );
+    await waitForDataSelector();
 
     // displays dbs
     expect(
@@ -167,7 +185,7 @@ describe("DataSelector", () => {
     };
 
     // on initial load, we fetch databases
-    await delay(1);
+    await waitForDataSelector();
     expect(fetchDatabases).toHaveBeenCalled();
     rerender(<DataSelector {...props} loading />);
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
@@ -184,7 +202,7 @@ describe("DataSelector", () => {
     await userEvent.click(screen.getByText("Multi-schema Database"));
 
     // that triggers fetching schemas
-    await delay(1);
+    await waitForDataSelector();
     expect(fetchSchemas).toHaveBeenCalled();
 
     // select a schema
@@ -197,7 +215,7 @@ describe("DataSelector", () => {
     await userEvent.click(screen.getByText("Second Schema"));
 
     // that triggers fetching tables
-    await delay(1);
+    await waitForDataSelector();
     expect(fetchSchemaTables).toHaveBeenCalled();
 
     // table is displayed
@@ -216,7 +234,7 @@ describe("DataSelector", () => {
         isOpen={true}
       />,
     );
-    await delay(1); // state isn't updated until the next tick
+    await waitForDataSelector(); // state isn't updated until the next tick
     expect(await screen.findByText("Orders")).toBeInTheDocument();
   });
 
@@ -233,7 +251,7 @@ describe("DataSelector", () => {
     );
     expect(fetchDatabases).not.toHaveBeenCalled();
     await userEvent.click(screen.getByText("button"));
-    await delay(1); // fetchDatabases hasn't been called until the next tick
+    await waitForDataSelector(); // fetchDatabases hasn't been called until the next tick
     expect(fetchDatabases).toHaveBeenCalled();
   });
 
@@ -248,11 +266,12 @@ describe("DataSelector", () => {
         isOpen={true}
       />,
     );
+    await waitForDataSelector();
 
     await userEvent.click(screen.getByText("Multi-schema Database"));
     expect(screen.getByText("First Schema")).toBeInTheDocument();
     await userEvent.click(screen.getByText("Sample Database"));
-    await delay(1);
+    await waitForDataSelector();
     expect(await screen.findByText("Orders")).toBeInTheDocument();
   });
 
@@ -267,9 +286,10 @@ describe("DataSelector", () => {
         isOpen={true}
       />,
     );
+    await waitForDataSelector();
 
     await userEvent.click(screen.getByText("Sample Database"));
-    await delay(1);
+    await waitForDataSelector();
     // check that tables are listed
     expect(await screen.findByText("Orders")).toBeInTheDocument();
     // click header to return to db list
@@ -278,7 +298,7 @@ describe("DataSelector", () => {
     await userEvent.click(screen.getByText("Multi-schema Database"));
     // see schema appear and click to view tables for good measure
     await userEvent.click(screen.getByText("First Schema"));
-    await delay(1);
+    await waitForDataSelector();
     expect(screen.getByText("Table in First Schema")).toBeInTheDocument();
   });
 
@@ -296,6 +316,7 @@ describe("DataSelector", () => {
         isOpen={true}
       />,
     );
+    await waitForDataSelector();
 
     // expand a multi-schema db to make sure it's schemas are loaded
     await userEvent.click(screen.getByText("Multi-schema Database"));
@@ -304,7 +325,7 @@ describe("DataSelector", () => {
 
     // click into a single schema db, check for a table, and then return to db list
     await userEvent.click(screen.getByText("Sample Database"));
-    await delay(1);
+    await waitForDataSelector();
     expect(await screen.findByText("Orders")).toBeInTheDocument();
     await userEvent.click(screen.getByText("Sample Database"));
 
@@ -312,7 +333,7 @@ describe("DataSelector", () => {
     await userEvent.click(screen.getByText("Multi-schema Database"));
     // see schema appear and click to view tables for good measure
     await userEvent.click(screen.getByText("First Schema"));
-    await delay(1);
+    await waitForDataSelector();
     expect(screen.getByText("Table in First Schema")).toBeInTheDocument();
   });
 
@@ -327,6 +348,7 @@ describe("DataSelector", () => {
         isOpen={true}
       />,
     );
+    await waitForDataSelector();
 
     expect(screen.getByText("Sample Database")).toBeInTheDocument();
     await userEvent.click(screen.getByText("Multi-schema Database"));
@@ -358,7 +380,7 @@ describe("DataSelector", () => {
         isOpen={true}
       />,
     );
-    await delay(1);
+    await waitForDataSelector();
 
     expect(await screen.findByText("Orders")).toBeInTheDocument();
   });
@@ -374,12 +396,13 @@ describe("DataSelector", () => {
         isOpen={true}
       />,
     );
+    await waitForDataSelector();
 
     await userEvent.click(screen.getByText("First Schema"));
     expect(screen.getByText("Table in First Schema")).toBeInTheDocument();
   });
 
-  it("should open database picker with correct database selected", () => {
+  it("should open database picker with correct database selected", async () => {
     render(
       <DataSelector
         steps={["DATABASE"]}
@@ -390,6 +413,7 @@ describe("DataSelector", () => {
         isOpen={true}
       />,
     );
+    await waitForDataSelector();
 
     expect(
       screen.getByRole("heading", { name: "Sample Database" }),
@@ -407,6 +431,7 @@ describe("DataSelector", () => {
         isOpen={true}
       />,
     );
+    await waitForDataSelector();
 
     await userEvent.click(screen.getByText("Multi-schema Database"));
     expect(screen.getByText("First Schema")).toBeInTheDocument();
@@ -428,23 +453,25 @@ describe("DataSelector", () => {
         isOpen={true}
       />,
     );
+    await waitForDataSelector();
 
     // click into the first db
-    await userEvent.click(screen.getByText("Sample Database"));
-    await delay(1);
-    expect(screen.getByText("Orders")).toBeInTheDocument();
+    await userEvent.click(getSectionHeader("Sample Database"));
+    await waitForDataSelector();
+    expect(await screen.findByText("Orders")).toBeInTheDocument();
 
     // click to go back
-    await userEvent.click(screen.getByText("Sample Database"));
+    await userEvent.click(screen.getByTestId("source-database"));
+    await waitForDataSelector();
     expect(screen.getByText("Sample Empty Database")).toBeInTheDocument();
 
     // click back in
-    await userEvent.click(screen.getByText("Sample Database"));
-    await delay(1);
-    expect(screen.getByText("Orders")).toBeInTheDocument();
+    await userEvent.click(getSectionHeader("Sample Database"));
+    await waitForDataSelector();
+    expect(await screen.findByText("Orders")).toBeInTheDocument();
   });
 
-  it("shows an empty state without any databases", () => {
+  it("shows an empty state without any databases", async () => {
     render(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
@@ -453,6 +480,7 @@ describe("DataSelector", () => {
         isOpen={true}
       />,
     );
+    await waitForDataSelector();
 
     expect(
       screen.getByText("To pick some data, you'll need to add some first"),
@@ -471,14 +499,16 @@ describe("DataSelector", () => {
         search={[{}]}
         triggerElement={<div />}
         isOpen
+        useOnlyAvailableDatabase={false}
       />,
       { storeInitialState },
     );
+    await waitForDataSelector();
 
     expect(screen.getByText("Saved Questions")).toBeInTheDocument();
   });
 
-  it("should not show 'Saved Questions' option when there are no saved questions (metabase#29760)", () => {
+  it("should not show 'Saved Questions' option when there are no saved questions (metabase#29760)", async () => {
     renderWithProviders(
       <DataSelector
         availableModels={[]}
@@ -490,9 +520,11 @@ describe("DataSelector", () => {
         search={[{}]}
         triggerElement={<div />}
         isOpen
+        useOnlyAvailableDatabase={false}
       />,
       { storeInitialState },
     );
+    await waitForDataSelector();
 
     expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
   });

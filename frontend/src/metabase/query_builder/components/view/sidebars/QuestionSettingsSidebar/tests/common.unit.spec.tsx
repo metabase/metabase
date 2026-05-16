@@ -1,4 +1,4 @@
-import { screen } from "__support__/ui";
+import { screen } from "__support__/ui-minimal";
 import { createMockCard } from "metabase-types/api/mocks";
 
 import { setup } from "./setup";

@@ -1,4 +1,4 @@
-import { screen } from "__support__/ui";
+import { screen } from "__support__/ui-minimal";
 import { createMockModerationReview } from "metabase-types/api/mocks";
 
 import { openMenu, setup } from "./setup";

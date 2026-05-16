@@ -1,12 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupCollectionByIdEndpoint,
-  setupDatabasesEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks/activity";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import type Question from "metabase-lib/v1/Question";
 import { createMockCollection } from "metabase-types/api/mocks";

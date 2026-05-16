@@ -2,11 +2,13 @@
 import { Component } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
+import { setupCardEndpoints } from "__support__/server-mocks/card";
+import { setupTableEndpoints } from "__support__/server-mocks/table";
 import {
-  setupCardEndpoints,
-  setupTableEndpoints,
-} from "__support__/server-mocks";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+  getIcon,
+  renderWithProviders,
+  screen,
+} from "__support__/ui-with-store";
 import { deserializeCardFromUrl } from "metabase/common/utils/card";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";

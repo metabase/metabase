@@ -1,3 +1,5 @@
+/** @jest-environment node */
+
 import dayjs from "dayjs";
 
 import { getAbbreviatedRelativeTimeStrings, getTimePassedSince } from "./utils";

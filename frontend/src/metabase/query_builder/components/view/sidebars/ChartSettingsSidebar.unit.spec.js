@@ -1,5 +1,9 @@
 import { createMockMetadata } from "__support__/metadata";
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import {
+  fireEvent,
+  renderWithProviders,
+  screen,
+} from "__support__/ui-with-store";
 import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
