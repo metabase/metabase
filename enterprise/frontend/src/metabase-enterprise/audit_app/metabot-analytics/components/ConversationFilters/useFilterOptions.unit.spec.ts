@@ -61,17 +61,15 @@ describe("useFilterOptions", () => {
     });
 
     await waitFor(() => {
-      expect(result.current.groupOptions.length).toBeGreaterThan(0);
+      const labels = result.current.groupOptions.map((o) => o.label);
+      expect(labels).toEqual(
+        expect.arrayContaining([
+          "All groups",
+          "All internal users",
+          "All external users",
+        ]),
+      );
     });
-
-    const labels = result.current.groupOptions.map((o) => o.label);
-    expect(labels).toEqual(
-      expect.arrayContaining([
-        "All groups",
-        "All internal users",
-        "All external users",
-      ]),
-    );
   });
 
   it("renames All Users to All groups when tenants disabled", async () => {
