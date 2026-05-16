@@ -20,6 +20,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.metabot.quality.compose :as compose]
    [metabase.metabot.quality.constants :as constants]
+   [metabase.metabot.quality.corpus-stats :as corpus-stats]
    [metabase.metabot.quality.extract :as extract]
    [metabase.metabot.quality.governance :as governance]
    [metabase.metabot.quality.signals :as signals]
@@ -74,11 +75,12 @@
 ;; ---------------------------------------------------------------------------
 
 (defn- collect-signal-magnitudes
-  "Run all eleven signal predicates against a normalized conversation,
+  "Run all ten signal predicates against a normalized conversation,
   returning a `{signal-key → magnitude}` map suitable for
   `compose/compose-score`. The canonical-rank map is consulted only by the
-  four retrieval-discipline signals; the others ignore it."
-  [normalized canonical-map]
+  four retrieval-discipline signals; `outlier-threshold` is consulted only by
+  `n-expensive-turn`; the others ignore both."
+  [normalized canonical-map outlier-threshold]
   {:canonical-bypass       (signals/canonical-bypass-magnitude       normalized canonical-map)
    :canonical-ignored      (signals/canonical-ignored-magnitude      normalized canonical-map)
    :search-ignored         (signals/search-ignored-magnitude         normalized canonical-map)
@@ -87,8 +89,7 @@
    :tool-error-magnitude   (signals/tool-error-magnitude             normalized)
    :turn-broken            (signals/turn-broken-magnitude            normalized)
    :turn-thrash            (signals/turn-thrash-magnitude            normalized)
-   :expensive-search-turn  (signals/expensive-search-turn-magnitude  normalized)
-   :expensive-tool-turn    (signals/expensive-tool-turn-magnitude    normalized)
+   :n-expensive-turn       (signals/n-expensive-turn-magnitude       normalized outlier-threshold)
    :query-thrash           (signals/query-thrash-magnitude           normalized)})
 
 (defn- had-artifact?
@@ -114,8 +115,11 @@
   §1.3). This is distinct from 'scored, no signal fired' — that path produces
   `:quality_score 0.0` with a populated breakdown.
 
-  This function is the entry point a future backfill job will call against
-  historical rows; nothing here touches the database."
+  Calls `corpus-stats/outlier-threshold` once per invocation to fetch (or
+  reuse the cached) corpus-relative outlier threshold for `n-expensive-turn`.
+  Tests inject a deterministic value via `with-redefs`. The function is the
+  entry point a future backfill job will call against historical rows; no
+  other database access happens here beyond the cached threshold lookup."
   [messages]
   (let [safe-messages  (mapv safe-message messages)
         assistant-rows (filter #(= :assistant (:role %)) safe-messages)]
@@ -125,7 +129,9 @@
             er            (:entity-refs normalized)
             canonical-map (governance/resolve-canonical-rank
                            (concat (:search-hits er) (:author-refs er)))
-            magnitudes    (collect-signal-magnitudes normalized canonical-map)
+            threshold-info (corpus-stats/outlier-threshold)
+            outlier-threshold (:threshold threshold-info)
+            magnitudes    (collect-signal-magnitudes normalized canonical-map outlier-threshold)
             composed      (compose/compose-score magnitudes)
             breakdown     {:composite_version          composite-version
                            :computed_at                (str (Instant/now))
@@ -134,10 +140,12 @@
                            :concern                    (:concern composed)
                            :signals                    magnitudes
                            :contributions              (:contributions composed)
-                           :context                    {:profile_id   (:profile-id normalized)
-                                                        :had_artifact (had-artifact? safe-messages)
-                                                        :n_messages   (count safe-messages)
-                                                        :n_tool_calls (count (:tool-events normalized))}}]
+                           :context                    {:profile_id                       (:profile-id normalized)
+                                                        :had_artifact                     (had-artifact? safe-messages)
+                                                        :n_messages                       (count safe-messages)
+                                                        :n_tool_calls                     (count (:tool-events normalized))
+                                                        :outlier_threshold                outlier-threshold
+                                                        :outlier_threshold_corpus_size    (:corpus-size threshold-info)}}]
         {:quality_score     (:quality_score composed)
          :quality_breakdown breakdown}))))
 
@@ -209,7 +217,7 @@
              {:order-by [[:created_at :desc]]
               :limit    10})
 
-  (def conv-id #uuid "e8cceb65-05a2-4685-947d-d392be8d1a2b")
+  (def conv-id "e8cceb65-05a2-4685-947d-d392be8d1a2b")
 
   ;; ---- Pure compute (no DB write) -----------------------------------------
 
@@ -275,8 +283,7 @@
   (signals/tool-error-magnitude             normalized)
   (signals/turn-broken-magnitude            normalized)
   (signals/turn-thrash-magnitude            normalized)
-  (signals/expensive-search-turn-magnitude  normalized)
-  (signals/expensive-tool-turn-magnitude    normalized)
+  (signals/n-expensive-turn-magnitude       normalized 251020)  ; corpus threshold from corpus-stats
   (signals/query-thrash-magnitude           normalized)
 
   ;; Recompose by hand if you want to verify the math:
@@ -285,8 +292,7 @@
     :search-ignored         0  :author-without-inspect 0
     :iter-cap-burned        0  :tool-error-magnitude   1   ; e.g. one tool error
     :turn-broken            0  :turn-thrash            0
-    :expensive-search-turn  0  :expensive-tool-turn    0
-    :query-thrash           0})
+    :n-expensive-turn       0  :query-thrash           0})
   ;; => {:quality_score -0.231 :concern 0.231 :raw 3.0 :contributions {...}}
 
   ;; ---- Gotchas ------------------------------------------------------------

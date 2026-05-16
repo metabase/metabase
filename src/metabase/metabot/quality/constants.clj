@@ -13,8 +13,12 @@
 
 (def composite-version
   "Version string embedded in every `quality_breakdown` JSON payload. Bump when
-  any of the values in this namespace change in a way that affects the score."
-  "1.0.0")
+  any of the values in this namespace change in a way that affects the score.
+
+  1.0.1 — replaced the fixed-baseline `expensive-search-turn` /
+  `expensive-tool-turn` pair with the corpus-relative `n-expensive-turn`
+  outlier signal. See notes/bot-1515-conversation-score/impl-phase-1-testing-notes.md."
+  "1.0.1")
 
 (def saturation-C
   "Composite soft-saturation constant. `concern = raw / (raw + C)`.
@@ -47,6 +51,7 @@
    :iter-cap-burned        {:k 3.0    :kind :event-count}
    :tool-error-magnitude   {:k 3.0    :kind :event-count}
    :turn-broken            {:k 3.0    :kind :event-count}
+   :n-expensive-turn       {:k 3.0    :kind :event-count}
 
    :canonical-ignored      {:k 2.0    :kind :event-count}
    :author-without-inspect {:k 2.0    :kind :event-count}
@@ -56,9 +61,7 @@
    ;; Pre-aggregated excess: magnitude is Σ per-turn max(0, n_data_retrieval - 5).
    :turn-thrash            {:k 0.3    :kind :event-count}
 
-   ;; Raw metric magnitudes: baseline subtraction happens in `signal-contribution`.
-   :expensive-search-turn  {:k 0.0001 :kind :excess :baseline 30000}
-   :expensive-tool-turn    {:k 0.0001 :kind :excess :baseline 30000}
+   ;; Raw metric magnitude: baseline subtraction happens in `signal-contribution`.
    :query-thrash           {:k 1.0    :kind :excess :baseline 2}})
 
 (def signal-keys
@@ -73,8 +76,7 @@
    :tool-error-magnitude
    :turn-broken
    :turn-thrash
-   :expensive-search-turn
-   :expensive-tool-turn
+   :n-expensive-turn
    :query-thrash])
 
 ;; ---------------------------------------------------------------------------
@@ -89,18 +91,55 @@
   list_available_data_sources); the sixth call onward accrues excess."
   5)
 
-(def expensive-turn-token-baseline
-  "Per-turn token spend before excess accrues toward expensive-search-turn /
-  expensive-tool-turn. Applies to both signals (v1.0.0 does not differentiate
-  search-heavy vs authoring-heavy expensive thresholds)."
-  30000)
-
 (def query-thrash-baseline
   "Authoring calls per (user-turn, query-id) before excess accrues toward
   `query-thrash`. Two matches the 'create + immediate fix is normal corrective
   behavior' intuition; the third authoring is the inflection from 'fix' to
   'thrash'."
   2)
+
+;; ---------------------------------------------------------------------------
+;; Corpus-relative outlier threshold (n-expensive-turn) — 1.0.1
+;; ---------------------------------------------------------------------------
+;;
+;; The `n-expensive-turn` signal counts assistant turns whose `total_tokens`
+;; exceeds a corpus-relative outlier threshold computed via modified Z-score
+;; over a rolling window of recent assistant turns. The constants below
+;; calibrate the threshold and the cache that surfaces it to the scorer
+;; (`quality.corpus-stats`).
+
+(def outlier-z-threshold
+  "Modified-Z cutoff for `n-expensive-turn`. A turn is an outlier iff
+  `(total_tokens - median) / (mad-scale × MAD) > outlier-z-threshold`,
+  equivalently `total_tokens > median + (outlier-z-threshold / mad-scale) × MAD`.
+  3.5 follows the conventional MAD-Z3.5 outlier convention (Iglewicz & Hoaglin)."
+  3.5)
+
+(def mad-scale
+  "Consistency constant that scales MAD to an estimate of σ for normally
+  distributed data: `σ ≈ MAD / 0.6745`. Used so that `outlier-z-threshold`
+  expresses the cutoff in units comparable to a standard Z-score."
+  0.6745)
+
+(def min-corpus-size
+  "Minimum number of qualifying assistant turns (within
+  `corpus-window-months`) before `quality.corpus-stats/outlier-threshold`
+  returns a usable value. Below this, the signal contributes 0 — keeps a
+  fresh deployment quiet until the threshold is meaningful."
+  100)
+
+(def corpus-window-months
+  "Rolling window (in months) over which the outlier threshold's corpus is
+  drawn. Bounds the threshold to recent agent behavior so old-format /
+  retired-model traffic ages out naturally."
+  6)
+
+(def corpus-stats-ttl-ms
+  "TTL (milliseconds) on the in-process cache of the outlier threshold.
+  Mirrors `metabase.search.appdb.scoring/view-count-percentiles` (1 hr).
+  Tradeoff: one slow request per node per hour on cache miss, against
+  responsiveness to corpus drift."
+  3600000)
 
 ;; ---------------------------------------------------------------------------
 ;; Per-profile iteration caps (signals-ref §2.5)

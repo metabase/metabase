@@ -207,49 +207,25 @@
    0
    (assistant-messages normalized)))
 
-(defn- search-dominance
-  "Bucketize a turn for the expensive-{search,tool}-turn pair (signals-ref §1.4).
-  Returns one of:
-    `:search-dominant`     — ≥ 50% of tool calls are in `search-tools`
-    `:non-search-dominant` — has ≥ 1 tool call but is not search-dominant
-    `:no-tool-calls`       — has 0 tool calls; ineligible for either signal"
-  [msg]
-  (let [calls (:tool-calls msg)
-        n     (count calls)]
-    (if (zero? n)
-      :no-tool-calls
-      (let [s (count (filter #(contains? constants/search-tools (:function %)) calls))]
-        (if (>= (* 2 s) n)
-          :search-dominant
-          :non-search-dominant)))))
+(defn n-expensive-turn-magnitude
+  "Corpus-relative outlier count (1.0.1). Counts assistant turns whose
+  `:total-tokens` exceeds the per-deployment outlier `threshold` produced by
+  `quality.corpus-stats/outlier-threshold` (median + (Z / scale) × MAD).
 
-(defn- max-tokens-where
-  "MAX `:total-tokens` across assistant turns satisfying `pred`. Returns 0 when
-  no turn satisfies it (matches signals-ref §3.7/§3.8's 'else 0'). A turn whose
-  `:total-tokens` is itself 0 contributes nothing to the max but is still
-  considered for membership."
-  [normalized pred]
-  (->> (assistant-messages normalized)
-       (filter pred)
-       (map #(or (:total-tokens %) 0))
-       (reduce max 0)))
+  `threshold` is **nil-safe**: when nil — the corpus is below
+  `constants/min-corpus-size` or callers omit the value — the signal
+  contributes 0. This keeps the signal silent on fresh deployments instead
+  of flagging every turn as 'above zero.'
 
-(defn expensive-search-turn-magnitude
-  "Signals-ref §3.7. Raw max `total_tokens` across search-dominant turns.
-  Baseline (30 000) subtraction happens in `quality.compose/signal-contribution`,
-  so the value returned here is the underlying token count — what consumers see
-  in `quality_breakdown.signals.expensive_search_turn`."
-  [normalized]
-  (max-tokens-where normalized #(= :search-dominant (search-dominance %))))
-
-(defn expensive-tool-turn-magnitude
-  "Signals-ref §3.8. Raw max `total_tokens` across non-search-dominant turns
-  with ≥ 1 tool call. Disjoint from `expensive-search-turn-magnitude` by
-  construction — every assistant turn falls in exactly one of `:search-dominant`,
-  `:non-search-dominant`, or `:no-tool-calls`, and the latter is excluded from
-  both signals."
-  [normalized]
-  (max-tokens-where normalized #(= :non-search-dominant (search-dominance %))))
+  Replaces v1.0.0's `expensive-search-turn` / `expensive-tool-turn` pair.
+  See notes/bot-1515-conversation-score/impl-phase-1-testing-notes.md."
+  [normalized threshold]
+  (if (nil? threshold)
+    0
+    (let [t (double threshold)]
+      (->> (assistant-messages normalized)
+           (filter (fn [m] (> (double (or (:total-tokens m) 0)) t)))
+           count))))
 
 (defn- query-id-for-event
   "Per signals-ref §3.9 query-id resolution:

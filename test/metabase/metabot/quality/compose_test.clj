@@ -31,19 +31,20 @@
 (deftest signal-contribution-excess-test
   (testing "excess kind: contribution = k × max(0, magnitude − baseline)"
     (testing "at baseline → 0"
-      (is (= 0.0 (compose/signal-contribution :expensive-search-turn 30000)))
       (is (= 0.0 (compose/signal-contribution :query-thrash 2))))
     (testing "below baseline → 0 (clamped)"
-      (is (= 0.0 (compose/signal-contribution :expensive-search-turn 0)))
-      (is (= 0.0 (compose/signal-contribution :expensive-search-turn 5000)))
       (is (= 0.0 (compose/signal-contribution :query-thrash 0)))
       (is (= 0.0 (compose/signal-contribution :query-thrash 1))))
     (testing "above baseline → k × excess"
-      (is (close-to? 3.0 (compose/signal-contribution :expensive-search-turn 60000)))
-      (is (close-to? 7.0 (compose/signal-contribution :expensive-search-turn 100000)))
-      (is (close-to? 3.0 (compose/signal-contribution :expensive-tool-turn 60000)))
       (is (= 1.0 (compose/signal-contribution :query-thrash 3)))
       (is (= 8.0 (compose/signal-contribution :query-thrash 10))))))
+
+(deftest signal-contribution-n-expensive-turn-test
+  (testing "n-expensive-turn is event-count with k=3 (1.0.1)"
+    (is (= 0.0 (compose/signal-contribution :n-expensive-turn 0)))
+    (is (= 3.0 (compose/signal-contribution :n-expensive-turn 1)))
+    (is (= 6.0 (compose/signal-contribution :n-expensive-turn 2)))
+    (is (= 12.0 (compose/signal-contribution :n-expensive-turn 4)))))
 
 (deftest signal-contribution-unknown-throws-test
   (testing "unknown signal key throws so caller typos surface immediately"
@@ -87,8 +88,10 @@
               {:query-thrash 10}             8.0 0.444]
              ["turn-thrash excess 25"
               {:turn-thrash 25}              7.5 0.429]
-             ["expensive-search-turn 100K (excess 70K)"
-              {:expensive-search-turn 100000} 7.0 0.412]]]
+             ["1 n-expensive-turn (k=3)"
+              {:n-expensive-turn 1}          3.0 0.231]
+             ["2 n-expensive-turn (k=3)"
+              {:n-expensive-turn 2}          6.0 0.375]]]
       (testing label
         (let [{:keys [quality_score concern raw]} (compose/compose-score magnitudes)]
           (is (close-to? expected-raw raw)
@@ -112,11 +115,11 @@
 
 (deftest compose-score-contributions-sum-to-raw-test
   (testing "raw = sum of contributions"
-    (let [magnitudes  {:canonical-bypass       2
-                       :canonical-ignored      3
-                       :tool-error-magnitude   1
-                       :query-thrash           4
-                       :expensive-search-turn  50000}
+    (let [magnitudes  {:canonical-bypass     2
+                       :canonical-ignored    3
+                       :tool-error-magnitude 1
+                       :query-thrash         4
+                       :n-expensive-turn     2}
           {:keys [raw contributions]} (compose/compose-score magnitudes)]
       (is (close-to? raw (reduce + 0.0 (vals contributions)))))))
 

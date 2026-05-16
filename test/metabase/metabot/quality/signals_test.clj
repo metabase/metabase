@@ -551,7 +551,7 @@
       (is (= 0 (signals/turn-thrash-magnitude normalized))))))
 
 ;; ---------------------------------------------------------------------------
-;; Family 3, Signal 7 — expensive-search-turn
+;; Family 3, Signal 7 — n-expensive-turn (corpus-relative outlier count, 1.0.1)
 ;; ---------------------------------------------------------------------------
 
 (defn- assistant-tokens
@@ -559,96 +559,58 @@
   [id ts-val tokens parts]
   (assoc (assistant-msg id ts-val parts) :total_tokens tokens))
 
-(deftest expensive-search-turn-zero-when-no-search-dominant-test
-  (testing "no search-dominant turn → magnitude 0 even with high token counts"
+(deftest n-expensive-turn-zero-when-threshold-nil-test
+  (testing "nil threshold (corpus below min size) → magnitude 0 regardless of token spend"
     (let [normalized (normalize
                       [(user-msg 1 (ts 1))
-                       ;; 3 authoring calls — non-search-dominant
-                       (assistant-tokens 2 (ts 2) 100000
-                                         [(tool-input "create_sql_query"
-                                                      {:database_id 1 :sql_query "SELECT 1"} "c1")
-                                          (tool-output "c1")
-                                          (tool-input "edit_sql_query"
-                                                      {:query_id "q1" :edits []} "c2")
-                                          (tool-output "c2")])])]
-      (is (= 0 (signals/expensive-search-turn-magnitude normalized))))))
+                       (assistant-tokens 2 (ts 2) 9999999 [])])]
+      (is (= 0 (signals/n-expensive-turn-magnitude normalized nil))))))
 
-(deftest expensive-search-turn-returns-raw-tokens-test
-  (testing "returns raw total_tokens of the worst search-dominant turn"
+(deftest n-expensive-turn-zero-when-all-below-threshold-test
+  (testing "all turns at or below threshold → magnitude 0"
     (let [normalized (normalize
                       [(user-msg 1 (ts 1))
-                       (assistant-tokens 2 (ts 2) 45000
-                                         [(tool-input "search" {} "s1")
-                                          (search-output "s1" [{:model "table" :id 1}])])
+                       (assistant-tokens 2 (ts 2) 50000 [])
                        (user-msg 3 (ts 3))
-                       (assistant-tokens 4 (ts 4) 80000
-                                         [(tool-input "search" {} "s2")
-                                          (search-output "s2" [{:model "table" :id 2}])])])]
-      ;; raw max (pre-baseline): 80 000
-      (is (= 80000 (signals/expensive-search-turn-magnitude normalized))))))
+                       (assistant-tokens 4 (ts 4) 100000 [])])]
+      ;; threshold equal to the largest value → strict >, so 0
+      (is (= 0 (signals/n-expensive-turn-magnitude normalized 100000))))))
 
-(deftest expensive-search-turn-fifty-percent-counts-test
-  (testing "exactly 50% search calls qualifies as search-dominant (≥ 50% rule)"
+(deftest n-expensive-turn-counts-strict-exceedance-test
+  (testing "counts turns strictly above the threshold"
     (let [normalized (normalize
                       [(user-msg 1 (ts 1))
-                       ;; 1 search + 1 read_resource = 50% search → search-dominant
-                       (assistant-tokens 2 (ts 2) 60000
-                                         [(tool-input "search" {} "s1")
-                                          (search-output "s1" [{:model "table" :id 1}])
-                                          (tool-input "read_resource"
-                                                      {:uris ["metabase://table/1"]} "r1")
-                                          (tool-output "r1")])])]
-      (is (= 60000 (signals/expensive-search-turn-magnitude normalized))))))
-
-(deftest expensive-search-turn-no-tool-calls-ineligible-test
-  (testing "a turn with 0 tool calls is :no-tool-calls — ineligible for either signal"
-    (let [normalized (normalize
-                      [(user-msg 1 (ts 1))
-                       (assistant-tokens 2 (ts 2) 50000
-                                         [{:type :text :text "just a reply"}])])]
-      (is (= 0 (signals/expensive-search-turn-magnitude normalized)))
-      (is (= 0 (signals/expensive-tool-turn-magnitude normalized))))))
-
-;; ---------------------------------------------------------------------------
-;; Family 3, Signal 8 — expensive-tool-turn
-;; ---------------------------------------------------------------------------
-
-(deftest expensive-tool-turn-returns-raw-tokens-test
-  (testing "returns raw total_tokens of the worst non-search-dominant turn"
-    (let [normalized (normalize
-                      [(user-msg 1 (ts 1))
-                       (assistant-tokens 2 (ts 2) 50000
-                                         [(tool-input "create_sql_query"
-                                                      {:database_id 1 :sql_query "SELECT 1"} "c1")
-                                          (tool-output "c1")])])]
-      (is (= 50000 (signals/expensive-tool-turn-magnitude normalized))))))
-
-(deftest expensive-tool-turn-zero-when-only-search-dominant-test
-  (testing "if every turn is search-dominant, expensive-tool-turn is 0"
-    (let [normalized (normalize
-                      [(user-msg 1 (ts 1))
-                       (assistant-tokens 2 (ts 2) 90000
-                                         [(tool-input "search" {} "s1")
-                                          (search-output "s1" [{:model "table" :id 1}])])])]
-      (is (= 0 (signals/expensive-tool-turn-magnitude normalized)))
-      (is (= 90000 (signals/expensive-search-turn-magnitude normalized))))))
-
-(deftest expensive-turn-partition-disjoint-test
-  (testing "search-dominant and non-search-dominant turns never double-count"
-    (let [normalized (normalize
-                      [(user-msg 1 (ts 1))
-                       ;; search-dominant 70K
-                       (assistant-tokens 2 (ts 2) 70000
-                                         [(tool-input "search" {} "s1")
-                                          (search-output "s1" [{:model "table" :id 1}])])
+                       (assistant-tokens 2 (ts 2) 50000 [])
                        (user-msg 3 (ts 3))
-                       ;; non-search-dominant 50K (authoring)
-                       (assistant-tokens 4 (ts 4) 50000
-                                         [(tool-input "create_sql_query"
-                                                      {:database_id 1 :sql_query "SELECT 1"} "c1")
-                                          (tool-output "c1")])])]
-      (is (= 70000 (signals/expensive-search-turn-magnitude normalized)))
-      (is (= 50000 (signals/expensive-tool-turn-magnitude normalized))))))
+                       (assistant-tokens 4 (ts 4) 200000 [])
+                       (user-msg 5 (ts 5))
+                       (assistant-tokens 6 (ts 6) 300000 [])])]
+      (is (= 2 (signals/n-expensive-turn-magnitude normalized 100000))))))
+
+(deftest n-expensive-turn-ignores-user-rows-test
+  (testing "user rows never count toward the magnitude (no :total-tokens fired by the agent)"
+    (let [normalized (normalize
+                      [(user-msg 1 (ts 1))   ; user row, total_tokens=0
+                       (user-msg 2 (ts 2))   ; user row, total_tokens=0
+                       (assistant-tokens 3 (ts 3) 250000 [])])]
+      (is (= 1 (signals/n-expensive-turn-magnitude normalized 100000))))))
+
+(deftest n-expensive-turn-zero-token-turn-not-counted-test
+  (testing "an assistant turn with total_tokens=0 is not counted"
+    (let [normalized (normalize
+                      [(user-msg 1 (ts 1))
+                       (assistant-tokens 2 (ts 2) 0 [])])]
+      (is (= 0 (signals/n-expensive-turn-magnitude normalized 100000))))))
+
+(deftest n-expensive-turn-multiple-outliers-test
+  (testing "multiple outlier turns each contribute 1 (event-count semantics)"
+    (let [normalized (normalize
+                      (cons (user-msg 1 (ts 1))
+                            (mapcat (fn [i]
+                                      [(user-msg (+ 100 i) (ts (+ 100 i)))
+                                       (assistant-tokens (+ 200 i) (ts (+ 200 i)) 500000 [])])
+                                    (range 5))))]
+      (is (= 5 (signals/n-expensive-turn-magnitude normalized 250000))))))
 
 ;; ---------------------------------------------------------------------------
 ;; Family 3, Signal 9 — query-thrash
