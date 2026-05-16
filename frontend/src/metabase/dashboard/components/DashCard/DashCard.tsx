@@ -7,6 +7,7 @@ import { c, t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isActionCard } from "metabase/actions/utils";
+import { QuestionLastUpdated } from "metabase/common/components/QuestionLastUpdated/QuestionLastUpdated";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { addParameter, duplicateCard } from "metabase/dashboard/actions";
@@ -416,7 +417,15 @@ function DashCardInner({
             onEditVisualization={onEditVisualizationClick}
           />
         )}
-        {isStale && (
+        {mainDataset?.cached ? (
+          <QuestionLastUpdated
+            result={mainDataset}
+            pos="absolute"
+            bottom="0.5rem"
+            right="0.5rem"
+            style={{ zIndex: 1, cursor: "default" }}
+          />
+        ) : isStale ? (
           <Tooltip label={staleTooltipLabel} position="bottom">
             <Flex
               pos="absolute"
@@ -427,7 +436,7 @@ function DashCardInner({
               <Loader size="xs" />
             </Flex>
           </Tooltip>
-        )}
+        ) : null}
         <DashCardVisualization
           dashcard={dashcard}
           question={question}
