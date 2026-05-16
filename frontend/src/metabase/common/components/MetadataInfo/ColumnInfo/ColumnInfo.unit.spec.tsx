@@ -9,6 +9,7 @@ import {
   SAMPLE_PROVIDER,
   columnFinder,
 } from "metabase-lib/test-helpers";
+import type Field from "metabase-lib/v1/metadata/Field";
 import {
   PRODUCTS,
   PRODUCT_CATEGORY_VALUES,
@@ -25,14 +26,14 @@ const state = createMockState({
 
 const metadata = getMetadata(state);
 
-function setup(field) {
+function setup(field: Field) {
   setupFieldsValuesEndpoints([PRODUCT_CATEGORY_VALUES]);
   return renderWithProviders(<TableColumnInfo field={field} />, {
     storeInitialState: state,
   });
 }
 
-function setupLib(table, column) {
+function setupLib(table: string, column: string) {
   const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const columns = Lib.visibleColumns(query, 0);
   const findColumn = columnFinder(query, columns);
@@ -44,23 +45,25 @@ function setupLib(table, column) {
 }
 
 describe("FieldInfo", () => {
+  const categoryField = metadata.field(PRODUCTS.CATEGORY)!;
+  const createdAtField = metadata.field(PRODUCTS.CREATED_AT)!;
+
   it("should show the given dimension's semantic type name", async () => {
-    const field = metadata.field(PRODUCTS.CATEGORY);
-    setup(field);
+    setup(categoryField);
 
     expect(await screen.findByText("Category")).toBeInTheDocument();
   });
 
   it("should display the given dimension's description", async () => {
-    const field = metadata.field(PRODUCTS.CATEGORY);
-    setup(field);
+    setup(categoryField);
 
-    expect(await screen.findByText(field.description)).toBeInTheDocument();
+    expect(
+      await screen.findByText(categoryField.description!),
+    ).toBeInTheDocument();
   });
 
   it("should show a placeholder for a dimension with no description", () => {
-    const field = metadata.field(PRODUCTS.CREATED_AT);
-    setup(field);
+    setup(createdAtField);
 
     expect(screen.getByText("No description")).toBeInTheDocument();
   });

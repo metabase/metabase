@@ -29,12 +29,12 @@ export type TextFieldFingerprint = {
 };
 
 export type NumberFieldFingerprint = {
-  avg: number;
-  max: number;
-  min: number;
-  q1: number;
-  q3: number;
-  sd: number;
+  avg?: number;
+  max?: number;
+  min?: number;
+  q1?: number;
+  q3?: number;
+  sd?: number;
 };
 
 export type DateTimeFieldFingerprint = {
