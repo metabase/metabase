@@ -3,7 +3,7 @@ import _ from "underscore";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { rootId } from "metabase/admin/performance/constants/simple";
 import { createMockState } from "metabase/redux/store/mocks";
 import { CacheDurationUnit } from "metabase-types/api";

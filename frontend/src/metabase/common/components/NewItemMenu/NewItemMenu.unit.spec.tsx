@@ -5,7 +5,7 @@ import {
   setupDatabasesEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { NewModals } from "metabase/new/components/NewModals/NewModals";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Database } from "metabase-types/api";

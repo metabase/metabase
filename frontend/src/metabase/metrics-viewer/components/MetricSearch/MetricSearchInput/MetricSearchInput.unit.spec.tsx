@@ -1,7 +1,11 @@
 import { fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 
 import type {
   ExpressionDefinitionEntry,
@@ -68,22 +72,27 @@ jest.mock("../MetricExpressionPill", () => ({
 }));
 
 jest.mock("../MetricSearchDropdown", () => ({
-  MetricSearchDropdown: ({
-    onSelect,
-    searchQuery,
-  }: {
-    onSelect: (metric: SelectedMetric) => void;
-    searchQuery: string;
-  }) => (
-    <div data-testid="search-dropdown" data-search-text={searchQuery}>
-      <button
-        onClick={() =>
-          onSelect({ id: 99, name: "New Metric", sourceType: "metric" })
-        }
-      >
-        select-new-metric
-      </button>
-    </div>
+  MetricSearchDropdown: jest.requireActual("react").forwardRef(
+    (
+      {
+        onSelect,
+        searchQuery,
+      }: {
+        onSelect: (metric: SelectedMetric) => void;
+        searchQuery: string;
+      },
+      _ref: unknown,
+    ) => (
+      <div data-testid="search-dropdown" data-search-text={searchQuery}>
+        <button
+          onClick={() =>
+            onSelect({ id: 99, name: "New Metric", sourceType: "metric" })
+          }
+        >
+          select-new-metric
+        </button>
+      </div>
+    ),
   ),
 }));
 

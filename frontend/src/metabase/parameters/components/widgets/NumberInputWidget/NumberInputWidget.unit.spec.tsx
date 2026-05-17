@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { render, screen, within } from "__support__/ui-minimal";
 import type { Parameter, ParameterValue } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -16,7 +16,7 @@ type SetupOpts = Omit<NumberInputWidgetProps, "parameter" | "setValue"> & {
 const setup = ({ parameter = createMockParameter(), ...props }: SetupOpts) => {
   const setValue = jest.fn();
 
-  renderWithProviders(
+  render(
     <NumberInputWidget {...props} setValue={setValue} parameter={parameter} />,
   );
 

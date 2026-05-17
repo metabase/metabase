@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 
 import { SearchFilterDatePicker } from "./SearchFilterDatePicker";
 
@@ -10,9 +10,7 @@ type SetupProps = {
 
 const setup = ({ value = null }: SetupProps = {}) => {
   const onChangeMock = jest.fn();
-  renderWithProviders(
-    <SearchFilterDatePicker value={value} onChange={onChangeMock} />,
-  );
+  render(<SearchFilterDatePicker value={value} onChange={onChangeMock} />);
   return {
     onChangeMock,
   };

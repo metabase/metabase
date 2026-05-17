@@ -13,7 +13,7 @@ import {
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { createMockDashboardState } from "metabase/redux/store/mocks";
 import * as iframeUtils from "metabase/utils/iframe";
 import registerVisualizations from "metabase/visualizations/register";

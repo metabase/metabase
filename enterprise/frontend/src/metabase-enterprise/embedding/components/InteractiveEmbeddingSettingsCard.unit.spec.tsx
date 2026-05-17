@@ -8,7 +8,11 @@ import {
   setupUpdateSettingsEndpoint,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import {
+  fireEvent,
+  renderWithProviders,
+  screen,
+} from "__support__/ui-with-store";
 import { createMockSettings } from "metabase-types/api/mocks";
 
 import { InteractiveEmbeddingSettingsCard } from "./InteractiveEmbeddingSettingsCard";

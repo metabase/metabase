@@ -7,7 +7,11 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockCollection,

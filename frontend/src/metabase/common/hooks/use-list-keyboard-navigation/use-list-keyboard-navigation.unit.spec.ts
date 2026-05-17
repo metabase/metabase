@@ -1,6 +1,6 @@
 import { renderHook } from "@testing-library/react";
 
-import { fireEvent } from "__support__/ui";
+import { fireEvent } from "__support__/ui-minimal";
 
 import { useListKeyboardNavigation } from "./use-list-keyboard-navigation";
 

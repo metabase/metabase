@@ -1,10 +1,10 @@
 import {
   fireEvent,
-  renderWithProviders,
+  render,
   screen,
   waitFor,
   within,
-} from "__support__/ui";
+} from "__support__/ui-minimal";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -155,7 +155,7 @@ function getTrendlineSeries(settings: ComputedVisualizationSettings): Series {
 }
 
 const setup = ({ series }: { series: Series }) => {
-  return renderWithProviders(
+  return render(
     <QuestionChartSettings series={series} initial={{ section: "Data" }} />,
   );
 };

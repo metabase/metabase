@@ -56,7 +56,9 @@ const createListItem = (table) => (
 );
 
 const createSchemaSeparator = (table) => (
-  <li className={R.schemaSeparator}>{table.schema_name}</li>
+  <li className={R.schemaSeparator} key={table.schema_name}>
+    {table.schema_name}
+  </li>
 );
 
 export const separateTablesBySchema = (

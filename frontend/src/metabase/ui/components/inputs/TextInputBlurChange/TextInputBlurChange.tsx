@@ -38,7 +38,7 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
   const blurChangeFiredRef = useRef(false);
 
   useLayoutEffect(() => {
-    setInternalValue(value);
+    setInternalValue(value ?? "");
     blurChangeFiredRef.current = false;
   }, [value]);
 
@@ -61,7 +61,7 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
       if (onBlurChange && String(value ?? "") !== event.target.value) {
         blurChangeFiredRef.current = true;
         onBlurChange(event);
-        setInternalValue(normalize(event.target.value) ?? undefined);
+        setInternalValue(normalize(event.target.value) ?? "");
       }
     },
     [normalize, onBlur, onBlurChange, value],
@@ -70,7 +70,7 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
       if (resetOnEsc && event.key === "Escape") {
-        flushSync(() => setInternalValue(value));
+        flushSync(() => setInternalValue(value ?? ""));
         ref.current?.blur();
       }
     },
@@ -96,7 +96,7 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
     <TextInput
       {...props}
       ref={ref}
-      value={internalValue}
+      value={internalValue ?? ""}
       onBlur={handleBlur}
       onChange={handleChange}
       onKeyDown={handleKeyDown}

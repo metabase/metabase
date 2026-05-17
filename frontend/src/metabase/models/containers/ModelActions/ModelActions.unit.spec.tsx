@@ -17,7 +17,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
 import { Questions as Models } from "metabase/entities/questions";
 import { ModalRoute } from "metabase/hoc/ModalRoute";

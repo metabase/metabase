@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui-minimal";
 import { createMockSegment } from "metabase-types/api/mocks";
 
 import { TEST_SEGMENT, setup } from "./setup";

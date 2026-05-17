@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Route } from "react-router";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import {
   createMockSettingsState,
   createMockState,

@@ -14,7 +14,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { FormProvider } from "metabase/forms";

@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders } from "__support__/ui";
+import { render } from "__support__/ui-minimal";
 
 import { UnfoldJsonPicker } from "./UnfoldJsonPicker";
 
@@ -11,7 +11,7 @@ interface SetupOpts {
 }
 
 const setup = ({ value = false, onChange = jest.fn() }: SetupOpts = {}) => {
-  renderWithProviders(
+  render(
     <UnfoldJsonPicker
       placeholder="Select..."
       value={value}

@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import Question from "metabase-lib/v1/Question";
 import type { CardType } from "metabase-types/api";
 import { createMockCard, createMockUser } from "metabase-types/api/mocks";

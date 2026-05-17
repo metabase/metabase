@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { findRequests } from "__support__/server-mocks";
-import { screen, within } from "__support__/ui";
+import { screen, within } from "__support__/ui-minimal";
 import { createMockNotification } from "metabase-types/api/mocks/notification";
 
 import type { SetupOpts } from "./constants.spec";

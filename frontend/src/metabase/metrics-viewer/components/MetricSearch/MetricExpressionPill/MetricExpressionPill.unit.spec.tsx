@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders } from "__support__/ui";
+import { render } from "__support__/ui-minimal";
 
 import type { ExpressionDefinitionEntry } from "../../../types/viewer-state";
 import type { MetricNameMap } from "../utils";
@@ -39,7 +39,7 @@ function setup({
     "metric:1": "A",
     "metric:2": "B",
   };
-  renderWithProviders(
+  render(
     <MetricExpressionPill
       expressionEntry={expressionEntry}
       metricNames={metricNames}

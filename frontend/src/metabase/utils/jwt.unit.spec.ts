@@ -58,17 +58,23 @@ describe("extractResourceIdFromJwtToken", () => {
   });
 
   it("should return null for invalid base64 payload", () => {
+    const consoleError = jest.spyOn(console, "error").mockImplementation();
     const token = "header.!!!invalid-base64!!!.signature";
 
     expect(extractResourceIdFromJwtToken(token)).toBeNull();
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 
   it("should return null for invalid JSON in payload", () => {
+    const consoleError = jest.spyOn(console, "error").mockImplementation();
     const header = btoa(JSON.stringify({ alg: "HS256" }));
     const invalidJsonPayload = btoa("not valid json");
     const token = `${header}.${invalidJsonPayload}.signature`;
 
     expect(extractResourceIdFromJwtToken(token)).toBeNull();
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 
   it("should handle string entity ids", async () => {

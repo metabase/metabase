@@ -3,7 +3,11 @@ import _ from "underscore";
 
 import { createMockMetadata } from "__support__/metadata";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import type { State } from "metabase/redux/store";
 import {
   createMockQueryBuilderState,
@@ -337,6 +341,28 @@ describe("AggregationPicker", () => {
   });
 
   describe("custom expressions", () => {
+    let consoleErrorSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation((message: unknown, ...args: unknown[]) => {
+          if (
+            typeof message === "string" &&
+            message.includes("not wrapped in act")
+          ) {
+            return;
+          }
+
+          // eslint-disable-next-line no-console
+          console.warn(message, ...args);
+        });
+    });
+
+    afterEach(() => {
+      consoleErrorSpy.mockRestore();
+    });
+
     it("should allow to enter a custom expression containing an aggregation", async () => {
       const { getRecentClauseInfo } = setup({ allowCustomExpressions: true });
 
@@ -344,10 +370,11 @@ describe("AggregationPicker", () => {
       const expressionName = "My expression";
 
       await userEvent.click(screen.getByText("Custom Expression"));
-      await userEvent.type(
-        screen.getByTestId("custom-expression-query-editor"),
-        expression,
-      );
+      const editor = screen.getByTestId("custom-expression-query-editor");
+      await waitFor(() => {
+        expect(editor).not.toHaveAttribute("readonly");
+      });
+      await userEvent.type(editor, expression);
       await userEvent.type(
         screen.getByTestId("expression-name"),
         expressionName,

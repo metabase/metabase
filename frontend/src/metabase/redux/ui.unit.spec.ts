@@ -10,6 +10,10 @@ describe("metabase/redux/ui", () => {
   const createMockStore = () => {
     return configureStore({
       reducer: { modal },
+      middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware({
+          serializableCheck: false,
+        }),
     });
   };
 
@@ -77,12 +81,18 @@ describe("metabase/redux/ui", () => {
 
     describe("validation", () => {
       it("should throw an error when props contain non-serializable values in development", () => {
+        const consoleError = jest.spyOn(console, "error").mockImplementation();
         const store = createMockStore();
         const props = { callback: () => {} };
 
         expect(() => {
           store.dispatch(setOpenModalWithProps({ id: "dashboard", props }));
         }).toThrow("Modal props must be serializable");
+        expect(consoleError).toHaveBeenCalledWith(
+          "Non-serializable modal props detected:",
+          props,
+        );
+        consoleError.mockRestore();
       });
 
       it("should not throw an error when props contain non-serializable values in production", () => {
@@ -101,6 +111,10 @@ describe("metabase/redux/ui", () => {
 
         const store = configureStore({
           reducer: { modal: productionModal },
+          middleware: (getDefaultMiddleware: any) =>
+            getDefaultMiddleware({
+              serializableCheck: false,
+            }),
         });
 
         const props = { callback: () => {} };

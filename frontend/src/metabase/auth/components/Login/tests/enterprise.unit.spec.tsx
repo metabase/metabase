@@ -1,5 +1,5 @@
 import "metabase/plugins/builtin";
-import { screen } from "__support__/ui";
+import { screen } from "__support__/ui-minimal";
 
 import { setup } from "./setup";
 

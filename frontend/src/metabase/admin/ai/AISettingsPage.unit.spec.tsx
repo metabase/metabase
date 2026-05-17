@@ -17,7 +17,11 @@ import {
   setupMetabotsEndpoints,
 } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import { buildDefaultMetabots } from "metabase/metabot/tests/utils";
 import { reinitialize } from "metabase/plugins";
@@ -32,7 +36,11 @@ import {
 import { AISettingsPage } from "./AISettingsPage";
 
 const defaultSeedCollections = [
-  createMockCollection({ id: "root", name: "Our Analytics" }),
+  createMockCollection({
+    id: "root",
+    name: "Our Analytics",
+    model: "collection",
+  }),
 ];
 
 const setup = async ({

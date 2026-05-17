@@ -1,5 +1,4 @@
-import { renderHook } from "@testing-library/react";
-
+import { renderHook } from "__support__/ui-minimal";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 

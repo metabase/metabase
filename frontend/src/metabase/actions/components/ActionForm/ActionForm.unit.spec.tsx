@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, render, screen, waitFor } from "__support__/ui";
+import { fireEvent, render, screen, waitFor } from "__support__/ui-minimal";
 import type {
   ActionFormSettings,
   FieldSettings,
@@ -267,6 +267,9 @@ describe("Actions > ActionForm", () => {
     it("shows an error if submit fails", async () => {
       const message = "Something went wrong when submitting the form.";
       const error = { success: false, error: message, message };
+      const consoleError = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
       const { action } = await setup({
         onSubmit: jest.fn().mockRejectedValue(error),
         parameters: [
@@ -298,6 +301,8 @@ describe("Actions > ActionForm", () => {
       expect(
         await screen.findByRole("button", { name: /failed/i }),
       ).toHaveTextContent("Failed");
+      expect(consoleError).toHaveBeenCalledWith(error);
+      consoleError.mockRestore();
     });
   });
 

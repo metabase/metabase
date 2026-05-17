@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui-with-store";
+import { render, screen } from "__support__/ui-minimal";
 
 import { MetricEmptyState } from "./MetricEmptyState";
 
@@ -11,7 +11,7 @@ type SetupOpts = {
 function setup({ isRunnable }: SetupOpts) {
   const runQuestionQuery = jest.fn();
 
-  renderWithProviders(
+  render(
     <MetricEmptyState
       isRunnable={isRunnable}
       runQuestionQuery={runQuestionQuery}

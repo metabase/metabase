@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-export const ChangeTypeButton = styled.button`
+export const ChangeTypeButton = styled.span`
   padding: 0 0.25rem;
   color: var(--mb-color-filter);
   cursor: pointer;

@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import { ThemeProvider } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -87,7 +87,7 @@ const setup = (
     dispatch: jest.fn(),
   };
 
-  renderWithProviders(
+  render(
     <ThemeProvider>
       <Funnel {...funnelPropsForRender} />
     </ThemeProvider>,

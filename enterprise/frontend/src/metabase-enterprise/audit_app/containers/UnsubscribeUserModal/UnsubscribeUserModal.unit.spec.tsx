@@ -6,7 +6,11 @@ import {
   setupAuditUnsubscribeEndpoint,
   setupUserEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { UnsubscribeUserModal } from "./UnsubscribeUserModal";
@@ -33,9 +37,13 @@ function setup({
 
 describe("UnsubscribeUserModal", () => {
   it("should close on successful submit", async () => {
-    const { onClose } = setup();
+    const { user, onClose } = setup();
 
-    await userEvent.click(await screen.findByText("Unsubscribe"));
+    await screen.findByText(
+      `Unsubscribe ${user.common_name} from all subscriptions and alerts?`,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Unsubscribe" }));
 
     await waitFor(async () => {
       const deletes = await findRequests("DELETE");
@@ -47,9 +55,13 @@ describe("UnsubscribeUserModal", () => {
   it("should display a message on submit failure", async () => {
     const error = { message: "error" };
     const unsubscribeResponse = { status: 404, body: error };
-    const { onClose } = setup({ unsubscribeResponse });
+    const { user, onClose } = setup({ unsubscribeResponse });
 
-    await userEvent.click(await screen.findByText("Unsubscribe"));
+    await screen.findByText(
+      `Unsubscribe ${user.common_name} from all subscriptions and alerts?`,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Unsubscribe" }));
 
     await waitFor(async () => {
       const deletes = await findRequests("DELETE");

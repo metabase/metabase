@@ -3,7 +3,6 @@ import { useInterval } from "react-use";
 import { t } from "ttag";
 
 import { Button } from "metabase/common/components/Button";
-import { Link } from "metabase/common/components/Link";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { type FileUpload, UploadMode } from "metabase/redux/store/upload";
 import { Box, Stack } from "metabase/ui";
@@ -78,12 +77,7 @@ const FileUploadLarge = ({
   );
 };
 
-const getName = (upload: FileUpload) => {
-  if (upload.status === "complete") {
-    return <Link to={`/model/${upload.modelId}`}>{upload.name}</Link>;
-  }
-  return upload.name;
-};
+const getName = (upload: FileUpload) => upload.name;
 
 const getTitle = (
   uploads: FileUpload[],

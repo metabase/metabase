@@ -1,6 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { UndoListing } from "metabase/common/components/UndoListing";
 
 import { useToast } from "./use-toast";

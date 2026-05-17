@@ -237,6 +237,7 @@ describe("metabot reducer", () => {
 
   describe("getRequestConversation", () => {
     it("should return undefined if no matching convo", () => {
+      const consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation();
       const state = createDraft(getMetabotInitialState());
       const action = {
         meta: {
@@ -245,9 +246,14 @@ describe("metabot reducer", () => {
       };
 
       expect(getRequestConversation(state, action)).toBeUndefined();
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        "Unable to find metabot conversation for test_1",
+      );
+      consoleWarnSpy.mockRestore();
     });
 
     it("should return undefined if the conversation's conversation_id doesn't match the value in the store", () => {
+      const consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation();
       const state = createDraft(getMetabotInitialState());
       state.conversations.test_1 = createDraft(
         createConversation("test_1", { conversationId: "stored-id" }),
@@ -259,6 +265,10 @@ describe("metabot reducer", () => {
       };
 
       expect(getRequestConversation(state, action)).toBeUndefined();
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        "Metabot conversation test_1 has stored-id but request was for different-id",
+      );
+      consoleWarnSpy.mockRestore();
     });
 
     it("should return conversation if agentId and request conversation_id match", () => {

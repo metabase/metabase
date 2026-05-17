@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { type ComponentProps, useState } from "react";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import { ChartSettingsWidgetPopover } from "metabase/visualizations/components/ChartSettingsWidgetPopover";
 
 import type { Widget } from "../types";
@@ -55,7 +55,7 @@ const setup = (props: SetupProps) => {
       </>
     );
   };
-  return renderWithProviders(<Container />);
+  return render(<Container />);
 };
 
 it("should display when an anchor is passed", async () => {

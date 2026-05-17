@@ -11,7 +11,7 @@ import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import type { CollectionContentModel, TokenFeatures } from "metabase-types/api";
 import {
   createMockCollection,

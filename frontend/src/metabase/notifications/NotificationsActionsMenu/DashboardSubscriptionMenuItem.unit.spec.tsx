@@ -1,5 +1,5 @@
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Menu } from "metabase/ui";
 import type { ChannelApiResponse } from "metabase-types/api";

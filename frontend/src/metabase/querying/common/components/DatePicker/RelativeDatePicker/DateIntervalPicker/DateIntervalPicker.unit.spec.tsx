@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
-import { renderWithProviders, screen } from "__support__/ui-with-store";
+import { render, screen } from "__support__/ui-minimal";
 import { DATE_PICKER_UNITS } from "metabase/querying/common/constants";
 import type {
   DatePickerUnit,
@@ -36,8 +36,9 @@ function setup({
 }: SetupOpts) {
   const onChange = jest.fn();
   const onSubmit = jest.fn();
+  const user = userEvent.setup({ delay: null });
 
-  renderWithProviders(
+  render(
     <DateIntervalPicker
       value={value}
       availableUnits={availableUnits}
@@ -47,7 +48,7 @@ function setup({
     />,
   );
 
-  return { onChange, onSubmit };
+  return { onChange, onSubmit, user };
 }
 
 describe("DateIntervalPicker", () => {
@@ -62,13 +63,13 @@ describe("DateIntervalPicker", () => {
       const defaultValue = getDefaultValue(direction);
 
       it("should change the interval", async () => {
-        const { onChange, onSubmit } = setup({
+        const { onChange, onSubmit, user } = setup({
           value: defaultValue,
         });
 
         const input = screen.getByLabelText("Interval");
-        await userEvent.clear(input);
-        await userEvent.type(input, "20");
+        await user.clear(input);
+        await user.type(input, "20");
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
@@ -76,18 +77,18 @@ describe("DateIntervalPicker", () => {
         });
         expect(onSubmit).not.toHaveBeenCalled();
 
-        await userEvent.type(input, "{enter}");
+        await user.type(input, "{enter}");
         expect(onSubmit).toHaveBeenCalled();
       });
 
       it("should change the interval with a negative value", async () => {
-        const { onChange, onSubmit } = setup({
+        const { onChange, onSubmit, user } = setup({
           value: defaultValue,
         });
 
         const input = screen.getByLabelText("Interval");
-        await userEvent.clear(input);
-        await userEvent.type(input, "-10");
+        await user.clear(input);
+        await user.type(input, "-10");
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
@@ -97,14 +98,14 @@ describe("DateIntervalPicker", () => {
       });
 
       it("should coerce zero", async () => {
-        const { onChange, onSubmit } = setup({
+        const { onChange, onSubmit, user } = setup({
           value: defaultValue,
         });
 
         const input = screen.getByLabelText("Interval");
-        await userEvent.clear(input);
-        await userEvent.type(input, "0");
-        await userEvent.tab();
+        await user.clear(input);
+        await user.type(input, "0");
+        await user.tab();
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
@@ -114,13 +115,13 @@ describe("DateIntervalPicker", () => {
       });
 
       it("should ignore empty values", async () => {
-        const { onChange, onSubmit } = setup({
+        const { onChange, onSubmit, user } = setup({
           value: defaultValue,
         });
 
         const input = screen.getByLabelText("Interval");
-        await userEvent.clear(input);
-        await userEvent.tab();
+        await user.clear(input);
+        await user.tab();
 
         expect(input).toHaveValue("30");
         expect(onChange).not.toHaveBeenCalled();
@@ -128,14 +129,14 @@ describe("DateIntervalPicker", () => {
       });
 
       it("should ignore invalid values", async () => {
-        const { onChange, onSubmit } = setup({
+        const { onChange, onSubmit, user } = setup({
           value: defaultValue,
         });
 
         const input = screen.getByLabelText("Interval");
-        await userEvent.clear(input);
-        await userEvent.type(input, "abc");
-        await userEvent.tab();
+        await user.clear(input);
+        await user.type(input, "abc");
+        await user.tab();
 
         expect(input).toHaveValue("30");
         expect(onChange).not.toHaveBeenCalled();
@@ -143,12 +144,12 @@ describe("DateIntervalPicker", () => {
       });
 
       it("should allow to change the unit", async () => {
-        const { onChange, onSubmit } = setup({
+        const { onChange, onSubmit, user } = setup({
           value: defaultValue,
         });
 
-        await userEvent.click(screen.getByRole("textbox", { name: "Unit" }));
-        await userEvent.click(screen.getByText("years"));
+        await user.click(screen.getByRole("textbox", { name: "Unit" }));
+        await user.click(screen.getByText("years"));
 
         expect(onChange).toHaveBeenCalledWith({
           ...defaultValue,
@@ -158,22 +159,22 @@ describe("DateIntervalPicker", () => {
       });
 
       it("should allow to set only available units", async () => {
-        setup({
+        const { user } = setup({
           value: defaultValue,
           availableUnits: ["day", "month"],
         });
-        await userEvent.click(screen.getByRole("textbox", { name: "Unit" }));
+        await user.click(screen.getByRole("textbox", { name: "Unit" }));
         expect(screen.getByText("days")).toBeInTheDocument();
         expect(screen.getByText("months")).toBeInTheDocument();
         expect(screen.queryByText("years")).not.toBeInTheDocument();
       });
 
       it("should allow to include the current unit", async () => {
-        const { onChange, onSubmit } = setup({
+        const { onChange, onSubmit, user } = setup({
           value: defaultValue,
         });
 
-        await userEvent.click(await screen.findByText("Include today"));
+        await user.click(await screen.findByText("Include today"));
 
         expect(onChange).toHaveBeenCalledWith({
           ...defaultValue,
@@ -185,11 +186,11 @@ describe("DateIntervalPicker", () => {
       });
 
       it("should allow to a relative offset", async () => {
-        const { onChange, onSubmit } = setup({
+        const { onChange, onSubmit, user } = setup({
           value: defaultValue,
         });
 
-        await userEvent.click(await screen.findByLabelText("Starting from…"));
+        await user.click(await screen.findByLabelText("Starting from…"));
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,

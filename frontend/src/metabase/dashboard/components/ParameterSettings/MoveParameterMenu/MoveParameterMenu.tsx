@@ -1,3 +1,4 @@
+import { createSelector } from "@reduxjs/toolkit";
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
@@ -25,15 +26,17 @@ type MoveParameterMenuProps = {
 
 const TOP_NAV_VALUE = "top-nav";
 
+const getMovableDashcards = createSelector([getCurrentDashcards], (dashcards) =>
+  dashcards.filter(
+    (dashcard) => isHeadingDashCard(dashcard) || isQuestionDashCard(dashcard),
+  ),
+);
+
 export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
   const [isOpen, { open: onOpen, close: _onClose }] = useDisclosure(false);
   const ref = useRef<HTMLInputElement>(null);
 
-  const dashcards = useSelector((state) =>
-    getCurrentDashcards(state).filter(
-      (dashcard) => isHeadingDashCard(dashcard) || isQuestionDashCard(dashcard),
-    ),
-  );
+  const dashcards = useSelector(getMovableDashcards);
 
   const parameterDashcard = useSelector((state) => {
     const dashcards = getCurrentDashcards(state);

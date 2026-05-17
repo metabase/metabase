@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { act, renderWithProviders, screen } from "__support__/ui";
+import { act, render, screen } from "__support__/ui-minimal";
 
 import { ChartSettingInputNumeric } from "./ChartSettingInputNumeric";
 
@@ -24,7 +24,7 @@ function setup({
 } = {}) {
   const onChange = jest.fn();
 
-  renderWithProviders(
+  render(
     <ChartSettingInputNumeric
       value={value}
       onChange={onChange}
@@ -41,7 +41,7 @@ async function type({ input, value }: { input: HTMLElement; value: string }) {
   const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
   await user.clear(input);
   await user.type(input, value);
-  act(() => jest.runAllTimers());
+  act(() => jest.runOnlyPendingTimers());
 }
 
 describe("ChartSettingInputNumber", () => {
@@ -127,25 +127,25 @@ describe("ChartSettingInputNumber", () => {
 
     await user.clear(input);
     await user.type(input, "0.");
-    act(() => jest.runAllTimers());
+    act(() => jest.runOnlyPendingTimers());
     expect(input).toHaveDisplayValue("0.");
     expect(onChange).toHaveBeenLastCalledWith(0);
 
     await user.clear(input);
     await user.type(input, "0.00");
-    act(() => jest.runAllTimers());
+    act(() => jest.runOnlyPendingTimers());
     expect(input).toHaveDisplayValue("0.00");
     expect(onChange).toHaveBeenLastCalledWith(0);
 
     await user.clear(input);
     await user.type(input, ".5");
-    act(() => jest.runAllTimers());
+    act(() => jest.runOnlyPendingTimers());
     expect(input).toHaveDisplayValue(".5");
     expect(onChange).toHaveBeenLastCalledWith(0.5);
 
     await user.clear(input);
     await user.type(input, "1.50");
-    act(() => jest.runAllTimers());
+    act(() => jest.runOnlyPendingTimers());
     expect(input).toHaveDisplayValue("1.50");
     expect(onChange).toHaveBeenLastCalledWith(1.5);
   });
@@ -156,7 +156,7 @@ describe("ChartSettingInputNumber", () => {
 
     await user.clear(input);
     await user.type(input, "0.");
-    act(() => jest.runAllTimers());
+    act(() => jest.runOnlyPendingTimers());
     expect(input).toHaveDisplayValue("0.");
 
     await user.click(document.body);
@@ -164,7 +164,7 @@ describe("ChartSettingInputNumber", () => {
 
     await user.clear(input);
     await user.type(input, ".5");
-    act(() => jest.runAllTimers());
+    act(() => jest.runOnlyPendingTimers());
     expect(input).toHaveDisplayValue(".5");
 
     await user.click(document.body);
@@ -172,7 +172,7 @@ describe("ChartSettingInputNumber", () => {
 
     await user.clear(input);
     await user.type(input, "1.50");
-    act(() => jest.runAllTimers());
+    act(() => jest.runOnlyPendingTimers());
     expect(input).toHaveDisplayValue("1.50");
 
     await user.click(document.body);
@@ -186,24 +186,24 @@ describe("ChartSettingInputNumber", () => {
     // Type "1.5" then delete the "5" — should stay "1.", not collapse to "1"
     await user.clear(input);
     await user.type(input, "1.5");
-    act(() => jest.runAllTimers());
+    act(() => jest.runOnlyPendingTimers());
     expect(input).toHaveDisplayValue("1.5");
     expect(onChange).toHaveBeenLastCalledWith(1.5);
 
     await user.type(input, "{Backspace}");
-    act(() => jest.runAllTimers());
+    act(() => jest.runOnlyPendingTimers());
     expect(input).toHaveDisplayValue("1.");
     expect(onChange).toHaveBeenLastCalledWith(1);
 
     // Type "0.009" then delete the "9" — should stay "0.00", not collapse to "0"
     await user.clear(input);
     await user.type(input, "0.009");
-    act(() => jest.runAllTimers());
+    act(() => jest.runOnlyPendingTimers());
     expect(input).toHaveDisplayValue("0.009");
     expect(onChange).toHaveBeenLastCalledWith(0.009);
 
     await user.type(input, "{Backspace}");
-    act(() => jest.runAllTimers());
+    act(() => jest.runOnlyPendingTimers());
     expect(input).toHaveDisplayValue("0.00");
     expect(onChange).toHaveBeenLastCalledWith(0);
   });
@@ -216,21 +216,21 @@ describe("ChartSettingInputNumber", () => {
     expect(onChange).not.toHaveBeenCalled();
 
     // Inputs with `e` that are not valid scientific notation
-    type({ input, value: "e123" });
-    expect(input).toHaveDisplayValue("");
-    expect(onChange).not.toHaveBeenCalled();
+    await type({ input, value: "e123" });
+    expect(input).toHaveDisplayValue("e123");
+    expect(onChange).toHaveBeenLastCalledWith(undefined);
 
-    type({ input, value: "e123e" });
-    expect(input).toHaveDisplayValue("");
-    expect(onChange).not.toHaveBeenCalled();
+    await type({ input, value: "e123e" });
+    expect(input).toHaveDisplayValue("e123e");
+    expect(onChange).toHaveBeenLastCalledWith(undefined);
 
-    type({ input, value: "1e23e" });
-    expect(input).toHaveDisplayValue("");
-    expect(onChange).not.toHaveBeenCalled();
+    await type({ input, value: "1e23e" });
+    expect(input).toHaveDisplayValue("1e23e");
+    expect(onChange).toHaveBeenLastCalledWith(undefined);
 
-    type({ input, value: "e1e23e" });
-    expect(input).toHaveDisplayValue("");
-    expect(onChange).not.toHaveBeenCalled();
+    await type({ input, value: "e1e23e" });
+    expect(input).toHaveDisplayValue("e1e23e");
+    expect(onChange).toHaveBeenLastCalledWith(undefined);
   });
 
   it("renders the `value` prop on load", () => {

@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui-with-store";
+import { render, screen } from "__support__/ui-minimal";
 import type { NumberValue } from "metabase/utils/number";
 
 import { BigIntNumberInput } from "./BigIntNumberInput";
@@ -11,7 +11,7 @@ type SetupOpts = {
 
 function setup({ value = null }: SetupOpts = {}) {
   const onChange = jest.fn();
-  renderWithProviders(<BigIntNumberInput value={value} onChange={onChange} />);
+  render(<BigIntNumberInput value={value} onChange={onChange} />);
 
   const input = screen.getByRole("textbox");
   return { input, onChange };

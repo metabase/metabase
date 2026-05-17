@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { act, render, screen } from "__support__/ui";
+import { act, render, screen } from "__support__/ui-minimal";
 
 import { useActionButtonLabel } from "./use-action-button-label";
 

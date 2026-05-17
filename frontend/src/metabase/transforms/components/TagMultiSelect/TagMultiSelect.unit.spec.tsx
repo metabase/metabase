@@ -4,7 +4,11 @@ import {
   setupCreateTransformTagEndpoint,
   setupListTransformTagsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import type { TransformTag, TransformTagId } from "metabase-types/api";
 import { createMockTransformTag } from "metabase-types/api/mocks";
 

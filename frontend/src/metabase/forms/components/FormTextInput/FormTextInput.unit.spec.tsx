@@ -2,7 +2,13 @@ import userEvent from "@testing-library/user-event";
 import type { AnySchema } from "yup";
 import * as Yup from "yup";
 
-import { getIcon, queryIcon, render, screen, waitFor } from "__support__/ui";
+import {
+  getIcon,
+  queryIcon,
+  render,
+  screen,
+  waitFor,
+} from "__support__/ui-minimal";
 import {
   Form,
   FormProvider,

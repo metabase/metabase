@@ -14,6 +14,7 @@ import type { Settings } from "metabase-types/api/settings";
 import { GroupMappingsWidgetView } from "./GroupMappingsWidgetView";
 
 const EMPTY_GROUP_LIST: GroupInfo[] = [];
+const EMPTY_MAPPINGS: Record<string, GroupId[]> = {};
 
 type GroupMappingsWidgetProps = {
   mappingSetting: string;
@@ -28,7 +29,7 @@ export function GroupMappingsWidget(props: GroupMappingsWidgetProps) {
     (state) =>
       (getSetting(state, props.mappingSetting as keyof Settings) as
         | Record<string, GroupId[]>
-        | undefined) ?? {},
+        | undefined) ?? EMPTY_MAPPINGS,
   );
 
   const [deletePermissionsGroup] = useDeletePermissionsGroupMutation();

@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, queryIcon, screen, within } from "__support__/ui";
+import { getIcon, queryIcon, screen, within } from "__support__/ui-minimal";
 import type { CollectionType } from "metabase-types/api";
 import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 

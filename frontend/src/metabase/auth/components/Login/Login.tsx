@@ -61,12 +61,12 @@ export const Login = ({ params, location }: LoginProps): JSX.Element => {
             </Box>
           ))}
           {passwordProvider.map((provider) => (
-            <>
+            <Box key={provider.name}>
               <Divider mt="2rem" />
-              <Box key={provider.name} mt="1rem" ta="center">
+              <Box mt="1rem" ta="center">
                 <provider.Button isCard={true} redirectUrl={redirectUrl} />
               </Box>
-            </>
+            </Box>
           ))}
         </Box>
       )}

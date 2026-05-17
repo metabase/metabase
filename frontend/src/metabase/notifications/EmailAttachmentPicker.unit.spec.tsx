@@ -1,5 +1,9 @@
 import { mockSettings } from "__support__/settings";
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import {
+  fireEvent,
+  renderWithProviders,
+  screen,
+} from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import type {
   DashboardSubscription,

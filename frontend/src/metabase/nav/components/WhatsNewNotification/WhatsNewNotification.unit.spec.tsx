@@ -7,7 +7,11 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import * as iframeUtils from "metabase/utils/iframe";
 import type { VersionInfo, VersionInfoRecord } from "metabase-types/api"; // Add VersionInfo

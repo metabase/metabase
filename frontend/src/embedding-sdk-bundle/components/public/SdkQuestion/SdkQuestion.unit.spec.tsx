@@ -20,7 +20,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-minimal";
 import {
   SdkInternalNavigationContext,
   type SdkInternalNavigationContextValue,
@@ -261,11 +261,19 @@ describe("InteractiveQuestion", () => {
   });
 
   it("should render an error if a question isn't found", async () => {
-    await setup({ isValidCard: false });
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
 
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      `Question ${TEST_CARD.id} not found. Make sure you pass the correct ID.`,
-    );
+    try {
+      await setup({ isValidCard: false });
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        `Question ${TEST_CARD.id} not found. Make sure you pass the correct ID.`,
+      );
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
   });
 
   it.each([

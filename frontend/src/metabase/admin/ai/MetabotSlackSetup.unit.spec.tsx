@@ -11,7 +11,11 @@ import {
   setupSlackManifestEndpoint,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { SlackAppInfo } from "metabase-types/api";
 import {
@@ -92,8 +96,21 @@ const setup = async ({
   setupSlackManifestEndpoint();
   setupSlackAppInfoEndpoint(appInfo);
 
-  renderWithProviders(<MetabotSlackSetup />, {
+  const view = renderWithProviders(<MetabotSlackSetup />, {
     storeInitialState: { settings: createMockSettingsState(settings) },
+  });
+
+  await waitFor(() => {
+    const queries = Object.values(
+      view.store.getState()["metabase-api"].queries,
+    );
+    expect(
+      queries.some(
+        (query: any) =>
+          query?.endpointName === "getSessionProperties" &&
+          query?.status === "fulfilled",
+      ),
+    ).toBe(true);
   });
 
   // Wait for component to fully render
@@ -108,6 +125,10 @@ const signingSecretInput = () => screen.findByLabelText("Signing Secret");
 const saveButton = () => screen.findByRole("button", { name: "Save changes" });
 
 describe("MetabotSlackSetup", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("renders nothing when slack-token-valid? is false", async () => {
     await setup({ isSlackTokenValid: false });
     expect(
@@ -133,6 +154,10 @@ describe("MetabotSlackSetup", () => {
   });
 
   it("displays error message when submission fails", async () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
     await setup();
     setupMetabotSlackSettingsEndpointWithError(400, "Invalid credentials");
 
@@ -143,6 +168,10 @@ describe("MetabotSlackSetup", () => {
     await userEvent.click(await saveButton());
 
     expect(await screen.findByText(/Invalid credentials/)).toBeInTheDocument();
+    expect(consoleErrorSpy).toHaveBeenCalledWith({
+      status: 400,
+      data: "Invalid credentials",
+    });
   });
 
   describe("encryption alert", () => {

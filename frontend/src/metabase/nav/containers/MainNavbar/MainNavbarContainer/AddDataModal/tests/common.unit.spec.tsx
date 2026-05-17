@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, screen, within } from "__support__/ui";
+import { fireEvent, screen, within } from "__support__/ui-minimal";
 
 import { setup } from "./setup";
 

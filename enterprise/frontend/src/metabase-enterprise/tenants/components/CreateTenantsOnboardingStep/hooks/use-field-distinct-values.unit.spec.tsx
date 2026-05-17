@@ -4,7 +4,7 @@ import {
   setupCardDataset,
   setupFieldEndpoints,
 } from "__support__/server-mocks";
-import { waitFor } from "__support__/ui";
+import { waitFor } from "__support__/ui-minimal";
 import { mainReducers as reducers } from "metabase/reducers-main";
 import { MetabaseReduxProvider } from "metabase/redux";
 import { createMockState } from "metabase/redux/store/mocks";

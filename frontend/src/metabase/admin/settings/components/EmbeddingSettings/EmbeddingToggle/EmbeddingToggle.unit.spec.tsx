@@ -6,7 +6,11 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import type { SettingDefinition } from "metabase-types/api";
 import {
   createMockSettingDefinition,

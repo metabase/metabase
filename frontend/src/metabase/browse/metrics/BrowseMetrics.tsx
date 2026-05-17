@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { shallowEqual } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -192,7 +193,10 @@ function MetricsEmptyState({
 }
 
 function useMetricFilterSettings() {
-  const defaultMetricFilters = useSelector(getDefaultMetricFilters);
+  const defaultMetricFilters = useSelector(
+    getDefaultMetricFilters,
+    shallowEqual,
+  );
   return useState(defaultMetricFilters);
 }
 

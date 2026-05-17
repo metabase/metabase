@@ -6,7 +6,12 @@ import {
   setupDatabaseUsageInfoEndpoint,
 } from "__support__/server-mocks/database";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Database, InitialSyncStatus } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
@@ -143,10 +148,9 @@ describe("DatabaseDangerZoneSection", () => {
         within(modal).getByRole("button", { name: "Delete" }),
       );
       await waitFor(() => {
-        expect(getDiscardFieldValuesConfirmModal()).not.toBeInTheDocument();
+        expect(getRemoveDatabaseConfirmModal()).not.toBeInTheDocument();
       });
 
-      expect(getDiscardFieldValuesConfirmModal()).not.toBeInTheDocument();
       expect(deleteDatabase).toHaveBeenCalled();
     });
 

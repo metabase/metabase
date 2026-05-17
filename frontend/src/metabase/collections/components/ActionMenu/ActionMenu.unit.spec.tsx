@@ -4,7 +4,11 @@ import fetchMock from "fetch-mock";
 
 import { setupCardEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { getIcon, queryIcon, renderWithProviders } from "__support__/ui";
+import {
+  getIcon,
+  queryIcon,
+  renderWithProviders,
+} from "__support__/ui-with-store";
 import { Collections } from "metabase/entities/collections";
 import { Dashboards } from "metabase/entities/dashboards";
 import { Questions } from "metabase/entities/questions";

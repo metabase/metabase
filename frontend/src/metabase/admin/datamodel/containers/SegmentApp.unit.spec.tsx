@@ -18,7 +18,7 @@ import {
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
 import { checkNotNull } from "metabase/utils/types";
 import { createMockCollection } from "metabase-types/api/mocks";

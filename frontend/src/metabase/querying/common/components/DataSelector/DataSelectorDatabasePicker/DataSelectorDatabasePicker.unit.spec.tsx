@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui-with-store";
+import { render, screen } from "__support__/ui-minimal";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
@@ -22,7 +22,7 @@ const setup = (mockDatabases = [TEST_DATABASE]) => {
     checkNotNull(metadata.database(db.id)),
   );
 
-  renderWithProviders(
+  render(
     <DataSelectorDatabasePicker
       databases={databases}
       onChangeDatabase={jest.fn()}

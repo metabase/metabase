@@ -8,7 +8,7 @@ import {
   setupUserEndpoints,
 } from "__support__/server-mocks/user";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { UserListResult } from "metabase-types/api";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";

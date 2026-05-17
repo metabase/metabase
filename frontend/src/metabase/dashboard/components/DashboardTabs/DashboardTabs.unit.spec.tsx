@@ -8,7 +8,7 @@ import {
   withRouter,
 } from "react-router";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui-with-store";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/common/components/TabButton";
 import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";

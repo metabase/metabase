@@ -1,6 +1,6 @@
 import { fireEvent } from "@testing-library/react";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { createMockSettings } from "metabase-types/api/mocks";
 

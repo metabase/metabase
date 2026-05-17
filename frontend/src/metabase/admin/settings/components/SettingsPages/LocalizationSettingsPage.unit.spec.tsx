@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { act } from "react-dom/test-utils";
 
 import {
   findRequests,
@@ -7,7 +6,12 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { SettingKey } from "metabase-types/api";
@@ -55,40 +59,41 @@ const setup = async () => {
 
 describe("LocalizationSettingsPage", () => {
   it("should render a LocalizationSettingsPage", async () => {
-    await act(() => setup());
-    [
+    await setup();
+    for (const text of [
       "Instance language",
       "Report timezone",
       "First day of the week",
       "Instance settings",
-    ].forEach((text) => {
-      expect(screen.getByText(text)).toBeInTheDocument();
-    });
+    ]) {
+      expect(await screen.findByText(text)).toBeInTheDocument();
+    }
   });
 
   it("should update multiple settings", async () => {
-    setup();
+    await setup();
     const blur = async () => {
       const elementOutside = screen.getByText("Dates and times");
       await userEvent.click(elementOutside); // blur
+      await act(async () => undefined);
     };
     const timezoneInput = await screen.findByLabelText("Report timezone");
     await userEvent.clear(timezoneInput);
     await userEvent.type(timezoneInput, "Mount");
     await userEvent.click(await screen.findByText("US/Mountain"));
-    blur();
+    await blur();
 
     const startOfWeekInput = await screen.findByLabelText(
       "First day of the week",
     );
     await userEvent.click(startOfWeekInput);
     await userEvent.click(await screen.findByText("Tuesday"));
-    blur();
+    await blur();
 
     const currencyInput = await screen.findByLabelText("Unit of currency");
     await userEvent.click(currencyInput);
     await userEvent.click(await screen.findByText("New Zealand Dollar"));
-    blur();
+    await blur();
 
     await waitFor(async () => {
       const puts = await findRequests("PUT");

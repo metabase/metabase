@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { renderHookWithProviders, waitFor } from "__support__/ui";
+import { renderHookWithProviders, waitFor } from "__support__/ui-with-store";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 

@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { DatasetColumn, DatasetData } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks/dataset";
@@ -27,7 +27,7 @@ function renderItem({
   titleColumn?: DatasetColumn | null;
   rightColumns?: DatasetColumn[];
 }) {
-  renderWithProviders(
+  render(
     <ListViewItem
       className="test-item"
       row={row}

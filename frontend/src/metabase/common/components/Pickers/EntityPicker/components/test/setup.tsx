@@ -14,7 +14,7 @@ import {
   mockGetBoundingClientRect,
   renderWithProviders,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { createMockState } from "metabase/redux/store/mocks";
 import type {

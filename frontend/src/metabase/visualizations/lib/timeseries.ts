@@ -10,6 +10,10 @@ import { isValidIso8601 } from "./date-validation";
 const TIMESERIES_UNITS = new Set<DatetimeUnit>(dateTimeAbsoluteUnits); // https://github.com/metabase/metabase/issues/1992
 
 export function dimensionIsTimeseries({ cols, rows = [] }: DatasetData, i = 0) {
+  if (!cols[i]) {
+    return false;
+  }
+
   if (dimensionIsExplicitTimeseries({ cols }, i)) {
     return true;
   }

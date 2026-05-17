@@ -7,7 +7,7 @@ import {
   setupNotificationChannelsEndpoints,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui-with-store";
 import { DashboardContextProvider } from "metabase/dashboard/context";
 import type { DashboardCard } from "metabase-types/api";
 import {

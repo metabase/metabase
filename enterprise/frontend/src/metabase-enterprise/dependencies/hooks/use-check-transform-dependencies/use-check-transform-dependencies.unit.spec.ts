@@ -1,5 +1,5 @@
 import { setupCheckTransformDependenciesEndpoint } from "__support__/server-mocks/dependencies";
-import { act, renderHookWithProviders } from "__support__/ui";
+import { act, renderHookWithProviders } from "__support__/ui-with-store";
 import type { CheckDependenciesResponse } from "metabase-types/api";
 import {
   createMockCheckDependenciesResponse,

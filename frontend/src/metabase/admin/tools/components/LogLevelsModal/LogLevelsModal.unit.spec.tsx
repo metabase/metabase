@@ -13,7 +13,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { getNextId } from "__support__/utils";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { checkNotNull } from "metabase/utils/types";

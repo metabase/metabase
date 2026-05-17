@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockMeasure } from "metabase-types/api/mocks";
 
 import { MeasureHeader } from "./MeasureHeader";

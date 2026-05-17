@@ -9,7 +9,7 @@ import {
   queryIcon,
   renderWithProviders,
   screen,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { reinitialize } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
 import { SearchResult } from "metabase/search/components/SearchResult";

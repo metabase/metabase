@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 
-import { fireEvent, render, screen } from "__support__/ui";
+import { fireEvent, render, screen } from "__support__/ui-minimal";
 
 import { ChartSettingInput } from "./ChartSettingInput";
 

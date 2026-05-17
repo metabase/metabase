@@ -1,6 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  getIcon,
+  renderWithProviders,
+  screen,
+  within,
+} from "__support__/ui-with-store";
 import { NumberColumn } from "__support__/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -336,6 +341,9 @@ describe("SmartScalar", () => {
 
   describe("should handle errors gracefully", () => {
     it("should show error display if error is thrown", async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
       const rows = [
         ["2019-10-01T00:00:00", 100],
         ["2019-11-01T00:00:00", 120],
@@ -356,6 +364,10 @@ describe("SmartScalar", () => {
           "No integer value supplied for periods ago comparison.",
         ),
       ).toBeInTheDocument();
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "No integer value supplied for periods ago comparison.",
+      );
+      consoleErrorSpy.mockRestore();
     });
   });
 

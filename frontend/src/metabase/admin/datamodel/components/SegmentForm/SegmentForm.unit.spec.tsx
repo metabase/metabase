@@ -5,7 +5,7 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { act, renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { EnterpriseSettings } from "metabase-types/api";
 import {

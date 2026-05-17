@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { setupSearchEndpoints } from "__support__/server-mocks";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui-with-store";
 
 import type {
   MetricsViewerDefinitionEntry,

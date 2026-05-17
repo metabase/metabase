@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, getIcon, render, screen } from "__support__/ui";
+import { fireEvent, getIcon, render, screen } from "__support__/ui-minimal";
 import { delay } from "__support__/utils";
 import { EntityMenuItem } from "metabase/common/components/EntityMenuItem";
 

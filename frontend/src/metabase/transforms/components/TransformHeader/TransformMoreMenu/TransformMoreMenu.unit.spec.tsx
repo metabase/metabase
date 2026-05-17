@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen, within } from "__support__/ui";
+import { render, screen, within } from "__support__/ui-minimal";
 import { createMockTransform } from "metabase-types/api/mocks";
 
 import { TransformMoreMenu } from "./TransformMoreMenu";

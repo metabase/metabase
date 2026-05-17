@@ -1,4 +1,4 @@
-import { render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import type { IconData } from "metabase/common/utils/icon";
 
 import { HomeModelCard } from "./HomeModelCard";

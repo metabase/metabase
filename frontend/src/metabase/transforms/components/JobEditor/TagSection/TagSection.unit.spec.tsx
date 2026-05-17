@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupListTransformTagsEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import type { TransformJob, TransformTag } from "metabase-types/api";
 import {
   createMockTransformJob,

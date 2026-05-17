@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 
 import { setupBugReportEndpoints } from "__support__/server-mocks/bug-report";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockCard,

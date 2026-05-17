@@ -2,7 +2,12 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupGenerateRandomTokenEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui-with-store";
 import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 
 import { FormSecretKey } from "./FormSecretKey";

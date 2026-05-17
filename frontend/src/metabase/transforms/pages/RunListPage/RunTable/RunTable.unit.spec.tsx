@@ -4,7 +4,7 @@ import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import type { TransformRun } from "metabase-types/api";
 import {
   createMockTransform,

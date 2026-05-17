@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import {
   trackMetricsViewerFilterEdited,
   trackMetricsViewerFilterRemoved,
@@ -78,7 +78,7 @@ beforeEach(() => {
 
 describe("MetricsSegmentFilterPillPopover", () => {
   it("renders the segment name on the pill", () => {
-    renderWithProviders(
+    render(
       <MetricsSegmentFilterPillPopover
         definitionSource={makeDefinitionSource()}
         oldFilter={oldFilter}
@@ -97,7 +97,7 @@ describe("MetricsSegmentFilterPillPopover", () => {
   });
 
   it("opens the popover with FilterPopoverContent when the pill is clicked", async () => {
-    renderWithProviders(
+    render(
       <MetricsSegmentFilterPillPopover
         definitionSource={makeDefinitionSource()}
         oldFilter={oldFilter}
@@ -128,7 +128,7 @@ describe("MetricsSegmentFilterPillPopover", () => {
     mockLibMetric.removeClause.mockReturnValue(replaced);
     const handleChange = jest.fn();
 
-    renderWithProviders(
+    render(
       <MetricsSegmentFilterPillPopover
         definitionSource={source}
         oldFilter={oldFilter}
@@ -159,7 +159,7 @@ describe("MetricsSegmentFilterPillPopover", () => {
 
   it("invokes onRemove and tracks analytics when the X is clicked", async () => {
     const handleRemove = jest.fn();
-    renderWithProviders(
+    render(
       <MetricsSegmentFilterPillPopover
         definitionSource={makeDefinitionSource()}
         oldFilter={oldFilter}

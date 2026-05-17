@@ -1,7 +1,11 @@
 import { DatePicker } from "@mantine/dates";
 import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { useLocale } from "metabase/common/hooks";
 
 import { LocaleProvider, getLocaleToUse } from "./LocaleProvider";

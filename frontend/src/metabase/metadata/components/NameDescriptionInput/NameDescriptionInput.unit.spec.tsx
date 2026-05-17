@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 
 import { NameDescriptionInput } from "./NameDescriptionInput";
 
@@ -43,7 +43,7 @@ describe("NameDescriptionInput", () => {
 
     const nameInput = screen.getByPlaceholderText("Enter name");
     await userEvent.type(nameInput, "{backspace}".repeat(3));
-    nameInput.blur();
+    await userEvent.tab();
 
     expect(onNameChange).toHaveBeenCalledTimes(0);
   });
@@ -53,7 +53,7 @@ describe("NameDescriptionInput", () => {
 
     const descriptionInput = screen.getByPlaceholderText("Enter description");
     await userEvent.type(descriptionInput, "{backspace}".repeat(3));
-    descriptionInput.blur();
+    await userEvent.tab();
 
     expect(onDescriptionChange.mock.calls).toEqual([[""]]);
     expect(descriptionInput).toHaveValue("");
@@ -64,7 +64,7 @@ describe("NameDescriptionInput", () => {
 
     const nameInput = screen.getByPlaceholderText("Enter name");
     await userEvent.type(nameInput, "{backspace}z ");
-    nameInput.blur();
+    await userEvent.tab();
 
     expect(onNameChange).toHaveBeenCalledTimes(0);
   });
@@ -74,7 +74,7 @@ describe("NameDescriptionInput", () => {
 
     const nameInput = screen.getByPlaceholderText("Enter description");
     await userEvent.type(nameInput, "{backspace}z ");
-    nameInput.blur();
+    await userEvent.tab();
 
     expect(onNameChange).toHaveBeenCalledTimes(0);
   });

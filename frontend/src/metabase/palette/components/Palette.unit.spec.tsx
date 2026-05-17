@@ -7,7 +7,7 @@ import {
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { SearchResult } from "metabase-types/api";
 import {

@@ -2,11 +2,11 @@ import userEvent from "@testing-library/user-event";
 
 import {
   fireEvent,
-  renderWithProviders,
+  render,
   screen,
   waitFor,
   within,
-} from "__support__/ui";
+} from "__support__/ui-minimal";
 
 import { CustomMappingModal } from "./CustomMappingModal";
 import type { Mapping } from "./types";
@@ -22,7 +22,7 @@ const setup = ({
   onChange?: (value: Mapping) => void;
   onClose?: () => void;
 } = {}) => {
-  const { rerender } = renderWithProviders(
+  const { rerender } = render(
     <CustomMappingModal
       isOpen={isOpen}
       value={value}

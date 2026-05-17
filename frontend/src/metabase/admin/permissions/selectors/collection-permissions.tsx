@@ -48,6 +48,8 @@ import {
 import { getPermissionWarningModal } from "./confirmations";
 import { selectGroupList } from "./data-permissions/groups";
 
+const EMPTY_COLLECTION_LIST: Collection[] = [];
+
 export const collectionsQuery = {
   tree: true,
   "exclude-other-user-collections": true,
@@ -91,12 +93,14 @@ const getRootCollectionTreeItem = () => {
   };
 };
 
-const getCollections = (state: State) =>
-  (
-    Collections.selectors.getList(state, {
-      entityQuery: collectionsQuery,
-    }) ?? []
-  ).filter(nonPersonalOrArchivedCollection);
+const getCollectionList = (state: State) =>
+  Collections.selectors.getList(state, {
+    entityQuery: collectionsQuery,
+  }) ?? EMPTY_COLLECTION_LIST;
+
+const getCollections = createSelector([getCollectionList], (collections) =>
+  collections.filter(nonPersonalOrArchivedCollection),
+);
 
 const getCollectionsTree = createSelector([getCollections], (collections) => {
   const libraryCollections = collections.filter(isLibraryCollection);

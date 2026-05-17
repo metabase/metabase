@@ -23,7 +23,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { createMockDashboardState } from "metabase/redux/store/mocks";
@@ -162,14 +162,18 @@ describe("DashboardApp", () => {
     it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
       const { dashboardId, history } = await setup();
 
-      history.push("/");
-      history.push(`/dashboard/${dashboardId}`);
+      act(() => {
+        history.push("/");
+        history.push(`/dashboard/${dashboardId}`);
+      });
 
       await waitForLoaderToBeRemoved();
 
       await userEvent.click(await screen.findByLabelText("Edit dashboard"));
 
-      history.goBack();
+      act(() => {
+        history.goBack();
+      });
 
       expect(
         screen.queryByTestId("leave-confirmation"),

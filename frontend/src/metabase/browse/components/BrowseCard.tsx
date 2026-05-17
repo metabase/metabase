@@ -47,13 +47,14 @@ export const BrowseCard = ({
   children?: React.ReactNode;
   onClick?: () => void;
 }) => {
+  const hasChildren = children != null;
+
   return (
     <Card
       withBorder
       shadow="none"
-      component={Link}
-      to={to}
-      onClick={onClick}
+      component={hasChildren ? "div" : Link}
+      {...(!hasChildren ? { to, onClick } : {})}
       h={sizeOptions[size].height}
       p="1.5rem"
       classNames={{
@@ -73,23 +74,35 @@ export const BrowseCard = ({
         h="100%"
         w="100%"
       >
-        <FixedSizeIcon
-          name={icon}
-          c={iconColor}
-          size={sizeOptions[size].iconSize}
-        />
-        <Ellipsified>
-          <Title
-            order={2}
-            size="md"
-            lh={1.2}
-            display="inline"
-            style={{ overflow: "hidden" }}
-            w="100%"
-          >
-            {title}
-          </Title>
-        </Ellipsified>
+        <Flex
+          component={hasChildren ? Link : "div"}
+          {...(hasChildren ? { to, onClick } : {})}
+          align={sizeOptions[size].alignItems}
+          gap="sm"
+          mih={0}
+          miw={0}
+          flex={1}
+          c="inherit"
+          td="none"
+        >
+          <FixedSizeIcon
+            name={icon}
+            c={iconColor}
+            size={sizeOptions[size].iconSize}
+          />
+          <Ellipsified>
+            <Title
+              order={2}
+              size="md"
+              lh={1.2}
+              display="inline"
+              style={{ overflow: "hidden" }}
+              w="100%"
+            >
+              {title}
+            </Title>
+          </Ellipsified>
+        </Flex>
         {size === "md" && (
           <Box ml="auto" style={{ flexShrink: 0 }}>
             {children}

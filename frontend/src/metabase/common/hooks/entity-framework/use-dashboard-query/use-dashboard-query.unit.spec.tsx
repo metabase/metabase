@@ -6,7 +6,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
@@ -44,9 +44,18 @@ describe("useDashboardQuery", () => {
   });
 
   it("should return an error when it can't find a dashboard", async () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
     setupDashboardNotFoundEndpoint(TEST_DASHBOARD);
     renderWithProviders(<TestComponent />);
     await waitForLoaderToBeRemoved();
     expect(screen.getByText("An error occurred")).toBeInTheDocument();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "Request entities,dashboards,1,fetch failed:",
+      expect.any(Object),
+    );
+    consoleErrorSpy.mockRestore();
   });
 });

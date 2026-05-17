@@ -7,7 +7,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
@@ -54,8 +54,17 @@ describe("useDatabaseQuery", () => {
   });
 
   it("should show error from the response", async () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
     setup({ hasDataAccess: false });
     await waitForLoaderToBeRemoved();
     expect(screen.getByText(PERMISSION_ERROR)).toBeInTheDocument();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "Request entities,databases,1,fetch failed:",
+      expect.any(Object),
+    );
+    consoleErrorSpy.mockRestore();
   });
 });

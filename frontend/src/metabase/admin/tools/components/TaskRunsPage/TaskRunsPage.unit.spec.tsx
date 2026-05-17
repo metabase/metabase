@@ -7,7 +7,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import * as Urls from "metabase/urls";
 import type { ListTaskRunsResponse } from "metabase-types/api";
 import { createMockTaskRun } from "metabase-types/api/mocks";

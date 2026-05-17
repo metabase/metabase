@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { render, screen, within } from "__support__/ui-minimal";
 
 import { DisplayValuesPicker } from "./DisplayValuesPicker";
 import type { RemappingValue } from "./types";
@@ -14,7 +14,7 @@ const setup = ({
   value?: RemappingValue;
   onChange?: (value: RemappingValue) => void;
 } = {}) => {
-  const { rerender } = renderWithProviders(
+  const { rerender } = render(
     <DisplayValuesPicker
       options={options}
       placeholder="Pick a value"

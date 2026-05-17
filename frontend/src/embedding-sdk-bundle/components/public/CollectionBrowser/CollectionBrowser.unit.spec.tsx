@@ -5,7 +5,7 @@ import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
 } from "__support__/server-mocks";
-import { screen, waitFor, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui-minimal";
 import {
   CollectionBrowser,
   CollectionBrowserInner,

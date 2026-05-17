@@ -11,7 +11,7 @@ import {
   screen,
   waitFor,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import type { SupportAccessGrant } from "metabase-types/api";
 import { createMockAccessGrant } from "metabase-types/api/mocks";

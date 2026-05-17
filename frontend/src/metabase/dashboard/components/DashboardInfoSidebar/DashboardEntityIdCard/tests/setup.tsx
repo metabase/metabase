@@ -3,7 +3,7 @@ import { mockSettings } from "__support__/settings";
 import {
   type RenderWithProvidersOptions,
   renderWithProviders,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Dashboard } from "metabase-types/api";
 import {

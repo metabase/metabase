@@ -3,6 +3,16 @@ import type { MantineTheme } from "metabase/ui";
 import { tableThemeToDataGridTheme } from "./table-theme-to-data-grid-theme";
 
 describe("tableThemeToDataGridTheme", () => {
+  let consoleWarnSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleWarnSpy.mockRestore();
+  });
+
   const mockTableTheme: MantineTheme["other"]["table"] = {
     stickyBackgroundColor: "#ffffff",
     cell: {

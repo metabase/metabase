@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen, within } from "__support__/ui";
+import { screen, within } from "__support__/ui-minimal";
 
 export type ViewMantineSelectOptionsParams = {
   /** This function will identify the root element of the select with

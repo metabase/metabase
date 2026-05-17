@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import mockDate from "mockdate";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { LastEditInfoLabel } from "./LastEditInfoLabel";

@@ -8,7 +8,12 @@ import {
   setupPropertiesEndpoints,
   setupResetPasswordEndpoint,
 } from "__support__/server-mocks";
-import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 
 import { ResetPassword } from "./ResetPassword";

@@ -8,7 +8,11 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { GdrivePayload } from "metabase-types/api";
 import {

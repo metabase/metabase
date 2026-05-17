@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { setupCollectionItemsEndpoint } from "__support__/server-mocks";
-import { screen } from "__support__/ui";
+import { screen } from "__support__/ui-minimal";
 import {
   createMockCollection,
   createMockCollectionItem,

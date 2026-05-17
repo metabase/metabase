@@ -512,7 +512,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
 
     // for non-multi fields, keep the value in the input
     if (!multi) {
-      inputValue = inputValue || value[0];
+      inputValue = inputValue || (value[0] == null ? "" : String(value[0]));
       value = [];
     }
 
@@ -589,8 +589,8 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
               // set size to be small enough that it fits in a parameter.
               size={10}
               placeholder={placeholder}
-              value={isControlledInput ? inputValue : undefined}
-              defaultValue={isControlledInput ? undefined : inputValue}
+              value={isControlledInput ? (inputValue ?? "") : undefined}
+              defaultValue={isControlledInput ? undefined : (inputValue ?? "")}
               onKeyDown={this.onInputKeyDown}
               onChange={isControlledInput ? this.onInputChange : undefined}
               onFocus={this.onInputFocus}

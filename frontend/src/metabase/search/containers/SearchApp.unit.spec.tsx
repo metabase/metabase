@@ -13,7 +13,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import SearchApp from "metabase/search/containers/SearchApp";
 import type { SearchFilters } from "metabase/search/types";
 import { checkNotNull } from "metabase/utils/types";

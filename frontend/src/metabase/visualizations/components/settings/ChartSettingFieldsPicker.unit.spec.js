@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import { ChartSettingFieldsPicker } from "metabase/visualizations/components/settings/ChartSettingFieldsPicker";
 
 const DEFAULT_PROPS = {
@@ -15,9 +15,7 @@ const DEFAULT_PROPS = {
 };
 
 const setup = (props) => {
-  renderWithProviders(
-    <ChartSettingFieldsPicker {...DEFAULT_PROPS} {...props} />,
-  );
+  render(<ChartSettingFieldsPicker {...DEFAULT_PROPS} {...props} />);
 };
 
 describe("ChartSettingFieldsPicker", () => {

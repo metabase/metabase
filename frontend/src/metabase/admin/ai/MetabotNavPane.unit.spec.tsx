@@ -2,7 +2,7 @@ import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { reinitialize } from "metabase/plugins";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";

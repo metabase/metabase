@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 import {

@@ -16,6 +16,16 @@ import {
 } from "./utils";
 
 describe("metabot > errors", () => {
+  let consoleErrorSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation();
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+  });
+
   it("should handle non-successful responses", async () => {
     setup();
     fetchMock.post(`path:/api/metabot/agent-streaming`, 400);

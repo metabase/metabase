@@ -1,12 +1,17 @@
 import { MAX_ERROR_LOGS, captureConsoleErrors } from "./console";
 
 describe("captureConsolErrors", () => {
+  let originalConsoleError: typeof console.error;
+
   beforeEach(() => {
+    originalConsoleError = console.error;
+    console.error = jest.fn();
     captureConsoleErrors();
   });
 
   afterEach(() => {
     console.errorBuffer = [];
+    console.error = originalConsoleError;
   });
 
   // these have to be one test because if they run in parallel

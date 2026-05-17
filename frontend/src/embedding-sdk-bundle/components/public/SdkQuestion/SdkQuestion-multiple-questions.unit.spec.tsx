@@ -1,5 +1,3 @@
-import { act, waitForElementToBeRemoved, within } from "@testing-library/react";
-
 import {
   setupAlertsEndpoints,
   setupCardEndpoints,
@@ -9,7 +7,13 @@ import {
   setupDatabaseEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
-import { mockGetBoundingClientRect, screen } from "__support__/ui";
+import {
+  act,
+  mockGetBoundingClientRect,
+  screen,
+  waitForElementToBeRemoved,
+  within,
+} from "__support__/ui-minimal";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";

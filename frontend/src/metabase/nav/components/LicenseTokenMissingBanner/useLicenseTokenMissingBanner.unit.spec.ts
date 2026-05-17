@@ -8,7 +8,7 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderHookWithProviders, waitFor } from "__support__/ui";
+import { renderHookWithProviders, waitFor } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { TokenStatus } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";

@@ -1,6 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import { type RenderWithProvidersOptions, screen } from "__support__/ui";
+import {
+  type RenderWithProvidersOptions,
+  screen,
+} from "__support__/ui-minimal";
 import type { BaseEntityId, Dashboard } from "metabase-types/api";
 import {
   createMockDashboard,

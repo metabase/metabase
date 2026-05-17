@@ -1,6 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import {
   createMockCollection,
   createMockTimeline,
@@ -51,9 +55,9 @@ describe("TimelineDetailsModal", () => {
     const props = getProps({
       timeline: createMockTimeline({
         events: [
-          createMockTimelineEvent({ name: "RC1" }),
-          createMockTimelineEvent({ name: "RC2" }),
-          createMockTimelineEvent({ name: "Release" }),
+          createMockTimelineEvent({ id: 1, name: "RC1" }),
+          createMockTimelineEvent({ id: 2, name: "RC2" }),
+          createMockTimelineEvent({ id: 3, name: "Release" }),
         ],
       }),
     });

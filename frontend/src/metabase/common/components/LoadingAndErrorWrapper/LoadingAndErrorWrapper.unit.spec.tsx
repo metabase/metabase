@@ -1,4 +1,4 @@
-import { act, render, screen } from "__support__/ui";
+import { act, render, screen } from "__support__/ui-minimal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 
 describe("LoadingAndErrorWrapper", () => {

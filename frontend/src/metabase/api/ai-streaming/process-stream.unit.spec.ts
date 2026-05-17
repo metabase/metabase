@@ -53,6 +53,7 @@ describe("processChatResponse", () => {
   });
 
   it("should ignore unknown data parts", async () => {
+    const consoleWarn = jest.spyOn(console, "warn").mockImplementation();
     const mockStream = createMockReadableStream([
       `2:{"type":"__some_futurist_data__","version":1,"value":"hi"}`,
       `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
@@ -67,13 +68,18 @@ describe("processChatResponse", () => {
     expect(result.data).toEqual([
       { type: "__some_futurist_data__", value: "hi", version: 1 },
     ]);
+    expect(consoleWarn).toHaveBeenCalled();
+    consoleWarn.mockRestore();
   });
 
   it("should ignore unknown part types", async () => {
+    const consoleWarn = jest.spyOn(console, "warn").mockImplementation();
     const mockStream = createMockReadableStream([`x:"UNKNOWN PART TYPE"`]);
     const config = getMockedCallbacks();
     await expect(processChatResponse(mockStream, config)).resolves.toBeTruthy();
     expect(config.onError).not.toHaveBeenCalled();
+    expect(consoleWarn).toHaveBeenCalled();
+    consoleWarn.mockRestore();
   });
 
   it("should error if there is no part type", async () => {

@@ -5,6 +5,7 @@ import {
   findRequests,
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
+  setupDatabasesEndpoints,
   setupNotificationChannelsEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
@@ -12,7 +13,7 @@ import {
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, waitFor } from "__support__/ui";
+import { renderWithProviders, waitFor } from "__support__/ui-with-store";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
 import {
@@ -25,7 +26,7 @@ import {
 
 import { SdkIframeEmbedSetupModal } from "../SdkIframeEmbedSetupModal";
 
-export const setup = (options?: {
+export const setup = async (options?: {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   simpleEmbeddingEnabled?: boolean;
   showSimpleEmbedTerms?: boolean;
@@ -60,6 +61,7 @@ export const setup = (options?: {
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
   setupSearchEndpoints([]);
+  setupDatabasesEndpoints([mockDatabase]);
   setupDashboardEndpoints(mockDashboard);
   setupDashboardQueryMetadataEndpoint(
     mockDashboard,
@@ -90,6 +92,13 @@ export const setup = (options?: {
       }),
     },
   );
+
+  await waitFor(async () => {
+    const requests = await findRequests("GET");
+    expect(
+      requests.some((request) => request.url.includes("/api/search")),
+    ).toBe(true);
+  });
 };
 
 export async function waitForUpdateSetting(settingKey: string, value: any) {

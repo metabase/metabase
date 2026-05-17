@@ -8,7 +8,7 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui-with-store";
 import { createMockGroup, createMockSettings } from "metabase-types/api/mocks";
 
 import { SettingsJWTForm } from "./SettingsJWTForm";

@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import type { ToggleSidebarFilterProps } from "metabase/search/components/ToggleSidebarFilter";
 import { ToggleSidebarFilter } from "metabase/search/components/ToggleSidebarFilter";
 import type { SearchFilterComponent } from "metabase/search/types";
@@ -41,7 +41,7 @@ const setup = ({
   value?: ToggleSidebarFilterProps["value"];
   onChange?: jest.Mock;
 } = {}) => {
-  renderWithProviders(
+  render(
     <MockToggleSidebarFilter
       filter={mockFilter}
       value={value}

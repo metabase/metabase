@@ -7,7 +7,7 @@ import {
   setupCardQueryMetadataEndpoint,
   setupTableQueryMetadataEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import type { DataAttributeMap } from "metabase-enterprise/sandboxes/types";
 import type { DimensionRef, GroupTableAccessPolicy } from "metabase-types/api";
 import {

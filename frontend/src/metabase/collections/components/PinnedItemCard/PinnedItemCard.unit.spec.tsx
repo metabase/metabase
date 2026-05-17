@@ -5,7 +5,7 @@ import {
   renderWithProviders,
   screen,
   getIcon as testGetIcon,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { modelIconMap } from "metabase/common/utils/icon";
 import type { CollectionItem, CollectionItemModel } from "metabase-types/api";
 import {
@@ -123,12 +123,26 @@ describe("PinnedItemCard", () => {
 
     beforeAll(() => {
       // Mock return values so that getIsTruncated can kick in
-      HTMLElement.prototype.getBoundingClientRect = jest
-        .fn()
-        .mockReturnValue({ height: 1, width: 1 });
-      Range.prototype.getBoundingClientRect = jest
-        .fn()
-        .mockReturnValue({ height: 1, width: 2 });
+      HTMLElement.prototype.getBoundingClientRect = jest.fn().mockReturnValue({
+        height: 1,
+        width: 1,
+        top: 0,
+        left: 0,
+        bottom: 1,
+        right: 1,
+        x: 0,
+        y: 0,
+      });
+      Range.prototype.getBoundingClientRect = jest.fn().mockReturnValue({
+        height: 1,
+        width: 2,
+        top: 0,
+        left: 0,
+        bottom: 1,
+        right: 2,
+        x: 0,
+        y: 0,
+      });
     });
 
     afterAll(() => {

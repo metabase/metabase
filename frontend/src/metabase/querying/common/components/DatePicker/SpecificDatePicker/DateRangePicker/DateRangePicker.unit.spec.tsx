@@ -1,6 +1,6 @@
 import _userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui-with-store";
+import { render, screen, within } from "__support__/ui-minimal";
 
 import { DateRangePicker } from "./DateRangePicker";
 import type { DateRangePickerValue } from "./types";
@@ -27,7 +27,7 @@ function setup({
   const onChange = jest.fn();
   const onSubmit = jest.fn();
 
-  renderWithProviders(
+  render(
     <DateRangePicker
       value={value}
       hasTimeToggle={hasTimeToggle}

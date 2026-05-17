@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, queryIcon, render, screen } from "__support__/ui";
+import { getIcon, queryIcon, render, screen } from "__support__/ui-minimal";
 
 import { ClientSortableTable } from "./ClientSortableTable";
 import { Table } from "./Table";
@@ -159,11 +159,7 @@ describe("common > components > ClientSortableTable", () => {
         columns={sampleColumns}
         rows={[]}
         rowRenderer={renderRow}
-        emptyBody={
-          <tr>
-            <td colSpan={3}>No Results</td>
-          </tr>
-        }
+        emptyBody="No Results"
       />,
     );
     expect(screen.getByText("Name")).toBeInTheDocument();

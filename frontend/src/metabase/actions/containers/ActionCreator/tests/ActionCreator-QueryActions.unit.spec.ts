@@ -1,6 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, queryIcon, screen, waitFor, within } from "__support__/ui";
+import {
+  getIcon,
+  queryIcon,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui-minimal";
 import {
   createMockActionParameter,
   createMockCard,
@@ -182,7 +188,7 @@ describe("ActionCreator > Query Actions", () => {
         screen.queryByRole("button", { name: "Update" }),
       ).not.toBeInTheDocument();
 
-      screen.getByLabelText("Action settings").click();
+      await userEvent.click(screen.getByLabelText("Action settings"));
 
       expect(await screen.findByLabelText("Success message")).toBeDisabled();
     });
@@ -202,7 +208,7 @@ describe("ActionCreator > Query Actions", () => {
         screen.queryByRole("button", { name: "Update" }),
       ).not.toBeInTheDocument();
 
-      screen.getByLabelText("Action settings").click();
+      await userEvent.click(screen.getByLabelText("Action settings"));
 
       expect(await screen.findByLabelText("Success message")).toBeDisabled();
     });

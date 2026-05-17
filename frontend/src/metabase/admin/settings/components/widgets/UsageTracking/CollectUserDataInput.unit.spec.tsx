@@ -6,7 +6,7 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import {
   createMockSettingDefinition,

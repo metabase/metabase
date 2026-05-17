@@ -1,6 +1,6 @@
 /* eslint-disable i18next/no-literal-string */
 
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui-with-store";
 import { useInitDataInternal } from "embedding-sdk-bundle/hooks/private/use-init-data";
 import {
   sdkReducers,

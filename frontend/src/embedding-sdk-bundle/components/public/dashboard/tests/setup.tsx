@@ -19,7 +19,7 @@ import {
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
-import { screen } from "__support__/ui";
+import { screen } from "__support__/ui-minimal";
 import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";

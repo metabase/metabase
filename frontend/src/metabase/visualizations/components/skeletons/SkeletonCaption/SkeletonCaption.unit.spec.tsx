@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { render, screen, within } from "__support__/ui-minimal";
 
 import SkeletonCaption from "./SkeletonCaption";
 
@@ -22,7 +22,7 @@ const MARKDOWN_AS_TEXT = [HEADING_1_TEXT, HEADING_2_TEXT, PARAGRAPH_TEXT].join(
 );
 
 function setup({ description }: { description?: string } = {}) {
-  return renderWithProviders(<SkeletonCaption description={description} />);
+  return render(<SkeletonCaption description={description} />);
 }
 
 describe("SkeletonCaption", () => {

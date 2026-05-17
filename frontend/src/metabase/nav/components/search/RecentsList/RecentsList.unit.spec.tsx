@@ -1,5 +1,5 @@
 import { setupRecentViewsEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import {
   createMockRecentCollectionItem,
   createMockRecentTableItem,

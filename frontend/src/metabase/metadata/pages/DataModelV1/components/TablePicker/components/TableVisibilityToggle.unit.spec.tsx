@@ -2,7 +2,12 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupTableEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui-with-store";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import type { Table } from "metabase-types/api";
 import { createMockTable } from "metabase-types/api/mocks";

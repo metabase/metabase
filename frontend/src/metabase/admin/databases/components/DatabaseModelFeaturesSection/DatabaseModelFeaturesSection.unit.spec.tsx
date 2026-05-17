@@ -6,7 +6,7 @@ import {
   setupDatabaseUsageInfoEndpoint,
 } from "__support__/server-mocks/database";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Database } from "metabase-types/api";
 import {

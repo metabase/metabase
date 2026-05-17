@@ -3,7 +3,11 @@ import type { Editor } from "@tiptap/core";
 import { createRef } from "react";
 import { act } from "react-dom/test-utils";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import type { EntityPickerModalProps } from "metabase/common/components/Pickers";
 import type { OmniPickerItem } from "metabase/common/components/Pickers/EntityPicker/types";
 import type { MiniPickerProps } from "metabase/common/components/Pickers/MiniPicker/components/MiniPicker/MiniPicker";

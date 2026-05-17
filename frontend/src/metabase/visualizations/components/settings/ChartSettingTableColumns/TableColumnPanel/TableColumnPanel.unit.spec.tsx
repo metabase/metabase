@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
@@ -75,7 +75,7 @@ function setup({
   const onChange = jest.fn();
   const onShowWidget = jest.fn();
 
-  renderWithProviders(
+  render(
     <TableColumnPanel
       columns={columns}
       columnSettings={columnSettings}

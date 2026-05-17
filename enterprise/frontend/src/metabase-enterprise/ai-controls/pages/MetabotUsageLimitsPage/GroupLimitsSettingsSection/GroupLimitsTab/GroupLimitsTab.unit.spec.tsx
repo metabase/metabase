@@ -1,7 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupUpdateAIControlsGroupLimitEndpoint } from "__support__/server-mocks/metabot";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui-with-store";
 import type {
   GroupInfo,
   MetabotGroupLimit,

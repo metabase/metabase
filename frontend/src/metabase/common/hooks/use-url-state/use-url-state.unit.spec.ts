@@ -1,6 +1,10 @@
 import type { Location } from "history";
 
-import { act, renderHookWithProviders, waitFor } from "__support__/ui";
+import {
+  act,
+  renderHookWithProviders,
+  waitFor,
+} from "__support__/ui-with-store";
 import { createMockLocation } from "metabase/redux/store/mocks";
 
 import type { QueryParam } from "./types";

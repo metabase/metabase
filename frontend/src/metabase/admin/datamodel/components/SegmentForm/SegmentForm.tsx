@@ -49,10 +49,11 @@ export const SegmentForm = ({
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
+  const initialValues = segment ?? {};
   const { isValid, getFieldProps, getFieldMeta, handleSubmit, dirty } =
     useFormik({
-      initialValues: segment ?? {},
-      isInitialValid: false,
+      initialValues,
+      initialErrors: getFormErrors(initialValues, metadata),
       validate: (values) => getFormErrors(values, metadata),
       onSubmit,
     });

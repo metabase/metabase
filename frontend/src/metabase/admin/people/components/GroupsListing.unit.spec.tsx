@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupApiKeyEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockGroup } from "metabase-types/api/mocks";
 
 import { GroupsListing } from "./GroupsListing";

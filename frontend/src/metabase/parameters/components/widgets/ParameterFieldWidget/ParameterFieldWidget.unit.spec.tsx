@@ -5,7 +5,7 @@ import {
   setupParameterValuesEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -24,6 +24,17 @@ import {
 
 import { ParameterFieldWidget } from "./ParameterFieldWidget";
 
+jest.mock("metabase/api", () => {
+  const actual = jest.requireActual("metabase/api");
+
+  return {
+    ...actual,
+    useGetRemappedCardParameterValueQuery: () => ({}),
+    useGetRemappedDashboardParameterValueQuery: () => ({}),
+    useGetRemappedParameterValueQuery: () => ({}),
+  };
+});
+
 const FIELD_ID = 100;
 
 type SetupOpts = {
@@ -41,6 +52,11 @@ function setup({
   parameterSearchValues = {},
   fieldSettings,
 }: SetupOpts = {}) {
+  const parameterWithValue = {
+    value: [],
+    ...parameter,
+  };
+
   setupParameterValuesEndpoints(parameterValues);
   Object.entries(parameterSearchValues).forEach(([query, values]) => {
     setupParameterSearchValuesEndpoint(query, values);
@@ -73,7 +89,7 @@ function setup({
   const setValue = jest.fn();
   renderWithProviders(
     <ParameterFieldWidget
-      parameter={parameter}
+      parameter={parameterWithValue}
       fields={fieldsToUse}
       setValue={setValue}
     />,

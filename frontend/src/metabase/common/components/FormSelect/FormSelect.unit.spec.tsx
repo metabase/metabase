@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { Form, Formik } from "formik";
 import * as Yup from "yup";
 
-import { render, screen, waitFor } from "__support__/ui";
+import { render, screen, waitFor } from "__support__/ui-minimal";
 
 import { FormSelect } from "./FormSelect";
 

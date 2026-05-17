@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import type { TransformRun } from "metabase-types/api";
 import {
   createMockCollection,
@@ -13,7 +13,7 @@ type SetupOpts = {
 };
 
 function setup({ run = createMockTransformRun() }: SetupOpts = {}) {
-  renderWithProviders(<LocationSection run={run} />);
+  render(<LocationSection run={run} />);
 }
 
 describe("LocationSection", () => {

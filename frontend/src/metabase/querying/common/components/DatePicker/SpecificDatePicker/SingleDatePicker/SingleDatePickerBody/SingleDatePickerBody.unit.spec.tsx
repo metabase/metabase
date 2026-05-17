@@ -1,6 +1,6 @@
 import _userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui-with-store";
+import { render, screen } from "__support__/ui-minimal";
 
 import { SingleDatePickerBody } from "./SingleDatePickerBody";
 
@@ -17,7 +17,7 @@ function setup({
   value = new Date(2020, 0, 10),
   hasTime = false,
 }: SetupOpts = {}) {
-  renderWithProviders(
+  render(
     <SingleDatePickerBody
       value={value}
       hasTime={hasTime}

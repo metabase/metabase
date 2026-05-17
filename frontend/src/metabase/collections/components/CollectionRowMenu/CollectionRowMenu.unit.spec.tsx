@@ -4,7 +4,11 @@ import fetchMock from "fetch-mock";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupUpdateCollectionEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks/state";
 import type { Collection, EnterpriseSettings } from "metabase-types/api";
 import {

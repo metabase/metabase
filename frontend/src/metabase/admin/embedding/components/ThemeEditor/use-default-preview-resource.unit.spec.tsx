@@ -2,7 +2,7 @@ import {
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { renderHookWithProviders, waitFor } from "__support__/ui";
+import { renderHookWithProviders, waitFor } from "__support__/ui-with-store";
 import {
   createMockRecentCollectionItem,
   createMockSearchResult,

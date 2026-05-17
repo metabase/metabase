@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react";
 
-import { getIcon, queryIcon, renderWithProviders } from "__support__/ui";
+import { getIcon, queryIcon, render } from "__support__/ui-minimal";
 import type { IconName } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import type { DatasetColumn, RowValues } from "metabase-types/api";
@@ -35,7 +35,7 @@ interface SetupOpts {
 }
 
 function setup({ columns = [], icon, row = [] }: SetupOpts = {}) {
-  renderWithProviders(<Header columns={columns} icon={icon} row={row} />);
+  render(<Header columns={columns} icon={icon} row={row} />);
 }
 
 describe("Header", () => {

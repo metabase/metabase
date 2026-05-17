@@ -1,6 +1,10 @@
 import { Route } from "react-router";
 
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import {
+  getIcon,
+  renderWithProviders,
+  screen,
+} from "__support__/ui-with-store";
 import type { IconName } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import type {

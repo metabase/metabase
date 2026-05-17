@@ -1,4 +1,4 @@
-import { createMockMediaQueryList } from "__support__/ui";
+import { createMockMediaQueryList } from "__support__/ui-minimal";
 import {
   isTouchDevice,
   parseHashOptions,

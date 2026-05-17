@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { getScrollIntoViewMock, screen, within } from "__support__/ui";
+import { getScrollIntoViewMock, screen, within } from "__support__/ui-minimal";
 
 import type { ChecklistItemValue } from "../types";
 

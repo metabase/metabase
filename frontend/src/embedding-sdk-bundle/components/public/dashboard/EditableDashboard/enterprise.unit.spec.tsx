@@ -6,7 +6,7 @@ import {
   setupEmbeddingDataPickerDecisionEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { screen, waitFor, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui-minimal";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { createMockCollection } from "metabase-types/api/mocks";
 

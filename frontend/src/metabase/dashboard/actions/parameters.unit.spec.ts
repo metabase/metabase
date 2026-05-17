@@ -26,7 +26,9 @@ import {
 } from "./parameters";
 
 function setup(initialState: State) {
-  return getStore(mainReducers, initialState);
+  const { routing, ...stateWithoutRouting } = initialState;
+
+  return getStore(mainReducers, stateWithoutRouting);
 }
 
 describe("setParameterType", () => {

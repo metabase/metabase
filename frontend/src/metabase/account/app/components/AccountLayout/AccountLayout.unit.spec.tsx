@@ -1,4 +1,4 @@
-import { render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import AccountLayout from "./AccountLayout";

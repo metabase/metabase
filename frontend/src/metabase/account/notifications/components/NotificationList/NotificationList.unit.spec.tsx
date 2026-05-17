@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react";
 
-import { renderWithTheme } from "__support__/ui";
+import { renderWithTheme } from "__support__/ui-minimal";
 import {
   createMockDashboardSubscription,
   createMockUser,

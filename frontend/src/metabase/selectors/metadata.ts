@@ -44,6 +44,8 @@ type FieldSelectorOpts = {
 
 export type MetadataSelectorOpts = TableSelectorOpts & FieldSelectorOpts;
 
+const EMPTY_NORMALIZED_ENTITIES = {};
+
 const getNormalizedDatabases = (state: State) => state.entities.databases;
 const getNormalizedSchemas = (state: State) => state.entities.schemas;
 
@@ -92,8 +94,10 @@ const getNormalizedFields = createSelector(
 );
 
 const getNormalizedSegments = (state: State) => state.entities.segments;
-const getNormalizedMeasures = (state: State) => state.entities.measures ?? {};
-const getNormalizedMetrics = (state: State) => state.entities.metrics ?? {};
+const getNormalizedMeasures = (state: State) =>
+  state.entities.measures ?? EMPTY_NORMALIZED_ENTITIES;
+const getNormalizedMetrics = (state: State) =>
+  state.entities.metrics ?? EMPTY_NORMALIZED_ENTITIES;
 const getNormalizedQuestions = (state: State) => state.entities.questions;
 const getNormalizedSnippets = (state: State) => state.entities.snippets;
 const getNormalizedCollections = (state: State) => state.entities.collections;

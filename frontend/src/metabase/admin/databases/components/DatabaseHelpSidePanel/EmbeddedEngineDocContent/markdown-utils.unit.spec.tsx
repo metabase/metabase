@@ -1,4 +1,4 @@
-import { render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import { Markdown } from "metabase/common/components/Markdown";
 
 import { hideUnnecessaryElements } from "./markdown-utils";

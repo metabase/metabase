@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { act } from "__support__/ui";
+import { act } from "__support__/ui-minimal";
 import {
   addSuggestedTransform,
   getMetabotReactionsState,

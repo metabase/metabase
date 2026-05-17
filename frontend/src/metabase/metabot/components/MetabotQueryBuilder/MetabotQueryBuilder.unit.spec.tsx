@@ -2,7 +2,7 @@ import type { ComponentType } from "react";
 import { Route } from "react-router";
 
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
 import {
   useMetabotAgent,

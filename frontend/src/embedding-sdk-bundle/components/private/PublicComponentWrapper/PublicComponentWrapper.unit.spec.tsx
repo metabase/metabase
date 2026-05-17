@@ -1,13 +1,14 @@
-import { act } from "@testing-library/react";
-
-import { renderWithProviders, screen } from "__support__/ui";
+import { getStore } from "__support__/entities-store";
+import { act, render, screen } from "__support__/ui-minimal";
 import { sdkReducers } from "embedding-sdk-bundle/store";
 import { setPluginsReady } from "embedding-sdk-bundle/store/reducer";
+import type { SdkStore, SdkStoreState } from "embedding-sdk-bundle/store/types";
 import {
   createMockLoginStatusState,
   createMockSdkState,
 } from "embedding-sdk-bundle/test/mocks/state";
 import type { LoginStatus } from "embedding-sdk-bundle/types/user";
+import { MetabaseReduxProvider } from "metabase/redux";
 import { createMockState } from "metabase/redux/store/mocks";
 
 import { PublicComponentWrapper } from "./PublicComponentWrapper";
@@ -23,16 +24,31 @@ const setup = (
     }),
   });
 
-  const jsx = (
+  const initialState = Object.keys(sdkReducers).reduce(
+    (acc, key) => {
+      acc[key] = state[key as keyof typeof state];
+      return acc;
+    },
+    {} as Record<string, unknown>,
+  ) as SdkStoreState;
+
+  const store = getStore(sdkReducers, initialState) as unknown as SdkStore;
+
+  const view = render(
     <PublicComponentWrapper>
       <div>My component</div>
-    </PublicComponentWrapper>
+    </PublicComponentWrapper>,
+    {
+      wrapper: ({ children }) => (
+        <MetabaseReduxProvider store={store}>{children}</MetabaseReduxProvider>
+      ),
+    },
   );
 
-  return renderWithProviders(jsx, {
-    storeInitialState: state,
-    customReducers: sdkReducers,
-  });
+  return {
+    ...view,
+    store,
+  };
 };
 
 describe("PublicComponentWrapper", () => {

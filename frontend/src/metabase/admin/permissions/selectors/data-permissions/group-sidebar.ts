@@ -13,14 +13,16 @@ import { getOrderedGroups } from "./groups";
 const getGroupRouteParams = (
   _state: State,
   props: { params: RawGroupRouteParams },
-) => {
-  const { groupId, databaseId, schemaName } = props.params;
-  return {
+) => props.params;
+
+const getParsedGroupRouteParams = createSelector(
+  getGroupRouteParams,
+  ({ groupId, databaseId, schemaName }) => ({
     groupId: groupId != null ? parseInt(groupId) : null,
     databaseId,
     schemaName,
-  };
-};
+  }),
+);
 
 export type GroupSidebarProps = Pick<
   PermissionsSidebarContentProps,
@@ -29,7 +31,7 @@ export type GroupSidebarProps = Pick<
 
 export const getGroupsSidebar = createSelector(
   getOrderedGroups,
-  getGroupRouteParams,
+  getParsedGroupRouteParams,
   (groups: Group[][], params): GroupSidebarProps => {
     const { groupId } = params;
 

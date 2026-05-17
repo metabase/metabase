@@ -5,7 +5,7 @@ import {
   setupUnauthorizedCardEndpoints,
   setupUnauthorizedSchemaEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import type { QuestionLoaderChildrenProps } from "metabase/common/components/QuestionLoader";
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId } from "metabase-types/api";

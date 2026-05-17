@@ -373,20 +373,26 @@ describe("url-serialization", () => {
     });
 
     it("returns empty state for invalid base64", () => {
+      const consoleWarn = jest.spyOn(console, "warn").mockImplementation();
       expect(decodeState("!!!not-valid-base64!!!")).toEqual({
         formulaEntities: [],
         tabs: [],
         selectedTabId: null,
       });
+      expect(consoleWarn).toHaveBeenCalled();
+      consoleWarn.mockRestore();
     });
 
     it("returns empty state for valid base64 but invalid JSON", () => {
+      const consoleWarn = jest.spyOn(console, "warn").mockImplementation();
       const hash = btoa("not json");
       expect(decodeState(hash)).toEqual({
         formulaEntities: [],
         tabs: [],
         selectedTabId: null,
       });
+      expect(consoleWarn).toHaveBeenCalled();
+      consoleWarn.mockRestore();
     });
 
     it("never returns null", () => {

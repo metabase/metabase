@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 
 import { CurrencyPicker } from "./CurrencyPicker";
 
@@ -11,7 +11,7 @@ interface SetupOpts {
 function setup({ value = "USD" }: SetupOpts = {}) {
   const onChange = jest.fn();
 
-  const { rerender } = renderWithProviders(
+  const { rerender } = render(
     <CurrencyPicker value={value} onChange={onChange} />,
   );
 

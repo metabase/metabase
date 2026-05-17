@@ -1,6 +1,6 @@
 import { setupCollectionByIdEndpoint } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Collection, CollectionId } from "metabase-types/api";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";

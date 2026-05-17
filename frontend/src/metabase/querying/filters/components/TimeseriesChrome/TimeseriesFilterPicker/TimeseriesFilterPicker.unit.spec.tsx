@@ -1,6 +1,6 @@
 import _userEvent from "@testing-library/user-event";
 
-import { act, renderWithProviders, screen } from "__support__/ui-with-store";
+import { act, render, screen } from "__support__/ui-minimal";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,
@@ -58,7 +58,7 @@ function setup({
 }: SetupOpts = {}) {
   const onChange = jest.fn();
 
-  renderWithProviders(
+  render(
     <TimeseriesFilterPicker
       query={query}
       stageIndex={0}

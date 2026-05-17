@@ -4,7 +4,7 @@ import { Route } from "react-router";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { getIsSharing } from "metabase/dashboard/selectors";
 import { createMockDashboardState } from "metabase/redux/store/mocks";

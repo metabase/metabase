@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
@@ -7,7 +7,7 @@ import {
   setupTokenStatusEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui-with-store";
 import type {
   EmbedResource,
   EmbedResourceType,
@@ -24,13 +24,13 @@ import {
 import type { StaticEmbedSetupPaneProps } from "../StaticEmbedSetupPane";
 import { StaticEmbedSetupPane } from "../StaticEmbedSetupPane";
 
-const TextEditorMock = ({
+function TextEditorMock({
   highlightRanges,
   value,
 }: {
   highlightRanges?: { start: number; end: number }[];
   value: string;
-}) => {
+}) {
   const highlightedTexts = highlightRanges?.map((range) =>
     value.slice(range.start, range.end),
   );
@@ -42,7 +42,7 @@ const TextEditorMock = ({
       </div>
     </>
   );
-};
+}
 
 jest.mock("metabase/common/components/CodeEditor", () => ({
   CodeEditor: TextEditorMock,
@@ -112,6 +112,10 @@ export async function setup({
       storeInitialState: state,
     },
   );
+
+  await act(async () => {
+    await Promise.resolve();
+  });
 
   if (activeTab && activeTab !== "Overview") {
     await userEvent.click(

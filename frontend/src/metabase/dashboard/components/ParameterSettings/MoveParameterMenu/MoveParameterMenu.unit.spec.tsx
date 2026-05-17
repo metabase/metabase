@@ -3,7 +3,7 @@
 import userEvent from "@testing-library/user-event";
 import _ from "underscore";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import {
   createMockDashboardState,
   createMockState,

@@ -4,7 +4,7 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupBookmarksEndpoints } from "__support__/server-mocks/bookmark";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { CollectionType } from "metabase-types/api";
 import {

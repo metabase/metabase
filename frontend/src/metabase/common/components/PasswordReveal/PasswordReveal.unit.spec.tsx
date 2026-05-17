@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "__support__/ui";
+import { fireEvent, render, screen } from "__support__/ui-minimal";
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 
 describe("password reveal", () => {

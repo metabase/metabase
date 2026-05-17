@@ -3,7 +3,7 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockSearchResult } from "metabase-types/api/mocks";

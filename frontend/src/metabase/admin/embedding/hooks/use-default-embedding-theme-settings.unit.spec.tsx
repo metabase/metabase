@@ -1,4 +1,4 @@
-import { renderHookWithProviders } from "__support__/ui";
+import { renderHookWithProviders } from "__support__/ui-with-store";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getColors } from "metabase/ui/colors/colors";

@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { Component } from "react";
 
-import { act, fireEvent, render, screen, within } from "__support__/ui";
+import { act, fireEvent, render, screen, within } from "__support__/ui-minimal";
 import { KEYCODE_ENTER } from "metabase/utils/keyboard";
 
 import type { LayoutRendererArgs, TokenFieldProps } from "./TokenField";
@@ -281,7 +281,7 @@ describe("TokenField", () => {
       type("Doohickey");
       await userEvent.clear(input());
       type("");
-      input().blur();
+      fireEvent.blur(input());
       expect(values()).toHaveTextContent("");
       expect(input().value).toEqual("");
     });
@@ -443,7 +443,9 @@ describe("TokenField", () => {
         />,
       );
       type("asdf");
-      input().focus();
+      act(() => {
+        input().focus();
+      });
       await userEvent.tab();
       expect(input()).not.toHaveFocus();
     });

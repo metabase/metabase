@@ -7,7 +7,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import type { EnabledSearchModel, SearchModel } from "metabase-types/api";
 import {
   createMockDatabase,

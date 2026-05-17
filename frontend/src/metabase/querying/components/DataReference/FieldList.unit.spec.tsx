@@ -1,5 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
-import { renderWithProviders, screen } from "__support__/ui-with-store";
+import { render, screen } from "__support__/ui-minimal";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { FieldList } from "./FieldList";
@@ -12,7 +12,7 @@ const metadata = createMockMetadata({
 
 function setup() {
   const fields = [Object.values(metadata.fields)[0]];
-  renderWithProviders(<FieldList fields={fields} onFieldClick={jest.fn()} />);
+  render(<FieldList fields={fields} onFieldClick={jest.fn()} />);
 }
 
 describe("FieldList", () => {

@@ -5,7 +5,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import type { Database } from "metabase-types/api";
 
 import type { DeleteDatabaseModalProps } from "./DeleteDatabaseModal";

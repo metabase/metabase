@@ -1,9 +1,9 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 
 import { FieldInfoSection } from "./FieldInfoSection";
 
 function setup() {
-  renderWithProviders(
+  render(
     <FieldInfoSection
       sources={[]}
       target={{

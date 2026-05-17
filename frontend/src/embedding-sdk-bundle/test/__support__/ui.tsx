@@ -1,7 +1,7 @@
-import { render } from "@testing-library/react";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
+import { render } from "__support__/ui-minimal";
 import { ComponentProviderInternal } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { sdkReducers } from "embedding-sdk-bundle/store";
 import type { SdkStore, SdkStoreState } from "embedding-sdk-bundle/store/types";
@@ -46,6 +46,10 @@ export function renderWithSDKProviders(
 
   // Enable the embedding_sdk premium feature and settings by default in SDK tests, unless explicitly disabled.
   // Without this, SDK components will not render due to missing token features and settings.
+  if (initialState.settings && !componentProviderProps?.locale) {
+    initialState.settings.values["site-locale"] = undefined;
+  }
+
   if (!storeInitialState.settings && initialState.settings) {
     initialState.settings.values["token-features"].embedding_sdk = true;
     initialState.settings.values["enable-embedding-sdk"] = true;

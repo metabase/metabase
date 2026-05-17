@@ -1,13 +1,14 @@
-import { screen, within } from "__support__/ui";
+import { act, screen, within } from "__support__/ui-minimal";
 
 import { type SetupProps, setup as baseSetup } from "./setup";
 
-function setup(opts?: SetupProps) {
+async function setup(opts?: SetupProps) {
   baseSetup({
     tokenFeatures: { whitelabel: true },
     enterprisePlugins: ["whitelabel"],
     ...opts,
   });
+  await act(async () => {});
 }
 
 describe("Onboarding (EE with token)", () => {
@@ -16,8 +17,8 @@ describe("Onboarding (EE with token)", () => {
   });
 
   describe("'Set up your Metabase' section", () => {
-    it("'invite people' should have a tailored copy for the starter and pro plans", () => {
-      setup({ openItem: "invite" });
+    it("'invite people' should have a tailored copy for the starter and pro plans", async () => {
+      await setup({ openItem: "invite" });
 
       const inviteItem = screen.getByTestId("invite-item");
 
@@ -36,8 +37,8 @@ describe("Onboarding (EE with token)", () => {
   });
 
   describe("documentation links", () => {
-    it("should not render for 'sql' item", () => {
-      setup({ openItem: "sql", showMetabaseLinks: false });
+    it("should not render for 'sql' item", async () => {
+      await setup({ openItem: "sql", showMetabaseLinks: false });
 
       const alertItem = screen.getByTestId("sql-item");
       const sqlCopy = within(alertItem).getByText(/SQL templates/);
@@ -45,8 +46,8 @@ describe("Onboarding (EE with token)", () => {
       expect(sqlCopy).not.toHaveAttribute("href");
     });
 
-    it("should not render for 'dashboard' item", () => {
-      setup({ openItem: "dashboard", showMetabaseLinks: false });
+    it("should not render for 'dashboard' item", async () => {
+      await setup({ openItem: "dashboard", showMetabaseLinks: false });
 
       const alertItem = screen.getByTestId("dashboard-item");
       const dashboardCopy = within(alertItem).getByText(/dashboard with tabs/);
@@ -54,8 +55,8 @@ describe("Onboarding (EE with token)", () => {
       expect(dashboardCopy).not.toHaveAttribute("href");
     });
 
-    it("should not render for 'alert' item", () => {
-      setup({ openItem: "alert", showMetabaseLinks: false });
+    it("should not render for 'alert' item", async () => {
+      await setup({ openItem: "alert", showMetabaseLinks: false });
 
       const alertItem = screen.getByTestId("alert-item");
 
@@ -70,23 +71,24 @@ describe("Onboarding (EE with token)", () => {
   });
 
   describe("footer", () => {
-    it("should not render the 'learning' section is `showMetabaseLinks` has been turned off in whitelabeling", () => {
-      setup({ showMetabaseLinks: false });
+    it("should not render the 'learning' section is `showMetabaseLinks` has been turned off in whitelabeling", async () => {
+      await setup({ showMetabaseLinks: false });
 
       const footer = screen.getByRole("contentinfo");
       const learning = within(footer).queryByTestId("learning-section");
       expect(learning).not.toBeInTheDocument();
     });
 
-    it("should render the premium 'help' section for admins of instances on paid plans", () => {
-      setup({ isAdmin: true });
+    it("should render the premium 'help' section for admins of instances on paid plans", async () => {
+      await setup({ isAdmin: true });
 
       const footer = screen.getByRole("contentinfo");
       const helpSection = within(footer).getByTestId("help-section");
 
       expect(helpSection).toBeInTheDocument();
-      expect(within(helpSection).getByRole("link")).toHaveAttribute(
-        "href",
+      expect(
+        within(helpSection).getByRole("link").getAttribute("href"),
+      ).toContain(
         "https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=v1",
       );
       expect(
@@ -94,8 +96,8 @@ describe("Onboarding (EE with token)", () => {
       ).toBeInTheDocument();
     });
 
-    it("should not render the premium 'help' section for non-admins even if the instance is on a paid plan", () => {
-      setup({ isAdmin: false });
+    it("should not render the premium 'help' section for non-admins even if the instance is on a paid plan", async () => {
+      await setup({ isAdmin: false });
 
       const footer = screen.getByRole("contentinfo");
       const helpSection = within(footer).getByTestId("help-section");

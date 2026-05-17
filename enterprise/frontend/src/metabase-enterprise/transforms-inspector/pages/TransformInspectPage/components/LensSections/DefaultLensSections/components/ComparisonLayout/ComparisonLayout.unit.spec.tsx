@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { setupRunInspectorQueryEndpoint } from "__support__/server-mocks/transform";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import type {
   InspectorCard,
   InspectorField,

@@ -65,19 +65,23 @@ export const PublicLinksListing = <
             const publicUrl = getPublicUrl?.(item);
 
             return (
-              <tr key={item.id}>
-                <Link to={internalUrl} className={cx(CS.flex, CS.fullWidth)}>
-                  <td>{item.name}</td>
-                </Link>
+              <tr key={`${item.id}-${internalUrl}`}>
+                <td>
+                  <Link to={internalUrl} className={cx(CS.flex, CS.fullWidth)}>
+                    {item.name}
+                  </Link>
+                </td>
 
-                {publicUrl && (
+                {getPublicUrl && (
                   <td>
-                    <ExternalLink
-                      href={publicUrl}
-                      className={cx(CS.link, CS.textWrap)}
-                    >
-                      {publicUrl}
-                    </ExternalLink>
+                    {publicUrl && (
+                      <ExternalLink
+                        href={publicUrl}
+                        className={cx(CS.link, CS.textWrap)}
+                      >
+                        {publicUrl}
+                      </ExternalLink>
+                    )}
                   </td>
                 )}
                 {revoke && (

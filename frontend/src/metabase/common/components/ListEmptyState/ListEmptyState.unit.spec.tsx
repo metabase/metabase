@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 
 import { ListEmptyState } from "./ListEmptyState";
 
@@ -7,7 +7,7 @@ type SetupOpts = {
 };
 
 function setup({ label = "No items found" }: SetupOpts = {}) {
-  renderWithProviders(<ListEmptyState label={label} />);
+  render(<ListEmptyState label={label} />);
 }
 
 describe("ListEmptyState", () => {

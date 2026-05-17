@@ -1,4 +1,4 @@
-import { getBrokenUpTextMatcher, screen } from "__support__/ui";
+import { getBrokenUpTextMatcher, screen } from "__support__/ui-minimal";
 
 import { setup } from "./setup";
 

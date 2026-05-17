@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupForTokenCheckEndpoint } from "__support__/server-mocks";
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui-minimal";
 
 import { trackLicenseTokenStepSubmitted } from "../analytics";
 
@@ -63,6 +63,8 @@ describe("setup (EE build, but no token)", () => {
     }
 
     it("should display an error in case of invalid token", async () => {
+      const consoleError = jest.spyOn(console, "error").mockImplementation();
+
       await setupForLicenseStep();
       setupForTokenCheckEndpoint({ valid: false });
 
@@ -70,6 +72,8 @@ describe("setup (EE build, but no token)", () => {
       await submit();
 
       expect(await errMsg()).toBeInTheDocument();
+      expect(consoleError).toHaveBeenCalled();
+      consoleError.mockRestore();
     });
 
     it("should have the Activate button disabled when the token is not 64 characters long (unless the token begins with 'airgap_')", async () => {

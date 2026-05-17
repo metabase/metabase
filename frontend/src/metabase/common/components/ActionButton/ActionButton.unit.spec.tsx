@@ -1,7 +1,6 @@
-import { act } from "@testing-library/react";
 import { useRef } from "react";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { act, render, screen, waitFor } from "__support__/ui-minimal";
 
 import {
   ActionButton,
@@ -17,7 +16,7 @@ const setup = async (props: Partial<ActionButtonProps> = {}) => {
     ...props,
   };
 
-  renderWithProviders(<ActionButton {...defaultProps} />);
+  render(<ActionButton {...defaultProps} />);
 
   return { actionFn };
 };
@@ -34,13 +33,24 @@ const setupWithRef = async (props: Partial<ActionButtonProps> = {}) => {
     return <ActionButton ref={ref} actionFn={actionFn} {...props} />;
   };
 
-  renderWithProviders(<TestComponent />);
+  render(<TestComponent />);
 
   return {
     actionFn,
     resetState: () => resetStateFn?.(),
   };
 };
+
+function deferred<T = unknown>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+
+  return { promise, resolve, reject };
+}
 
 describe("ActionButton", () => {
   beforeEach(() => {
@@ -70,7 +80,10 @@ describe("ActionButton", () => {
   });
 
   it("should handle successful action flow", async () => {
-    const { actionFn } = await setup({
+    const action = deferred();
+    const actionFn = jest.fn().mockReturnValue(action.promise);
+    await setup({
+      actionFn,
       normalText: "Save",
       activeText: "Saving...",
       successText: "Saved!",
@@ -80,13 +93,16 @@ describe("ActionButton", () => {
     expect(screen.getByText("Save")).toBeInTheDocument();
     expect(button).toHaveAttribute("data-action-status", "idle");
 
-    act(() => {
+    await act(async () => {
       button.click();
     });
 
     expect(await screen.findByText("Saving...")).toBeInTheDocument();
     expect(button).toHaveAttribute("data-action-status", "pending");
     expect(actionFn).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      action.resolve(undefined);
+    });
     expect(await screen.findByText("Saved!")).toBeInTheDocument();
     expect(screen.getByLabelText("check icon")).toBeInTheDocument();
     expect(button).toHaveAttribute("data-action-status", "success");
@@ -100,13 +116,16 @@ describe("ActionButton", () => {
   });
 
   it("should handle successful action flow with loading spinner", async () => {
-    const { actionFn } = await setup({
+    const action = deferred();
+    const actionFn = jest.fn().mockReturnValue(action.promise);
+    await setup({
+      actionFn,
       useLoadingSpinner: true,
     });
 
     const button = screen.getByRole("button");
 
-    act(() => {
+    await act(async () => {
       button.click();
     });
 
@@ -114,11 +133,15 @@ describe("ActionButton", () => {
       expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     });
     expect(actionFn).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      action.resolve(undefined);
+    });
     expect(await screen.findByText("Saved")).toBeInTheDocument();
   });
 
   it("should handle failed action flow", async () => {
-    const actionFn = jest.fn().mockRejectedValue(new Error("Test error"));
+    const action = deferred();
+    const actionFn = jest.fn().mockReturnValue(action.promise);
     const consoleErrorSpy = jest
       .spyOn(console, "error")
       .mockImplementation(() => {});
@@ -135,7 +158,7 @@ describe("ActionButton", () => {
     expect(screen.getByText("Save")).toBeInTheDocument();
     expect(button).toHaveAttribute("data-action-status", "idle");
 
-    act(() => {
+    await act(async () => {
       button.click();
     });
 
@@ -143,6 +166,9 @@ describe("ActionButton", () => {
     expect(button).toHaveAttribute("data-action-status", "pending");
     expect(actionFn).toHaveBeenCalledTimes(1);
 
+    await act(async () => {
+      action.reject(new Error("Test error"));
+    });
     expect(await screen.findByText("Failed!")).toBeInTheDocument();
     expect(button).toHaveAttribute("data-action-status", "failed");
     expect(consoleErrorSpy).toHaveBeenCalled();
@@ -161,7 +187,7 @@ describe("ActionButton", () => {
     const { resetState } = await setupWithRef({});
 
     const button = screen.getByRole("button");
-    act(() => {
+    await act(async () => {
       button.click();
     });
 
@@ -183,14 +209,16 @@ describe("ActionButton", () => {
       }),
     );
 
-    const { unmount } = renderWithProviders(
-      <ActionButton actionFn={actionFn} />,
-    );
+    const { unmount } = render(<ActionButton actionFn={actionFn} />);
 
     const button = screen.getByRole("button");
-    button.click();
+    await act(async () => {
+      button.click();
+    });
 
-    unmount();
+    await act(async () => {
+      unmount();
+    });
 
     expect(actionFn).toHaveBeenCalled();
   });

@@ -1,7 +1,12 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { downloadDataset } from "metabase/redux/downloads";
 import type { Dispatch, DownloadsState } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";

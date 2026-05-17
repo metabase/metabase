@@ -1,4 +1,4 @@
-import { render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import { createMockTimeline } from "metabase-types/api/mocks";
 
 import type { TimelineListProps } from "./TimelineList";
@@ -8,8 +8,8 @@ describe("TimelineList", () => {
   it("should render a list of timelines", () => {
     const props = getProps({
       timelines: [
-        createMockTimeline({ name: "Releases" }),
-        createMockTimeline({ name: "Holidays" }),
+        createMockTimeline({ id: 1, name: "Releases" }),
+        createMockTimeline({ id: 2, name: "Holidays" }),
       ],
     });
 

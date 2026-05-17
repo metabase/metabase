@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupDatabaseListEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
 

@@ -1,4 +1,4 @@
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui-with-store";
 import type { MantineSize } from "metabase/ui";
 
 import { type Option, ReorderableTagsInput } from "./ReorderableTagsInput";

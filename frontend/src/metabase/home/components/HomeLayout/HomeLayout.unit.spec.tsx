@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";

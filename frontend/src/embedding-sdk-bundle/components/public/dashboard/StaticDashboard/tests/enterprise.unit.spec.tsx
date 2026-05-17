@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import type { ComponentType } from "react";
 
-import { screen, waitFor, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui-minimal";
 import type { SdkDashboardProps } from "embedding-sdk-bundle/components/public/dashboard/SdkDashboard";
 
 import { addEnterpriseAutoRefreshTests } from "../../shared-tests/auto-refresh.spec";
@@ -25,7 +25,11 @@ const setupEnterprise = async (
     component: StaticDashboard as ComponentType<SdkDashboardProps>,
   });
 };
-console.warn = () => {};
+const consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+
+afterAll(() => {
+  consoleWarnSpy.mockRestore();
+});
 
 describe("StaticDashboard", () => {
   addEnterpriseSubscriptionsTests(setupEnterprise);

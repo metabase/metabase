@@ -3,7 +3,7 @@ import {
   setupSearchEndpoints,
   setupTablesEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import type { PythonTransformEditorUiOptions } from "metabase/plugins/oss/transforms";
 import { createMockState } from "metabase/redux/store/mocks";
 import { hasPremiumFeature } from "metabase-enterprise/settings";

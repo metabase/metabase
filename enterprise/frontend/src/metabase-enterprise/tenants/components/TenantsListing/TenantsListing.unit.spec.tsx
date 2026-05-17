@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { ACTIVE_STATUS } from "metabase/admin/people/constants";
 import { createMockTenant } from "metabase-types/api/mocks";
 

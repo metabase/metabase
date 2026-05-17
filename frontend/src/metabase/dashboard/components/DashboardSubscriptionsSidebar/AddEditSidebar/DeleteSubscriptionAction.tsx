@@ -107,7 +107,7 @@ export function DeleteSubscriptionAction({
               >
                 <Checkbox
                   label={item}
-                  checked={checked[index]}
+                  checked={checked[index] ?? false}
                   onChange={(e) =>
                     setChecked({
                       ...checked,

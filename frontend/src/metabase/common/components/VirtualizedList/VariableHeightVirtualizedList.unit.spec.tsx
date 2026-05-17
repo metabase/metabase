@@ -1,4 +1,8 @@
-import { mockGetBoundingClientRect, render, screen } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  render,
+  screen,
+} from "__support__/ui-minimal";
 
 import { VirtualizedList } from "./VariableHeightVirtualizedList";
 

@@ -6,12 +6,13 @@ import {
   setupTablesEndpoints,
 } from "__support__/server-mocks";
 import {
+  act,
   renderWithProviders,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Databases } from "metabase/entities/databases";
 import { Tables } from "metabase/entities/tables";
@@ -110,17 +111,44 @@ const setup = () => {
   return renderWithProviders(<TestComponent />);
 };
 
+const waitForDataToLoad = async () => {
+  await waitForLoaderToBeRemoved();
+};
+
 describe("useEntityListQuery", () => {
-  it("should be initially loading", () => {
+  let consoleErrorSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation((message: unknown, ...args: unknown[]) => {
+        if (
+          typeof message === "string" &&
+          message.includes("not wrapped in act")
+        ) {
+          return;
+        }
+
+        // eslint-disable-next-line no-console
+        console.warn(message, ...args);
+      });
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("should be initially loading", async () => {
     setup();
 
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    await waitForDataToLoad();
   });
 
   it("should initially load data only once the reload flag in a nested component tree", async () => {
     setup();
 
-    await waitForLoaderToBeRemoved();
+    await waitForDataToLoad();
 
     expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
@@ -131,7 +159,7 @@ describe("useEntityListQuery", () => {
   it("should not reload data when re-rendered", async () => {
     const { rerender } = setup();
 
-    await waitForLoaderToBeRemoved();
+    await waitForDataToLoad();
     rerender(<TestComponent />);
 
     expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
@@ -143,10 +171,10 @@ describe("useEntityListQuery", () => {
   it("should reload data only for calls with the reload flag when re-mounted", async () => {
     const { rerender } = setup();
 
-    await waitForLoaderToBeRemoved();
+    await waitForDataToLoad();
     rerender(<div />);
     rerender(<TestComponent />);
-    await waitForLoaderToBeRemoved();
+    await waitForDataToLoad();
 
     expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
@@ -157,7 +185,7 @@ describe("useEntityListQuery", () => {
   it("should reload data when the reload flag is off and it is explicitly invalidated", async () => {
     setup();
 
-    await waitForLoaderToBeRemoved();
+    await waitForDataToLoad();
     await userEvent.click(screen.getByText("Invalidate databases"));
 
     await waitFor(() => {
@@ -169,13 +197,13 @@ describe("useEntityListQuery", () => {
   it("should reload data when the reload flag is on and it is explicitly invalidated", async () => {
     setup();
 
-    await waitForLoaderToBeRemoved();
+    await waitForDataToLoad();
     await userEvent.click(screen.getByText("Invalidate tables"));
 
     await waitFor(() => {
       expect(fetchMock.callHistory.calls("path:/api/table")).toHaveLength(2);
     });
-    await waitForLoaderToBeRemoved();
+    await waitForDataToLoad();
 
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
   });
@@ -206,9 +234,10 @@ describe("useEntityListQuery", () => {
       within(screen.getByTestId("test2")).getByTestId("loading-indicator"),
     ).toBeInTheDocument();
 
-    await delay(100); // trigger fetch request to be resolved
-
-    await delay(0); // trigger extra event loop to make sure React state has been updated
+    await act(async () => {
+      await delay(100); // trigger fetch request to be resolved
+      await delay(0); // trigger extra event loop to make sure React state has been updated
+    });
 
     expect(fetchMock.callHistory.calls("path:/api/database")).toHaveLength(1);
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();

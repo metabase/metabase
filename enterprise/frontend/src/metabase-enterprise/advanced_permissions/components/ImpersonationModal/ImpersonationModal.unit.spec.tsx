@@ -14,7 +14,7 @@ import {
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { ImpersonationModal } from "metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModal";
 import { advancedPermissionsSlice } from "metabase-enterprise/advanced_permissions/reducer";
 import { getImpersonations } from "metabase-enterprise/advanced_permissions/selectors";

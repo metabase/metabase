@@ -130,6 +130,8 @@ export const DashCardCardParameterMapperButton = ({
       handleChangeTarget,
     ]);
 
+  const isButtonDisabled = buttonVariant === "disabled";
+
   return (
     <Popover
       position="bottom-start"
@@ -142,12 +144,25 @@ export const DashCardCardParameterMapperButton = ({
       <Popover.Target>
         <Tooltip label={buttonTooltip} disabled={!buttonTooltip} inline>
           <Flex
-            component="button"
+            component="div"
             role="button"
-            onClick={() => setIsDropdownVisible(!isDropdownVisible)}
-            disabled={buttonVariant === "disabled"}
+            tabIndex={isButtonDisabled ? -1 : 0}
+            onClick={() => {
+              if (!isButtonDisabled) {
+                setIsDropdownVisible(!isDropdownVisible);
+              }
+            }}
+            onKeyDown={(event) => {
+              if (
+                !isButtonDisabled &&
+                (event.key === "Enter" || event.key === " ")
+              ) {
+                event.preventDefault();
+                setIsDropdownVisible(!isDropdownVisible);
+              }
+            }}
             className={cx(S.TargetButton, {
-              [S.disabled]: buttonVariant === "disabled",
+              [S.disabled]: isButtonDisabled,
               [S.mapped]: buttonVariant === "mapped",
               [S.unauthed]: buttonVariant === "unauthed",
               [S.invalid]: buttonVariant === "invalid",

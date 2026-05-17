@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui-minimal";
 import { createMockCollection } from "metabase-types/api/mocks";
 
 import { createChildCollection, createLibraryCollection, setup } from "./setup";

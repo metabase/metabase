@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react";
 
-import { renderWithProviders } from "__support__/ui";
+import { render } from "__support__/ui-minimal";
 
 import { getDataColumn } from "./data-column";
 
@@ -37,7 +37,7 @@ const setup = ({
     row: { index: number; original: { value: string } };
   }>;
 
-  renderWithProviders(
+  render(
     <CellComponent
       getValue={() => "test value"}
       row={{ index: 0, original: { value: "test value" } }}

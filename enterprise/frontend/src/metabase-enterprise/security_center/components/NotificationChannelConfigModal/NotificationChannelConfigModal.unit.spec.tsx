@@ -8,7 +8,11 @@ import {
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import { findRequests } from "__support__/server-mocks/util";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 import {

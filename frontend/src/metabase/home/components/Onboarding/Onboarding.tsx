@@ -83,8 +83,6 @@ export const Onboarding = () => {
     [itemRefs],
   );
 
-  const [itemValue, setItemValue] = useState<ChecklistItemValue | null>(null);
-
   const DEFAULT_ITEM = isAdmin ? "database" : "x-ray";
 
   const newQuestionUrl = Urls.newQuestion({
@@ -109,6 +107,10 @@ export const Onboarding = () => {
   const [lastItemOpened, setLastItemOpened] = useTempStorage(
     "last-opened-onboarding-checklist-item",
   );
+  const selectedItemValue = lastItemOpened || DEFAULT_ITEM;
+  const [itemValue, setItemValue] = useState<ChecklistItemValue | null>(
+    selectedItemValue,
+  );
 
   const scrollElementIntoView = (element?: HTMLDivElement | null) => {
     if (!element) {
@@ -129,6 +131,10 @@ export const Onboarding = () => {
   }, [itemRefs, lastItemOpened, isValidItemKey]);
 
   const handleValueChange = (newValue: ChecklistItemValue | null) => {
+    if (newValue === itemValue) {
+      return;
+    }
+
     if (isValidItemKey(itemValue)) {
       const currentItem = itemRefs[itemValue].current;
       const iframe = currentItem?.querySelector("iframe");
@@ -215,7 +221,7 @@ export const Onboarding = () => {
       <OnboardingIllustration />
       <Box maw={592} m="0 auto">
         <Accordion
-          defaultValue={lastItemOpened || DEFAULT_ITEM}
+          defaultValue={selectedItemValue}
           classNames={{
             chevron: S.chevron,
             content: S.content,

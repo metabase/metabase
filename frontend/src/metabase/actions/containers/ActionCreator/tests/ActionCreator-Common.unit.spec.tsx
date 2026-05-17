@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { callMockEvent } from "__support__/events";
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui-minimal";
 import { getDefaultFormSettings } from "metabase/actions/utils";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
 import {

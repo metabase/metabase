@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import { getNextId } from "__support__/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import type { Field, FieldId } from "metabase-types/api";

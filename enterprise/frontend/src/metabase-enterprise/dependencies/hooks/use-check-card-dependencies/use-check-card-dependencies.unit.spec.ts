@@ -2,7 +2,7 @@ import {
   setupCheckCardDependenciesEndpoint,
   setupCheckCardDependenciesEndpointError,
 } from "__support__/server-mocks/dependencies";
-import { act, renderHookWithProviders } from "__support__/ui";
+import { act, renderHookWithProviders } from "__support__/ui-with-store";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { CheckDependenciesResponse } from "metabase-types/api";

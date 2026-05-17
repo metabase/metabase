@@ -1,5 +1,5 @@
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
@@ -54,7 +54,7 @@ function setup({ table }: SetupOpts) {
   });
   const metadata = getMetadata(state);
 
-  return renderWithProviders(
+  return render(
     <div data-testid="test-container">
       <ConnectedTables table={checkNotNull(metadata.table(table.id))} />
     </div>,

@@ -11,7 +11,7 @@ import {
   renderWithProviders,
   screen,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import type * as Urls from "metabase/urls";
 import type {
   DependencyDiagnosticsUserParams,

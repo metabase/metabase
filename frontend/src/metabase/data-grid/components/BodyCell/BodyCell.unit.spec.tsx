@@ -1,14 +1,12 @@
 import { fireEvent, screen } from "@testing-library/react";
 
-import { renderWithProviders } from "__support__/ui";
+import { render } from "__support__/ui-minimal";
 
 import { BodyCell } from "./BodyCell";
 
 describe("BodyCell", () => {
   it("renders the value correctly", () => {
-    renderWithProviders(
-      <BodyCell value="Cell Value" columnId="col1" rowIndex={0} />,
-    );
+    render(<BodyCell value="Cell Value" columnId="col1" rowIndex={0} />);
 
     expect(screen.getByText("Cell Value")).toBeInTheDocument();
   });
@@ -16,7 +14,7 @@ describe("BodyCell", () => {
   it("formats the value when a formatter is provided", () => {
     const formatter = (value: number) => `$${value}`;
 
-    renderWithProviders(
+    render(
       <BodyCell
         value={100}
         formatter={formatter}
@@ -29,7 +27,7 @@ describe("BodyCell", () => {
   });
 
   it("does not show an expand button when canExpand is false", () => {
-    renderWithProviders(
+    render(
       <BodyCell
         value="Expandable"
         canExpand={false}
@@ -43,7 +41,7 @@ describe("BodyCell", () => {
   });
 
   it("does not show expand button when variant is pill", () => {
-    renderWithProviders(
+    render(
       <BodyCell
         value="Pill Variant"
         variant="pill"
@@ -59,7 +57,7 @@ describe("BodyCell", () => {
   it("calls onExpand when the expand button is clicked", () => {
     const handleExpand = jest.fn();
 
-    renderWithProviders(
+    render(
       <BodyCell
         value="Expandable"
         formatter={(value) => `formatted:${value}`}

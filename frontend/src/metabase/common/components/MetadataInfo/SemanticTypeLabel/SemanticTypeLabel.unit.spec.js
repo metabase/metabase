@@ -1,5 +1,5 @@
 import { createMockEntitiesState } from "__support__/store";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import { getIcon, render, screen } from "__support__/ui-minimal";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -18,7 +18,7 @@ const state = createMockState({
 const metadata = getMetadata(state);
 
 function setup(semanticType) {
-  return renderWithProviders(<SemanticTypeLabel semanticType={semanticType} />);
+  return render(<SemanticTypeLabel semanticType={semanticType} />);
 }
 
 describe("SemanticTypeLabel", () => {

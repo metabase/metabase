@@ -7,7 +7,12 @@ import {
   setupListAccessGrantsEndpoint,
   setupListAccessGrantsEndpointWithError,
 } from "__support__/server-mocks";
-import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  fireEvent,
+  renderWithProviders,
+  screen,
+  within,
+} from "__support__/ui-with-store";
 import { createMockAccessGrant } from "metabase-types/api/mocks";
 
 import { GrantAccessModal } from "./GrantAccessModal";

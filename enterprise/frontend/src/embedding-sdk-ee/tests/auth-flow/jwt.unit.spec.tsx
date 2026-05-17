@@ -5,7 +5,10 @@ import {
   setupCurrentUserEndpoint,
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import {
+  renderWithProviders,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui-with-store";
 import { waitForRequest } from "__support__/utils";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";

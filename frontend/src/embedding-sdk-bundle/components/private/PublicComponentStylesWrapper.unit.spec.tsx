@@ -1,5 +1,4 @@
-import { render, screen } from "@testing-library/react";
-
+import { render, screen } from "__support__/ui-minimal";
 import { ThemeProvider } from "metabase/ui";
 
 import { PublicComponentStylesWrapper } from "./PublicComponentStylesWrapper";

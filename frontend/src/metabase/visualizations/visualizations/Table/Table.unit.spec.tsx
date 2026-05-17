@@ -3,7 +3,7 @@ import { thaw } from "icepick";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { render, screen, within } from "__support__/ui-minimal";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
@@ -102,7 +102,7 @@ const setup = ({ display, visualization_settings = {} }: SetupOptions) => {
     );
   };
 
-  renderWithProviders(<Container />);
+  render(<Container />);
 
   return { onChange };
 };

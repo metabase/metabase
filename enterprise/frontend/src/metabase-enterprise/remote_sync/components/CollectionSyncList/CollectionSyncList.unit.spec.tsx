@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import React from "react";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { render, screen, waitFor } from "__support__/ui-minimal";
 import {
   Form,
   FormProvider,
@@ -49,7 +49,7 @@ const setup = ({
 }: SetupOpts = {}) => {
   const onSubmit = jest.fn();
 
-  renderWithProviders(
+  render(
     <FormProvider
       initialValues={{
         [COLLECTIONS_KEY]: initialSyncMap,
@@ -82,7 +82,7 @@ const setupWithSyncTypeToggle = ({
 }: SetupOpts = {}) => {
   const onSubmit = jest.fn();
 
-  renderWithProviders(
+  render(
     <FormProvider
       initialValues={{
         [COLLECTIONS_KEY]: initialSyncMap,
@@ -428,7 +428,7 @@ describe("CollectionSyncList", () => {
     it("should track dirty state correctly after save and toggle back", async () => {
       const collections = [createMockCollection({ id: 42 })];
 
-      renderWithProviders(
+      render(
         <SetupWithReinitialize
           collections={collections}
           initialSyncMap={{ 42: true }}
@@ -471,7 +471,7 @@ describe("CollectionSyncList", () => {
         createMockCollection({ id: 2, name: "Collection B" }),
       ];
 
-      renderWithProviders(
+      render(
         <SetupWithReinitialize
           collections={collections}
           initialSyncMap={{ 1: true, 2: false }}

@@ -1,7 +1,7 @@
 import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { screen } from "__support__/ui-minimal";
 import type { ScheduleComponentType } from "metabase/common/components/Schedule/strings";
 import {
   setup,

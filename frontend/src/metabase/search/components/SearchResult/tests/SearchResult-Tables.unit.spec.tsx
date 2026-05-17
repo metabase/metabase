@@ -6,7 +6,7 @@ import {
   setupUserRecipientsEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { SearchResult } from "metabase/search/components/SearchResult";
 import { createWrappedSearchResult } from "metabase/search/components/SearchResult/tests/util";
 import type { InitialSyncStatus } from "metabase-types/api";

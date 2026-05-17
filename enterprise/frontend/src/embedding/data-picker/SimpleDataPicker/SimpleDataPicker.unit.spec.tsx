@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupSearchEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockModelResult } from "metabase/browse/models/test-utils";
 import type { SearchResult } from "metabase-types/api";
 

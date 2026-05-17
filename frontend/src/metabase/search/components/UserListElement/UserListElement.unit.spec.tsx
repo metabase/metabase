@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import { UserListElement } from "metabase/search/components/UserListElement/index";
 import { createMockUserListResult } from "metabase-types/api/mocks";
 
@@ -10,7 +10,7 @@ const TEST_USER_LIST_RESULT = createMockUserListResult({
 
 const setup = ({ value = TEST_USER_LIST_RESULT, isSelected = false } = {}) => {
   const onClickMock = jest.fn();
-  renderWithProviders(
+  render(
     <UserListElement
       value={value}
       isSelected={isSelected}

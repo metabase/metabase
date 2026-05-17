@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 
-import { screen, within } from "__support__/ui";
+import { screen, within } from "__support__/ui-minimal";
 import { createMockModelResult } from "metabase/browse/models/test-utils";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as Urls from "metabase/urls";

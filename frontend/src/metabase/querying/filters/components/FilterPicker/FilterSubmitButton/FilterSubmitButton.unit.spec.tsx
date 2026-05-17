@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui-with-store";
+import { render, screen } from "__support__/ui-minimal";
 
 import { FilterSubmitButton } from "./FilterSubmitButton";
 
@@ -13,7 +13,7 @@ type SetupOpts = {
 function setup({ isNew, isDisabled, withAddButton }: SetupOpts = {}) {
   const onAddButtonClick = jest.fn();
 
-  renderWithProviders(
+  render(
     <FilterSubmitButton
       isNew={isNew}
       isDisabled={isDisabled}

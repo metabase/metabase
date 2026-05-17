@@ -51,12 +51,10 @@ export const ColorRange = forwardRef(function ColorRange(
         props.className,
       )}
     >
-      {_.range(0, sections).map((section) => (
-        <>
-          {/* @ts-expect-error color range needs access to arbitrary color values */}
-          <Box key={section} flex="1" bg={scale(section)} />
-        </>
-      ))}
+      {_.range(0, sections).map((section) => {
+        // @ts-expect-error color range needs access to arbitrary color values
+        return <Box key={section} flex="1" bg={scale(section)} />;
+      })}
     </Flex>
   );
 });

@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 
 import { RunInfo } from "./RunInfo";
 
@@ -13,9 +13,7 @@ function setup({
   message = "Test error message",
   endTime = null,
 }: SetupOpts = {}) {
-  renderWithProviders(
-    <RunInfo status="failed" message={message} endTime={endTime} />,
-  );
+  render(<RunInfo status="failed" message={message} endTime={endTime} />);
 }
 
 describe("RunInfo", () => {

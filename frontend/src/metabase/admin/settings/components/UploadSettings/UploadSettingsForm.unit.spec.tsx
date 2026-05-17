@@ -16,7 +16,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Database } from "metabase-types/api";
@@ -301,6 +301,7 @@ describe("Admin > Settings > UploadSettingsFormView", () => {
   });
 
   it("should show an error if enabling fails", async () => {
+    const consoleError = jest.spyOn(console, "error").mockImplementation();
     const { updateSpy } = setup();
     updateSpy.mockImplementation(() => Promise.resolve({ error: "oh no!" }));
     await userEvent.click(
@@ -325,6 +326,7 @@ describe("Admin > Settings > UploadSettingsFormView", () => {
     });
 
     await expectToast(/There was a problem/);
+    consoleError.mockRestore();
   });
 
   it("should be able to disable uploads", async () => {
@@ -351,6 +353,7 @@ describe("Admin > Settings > UploadSettingsFormView", () => {
   });
 
   it("should show an error if disabling fails", async () => {
+    const consoleError = jest.spyOn(console, "error").mockImplementation();
     const { updateSpy } = setup({
       uploadsSettings: {
         db_id: 2,
@@ -374,6 +377,7 @@ describe("Admin > Settings > UploadSettingsFormView", () => {
     });
 
     await expectToast(/There was a problem/i);
+    consoleError.mockRestore();
   });
 
   it("should populate db and schema from existing settings", async () => {
@@ -556,6 +560,7 @@ describe("Admin > Settings > UploadSettingsFormView", () => {
 
       const schemaDropdown =
         await screen.findByPlaceholderText("Select a schema");
+      await waitFor(() => expect(schemaDropdown).toBeEnabled());
       await userEvent.click(schemaDropdown);
 
       const schemaItem = await screen.findByText("uploads");

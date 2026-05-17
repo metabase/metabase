@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import Color from "color";
 import { useState } from "react";
 
-import { render, screen, within } from "__support__/ui";
+import { render, screen, within } from "__support__/ui-minimal";
 
 import { ColorPicker } from "./ColorPicker";
 import { ColorPickerContent } from "./ColorPickerContent";

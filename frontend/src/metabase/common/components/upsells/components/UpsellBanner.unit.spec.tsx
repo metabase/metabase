@@ -5,7 +5,11 @@ import {
   findRequests,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { UpsellBanner, type UpsellBannerProps } from "./UpsellBanner";

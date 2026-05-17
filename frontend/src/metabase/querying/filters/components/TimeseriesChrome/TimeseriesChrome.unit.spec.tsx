@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui-with-store";
+import { render, screen } from "__support__/ui-minimal";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,
@@ -34,7 +34,7 @@ function setup({
     );
   };
 
-  renderWithProviders(
+  render(
     <TimeseriesChrome question={question} updateQuestion={updateQuestion} />,
   );
 

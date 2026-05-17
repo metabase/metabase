@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { forwardRef, useState } from "react";
 
-import { render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 
 import { Tooltip, type TooltipProps } from "./Tooltip";
 

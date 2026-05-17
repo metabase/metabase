@@ -11,7 +11,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { createMockDashboardState } from "metabase/redux/store/mocks";
 import {
   createMockDashboard,

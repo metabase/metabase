@@ -2,7 +2,7 @@ import userEvent, {
   PointerEventsCheckLevel,
 } from "@testing-library/user-event";
 
-import { render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 
 import { ToolbarButton, type ToolbarButtonProps } from "./ToolbarButton";
 

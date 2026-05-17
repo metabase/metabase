@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import _ from "underscore";
 
-import { getIcon, render, screen, waitFor } from "__support__/ui";
+import { getIcon, render, screen, waitFor } from "__support__/ui-minimal";
 import {
   createMockActionParameter,
   createMockFieldSettings,

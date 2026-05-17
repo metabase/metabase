@@ -5,7 +5,11 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import {
   createMockSetupState,
   createMockState,
@@ -61,6 +65,8 @@ describe("DataUsageStep", () => {
   });
 
   it("should show an error message on submit", async () => {
+    const consoleError = jest.spyOn(console, "error").mockImplementation();
+
     setup({ step: "data_usage" });
     fetchMock.put(TRACKING_PATH, 400);
 
@@ -76,5 +82,7 @@ describe("DataUsageStep", () => {
 
     expect(await screen.findByText("An error occurred")).toBeInTheDocument();
     expect(toggle).toBeChecked();
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 });

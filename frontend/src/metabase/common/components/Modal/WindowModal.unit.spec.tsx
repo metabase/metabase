@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { render, screen, waitFor } from "__support__/ui";
+import { render, screen, waitFor } from "__support__/ui-minimal";
 import { WindowModal } from "metabase/common/components/Modal/WindowModal";
 
 const WINDOW_MODAL_CONTENT = "Close modal";

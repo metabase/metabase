@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
@@ -9,7 +9,7 @@ interface SetupOpts {
 }
 
 const setup = ({ databases }: SetupOpts) => {
-  renderWithProviders(<DatabaseStatusLarge databases={databases} />);
+  render(<DatabaseStatusLarge databases={databases} />);
 };
 
 describe("DatabaseStatusLarge", () => {

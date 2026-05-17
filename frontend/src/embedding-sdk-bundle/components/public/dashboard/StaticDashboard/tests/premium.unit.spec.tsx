@@ -26,7 +26,11 @@ const setupPremium = async (
     component: StaticDashboard as ComponentType<SdkDashboardProps>,
   });
 };
-console.warn = () => {};
+const consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+
+afterAll(() => {
+  consoleWarnSpy.mockRestore();
+});
 
 describe("StaticDashboard", () => {
   addPremiumSubscriptionsTests(setupPremium);

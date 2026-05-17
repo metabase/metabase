@@ -11,7 +11,7 @@ import {
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import type { DashCardId } from "metabase-types/api";
 import {

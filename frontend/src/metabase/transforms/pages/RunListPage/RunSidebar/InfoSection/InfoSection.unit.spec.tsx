@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import type { TransformRun } from "metabase-types/api";
 import { createMockTransformRun } from "metabase-types/api/mocks";
 

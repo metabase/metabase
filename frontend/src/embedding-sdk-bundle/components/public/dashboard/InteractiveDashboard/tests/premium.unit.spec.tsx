@@ -19,7 +19,11 @@ const setupPremium = async (
   });
 };
 
-console.warn = () => {};
+const consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+
+afterAll(() => {
+  consoleWarnSpy.mockRestore();
+});
 
 describe("InteractiveDashboard", () => {
   addPremiumSubscriptionsTests(setupPremium);

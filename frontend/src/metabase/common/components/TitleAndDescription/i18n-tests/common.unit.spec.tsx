@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupTranslateContentStringSpy } from "__support__/content-translation";
-import { screen } from "__support__/ui";
+import { screen } from "__support__/ui-minimal";
 
 import { setup } from "./utils.spec";
 

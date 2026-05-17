@@ -1,6 +1,6 @@
 import { Route } from "react-router";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui-with-store";
 import {
   createMockLocation,
   createMockRoutingState,

@@ -3,7 +3,7 @@ import { isElementOfType } from "react-dom/test-utils";
 
 import { setupSdkPlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import { render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";

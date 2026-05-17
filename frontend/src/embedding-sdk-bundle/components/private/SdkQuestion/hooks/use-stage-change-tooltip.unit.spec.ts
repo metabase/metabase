@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook } from "__support__/ui-minimal";
 
 import { useSdkQuestionContext } from "../context";
 

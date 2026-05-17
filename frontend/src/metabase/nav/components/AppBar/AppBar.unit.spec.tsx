@@ -3,25 +3,25 @@ import {
   createMockMediaQueryList,
   renderWithProviders,
   screen,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import type { AppBarProps } from "./AppBar";
 import AppBar from "./AppBar";
 
-const NewItemButtonMock = () => <div data-testid="new-button" />;
-const SearchBarMock = () => <div data-testid="search-bar" />;
-const SearchButtonMock = {
+jest.mock("../NewItemButton", () => () => <div data-testid="new-button" />);
+jest.mock("../search/SearchBar/SearchBar", () => () => (
+  <div data-testid="search-bar" />
+));
+jest.mock("../search/SearchButton/SearchButton", () => ({
   SearchButton: () => <div data-testid="search-button" />,
-};
-const BreadcrumbsMock = () => <div data-testid="collection-path" />;
-const QuestionLineageMock = () => <div data-testid="question-lineage" />;
-
-jest.mock("../NewItemButton", () => NewItemButtonMock);
-jest.mock("../search/SearchBar/SearchBar", () => SearchBarMock);
-jest.mock("../search/SearchButton/SearchButton", () => SearchButtonMock);
-jest.mock("../../containers/CollectionBreadcrumbs", () => BreadcrumbsMock);
-jest.mock("../../containers/QuestionLineage", () => QuestionLineageMock);
+}));
+jest.mock("../../containers/CollectionBreadcrumbs", () => () => (
+  <div data-testid="collection-path" />
+));
+jest.mock("../../containers/QuestionLineage", () => () => (
+  <div data-testid="question-lineage" />
+));
 
 describe("AppBar", () => {
   let matchMediaSpy: jest.SpyInstance;

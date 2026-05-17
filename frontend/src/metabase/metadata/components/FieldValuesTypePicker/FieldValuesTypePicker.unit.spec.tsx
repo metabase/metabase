@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders } from "__support__/ui";
+import { render } from "__support__/ui-minimal";
 import type { FieldValuesType } from "metabase-types/api";
 
 import { FieldValuesTypePicker } from "./FieldValuesTypePicker";
@@ -12,7 +12,7 @@ interface SetupOpts {
 }
 
 const setup = ({ value = "list", onChange = jest.fn() }: SetupOpts = {}) => {
-  renderWithProviders(
+  render(
     <FieldValuesTypePicker
       placeholder="Select..."
       value={value}

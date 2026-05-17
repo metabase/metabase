@@ -373,6 +373,7 @@ describe("Metadata", () => {
     // is an exception bubbling up from fetchData? why?
     // how else to test return value in the catch case?
     it("should return existing data if request fails", async () => {
+      const consoleError = jest.spyOn(console, "error").mockImplementation();
       const argsFail = getDefaultArgs({
         getData: () => Promise.reject("error"),
       });
@@ -381,8 +382,11 @@ describe("Metadata", () => {
         const dataFail = await fetchData(argsFail);
         expect(argsFail.dispatch).toHaveBeenCalledTimes(2);
         expect(dataFail).toEqual(args.existingData);
+        expect(consoleError).toHaveBeenCalledWith("fetchData error", "error");
       } catch (error) {
         return;
+      } finally {
+        consoleError.mockRestore();
       }
     });
   });
@@ -417,6 +421,7 @@ describe("Metadata", () => {
     });
 
     it("should return existing data if request fails", async () => {
+      const consoleError = jest.spyOn(console, "error").mockImplementation();
       const argsFail = getDefaultArgs({
         putData: () => {
           throw new Error("test");
@@ -426,6 +431,8 @@ describe("Metadata", () => {
       await delay(10);
       expect(argsFail.dispatch).toHaveBeenCalledTimes(2);
       expect(data).toEqual(args.existingData);
+      expect(consoleError).toHaveBeenCalled();
+      consoleError.mockRestore();
     });
   });
 });

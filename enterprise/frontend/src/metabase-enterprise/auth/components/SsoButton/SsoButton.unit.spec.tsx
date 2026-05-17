@@ -1,4 +1,4 @@
-import { renderWithProviders, waitFor } from "__support__/ui";
+import { renderWithProviders, waitFor } from "__support__/ui-with-store";
 import {
   createMockSettingsState,
   createMockState,

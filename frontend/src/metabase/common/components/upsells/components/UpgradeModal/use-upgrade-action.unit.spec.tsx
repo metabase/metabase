@@ -1,4 +1,4 @@
-import { renderHookWithProviders } from "__support__/ui";
+import { renderHookWithProviders } from "__support__/ui-with-store";
 import {
   DATA_STUDIO_UPGRADE_URL,
   UPGRADE_URL,

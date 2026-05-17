@@ -1,6 +1,6 @@
 import type { CSSProperties, MouseEvent, ReactNode } from "react";
 
-import { render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import type { HoveredObject } from "metabase/visualizations/types";
 
 import {

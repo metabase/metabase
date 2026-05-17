@@ -11,7 +11,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import type { WritebackParameter } from "metabase-types/api";
 import {
   createMockActionDashboardCard,
@@ -80,7 +80,7 @@ const dashboard = createMockDashboard({
 
 const DEFAULT_VALUE = "default value";
 
-const setup = (
+const setup = async (
   options?: Partial<React.ComponentProps<typeof ActionDashcardSettings>>,
 ) => {
   const searchItems = models.map((model) =>
@@ -92,7 +92,7 @@ const setup = (
   setupCardsEndpoints(models);
   setupActionsEndpoints([...actions1, ...actions2, ...implicitActions]);
 
-  renderWithProviders(
+  const view = renderWithProviders(
     <ActionDashcardSettings
       onClose={closeSpy}
       dashboard={dashboard}
@@ -100,6 +100,15 @@ const setup = (
       {...options}
     />,
   );
+
+  await waitFor(() => {
+    const queries = Object.values(
+      view.store.getState()["metabase-api"].queries,
+    ) as Array<{ status?: string }>;
+
+    expect(queries.length).toBeGreaterThan(0);
+    expect(queries.every((query) => query.status !== "pending")).toBe(true);
+  });
 
   return { closeSpy };
 };
@@ -117,7 +126,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
   ])(
     "when not hidden, required: $required, mapped: $mapped, hasDefaultValue: $hasDefaultValue",
     ({ required, mapped, hasDefaultValue }) => {
-      beforeEach(() => {
+      beforeEach(async () => {
         const getDashcard = dashcardFactory({
           required,
           mapped,
@@ -125,7 +134,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
           hidden: false,
         });
 
-        setup({
+        await setup({
           dashcard: getDashcard(),
         });
       });
@@ -183,7 +192,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
   ])(
     "when hidden, required: $required, mapped: $mapped, hasDefaultValue: $hasDefaultValue",
     ({ required, mapped, hasDefaultValue }) => {
-      beforeEach(() => {
+      beforeEach(async () => {
         const getDashcard = dashcardFactory({
           required,
           mapped,
@@ -191,7 +200,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
           hidden: true,
         });
 
-        setup({
+        await setup({
           dashcard: getDashcard(),
         });
       });
@@ -221,7 +230,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
   );
 
   describe("when hidden, required, but not mapped and no default value", () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       const getDashcard = dashcardFactory({
         required: true,
         mapped: false,
@@ -229,7 +238,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
         hidden: true,
       });
 
-      setup({
+      await setup({
         dashcard: getDashcard(),
       });
     });
@@ -250,7 +259,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
   });
 
   describe("when hidden, required, has default value, but not mapped", () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       const getDashcard = dashcardFactory({
         required: true,
         mapped: false,
@@ -258,7 +267,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
         hidden: true,
       });
 
-      setup({
+      await setup({
         dashcard: getDashcard(),
       });
     });
@@ -291,7 +300,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
   ])(
     "when hidden and has default value, required: $required, mapped: $mapped",
     ({ required, mapped }) => {
-      beforeEach(() => {
+      beforeEach(async () => {
         const getDashcard = dashcardFactory({
           required,
           mapped,
@@ -299,7 +308,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
           hidden: true,
         });
 
-        setup({
+        await setup({
           dashcard: getDashcard(),
         });
       });
@@ -327,7 +336,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
   describe.each([{ required: true }, { required: false }])(
     "when hidden, mapped but no default value, required: $required",
     ({ required }) => {
-      beforeEach(() => {
+      beforeEach(async () => {
         const getDashcard = dashcardFactory({
           required,
           mapped: true,
@@ -335,7 +344,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
           hidden: true,
         });
 
-        setup({
+        await setup({
           dashcard: getDashcard(),
         });
       });
@@ -380,8 +389,8 @@ describe("ActionViz > ActionDashcardSettings", () => {
       action: action,
     };
 
-    beforeEach(() => {
-      setup({
+    beforeEach(async () => {
+      await setup({
         dashcard: dashcard,
       });
     });
@@ -413,15 +422,15 @@ describe("ActionViz > ActionDashcardSettings", () => {
     });
   });
 
-  it("shows the action dashcard settings component", () => {
-    setup();
+  it("shows the action dashcard settings component", async () => {
+    await setup();
 
     expect(screen.getByText("Action Library")).toBeInTheDocument();
     expect(screen.getByText(/Select an action/i)).toBeInTheDocument();
   });
 
   it("loads the model list", async () => {
-    setup();
+    await setup();
 
     expect(screen.getByText("Action Library")).toBeInTheDocument();
     await screen.findByText("Model Uno");
@@ -429,7 +438,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
   });
 
   it("shows actions within their respective models", async () => {
-    setup();
+    await setup();
 
     const modelExpander = await screen.findByText("Model Uno");
 
@@ -443,7 +452,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
   });
 
   it("shows the action assigned to a dashcard", async () => {
-    setup({
+    await setup({
       dashcard: actionDashcardWithAction,
     });
 
@@ -455,7 +464,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
   });
 
   it("should be valid and not crash when the action does not have parameters (metabase#32665)", async () => {
-    const { closeSpy } = setup({
+    const { closeSpy } = await setup({
       dashcard: createMockActionDashboardCard({
         action: createMockQueryAction(),
       }),
@@ -465,7 +474,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
   });
 
   it("shows parameters for an action", async () => {
-    setup({
+    await setup({
       dashcard: actionDashcardWithAction,
     });
     expect(screen.getByText("Action Parameter 1")).toBeInTheDocument();
@@ -473,7 +482,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
   });
 
   it("supports inline edit for implit and query actions", async () => {
-    setup({
+    await setup({
       dashcard: actionDashcardWithAction,
     });
 
@@ -501,7 +510,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
   });
 
   it("can close the modal with the done button", async () => {
-    const { closeSpy } = setup();
+    const { closeSpy } = await setup();
 
     await userEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(closeSpy).toHaveBeenCalledTimes(1);

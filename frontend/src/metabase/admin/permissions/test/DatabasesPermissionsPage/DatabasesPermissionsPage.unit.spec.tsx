@@ -13,7 +13,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { delay } from "__support__/utils";
 import DataPermissionsPage from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
 import { DatabasesPermissionsPage } from "metabase/admin/permissions/pages/DatabasePermissionsPage/DatabasesPermissionsPage";

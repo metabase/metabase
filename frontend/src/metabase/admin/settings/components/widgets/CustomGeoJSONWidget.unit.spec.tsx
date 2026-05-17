@@ -7,7 +7,12 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui-with-store";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type {

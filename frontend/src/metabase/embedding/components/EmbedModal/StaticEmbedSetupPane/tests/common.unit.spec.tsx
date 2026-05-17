@@ -5,7 +5,7 @@ import {
   screen,
   waitFor,
   within,
-} from "__support__/ui";
+} from "__support__/ui-minimal";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
 import { getMockResource, setup } from "./setup";

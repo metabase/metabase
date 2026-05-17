@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "__support__/ui";
+import { render, screen, waitFor } from "__support__/ui-minimal";
 import { getNextId } from "__support__/utils";
 import {
   createMockAlert,

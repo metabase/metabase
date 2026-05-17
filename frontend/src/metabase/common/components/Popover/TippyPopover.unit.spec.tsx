@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import React, { useEffect } from "react";
 
-import { render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 
 import { type ITippyPopoverProps, TippyPopover } from "./TippyPopover";
 
@@ -46,9 +46,9 @@ describe("Popover", () => {
     expect(await screen.findByText("popover content")).toBeVisible();
   });
 
-  it("should be themed as a popover", () => {
+  it("should be themed as a popover", async () => {
     setup({ visible: true });
-    expect(screen.getByRole("tooltip")).toHaveAttribute(
+    expect(await screen.findByRole("tooltip")).toHaveAttribute(
       "data-theme",
       "popover",
     );

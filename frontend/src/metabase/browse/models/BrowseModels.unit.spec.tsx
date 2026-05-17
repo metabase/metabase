@@ -6,7 +6,7 @@ import {
   setupSearchEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui-with-store";
 import { createMockSetupState } from "metabase/redux/store/mocks";
 import {
   createMockCollection,

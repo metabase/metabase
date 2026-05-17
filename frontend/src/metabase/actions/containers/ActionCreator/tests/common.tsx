@@ -9,7 +9,7 @@ import {
   renderWithProviders,
   waitFor,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import {
   createMockSettingsState,
   createMockState,

@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import type { Transform, TransformTag } from "metabase-types/api";
 
 import type { TransformRunFilterOptions } from "../types";
@@ -19,7 +19,7 @@ function setup({
   tags = [],
 }: SetupOpts = {}) {
   const onFilterOptionsChange = jest.fn();
-  renderWithProviders(
+  render(
     <RunFilterBar
       filterOptions={filterOptions}
       transforms={transforms}

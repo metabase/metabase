@@ -7,7 +7,11 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import * as Urls from "metabase/urls";
@@ -44,7 +48,7 @@ type SetupOpts = {
   transform?: Transform;
 };
 
-function setup({
+async function setup({
   transform = createMockTransform(),
   remoteSyncType,
 }: SetupOpts) {
@@ -98,11 +102,15 @@ function setup({
       storeInitialState: state,
     },
   );
+
+  await waitFor(() => {
+    expect(screen.getByText("Ownership")).toBeInTheDocument();
+  });
 }
 
 describe("TransformSettingsSection", () => {
-  it("should disable the change target button when the transform is running", () => {
-    setup({
+  it("should disable the change target button when the transform is running", async () => {
+    await setup({
       transform: createMockTransform({
         last_run: createMockTransformRun({ status: "started" }),
       }),
@@ -111,8 +119,8 @@ describe("TransformSettingsSection", () => {
     expect(button).toBeDisabled();
   });
 
-  it("should not disable the change target button when the transform is not running", () => {
-    setup({
+  it("should not disable the change target button when the transform is not running", async () => {
+    await setup({
       transform: createMockTransform({
         last_run: createMockTransformRun({ status: "failed" }),
       }),
@@ -122,8 +130,8 @@ describe("TransformSettingsSection", () => {
   });
 
   describe("when remote sync is read-only", () => {
-    beforeEach(() => {
-      setup({ remoteSyncType: "read-only" });
+    beforeEach(async () => {
+      await setup({ remoteSyncType: "read-only" });
     });
 
     it("does not show the change target button", () => {
@@ -143,8 +151,8 @@ describe("TransformSettingsSection", () => {
 });
 
 describe("OwnerSection", () => {
-  it("should render the ownership section with title and description", () => {
-    setup({
+  it("should render the ownership section with title and description", async () => {
+    await setup({
       transform: createMockTransform(),
     });
     expect(screen.getByText("Ownership")).toBeInTheDocument();
@@ -153,8 +161,8 @@ describe("OwnerSection", () => {
     ).toBeInTheDocument();
   });
 
-  it("should render the owner label", () => {
-    setup({
+  it("should render the owner label", async () => {
+    await setup({
       transform: createMockTransform({
         owner_user_id: 1,
         owner: createMockTransformOwner({
@@ -167,8 +175,8 @@ describe("OwnerSection", () => {
     expect(screen.getByText("Owner")).toBeInTheDocument();
   });
 
-  it("should display external email when owner_email is set", () => {
-    setup({
+  it("should display external email when owner_email is set", async () => {
+    await setup({
       transform: createMockTransform({
         owner_email: "external@example.com",
         owner: createMockTransformOwner({ email: "external@example.com" }),
@@ -180,7 +188,7 @@ describe("OwnerSection", () => {
 
 describe("TargetSection", () => {
   it("should not render a edit table metadata button when the target table does not exist", async () => {
-    setup({});
+    await setup({});
 
     expect(
       await screen.findByRole("button", { name: /Change target/ }),
@@ -191,7 +199,7 @@ describe("TargetSection", () => {
     ).not.toBeInTheDocument();
   });
   it("should link you to a page where you can edit the target tables metadata", async () => {
-    setup({
+    await setup({
       transform: createMockTransform({
         table: createMockTable(),
       }),

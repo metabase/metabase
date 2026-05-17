@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { getIcon, screen, waitFor } from "__support__/ui";
+import { getIcon, screen, waitFor } from "__support__/ui-minimal";
 import {
   createMockCollection,
   createMockTokenFeatures,

@@ -1,5 +1,5 @@
 // these tests use QuestionChartSettings directly, but logic we're testing logic in ChartSettingFieldPicker
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { render, screen, within } from "__support__/ui-minimal";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -45,7 +45,7 @@ function getSeries(metricColumnProps) {
 
 const setup = (seriesDisplay) => {
   const series = getSeries(seriesDisplay);
-  return renderWithProviders(
+  return render(
     <QuestionChartSettings series={series} initial={{ section: "Data" }} />,
   );
 };

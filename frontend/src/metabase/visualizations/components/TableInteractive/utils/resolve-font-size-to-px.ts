@@ -19,6 +19,10 @@ export function resolveFontSizeToPx(
   const isRem = fontSize.endsWith("rem");
   const isEm = fontSize.endsWith("em") && !isRem;
 
+  if (fontSize.endsWith("px") || isRem) {
+    return fontSize;
+  }
+
   if (!isEm) {
     console.warn(
       `resolveFontSizeToPx: fontSize "${fontSize}" is not in em. ` +

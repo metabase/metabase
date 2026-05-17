@@ -5,7 +5,7 @@ import type { ComponentProps } from "react";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
-import { renderWithProviders } from "__support__/ui";
+import { render } from "__support__/ui-minimal";
 import * as domUtils from "metabase/utils/dom";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
@@ -51,7 +51,7 @@ const TEST_CASES = [
 function setupPivotTable(
   options?: ComponentProps<typeof PivotTableTestWrapper>,
 ) {
-  return renderWithProviders(<PivotTableTestWrapper {...options} />);
+  return render(<PivotTableTestWrapper {...options} />);
 }
 
 function setupPivotSettings() {
@@ -126,7 +126,7 @@ function setupPivotSettings() {
     );
   };
 
-  renderWithProviders(<Container />);
+  render(<Container />);
 }
 
 describe("Visualizations > PivotTable > PivotTable", () => {

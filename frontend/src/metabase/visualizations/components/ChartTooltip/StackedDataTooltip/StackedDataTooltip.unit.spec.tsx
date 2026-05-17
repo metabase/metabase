@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import type { StackedTooltipModel } from "metabase/visualizations/types";
 
 import StackedDataTooltip from "./StackedDataTooltip";
@@ -35,7 +35,7 @@ const setup = ({
   bodyRows = defaultBodyRows,
   ...rest
 }: Partial<StackedTooltipModel> = {}) => {
-  renderWithProviders(
+  render(
     <StackedDataTooltip
       headerTitle={headerTitle}
       headerRows={headerRows}

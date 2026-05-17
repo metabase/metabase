@@ -4,7 +4,11 @@ import {
   setupDeleteTransformJobEndpoint,
   setupDeleteTransformJobEndpointWithError,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import type { TransformJob } from "metabase-types/api";
 import { createMockTransformJob } from "metabase-types/api/mocks";
 
@@ -48,10 +52,15 @@ describe("DeleteJobModal", () => {
   });
 
   it("should handle API errors", async () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
     const { onDelete, onClose } = setup({ isError: true });
     await userEvent.click(screen.getByRole("button", { name: "Delete job" }));
     expect(await screen.findByText("An error occurred")).toBeInTheDocument();
     expect(onDelete).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
   });
 });

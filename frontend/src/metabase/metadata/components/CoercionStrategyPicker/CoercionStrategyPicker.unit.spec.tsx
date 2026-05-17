@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { render, screen, waitFor, within } from "__support__/ui-minimal";
 import type { Field } from "metabase-types/api";
 import {
   createOrdersQuantityField,
@@ -34,7 +34,7 @@ interface SetupOpts {
 }
 
 const setup = ({ field, initialValue }: SetupOpts) => {
-  renderWithProviders(
+  render(
     <TestComponent baseType={field.base_type} initialValue={initialValue} />,
   );
 };

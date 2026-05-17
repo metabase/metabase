@@ -1,7 +1,7 @@
 import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui-minimal";
 import type { Engine } from "metabase-types/api";
 
 import * as utils from "../utils";

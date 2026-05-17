@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
-import { getIcon, render, screen } from "__support__/ui";
+import { getIcon, render, screen } from "__support__/ui-minimal";
 import { delay } from "__support__/utils";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import {

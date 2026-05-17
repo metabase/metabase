@@ -1,11 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  getIcon,
-  queryIcon,
-  renderWithProviders,
-  screen,
-} from "__support__/ui-with-store";
+import { getIcon, queryIcon, render, screen } from "__support__/ui-minimal";
 import type { IconName } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import type { CardDisplayType } from "metabase-types/api";
@@ -60,7 +55,7 @@ const setup = ({
   visualizationType = "bar",
   onOpenSettings = jest.fn(),
 }: Partial<ChartTypeOptionProps> = {}) => {
-  renderWithProviders(
+  render(
     <ChartTypeOption
       selectedVisualization={selectedVisualization}
       onSelectVisualization={onSelectVisualization}

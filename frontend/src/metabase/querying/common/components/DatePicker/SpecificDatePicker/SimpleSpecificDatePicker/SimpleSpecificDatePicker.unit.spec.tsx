@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui-with-store";
+import { render, screen } from "__support__/ui-minimal";
 import type { SpecificDatePickerValue } from "metabase/querying/common/types";
 
 import { SimpleSpecificDatePicker } from "./SimpleSpecificDatePicker";
@@ -12,9 +12,7 @@ interface SetupOpts {
 function setup({ value }: SetupOpts) {
   const onChange = jest.fn();
 
-  renderWithProviders(
-    <SimpleSpecificDatePicker value={value} onChange={onChange} />,
-  );
+  render(<SimpleSpecificDatePicker value={value} onChange={onChange} />);
 
   return { onChange };
 }

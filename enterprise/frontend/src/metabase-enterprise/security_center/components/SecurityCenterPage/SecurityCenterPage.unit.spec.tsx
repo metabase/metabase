@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 import type { Location } from "history";
 
 import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui-with-store";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { Advisory } from "metabase-types/api";
 import { createMockVersion } from "metabase-types/api/mocks";

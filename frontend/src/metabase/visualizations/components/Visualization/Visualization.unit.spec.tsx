@@ -1,7 +1,7 @@
-import type { ComponentProps } from "react";
+import { useEffect, type ComponentProps } from "react";
 
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { delay } from "__support__/utils";
 import { createMockState } from "metabase/redux/store/mocks";
 import { color } from "metabase/ui/colors";
@@ -30,7 +30,9 @@ const MOCK_DISPLAY = "mocked-visualization" as VisualizationDisplay;
 
 const MockedVisualization = Object.assign(
   ({ onRenderError }: Pick<VisualizationProps, "onRenderError">) => {
-    onRenderError("This is an error message");
+    useEffect(() => {
+      onRenderError("This is an error message");
+    }, [onRenderError]);
 
     return <div>Hello, I am mocked</div>;
   },
@@ -84,6 +86,10 @@ describe("Visualization", () => {
 
   describe("with an error", () => {
     it("should render the error message and the proper title (metabase#49348)", async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
       await renderViz(
         [
           {
@@ -118,6 +124,8 @@ describe("Visualization", () => {
       );
 
       expect(screen.getByText("This is an error message")).toBeInTheDocument();
+      expect(consoleErrorSpy).toHaveBeenCalledWith("This is an error message");
+      consoleErrorSpy.mockRestore();
       expect(screen.getByTestId("legend-caption-title")).toHaveTextContent(
         "Products, Count, Grouped by Category and Vendor",
       );

@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { renderWithProviders } from "__support__/ui";
+import { act, renderWithProviders } from "__support__/ui-with-store";
 import type { CacheableModel } from "metabase-types/api";
 
 import { useInvalidateTarget } from "./useInvalidateTarget";
@@ -35,7 +35,9 @@ describe("useInvalidateTarget", () => {
   it('should send "question" as the query param when model is "question"', async () => {
     const { getInvalidateTarget } = setup(1, "question");
 
-    await getInvalidateTarget()();
+    await act(async () => {
+      await getInvalidateTarget()();
+    });
 
     const url = await getInvalidateRequestUrl();
     expect(url.searchParams.get("question")).toBe("1");
@@ -45,7 +47,9 @@ describe("useInvalidateTarget", () => {
   it('should map "metric" to "question" in the query param', async () => {
     const { getInvalidateTarget } = setup(1, "metric");
 
-    await getInvalidateTarget()();
+    await act(async () => {
+      await getInvalidateTarget()();
+    });
 
     const url = await getInvalidateRequestUrl();
     expect(url.searchParams.get("question")).toBe("1");

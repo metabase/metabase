@@ -4,7 +4,7 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
 } from "__support__/server-mocks";
-import { waitForLoaderToBeRemoved } from "__support__/ui";
+import { waitForLoaderToBeRemoved } from "__support__/ui-minimal";
 import { waitForRequest } from "__support__/utils";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";

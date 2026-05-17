@@ -11,6 +11,10 @@ import {
 
 describe("compileFormatter", () => {
   it("should return a function, even for unsupported operators", () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
     const formatter = compileFormatter({
       type: "single",
       operator: "this-non-existant-operator-is-used-for-testing" as never,
@@ -21,6 +25,11 @@ describe("compileFormatter", () => {
     });
 
     expect(formatter).toBeDefined();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "Unsupported formatting operator:",
+      "this-non-existant-operator-is-used-for-testing",
+    );
+    consoleErrorSpy.mockRestore();
   });
 
   it("should support all defined operators", () => {

@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders } from "__support__/ui";
+import { render } from "__support__/ui-minimal";
 import type { MetabotTodoItem } from "metabase-types/api";
 
 import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
@@ -17,7 +17,7 @@ const createMockTodoItem = (
 });
 
 const setup = (todos: MetabotTodoItem[]) => {
-  return renderWithProviders(<AgentTodoListMessage todos={todos} />);
+  return render(<AgentTodoListMessage todos={todos} />);
 };
 
 describe("AgentTodoListMessage", () => {

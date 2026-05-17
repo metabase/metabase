@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import { t } from "ttag";
 
-import { getIcon, renderWithProviders } from "__support__/ui";
+import { getIcon, render } from "__support__/ui-minimal";
 import { createMockParameter } from "metabase-types/api/mocks";
 
 import DefaultParametersSection from "./DefaultParametersSection";
@@ -22,7 +22,7 @@ jest.mock("metabase/parameters/utils/date-formatting", () => ({
 
 describe("DefaultParametersSection", () => {
   const setup = (parameters) => {
-    renderWithProviders(<DefaultParametersSection parameters={parameters} />);
+    render(<DefaultParametersSection parameters={parameters} />);
   };
 
   it("should render the heading and info text", () => {

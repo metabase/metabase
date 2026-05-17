@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import type { DatabaseLocalSettingAvailability } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
@@ -13,7 +13,7 @@ const setup = (options: {
   const { driverSetting = { enabled: true }, engine = "h2" } = options;
   const mockDatabase = createMockDatabase({ engine });
 
-  return renderWithProviders(
+  return render(
     <AdminDatabaseTableEditingSection
       database={mockDatabase}
       settingsAvailable={{

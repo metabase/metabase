@@ -1,15 +1,12 @@
 import type { MatcherFunction } from "@testing-library/dom";
-import type { ByRoleMatcher } from "@testing-library/react";
+import type { ByRoleMatcher, RenderOptions } from "@testing-library/react";
 import {
-  act,
   screen,
   render as testingLibraryRender,
   waitFor,
 } from "@testing-library/react";
 
 import { ThemeProvider } from "metabase/ui";
-
-export { act, screen, waitFor };
 
 /**
  * A minimal render helper for tests under `metabase/query_builder` and
@@ -82,6 +79,13 @@ export const mockGetBoundingClientRect = (options: Partial<DOMRect> = {}) => {
 };
 
 /**
+ * Mocked globally in frontend/test/__support__/mocks.js
+ */
+export const getScrollIntoViewMock = () => {
+  return window.HTMLElement.prototype.scrollIntoView;
+};
+
+/**
  * jsdom doesn't have DataTransfer
  */
 export function createMockClipboardData(
@@ -112,8 +116,28 @@ const ThemeWrapper = ({ children }: React.PropsWithChildren) => (
   <ThemeProvider resolvedColorScheme="light">{children}</ThemeProvider>
 );
 
-export function renderWithTheme(children: React.ReactElement) {
-  return testingLibraryRender(children, { wrapper: ThemeWrapper });
+function getWrapper(Wrapper?: RenderOptions["wrapper"]) {
+  if (!Wrapper) {
+    return ThemeWrapper;
+  }
+
+  return function WrapperWithTheme({ children }: React.PropsWithChildren) {
+    return (
+      <ThemeWrapper>
+        <Wrapper>{children}</Wrapper>
+      </ThemeWrapper>
+    );
+  };
+}
+
+export function renderWithTheme(
+  children: React.ReactElement,
+  options: RenderOptions = {},
+) {
+  return testingLibraryRender(children, {
+    ...options,
+    wrapper: getWrapper(options.wrapper),
+  });
 }
 
 // eslint-disable-next-line import/export -- intentionally overriding render from @testing-library/react

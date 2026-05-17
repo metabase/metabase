@@ -7,7 +7,7 @@ import {
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import type {
   ParametersForActionExecution,
   PublicWritebackAction,
@@ -176,6 +176,7 @@ describe("PublicAction", () => {
   });
 
   it("shows error if can't fetch action", async () => {
+    const consoleError = jest.spyOn(console, "error").mockImplementation();
     await setup({ shouldExecutionFail: true });
 
     await userEvent.type(screen.getByLabelText("Size"), "42");
@@ -185,12 +186,17 @@ describe("PublicAction", () => {
     );
 
     expect(await screen.findByText("Something's off")).toBeInTheDocument();
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 
   it("shows error if action fails", async () => {
+    const consoleError = jest.spyOn(console, "error").mockImplementation();
     await setup({ shouldFetchFail: true });
     expect(screen.getByText("Not found")).toBeInTheDocument();
     expect(screen.queryByRole("form")).not.toBeInTheDocument();
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 
   it("handles actions without parameters", async () => {

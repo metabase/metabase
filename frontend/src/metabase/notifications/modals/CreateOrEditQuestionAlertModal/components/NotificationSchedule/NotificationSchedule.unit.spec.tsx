@@ -1,4 +1,4 @@
-import { screen } from "__support__/ui";
+import { screen } from "__support__/ui-minimal";
 import type { ScheduleDisplayType } from "metabase-types/api";
 
 import { setup } from "./setup.spec";

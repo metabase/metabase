@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import type { Parameter, TemporalUnit } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 

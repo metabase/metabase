@@ -4,7 +4,12 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import {
   aiStreamingQuery,
   findMatchingInflightAiStreamingRequests,

@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, render, screen, waitFor } from "__support__/ui";
+import { fireEvent, render, screen, waitFor } from "__support__/ui-minimal";
 
 import type { EditableTextProps } from "./EditableText";
 import { EditableText } from "./EditableText";

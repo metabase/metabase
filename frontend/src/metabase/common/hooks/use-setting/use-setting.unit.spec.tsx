@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import type { Settings } from "metabase-types/api";
 
 import { useSetting } from "./use-setting";

@@ -12,7 +12,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -27,10 +27,10 @@ import { PublicOrEmbeddedQuestion } from "../PublicOrEmbeddedQuestion";
 
 registerStaticVisualizations();
 
-const VisualizationMock = ({
+function VisualizationMock({
   onUpdateVisualizationSettings,
   rawSeries,
-}: VisualizationProps) => {
+}: VisualizationProps) {
   const [
     {
       card,
@@ -55,7 +55,7 @@ const VisualizationMock = ({
       </button>
     </div>
   );
-};
+}
 
 jest.mock(
   "metabase/visualizations/components/Visualization",

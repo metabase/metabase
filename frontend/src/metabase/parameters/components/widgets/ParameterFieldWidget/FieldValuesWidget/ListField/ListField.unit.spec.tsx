@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import type { JSX } from "react";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { render, screen, waitFor } from "__support__/ui-minimal";
 import type { RowValue } from "metabase-types/api";
 import { PRODUCT_CATEGORY_VALUES } from "metabase-types/api/mocks/presets";
 
@@ -27,7 +27,7 @@ function setup({
 }: SetupOpts) {
   const onChange = jest.fn();
 
-  renderWithProviders(
+  render(
     <ListField
       value={value}
       options={options}

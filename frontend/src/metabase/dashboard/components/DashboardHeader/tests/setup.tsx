@@ -8,7 +8,10 @@ import {
 } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import {
+  renderWithProviders,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui-with-store";
 import { getDefaultTab } from "metabase/dashboard/actions";
 import { DASHBOARD_APP_ACTIONS } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";

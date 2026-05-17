@@ -1,5 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
 import Question from "metabase-lib/v1/Question";
@@ -23,7 +23,7 @@ interface SetupProps {
 }
 
 const setup = ({ series, question }: SetupProps) => {
-  renderWithProviders(
+  render(
     <QuestionChartSettings
       series={series}
       question={question}

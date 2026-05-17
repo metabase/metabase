@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import type { TransformTag, TransformTagId } from "metabase-types/api";
 import { createMockTransformTag } from "metabase-types/api/mocks";
 
@@ -10,7 +10,7 @@ type SetupOpts = {
 };
 
 function setup({ tagIds = [], tags = [] }: SetupOpts = {}) {
-  renderWithProviders(<TagList tagIds={tagIds} tags={tags} />);
+  render(<TagList tagIds={tagIds} tags={tags} />);
 }
 
 describe("TagList", () => {

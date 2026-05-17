@@ -8,7 +8,7 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui-with-store";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { createMockState } from "metabase/redux/store/mocks";

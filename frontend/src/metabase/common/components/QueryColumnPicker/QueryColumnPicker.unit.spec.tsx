@@ -1,6 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  fireEvent,
+  renderWithProviders,
+  screen,
+  within,
+} from "__support__/ui-with-store";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,
@@ -176,10 +181,10 @@ describe("QueryColumnPicker", () => {
     });
   });
 
-  it("should allow searching using displayName (#39622)", () => {
+  it("should allow searching using displayName (#39622)", async () => {
     setup();
 
-    screen.getByText("User").click();
+    await userEvent.click(screen.getByText("User"));
     fireEvent.change(screen.getByTestId("list-search-field"), {
       target: { value: "Birth Date" },
     });

@@ -7,7 +7,11 @@ import {
   setupDatabaseUsageInfoEndpoint,
 } from "__support__/server-mocks/database";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Database, InitialSyncStatus } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
@@ -102,6 +106,7 @@ describe("DatabaseConnectionInfoSection", () => {
     });
 
     it("shows an error when a schema sync fails", async () => {
+      const consoleError = jest.spyOn(console, "error").mockImplementation();
       const { database } = setup();
       fetchMock.modifyRoute(`database-${database.id}-sync-schema`, {
         response: 500,
@@ -109,9 +114,11 @@ describe("DatabaseConnectionInfoSection", () => {
 
       await userEvent.click(screen.getByText(/Sync database schema/i));
       expect(await screen.findByText(/Failed to sync/i)).toBeInTheDocument();
+      consoleError.mockRestore();
     });
 
     it("shows an error when a field sync fails", async () => {
+      const consoleError = jest.spyOn(console, "error").mockImplementation();
       const { database } = setup();
       fetchMock.modifyRoute(`database-${database.id}-rescan-values`, {
         response: 500,
@@ -121,6 +128,7 @@ describe("DatabaseConnectionInfoSection", () => {
       expect(
         await screen.findByText(/failed to start scan/i),
       ).toBeInTheDocument();
+      consoleError.mockRestore();
     });
 
     it("re-scans database field values", async () => {

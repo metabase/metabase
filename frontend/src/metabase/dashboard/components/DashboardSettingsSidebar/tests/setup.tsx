@@ -9,7 +9,10 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import {
+  renderWithProviders,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui-with-store";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Dashboard, Settings } from "metabase-types/api";

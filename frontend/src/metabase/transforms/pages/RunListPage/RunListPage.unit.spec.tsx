@@ -12,7 +12,7 @@ import {
   renderWithProviders,
   screen,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import * as Urls from "metabase/urls";
 import type { TransformRun } from "metabase-types/api";
 import {

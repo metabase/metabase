@@ -1,5 +1,5 @@
 import { setupCardQueryEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { render, screen, waitFor } from "__support__/ui-minimal";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
@@ -21,7 +21,7 @@ describe("QuestionResultLoader", () => {
       ),
     );
 
-    renderWithProviders(
+    render(
       <QuestionResultLoader question={question}>
         {childrenFn}
       </QuestionResultLoader>,

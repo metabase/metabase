@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 
 import { SearchFilterPopoverWrapper } from "./SearchFilterPopoverWrapper";
 
@@ -12,7 +12,7 @@ type SetupProps = {
 const setup = ({ isLoading = false }: SetupProps = {}) => {
   const onApply = jest.fn();
 
-  renderWithProviders(
+  render(
     <SearchFilterPopoverWrapper isLoading={isLoading} onApply={onApply}>
       Children Content
     </SearchFilterPopoverWrapper>,

@@ -3,7 +3,7 @@ import {
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderHookWithProviders, waitFor } from "__support__/ui";
+import { renderHookWithProviders, waitFor } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 import type { AddOnProductType } from "metabase-types/api/store";

@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { render, screen, within } from "__support__/ui-minimal";
 import { getNextId } from "__support__/utils";
 import { checkNotNull } from "metabase/utils/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -93,9 +93,7 @@ const setup = ({
 }: SetupOpts) => {
   const field = checkNotNull(fields.find((field) => field.id === fieldId));
 
-  renderWithProviders(
-    <TestComponent field={field} initialValue={initialValue} />,
-  );
+  render(<TestComponent field={field} initialValue={initialValue} />);
 };
 
 describe("SemanticTypePicker", () => {

@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import type { TransformRun } from "metabase-types/api";
 import { createMockTransformRun } from "metabase-types/api/mocks";
 
@@ -9,7 +9,7 @@ type SetupOpts = {
 };
 
 function setup({ run = createMockTransformRun() }: SetupOpts = {}) {
-  renderWithProviders(<ErrorSection run={run} />);
+  render(<ErrorSection run={run} />);
 }
 
 describe("ErrorSection", () => {

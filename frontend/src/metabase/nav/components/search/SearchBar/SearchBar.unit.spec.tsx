@@ -13,7 +13,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
 import {
   createMockSettingsState,

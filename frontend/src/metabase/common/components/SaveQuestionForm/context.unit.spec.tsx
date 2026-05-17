@@ -8,7 +8,12 @@ import {
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { render, renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  render,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";

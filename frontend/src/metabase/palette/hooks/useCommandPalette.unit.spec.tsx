@@ -1,6 +1,6 @@
 import type React from "react";
 
-import { render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import { Text } from "metabase/ui";
 import {
   createMockCollection,

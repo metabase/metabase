@@ -1,4 +1,4 @@
-import { render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import { createMockColumn } from "metabase-types/api/mocks";
 
 import { ChartSettingFieldsPartition } from "./ChartSettingFieldsPartition";

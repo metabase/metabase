@@ -669,7 +669,11 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
     hidden: true,
     getDefault: ([{ data }], settings) => {
       const [metricName] = settings["graph.metrics"] ?? [];
-      const metric = data.cols.find((col) => col.name === metricName);
+      if (!metricName) {
+        return "sum";
+      }
+
+      const metric = data.cols.find((col) => col?.name === metricName);
       return metric?.aggregation_type ?? "sum";
     },
     readDependencies: ["graph.metrics"],
@@ -686,12 +690,10 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     readDependencies: ["graph.dimensions"],
     getDefault: ([{ data }], vizSettings) => {
       const graphDimensions = vizSettings["graph.dimensions"] ?? [];
+      const dimensionName = graphDimensions.filter((d) => d)[0];
       return dimensionIsTimeseries(
         data,
-        _.findIndex(
-          data.cols,
-          (c) => c.name === graphDimensions.filter((d) => d)[0],
-        ),
+        _.findIndex(data.cols, (c) => c?.name === dimensionName),
       );
     },
   },
@@ -699,12 +701,10 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     readDependencies: ["graph.dimensions"],
     getDefault: ([{ data }], vizSettings) => {
       const graphDimensions = vizSettings["graph.dimensions"] ?? [];
+      const dimensionName = graphDimensions.filter((d) => d)[0];
       return dimensionIsNumeric(
         data,
-        _.findIndex(
-          data.cols,
-          (c) => c.name === graphDimensions.filter((d) => d)[0],
-        ),
+        _.findIndex(data.cols, (c) => c?.name === dimensionName),
       );
     },
   },
@@ -1014,7 +1014,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       // If they do, we use that as the default y axis label.
       const [metric] = vizSettings["graph.metrics"] ?? [];
       const metricNames = series.map(({ data: { cols } }) => {
-        const metricCol = cols.find((c) => c.name === metric);
+        const metricCol = cols.find((c) => c?.name === metric);
         return metricCol && metricCol.display_name;
       });
 

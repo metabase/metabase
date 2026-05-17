@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { renderWithProviders, screen } from "__support__/ui-with-store";
+import { render, screen } from "__support__/ui-minimal";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { ORDERS_ID, PRODUCTS_ID } from "metabase-types/api/mocks/presets";
@@ -30,7 +30,7 @@ function setup({
   query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
   stageIndex = -1,
 }: SetupOpts = {}) {
-  renderWithProviders(<Test query={query} stageIndex={stageIndex} />);
+  render(<Test query={query} stageIndex={stageIndex} />);
 }
 
 describe("QueryColumnPicker", () => {

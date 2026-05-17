@@ -2,7 +2,12 @@ import {
   findRequests,
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
-import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { createMockSettings } from "metabase-types/api/mocks";
 
 import { useGetSettingsQuery } from "../session";

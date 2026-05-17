@@ -10,7 +10,7 @@ import {
   setupLibraryEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderHookWithProviders, waitFor } from "__support__/ui";
+import { renderHookWithProviders, waitFor } from "__support__/ui-with-store";
 import { reinitialize } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
 import type {
@@ -905,6 +905,9 @@ describe("useGetPathFromValue", () => {
 
   describe("missing items", () => {
     it("should handle missing database gracefully", async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
       const value: OmniPickerValue = {
         model: "database",
         id: 999,
@@ -918,9 +921,13 @@ describe("useGetPathFromValue", () => {
 
       const [path] = result.current;
       expectPathToMatch(path, [{ id: "databases" }]);
+      consoleErrorSpy.mockRestore();
     });
 
     it("should handle missing collection gracefully", async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
       const missing_collection_id = 5555;
 
       fetchMock.get(`path:/api/collection/${missing_collection_id}`, 404);
@@ -933,6 +940,8 @@ describe("useGetPathFromValue", () => {
 
       const [path] = result.current;
       expectPathToMatch(path, []);
+      expect(consoleErrorSpy).toHaveBeenCalledWith({ status: 404, data: "" });
+      consoleErrorSpy.mockRestore();
     });
   });
 

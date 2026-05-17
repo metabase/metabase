@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen, within } from "__support__/ui";
+import { render, screen, within } from "__support__/ui-minimal";
 
 import { MarkdownPreview } from "./MarkdownPreview";
 
@@ -55,12 +55,23 @@ describe("MarkdownPreview", () => {
 
     beforeAll(() => {
       // Mock return values so that getIsTruncated can kick in
+      const rect = {
+        bottom: 1,
+        height: 1,
+        left: 0,
+        right: 1,
+        top: 0,
+        width: 1,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+      };
       HTMLElement.prototype.getBoundingClientRect = jest
         .fn()
-        .mockReturnValue({ height: 1, width: 1 });
+        .mockReturnValue(rect);
       Range.prototype.getBoundingClientRect = jest
         .fn()
-        .mockReturnValue({ height: 1, width: 2 });
+        .mockReturnValue({ ...rect, right: 2, width: 2 });
     });
 
     afterAll(() => {

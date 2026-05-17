@@ -1,7 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui-with-store";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
 import { DatabaseRoutingWarning } from "./DatabaseRoutingWarning";

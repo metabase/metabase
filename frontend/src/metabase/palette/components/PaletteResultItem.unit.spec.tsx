@@ -6,7 +6,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 
 import type { PaletteActionImpl } from "../types";
 

@@ -8,7 +8,7 @@ import {
   setupGdriveServiceAccountEndpoint,
   setupGdriveSyncEndpoint,
 } from "__support__/server-mocks";
-import { act, renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { Settings } from "metabase-types/api";
 import {

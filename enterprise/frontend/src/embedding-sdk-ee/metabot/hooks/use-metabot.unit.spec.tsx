@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
-import { act, screen, waitFor } from "__support__/ui";
+import { act, screen, waitFor } from "__support__/ui-minimal";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { metabotActions } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";

@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui-minimal";
 
 import { DEFAULT_EE_SETTINGS, setup } from "./setup";
 

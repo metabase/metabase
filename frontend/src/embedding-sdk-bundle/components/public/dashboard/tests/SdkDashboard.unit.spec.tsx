@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui-minimal";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 
 import type { SdkDashboardProps } from "../SdkDashboard";
@@ -27,7 +27,7 @@ describe("SdkDashboard", () => {
   it("should render a loader when a locale is loading", async () => {
     await setup({ isLocaleLoading: true });
 
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    expect(screen.getByText(/Loading/)).toBeInTheDocument();
   });
 
   it("should render dashboard cards", async () => {

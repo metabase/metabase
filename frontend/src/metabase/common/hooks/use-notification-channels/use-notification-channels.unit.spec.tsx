@@ -1,5 +1,5 @@
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 
 import { useHasAnyNotificationChannel } from "./use-notification-channels";
 const MockComponent = () => {

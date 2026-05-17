@@ -3,7 +3,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import type { PopularItem } from "metabase-types/api";
 import { createMockPopularCollectionItem } from "metabase-types/api/mocks";
 

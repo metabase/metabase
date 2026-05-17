@@ -11,7 +11,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import type { DatabaseId, RecentItem, SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
@@ -120,6 +120,9 @@ describe("DataPickerModal", () => {
     ];
 
     it("should show tables and cards for all databases in recent items if the database is not specified", async () => {
+      const consoleWarnSpy = jest
+        .spyOn(console, "warn")
+        .mockImplementation(() => {});
       await setup({
         recentItems,
         searchItems,
@@ -130,9 +133,17 @@ describe("DataPickerModal", () => {
       expect(await screen.findByText(/DB 1 question/)).toBeInTheDocument();
       expect(await screen.findByText(/DB 2 table/)).toBeInTheDocument();
       expect(await screen.findByText(/DB 2 question/)).toBeInTheDocument();
+      expect(consoleWarnSpy).toHaveBeenCalledWith({
+        status: 404,
+        data: "Collection not found",
+      });
+      consoleWarnSpy.mockRestore();
     });
 
     it("should show tables and cards for the selected database in recent items (metabase#52523)", async () => {
+      const consoleWarnSpy = jest
+        .spyOn(console, "warn")
+        .mockImplementation(() => {});
       await setup({
         databaseId: 1,
         recentItems,
@@ -143,6 +154,11 @@ describe("DataPickerModal", () => {
       expect(await screen.findByText("DB 1 question")).toBeInTheDocument();
       expect(screen.queryByText("DB 2 table")).not.toBeInTheDocument();
       expect(screen.queryByText("DB 2 question")).not.toBeInTheDocument();
+      expect(consoleWarnSpy).toHaveBeenCalledWith({
+        status: 404,
+        data: "Collection not found",
+      });
+      consoleWarnSpy.mockRestore();
     });
   });
 });

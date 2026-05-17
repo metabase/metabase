@@ -9,7 +9,11 @@ import {
   setupAIControlsInstanceLimitEndpoint,
   setupUpdateAIControlsInstanceLimitEndpoint,
 } from "__support__/server-mocks/metabot";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import type { MetabotLimitPeriod, MetabotLimitType } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";
 

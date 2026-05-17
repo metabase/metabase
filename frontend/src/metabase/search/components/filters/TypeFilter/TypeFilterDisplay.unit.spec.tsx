@@ -1,4 +1,4 @@
-import { render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import type { TypeFilterProps } from "metabase/search/types";
 import type { EnabledSearchModel } from "metabase-types/api";
 

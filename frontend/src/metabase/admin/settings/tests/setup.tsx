@@ -23,7 +23,7 @@ import {
 } from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
-import { getTestStoreAndWrapper, screen } from "__support__/ui";
+import { getTestStoreAndWrapper, screen } from "__support__/ui-with-store";
 import { getSettingsRoutes } from "metabase/admin/settingsRoutes";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { TokenFeature, TokenFeatures } from "metabase-types/api";

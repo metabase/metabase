@@ -5,7 +5,7 @@ import {
   setupCollectionByIdEndpoint,
   setupDashboardCreateEndpoint,
 } from "__support__/server-mocks";
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui-minimal";
 import { getNextId } from "__support__/utils";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";

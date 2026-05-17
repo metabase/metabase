@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { screen } from "__support__/ui";
+import { screen } from "__support__/ui-minimal";
 import { setupMockSamlEndpoints } from "embedding-sdk-bundle/test/mocks/sso";
 
 import { type MetabaseConfigProps, setup } from "./setup";

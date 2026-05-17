@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { render, screen, within } from "__support__/ui-minimal";
 import type { FieldVisibilityType } from "metabase-types/api";
 
 import { FieldVisibilityPicker } from "./FieldVisibilityPicker";
@@ -11,9 +11,7 @@ interface SetupOpts {
 }
 
 const setup = ({ value = "normal", onChange = jest.fn() }: SetupOpts = {}) => {
-  renderWithProviders(
-    <FieldVisibilityPicker value={value} onChange={onChange} />,
-  );
+  render(<FieldVisibilityPicker value={value} onChange={onChange} />);
 
   return { onChange };
 };

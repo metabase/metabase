@@ -5,7 +5,10 @@ import { Route } from "react-router";
 
 import { setupCardDataset } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import {
+  renderWithProviders,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Table } from "metabase-types/api";
 import { createMockForeignKey } from "metabase-types/api/mocks";
@@ -63,14 +66,20 @@ function setup({ dataset = DATASET }: SetupOpts = {}) {
 
   setupCardDataset({ dataset });
 
-  renderWithProviders(<Route path="/" component={TestComponent} />, {
-    withRouter: true,
-    storeInitialState: createMockState({
-      entities: createMockEntitiesState({
-        databases: [createSampleDatabase()],
+  renderWithProviders(
+    <>
+      <Route path="/" component={TestComponent} />
+      <Route path="/question" component={() => null} />
+    </>,
+    {
+      withRouter: true,
+      storeInitialState: createMockState({
+        entities: createMockEntitiesState({
+          databases: [createSampleDatabase()],
+        }),
       }),
-    }),
-  });
+    },
+  );
 
   return { onClick };
 }

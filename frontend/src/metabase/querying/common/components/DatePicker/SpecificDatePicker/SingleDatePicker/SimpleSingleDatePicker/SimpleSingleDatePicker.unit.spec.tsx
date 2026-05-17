@@ -1,6 +1,6 @@
 import _userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui-with-store";
+import { render, screen } from "__support__/ui-minimal";
 
 import type { SingleDatePickerValue } from "../types";
 
@@ -20,9 +20,7 @@ const userEvent = _userEvent.setup({
 function setup({ value = { date: DATE, hasTime: false } }: SetupOpts = {}) {
   const onChange = jest.fn();
 
-  renderWithProviders(
-    <SimpleSingleDatePicker value={value} onChange={onChange} />,
-  );
+  render(<SimpleSingleDatePicker value={value} onChange={onChange} />);
 
   return { onChange };
 }

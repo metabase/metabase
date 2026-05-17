@@ -10,7 +10,7 @@ import {
   screen,
   waitFor,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockEmbeddingDataPickerState } from "metabase/redux/store/mocks/embedding-data-picker";

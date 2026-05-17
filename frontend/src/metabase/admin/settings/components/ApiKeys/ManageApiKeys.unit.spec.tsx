@@ -11,7 +11,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { ManageApiKeys } from "metabase/admin/settings/components/ApiKeys/ManageApiKeys";
 import type { ApiKey } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks";

@@ -1,6 +1,6 @@
 import _userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui-with-store";
+import { render, screen } from "__support__/ui-minimal";
 import { DATE_PICKER_UNITS } from "metabase/querying/common/constants";
 import type {
   DatePickerUnit,
@@ -30,7 +30,7 @@ function setup({
 }: SetupOpts = {}) {
   const onChange = jest.fn();
 
-  renderWithProviders(
+  render(
     <CurrentDatePicker
       value={value}
       availableUnits={availableUnits}

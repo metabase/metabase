@@ -19,7 +19,7 @@ import {
   screen,
   waitFor,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { CollectionContent } from "metabase/collections/components/CollectionContent";
 import {
   createMockSettingsState,
@@ -83,7 +83,7 @@ async function setupCollectionContent(overrides = {}) {
     },
   });
 
-  renderWithProviders(
+  const view = renderWithProviders(
     <Route
       path="/"
       component={() => {
@@ -109,6 +109,9 @@ async function setupCollectionContent(overrides = {}) {
 
   // wait for loading to complete
   await screen.findByTestId("upload-input");
+  await waitFor(() => {
+    expect(view.store.getState().entities.databases[1]).toBeTruthy();
+  });
 }
 
 describe("FileUploadStatus", () => {

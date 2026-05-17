@@ -7,8 +7,13 @@ describe("deprecated metadata actions", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(console, "warn").mockImplementation();
 
     dispatch = jest.fn((a) => a);
+  });
+
+  afterEach(() => {
+    console.warn.mockRestore();
   });
 
   describe("fetchField", () => {

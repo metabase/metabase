@@ -18,7 +18,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import type { ModelResult } from "metabase/browse/models";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import type { DashboardState } from "metabase/redux/store";

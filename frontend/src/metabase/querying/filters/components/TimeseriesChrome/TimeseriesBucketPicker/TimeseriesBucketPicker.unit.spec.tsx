@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui-with-store";
+import { render, screen } from "__support__/ui-minimal";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -57,7 +57,7 @@ interface SetupOpts {
 function setup({ query, breakout, column, stageIndex = -1 }: SetupOpts) {
   const onChange = jest.fn();
 
-  renderWithProviders(
+  render(
     <TimeseriesBucketPicker
       query={query}
       stageIndex={stageIndex}

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "__support__/ui";
+import { fireEvent, render, screen } from "__support__/ui-minimal";
 import { Tree } from "metabase/common/components/tree";
 
 const data = [

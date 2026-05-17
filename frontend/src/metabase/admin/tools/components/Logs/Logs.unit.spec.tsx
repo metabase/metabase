@@ -2,7 +2,12 @@ import fetchMock from "fetch-mock";
 import type { Location } from "history";
 import { Route } from "react-router";
 
-import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import {
   createMockLocation,
   createMockRoutingState,
@@ -29,23 +34,29 @@ interface SetupOpts {
   location?: Location;
 }
 
-function setup({
+async function setup({
   location = createMockLocation({
     pathname: PATHNAME,
   }),
 }: SetupOpts = {}) {
-  return renderWithProviders(
-    <Route path={location.pathname} component={() => <Logs />} />,
-    {
-      initialRoute: `${location.pathname}${location.search}`,
-      storeInitialState: {
-        routing: createMockRoutingState({
-          locationBeforeTransitions: location,
-        }),
+  let renderResult: ReturnType<typeof renderWithProviders>;
+
+  await act(async () => {
+    renderResult = renderWithProviders(
+      <Route path={location.pathname} component={() => <Logs />} />,
+      {
+        initialRoute: `${location.pathname}${location.search}`,
+        storeInitialState: {
+          routing: createMockRoutingState({
+            locationBeforeTransitions: location,
+          }),
+        },
+        withRouter: true,
       },
-      withRouter: true,
-    },
-  );
+    );
+  });
+
+  return renderResult!;
 }
 
 describe("Logs", () => {
@@ -62,17 +73,18 @@ describe("Logs", () => {
 
     it("should call UtilApi.logs every 1 second", async () => {
       fetchMock.get("path:/api/logger/logs", []);
-      setup();
+      await setup();
       await waitFor(() => {
         expect(utilSpy).toHaveBeenCalledTimes(1);
       });
     });
 
     it("should skip calls to UtilsApi.logs if last request is still in-flight", async () => {
+      const consoleWarn = jest.spyOn(console, "warn").mockImplementation();
       fetchMock.get("path:/api/logger/logs", []);
       let resolve: any;
       utilSpy.mockReturnValueOnce(new Promise((res) => (resolve = res)));
-      setup();
+      await setup();
       await waitFor(() => {
         expect(utilSpy).toHaveBeenCalledTimes(1);
       });
@@ -80,7 +92,7 @@ describe("Logs", () => {
         jest.advanceTimersByTime(DEFAULT_POLLING_DURATION_MS + 100);
       });
       expect(utilSpy).toHaveBeenCalledTimes(1); // should not have been called
-      act(() => {
+      await act(async () => {
         resolve([log]);
       });
       await waitFor(() => {
@@ -90,11 +102,12 @@ describe("Logs", () => {
         jest.advanceTimersByTime(DEFAULT_POLLING_DURATION_MS + 100);
       });
       expect(utilSpy).toHaveBeenCalledTimes(2); // should have issued new request
+      consoleWarn.mockRestore();
     });
 
     it("should display no results if there are no logs", async () => {
       fetchMock.get("path:/api/logger/logs", []);
-      setup();
+      await setup();
       await waitFor(() => {
         expect(
           screen.getByText(`There's nothing here, yet.`),
@@ -105,7 +118,7 @@ describe("Logs", () => {
 
     it("should filter out logs not matching the query", async () => {
       fetchMock.get("path:/api/logger/logs", [log]);
-      setup({
+      await setup({
         location: createMockLocation({
           pathname: PATHNAME,
           search: "?query=something",
@@ -121,7 +134,7 @@ describe("Logs", () => {
 
     it("should not filter out logs matching the query", async () => {
       fetchMock.get("path:/api/logger/logs", [log]);
-      setup({
+      await setup({
         location: createMockLocation({
           pathname: PATHNAME,
           search: `?query=${log.fqns}`,
@@ -133,7 +146,7 @@ describe("Logs", () => {
 
     it("should display results if server responds with logs", async () => {
       fetchMock.get("path:/api/logger/logs", [log]);
-      setup();
+      await setup();
       await waitFor(() => {
         expect(screen.getByText(new RegExp(log.fqns))).toBeInTheDocument();
       });
@@ -141,23 +154,25 @@ describe("Logs", () => {
     });
 
     it("should display server error message if an error occurs", async () => {
+      const consoleError = jest.spyOn(console, "error").mockImplementation();
       const errMsg = `An unexpected error occurred.`;
       fetchMock.get("path:/api/logger/logs", {
         status: 500,
         body: { message: errMsg },
       });
-      setup();
+      await setup();
       await waitFor(() => {
         expect(screen.getByText(errMsg)).toBeInTheDocument();
       });
       expect(
         screen.queryByRole("button", { name: /Download/ }),
       ).not.toBeInTheDocument();
+      consoleError.mockRestore();
     });
 
     it("should stop polling on unmount", async () => {
       fetchMock.get("path:/api/logger/logs", [log]);
-      const { unmount } = setup();
+      const { unmount } = await setup();
       expect(await screen.findByText(new RegExp(log.fqns))).toBeInTheDocument();
 
       unmount();

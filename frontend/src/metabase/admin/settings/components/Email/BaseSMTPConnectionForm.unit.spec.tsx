@@ -5,7 +5,11 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import type {
   EnterpriseSettingKey,
@@ -179,6 +183,7 @@ describe("BaseSMTPConnectionForm", () => {
     });
 
     it("should display form errors when update fails", async () => {
+      const consoleError = jest.spyOn(console, "error").mockImplementation();
       const mockUpdate = jest.fn().mockReturnValue({
         unwrap: jest.fn().mockRejectedValue({
           status: 400,
@@ -210,6 +215,7 @@ describe("BaseSMTPConnectionForm", () => {
       });
 
       expect(await screen.findAllByText("Wrong host or port")).toHaveLength(2);
+      consoleError.mockRestore();
     });
   });
 

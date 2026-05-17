@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { useState } from "react";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { SlackChannelFieldNew } from "metabase/notifications/channels/SlackChannelFieldNew";
 import type {
   ChannelSpec,

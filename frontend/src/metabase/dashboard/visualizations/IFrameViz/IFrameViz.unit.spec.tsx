@@ -1,6 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import {
+  fireEvent,
+  renderWithProviders,
+  screen,
+} from "__support__/ui-with-store";
 import {
   createMockDashboardState,
   createMockSettingsState,
@@ -197,7 +201,7 @@ describe("IFrameViz", () => {
     const iframe = screen.getByTestId("iframe-visualization");
     expect(iframe).toHaveAttribute("src", "https://example.com");
     expect(iframe).toHaveAttribute("allow", "camera; microphone");
-    expect(iframe).toHaveAttribute("allowfullscreen", "true");
+    expect(iframe).toHaveAttribute("allowfullscreen");
   });
 
   it("should not render iframe for unsafe URLs", () => {
@@ -229,7 +233,7 @@ describe("IFrameViz", () => {
     expect(iframe).toBeInTheDocument();
     expect(iframe).toHaveAttribute("src", "https://example.com");
     expect(iframe).toHaveAttribute("allow", "camera");
-    expect(iframe).toHaveAttribute("allowfullscreen", "true");
+    expect(iframe).toHaveAttribute("allowfullscreen");
     expect(iframe).not.toHaveAttribute("onload");
     expect(iframe).toHaveAttribute(
       "sandbox",
@@ -369,7 +373,7 @@ describe("IFrameViz", () => {
 
       expect(iframe).toHaveAttribute("src", "https://example.com/123");
       expect(iframe).toHaveAttribute("allow", "camera; microphone");
-      expect(iframe).toHaveAttribute("allowfullscreen", "true");
+      expect(iframe).toHaveAttribute("allowfullscreen");
     });
 
     it("should render iframe when parameter value points to an allowed domain", () => {

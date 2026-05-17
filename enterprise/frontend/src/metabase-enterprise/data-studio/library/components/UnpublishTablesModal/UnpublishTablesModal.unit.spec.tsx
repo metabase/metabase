@@ -5,7 +5,12 @@ import {
   setupUnpublishTablesEndpoint,
   setupUnpublishTablesEndpointError,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui-with-store";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import type {
   BulkTableSelectionInfo,

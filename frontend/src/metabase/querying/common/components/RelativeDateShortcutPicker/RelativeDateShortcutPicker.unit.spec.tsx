@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui-with-store";
+import { render, screen } from "__support__/ui-minimal";
 import type { RelativeDatePickerValue } from "metabase/querying/common/types";
 
 import { RelativeDateShortcutPicker } from "./RelativeDateShortcutPicker";
@@ -36,9 +36,7 @@ type SetupOpts = {
 function setup({ value }: SetupOpts = {}) {
   const onChange = jest.fn();
 
-  renderWithProviders(
-    <RelativeDateShortcutPicker value={value} onChange={onChange} />,
-  );
+  render(<RelativeDateShortcutPicker value={value} onChange={onChange} />);
 
   return { onChange };
 }

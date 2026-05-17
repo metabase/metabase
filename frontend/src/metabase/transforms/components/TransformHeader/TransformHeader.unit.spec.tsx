@@ -5,7 +5,12 @@ import {
   setupCollectionByIdEndpoint,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui-with-store";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import {
   createMockCollection,
@@ -19,7 +24,7 @@ type SetupOpts = {
   isEditMode?: boolean;
 };
 
-function setup({ hasMenu = true, isEditMode = false }: SetupOpts = {}) {
+async function setup({ hasMenu = true, isEditMode = false }: SetupOpts = {}) {
   const transform = createMockTransform({ id: 1, name: "Test Transform" });
 
   setupUserMetabotPermissionsEndpoint();
@@ -44,6 +49,10 @@ function setup({ hasMenu = true, isEditMode = false }: SetupOpts = {}) {
     },
   );
 
+  await waitFor(() => {
+    expect(screen.getByText("Transforms")).toBeInTheDocument();
+  });
+
   return { transform };
 }
 
@@ -57,8 +66,8 @@ describe("TransformHeader", () => {
   });
 
   describe("tabs visibility", () => {
-    it("should render tabs when isEditMode is false", () => {
-      setup({ isEditMode: false });
+    it("should render tabs when isEditMode is false", async () => {
+      await setup({ isEditMode: false });
 
       expect(
         screen.getByRole("link", { name: "Definition" }),
@@ -69,8 +78,8 @@ describe("TransformHeader", () => {
       ).toBeInTheDocument();
     });
 
-    it("should not render tabs when isEditMode is true", () => {
-      setup({ isEditMode: true });
+    it("should not render tabs when isEditMode is true", async () => {
+      await setup({ isEditMode: true });
 
       expect(
         screen.queryByRole("link", { name: "Definition" }),
@@ -85,14 +94,14 @@ describe("TransformHeader", () => {
   });
 
   describe("inspect tab upsell", () => {
-    it("should always render the Inspect tab", () => {
-      setup();
+    it("should always render the Inspect tab", async () => {
+      await setup();
 
       expect(screen.getByText("Inspect")).toBeInTheDocument();
     });
 
-    it("should show upsell gem when transforms-python is not enabled", () => {
-      setup();
+    it("should show upsell gem when transforms-python is not enabled", async () => {
+      await setup();
 
       const inspectLink = screen.getByRole("link", { name: /Inspect/ });
       expect(inspectLink).toBeInTheDocument();
@@ -100,11 +109,11 @@ describe("TransformHeader", () => {
       expect(within(inspectLink).getByTestId("upsell-gem")).toBeInTheDocument();
     });
 
-    it("should not show upsell gem when transforms-python is enabled", () => {
+    it("should not show upsell gem when transforms-python is enabled", async () => {
       setupEnterprisePlugins();
       PLUGIN_TRANSFORMS_PYTHON.isEnabled = true;
 
-      setup();
+      await setup();
 
       const inspectLink = screen.getByRole("link", { name: "Inspect" });
       expect(inspectLink).toBeInTheDocument();
@@ -116,13 +125,13 @@ describe("TransformHeader", () => {
   });
 
   describe("menu visibility", () => {
-    it("should render menu when hasMenu is true", () => {
-      setup({ hasMenu: true });
+    it("should render menu when hasMenu is true", async () => {
+      await setup({ hasMenu: true });
       expect(screen.getByLabelText("ellipsis icon")).toBeInTheDocument();
     });
 
-    it("should not render menu when hasMenu is false", () => {
-      setup({ hasMenu: false });
+    it("should not render menu when hasMenu is false", async () => {
+      await setup({ hasMenu: false });
       expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
     });
   });

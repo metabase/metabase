@@ -12,7 +12,7 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui-with-store";
 import type { SettingsState } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Input } from "metabase/ui";

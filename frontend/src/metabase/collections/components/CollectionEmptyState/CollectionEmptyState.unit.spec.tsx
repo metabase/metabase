@@ -3,7 +3,7 @@ import {
   setupSearchEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
 import type { Collection } from "metabase-types/api";
 import {

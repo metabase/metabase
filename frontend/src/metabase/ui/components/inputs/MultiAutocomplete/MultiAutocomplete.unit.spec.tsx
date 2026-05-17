@@ -3,7 +3,7 @@ import { fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 
 import { MultiAutocomplete, type MultiAutocompleteProps } from "./";
 
@@ -42,7 +42,7 @@ function setup({ initialValue = [], ...props }: SetupOpts = {}) {
   const onChange = jest.fn<void, [string[]]>();
   const onSearchChange = jest.fn<void, [string]>();
 
-  renderWithProviders(
+  render(
     <TestInput
       {...props}
       initialValue={initialValue}

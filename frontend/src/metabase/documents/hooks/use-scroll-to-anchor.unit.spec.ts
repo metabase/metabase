@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { createRef } from "react";
 
-import { getScrollIntoViewMock } from "__support__/ui";
+import { getScrollIntoViewMock } from "__support__/ui-minimal";
 
 import { useScrollToAnchor } from "./use-scroll-to-anchor";
 

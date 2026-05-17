@@ -1,4 +1,4 @@
-import { render } from "__support__/ui";
+import { render } from "__support__/ui-minimal";
 import { delay } from "__support__/utils";
 import * as Card from "metabase/common/utils/card";
 import * as Lib from "metabase-lib";

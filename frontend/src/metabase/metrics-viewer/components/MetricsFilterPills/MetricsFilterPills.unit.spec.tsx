@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import type { DefinitionSource } from "metabase/metrics-viewer/utils/definition-sources";
 import type * as LibMetric from "metabase-lib/metric";
 import * as LibMetricModule from "metabase-lib/metric";
@@ -112,7 +112,7 @@ describe("MetricsFilterPills", () => {
       displayName: "Active customers",
     } as ReturnType<typeof LibMetric.displayInfo>);
 
-    renderWithProviders(
+    render(
       <MetricsFilterPills
         definitionSources={[source]}
         sourceColors={{ 0: ["#ff0000"] }}
@@ -150,7 +150,7 @@ describe("MetricsFilterPills", () => {
     mockLibMetric.removeClause.mockReturnValue(newDefinition);
 
     const handleChange = jest.fn();
-    renderWithProviders(
+    render(
       <MetricsFilterPills
         definitionSources={[source]}
         sourceColors={{ 0: ["#ff0000"] }}
@@ -176,7 +176,7 @@ describe("MetricsFilterPills", () => {
     mockLibMetric.filters.mockReturnValue([normalClause]);
     mockLibMetric.isSegmentFilter.mockReturnValue(false);
 
-    renderWithProviders(
+    render(
       <MetricsFilterPills
         definitionSources={[source]}
         sourceColors={{ 0: ["#ff0000"] }}

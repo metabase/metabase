@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "__support__/ui";
+import { render, screen, waitFor } from "__support__/ui-minimal";
 import { getNextId } from "__support__/utils";
 import { createMockAlert } from "metabase-types/api/mocks/alert";
 import { createMockDashboardSubscription } from "metabase-types/api/mocks/pulse";

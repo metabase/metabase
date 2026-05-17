@@ -1,4 +1,4 @@
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui-minimal";
 
 import { setup } from "./setup";
 

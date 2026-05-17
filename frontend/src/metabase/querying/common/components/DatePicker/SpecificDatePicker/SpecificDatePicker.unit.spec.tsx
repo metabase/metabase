@@ -1,7 +1,7 @@
 import _userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
-import { renderWithProviders, screen, within } from "__support__/ui-with-store";
+import { render, screen, within } from "__support__/ui-minimal";
 import {
   DATE_PICKER_OPERATORS,
   DATE_PICKER_UNITS,
@@ -36,7 +36,7 @@ function setup({
   const onChange = jest.fn();
   const onBack = jest.fn();
 
-  renderWithProviders(
+  render(
     <SpecificDatePicker
       value={value}
       availableOperators={availableOperators}

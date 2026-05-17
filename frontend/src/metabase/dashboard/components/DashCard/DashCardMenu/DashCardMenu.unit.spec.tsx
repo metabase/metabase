@@ -6,7 +6,11 @@ import {
   setupLastDownloadFormatEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import {
+  getIcon,
+  renderWithProviders,
+  screen,
+} from "__support__/ui-with-store";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import {
   createMockDashboardState,
@@ -166,6 +170,8 @@ const setup = ({
       />
       <Route path="question/:slug" component={() => <div />} />
       <Route path="question/:slug/notebook" component={() => <div />} />
+      <Route path="model/:slug/query" component={() => <div />} />
+      <Route path="metric/:slug/query" component={() => <div />} />
     </>,
     {
       storeInitialState,

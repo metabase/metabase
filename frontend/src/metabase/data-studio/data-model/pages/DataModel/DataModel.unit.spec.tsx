@@ -24,7 +24,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";

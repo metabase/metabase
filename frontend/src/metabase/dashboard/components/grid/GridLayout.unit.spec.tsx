@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 
-import { renderWithProviders } from "__support__/ui";
+import { render } from "__support__/ui-minimal";
 import { ThemeProvider } from "metabase/ui";
 
 import { GridLayout } from "./GridLayout";
@@ -68,7 +68,7 @@ describe("GridLayout", () => {
   });
 
   test("renders all items correctly", () => {
-    renderWithProviders(
+    render(
       <ThemeProvider>
         <GridLayout {...defaultProps} />,
       </ThemeProvider>,

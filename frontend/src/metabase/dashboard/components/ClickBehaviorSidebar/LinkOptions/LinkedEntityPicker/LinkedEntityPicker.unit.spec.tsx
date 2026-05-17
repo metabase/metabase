@@ -13,7 +13,7 @@ import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import type { StoreDashboard } from "metabase/redux/store";

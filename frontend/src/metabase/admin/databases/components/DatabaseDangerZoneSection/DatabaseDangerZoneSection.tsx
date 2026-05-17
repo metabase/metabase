@@ -74,15 +74,17 @@ export const DatabaseDangerZoneSection = ({
               color="danger"
               onClick={deleteDbModal.open}
             >{t`Remove this database`}</Button>
-            <DeleteDatabaseModal
-              opened={isDeleteDbModalOpen}
-              title={t`Delete the ${database.name} database?`}
-              defaultDatabaseRemovalMessage={t`This will delete every saved question, model, metric, and segment you’ve made that uses this data, and can’t be undone!`}
-              database={database}
-              onClose={deleteDbModal.close}
-              onDelete={handleDeleteDatabase}
-              data-testid="remove-database-confirm-modal"
-            />
+            {isDeleteDbModalOpen && (
+              <DeleteDatabaseModal
+                opened
+                title={t`Delete the ${database.name} database?`}
+                defaultDatabaseRemovalMessage={t`This will delete every saved question, model, metric, and segment you’ve made that uses this data, and can’t be undone!`}
+                database={database}
+                onClose={deleteDbModal.close}
+                onDelete={handleDeleteDatabase}
+                data-testid="remove-database-confirm-modal"
+              />
+            )}
           </>
         )}
       </Flex>

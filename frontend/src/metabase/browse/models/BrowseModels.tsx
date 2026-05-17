@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { shallowEqual } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -170,7 +171,7 @@ export const BrowseModels = () => {
 };
 
 function useModelFilterSettings() {
-  const defaultModelFilters = useSelector(getDefaultModelFilters);
+  const defaultModelFilters = useSelector(getDefaultModelFilters, shallowEqual);
   return useState(defaultModelFilters);
 }
 

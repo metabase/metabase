@@ -3,7 +3,11 @@ import { Route } from "react-router";
 import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { metabaseReduxContext } from "metabase/redux/context";
 import { createMockState } from "metabase/redux/store/mocks";
 
@@ -61,12 +65,19 @@ describe("route-guards", () => {
 
       const text = "User should not be able to see this";
       const state = { auth: { VAL_ONLY_IN_THIS_CTX: true } };
+      const consoleWarn = jest.spyOn(console, "warn").mockImplementation();
+
       renderWithProviders(<RouteGuard>{text}</RouteGuard>, {
         storeInitialState: createMockState(state as any),
       });
 
       expect(selectorState.auth.VAL_ONLY_IN_THIS_CTX).toBe(false);
       expect(screen.queryByText(text)).not.toBeInTheDocument();
+      expect(consoleWarn).toHaveBeenCalledWith(
+        expect.stringContaining("componentWillMount has been renamed"),
+        "Redirect",
+      );
+      consoleWarn.mockRestore();
     });
   });
 

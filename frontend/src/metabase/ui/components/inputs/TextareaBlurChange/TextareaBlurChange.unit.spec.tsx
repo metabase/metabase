@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { cleanup, render, screen } from "__support__/ui";
+import { cleanup, render, screen } from "__support__/ui-minimal";
 
 import type { TextareaBlurChangeProps } from "./TextareaBlurChange";
 import { TextareaBlurChange } from "./TextareaBlurChange";
@@ -31,14 +31,14 @@ describe("TextareaBlurChange", () => {
     const { placeholder, onBlurChange } = setup();
 
     const inputEl = screen.getByPlaceholderText(placeholder);
-    inputEl.focus();
-    inputEl.blur();
+    await userEvent.click(inputEl);
+    await userEvent.tab();
 
     // should not be triggered if value hasn't changed
     expect(onBlurChange).toHaveBeenCalledTimes(0);
 
     await userEvent.type(inputEl, "test");
-    inputEl.blur();
+    await userEvent.tab();
 
     expect(onBlurChange).toHaveBeenCalledTimes(1);
     expect(onBlurChange.mock.results[0].value).toBe("test");

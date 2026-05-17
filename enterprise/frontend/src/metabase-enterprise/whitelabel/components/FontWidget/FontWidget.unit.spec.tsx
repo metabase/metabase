@@ -6,7 +6,12 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui-with-store";
 import type { EnterpriseSettings } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";
 

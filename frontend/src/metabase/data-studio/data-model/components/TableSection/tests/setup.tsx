@@ -6,7 +6,7 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui-with-store";
 import type { RouteParams } from "metabase/data-studio/data-model/pages/DataModel/types";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { DataStudioTableMetadataTab } from "metabase/urls";

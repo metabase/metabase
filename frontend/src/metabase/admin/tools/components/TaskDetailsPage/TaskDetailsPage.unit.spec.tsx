@@ -11,7 +11,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import * as Urls from "metabase/urls";
 import type { Task } from "metabase-types/api";
 import { createMockTask } from "metabase-types/api/mocks";

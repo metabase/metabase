@@ -1,7 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 
 import { setupAnalyzeChartEndpoint } from "__support__/server-mocks";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui-with-store";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { createMockDashboardState } from "metabase/redux/store/mocks";
 import type { AIEntityAnalysisResponse, Card } from "metabase-types/api";

@@ -1,23 +1,56 @@
-import type { Middleware, Reducer } from "@reduxjs/toolkit";
+import {
+  combineReducers,
+  type Middleware,
+  type Reducer,
+} from "@reduxjs/toolkit";
+import type { MantineThemeOverride } from "@mantine/core";
 import type { RenderHookOptions } from "@testing-library/react";
 import {
   renderHook,
   render as testingLibraryRender,
 } from "@testing-library/react";
 import { createMemoryHistory } from "history";
+import { DragDropContextProvider } from "react-dnd";
+import HTML5Backend from "react-dnd-html5-backend";
 import { Route, useRouterHistory } from "react-router";
 import { routerMiddleware, routerReducer } from "react-router-redux";
 
+import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
+import { AppKBarProvider } from "metabase/AppKBarProvider";
+import { admin as adminReducer } from "metabase/admin/admin";
+import { PUT } from "metabase/api/legacy-client";
+import { Api } from "metabase/api/api";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import { HistoryProvider } from "metabase/history/HistoryProvider";
+import * as pulse from "metabase/notifications/pulse/reducers";
+import { PLUGIN_REDUCERS } from "metabase/plugins/oss/core";
+import * as qb from "metabase/query_builder/reducers";
+import { commonReducers } from "metabase/reducers-common";
+import { publicReducers } from "metabase/reducers-public";
+import { MetabaseReduxProvider } from "metabase/redux/context";
+import revisions from "metabase/redux/revisions";
 import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks/state";
+import reference from "metabase/reference/reference";
+import { RouterProvider } from "metabase/router/RouterProvider";
+import { reducer as setupReducer } from "metabase/setup/reducers";
 import { ThemeProvider } from "metabase/ui";
+import { reducer as visualizer } from "metabase/visualizer/visualizer.slice";
+
+import { getStore } from "./entities-store";
 
 export * from "./ui-minimal";
 
 export interface RenderWithProvidersOptions {
   initialRoute?: string;
   storeInitialState?: Partial<State>;
+  mode?: "default" | "public";
   withRouter?: boolean;
+  withKBar?: boolean;
+  withDND?: boolean;
+  withUndos?: boolean;
   customReducers?: Record<string, Reducer<any, any, any>>;
+  theme?: MantineThemeOverride;
 }
 
 function createStaticReducers(
@@ -34,16 +67,14 @@ function createStaticReducers(
 function getStoreAndWrapper({
   initialRoute = "/",
   storeInitialState = {},
+  mode = "default",
   withRouter = false,
+  withKBar = false,
+  withDND = false,
+  withUndos = false,
   customReducers = {},
+  theme,
 }: RenderWithProvidersOptions) {
-  const { Api } = require("metabase/api/api");
-  const { HistoryProvider } = require("metabase/history/HistoryProvider");
-  const { MetabaseReduxProvider } = require("metabase/redux/context");
-  const { createMockState } = require("metabase/redux/store/mocks/state");
-  const { RouterProvider } = require("metabase/router/RouterProvider");
-  const { getStore } = require("./entities-store");
-
   const { routing, ...initialState }: Partial<State> =
     createMockState(storeInitialState);
 
@@ -55,13 +86,27 @@ function getStoreAndWrapper({
   });
   const history = withRouter ? browserHistory : undefined;
 
+  const realReducers =
+    mode === "public"
+      ? publicReducers
+      : {
+          ...commonReducers,
+          admin: adminReducer,
+          pulse: combineReducers(pulse),
+          qb: combineReducers(qb),
+          reference,
+          revisions,
+          setup: setupReducer,
+          plugins: combineReducers(PLUGIN_REDUCERS),
+          visualizer,
+        };
+
   const reducers = {
     ...createStaticReducers(initialState, [
-      "entities",
-      "requests",
+      ...Object.keys(realReducers),
       history ? "routing" : "",
     ]),
-    [Api.reducerPath]: Api.reducer,
+    ...realReducers,
     ...customReducers,
   };
   const middleware: Middleware[] = [Api.middleware];
@@ -82,15 +127,28 @@ function getStoreAndWrapper({
     <MetabaseReduxProvider store={store}>
       {/* ThemeProvider supplies MantineProvider + Emotion + DatesProvider,
           without which any `metabase/ui` (Mantine) component throws. */}
-      <ThemeProvider resolvedColorScheme="light">
-        {history ? (
-          <HistoryProvider history={history}>
-            <RouterProvider>{children}</RouterProvider>
-          </HistoryProvider>
-        ) : (
-          children
-        )}
-      </ThemeProvider>
+      <MaybeDNDProvider hasDND={withDND}>
+        <AppColorSchemeProvider
+          onUpdateColorScheme={async (value) => {
+            await PUT("/api/setting/:key")({ key: "color-scheme", value });
+          }}
+        >
+          <ThemeProvider resolvedColorScheme="light" theme={theme}>
+            <>
+              {history ? (
+                <HistoryProvider history={history}>
+                  <MaybeKBar hasKBar={withKBar}>
+                    <RouterProvider>{children}</RouterProvider>
+                  </MaybeKBar>
+                </HistoryProvider>
+              ) : (
+                <MaybeKBar hasKBar={withKBar}>{children}</MaybeKBar>
+              )}
+              {withUndos && <UndoListing />}
+            </>
+          </ThemeProvider>
+        </AppColorSchemeProvider>
+      </MaybeDNDProvider>
     </MetabaseReduxProvider>
   );
 
@@ -108,21 +166,41 @@ export function renderWithProviders(
   const {
     initialRoute,
     storeInitialState,
+    mode,
     withRouter,
+    withKBar,
+    withDND,
+    withUndos,
     customReducers,
+    theme,
     ...renderOptions
   } = options;
   const { store, history, Wrapper } = getStoreAndWrapper({
     initialRoute,
     storeInitialState,
+    mode,
     withRouter,
+    withKBar,
+    withDND,
+    withUndos,
     customReducers,
+    theme,
   });
   const utils = testingLibraryRender(ui, {
     wrapper: Wrapper,
     ...renderOptions,
   });
   return { ...utils, store, history };
+}
+
+export function getTestStoreAndWrapper(options: RenderWithProvidersOptions) {
+  const { store, history, Wrapper } = getStoreAndWrapper(options);
+
+  return {
+    store,
+    history,
+    wrapper: Wrapper,
+  };
 }
 
 export function renderHookWithProviders<TProps, TResult>(
@@ -133,15 +211,25 @@ export function renderHookWithProviders<TProps, TResult>(
   const {
     initialRoute,
     storeInitialState,
+    mode,
     withRouter,
+    withKBar,
+    withDND,
+    withUndos,
     customReducers,
+    theme,
     ...renderHookOptions
   } = options;
   const { store, history, Wrapper } = getStoreAndWrapper({
     initialRoute,
     storeInitialState,
+    mode,
     withRouter,
+    withKBar,
+    withDND,
+    withUndos,
     customReducers,
+    theme,
   });
 
   // With a router, `renderHook` children must sit inside a `<Route>`.
@@ -158,4 +246,30 @@ export function renderHookWithProviders<TProps, TResult>(
     ...renderHookOptions,
   });
   return { ...renderHookReturn, store, history };
+}
+
+function MaybeKBar({
+  children,
+  hasKBar,
+}: React.PropsWithChildren<{ hasKBar: boolean }>): JSX.Element {
+  if (!hasKBar) {
+    return <>{children}</>;
+  }
+
+  return <AppKBarProvider>{children}</AppKBarProvider>;
+}
+
+function MaybeDNDProvider({
+  children,
+  hasDND,
+}: React.PropsWithChildren<{ hasDND: boolean }>): JSX.Element {
+  if (!hasDND) {
+    return <>{children}</>;
+  }
+
+  return (
+    <DragDropContextProvider backend={HTML5Backend}>
+      {children}
+    </DragDropContextProvider>
+  );
 }

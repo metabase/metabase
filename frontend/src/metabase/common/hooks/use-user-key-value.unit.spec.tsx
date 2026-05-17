@@ -6,7 +6,7 @@ import {
   setupGetUserKeyValueEndpoint,
   setupUpdateUserKeyValueEndpoint,
 } from "__support__/server-mocks/user-key-value";
-import { waitFor } from "__support__/ui";
+import { waitFor } from "__support__/ui-minimal";
 import { mainReducers as reducers } from "metabase/reducers-main";
 import { MetabaseReduxProvider } from "metabase/redux";
 import { createMockState } from "metabase/redux/store/mocks";
@@ -139,6 +139,10 @@ describe("useUserKeyValue", () => {
     });
 
     it("should revert optimistic update if update fails", async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
       setupGetUserKeyValueEndpoint({
         namespace: "test",
         key: "test",
@@ -178,6 +182,12 @@ describe("useUserKeyValue", () => {
         ),
       ).toHaveLength(1);
       expect(result.current.value).toBe("before-value");
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Unable to update user key value",
+        expect.any(Object),
+      );
+
+      consoleErrorSpy.mockRestore();
     });
   });
 
@@ -225,6 +235,10 @@ describe("useUserKeyValue", () => {
     });
 
     it("should revert optimistic delete if deletion fails", async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
       setupGetUserKeyValueEndpoint({
         namespace: "test",
         key: "test",
@@ -264,6 +278,12 @@ describe("useUserKeyValue", () => {
         ),
       ).toHaveLength(1);
       expect(result.current.value).toBe("before-value");
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Unable to update user key value",
+        expect.any(Object),
+      );
+
+      consoleErrorSpy.mockRestore();
     });
   });
 });

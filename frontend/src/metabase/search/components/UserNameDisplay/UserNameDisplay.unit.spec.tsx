@@ -1,5 +1,5 @@
 import { setupUserRecipientsEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { render, screen, waitFor } from "__support__/ui-minimal";
 import type { UserListResult } from "metabase-types/api";
 import { createMockUserListResult } from "metabase-types/api/mocks";
 
@@ -22,7 +22,7 @@ const setup = async ({
 } = {}) => {
   setupUserRecipientsEndpoint({ users });
 
-  renderWithProviders(
+  render(
     <UserNameDisplay label={"UserNameDisplay Test"} userIdList={userIdList} />,
   );
 
@@ -40,6 +40,7 @@ describe("UserNameDisplay", () => {
       userIdList: [TEST_USER_LIST_RESULTS[0].id],
     });
     expect(screen.getByText("Loading…")).toBeInTheDocument();
+    expect(await screen.findByText("Testy Tableton")).toBeInTheDocument();
   });
 
   it("should initially display title when user list is empty", async () => {

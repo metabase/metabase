@@ -1,4 +1,4 @@
-import { screen } from "__support__/ui";
+import { screen } from "__support__/ui-minimal";
 import type { Dashboard } from "metabase-types/api";
 import { createMockDashboard } from "metabase-types/api/mocks";
 

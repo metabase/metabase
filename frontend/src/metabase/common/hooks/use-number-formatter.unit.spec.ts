@@ -1,5 +1,5 @@
 import { mockSettings } from "__support__/settings";
-import { renderHookWithProviders } from "__support__/ui";
+import { renderHookWithProviders } from "__support__/ui-with-store";
 import type { NumberFormattingSettings } from "metabase-types/api";
 
 import {

@@ -5,7 +5,11 @@ import {
   setupSchemaEndpoints,
   setupTablesEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { checkNotNull } from "metabase/utils/types";
 import type { Collection, Measure, Table } from "metabase-types/api";
 import {

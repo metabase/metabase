@@ -10,7 +10,7 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui-with-store";
 import { useCommandPalette } from "metabase/palette/hooks/useCommandPalette";
 import { useCommandPaletteBasicActions } from "metabase/palette/hooks/useCommandPaletteBasicActions";
 import {

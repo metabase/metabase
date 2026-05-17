@@ -5,6 +5,10 @@ export function dimensionIsNumeric(
   { cols, rows }: DatasetData,
   i = 0,
 ): boolean {
+  if (!cols[i]) {
+    return false;
+  }
+
   if (isNumeric(cols[i])) {
     return true;
   }

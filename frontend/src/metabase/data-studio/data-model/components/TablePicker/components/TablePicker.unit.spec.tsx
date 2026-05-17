@@ -12,7 +12,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { SelectionProvider } from "metabase/data-studio/data-model/pages/DataModel/contexts/SelectionContext";
 import type { Database, User } from "metabase-types/api";
 import {

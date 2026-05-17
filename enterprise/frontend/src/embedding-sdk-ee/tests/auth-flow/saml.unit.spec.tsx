@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
-import { waitForLoaderToBeRemoved } from "__support__/ui";
+import { waitForLoaderToBeRemoved } from "__support__/ui-minimal";
 import { waitForRequest } from "__support__/utils";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";

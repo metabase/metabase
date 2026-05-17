@@ -4,7 +4,7 @@ import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { UserCollectionList } from "./UserCollectionList";

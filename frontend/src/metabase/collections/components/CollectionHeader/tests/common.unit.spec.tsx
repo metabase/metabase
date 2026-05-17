@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen, within } from "__support__/ui";
+import { screen, within } from "__support__/ui-minimal";
 import type { CollectionId } from "metabase-types/api";
 
 import { setup } from "./setup";

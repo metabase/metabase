@@ -3,7 +3,11 @@ import type { JSX } from "react";
 import { Route } from "react-router";
 
 import { mockSettings } from "__support__/settings";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import {
+  getIcon,
+  renderWithProviders,
+  screen,
+} from "__support__/ui-with-store";
 import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
 import type { AppErrorDescriptor } from "metabase/redux/store";
 import { createMockAppState } from "metabase/redux/store/mocks";

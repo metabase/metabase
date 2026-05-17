@@ -1,4 +1,4 @@
-import { getIcon, queryIcon, render } from "__support__/ui";
+import { getIcon, queryIcon, render } from "__support__/ui-minimal";
 
 import { ModerationStatusIcon } from "./ModerationStatusIcon";
 

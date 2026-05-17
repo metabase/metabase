@@ -1,4 +1,4 @@
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui-minimal";
 import { setupForContentTranslationTest } from "metabase/i18n/test-utils";
 import type { HoveredObject } from "metabase/visualizations/types";
 import { createMockColumn, createMockSeries } from "metabase-types/api/mocks";

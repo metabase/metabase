@@ -5,7 +5,11 @@ import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { getNextId } from "__support__/utils";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";

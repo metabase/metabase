@@ -8,7 +8,7 @@ import {
   screen,
   waitFor,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { createMockField } from "metabase-types/api/mocks";

@@ -105,6 +105,7 @@ export const CollectionMenu = ({
   if (hasDqCandidates) {
     cleanupItems.push(
       <Menu.Item
+        key="collection-move-questions-dashboard"
         leftSection={<Icon name="add_to_dash" />}
         component={ForwardRefLink}
         to={`${url}/move-questions-dashboard`}

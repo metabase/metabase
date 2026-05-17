@@ -7,7 +7,7 @@ import {
   renderHookWithProviders,
   renderWithProviders,
   screen,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 
 import {

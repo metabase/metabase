@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 
 import StaticSkeleton from "./StaticSkeleton";
 
@@ -22,22 +22,33 @@ const MARKDOWN_AS_TEXT = [HEADING_1_TEXT, HEADING_2_TEXT, PARAGRAPH_TEXT].join(
 );
 
 function setup({ description }: { description?: string } = {}) {
-  return renderWithProviders(<StaticSkeleton description={description} />);
+  return render(<StaticSkeleton description={description} />);
 }
 
 describe("StaticSkeleton", () => {
   describe("description", () => {
     const getBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
     const rangeGetBoundingClientRect = Range.prototype.getBoundingClientRect;
+    const rect = {
+      bottom: 1,
+      height: 1,
+      left: 0,
+      right: 1,
+      top: 0,
+      width: 1,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    };
 
     beforeAll(() => {
       // Mock return values so that getIsTruncated can kick in
       HTMLElement.prototype.getBoundingClientRect = jest
         .fn()
-        .mockReturnValue({ height: 1, width: 1 });
+        .mockReturnValue(rect);
       Range.prototype.getBoundingClientRect = jest
         .fn()
-        .mockReturnValue({ height: 1, width: 2 });
+        .mockReturnValue({ ...rect, right: 2, width: 2 });
     });
 
     afterAll(() => {

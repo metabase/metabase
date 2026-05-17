@@ -178,9 +178,13 @@ function setup({
     dashcards: _.indexBy(dashcards, "id"),
   });
 
+  const { routing, ...initialState } = createMockState({
+    dashboard: dashboardState,
+  });
+
   const store = getStore(
     { ...mainReducers, [Api.reducerPath]: Api.reducer },
-    createMockState({ dashboard: dashboardState }),
+    initialState,
     [Api.middleware],
   ) as Store<State>;
 

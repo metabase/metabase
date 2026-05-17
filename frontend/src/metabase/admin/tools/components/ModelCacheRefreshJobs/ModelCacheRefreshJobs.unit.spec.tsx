@@ -1,5 +1,5 @@
 import { setupModelPersistenceEndpoints } from "__support__/server-mocks/persist";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 import { getMockModelCacheInfo } from "metabase-types/api/mocks/models";
 

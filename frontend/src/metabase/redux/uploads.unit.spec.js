@@ -55,7 +55,7 @@ describe("csv uploads", () => {
   describe("actions", () => {
     const store = getStore(
       { ...mainReducers, [Api.reducerPath]: Api.reducer },
-      createMockState(),
+      omitRouting(createMockState()),
       [Api.middleware],
     );
     const dispatch = jest.spyOn(store, "dispatch");
@@ -229,3 +229,8 @@ describe("csv uploads", () => {
     });
   });
 });
+
+function omitRouting(state) {
+  const { routing, ...stateWithoutRouting } = state;
+  return stateWithoutRouting;
+}

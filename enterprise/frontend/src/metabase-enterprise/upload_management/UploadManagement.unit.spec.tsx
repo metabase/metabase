@@ -6,7 +6,12 @@ import {
   setupDeleteUploadManagementDeleteEndpoint,
   setupUploadManagementEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui-with-store";
 import { createMockTable } from "metabase-types/api/mocks";
 
 import { UploadManagementTable } from "./UploadManagementTable";

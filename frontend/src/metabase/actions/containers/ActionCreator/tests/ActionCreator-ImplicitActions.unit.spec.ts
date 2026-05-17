@@ -1,4 +1,4 @@
-import { queryIcon, screen } from "__support__/ui";
+import { queryIcon, screen } from "__support__/ui-minimal";
 import {
   createMockActionParameter,
   createMockImplicitQueryAction,

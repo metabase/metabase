@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockDashboardState } from "metabase/redux/store/mocks";
 import type { ParameterValuesMap } from "metabase-types/api";
 import {

@@ -1,7 +1,11 @@
 import Color from "color";
 import fetchMock from "fetch-mock";
 
-import { act, renderHookWithProviders, waitFor } from "__support__/ui";
+import {
+  act,
+  renderHookWithProviders,
+  waitFor,
+} from "__support__/ui-with-store";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { performUndo } from "metabase/redux/undo";
@@ -42,7 +46,6 @@ function setup(themeId: ThemeEditorId = 1, applicationColors?: ColorSettings) {
     : undefined;
 
   return renderHookWithProviders(() => useEmbeddingThemeEditor(themeId), {
-    withUndos: true,
     withRouter: true,
     storeInitialState,
   });
@@ -489,7 +492,10 @@ describe("useEmbeddingThemeEditor", () => {
         expect(result.current.currentTheme).not.toBeNull();
       });
 
-      const saved = await result.current.handleSave();
+      let saved;
+      await act(async () => {
+        saved = await result.current.handleSave();
+      });
 
       expect(saved?.id).toBe(42);
       expect(fetchMock.callHistory.calls("path:/api/embed-theme")).toHaveLength(

@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { act, screen, within } from "__support__/ui";
+import { act, screen, within } from "__support__/ui-minimal";
 import type { SetupOpts } from "metabase/admin/performance/components/test-utils";
 import {
   setupStrategyEditorForDatabases as baseSetup,

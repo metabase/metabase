@@ -1,5 +1,9 @@
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Table, TableId } from "metabase-types/api";
@@ -82,39 +86,45 @@ function setup({ id, table }: SetupOpts) {
 }
 
 describe("TableInfo", () => {
-  it("should fetch table metadata if fields are missing", () => {
+  it("should fetch table metadata if fields are missing", async () => {
     const { fetchMetadata, fetchForeignKeys } = setup({
       id: TABLE_ID,
       table: TABLE_WITH_FKS,
     });
-    expect(fetchMetadata).toHaveBeenCalledWith({
-      id: TABLE_ID,
+    await waitFor(() => {
+      expect(fetchMetadata).toHaveBeenCalledWith({
+        id: TABLE_ID,
+      });
     });
     expect(fetchForeignKeys).not.toHaveBeenCalled();
   });
 
-  it("should fetch table metadata if the table is undefined", () => {
+  it("should fetch table metadata if the table is undefined", async () => {
     const { fetchMetadata, fetchForeignKeys } = setup({
       id: TABLE_ID,
       table: undefined,
     });
 
-    expect(fetchMetadata).toHaveBeenCalledWith({
-      id: TABLE_ID,
+    await waitFor(() => {
+      expect(fetchMetadata).toHaveBeenCalledWith({
+        id: TABLE_ID,
+      });
     });
     expect(fetchForeignKeys).toHaveBeenCalledWith({
       id: TABLE_ID,
     });
   });
 
-  it("should fetch fks if fks are undefined on table", () => {
+  it("should fetch fks if fks are undefined on table", async () => {
     const { fetchMetadata, fetchForeignKeys } = setup({
       id: TABLE_ID,
       table: TABLE_WITH_FIELDS,
     });
 
     expect(fetchMetadata).not.toHaveBeenCalled();
-    expect(fetchForeignKeys).toHaveBeenCalledWith({ id: TABLE_ID });
+    await waitFor(() => {
+      expect(fetchForeignKeys).toHaveBeenCalledWith({ id: TABLE_ID });
+    });
   });
 
   it("should not send requests fetching table metadata when metadata is already present", () => {

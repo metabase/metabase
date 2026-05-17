@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui-minimal";
 import {
   createMockRecentCollectionItem,
   createMockRecentTableItem,

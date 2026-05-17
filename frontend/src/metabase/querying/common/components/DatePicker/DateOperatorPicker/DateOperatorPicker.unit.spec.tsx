@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui-with-store";
+import { render, screen } from "__support__/ui-minimal";
 import { DATE_PICKER_OPERATORS } from "metabase/querying/common/constants";
 import type {
   DatePickerOperator,
@@ -20,7 +20,7 @@ function setup({
 }: SetupOpts = {}) {
   const onChange = jest.fn();
 
-  renderWithProviders(
+  render(
     <DateOperatorPicker
       value={value}
       availableOperators={availableOperators}

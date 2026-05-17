@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 
 import LoadingView from "./LoadingView";
 
@@ -8,7 +8,7 @@ type SetupOpts = {
 };
 
 function setup(opts: SetupOpts) {
-  renderWithProviders(<LoadingView {...opts} />);
+  render(<LoadingView {...opts} />);
 }
 
 describe("LoadingView", () => {

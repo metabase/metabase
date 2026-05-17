@@ -1,6 +1,6 @@
-import { renderHook } from "@testing-library/react";
 import type { ReactElement } from "react";
 
+import { renderHook } from "__support__/ui-minimal";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { setCustomLoader } from "metabase/ui/components/feedback/Loader/Loader";
 

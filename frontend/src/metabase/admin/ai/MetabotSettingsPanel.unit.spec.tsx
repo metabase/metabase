@@ -24,7 +24,7 @@ import {
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { waitForRequest } from "__support__/utils";
 import {
   FIXED_METABOT_ENTITY_IDS,
@@ -56,7 +56,11 @@ const defaultMetabots = [
 ];
 
 const defaultSeedCollections = [
-  createMockCollection({ id: "root", name: "Our Analytics" }),
+  createMockCollection({
+    id: "root",
+    name: "Our Analytics",
+    model: "collection",
+  }),
   {
     id: 21,
     name: "Collection Two",

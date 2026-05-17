@@ -6,7 +6,7 @@ import {
   queryIcon,
   renderWithProviders,
   screen,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";

@@ -7,7 +7,7 @@ import {
   setupTokenStatusEndpoint,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui-with-store";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import type { AuthSettingsPageTab } from "metabase/plugins";
 import { createMockSettingsState } from "metabase/redux/store/mocks";

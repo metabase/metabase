@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, render, screen } from "__support__/ui";
+import { fireEvent, render, screen } from "__support__/ui-minimal";
 
 import { CollapseSection } from "./CollapseSection";
 

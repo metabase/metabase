@@ -22,7 +22,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
@@ -785,7 +785,7 @@ const setup = async ({
   setupSearchEndpoints([]);
   setupRecentViewsAndSelectionsEndpoints([]);
   setupCollectionByIdEndpoint({
-    collections: [personalCollection],
+    collections: [personalCollection, rootCollection],
   });
   setupCollectionItemsEndpoint({
     collection: personalCollection,

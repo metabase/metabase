@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "__support__/ui";
+import { fireEvent, render, screen } from "__support__/ui-minimal";
 import type { DashboardSubscriptionListItem } from "metabase/account/notifications/types";
 import type { Channel } from "metabase-types/api";
 import {

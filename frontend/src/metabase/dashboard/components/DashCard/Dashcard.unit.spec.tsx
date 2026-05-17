@@ -10,7 +10,7 @@ import {
   renderWithProviders,
   screen,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,

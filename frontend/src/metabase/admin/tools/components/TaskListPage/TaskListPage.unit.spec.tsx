@@ -15,7 +15,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
 import { createMockLocation } from "metabase/redux/store/mocks";
 import * as Urls from "metabase/urls";

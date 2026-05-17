@@ -2,7 +2,11 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { setupPropertiesEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import {
   sessionApi,
   useGetSessionPropertiesQuery,

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 
 import { TitleSection } from "./TitleSection";
 
@@ -10,7 +10,7 @@ type SetupOpts = {
 };
 
 function setup({ label = "Default Title", children }: SetupOpts = {}) {
-  renderWithProviders(<TitleSection label={label}>{children}</TitleSection>);
+  render(<TitleSection label={label}>{children}</TitleSection>);
 }
 
 describe("TitleSection", () => {

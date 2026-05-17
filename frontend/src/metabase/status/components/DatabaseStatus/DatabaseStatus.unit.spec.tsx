@@ -1,7 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Database, User } from "metabase-types/api";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
@@ -12,19 +16,23 @@ interface SetupOpts {
   user?: User;
 }
 
-const setup = ({ databases = [], user }: SetupOpts = {}) => {
+const setup = async ({ databases = [], user }: SetupOpts = {}) => {
   setupDatabasesEndpoints(databases);
 
-  renderWithProviders(<DatabaseStatus />, {
+  const view = renderWithProviders(<DatabaseStatus />, {
     storeInitialState: createMockState({
       currentUser: user,
     }),
   });
+
+  await waitForDatabaseMetadata(view, databases);
+
+  return view;
 };
 
 describe("DatabaseStatus", () => {
   it("should toggle between small and large versions", async () => {
-    setup({
+    await setup({
       user: createMockUser({ id: 1 }),
       databases: [
         createMockDatabase({
@@ -43,14 +51,14 @@ describe("DatabaseStatus", () => {
     expect(screen.getByText("Syncing…")).toBeInTheDocument();
   });
 
-  it("should not render when data is not loaded", () => {
-    setup();
+  it("should not render when data is not loaded", async () => {
+    await setup();
 
     expect(screen.queryByText("Syncing…")).not.toBeInTheDocument();
   });
 
-  it("should not render when databases are created by another user", () => {
-    setup({
+  it("should not render when databases are created by another user", async () => {
+    await setup({
       user: createMockUser({ id: 1 }),
       databases: [
         createMockDatabase({
@@ -64,7 +72,7 @@ describe("DatabaseStatus", () => {
   });
 
   it("assigns 'sync-status-visible' class to body element when database is in sync", async () => {
-    setup({
+    await setup({
       user: createMockUser({ id: 1 }),
       databases: [
         createMockDatabase({
@@ -79,3 +87,16 @@ describe("DatabaseStatus", () => {
     });
   });
 });
+
+async function waitForDatabaseMetadata(
+  view: ReturnType<typeof renderWithProviders>,
+  databases: Database[],
+) {
+  await waitFor(() => {
+    for (const database of databases) {
+      expect(
+        view.store.getState().entities.databases[database.id],
+      ).toBeTruthy();
+    }
+  });
+}

@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
-import { fireEvent, render, screen } from "__support__/ui";
+import { fireEvent, render, screen } from "__support__/ui-minimal";
 import { TippyPopover } from "metabase/common/components/Popover/TippyPopover";
 
 import { AccordionList } from "./AccordionList";

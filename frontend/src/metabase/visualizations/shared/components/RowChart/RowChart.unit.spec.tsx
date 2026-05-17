@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import type { NumberValue } from "d3-scale";
 
-import { render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import { measureTextWidth } from "metabase/utils/measure-text";
 
 import type { ChartFont } from "../../types/style";

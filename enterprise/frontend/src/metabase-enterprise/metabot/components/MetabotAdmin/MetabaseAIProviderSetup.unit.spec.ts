@@ -1,6 +1,6 @@
 import { createElement } from "react";
 
-import { render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import type { MetabotUsageResponse } from "metabase-enterprise/api";
 
 import type { MetabaseManagedAiPricing } from "../../useMetabaseManagedAiPricing";

@@ -1,7 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupValidFilterFieldsEndpoint } from "__support__/server-mocks";
-import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  getIcon,
+  renderWithProviders,
+  screen,
+  within,
+} from "__support__/ui-with-store";
 import * as dashboardActions from "metabase/redux/dashboard";
 import { checkNotNull } from "metabase/utils/types";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";

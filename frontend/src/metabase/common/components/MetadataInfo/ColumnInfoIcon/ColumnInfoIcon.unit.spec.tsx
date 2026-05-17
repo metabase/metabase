@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "__support__/ui";
+import { fireEvent, render, screen, waitFor } from "__support__/ui-minimal";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,

@@ -1,14 +1,19 @@
 import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import {
   deriveChartShadeColor,
   deriveChartTintColor,
 } from "metabase/ui/colors/accents";
+import { getThemeOverrides } from "metabase/ui/theme";
 import MetabaseSettings from "metabase/utils/settings";
 import type { SettingKey } from "metabase-types/api";
 
 import { ColorSettingsWidget } from "./ColorSettingsWidget";
+
+const originalApplicationColors = MetabaseSettings.get(
+  "application-colors" as SettingKey,
+);
 
 function setup(colors: Record<string, string>) {
   MetabaseSettings.set("application-colors" as SettingKey, colors);
@@ -16,7 +21,9 @@ function setup(colors: Record<string, string>) {
     "application-colors": colors,
   });
   fetchMock.get("path:/api/setting", {});
-  renderWithProviders(<ColorSettingsWidget />);
+  renderWithProviders(<ColorSettingsWidget />, {
+    theme: getThemeOverrides("light", colors),
+  });
 }
 
 async function expectColorsToExist(colors: Record<string, string>) {
@@ -30,6 +37,13 @@ async function expectColorsToExist(colors: Record<string, string>) {
 }
 
 describe("ColorSettingsWidget", () => {
+  afterEach(() => {
+    MetabaseSettings.set(
+      "application-colors" as SettingKey,
+      originalApplicationColors,
+    );
+  });
+
   it("should respect whitelabel colors", async () => {
     const colors = {
       accent0: "#abcdef",

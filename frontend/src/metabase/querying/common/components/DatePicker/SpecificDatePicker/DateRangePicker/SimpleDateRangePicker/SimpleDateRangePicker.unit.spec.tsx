@@ -1,6 +1,6 @@
 import _userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui-with-store";
+import { render, screen, within } from "__support__/ui-minimal";
 
 import type { DateRangePickerValue } from "../types";
 
@@ -25,9 +25,7 @@ function setup({
 }: SetupOpts = {}) {
   const onChange = jest.fn();
 
-  renderWithProviders(
-    <SimpleDateRangePicker value={value} onChange={onChange} />,
-  );
+  render(<SimpleDateRangePicker value={value} onChange={onChange} />);
 
   return { onChange };
 }

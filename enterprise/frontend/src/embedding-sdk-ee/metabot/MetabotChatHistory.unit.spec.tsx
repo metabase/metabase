@@ -1,6 +1,6 @@
 import { assocIn } from "icepick";
 
-import { screen } from "__support__/ui";
+import { screen } from "__support__/ui-minimal";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import type { MetabotChatMessage } from "metabase/metabot/state/types";
 import { setup } from "metabase/metabot/tests/utils";

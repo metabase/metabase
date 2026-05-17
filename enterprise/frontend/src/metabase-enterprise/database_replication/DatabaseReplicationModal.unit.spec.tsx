@@ -2,7 +2,11 @@ import userEvent from "@testing-library/user-event";
 import type { RouteResponse } from "fetch-mock";
 import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import type { PreviewDatabaseReplicationResponse } from "metabase-enterprise/api/database-replication";
 import { createMockDatabase } from "metabase-types/api/mocks";
 

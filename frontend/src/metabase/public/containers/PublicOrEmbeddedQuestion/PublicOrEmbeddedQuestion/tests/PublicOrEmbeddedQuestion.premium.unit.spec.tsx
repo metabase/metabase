@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
-import { getIcon, queryIcon, screen, within } from "__support__/ui";
+import { getIcon, queryIcon, screen, within } from "__support__/ui-minimal";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { type SetupOpts, setup } from "./setup";

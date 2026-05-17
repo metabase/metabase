@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
 
-import { act, getIcon, render, screen } from "__support__/ui";
+import { act, getIcon, render, screen } from "__support__/ui-minimal";
 
 import { OnboardingStepper } from "./OnboardingStepper";
 import type { OnboardingStepperHandle } from "./types";

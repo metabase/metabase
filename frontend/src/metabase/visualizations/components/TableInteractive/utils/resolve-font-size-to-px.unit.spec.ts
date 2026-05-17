@@ -21,11 +21,9 @@ describe("resolveFontSizeToPx", () => {
     expect(resolveFontSizeToPx("0.933em", "15px")).toBe("14px");
   });
 
-  it("warns and returns px values unchanged", () => {
+  it("returns px values unchanged", () => {
     expect(resolveFontSizeToPx("12.5px", "14px")).toBe("12.5px");
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("is not in em"),
-    );
+    expect(consoleWarnSpy).not.toHaveBeenCalled();
   });
 
   it("warns and returns the original value when no base font size is provided", () => {
@@ -35,11 +33,9 @@ describe("resolveFontSizeToPx", () => {
     );
   });
 
-  it("warns and returns rem values unchanged", () => {
+  it("returns rem values unchanged", () => {
     expect(resolveFontSizeToPx("1rem", "14px")).toBe("1rem");
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("is not in em"),
-    );
+    expect(consoleWarnSpy).not.toHaveBeenCalled();
   });
 
   it("warns for unrecognized font-size units", () => {

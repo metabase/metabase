@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import {
   createMockSettings,

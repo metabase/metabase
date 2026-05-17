@@ -6,9 +6,11 @@ import { createMockAdminState } from "./admin";
 import { createMockAppState } from "./app";
 import { createMockAuthState } from "./auth";
 import { createMockDashboardState } from "./dashboard";
+import { createMockDownloadsState } from "./downloads";
 import { createMockEmbedState } from "./embed";
 import { createMockEmbeddingDataPickerState } from "./embedding-data-picker";
 import { createMockNormalizedEntitiesState } from "./entities";
+import { createMockMetabotState } from "./metabot";
 import { createMockModalState } from "./modal";
 import { createMockParametersState } from "./parameters";
 import { createMockQueryBuilderState } from "./qb";
@@ -16,6 +18,7 @@ import { createMockRequestsState } from "./requests";
 import { createMockRoutingState } from "./routing";
 import { createMockSettingsState } from "./settings";
 import { createMockSetupState } from "./setup";
+import { createMockUndoState } from "./undo";
 import { createMockUploadState } from "./upload";
 import { createMockVisualizerState } from "./visualizer";
 
@@ -30,15 +33,18 @@ export function createMockState(opts: any) {
     auth: createMockAuthState(),
     currentUser: createMockUser(),
     dashboard: createMockDashboardState(),
+    downloads: createMockDownloadsState(),
     embed: createMockEmbedState(),
     embeddingDataPicker: createMockEmbeddingDataPickerState(),
     entities: createMockNormalizedEntitiesState(),
+    metabot: createMockMetabotState(),
     parameters: createMockParametersState(),
     qb: createMockQueryBuilderState(),
     requests: createMockRequestsState(),
     routing: createMockRoutingState(),
     settings: createMockSettingsState(),
     setup: createMockSetupState(),
+    undo: createMockUndoState(),
     upload: createMockUploadState(),
     visualizer: {
       past: [],

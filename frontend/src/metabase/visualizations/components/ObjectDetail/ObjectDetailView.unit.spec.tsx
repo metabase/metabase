@@ -8,7 +8,12 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { testDataset } from "__support__/testDataset";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui-with-store";
 import { getNextId } from "__support__/utils";
 import { checkNotNull } from "metabase/utils/types";
 import type { WritebackAction } from "metabase-types/api";
@@ -506,7 +511,7 @@ describe("ObjectDetailView", () => {
 
     const action = await findActionInActionMenu(implicitDeleteAction);
     expect(action).toBeInTheDocument();
-    action?.click();
+    await userEvent.click(action!);
 
     const modal = await screen.findByTestId("delete-object-modal");
     expect(modal).toBeInTheDocument();

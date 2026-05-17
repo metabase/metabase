@@ -6,7 +6,11 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { SettingKey } from "metabase-types/api";
@@ -67,16 +71,16 @@ describe("EmailSettingsPage", () => {
   it("should render an EmailSettingsPage", async () => {
     await setup({});
 
-    [
+    for (const text of [
       "From Name",
       "From Address",
       "Reply-To Address",
       "Add Recipients as CC or BCC",
       "Approved domains for notifications",
       "Suggest recipients on dashboard subscriptions and alerts",
-    ].forEach(async (text) => {
-      expect(screen.getByText(text)).toBeInTheDocument();
-    });
+    ]) {
+      expect(await screen.findByText(text)).toBeInTheDocument();
+    }
   });
 
   it("should not render premium features missing from token", async () => {

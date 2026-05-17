@@ -1,4 +1,4 @@
-import { screen, within } from "__support__/ui";
+import { screen, within } from "__support__/ui-minimal";
 
 import { type CommonSetupProps, commonSetup } from "./setup";
 

@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { act, renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 

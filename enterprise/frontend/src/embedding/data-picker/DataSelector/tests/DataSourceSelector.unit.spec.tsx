@@ -6,7 +6,7 @@ import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";

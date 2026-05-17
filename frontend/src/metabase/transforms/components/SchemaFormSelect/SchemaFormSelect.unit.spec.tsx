@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { act, renderWithProviders, screen } from "__support__/ui";
+import { act, render, screen } from "__support__/ui-minimal";
 import { FormProvider } from "metabase/forms";
 
 import { SchemaFormSelect } from "./SchemaFormSelect";
@@ -18,7 +18,7 @@ function setup({
 } = {}) {
   const initialValues = { [name]: initialValue };
 
-  renderWithProviders(
+  render(
     <FormProvider initialValues={initialValues} onSubmit={onSubmit}>
       <SchemaFormSelect name={name} data={schemas} />
     </FormProvider>,

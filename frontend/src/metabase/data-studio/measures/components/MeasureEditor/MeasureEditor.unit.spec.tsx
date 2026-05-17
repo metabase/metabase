@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 
@@ -11,7 +11,7 @@ describe("MeasureEditor", () => {
   const onDescriptionChange = jest.fn();
 
   it("renders editable inputs when not read-only", () => {
-    renderWithProviders(
+    render(
       <MeasureEditor
         query={query}
         description={description}
@@ -29,7 +29,7 @@ describe("MeasureEditor", () => {
   });
 
   it("shows description as plain text when read-only", () => {
-    renderWithProviders(
+    render(
       <MeasureEditor
         query={query}
         description={description}

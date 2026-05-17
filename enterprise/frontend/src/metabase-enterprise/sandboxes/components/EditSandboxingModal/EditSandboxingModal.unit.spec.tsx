@@ -15,7 +15,7 @@ import {
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import type {
   DatabaseFeature,

@@ -4,7 +4,7 @@ import {
   setupDependecyGraphEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { createMockDependencyGraph } from "metabase-types/api/mocks";
 

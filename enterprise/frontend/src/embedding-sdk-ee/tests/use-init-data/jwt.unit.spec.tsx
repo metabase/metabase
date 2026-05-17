@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen } from "__support__/ui";
+import { screen } from "__support__/ui-minimal";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import {
   type JwtMockConfig,

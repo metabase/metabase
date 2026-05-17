@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import type { TransformRun } from "metabase-types/api";
 import {
   createMockTransform,
@@ -15,7 +15,7 @@ type SetupOpts = {
 
 function setup({ run = createMockTransformRun() }: SetupOpts = {}) {
   const onClose = jest.fn();
-  renderWithProviders(<SidebarHeader run={run} onClose={onClose} />);
+  render(<SidebarHeader run={run} onClose={onClose} />);
   return { onClose };
 }
 

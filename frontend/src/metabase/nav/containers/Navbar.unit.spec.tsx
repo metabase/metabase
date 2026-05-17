@@ -11,10 +11,11 @@ import {
   setupSettingEndpoint,
 } from "__support__/server-mocks";
 import {
+  act,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import {
   CLOSE_NAVBAR,
@@ -153,12 +154,14 @@ describe("nav > containers > Navbar > Core App", () => {
   it("should not close navbar when preserveNavbarState is set", async () => {
     const store = await setup({ isOpen: true });
     await expectNavbarOpen();
-    store.dispatch({
-      type: "@@router/LOCATION_CHANGE",
-      payload: {
-        pathname: "/question/1",
-        state: { preserveNavbarState: true },
-      },
+    act(() => {
+      store.dispatch({
+        type: "@@router/LOCATION_CHANGE",
+        payload: {
+          pathname: "/question/1",
+          state: { preserveNavbarState: true },
+        },
+      });
     });
     await expectNavbarOpen();
   });
@@ -174,11 +177,15 @@ describe("nav > containers > Navbar > Core App", () => {
     await expectNavbarClosed();
     dispatchLocationChange({ store, pathname: "/collection/4" });
     await expectNavbarClosed();
-    store.dispatch({ type: OPEN_NAVBAR });
+    act(() => {
+      store.dispatch({ type: OPEN_NAVBAR });
+    });
     await expectNavbarOpen();
     dispatchLocationChange({ store, pathname: "/collection/5" });
     await expectNavbarOpen();
-    store.dispatch({ type: CLOSE_NAVBAR });
+    act(() => {
+      store.dispatch({ type: CLOSE_NAVBAR });
+    });
     dispatchLocationChange({ store, pathname: "/collection/6" });
     await expectNavbarClosed();
   });
@@ -281,11 +288,13 @@ function dispatchLocationChange({
   initialRoute = false,
   pathname,
 }: DispatchLocationChangeParams) {
-  store.dispatch({
-    type: "@@router/LOCATION_CHANGE",
-    payload: {
-      pathname,
-      action: initialRoute ? "POP" : "PUSH",
-    },
+  act(() => {
+    store.dispatch({
+      type: "@@router/LOCATION_CHANGE",
+      payload: {
+        pathname,
+        action: initialRoute ? "POP" : "PUSH",
+      },
+    });
   });
 }

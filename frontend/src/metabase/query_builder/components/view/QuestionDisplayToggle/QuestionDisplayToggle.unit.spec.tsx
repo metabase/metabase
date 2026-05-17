@@ -1,12 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui-with-store";
+import { render, screen } from "__support__/ui-minimal";
 
 import { QuestionDisplayToggle } from "./QuestionDisplayToggle";
 
 describe("QuestionDisplayToggle", () => {
   it("renders correctly", () => {
-    renderWithProviders(
+    render(
       <QuestionDisplayToggle
         isShowingRawTable={false}
         onToggleRawTable={jest.fn()}
@@ -20,7 +20,7 @@ describe("QuestionDisplayToggle", () => {
 
   it("toggles to data on click", async () => {
     const onToggleRawTable = jest.fn();
-    renderWithProviders(
+    render(
       <QuestionDisplayToggle
         isShowingRawTable={false}
         onToggleRawTable={onToggleRawTable}
@@ -34,7 +34,7 @@ describe("QuestionDisplayToggle", () => {
 
   it("toggles to visualization on click", async () => {
     const onToggleRawTable = jest.fn();
-    renderWithProviders(
+    render(
       <QuestionDisplayToggle
         isShowingRawTable={true}
         onToggleRawTable={onToggleRawTable}
@@ -48,7 +48,7 @@ describe("QuestionDisplayToggle", () => {
 
   it("toggles state on Enter key press", async () => {
     const onToggleRawTable = jest.fn();
-    renderWithProviders(
+    render(
       <QuestionDisplayToggle
         isShowingRawTable={false}
         onToggleRawTable={onToggleRawTable}
@@ -62,7 +62,7 @@ describe("QuestionDisplayToggle", () => {
 
   it("toggles state on Space key press", async () => {
     const onToggleRawTable = jest.fn();
-    renderWithProviders(
+    render(
       <QuestionDisplayToggle
         isShowingRawTable={true}
         onToggleRawTable={onToggleRawTable}

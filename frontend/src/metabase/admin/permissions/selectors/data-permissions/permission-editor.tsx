@@ -8,6 +8,7 @@ import { getIsHosted } from "metabase/databases/selectors";
 import { Tables } from "metabase/entities/tables";
 import {
   PLUGIN_AUDIT,
+  PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
@@ -162,6 +163,9 @@ const hasViewDataOptions = (entities: any[]) => {
   );
 };
 
+const getShouldShowViewDataColumn = () =>
+  PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn;
+
 type EntityWithPermissions = {
   id: string | number;
   name: string;
@@ -204,6 +208,7 @@ export const getDatabasesPermissionEditor = createSelector(
   getGroup,
   selectGroupList,
   getIsLoadingDatabaseTables,
+  getShouldShowViewDataColumn,
   getShouldShowTransformPermissions,
   (
     metadata,
@@ -213,6 +218,7 @@ export const getDatabasesPermissionEditor = createSelector(
     group: Group | null | undefined,
     groups: Group[],
     isLoading,
+    _showViewDataColumn,
     showTransformPermissions,
   ): PermissionEditorType | null => {
     const { groupId, databaseId, schemaName } = params;
@@ -396,6 +402,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
     getDataPermissions,
     getOriginalDataPermissions,
     getOrderedGroups,
+    getShouldShowViewDataColumn,
     getShouldShowTransformPermissions,
     (
       metadata,
@@ -403,6 +410,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
       permissions,
       originalPermissions,
       groups,
+      _showViewDataColumn,
       showTransformPermissions,
     ) => {
       const { databaseId, schemaName, tableId } = params;

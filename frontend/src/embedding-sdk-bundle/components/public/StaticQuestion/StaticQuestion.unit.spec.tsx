@@ -20,7 +20,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-minimal";
 import { addAlertModalTests } from "embedding-sdk-bundle/components/public/question/shared-tests/alert-modal.spec";
 import { addAlertsButtonTests } from "embedding-sdk-bundle/components/public/question/shared-tests/alerts-button.spec";
 import type { SetupOpts } from "embedding-sdk-bundle/components/public/question/shared-tests/constants.spec";

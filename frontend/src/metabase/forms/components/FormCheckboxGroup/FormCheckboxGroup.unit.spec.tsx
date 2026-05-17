@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import type { AnySchema } from "yup";
 import * as Yup from "yup";
 
-import { render, screen, waitFor } from "__support__/ui";
+import { render, screen, waitFor } from "__support__/ui-minimal";
 import {
   Form,
   FormCheckboxGroup,

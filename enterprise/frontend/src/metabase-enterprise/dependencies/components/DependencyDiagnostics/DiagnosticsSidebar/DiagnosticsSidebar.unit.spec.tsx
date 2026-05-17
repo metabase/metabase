@@ -1,7 +1,7 @@
 import { Route } from "react-router";
 
 import { setupListBrokenGraphNodesEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import type { DependencyNode } from "metabase-types/api";
 import {
   createMockAnalysisFindingError,

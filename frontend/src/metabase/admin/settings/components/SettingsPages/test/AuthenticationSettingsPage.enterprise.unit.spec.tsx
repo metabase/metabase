@@ -1,5 +1,5 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { screen } from "__support__/ui";
+import { screen } from "__support__/ui-minimal";
 import type { AuthSettingsPageTab } from "metabase/plugins";
 import type { EnterpriseSettings } from "metabase-types/api";
 

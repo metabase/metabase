@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen, waitFor } from "__support__/ui";
+import { render, screen, waitFor } from "__support__/ui-minimal";
 import { FormProvider } from "metabase/forms";
 import { createMockGroup } from "metabase-types/api/mocks";
 

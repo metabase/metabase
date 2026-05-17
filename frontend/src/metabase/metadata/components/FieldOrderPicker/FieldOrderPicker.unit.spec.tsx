@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { render, screen, waitFor } from "__support__/ui-minimal";
 import type { TableFieldOrder } from "metabase-types/api";
 
 import { FieldOrderPicker } from "./FieldOrderPicker";
@@ -26,7 +26,7 @@ interface SetupOpts {
 function setup({ value = "smart" }: SetupOpts = {}) {
   const onChange = jest.fn();
 
-  const { rerender } = renderWithProviders(
+  const { rerender } = render(
     <FieldOrderPicker value={value} onChange={onChange} />,
   );
 
@@ -76,7 +76,7 @@ describe("FieldOrderPicker", () => {
   });
 
   it("updates selected value when value prop changes", () => {
-    const { rerender } = renderWithProviders(
+    const { rerender } = render(
       <FieldOrderPicker value="smart" onChange={jest.fn()} />,
     );
 

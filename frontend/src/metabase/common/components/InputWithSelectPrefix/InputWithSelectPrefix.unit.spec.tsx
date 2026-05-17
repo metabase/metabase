@@ -1,12 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { fireEvent, render, screen } from "__support__/ui-minimal";
 
 import { InputWithSelectPrefix } from "./InputWithSelectPrefix";
 
 describe("InputWithSelectPrefix", () => {
   it("renders and existing value", () => {
-    renderWithProviders(
+    render(
       <InputWithSelectPrefix
         value="http://example.com"
         prefixes={["https://", "http://"]}
@@ -23,7 +23,7 @@ describe("InputWithSelectPrefix", () => {
 
   it("changes text value", async () => {
     const changeSpy = jest.fn();
-    renderWithProviders(
+    render(
       <InputWithSelectPrefix
         value="http://example.com"
         placeholder="my-input"
@@ -43,7 +43,7 @@ describe("InputWithSelectPrefix", () => {
 
   it("changes prefix", async () => {
     const changeSpy = jest.fn();
-    renderWithProviders(
+    render(
       <InputWithSelectPrefix
         value="http://example.com"
         prefixes={["https://", "http://"]}

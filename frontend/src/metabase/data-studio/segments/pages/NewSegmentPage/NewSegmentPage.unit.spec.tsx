@@ -4,7 +4,11 @@ import { Route } from "react-router";
 
 import { setupSchemaEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import type { Table } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -62,7 +66,7 @@ function setup({ table = TEST_TABLE }: SetupOpts = {}) {
 
   const { history } = renderWithProviders(
     <Route
-      path="/"
+      path="*"
       component={() => (
         <NewSegmentPage
           route={{ path: "/" } as never}

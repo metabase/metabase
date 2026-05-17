@@ -6,7 +6,11 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import {
+  fireEvent,
+  renderWithProviders,
+  screen,
+} from "__support__/ui-with-store";
 import { SessionTimeoutSetting } from "metabase-enterprise/auth/components/SessionTimeoutSetting";
 import type { TimeoutValue } from "metabase-types/api";
 import {

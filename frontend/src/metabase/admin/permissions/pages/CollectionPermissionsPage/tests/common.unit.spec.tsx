@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, within } from "__support__/ui";
+import { screen, within } from "__support__/ui-minimal";
 
 import { defaultPermissionsGraph, setup } from "./setup";
 

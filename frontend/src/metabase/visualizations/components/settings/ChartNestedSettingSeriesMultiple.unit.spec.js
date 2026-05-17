@@ -1,7 +1,7 @@
 // these tests use ChartSettings directly, but logic we're testing lives in ChartNestedSettingSeries
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui-with-store";
 import { DashboardChartSettings } from "metabase/dashboard/components/DashboardChartSettings";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import registerVisualizations from "metabase/visualizations/register";

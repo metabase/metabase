@@ -1,4 +1,6 @@
-import { render, screen } from "__support__/ui";
+import userEvent from "@testing-library/user-event";
+
+import { render, screen } from "__support__/ui-minimal";
 import { getStatusColorRanges } from "metabase/ui/colors/groups";
 
 import { ColorRangeToggle, getColorRangeLabel } from "./ColorRangeToggle";
@@ -40,21 +42,21 @@ describe("ColorRangeToggle", () => {
   });
 
   describe("click handlers", () => {
-    it("should handle click on the toggle button", () => {
+    it("should handle click on the toggle button", async () => {
       const { onToggleClick, onColorRangeSelect } = setup({
         showToggleButton: true,
       });
 
-      screen.getByRole("button").click();
+      await userEvent.click(screen.getByRole("button"));
       expect(onToggleClick).toHaveBeenCalledTimes(1);
       expect(onColorRangeSelect).not.toHaveBeenCalled();
     });
 
-    it("should handle click on the color range element", () => {
+    it("should handle click on the color range element", async () => {
       const { onColorRangeSelect } = setup();
       const label = getColorRangeLabel(range);
 
-      screen.getByLabelText(label).click();
+      await userEvent.click(screen.getByLabelText(label));
       expect(onColorRangeSelect).toHaveBeenCalledTimes(1);
     });
   });

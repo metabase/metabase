@@ -20,7 +20,7 @@ import {
   screen,
   waitFor,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as qbSelectors from "metabase/query_builder/selectors";

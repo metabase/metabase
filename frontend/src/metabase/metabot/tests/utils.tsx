@@ -13,7 +13,7 @@ import {
   screen,
   waitFor,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import {
   type MockStreamedEndpointParams,
   createMockReadableStream,
@@ -58,8 +58,10 @@ export const enterChatMessage = async (message: string, send = true) => {
   // so "Who is your favorite?" becomes something like "Woi or fvrite?"
   const editor = await input();
   editor.textContent = message;
-  fireEvent.input(editor, {
-    target: { textContent: message },
+  await act(async () => {
+    fireEvent.input(editor, {
+      target: { textContent: message },
+    });
   });
   if (send) {
     await userEvent.type(await input(), "{Enter}");
@@ -229,7 +231,7 @@ export function setup(
           ...settings,
           ...(storeInitialState.settings ?? {}),
         },
-        currentUser: currentUser ? currentUser : undefined,
+        currentUser,
         metabot: metabotInitialState,
       }),
       customReducers: {

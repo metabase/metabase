@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, screen } from "__support__/ui";
+import { getIcon, screen } from "__support__/ui-minimal";
 import {
   createMockCollection,
   createMockTokenFeatures,

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "__support__/ui";
+import { fireEvent, render, screen } from "__support__/ui-minimal";
 import { EntityMenuTrigger } from "metabase/common/components/EntityMenuTrigger";
 
 describe("EntityMenuTrigger", () => {

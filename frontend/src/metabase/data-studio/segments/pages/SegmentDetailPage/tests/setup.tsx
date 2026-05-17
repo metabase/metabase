@@ -7,7 +7,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui-with-store";
 import { DataModelSegmentBreadcrumbs } from "metabase/data-studio/segments/components/SegmentBreadcrumbs";
 import { SegmentDetailPage } from "metabase/data-studio/segments/pages/SegmentDetailPage";
 import { createMockState } from "metabase/redux/store/mocks";

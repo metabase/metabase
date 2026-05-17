@@ -6,7 +6,7 @@ import {
   setupCardQueryMetadataEndpoint,
   setupCollectionByIdEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui-with-store";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";
 import { MOCK_INSTANCE_URL } from "embedding-sdk-bundle/test/mocks/sso";

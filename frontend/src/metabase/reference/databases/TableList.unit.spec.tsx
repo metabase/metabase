@@ -1,7 +1,7 @@
 import { Route } from "react-router";
 
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui-with-store";
 import { getNextId } from "__support__/utils";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";

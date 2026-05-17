@@ -20,7 +20,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { getNextId } from "__support__/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import * as Urls from "metabase/urls";

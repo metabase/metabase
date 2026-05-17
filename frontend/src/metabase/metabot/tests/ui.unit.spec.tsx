@@ -2,7 +2,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor, within } from "__support__/ui";
+import { act, screen, waitFor, within } from "__support__/ui-minimal";
 import { logout } from "metabase/auth/actions";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { metabotActions } from "metabase/metabot/state";
@@ -89,7 +89,9 @@ describe("metabot > ui", () => {
       fetchMock.delete(`path:/api/session`, 200);
 
       await assertVisible();
-      store.dispatch(logout(undefined) as any);
+      await act(async () => {
+        await store.dispatch(logout(undefined) as any);
+      });
       await assertNotVisible();
     } finally {
       (domModule.reload as any).mockRestore();
@@ -147,14 +149,16 @@ describe("metabot > ui", () => {
   it("should render single newlines in user input as separate paragraphs", async () => {
     const { store } = setup();
 
-    store.dispatch(
-      metabotActions.addUserMessage({
-        agentId: "omnibot",
-        id: "user-1",
-        type: "text",
-        message: "first line\nsecond line",
-      }),
-    );
+    act(() => {
+      store.dispatch(
+        metabotActions.addUserMessage({
+          agentId: "omnibot",
+          id: "user-1",
+          type: "text",
+          message: "first line\nsecond line",
+        }),
+      );
+    });
 
     const messages = await screen.findAllByTestId("metabot-chat-message");
     const userMessage = messages[0];
@@ -172,14 +176,16 @@ describe("metabot > ui", () => {
   it("should preserve double newlines from user input", async () => {
     const { store } = setup();
 
-    store.dispatch(
-      metabotActions.addUserMessage({
-        agentId: "omnibot",
-        id: "user-2",
-        type: "text",
-        message: "first line\n\nsecond line",
-      }),
-    );
+    act(() => {
+      store.dispatch(
+        metabotActions.addUserMessage({
+          agentId: "omnibot",
+          id: "user-2",
+          type: "text",
+          message: "first line\n\nsecond line",
+        }),
+      );
+    });
 
     const messages = await screen.findAllByTestId("metabot-chat-message");
     const userMessage = messages[0];
@@ -237,6 +243,7 @@ describe("metabot > ui", () => {
   });
 
   it("should not show retry option for error messages", async () => {
+    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation();
     setup();
 
     mockAgentEndpoint({
@@ -255,6 +262,10 @@ describe("metabot > ui", () => {
     expect(
       within(lastMessage!).queryByTestId("metabot-chat-message-retry"),
     ).not.toBeInTheDocument();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "Anthropic API key expired or invalid",
+    );
+    consoleErrorSpy.mockRestore();
   });
 
   it("should be able to set the prompt input's value from anywhere in the app", async () => {

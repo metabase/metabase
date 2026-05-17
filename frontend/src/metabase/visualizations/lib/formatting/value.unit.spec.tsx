@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import { isElementOfType } from "react-dom/test-utils";
 
 import { mockSettings } from "__support__/settings";
-import { render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import type { OptionsType } from "metabase/utils/formatting/types";
@@ -489,7 +489,7 @@ describe("formatValue", () => {
   it("should display hour-of-day with 12 hour clock", () => {
     expect(
       formatValue(24, {
-        date_style: null,
+        date_style: "",
         time_enabled: "minutes",
         time_style: "h:mm A",
         column: {
@@ -503,7 +503,7 @@ describe("formatValue", () => {
   it("should display hour-of-day with 24 hour clock", () => {
     expect(
       formatValue(24, {
-        date_style: null,
+        date_style: "",
         time_enabled: "minutes",
         time_style: "HH:mm",
         column: {

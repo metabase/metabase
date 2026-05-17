@@ -3,7 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { mockStreamedEndpoint } from "metabase/api/ai-streaming/test-utils";
 import { MetabotProvider } from "metabase/metabot/context";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";

@@ -1,6 +1,6 @@
 import type { AnyAction, ThunkDispatch } from "@reduxjs/toolkit";
 
-import { act, renderHookWithProviders } from "__support__/ui";
+import { act, renderHookWithProviders } from "__support__/ui-with-store";
 import type { State } from "metabase/redux/store";
 
 import { useMetabotAgentsManager } from "../hooks";
@@ -57,7 +57,9 @@ describe("multi-convo support", () => {
       ],
     });
     const msg1 = { ...input, message: "test1", agentId: "test_1" } as const;
-    await store.dispatch(submitInput(msg1));
+    await act(async () => {
+      await store.dispatch(submitInput(msg1));
+    });
 
     mockAgentEndpoint({
       textChunks: [
@@ -99,9 +101,11 @@ describe("multi-convo support", () => {
         `d:{"finishReason":"stop","usage":{"promptTokens":1,"completionTokens":1}}`,
       ],
     });
-    await store.dispatch(
-      submitInput({ ...input, message: "test", agentId: "test_1" }),
-    );
+    await act(async () => {
+      await store.dispatch(
+        submitInput({ ...input, message: "test", agentId: "test_1" }),
+      );
+    });
     expect(getMessages(store.getState(), "test_1")).toHaveLength(2);
 
     await act(() => hook.current.resetConversation({ agentId: "test_1" }));

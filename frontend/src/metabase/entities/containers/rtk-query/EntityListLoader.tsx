@@ -171,7 +171,7 @@ export function EntityListLoader<Entity, EntityWrapper>({
         );
       })
       .exhaustive();
-  });
+  }, _.isEqual);
 
   const fetched = useSelector((state) => {
     const value = entityDefinition.selectors.getFetched(state, entityOptions);
@@ -194,7 +194,7 @@ export function EntityListLoader<Entity, EntityWrapper>({
 
   const metadata = useSelector((state) => {
     return entityDefinition.selectors.getListMetadata(state, entityOptions);
-  });
+  }, _.isEqual);
 
   const wrappedList = useMemo(() => {
     if (!wrapped || !list) {

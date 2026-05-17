@@ -115,7 +115,7 @@ const parseAllowedAttribuesFromIframe = (
     result.allow = allow;
   }
   if (allowFullscreen != null) {
-    result.allowFullscreen = allowFullscreen;
+    result.allowFullScreen = true;
   }
 
   return result;
@@ -163,7 +163,7 @@ export const getIframeDomainName = (
 export type AllowedIframeAttributes = {
   src?: string;
   allow?: string;
-  allowFullscreen?: string;
+  allowFullScreen?: boolean;
 };
 
 export const getAllowedIframeAttributes = (

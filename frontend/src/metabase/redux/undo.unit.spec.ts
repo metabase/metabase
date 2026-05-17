@@ -1,6 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 
-import { act } from "__support__/ui";
+import { act } from "__support__/ui-minimal";
 import type { Dispatch } from "metabase/redux/store";
 
 import {
@@ -161,6 +161,10 @@ const createMockStore = () => {
   const store = configureStore({
     // @ts-expect-error rework undo reducer to RTK
     reducer: { undo: undoReducer },
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware({
+        serializableCheck: false,
+      }),
   });
   return store as typeof store & { dispatch: Dispatch };
 };

@@ -7,7 +7,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
   within,
-} from "__support__/ui";
+} from "__support__/ui-with-store";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { createMockBookmark } from "metabase-types/api/mocks";
 
@@ -52,6 +52,9 @@ describe("useBookmarkListQuery", () => {
   });
 
   it("should display error", async () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
     const ERROR = "Server error";
 
     setup({ error: ERROR });
@@ -59,6 +62,11 @@ describe("useBookmarkListQuery", () => {
     await waitForLoaderToBeRemoved();
 
     expect(screen.getByText(ERROR)).toBeInTheDocument();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "Request entities,bookmarks_list,null,fetch failed:",
+      expect.any(Object),
+    );
+    consoleErrorSpy.mockRestore();
   });
 
   it("should show data from the response", async () => {

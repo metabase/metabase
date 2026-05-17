@@ -1,4 +1,4 @@
-import { renderWithProviders, screen, within } from "__support__/ui-with-store";
+import { render, screen, within } from "__support__/ui-minimal";
 import { checkNotNull } from "metabase/utils/types";
 import visualizations from "metabase/visualizations";
 import registerVisualizations from "metabase/visualizations/register";
@@ -18,7 +18,7 @@ const setup = ({
   selectedVisualization = "table",
   visualizationList = DEFAULT_VIZ_ORDER,
 }: Partial<ChartTypeListProps> = {}) => {
-  renderWithProviders(
+  render(
     <ChartTypeList
       visualizationList={visualizationList}
       selectedVisualization={selectedVisualization}

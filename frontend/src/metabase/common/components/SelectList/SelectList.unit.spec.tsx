@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import _ from "underscore";
 
-import { getIcon, render, screen } from "__support__/ui";
+import { getIcon, render, screen } from "__support__/ui-minimal";
 
 import { SelectList } from "./index";
 

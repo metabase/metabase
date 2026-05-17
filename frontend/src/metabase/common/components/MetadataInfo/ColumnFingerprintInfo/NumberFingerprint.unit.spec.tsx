@@ -1,4 +1,4 @@
-import { render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import type * as Lib from "metabase-lib";
 
 import { NumberFingerprint } from "./NumberFingerprint";

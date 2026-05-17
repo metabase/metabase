@@ -5,7 +5,12 @@ import {
   setupMetabotGroupPermissionsEndpoint,
   setupUpdateMetabotGroupPermissionsEndpoint,
 } from "__support__/server-mocks/metabot";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui-with-store";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { AIToolKey, type MetabotGroupPermission } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks";

@@ -2,7 +2,11 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupRemoteSyncBranchesEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { Combobox, useCombobox } from "metabase/ui";
 
 import { BranchDropdown } from "./BranchDropdown";

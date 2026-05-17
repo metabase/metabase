@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react";
 
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui-with-store";
 
 import { PythonEditorBody } from "./PythonEditorBody";
 

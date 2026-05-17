@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 
 import { AuthButton } from "./AuthButton";
 
@@ -7,7 +7,7 @@ interface SetupOpts {
 }
 
 const setup = ({ isCard }: SetupOpts = {}) => {
-  renderWithProviders(<AuthButton isCard={isCard}>Sign in</AuthButton>);
+  render(<AuthButton isCard={isCard}>Sign in</AuthButton>);
 };
 
 describe("AuthButton", () => {

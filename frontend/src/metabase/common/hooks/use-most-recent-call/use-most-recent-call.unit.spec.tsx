@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 
 import { useMostRecentCall } from "./use-most-recent-call";
 

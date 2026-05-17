@@ -1,4 +1,4 @@
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { fireEvent, render, screen } from "__support__/ui-minimal";
 import registerVisualizations from "metabase/visualizations/register";
 import type { Widget } from "metabase/visualizations/types";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
@@ -33,9 +33,7 @@ function widget(widget: Partial<Widget> = {}): Widget {
 type SetupOpts = Partial<BaseChartSettingsProps>;
 
 const setup = (props: SetupOpts) => {
-  return renderWithProviders(
-    <BaseChartSettings {...DEFAULT_PROPS} {...props} />,
-  );
+  return render(<BaseChartSettings {...DEFAULT_PROPS} {...props} />);
 };
 
 describe("ChartSettings", () => {

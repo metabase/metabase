@@ -1,6 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui-with-store";
 import { getDefaultTab } from "metabase/dashboard/actions";
 import {
   createMockDashboardState,

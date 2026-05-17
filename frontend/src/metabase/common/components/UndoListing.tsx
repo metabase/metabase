@@ -15,6 +15,7 @@ import {
 import { t } from "ttag";
 
 import ZIndex from "metabase/css/core/z-index.module.css";
+import { isCypressActive, isTest } from "metabase/env";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { Undo } from "metabase/redux/store/undo";
 import {
@@ -187,22 +188,23 @@ document.body.appendChild(target);
 
 // The react transition group state transitions are flaky in cypress
 // so disable them for altogether.
-const Group = "Cypress" in window ? MockGroup : TransitionGroup;
+const useMockTransitions = isCypressActive || isTest;
+
+const Group = useMockTransitions ? MockGroup : TransitionGroup;
 
 function MockGroup({ children }: { children: ReactNode }) {
   return <Fragment>{children}</Fragment>;
 }
 
-const Item =
-  "Cypress" in window
-    ? function MockItem({
-        children,
-      }: {
-        children: (state: TransitionStatus) => ReactNode;
-      }) {
-        return children("entered");
-      }
-    : Transition;
+const Item = useMockTransitions
+  ? function MockItem({
+      children,
+    }: {
+      children: (state: TransitionStatus) => ReactNode;
+    }) {
+      return children("entered");
+    }
+  : Transition;
 
 export function UndoListOverlay({
   undos,
@@ -233,7 +235,7 @@ export function UndoListOverlay({
     // To avoid resetting the transition state of the toasts, we track the
     // when the target was appended to the body and only enable the transition
     // once the target has been appended (via the custom in: prop on the Undo).
-    const timeout = setTimeout(() => {
+    const updateTransitionState = () => {
       const prev = prevUndos.current ?? [];
       prevUndos.current = undos;
 
@@ -250,7 +252,14 @@ export function UndoListOverlay({
         );
         return { ...prevState, ...newState };
       });
-    }, 1);
+    };
+
+    if (useMockTransitions) {
+      updateTransitionState();
+      return;
+    }
+
+    const timeout = setTimeout(updateTransitionState, 1);
     return () => clearTimeout(timeout);
   }, [undos]);
 

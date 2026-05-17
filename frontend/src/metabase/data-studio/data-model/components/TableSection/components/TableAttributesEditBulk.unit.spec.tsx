@@ -8,7 +8,11 @@ import {
   setupUserKeyValueEndpoints,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import {
   SelectionProvider,
   useSelection,

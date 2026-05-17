@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { screen } from "__support__/ui-minimal";
 
 import {
   changeInput,
@@ -52,10 +52,12 @@ describe("StrategyEditorForDatabases (OSS)", () => {
     const noCacheStrategyRadioButton = await screen.findByRole("radio", {
       name: /Don.t cache/i,
     });
-    noCacheStrategyRadioButton.click();
+    await userEvent.click(noCacheStrategyRadioButton);
     expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
 
-    (await screen.findByTestId("strategy-form-submit-button")).click();
+    await userEvent.click(
+      await screen.findByTestId("strategy-form-submit-button"),
+    );
   });
 
   it("does not regard form as dirty when a default value is entered into an input (metabase#42974)", async () => {

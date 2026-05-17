@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, render, screen, within } from "__support__/ui";
+import { fireEvent, render, screen, within } from "__support__/ui-minimal";
 import type { ScalarSegment } from "metabase-types/api";
 
 import {

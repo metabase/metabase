@@ -1,7 +1,7 @@
 import { waitForElementToBeRemoved } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui-minimal";
 import type { OptionsType } from "metabase/utils/formatting";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldValue, RowValue } from "metabase-types/api";

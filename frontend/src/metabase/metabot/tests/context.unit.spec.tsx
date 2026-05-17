@@ -4,7 +4,7 @@ import { P, isMatching } from "ts-pattern";
 import _ from "underscore";
 
 import { setupDatabaseListEndpoint } from "__support__/server-mocks";
-import { screen } from "__support__/ui";
+import { screen } from "__support__/ui-minimal";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";

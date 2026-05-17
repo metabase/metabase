@@ -1,7 +1,7 @@
 import { Route } from "react-router";
 
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockTokenStatus } from "metabase-types/api/mocks";
 

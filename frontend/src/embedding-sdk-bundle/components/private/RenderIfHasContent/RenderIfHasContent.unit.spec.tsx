@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { act, render, screen } from "__support__/ui";
+import { act, render, screen } from "__support__/ui-minimal";
 
 import { RenderIfHasContent } from "./RenderIfHasContent";
 

@@ -1,6 +1,6 @@
 import _userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui-with-store";
+import { render, screen } from "__support__/ui-minimal";
 
 import { SingleDatePicker } from "./SingleDatePicker";
 import type { SingleDatePickerValue } from "./types";
@@ -24,7 +24,7 @@ function setup({
   const onChange = jest.fn();
   const onSubmit = jest.fn();
 
-  renderWithProviders(
+  render(
     <SingleDatePicker
       value={value}
       hasTimeToggle={hasTimeToggle}

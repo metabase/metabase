@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
-import { render, renderWithProviders, screen, within } from "__support__/ui";
+import { render, screen, within } from "__support__/ui-minimal";
 import { registerVisualization } from "metabase/visualizations";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import type { Series } from "metabase-types/api";
@@ -122,7 +122,7 @@ describe("scalar viz settings", () => {
         }),
       ),
     ];
-    renderWithProviders(<QuestionChartSettings series={series} />);
+    render(<QuestionChartSettings series={series} />);
 
     expect(
       await screen.findByRole("radio", { name: "Formatting" }),
@@ -158,7 +158,7 @@ describe("scalar viz settings", () => {
         }),
       ),
     ];
-    renderWithProviders(<QuestionChartSettings series={series} />);
+    render(<QuestionChartSettings series={series} />);
 
     expect(
       await screen.findByRole("radio", { name: "Formatting" }),

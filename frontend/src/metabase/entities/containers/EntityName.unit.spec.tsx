@@ -3,7 +3,7 @@ import {
   setupDashboardEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockCard, createMockDashboard } from "metabase-types/api/mocks";
 
 import { EntityName } from "./EntityName";

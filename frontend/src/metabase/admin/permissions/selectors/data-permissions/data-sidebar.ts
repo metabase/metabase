@@ -35,17 +35,19 @@ export type DataSidebarProps = {
   filterPlaceholder: string;
 };
 
-const getRouteParams = (
+const getRawRouteParams = (
   _state: State,
   props: { params: RawDataRouteParams },
-) => {
-  const { databaseId, schemaName, tableId } = props.params;
-  return {
+) => props.params;
+
+const getRouteParams = createSelector(
+  getRawRouteParams,
+  ({ databaseId, schemaName, tableId }) => ({
     databaseId,
     schemaName,
     tableId,
-  };
-};
+  }),
+);
 
 const getSchemaId = (name: string) => `schema:${name}`;
 const getTableId = (id: string | number) => `table:${id}`;

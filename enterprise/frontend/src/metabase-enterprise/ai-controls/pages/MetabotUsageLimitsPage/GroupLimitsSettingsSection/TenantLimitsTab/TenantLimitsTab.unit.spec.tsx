@@ -1,7 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupUpdateAIControlsTenantLimitEndpoint } from "__support__/server-mocks/metabot";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import type {
   MetabotLimitPeriod,
   MetabotLimitType,

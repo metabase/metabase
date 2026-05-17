@@ -1,6 +1,6 @@
 import { Route } from "react-router";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import * as Urls from "metabase/urls";
 import { createMockSegment } from "metabase-types/api/mocks";
 

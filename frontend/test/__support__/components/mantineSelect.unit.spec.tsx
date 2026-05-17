@@ -1,4 +1,4 @@
-import { render, screen, within } from "__support__/ui";
+import { render, screen, within } from "__support__/ui-minimal";
 import { Select } from "metabase/ui";
 
 import { viewMantineSelectOptions } from "./mantineSelect";
