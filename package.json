@@ -390,6 +390,7 @@
     "stylelint-config-css-modules": "^4.5.1",
     "stylelint-config-standard": "^36.0.0",
     "swc-loader": "^0.2.6",
+    "swc_mut_cjs_exports": "^10.7.0",
     "ts-dedent": "^2.2.0",
     "ts-morph": "^25.0.0",
     "tsx": "^4.19.3",
