@@ -10,13 +10,6 @@ const POSITIVE_FEEDBACK_MESSAGE_ID = "00000000-0000-4000-8000-000000000001";
 const NEGATIVE_FEEDBACK_MESSAGE_ID = "00000000-0000-4000-8000-000000000002";
 
 describe("McpFeedbackButtons", () => {
-  beforeEach(() => {
-    jest
-      .spyOn(crypto, "randomUUID")
-      .mockReturnValueOnce(POSITIVE_FEEDBACK_MESSAGE_ID)
-      .mockReturnValueOnce(NEGATIVE_FEEDBACK_MESSAGE_ID);
-  });
-
   afterEach(() => {
     jest.restoreAllMocks();
   });
@@ -60,6 +53,9 @@ describe("McpFeedbackButtons", () => {
       "Useful chart",
     );
 
+    jest
+      .spyOn(crypto, "randomUUID")
+      .mockReturnValueOnce(POSITIVE_FEEDBACK_MESSAGE_ID);
     await user.click(screen.getByRole("button", { name: "Submit" }));
 
     await waitFor(() =>
@@ -95,6 +91,9 @@ describe("McpFeedbackButtons", () => {
     });
 
     await user.click(screen.getByTestId("mcp-feedback-thumbs-down"));
+    jest
+      .spyOn(crypto, "randomUUID")
+      .mockReturnValueOnce(NEGATIVE_FEEDBACK_MESSAGE_ID);
     await user.click(screen.getByRole("button", { name: "Submit" }));
 
     await waitFor(async () =>

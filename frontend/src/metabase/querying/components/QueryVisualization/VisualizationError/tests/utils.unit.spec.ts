@@ -1,5 +1,3 @@
-/** @jest-environment node */
-
 import { adjustPositions, stripRemarks } from "../utils";
 
 describe("adjustPositions", () => {

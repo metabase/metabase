@@ -793,7 +793,7 @@ describe("QB Actions > initializeQB", () => {
       await firstInit;
       jest.runAllTimers();
 
-      const archiveError = setErrorPage(
+      const archiveError = getSetErrorPageAction(
         expect.objectContaining({ data: { error_code: "archived" } }),
       );
       expect(dispatch).not.toHaveBeenCalledWith(archiveError);

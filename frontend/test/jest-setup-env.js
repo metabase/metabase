@@ -3,11 +3,13 @@ import { cleanup } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 // Mock clipboard API for tests
-Object.assign(navigator, {
-  clipboard: {
-    writeText: jest.fn(() => Promise.resolve()),
-  },
-});
+if (typeof navigator !== "undefined") {
+  Object.assign(navigator, {
+    clipboard: {
+      writeText: jest.fn(() => Promise.resolve()),
+    },
+  });
+}
 
 beforeEach(() => {
   fetchMock.mockGlobal();

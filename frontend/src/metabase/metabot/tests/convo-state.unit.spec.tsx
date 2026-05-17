@@ -35,7 +35,6 @@ describe("metabot > convo state", () => {
   });
 
   it("should not update the convo state on a failed request", async () => {
-    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation();
     const { store } = setup();
     const getConvoReqState = () =>
       getMetabotRequestState(store.getState(), "omnibot");
@@ -49,11 +48,11 @@ describe("metabot > convo state", () => {
 
     expect(getConvoReqState()).toEqual({});
     await enterChatMessage("Request");
+    await assertConversation([
+      ["user", "Request"],
+      ["agent", /Something went wrong/],
+    ]);
     expect(getConvoReqState()).toEqual({});
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "Anthropic API key expired or invalid",
-    );
-    consoleErrorSpy.mockRestore();
   });
 
   it("should preserve conversation state if aborted response didn't contain a state data object", async () => {
