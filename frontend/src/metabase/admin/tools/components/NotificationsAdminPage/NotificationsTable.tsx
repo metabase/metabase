@@ -230,7 +230,7 @@ export const NotificationsTable = ({
       },
       {
         id: "last_sent",
-        header: t`Last sent`,
+        header: t`Last send attempt`,
         width: 200,
         enableSorting: true,
         sortDescFirst: true,

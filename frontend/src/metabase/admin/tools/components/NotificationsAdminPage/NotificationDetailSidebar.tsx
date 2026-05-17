@@ -482,7 +482,7 @@ const DetailsSection = ({
           }
         />
         <DetailsRow
-          label={t`Last sent`}
+          label={t`Last send attempt`}
           value={
             <Stack gap={4}>
               <Text size="md" c="text-primary">
