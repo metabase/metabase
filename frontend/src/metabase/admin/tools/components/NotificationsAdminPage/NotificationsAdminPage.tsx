@@ -68,7 +68,7 @@ export const NotificationsAdminPage = ({
   const { data, isLoading, isFetching, error } = useAdminListNotificationsQuery(
     buildListParams(urlState, PAGE_SIZE),
   );
-  const notifications = data?.data ?? [];
+  const notifications = useMemo(() => data?.data ?? [], [data?.data]);
   const total = data?.total ?? 0;
   const selectedCount = selectedIds.length;
 
@@ -158,13 +158,13 @@ export const NotificationsAdminPage = ({
     [patchUrlState],
   );
 
-  const handleToggleRow = (id: NotificationId) => {
+  const handleToggleRow = useCallback((id: NotificationId) => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
-  };
+  }, []);
 
-  const handleToggleAll = () => {
+  const handleToggleAll = useCallback(() => {
     setSelectedIds((prev) => {
       const allIds = notifications.map((n) => n.id);
       const allSelected =
@@ -174,7 +174,7 @@ export const NotificationsAdminPage = ({
       }
       return Array.from(new Set([...prev, ...allIds]));
     });
-  };
+  }, [notifications]);
 
   const handleRowClick = (id: NotificationId) => {
     dispatch(push(Urls.adminToolsNotificationDetail(id)));

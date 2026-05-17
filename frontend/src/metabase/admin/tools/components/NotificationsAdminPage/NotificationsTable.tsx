@@ -8,10 +8,10 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import {
   Badge,
   Card,
-  Checkbox,
   Ellipsified,
   Flex,
   Icon,
+  type SelectionState,
   Text,
   Tooltip,
   TreeTable,
@@ -105,11 +105,6 @@ export const NotificationsTable = ({
   const selectedRowId =
     selectedDetailId !== undefined ? String(selectedDetailId) : null;
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-  const allSelected =
-    notifications.length > 0 &&
-    notifications.every((n) => selectedSet.has(n.id));
-  const someSelected =
-    !allSelected && notifications.some((n) => selectedSet.has(n.id));
 
   const handleSortingChange = useCallback(
     (updater: Updater<SortingState>) => {
@@ -119,30 +114,21 @@ export const NotificationsTable = ({
     [sorting, onSortingChange],
   );
 
+  const getSelectionState = useCallback(
+    (row: Row<AdminNotification>): SelectionState =>
+      selectedSet.has(row.original.id) ? "all" : "none",
+    [selectedSet],
+  );
+
+  const handleCheckboxClick = useCallback(
+    (row: Row<AdminNotification>) => {
+      onToggleRow(row.original.id);
+    },
+    [onToggleRow],
+  );
+
   const columns = useMemo<TreeTableColumnDef<AdminNotification>[]>(
     () => [
-      {
-        id: "_select",
-        width: 48,
-        enableSorting: false,
-        header: () => (
-          <Checkbox
-            aria-label={t`Select all`}
-            checked={allSelected}
-            indeterminate={someSelected}
-            onChange={onToggleAll}
-            disabled={notifications.length === 0}
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            aria-label={t`Select notification ${row.original.id}`}
-            checked={selectedSet.has(row.original.id)}
-            onClick={(e) => e.stopPropagation()}
-            onChange={() => onToggleRow(row.original.id)}
-          />
-        ),
-      },
       {
         id: "id",
         header: t`ID`,
@@ -252,14 +238,7 @@ export const NotificationsTable = ({
         cell: ({ row }) => <TimestampCell run={row.original.last_sent} />,
       },
     ],
-    [
-      allSelected,
-      someSelected,
-      notifications.length,
-      selectedSet,
-      onToggleAll,
-      onToggleRow,
-    ],
+    [],
   );
 
   const instance = useTreeTableInstance<AdminNotification>({
@@ -304,6 +283,11 @@ export const NotificationsTable = ({
       <TreeTable
         instance={instance}
         hierarchical={false}
+        showCheckboxes
+        getSelectionState={getSelectionState}
+        onCheckboxClick={handleCheckboxClick}
+        onHeaderCheckboxClick={onToggleAll}
+        headerCheckboxAriaLabel={t`Select all`}
         ariaLabel={t`Notifications`}
         onRowClick={handleRowClick}
         getRowProps={getRowProps}
