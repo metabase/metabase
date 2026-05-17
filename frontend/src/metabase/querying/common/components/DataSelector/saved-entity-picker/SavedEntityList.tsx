@@ -1,8 +1,7 @@
 import { Fragment } from "react";
 import { t } from "ttag";
 
-import { skipToken } from "metabase/api/api";
-import { useListCollectionItemsQuery } from "metabase/api/collection";
+import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SelectList } from "metabase/common/components/SelectList";

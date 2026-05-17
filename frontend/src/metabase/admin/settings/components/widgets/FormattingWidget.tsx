@@ -13,7 +13,7 @@ import {
 import {
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
-} from "metabase/visualizations/lib/formatting/date";
+} from "metabase/visualizations/lib/formatting";
 import type { FormattingSettings } from "metabase-types/api";
 
 import { SetByEnvVar } from "./AdminSettingInput";

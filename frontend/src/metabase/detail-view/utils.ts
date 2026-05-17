@@ -1,6 +1,6 @@
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import type { OptionsType } from "metabase/utils/formatting";
-import { formatValue } from "metabase/visualizations/lib/formatting/value";
+import { formatValue } from "metabase/visualizations/lib/formatting";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import {
   getGlobalSettingsForColumn,

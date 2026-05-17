@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import { updateQuestion } from "metabase/query_builder/actions/core/updateQuestion";
+import { updateQuestion } from "metabase/query_builder/actions";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { NotebookNativePreview as ControlledNotebookNativePreview } from "metabase/querying/notebook/components/NotebookNativePreview";
 import { useDispatch, useSelector } from "metabase/redux";

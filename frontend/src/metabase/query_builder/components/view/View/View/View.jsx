@@ -11,14 +11,16 @@ import { getEntityTypeFromCardType } from "metabase/collections/utils";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Toaster } from "metabase/common/components/Toaster";
-import { useSetCollection } from "metabase/common/hooks/use-set-collection";
+import { useSetCollection } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { Questions } from "metabase/entities/questions";
-import { setArchivedQuestion } from "metabase/query_builder/actions/core/updateQuestion";
-import { rememberLastUsedDatabase } from "metabase/query_builder/actions/native";
-import { runOrCancelQuestionOrSelectedQuery } from "metabase/query_builder/actions/querying";
+import {
+  rememberLastUsedDatabase,
+  runOrCancelQuestionOrSelectedQuery,
+  setArchivedQuestion,
+} from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor";
 import { connect, useDispatch } from "metabase/redux";

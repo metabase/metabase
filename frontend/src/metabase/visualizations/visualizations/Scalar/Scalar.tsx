@@ -269,9 +269,7 @@ export class Scalar extends Component<
           >
             <Stack
               onClick={handleClick}
-              ref={(scalar) => {
-                this._scalar = scalar;
-              }}
+              ref={(scalar) => (this._scalar = scalar)}
               align="center"
               gap={0}
             >

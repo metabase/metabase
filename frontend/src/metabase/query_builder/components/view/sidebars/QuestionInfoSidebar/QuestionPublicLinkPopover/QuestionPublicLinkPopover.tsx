@@ -3,7 +3,7 @@ import { useState } from "react";
 import {
   useCreateCardPublicLinkMutation,
   useDeleteCardPublicLinkMutation,
-} from "metabase/api/card";
+} from "metabase/api";
 import { type ExportFormat, exportFormats } from "metabase/common/types/export";
 import { PublicLinkPopover } from "metabase/embedding/components/PublicLinkPopover/PublicLinkPopover";
 import {

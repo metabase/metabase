@@ -2,8 +2,7 @@ import cx from "classnames";
 import { useState } from "react";
 import { c, t } from "ttag";
 
-import { skipToken } from "metabase/api/api";
-import { useGetDashboardQuery } from "metabase/api/dashboard";
+import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { getCollectionName } from "metabase/collections/utils";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";

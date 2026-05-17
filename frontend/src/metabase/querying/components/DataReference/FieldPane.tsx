@@ -1,7 +1,9 @@
-import { skipToken } from "metabase/api/api";
-import { useGetCardQueryMetadataQuery } from "metabase/api/card";
-import { useGetFieldQuery } from "metabase/api/field";
-import { useGetTableQuery } from "metabase/api/table";
+import {
+  skipToken,
+  useGetCardQueryMetadataQuery,
+  useGetFieldQuery,
+  useGetTableQuery,
+} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { TableColumnInfo } from "metabase/common/components/MetadataInfo/ColumnInfo";
 import { SidebarContent } from "metabase/common/components/SidebarContent";

@@ -2,12 +2,12 @@ import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { skipToken } from "metabase/api/api";
 import {
+  skipToken,
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
-} from "metabase/api/database";
-import { useSearchQuery } from "metabase/api/search";
+  useSearchQuery,
+} from "metabase/api";
 import { getCollectionName } from "metabase/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarContent } from "metabase/common/components/SidebarContent";

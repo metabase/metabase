@@ -5,7 +5,7 @@ import {
   useGetFieldValuesQuery,
   useGetRemappedFieldValueQuery,
   useSearchFieldValuesQuery,
-} from "metabase/api/field";
+} from "metabase/api";
 import {
   FieldValuePicker,
   type UseGetFieldValuesArgs,
