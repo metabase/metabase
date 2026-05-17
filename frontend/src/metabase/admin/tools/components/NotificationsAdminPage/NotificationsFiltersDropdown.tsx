@@ -7,7 +7,6 @@ import {
   Flex,
   Group,
   Icon,
-  type IconName,
   Indicator,
   Popover,
   Stack,
@@ -16,6 +15,7 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import type {
+  IconName,
   NotificationChannelType,
   NotificationRunStatus,
 } from "metabase-types/api";
@@ -140,7 +140,7 @@ export const NotificationsFiltersDropdown = ({ state, onChange }: Props) => {
           </Button>
         </Indicator>
       </Popover.Target>
-      <Popover.Dropdown p="md">
+      <Popover.Dropdown p="lg">
         <Stack gap="xl" w={300}>
           <FilterSection label={t`Channel`}>
             {CHANNEL_VALUES.map((channel) => (
@@ -202,7 +202,7 @@ export const NotificationsFiltersDropdown = ({ state, onChange }: Props) => {
             />
           </FilterSection>
 
-          <Group gap="sm" grow>
+          <Group gap="md" grow>
             <Button variant="default" onClick={handleClear}>
               {t`Clear filters`}
             </Button>
