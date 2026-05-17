@@ -54,7 +54,7 @@ export async function setup({
     enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
-  renderWithProviders(
+  const utils = renderWithProviders(
     <SnippetSidebar
       onClose={() => null}
       setModalSnippet={() => null}
@@ -68,4 +68,6 @@ export async function setup({
     },
   );
   await waitForLoaderToBeRemoved();
+
+  return utils;
 }

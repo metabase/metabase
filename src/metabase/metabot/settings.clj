@@ -21,8 +21,7 @@
   :default    true
   :getter     #(and (llm.settings/ai-features-enabled?)
                     (setting/get-value-of-type :boolean :metabot-enabled?))
-  :export?    true
-  :doc        false)
+  :export?    true)
 
 (defsetting metabot-name
   (deferred-tru "The display name for Metabot.")
@@ -91,8 +90,7 @@
   :default    true
   :getter     #(and (llm.settings/ai-features-enabled?)
                     (setting/get-value-of-type :boolean :embedded-metabot-enabled?))
-  :export?    true
-  :doc        false)
+  :export?    true)
 
 ;;; ------------------------------------------------- LLM Provider ------------------------------------------------
 
@@ -217,7 +215,6 @@
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-ai-metabot-provider
-  :doc              false
   :setter           (fn [new-value]
                       (when new-value
                         (validate-metabot-provider! new-value))

@@ -1,4 +1,5 @@
 (ns metabase.search.in-place.scoring-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.search.in-place.scoring-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]

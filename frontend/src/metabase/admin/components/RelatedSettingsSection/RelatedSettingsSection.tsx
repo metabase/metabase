@@ -1,15 +1,8 @@
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import {
-  Card,
-  Group,
-  Icon,
-  type IconName,
-  SimpleGrid,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Card, Group, Icon, SimpleGrid, Stack, Text } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./RelatedSettingsSection.module.css";
 import type { RelatedSettingItem } from "./constants";

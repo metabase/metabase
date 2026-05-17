@@ -1,10 +1,10 @@
-import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors";
 import type {
   CardType,
   Collection,
   CollectionItemModel,
   CollectionType,
+  IconName,
   SearchModel,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -34,6 +34,7 @@ export type ObjectWithModel = {
   effective_location?: Collection["location"];
   is_personal?: boolean;
   is_remote_synced?: boolean;
+  is_library_root?: boolean;
 };
 
 export const modelIconMap: Record<IconModel, IconName> = {

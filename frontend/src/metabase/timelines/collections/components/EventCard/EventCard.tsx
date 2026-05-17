@@ -1,13 +1,12 @@
 import { memo } from "react";
 import { t } from "ttag";
 
-import { EntityMenu } from "metabase/common/components/EntityMenu";
-import { Link } from "metabase/common/components/Link";
-import type { IconName } from "metabase/ui";
+import { ForwardRefLink, Link } from "metabase/common/components/Link";
+import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import Settings from "metabase/utils/settings";
 import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
-import type { Timeline, TimelineEvent } from "metabase-types/api";
+import type { IconName, Timeline, TimelineEvent } from "metabase-types/api";
 
 import {
   CardAside,
@@ -66,7 +65,14 @@ const EventCard = ({
       </CardBody>
       {menuItems.length > 0 && (
         <CardAside>
-          <EntityMenu items={menuItems} triggerIcon="ellipsis" />
+          <Menu position="bottom-end" shadow="md">
+            <Menu.Target>
+              <ActionIcon variant="subtle" aria-label={t`Event menu`}>
+                <Icon name="ellipsis" />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>{menuItems}</Menu.Dropdown>
+          </Menu>
         </CardAside>
       )}
     </CardRoot>
@@ -85,29 +91,36 @@ const getMenuItems = (
 
   if (!event.archived) {
     return [
-      {
-        title: t`Edit event`,
-        link: Urls.editEventInCollection(event, timeline),
-      },
-      {
-        title: t`Move event`,
-        link: Urls.moveEventInCollection(event, timeline),
-      },
-      {
-        title: t`Archive event`,
-        action: () => onArchive?.(event),
-      },
+      <Menu.Item
+        key="edit-event"
+        component={ForwardRefLink}
+        to={Urls.editEventInCollection(event, timeline)}
+      >
+        {t`Edit event`}
+      </Menu.Item>,
+      <Menu.Item
+        key="move-event"
+        component={ForwardRefLink}
+        to={Urls.moveEventInCollection(event, timeline)}
+      >
+        {t`Move event`}
+      </Menu.Item>,
+      <Menu.Item key="archive-event" onClick={() => onArchive?.(event)}>
+        {t`Archive event`}
+      </Menu.Item>,
     ];
   } else {
     return [
-      {
-        title: t`Unarchive event`,
-        action: () => onUnarchive?.(event),
-      },
-      {
-        title: t`Delete event`,
-        link: Urls.deleteEventInCollection(event, timeline),
-      },
+      <Menu.Item key="unarchive-event" onClick={() => onUnarchive?.(event)}>
+        {t`Unarchive event`}
+      </Menu.Item>,
+      <Menu.Item
+        key="delete-event"
+        component={ForwardRefLink}
+        to={Urls.deleteEventInCollection(event, timeline)}
+      >
+        {t`Delete event`}
+      </Menu.Item>,
     ];
   }
 };

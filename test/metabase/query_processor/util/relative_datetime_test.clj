@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor.util.relative-datetime-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.util.relative-datetime-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.util.relative-datetime-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [honey.sql :as sql]

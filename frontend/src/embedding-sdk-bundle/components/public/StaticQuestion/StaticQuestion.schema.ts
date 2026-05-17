@@ -12,6 +12,8 @@ const propsSchema: Yup.SchemaOf<StaticQuestionInternalProps> = Yup.object({
   className: Yup.mixed().optional(),
   height: Yup.mixed().optional(),
   initialSqlParameters: Yup.mixed().optional(),
+  sqlParameters: Yup.mixed().optional(),
+  onSqlParametersChange: Yup.mixed().optional(),
   hiddenParameters: Yup.mixed().optional(),
   questionId: Yup.mixed().when(["token", "query"], {
     is: (token: unknown, query: unknown) =>

@@ -38,11 +38,14 @@
 (p/import-vars
  [metabase.permissions.models.data-permissions
   at-least-as-permissive?
+  batch-delete-permissions!
+  batch-insert-permissions!
   disable-perms-cache
   download-perms-level
   full-db-permission-for-user
   full-schema-permission-for-user
   groups-have-permission-for-table?
+  index-database-permissions
   is-superuser?
   is-data-analyst?
   most-permissive-database-permission-for-user

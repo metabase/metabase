@@ -109,7 +109,7 @@ export function updateTablesPermission(
   permission: DataPermission,
 ) {
   const schema = database.schema(schemaName);
-  const tableIds = schema?.getTables().map((t: Table) => t.id);
+  const tableIds = schema?.tables?.map((t: Table) => t.id);
 
   permissions = updateSchemasPermission(
     permissions,

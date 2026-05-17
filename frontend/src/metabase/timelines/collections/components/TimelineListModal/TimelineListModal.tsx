@@ -1,12 +1,13 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { EntityMenu } from "metabase/common/components/EntityMenu";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import {
   getDefaultTimelineName,
   getSortedTimelines,
 } from "metabase/common/utils/timelines";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
+import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Collection, Timeline } from "metabase-types/api";
 
@@ -60,7 +61,14 @@ const TimelineListModal = ({
         pathOptions={pathOptions}
       >
         {hasMenuItems && (
-          <EntityMenu items={menuItems} triggerIcon="ellipsis" />
+          <Menu position="bottom-end" shadow="md">
+            <Menu.Target>
+              <ActionIcon variant="subtle" aria-label={t`Timelines menu`}>
+                <Icon name="ellipsis" />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>{menuItems}</Menu.Dropdown>
+          </Menu>
         )}
       </ModalHeader>
       <ModalBody isTopAligned={hasTimelines}>
@@ -96,14 +104,20 @@ const getMenuItems = (collection: Collection, isArchive: boolean) => {
   }
 
   return [
-    {
-      title: t`New timeline`,
-      link: Urls.newTimelineInCollection(collection),
-    },
-    {
-      title: t`View archived timelines`,
-      link: Urls.timelinesArchiveInCollection(collection),
-    },
+    <Menu.Item
+      key="new-timeline"
+      component={ForwardRefLink}
+      to={Urls.newTimelineInCollection(collection)}
+    >
+      {t`New timeline`}
+    </Menu.Item>,
+    <Menu.Item
+      key="view-archived-timelines"
+      component={ForwardRefLink}
+      to={Urls.timelinesArchiveInCollection(collection)}
+    >
+      {t`View archived timelines`}
+    </Menu.Item>,
   ];
 };
 

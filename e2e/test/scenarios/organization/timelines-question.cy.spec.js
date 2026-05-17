@@ -441,6 +441,39 @@ describe("scenarios > organization > timelines > question", () => {
       H.echartsIcon("star", true).should("be.visible");
     });
 
+    it("should display the event tooltip when hovering on a stacked chart #74005", () => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [
+          { name: "RC1", timestamp: "2027-10-20T00:00:00Z", icon: "star" },
+        ],
+      });
+
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"], ["sum", ["field", ORDERS.TOTAL, null]]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+        visualization_settings: {
+          "graph.split_panels": true,
+        },
+      });
+
+      H.echartsIcon("star").should("be.visible");
+      H.echartsIcon("star").realHover();
+      cy.findByTestId("timeline-event-tooltip").within(() => {
+        cy.findByText("RC1").should("be.visible");
+      });
+    });
+
     it("should open the sidebar when clicking an event icon", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },

@@ -5,7 +5,6 @@ import fetchMock from "fetch-mock";
 import { setupCardEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, queryIcon, renderWithProviders } from "__support__/ui";
-import { Collections } from "metabase/entities/collections";
 import { Dashboards } from "metabase/entities/dashboards";
 import { Questions } from "metabase/entities/questions";
 import {
@@ -211,9 +210,7 @@ describe("ActionMenu", () => {
 
     describe("getParentEntityLink", () => {
       it("should generate collection link for collection question", () => {
-        const updatedCollection = Collections.wrapEntity(
-          createMockCollectionItem({ archived: false }),
-        );
+        const updatedCollection = createMockCollectionItem({ archived: false });
         const link = getParentEntityLink(updatedCollection, undefined);
         expect(link).toBe("/collection/root");
       });
@@ -222,9 +219,7 @@ describe("ActionMenu", () => {
         const updatedDashboard = Dashboards.wrapEntity(
           createMockDashboard({ archived: false }),
         );
-        const parentCollection = Collections.wrapEntity(
-          createMockCollectionItem({ id: 123 }),
-        );
+        const parentCollection = createMockCollectionItem({ id: 123 });
         const link = getParentEntityLink(updatedDashboard, parentCollection);
         expect(link).toBe("/collection/123-question");
       });

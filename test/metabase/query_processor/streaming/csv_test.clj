@@ -1,4 +1,5 @@
 (ns ^:mb/driver-tests metabase.query-processor.streaming.csv-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.streaming.csv-test]}}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.string :as str]

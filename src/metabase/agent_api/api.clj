@@ -3,6 +3,7 @@
   Endpoints are versioned (e.g., /v1/search) and use standard HTTP semantics."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.agent-api.validation :as agent-api.validation]
    [metabase.agent-lib.core :as agent-lib]
    [metabase.api.common :as api]
@@ -14,7 +15,9 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.core :as metabot]
+   [metabase.metabot.feedback :as metabot.feedback]
    [metabase.metabot.tools.construct :as metabot-construct]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
@@ -62,6 +65,18 @@
   [{:keys [structured-output output status-code]}]
   (or structured-output
       (api/check false [(or status-code 404) (or output "Not found.")])))
+
+(defn submit-mcp-visualization-feedback!
+  "Submit MCP Apps visualization feedback to Harbormaster.
+
+  MCP Apps do not create `metabot_message` rows, so this intentionally skips
+  local feedback persistence and forwards the MCP visualization context."
+  [body]
+  (let [metabot-id (api/check-500 (metabot.config/normalize-metabot-id metabot.config/embedded-metabot-id))
+        body       (assoc body :metabot_id metabot-id)]
+    (metabot.config/check-metabot-enabled!)
+    (metabot.feedback/submit-to-harbormaster!
+     (metabot.feedback/mcp-harbormaster-payload body))))
 
 ;;; --------------------------------------------------- Schemas ------------------------------------------------------
 
@@ -355,7 +370,7 @@
 ;;; ------------------------------------------------ Construct Query -------------------------------------------------
 
 (mr/def ::program-request
-  "Request body for /v2/construct-query and /v2/query.
+  "Request body for /v2/query.
   An agent-lib structured program with `:source` and `:operations`. The top-level
   `:source` must reference a database entity (`table`, `card`, `dataset`, or
   `metric`); `context` and nested `program` sources are rejected at the HTTP
@@ -363,16 +378,164 @@
   in-process evaluation context."
   agent-lib/program-schema)
 
+(def ^:private construct-query-prompt-max-length
+  10000)
+
+(def ^:private ConstructQueryPrompt
+  (mut/update-properties
+   [:and
+    ms/NonBlankString
+    [:string {:max construct-query-prompt-max-length}]]
+   merge
+   {:json-schema {:type        "string"
+                  :minLength   1
+                  :maxLength   construct-query-prompt-max-length
+                  :description "The user's exact original message, when available. Pass it as-is without summarizing or rewriting."}}))
+
+(mr/def ::construct-query-request
+  "Request body for /v2/construct-query. Same as program-request, with an optional prompt
+  capturing the user's original intent when a caller has one."
+  (mut/merge agent-lib/program-schema
+             [:map
+              [:prompt {:optional true} ConstructQueryPrompt]]))
+
 (mr/def ::construct-query-response
-  "Response containing a base64-encoded MBQL query for use with /v1/execute."
+  "Response containing a base64-encoded MBQL query and, when supplied, the original prompt for use with /v1/execute."
   [:map
-   [:query ms/NonBlankString]])
+   [:query ms/NonBlankString]
+   [:prompt {:optional true} ConstructQueryPrompt]])
 
 (def ^:private allowed-program-source-types
   "Top-level program source types that the HTTP boundary accepts. `context` and
   nested `program` sources require an in-process evaluation context and are
   rejected here."
   #{"table" "card" "dataset" "metric"})
+
+(def ^:private construct-query-tool-description
+  "User-facing description for the `construct_query` MCP tool. Tuned to give the
+  LLM enough structure to produce valid programs without reproducing the full
+  reference — covers the program shape, canonical operator names, reference forms,
+  and a few worked examples spanning the common patterns."
+  (str
+   "Construct a Metabase MBQL query from a structured program. The body structure is:\n"
+   "`{\"source\": {...}, \"operations\": [...]}`\n"
+   "For MCP calls, include `\"prompt\": \"<user's exact original message>\"` whenever you have the user's message; do not summarize or modify it.\n"
+   "Returns `{\"query_handle\": \"<uuid>\"}` — pass it as `query_handle` to `execute_query` or `visualize_query`.\n"
+   "For the full reference, read the `metabase://docs/construct-query.md` MCP resource.\n"
+   "\n"
+   "IMPORTANT: field IDs must come from entity-detail endpoints (`/v1/table/{id}`, `/v1/metric/{id}`). "
+   "Do not invent IDs. The backend repairs minor mistakes (aliases, casing, over-wrapping) before validation, "
+   "but the canonical names below always work.\n"
+   "\n"
+   "## Workflow\n"
+   "1. Use `search_entities` / entity-detail tools to find the table/metric/model and its fields.\n"
+   "2. Call `construct_query` with the program. Include the user's original `prompt` whenever available. You get back `{\"query_handle\": \"<uuid>\"}`.\n"
+   "3. Pass that handle to `execute_query` or `visualize_query` as `query_handle`.\n"
+   "Never embed IDs you did not read from a metadata endpoint — invented IDs will fail at execution.\n"
+   "\n"
+   "## Source\n"
+   "One of `{\"type\": T, \"id\": N}`:\n"
+   "- `table` — a database table\n"
+   "- `card` — a saved question\n"
+   "- `dataset` — a model (model card id)\n"
+   "- `metric` — a metric (supplies its own aggregation and time dimension; extra aggregates usually unnecessary)\n"
+   "\n"
+   "## Top-level operations (applied in order)\n"
+   "Each operation is `[\"op\", arg, ...]`:\n"
+   "- `[\"filter\", clause]` — add a filter\n"
+   "- `[\"aggregate\", agg-clause]` — add an aggregation\n"
+   "- `[\"breakout\", ref-or-bucketed]` — add a grouping dimension\n"
+   "- `[\"expression\", \"Name\", expr]` — define a named computed column (reference later with `expression-ref`)\n"
+   "- `[\"with-fields\", [refs...]]` — restrict returned columns\n"
+   "- `[\"order-by\", ref]` or `[\"order-by\", ref, \"asc\"|\"desc\"]` — sort\n"
+   "- `[\"limit\", N]` — cap rows\n"
+   "- `[\"join\", join-clause]` — join another entity\n"
+   "- `[\"append-stage\"]` — start a new query stage (needed to filter on aggregated values)\n"
+   "- `[\"with-page\", {\"page\": N, \"items\": M}]` — paginate\n"
+   "\n"
+   "## References (used as arguments inside operations)\n"
+   "- `[\"field\", N]` — database field by id. Do NOT put options in a third slot (no `[\"field\", id, {...}]`); wrap instead\n"
+   "- `[\"expression-ref\", \"Name\"]` — a named expression defined earlier\n"
+   "- `[\"aggregation-ref\", N]` — the Nth `aggregate` defined earlier (0-based). REQUIRED when sorting by an aggregated value\n"
+   "- `[\"measure\", N]` — a pre-defined measure on the source entity\n"
+   "- `[\"with-temporal-bucket\", ref, unit]` — temporal bucketing. `unit` is one of: `minute` `hour` `day` `week` `month` `quarter` `year`. Also `day-of-week`, `hour-of-day`, etc. (extraction aliases)\n"
+   "- `[\"with-binning\", ref, {\"strategy\": \"num-bins\"|\"bin-width\"|\"default\", ...}]` — numeric binning. E.g. `{\"strategy\": \"num-bins\", \"num-bins\": 10}`\n"
+   "\n"
+   "## Filter operators\n"
+   "`=`, `!=`, `<`, `<=`, `>`, `>=`, `between`, `in`, `not-in`, `is-null`, `not-null`, `is-empty`, `not-empty`, "
+   "`contains`, `does-not-contain`, `starts-with`, `ends-with`, `time-interval`, `and`, `or`, `not`, `segment`.\n"
+   "Examples: `[\"=\", [\"field\", 101], \"active\"]`, `[\"between\", [\"field\", 305], \"2024-01-01\", \"2024-12-31\"]`, "
+   "`[\"in\", [\"field\", 302], [10, 20, 30]]`, `[\"time-interval\", [\"field\", 305], -7, \"day\"]`.\n"
+   "\n"
+   "## Aggregation operators\n"
+   "`count`, `sum`, `avg`, `min`, `max`, `distinct`, `median`, `stddev`, `var`, `percentile`, "
+   "`count-where`, `sum-where`, `distinct-where`, `share`, `cum-count`, `cum-sum`. "
+   "Examples: `[\"count\"]`, `[\"sum\", [\"field\", 302]]`, `[\"count-where\", [\"=\", [\"field\", 101], \"completed\"]]`.\n"
+   "\n"
+   "## Temporal helpers (for use in `expression` or as grouping)\n"
+   "`get-year`, `get-quarter`, `get-month`, `get-week`, `get-day`, `get-day-of-week`, `get-hour`, `get-minute`, "
+   "`datetime-add`, `datetime-diff`, `datetime-subtract`, `now`, `today`, `relative-datetime`, `absolute-datetime`, "
+   "`with-temporal-bucket`, `convert-timezone`.\n"
+   "\n"
+   "## Examples\n"
+   "Top 5 customers by revenue:\n"
+   "```\n"
+   "{\"source\": {\"type\": \"table\", \"id\": 42},\n"
+   " \"operations\": [[\"aggregate\", [\"sum\", [\"field\", 302]]],\n"
+   "                [\"breakout\", [\"field\", 101]],\n"
+   "                [\"order-by\", [\"aggregation-ref\", 0], \"desc\"],\n"
+   "                [\"limit\", 5]]}\n"
+   "```\n"
+   "Monthly revenue from a metric (metric supplies the aggregation):\n"
+   "```\n"
+   "{\"source\": {\"type\": \"metric\", \"id\": 10},\n"
+   " \"operations\": [[\"breakout\", [\"with-temporal-bucket\", [\"field\", 305], \"month\"]],\n"
+   "                [\"order-by\", [\"with-temporal-bucket\", [\"field\", 305], \"month\"], \"asc\"]]}\n"
+   "```\n"
+   "Filter on an aggregated value (requires `append-stage`):\n"
+   "```\n"
+   "{\"source\": {\"type\": \"table\", \"id\": 42},\n"
+   " \"operations\": [[\"aggregate\", [\"sum\", [\"field\", 302]]],\n"
+   "                [\"breakout\", [\"field\", 101]],\n"
+   "                [\"append-stage\"],\n"
+   "                [\"filter\", [\">\", [\"aggregation-ref\", 0], 1000]]]}\n"
+   "```\n"
+   "Named expression referenced later:\n"
+   "```\n"
+   "{\"source\": {\"type\": \"table\", \"id\": 42},\n"
+   " \"operations\": [[\"expression\", \"Discount\", [\"-\", [\"field\", 302], [\"field\", 303]]],\n"
+   "                [\"aggregate\", [\"sum\", [\"expression-ref\", \"Discount\"]]]]}\n"
+   "```\n"
+   "Previous-period comparison with `offset` (stay in the SAME stage — do NOT add `append-stage`):\n"
+   "```\n"
+   "{\"source\": {\"type\": \"table\", \"id\": 42},\n"
+   " \"operations\": [[\"aggregate\", [\"sum\", [\"field\", 302]]],\n"
+   "                [\"aggregate\", [\"offset\", [\"sum\", [\"field\", 302]], -1]],\n"
+   "                [\"breakout\", [\"with-temporal-bucket\", [\"field\", 305], \"month\"]]]}\n"
+   "```\n"
+   "\n"
+   "## Rules & common pitfalls\n"
+   "Stage boundaries (most common source of errors):\n"
+   "- Filtering on an aggregated value REQUIRES `append-stage` between the aggregate/breakout and the filter "
+   "(see the \"filter on aggregated value\" example). Without it, `aggregation-ref` resolution fails in the same stage.\n"
+   "- Defining an `expression` that uses `aggregation-ref` also REQUIRES `append-stage` first.\n"
+   "- EXCEPTION: `offset` (previous-period comparison) stays in the same stage as its base aggregation and breakout — do NOT add `append-stage` for it.\n"
+   "\n"
+   "Refs & shapes:\n"
+   "- Aggregation helpers take field refs, not bare IDs: `[\"sum\", [\"field\", 201]]`, never `[\"sum\", 201]`.\n"
+   "- To sort by an aggregated value, use `[\"aggregation-ref\", N]` — not the original expression.\n"
+   "- Do NOT put options in a third slot of `field` (no `[\"field\", id, {...}]`). Wrap instead: `[\"with-temporal-bucket\", [\"field\", id], \"month\"]` or `[\"with-binning\", [\"field\", id], {...}]`.\n"
+   "- `case` takes `[[condition, value], ...]` branches and an optional bare fallback as the THIRD arg — do not wrap it as `{\"default\": ...}`. Omit the third arg when there is no fallback.\n"
+   "- JSON objects appear only where a helper explicitly calls for one (e.g. `with-page`, `with-binning`). Everywhere else, use operator tuples.\n"
+   "\n"
+   "Joins & related tables:\n"
+   "- If the source table's detail response already surfaces a related table's fields, use those field refs directly — no explicit join needed.\n"
+   "- Reach for `join` + `with-join-conditions` only for custom aliases, self-joins, explicit joined-field selection, or when direct related-field refs are unavailable.\n"
+   "- If an explicit join returns a permission error, the underlying table is not accessible — surface the error, do not retry with implicit refs.\n"
+   "\n"
+   "Metrics & dates:\n"
+   "- A `metric` source already provides its own aggregation and time dimension. Add only the additional breakouts/filters you need.\n"
+   "- When the user asks for an exact year (e.g. 2024), use `[\"=\", [\"field\", year_field], 2024]` or a `between` with explicit dates — not relative filters like `time-interval`.\n"))
 
 (defn- evaluate-program-to-live-query
   "Resolve a program's source entity, evaluate the program via agent-lib, and return
@@ -396,22 +559,21 @@
   "Construct an MBQL query from a structured agent-lib program.
 
   The body is the program itself: a JSON object with `source` (identifying the
-  table/card/dataset/metric to query) and `operations` (an array of operator
-  tuples). Returns a base64-encoded MBQL query that can be executed via
-  /v1/execute. See the agent_api reference for the full program syntax."
+  table/card/dataset/metric to query), `operations` (an array of operator
+  tuples), and `prompt` (the user's original request). Returns a base64-encoded
+  MBQL query that can be executed via /v1/execute. See the agent_api reference
+  for the full program syntax."
   {:scope metabot/agent-query-construct
    :tool  {:name "construct_query"
-           :description (str "Construct a Metabase query from a structured program with `source` and "
-                             "`operations`. Returns an opaque query string for execute_query. "
-                             "See the `metabase://docs/construct-query.md` resource for the full "
-                             "program syntax (sources, operations, operator forms, worked examples, "
-                             "and pitfalls).")
+           :description construct-query-tool-description
            :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
-   program :- ::program-request]
-  (let [query (evaluate-program-for-execution program)]
-    {:query (-> query json/encode u/encode-base64)}))
+   {:keys [prompt] :as request} :- ::construct-query-request]
+  (let [program (dissoc request :prompt)
+        query   (evaluate-program-for-execution program)]
+    (cond-> {:query (-> query json/encode u/encode-base64)}
+      prompt (assoc :prompt prompt))))
 
 ;;; ------------------------------------------------- Combined Query -------------------------------------------------
 
@@ -595,7 +757,11 @@
   Standard userspace query limits are enforced (2000 rows for simple queries, 10000 for aggregated)."
   {:scope metabot/agent-query-execute
    :tool  {:name "execute_query"
-           :description "Execute a previously constructed query and return the results with column metadata, row count, and execution time."
+           :description (str "Execute a previously constructed query and return raw results with column metadata, "
+                             "row count, and execution time. Use this when the user explicitly asks for raw data, "
+                             "rows, columns, counts, metadata, or programmatic query results. If the user asks to "
+                             "show, display, visualize, plot, chart, or present the result, use visualize_query "
+                             "instead.")
            :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params

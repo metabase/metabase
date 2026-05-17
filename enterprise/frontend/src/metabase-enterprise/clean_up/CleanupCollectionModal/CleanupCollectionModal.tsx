@@ -7,8 +7,6 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUserSetting } from "metabase/common/hooks";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
-import { Search } from "metabase/entities/search";
-import { useDispatch } from "metabase/redux";
 import { Flex, Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
@@ -44,7 +42,6 @@ export const CleanupCollectionModal = ({
   onClose: handleClose,
   params,
 }: CleanupCollectionModalProps) => {
-  const dispatch = useDispatch();
   const collectionId = Urls.extractCollectionId(params.slug ?? "");
 
   // selection
@@ -104,11 +101,11 @@ export const CleanupCollectionModal = ({
     { refetchOnMountOrArgChange: true },
   );
 
-  const itemsData = staleItemsData?.data;
   const total = staleItemsData?.total ?? 0;
-  const items: StaleCollectionItem[] = useMemo(() => {
-    return (itemsData ?? []).map((item) => Search.wrapEntity(item, dispatch));
-  }, [itemsData, dispatch]);
+  const items: StaleCollectionItem[] = useMemo(
+    () => staleItemsData?.data ?? [],
+    [staleItemsData?.data],
+  );
 
   // selection cont.
   const { getIsSelected } = selection;

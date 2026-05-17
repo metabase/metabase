@@ -4,6 +4,7 @@ import { type JSX, memo, useEffect, useId, useRef } from "react";
 
 import { ContentTranslationsProvider } from "embedding-sdk-bundle/components/private/ContentTranslationsProvider";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
+import { useArePluginsReady } from "embedding-sdk-bundle/hooks/private/use-are-plugins-ready";
 import { useInitDataInternal } from "embedding-sdk-bundle/hooks/private/use-init-data";
 import { useNormalizeComponentProviderProps } from "embedding-sdk-bundle/hooks/private/use-normalize-component-provider-props";
 import { useSdkCustomLoader } from "embedding-sdk-bundle/hooks/private/use-sdk-custom-loader";
@@ -130,6 +131,11 @@ export const ComponentProviderInternal = (
 
   const ensureSingleInstanceId = useId();
 
+  // Defer ContentTranslationsProvider until EE plugins are assigned to
+  // PLUGIN_CONTENT_TRANSLATION; otherwise useSetupAuthContentTranslations
+  // calls the OSS no-op, and its deps don't re-fire when the EE fn lands.
+  const pluginsReady = useArePluginsReady();
+
   return (
     <EmotionCacheProvider>
       <SdkThemeProvider theme={theme}>
@@ -142,7 +148,9 @@ export const ComponentProviderInternal = (
               <LocaleProvider locale={locale || instanceLocale}>
                 {children}
 
-                {isInstanceToRender && <ContentTranslationsProvider />}
+                {isInstanceToRender && pluginsReady && (
+                  <ContentTranslationsProvider />
+                )}
               </LocaleProvider>
 
               {isInstanceToRender && (

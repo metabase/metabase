@@ -7,17 +7,16 @@ on:
       - release-x.*
     tags:
       - v*
-      - latest-*
   workflow_dispatch:
     inputs:
       version:
-        description: 'Major Metabase version (e.g. 45, 52, 68)'
+        description: "Major Metabase version (e.g. 45, 52, 68)"
         type: number
         required: true
   workflow_call:
     inputs:
       version:
-        description: 'Major Metabase version (e.g. 45, 52, 68)'
+        description: "Major Metabase version (e.g. 45, 52, 68)"
         type: number # needs to be a number to pass variables
         required: true
 

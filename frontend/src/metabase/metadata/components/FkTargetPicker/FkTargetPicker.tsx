@@ -1,4 +1,4 @@
-import { type FocusEvent, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -32,7 +32,6 @@ export const FkTargetPicker = ({
   idFields,
   value,
   onChange,
-  onFocus,
   ...props
 }: Props) => {
   const { comparableIdFields, hasIdFields, data, optionsByFieldId } =
@@ -74,11 +73,6 @@ export const FkTargetPicker = ({
       const fieldId = getFieldIdFromValue(value);
       onChange(fieldId);
     }
-  };
-
-  const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
-    event.target.select();
-    onFocus?.(event);
   };
 
   return (
@@ -148,7 +142,6 @@ export const FkTargetPicker = ({
       searchable
       value={stringifyValue(value)}
       onChange={handleChange}
-      onFocus={handleFocus}
       {...props}
     />
   );

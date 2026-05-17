@@ -4,7 +4,6 @@
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
    [metabase-enterprise.data-complexity-score.models.data-complexity-score :as data-complexity-score]
-   [metabase-enterprise.data-complexity-score.settings :as settings]
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.api.common :as api]
@@ -86,13 +85,8 @@
           result      (complexity/complexity-scores
                        (assoc (synonym-source/complexity-scores-opts)
                               :metabot-scope (metabot-scope/internal-metabot-scope)))
-          stored      (data-complexity-score/record-score! fingerprint result)]
-      ;; Advance the last-published fingerprint iff Snowplow actually accepted the event — mirrors
-      ;; the scheduled path's gate in `task.complexity-score/run-scoring!`. Without this, a
-      ;; superuser-triggered recalculation leaves the setting stale and the next boot would
-      ;; redundantly re-score even though a valid snapshot was just persisted.
-      (when (::complexity/snowplow-published? (meta result))
-        (settings/data-complexity-scoring-last-fingerprint! fingerprint))
+          stored      (data-complexity-score/record-score! fingerprint "appdb" result)]
+      (task.complexity-score/maybe-advance-last-fingerprint! fingerprint result)
       (m.util/deep-snake-keys (or stored result)))
     (finally
       (.set api-scoring-running? false))))

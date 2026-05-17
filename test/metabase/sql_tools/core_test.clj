@@ -215,4 +215,18 @@
         "UPDATE table SET column = 1; SELECT 1"
         "DELETE FROM table WHERE id = 1; SELECT 1"
         "SET ROLE NONE; INSERT INTO table VALUES (1)"
-        "SELECT set_config('role', 'none', false); DELETE FROM table WHERE id = 1"))))
+        "SELECT set_config('role', 'none', false); DELETE FROM table WHERE id = 1"))
+    (testing "A single set operation statement returns true and the reconstructed SQL"
+      (doseq [op ["UNION ALL" "INTERSECT ALL" "EXCEPT ALL"]
+              ts [["foo" "bar"] ["foo" "bar" "baz"]]
+              :let [sql (str/join (str " " op " ") (map #(str "SELECT * FROM " %) ts))]]
+        (is (=? {:is-single-stmt? true, :sql string?}
+                (sql-tools/is-single-stmt-of-type? driver/*driver* sql "read"))))
+      (are [sql] (=? {:is-single-stmt? true, :sql string?}
+                     (sql-tools/is-single-stmt-of-type? driver/*driver* sql "read"))
+        "SELECT * FROM foo UNION ALL SELECT * FROM bar INTERSECT ALL SELECT * FROM baz"
+        "SELECT * FROM foo UNION ALL SELECT * FROM bar EXCEPT ALL SELECT * FROM baz"
+        "SELECT * FROM foo INTERSECT ALL SELECT * FROM bar UNION ALL SELECT * FROM baz"
+        "SELECT * FROM foo INTERSECT ALL SELECT * FROM bar EXCEPT ALL SELECT * FROM baz"
+        "SELECT * FROM foo EXCEPT ALL SELECT * FROM bar UNION ALL SELECT * FROM baz"
+        "SELECT * FROM foo EXCEPT ALL SELECT * FROM bar INTERSECT ALL SELECT * FROM baz"))))

@@ -14,6 +14,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { deserializeCardFromQuery } from "metabase/common/utils/card";
 import {
+  getCollectionLocationLabel,
   getCollectionLocationParts,
   getDatabaseLocationParts,
 } from "metabase/common/utils/source-location";
@@ -24,7 +25,6 @@ import {
   Collapse,
   Flex,
   Icon,
-  type IconName,
   Skeleton,
   Text,
   Tooltip,
@@ -35,6 +35,7 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
   DatasetQuery,
+  IconName,
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
   MetabotSourceFeedback,
@@ -406,7 +407,7 @@ const CardPill = ({ id, messageId }: { id: number; messageId?: string }) => {
       iconName={iconName}
       label={card?.name}
       location={{
-        parts: getCollectionLocationParts(card.collection?.name),
+        parts: [getCollectionLocationLabel(card.collection?.name)],
       }}
       messageId={messageId}
       source={{

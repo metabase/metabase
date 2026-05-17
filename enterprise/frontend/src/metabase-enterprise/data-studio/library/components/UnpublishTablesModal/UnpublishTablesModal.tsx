@@ -1,18 +1,12 @@
 import { jt, t } from "ttag";
 
 import { useGetTableSelectionInfoQuery } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { trackDataStudioTableUnpublished } from "metabase/data-studio/analytics";
-import {
-  Form,
-  FormErrorMessage,
-  FormProvider,
-  FormSubmitButton,
-} from "metabase/forms";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { UnpublishTablesModalProps } from "metabase/plugins";
 import {
-  Box,
   Button,
   FocusTrap,
   Group,
@@ -102,7 +96,7 @@ function ModalBody({
     table_ids: tableIds,
   });
   const [unpublishTables] = useUnpublishTablesMutation();
-  const { sendSuccessToast } = useMetadataToasts();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   if (isLoading || error != null || data == null) {
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -111,52 +105,46 @@ function ModalBody({
   const { selected_table, published_downstream_tables } = data;
 
   const handleSubmit = async () => {
-    await unpublishTables({
-      database_ids: databaseIds,
-      schema_ids: schemaIds,
-      table_ids: tableIds,
-    }).unwrap();
-    sendSuccessToast(t`Unpublished`);
-    trackDataStudioTableUnpublished();
-    onUnpublish();
+    try {
+      await unpublishTables({
+        database_ids: databaseIds,
+        schema_ids: schemaIds,
+        table_ids: tableIds,
+      }).unwrap();
+      sendSuccessToast(t`Unpublished`);
+      trackDataStudioTableUnpublished();
+      onUnpublish();
+    } catch (error) {
+      sendErrorToast(getErrorMessage(error, t`Failed to unpublish`));
+    }
   };
 
   return (
-    <FormProvider initialValues={{}} onSubmit={handleSubmit}>
-      <Form>
-        <Stack gap="sm">
-          <Text>
-            {getInfoMessage(selected_table, published_downstream_tables)}
-          </Text>
-          {published_downstream_tables.length > 0 && (
-            <>
-              <Text>{getForeignKeyMessage(selected_table)}</Text>
-              <List spacing="sm">
-                {published_downstream_tables.map((table) => (
-                  <List.Item key={table.id} fw="bold">
-                    {table.display_name}
-                  </List.Item>
-                ))}
-              </List>
-            </>
-          )}
-        </Stack>
-        <Group mt="xl" gap="sm" wrap="nowrap">
-          <Box flex={1}>
-            <FormErrorMessage />
-          </Box>
-          <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
-          <FormSubmitButton
-            label={getSubmitButtonLabel(
-              selected_table,
-              published_downstream_tables,
-            )}
-            variant="filled"
-            color="error"
-          />
-        </Group>
-      </Form>
-    </FormProvider>
+    <>
+      <Stack gap="sm" mt="sm">
+        <Text>
+          {getInfoMessage(selected_table, published_downstream_tables)}
+        </Text>
+        {published_downstream_tables.length > 0 && (
+          <>
+            <Text>{getForeignKeyMessage(selected_table)}</Text>
+            <List spacing="sm">
+              {published_downstream_tables.map((table) => (
+                <List.Item key={table.id} fw="bold">
+                  {table.display_name}
+                </List.Item>
+              ))}
+            </List>
+          </>
+        )}
+      </Stack>
+      <Group mt="xl" gap="sm" wrap="nowrap" justify="flex-end">
+        <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
+        <Button onClick={handleSubmit} variant="filled" color="error">
+          {getSubmitButtonLabel(selected_table, published_downstream_tables)}
+        </Button>
+      </Group>
+    </>
   );
 }
 

@@ -2,11 +2,10 @@ import { useCallback } from "react";
 
 import type { IconData, ObjectWithModel } from "metabase/common/utils/icon";
 import { modelIconMap } from "metabase/common/utils/icon";
-import { getLibraryCollectionType } from "metabase/data-studio/utils";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { PLUGIN_COLLECTIONS, PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { getIconForVisualizationType } from "metabase/visualizations";
-import type { CollectionType, VisualizationDisplay } from "metabase-types/api";
+import type { VisualizationDisplay } from "metabase-types/api";
 
 export const useGetIconForVisualizationType = () => {
   const getCustomVizIcon = PLUGIN_CUSTOM_VIZ.useCustomVizPluginsIcon();
@@ -52,15 +51,13 @@ export const useGetIconBase = () => {
         return { name: "database" };
       }
 
-      if (item.model === "collection") {
-        switch (
-          getLibraryCollectionType(item.type as unknown as CollectionType)
-        ) {
-          case "root":
+      if (item.model === "collection" && item.is_library_root === true) {
+        switch (item.type) {
+          case "library":
             return { name: "repository" };
-          case "data":
+          case "library-data":
             return { name: "table" };
-          case "metrics":
+          case "library-metrics":
             return { name: "metric" };
         }
       }

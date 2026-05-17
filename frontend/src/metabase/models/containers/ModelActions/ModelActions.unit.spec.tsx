@@ -583,13 +583,17 @@ describe("ModelActions", () => {
       await userEvent.click(screen.getByLabelText("Actions menu"));
       await userEvent.click(await screen.findByText("Create basic actions"));
 
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls("path:/api/action", { method: "POST" }),
+        ).toHaveLength(3);
+      });
       const createActionCalls = fetchMock.callHistory.calls(
         "path:/api/action",
         {
           method: "POST",
         },
       );
-      expect(createActionCalls).toHaveLength(3);
 
       expect(await createActionCalls[0].request?.json()).toEqual({
         name: "Delete",
@@ -619,13 +623,18 @@ describe("ModelActions", () => {
         screen.getByRole("button", { name: /Create basic action/i }),
       );
 
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls("path:/api/action", { method: "POST" }),
+        ).toHaveLength(3);
+      });
+
       const createActionCalls = fetchMock.callHistory.calls(
         "path:/api/action",
         {
           method: "POST",
         },
       );
-      expect(createActionCalls).toHaveLength(3);
 
       expect(await createActionCalls[0].request?.json()).toEqual({
         name: "Delete",

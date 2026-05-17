@@ -257,18 +257,35 @@
     (let [table-id (mt/id :orders)
           response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
                                          {:source     {:type "table" :id table-id}
-                                          :operations []})]
+                                          :operations []
+                                          :prompt     "show orders"})]
       (is (string? (:query response)) "Response should contain a query string")
+      (is (= "show orders" (:prompt response)) "Response should echo the prompt")
       (let [decoded (decode-query response)]
         (is (= :mbql/query (lib/normalized-query-type decoded)))
         (is (= (mt/id) (lib/database-id decoded)))
         (is (= (mt/id :orders) (lib/primary-source-table-id decoded))))))
 
+  (testing "Does not require prompt"
+    (let [table-id (mt/id :orders)
+          response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                         {:source     {:type "table" :id table-id}
+                                          :operations []})]
+      (is (string? (:query response)) "Response should contain a query string")
+      (is (not (contains? response :prompt)) "Response should only echo prompt when supplied")))
+
+  (testing "Rejects oversized prompts before they can be persisted on MCP query handles"
+    (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                          {:source     {:type "table" :id (mt/id :orders)}
+                           :operations []
+                           :prompt     (apply str (repeat 10001 "x"))}))
+
   (testing "Respects explicit limit operation"
     (let [table-id (mt/id :orders)
           response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
                                          {:source     {:type "table" :id table-id}
-                                          :operations [["limit" 10]]})
+                                          :operations [["limit" 10]]
+                                          :prompt     "show 10 orders"})
           decoded  (decode-query response)]
       (is (= 10 (lib/current-limit decoded)))))
 
@@ -276,14 +293,16 @@
     (is (= "Not found."
            (mt/user-http-request :rasta :post 404 "agent/v2/construct-query"
                                  {:source     {:type "table" :id 999999}
-                                  :operations []})))))
+                                  :operations []
+                                  :prompt     "show orders"})))))
 
 (deftest execute-query-test
   (testing "Executes a query and returns results with column metadata"
     (let [table-id       (mt/id :orders)
           construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
                                                {:source     {:type "table" :id table-id}
-                                                :operations [["limit" 5]]})
+                                                :operations [["limit" 5]]
+                                                :prompt     "show 5 orders"})
           ;; Streaming response returns 202 (accepted) since it starts streaming before completion
           execute-resp   (mt/user-http-request :rasta :post 202 "agent/v1/execute"
                                                {:query (:query construct-resp)})]
@@ -300,7 +319,8 @@
     (let [table-id       (mt/id :orders)
           construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
                                                {:source     {:type "table" :id table-id}
-                                                :operations [["limit" 300]]})
+                                                :operations [["limit" 300]]
+                                                :prompt     "show all orders"})
           execute-resp   (mt/user-http-request :rasta :post 202 "agent/v1/execute"
                                                {:query (:query construct-resp)})]
       (is (=? {:status "completed" :row_count 200}
@@ -338,7 +358,8 @@
     (testing "Constructs a query from a metric"
       (let [response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
                                            {:source     {:type "metric" :id (:id metric)}
-                                            :operations []})]
+                                            :operations []
+                                            :prompt     "show metric"})]
         (is (string? (:query response)) "Response should contain a query string")
         (let [decoded (decode-query response)]
           (is (= :mbql/query (lib/normalized-query-type decoded)))
@@ -348,7 +369,8 @@
       (is (= "Not found."
              (mt/user-http-request :rasta :post 404 "agent/v2/construct-query"
                                    {:source     {:type "metric" :id 999999}
-                                    :operations []}))))))
+                                    :operations []
+                                    :prompt     "show metric"}))))))
 
 (deftest construct-query-with-count-aggregation-test
   (testing "Count aggregation produces a valid query"
@@ -356,7 +378,8 @@
           response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
                                          {:source     {:type "table" :id table-id}
                                           :operations [["aggregate" ["count"]]
-                                                       ["limit" 10]]})]
+                                                       ["limit" 10]]
+                                          :prompt     "count orders"})]
       (is (string? (:query response)))
       (let [decoded (decode-query response)]
         (is (= 1 (count (lib/aggregations decoded))))))))
@@ -368,7 +391,8 @@
           response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
                                          {:source     {:type "table" :id table-id}
                                           :operations [["filter" ["not-null" ["field" field-id]]]
-                                                       ["limit" 10]]})]
+                                                       ["limit" 10]]
+                                          :prompt     "show filtered orders"})]
       (is (string? (:query response)))
       (let [decoded (decode-query response)]
         (is (seq (lib/filters decoded)) "Query should have filters")))))

@@ -24,7 +24,7 @@ import {
   getAllDashboardCards,
   getCurrentTabDashboardCards,
 } from "metabase/dashboard/utils";
-import { entityCompatibleQuery } from "metabase/entities";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { addFields } from "metabase/redux/metadata";
@@ -825,6 +825,7 @@ export const fetchDashboard = createAsyncThunk(
         result.param_fields,
         metadata,
       );
+
       const parameterValuesById = preserveParameters
         ? getParameterValues(getState())
         : getParameterValuesByIdFromQueryParams(

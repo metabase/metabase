@@ -3,10 +3,10 @@ import { t } from "ttag";
 import {
   canPlaceEntityInCollection as canPlaceEntityInCollectionImpl,
   canPlaceEntityInCollectionOrDescendants as canPlaceEntityInCollectionOrDescendantsImpl,
-  getLibraryCollectionType,
 } from "metabase/data-studio/utils";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+// Importing from collections/constants to break import cycle
+import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
+import { PLUGIN_COLLECTIONS, PLUGIN_LIBRARY } from "metabase/plugins";
 import {
   type CardType,
   type Collection,
@@ -129,7 +129,7 @@ export function isSyncedCollection(collection: Partial<Collection>): boolean {
 export function isLibraryCollection(
   collection: Pick<Collection, "type">,
 ): boolean {
-  return getLibraryCollectionType(collection.type) != null;
+  return PLUGIN_LIBRARY.isLibraryCollectionType(collection.type);
 }
 
 export function isExamplesCollection(collection: Collection): boolean {
@@ -375,3 +375,8 @@ export const getCollectionPathAsString = (collection: CollectionEssentials) => {
 };
 
 export const collectionPathSeparator = "/";
+
+export const getCollectionPathAsArray = (collection: Collection): string[] => {
+  const parentIds = (collection.location ?? "").split("/").filter(Boolean);
+  return [...parentIds, String(collection.id)];
+};
