@@ -63,7 +63,7 @@ export function maybeMergeLogs(logs: Log[], newLogs: Log[]) {
   const newestLog = _.first(newLogs);
   const hasFetchedNewLogs = newestLog && !hasLog(logs, newestLog);
   if (hasFetchedNewLogs) {
-    return mergeLogs([logs, newLogs.reverse()]);
+    return mergeLogs([logs, newLogs.toReversed()]);
   }
   return logs;
 }

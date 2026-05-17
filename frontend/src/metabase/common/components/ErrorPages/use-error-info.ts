@@ -1,9 +1,11 @@
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
+import { useLazyGetBugReportDetailsQuery } from "metabase/api/bug-report";
+import { useLazyListLogsQuery } from "metabase/api/logger";
 import { useSelector } from "metabase/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { MetabaseApi, UtilApi } from "metabase/services";
+import { MetabaseApi } from "metabase/services";
 
 import type { ErrorPayload, ReportableEntityName } from "./types";
 import { getBrowserInfo, getEntityDetails, hasQueryData } from "./utils";
@@ -26,6 +28,8 @@ export const useErrorInfo = (
   const currentUser = useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
   const location = window.location.href;
+  const [getBugReportDetails] = useLazyGetBugReportDetailsQuery();
+  const [listLogs] = useLazyListLogsQuery();
 
   return useAsync(async () => {
     if (!enabled) {
@@ -45,11 +49,11 @@ export const useErrorInfo = (
 
     const entityInfoRequest = getEntityDetails({ entity, id, isAdHoc });
     const bugReportDetailsRequest = isAdmin
-      ? UtilApi.bug_report_details().catch(nullOnCatch)
+      ? getBugReportDetails().unwrap().catch(nullOnCatch)
       : Promise.resolve(null);
 
     const logsRequest: any = isAdmin
-      ? UtilApi.logs().catch(nullOnCatch)
+      ? listLogs().unwrap().catch(nullOnCatch)
       : Promise.resolve(null);
 
     const frontendErrors = console?.errorBuffer?.map?.((errArray) =>
@@ -115,7 +119,7 @@ export const useErrorInfo = (
     };
 
     return payload;
-  }, [enabled]);
+  }, [enabled, getBugReportDetails, listLogs]);
 };
 
 const nullOnCatch = () => null;

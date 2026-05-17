@@ -1,6 +1,5 @@
 import cx from "classnames";
-import { type PropsWithChildren, useState } from "react";
-import { useMount } from "react-use";
+import { type PropsWithChildren, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -9,6 +8,8 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { UpsellBetterSupport } from "metabase/admin/upsells";
+import { useGetBugReportDetailsQuery } from "metabase/api/bug-report";
+import legacyApi from "metabase/api/legacy-client";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
@@ -16,13 +17,19 @@ import CS from "metabase/css/core/index.css";
 import { PLUGIN_SUPPORT } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
-import { UtilApi } from "metabase/services";
 import { Box, Code, Group } from "metabase/ui";
 
 import S from "./help.module.css";
 
 function navigatorInfo() {
   return _.pick(navigator, "language", "platform", "userAgent", "vendor");
+}
+
+// Returns an external-link URL (not an API call) so it goes through `basename`
+// to support Metabase deployments at a subpath.
+function getConnectionPoolDetailsUrl() {
+  const path = "/api/bug-reporting/connection-pool-details";
+  return new URL(legacyApi.basename + path, location.origin).href;
 }
 
 const template = `**Describe the bug**
@@ -92,14 +99,15 @@ const InfoBlock = ({ children }: InfoBlockProps) => (
 );
 
 export const Help = ({ children }: PropsWithChildren) => {
-  const [details, setDetails] = useState({ "browser-info": navigatorInfo() });
   const { tag } = useSetting("version");
   const isPaidPlan = useSelector(getIsPaidPlan);
 
-  useMount(async () => {
-    const newDetails = await UtilApi.bug_report_details();
-    setDetails((oldDetails) => ({ ...oldDetails, ...newDetails }));
-  });
+  const { data: bugReportDetails } = useGetBugReportDetailsQuery();
+
+  const details = useMemo(
+    () => ({ "browser-info": navigatorInfo(), ...bugReportDetails }),
+    [bugReportDetails],
+  );
 
   const detailString = JSON.stringify(details, null, 2);
   const compactDetailStringForUrl = encodeURIComponent(JSON.stringify(details));
@@ -140,7 +148,7 @@ export const Help = ({ children }: PropsWithChildren) => {
         <HelpLink
           title={t`Connection Pool Details`}
           description={t`Information about active and idle connections for all pools`}
-          link={UtilApi.get_connection_pool_details_url()}
+          link={getConnectionPoolDetailsUrl()}
         />
       </SettingsSection>
       {/* render 'children' so that the child modal routes can show up */}
