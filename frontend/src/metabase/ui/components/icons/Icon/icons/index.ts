@@ -560,6 +560,8 @@ import view_archive_component from "./view_archive.svg?component";
 import view_archive_source from "./view_archive.svg?source";
 import warning_component from "./warning.svg?component";
 import warning_source from "./warning.svg?source";
+import warning_round_component from "./warning_round.svg?component";
+import warning_round_source from "./warning_round.svg?source";
 import warning_round_filled_component from "./warning_round_filled.svg?component";
 import warning_round_filled_source from "./warning_round_filled.svg?source";
 import warning_triangle_filled_component from "./warning_triangle_filled.svg?component";
@@ -1682,6 +1684,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     warning: {
       component: warning_component,
       source: warning_source,
+    },
+    warning_round: {
+      component: warning_round_component,
+      source: warning_round_source,
     },
     warning_round_filled: {
       component: warning_round_filled_component,
