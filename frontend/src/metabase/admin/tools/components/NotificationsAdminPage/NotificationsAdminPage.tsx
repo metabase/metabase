@@ -72,6 +72,40 @@ export const NotificationsAdminPage = ({
   const total = data?.total ?? 0;
   const selectedCount = selectedIds.length;
 
+  const { data: failingData } = useAdminListNotificationsQuery({
+    limit: 1,
+    offset: 0,
+    active: true,
+    last_sent_status: "failing",
+  });
+  const { data: ownerlessData } = useAdminListNotificationsQuery({
+    limit: 1,
+    offset: 0,
+    active: true,
+    owner_active: false,
+  });
+  const failingCount = failingData?.total ?? 0;
+  const ownerlessCount = ownerlessData?.total ?? 0;
+
+  useEffect(() => {
+    if (urlState.tab === "failing" && failingData && failingCount === 0) {
+      patchUrlState({ tab: "all", page: 0 });
+    } else if (
+      urlState.tab === "ownerless" &&
+      ownerlessData &&
+      ownerlessCount === 0
+    ) {
+      patchUrlState({ tab: "all", page: 0 });
+    }
+  }, [
+    urlState.tab,
+    failingData,
+    failingCount,
+    ownerlessData,
+    ownerlessCount,
+    patchUrlState,
+  ]);
+
   const [bulkAction, { isLoading: isBulkLoading }] =
     useBulkNotificationActionMutation();
 
@@ -112,7 +146,7 @@ export const NotificationsAdminPage = ({
       }
       const [first] = next;
       const column = SORT_COLUMN_VALUES.find((col) => col === first.id);
-      if (column == null) {
+      if (column === undefined) {
         return;
       }
       patchUrlState({
@@ -239,6 +273,21 @@ export const NotificationsAdminPage = ({
 
   const isSidebarOpen = notificationId !== undefined;
 
+  const { prevNotificationId, nextNotificationId } = (() => {
+    if (notificationId === undefined) {
+      return { prevNotificationId: null, nextNotificationId: null };
+    }
+    const index = notifications.findIndex((n) => n.id === notificationId);
+    if (index === -1) {
+      return { prevNotificationId: null, nextNotificationId: null };
+    }
+    return {
+      prevNotificationId: index > 0 ? notifications[index - 1].id : null,
+      nextNotificationId:
+        index < notifications.length - 1 ? notifications[index + 1].id : null,
+    };
+  })();
+
   return (
     <SettingsPageWrapper pr={isSidebarOpen ? `${SIDEBAR_WIDTH}px` : 0}>
       <Flex align="center" gap="sm">
@@ -247,6 +296,8 @@ export const NotificationsAdminPage = ({
 
       <NotificationsTabs
         tab={urlState.tab}
+        failingCount={failingCount}
+        ownerlessCount={ownerlessCount}
         onChange={(patch) => patchUrlState({ ...patch, page: 0 })}
       />
 
@@ -297,6 +348,8 @@ export const NotificationsAdminPage = ({
         <NotificationDetailSidebar
           notificationId={notificationId}
           isBulkLoading={isBulkLoading}
+          prevNotificationId={prevNotificationId}
+          nextNotificationId={nextNotificationId}
           onClose={handleSidebarClose}
           onDelete={(notification) => handleSidebarDelete(notification.id)}
         />
@@ -330,7 +383,7 @@ export const NotificationsAdminPage = ({
       </BulkActionBar>
 
       <ChangeOwnerModal
-        opened={changeOwnerTarget != null}
+        opened={changeOwnerTarget !== null}
         count={changeOwnerTarget?.ids.length ?? 0}
         isSubmitting={isBulkLoading}
         onClose={() => setChangeOwnerTarget(null)}

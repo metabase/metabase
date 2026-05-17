@@ -103,7 +103,7 @@ export const NotificationsTable = ({
   onRowClick,
 }: Props) => {
   const selectedRowId =
-    selectedDetailId != null ? String(selectedDetailId) : null;
+    selectedDetailId !== undefined ? String(selectedDetailId) : null;
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const allSelected =
     notifications.length > 0 &&
@@ -138,6 +138,7 @@ export const NotificationsTable = ({
           <Checkbox
             aria-label={t`Select notification ${row.original.id}`}
             checked={selectedSet.has(row.original.id)}
+            onClick={(e) => e.stopPropagation()}
             onChange={() => onToggleRow(row.original.id)}
           />
         ),

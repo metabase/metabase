@@ -2,12 +2,17 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupTaskRunsEndpoints } from "__support__/server-mocks";
+import { setupAdminNotificationDetailEndpoint } from "__support__/server-mocks/notification";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import type { AdminNotificationDetail } from "metabase-types/api";
+import type {
+  AdminNotificationDetail,
+  NotificationId,
+  TaskRun,
+} from "metabase-types/api";
 import {
   createMockAdminNotificationListItem,
   createMockCard,
@@ -36,7 +41,7 @@ const mockDetail = (
       updated_at: "2025-01-07T18:40:47.245205+03:00",
       card: createMockCard({ id: 42, name: "Sales report" }),
     },
-    creator: createMockUserInfo({
+    owner: createMockUserInfo({
       common_name: "John Doe",
       email: "john@example.com",
     }),
@@ -67,12 +72,21 @@ const mockDetail = (
 
 type SetupOpts = {
   detail?: AdminNotificationDetail;
+  taskRuns?: TaskRun[];
+  prevNotificationId?: NotificationId | null;
+  nextNotificationId?: NotificationId | null;
 };
 
-const setup = ({ detail = mockDetail() }: SetupOpts = {}) => {
+const setup = ({
+  detail = mockDetail(),
+  taskRuns,
+  prevNotificationId = null,
+  nextNotificationId = null,
+}: SetupOpts = {}) => {
   fetchMock.get("path:/api/user", { data: [], total: 0 });
+  setupAdminNotificationDetailEndpoint(detail);
   setupTaskRunsEndpoints({
-    data: [
+    data: taskRuns ?? [
       createMockTaskRun({
         id: 1,
         run_type: "alert",
@@ -83,23 +97,22 @@ const setup = ({ detail = mockDetail() }: SetupOpts = {}) => {
         ended_at: "2026-04-21T16:00:01.000Z",
       }),
     ],
-    limit: 5,
+    limit: 20,
     offset: 0,
     total: 1,
   });
 
   const onClose = jest.fn();
   const onDelete = jest.fn();
-  const onChangeOwner = jest.fn();
 
   const utils = renderWithProviders(
     <NotificationDetailSidebar
       notificationId={detail.id}
       isBulkLoading={false}
-      mockDetail={detail}
+      prevNotificationId={prevNotificationId}
+      nextNotificationId={nextNotificationId}
       onClose={onClose}
       onDelete={onDelete}
-      onChangeOwner={onChangeOwner}
     />,
     { withRouter: true },
   );
@@ -108,66 +121,61 @@ const setup = ({ detail = mockDetail() }: SetupOpts = {}) => {
     ...utils,
     onClose,
     onDelete,
-    onChangeOwner,
   };
 };
 
 describe("NotificationDetailSidebar", () => {
   it("renders the card name and alert id in the header", async () => {
     setup();
+    await waitForLoaderToBeRemoved();
     expect(screen.getByText("Sales report")).toBeInTheDocument();
     expect(screen.getByText(`Alert ${NOTIFICATION_ID}`)).toBeInTheDocument();
   });
 
-  it("renders the four sections", async () => {
+  it("renders Check history and Send history as separate sections", async () => {
     setup();
+    await waitForLoaderToBeRemoved();
     expect(screen.getByText("Details")).toBeInTheDocument();
-    expect(
-      screen.getByText("Last checks and send attempts"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("1 email recipient")).toBeInTheDocument();
-    expect(screen.getByText("1 Slack channel")).toBeInTheDocument();
+    expect(screen.getByText("Check history")).toBeInTheDocument();
+    expect(screen.getByText("Send history")).toBeInTheDocument();
+    expect(screen.getAllByText("View all").length).toBeGreaterThanOrEqual(2);
   });
 
-  it("shows owner, channel summary and email recipient details", async () => {
+  it("shows a Successful badge for successful runs", async () => {
     setup();
-    expect(screen.getByText("John Doe")).toBeInTheDocument();
-    expect(
-      screen.getByText("1 email recipient, 1 Slack channel"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Anita Williams")).toBeInTheDocument();
-    expect(screen.getByText("anita@example.com")).toBeInTheDocument();
-    expect(screen.getByText("#metabase-alerts")).toBeInTheDocument();
-  });
-
-  it("shows the SMTP error when the alert is failing", async () => {
-    setup({ detail: mockDetail({ status: "failing" }) });
-    expect(screen.getByText("Error with the SMTP server")).toBeInTheDocument();
+    await waitForLoaderToBeRemoved();
+    expect(screen.getAllByText("Successful").length).toBeGreaterThan(0);
   });
 
   it("close button calls onClose", async () => {
     const { onClose } = setup();
+    await waitForLoaderToBeRemoved();
     await userEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("offers delete and change-owner actions in the more menu", async () => {
-    const { onDelete, onChangeOwner } = setup();
-    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
-    await userEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
-    expect(onDelete).toHaveBeenCalled();
-
-    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
-    await userEvent.click(
-      screen.getByRole("menuitem", { name: "Change owner" }),
-    );
-    expect(onChangeOwner).toHaveBeenCalled();
+  it("disables prev/next buttons when there is no neighbor", async () => {
+    setup({ prevNotificationId: null, nextNotificationId: null });
+    await waitForLoaderToBeRemoved();
+    expect(
+      screen.getByRole("button", { name: "Previous alert" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Next alert" })).toBeDisabled();
   });
 
-  it("renders a row in the runs table for each task run", async () => {
-    setup();
+  it("enables next button when a next notification exists", async () => {
+    setup({ nextNotificationId: 22 });
     await waitForLoaderToBeRemoved();
-    expect(screen.getByText("Question checks")).toBeInTheDocument();
-    expect(screen.getByText("Alert send attempts")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next alert" })).toBeEnabled();
+  });
+
+  it("offers delete in the more menu when active", async () => {
+    const { onDelete } = setup({ detail: mockDetail({ active: true }) });
+    await waitForLoaderToBeRemoved();
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: /Delete alert/ }),
+    );
+    expect(onDelete).toHaveBeenCalled();
   });
 });

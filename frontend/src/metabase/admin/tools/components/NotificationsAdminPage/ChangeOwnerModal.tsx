@@ -43,7 +43,7 @@ export const ChangeOwnerModal = ({
   };
 
   const handleSubmit = () => {
-    if (selectedOwnerId != null) {
+    if (selectedOwnerId !== null) {
       onConfirm(selectedOwnerId);
     }
   };
@@ -60,7 +60,7 @@ export const ChangeOwnerModal = ({
           label={t`New owner`}
           placeholder={isLoading ? t`Loading…` : t`Select a user`}
           data={options}
-          value={selectedOwnerId == null ? null : String(selectedOwnerId)}
+          value={selectedOwnerId === null ? null : String(selectedOwnerId)}
           onChange={(next) => setSelectedOwnerId(next ? Number(next) : null)}
           searchable
           nothingFoundMessage={t`No users found`}
@@ -72,7 +72,7 @@ export const ChangeOwnerModal = ({
           </Button>
           <Button
             variant="filled"
-            disabled={selectedOwnerId == null || isSubmitting}
+            disabled={selectedOwnerId === null || isSubmitting}
             loading={isSubmitting}
             onClick={handleSubmit}
           >

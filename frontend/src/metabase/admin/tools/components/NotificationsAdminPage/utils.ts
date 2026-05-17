@@ -178,7 +178,7 @@ export const urlStateConfig: UrlStateConfig<NotificationsUrlState> = {
     channel: state.channel ?? undefined,
     last_sent_status: state.last_sent_status ?? undefined,
     owner_active:
-      state.owner_active == null ? undefined : String(state.owner_active),
+      state.owner_active === null ? undefined : String(state.owner_active),
     recipient_email: state.recipient_email || undefined,
     tab: state.tab === DEFAULT_TAB ? undefined : state.tab,
     sort_column:

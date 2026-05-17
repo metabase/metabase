@@ -1,5 +1,6 @@
 import { Children, Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
+import { push } from "react-router-redux";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -54,14 +55,18 @@ import type {
   UserId,
 } from "metabase-types/api";
 
+import S from "./NotificationDetailSidebar.module.css";
 import { formatRelativeDate, getChannelIconName } from "./utils";
 
 export const SIDEBAR_WIDTH = 560;
-const RECENT_RUNS_LIMIT = 5;
+const RECENT_RUNS_LIMIT = 3;
+const RECENT_RUNS_FETCH_LIMIT = 20;
 
 type Props = {
   notificationId: NotificationId;
   isBulkLoading: boolean;
+  prevNotificationId: NotificationId | null;
+  nextNotificationId: NotificationId | null;
   onClose: () => void;
   onDelete: (notification: AdminNotificationDetail) => void;
 };
@@ -69,6 +74,8 @@ type Props = {
 export const NotificationDetailSidebar = ({
   notificationId,
   isBulkLoading,
+  prevNotificationId,
+  nextNotificationId,
   onClose,
   onDelete,
 }: Props) => {
@@ -104,6 +111,8 @@ export const NotificationDetailSidebar = ({
             <SidebarHeader
               isBulkLoading={isBulkLoading}
               notification={notification}
+              prevNotificationId={prevNotificationId}
+              nextNotificationId={nextNotificationId}
               onClose={onClose}
               onDelete={onDelete}
               onEdit={() => setIsEditModalOpen(true)}
@@ -132,6 +141,8 @@ export const NotificationDetailSidebar = ({
 type SidebarHeaderProps = {
   isBulkLoading: boolean;
   notification: AdminNotificationDetail;
+  prevNotificationId: NotificationId | null;
+  nextNotificationId: NotificationId | null;
   onClose: () => void;
   onDelete: (notification: AdminNotificationDetail) => void;
   onEdit: () => void;
@@ -140,6 +151,8 @@ type SidebarHeaderProps = {
 const SidebarHeader = ({
   isBulkLoading,
   notification,
+  prevNotificationId,
+  nextNotificationId,
   onClose,
   onDelete,
   onEdit,
@@ -153,9 +166,37 @@ const SidebarHeader = ({
     dispatch(addUndo({ message: t`Link copied to clipboard` }));
   };
 
+  const handleNavigate = (id: NotificationId | null) => {
+    if (id !== null) {
+      dispatch(push(Urls.adminToolsNotificationDetail(id)));
+    }
+  };
+
   return (
     <Box px="xl" pt="lg" pb="md">
-      <Flex justify="flex-end" align="center" mb="md">
+      <Flex justify="space-between" align="center" mb="md">
+        <Group gap="sm">
+          <ActionIcon
+            aria-label={t`Previous alert`}
+            size="lg"
+            variant="default"
+            className={S.navButton}
+            disabled={prevNotificationId === null}
+            onClick={() => handleNavigate(prevNotificationId)}
+          >
+            <Icon name="chevronup" />
+          </ActionIcon>
+          <ActionIcon
+            aria-label={t`Next alert`}
+            size="lg"
+            variant="default"
+            className={S.navButton}
+            disabled={nextNotificationId === null}
+            onClick={() => handleNavigate(nextNotificationId)}
+          >
+            <Icon name="chevrondown" />
+          </ActionIcon>
+        </Group>
         <Group gap="sm">
           <Menu position="bottom-end" withinPortal>
             <Menu.Target>
@@ -318,7 +359,7 @@ const SidebarBody = ({
         slackChannelCount={slackChannelCount}
         httpHandler={httpHandler}
       />
-      <RunsSection notification={notification} />
+      <RunsSections notification={notification} />
       {emailHandler && emailRecipientCount > 0 && (
         <EmailRecipientsSection
           handler={emailHandler}
@@ -396,7 +437,6 @@ const DetailsSection = ({
   });
   const owner = notification.owner;
   const ownerName = owner?.common_name ?? owner?.email ?? t`Unknown`;
-  const isOwnerDeactivated = owner?.is_active === false;
 
   return (
     <SidebarSection title={t`Details`}>
@@ -404,10 +444,11 @@ const DetailsSection = ({
         <DetailsRow
           label={t`Question`}
           value={
-            cardId != null && cardName ? (
+            cardId !== undefined && cardName ? (
               <MBLink
                 variant="brand"
                 to={Urls.card({ id: cardId, name: cardName })}
+                style={{ fontWeight: 700 }}
               >
                 {cardName}
               </MBLink>
@@ -417,21 +458,7 @@ const DetailsSection = ({
           }
           bold
         />
-        <DetailsRow
-          label={t`Owner`}
-          value={
-            <Flex align="center" gap="xs">
-              <Text size="md" c="text-primary">
-                {ownerName}
-              </Text>
-              {isOwnerDeactivated && (
-                <Text size="md" c="text-secondary">
-                  {t`(deactivated)`}
-                </Text>
-              )}
-            </Flex>
-          }
-        />
+        <DetailsRow label={t`Owner`} value={ownerName} />
         <DetailsRow
           label={t`Channel`}
           value={channelSummary || t`No channels`}
@@ -508,104 +535,110 @@ const formatChannelSummary = ({
   return parts.join(", ");
 };
 
-const RunsSection = ({
+const RunsSections = ({
   notification,
 }: {
   notification: AdminNotificationDetail;
 }) => {
   const cardId = notification.payload?.card_id;
   const { data: taskRunsData, isLoading } = useListTaskRunsQuery(
-    cardId != null
+    cardId !== undefined
       ? {
-          limit: RECENT_RUNS_LIMIT,
+          limit: RECENT_RUNS_FETCH_LIMIT,
           offset: 0,
           "run-type": "alert",
           "entity-type": "card",
           "entity-id": cardId,
         }
       : undefined,
-    { skip: cardId == null },
+    { skip: cardId === undefined },
   );
 
-  if (cardId == null) {
+  if (cardId === undefined) {
     return null;
   }
 
-  const taskRuns = taskRunsData?.data ?? [];
-  const runsUrl = Urls.adminToolsTasksRunsFor({
+  const allRuns = taskRunsData?.data ?? [];
+  const checks = allRuns.slice(0, RECENT_RUNS_LIMIT);
+  const sends = allRuns
+    .filter((run) => run.status === "success")
+    .slice(0, RECENT_RUNS_LIMIT);
+
+  const viewAllUrl = Urls.adminToolsTasksRunsFor({
     runType: "alert",
     entityType: "card",
     entityId: cardId,
-    startedAt: "past30days~",
   });
 
   return (
-    <SidebarSection
-      title={t`Last checks and send attempts`}
-      titleAside={
-        <Anchor component={Link} to={runsUrl} c="brand" fz="md" fw="bold">
-          {t`View all alert runs`}
-        </Anchor>
-      }
-    >
-      <DetailsTable>
-        <RunsHeaderRow />
-        {isLoading || taskRuns.length === 0 ? (
-          <DetailsRow
-            label={isLoading ? t`Loading…` : t`No runs in the past 30 days.`}
-            value=""
-            bold={false}
-            spanLabel
-          />
-        ) : (
-          taskRuns.map((taskRun) => (
-            <RunsRow key={taskRun.id} taskRun={taskRun} />
-          ))
-        )}
-      </DetailsTable>
-    </SidebarSection>
+    <>
+      <RunHistorySection
+        title={t`Check history`}
+        viewAllUrl={viewAllUrl}
+        runs={checks}
+        isLoading={isLoading}
+      />
+      <RunHistorySection
+        title={t`Send history`}
+        viewAllUrl={viewAllUrl}
+        runs={sends}
+        isLoading={isLoading}
+      />
+    </>
   );
 };
 
-const RunsHeaderRow = () => (
-  <Flex bg="background-secondary">
-    <Flex align="center" px="md" py="sm" flex={1}>
-      <Text size="md" c="text-secondary">
-        {t`Question checks`}
-      </Text>
-    </Flex>
-    <Divider orientation="vertical" />
-    <Flex align="center" px="md" py="sm" flex={1}>
-      <Text size="md" c="text-secondary">
-        {t`Alert send attempts`}
-      </Text>
-    </Flex>
-  </Flex>
+type RunHistorySectionProps = {
+  title: string;
+  viewAllUrl: string;
+  runs: TaskRun[];
+  isLoading: boolean;
+};
+
+const RunHistorySection = ({
+  title,
+  viewAllUrl,
+  runs,
+  isLoading,
+}: RunHistorySectionProps) => (
+  <SidebarSection
+    title={title}
+    titleAside={
+      <Anchor
+        component={Link}
+        to={viewAllUrl}
+        c="brand"
+        fz="md"
+        lh="1rem"
+        fw="bold"
+      >
+        {t`View all`}
+      </Anchor>
+    }
+  >
+    <DetailsTable>
+      {isLoading || runs.length === 0 ? (
+        <DetailsRow
+          label={isLoading ? t`Loading…` : t`No runs in the past 30 days.`}
+          value=""
+          bold={false}
+          spanLabel
+        />
+      ) : (
+        runs.map((taskRun) => <RunRow key={taskRun.id} taskRun={taskRun} />)
+      )}
+    </DetailsTable>
+  </SidebarSection>
 );
 
-const RunsRow = ({ taskRun }: { taskRun: TaskRun }) => {
+const RunRow = ({ taskRun }: { taskRun: TaskRun }) => {
   const formatted = formatRelativeDate(taskRun.started_at);
   return (
-    <Flex>
-      <Flex align="center" px="md" py="sm" flex={1}>
-        <Text size="md" c="text-primary">
-          {formatted}
-        </Text>
-      </Flex>
-      <Divider orientation="vertical" />
-      <Flex
-        align="center"
-        justify="space-between"
-        px="md"
-        py="sm"
-        flex={1}
-        gap="sm"
-      >
-        <Text size="md" c="text-primary">
-          {formatted}
-        </Text>
-        <RunStatusBadge status={taskRun.status} />
-      </Flex>
+    <Flex align="center" justify="space-between" px="md" py="sm" gap="sm">
+      <Text size="md" c="text-primary">
+        {formatted}
+      </Text>
+      <RunStatusBadge status={taskRun.status} />
     </Flex>
   );
 };
@@ -622,6 +655,20 @@ const RunStatusBadge = ({ status }: { status: TaskRunStatus }) => {
     return (
       <Badge color="warning" variant="light" radius="lg" tt="none" fw="normal">
         {t`Running`}
+      </Badge>
+    );
+  }
+  if (status === "success") {
+    return (
+      <Badge
+        variant="outline"
+        radius="lg"
+        tt="none"
+        fw="normal"
+        c="text-secondary"
+        bd="1px solid var(--mb-color-border)"
+      >
+        {t`Successful`}
       </Badge>
     );
   }
@@ -731,9 +778,9 @@ const SidebarSection = ({
   titleAside,
   children,
 }: SidebarSectionProps) => (
-  <Stack gap="sm">
+  <Stack gap="md">
     <Flex justify="space-between" align="center">
-      <Text fw="bold" size="md" c="text-primary">
+      <Text fw="bold" size="md" lh="1rem" c="text-primary">
         {title}
       </Text>
       {titleAside}
@@ -814,7 +861,7 @@ const NotificationEditModalLoader = ({
   const metadata = useSelector(getMetadata);
 
   const { data: card, isFetching } = useGetCardQuery(
-    cardId != null ? { id: cardId } : skipToken,
+    cardId !== undefined ? { id: cardId } : skipToken,
   );
 
   useEffect(() => {
@@ -857,7 +904,7 @@ const NotificationEditModalLoader = ({
     return true;
   };
 
-  if (cardId == null || !question) {
+  if (cardId === undefined || !question) {
     return null;
   }
 
@@ -929,7 +976,7 @@ const OwnerSection = ({
           value={String(selectedOwnerId)}
           placeholder={isLoading ? t`Loading…` : t`Select a user`}
           onChange={(value) => {
-            if (value != null) {
+            if (value !== null) {
               onChange(Number(value));
             }
           }}
