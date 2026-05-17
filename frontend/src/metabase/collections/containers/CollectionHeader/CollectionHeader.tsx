@@ -1,4 +1,4 @@
-import { collectionApi } from "metabase/api";
+import { collectionApi } from "metabase/api/collection";
 import { connect } from "metabase/redux";
 import { uploadFile } from "metabase/redux/uploads";
 import type { Collection } from "metabase-types/api";

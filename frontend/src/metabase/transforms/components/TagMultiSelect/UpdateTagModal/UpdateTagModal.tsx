@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { useUpdateTransformTagMutation } from "metabase/api";
+import { useUpdateTransformTagMutation } from "metabase/api/transform-tag";
 import {
   Form,
   FormErrorMessage,

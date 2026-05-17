@@ -5,7 +5,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { useListApiKeysQuery } from "metabase/api";
+import { useListApiKeysQuery } from "metabase/api/api-key";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { ClientSortableTable } from "metabase/common/components/Table";
 import CS from "metabase/css/core/index.css";

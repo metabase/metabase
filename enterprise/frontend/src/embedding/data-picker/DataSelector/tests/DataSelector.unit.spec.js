@@ -1,8 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
-import { getIcon, render, screen } from "__support__/ui-minimal";
-import { delay } from "__support__/utils";
+import { getIcon, render, screen, waitFor } from "__support__/ui-minimal";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import {
   SAMPLE_DB_ID,
@@ -10,6 +9,12 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import { UnconnectedDataSelector as DataSelector } from "../DataSelector";
+
+const renderDataSelector = async (ui, readyText) => {
+  const result = render(ui);
+  await screen.findByText(readyText);
+  return result;
+};
 
 const MULTI_SCHEMA_DB_ID = 2;
 const MULTI_SCHEMA_TABLE1_ID = 100;
@@ -77,7 +82,7 @@ describe("DataSelector", () => {
 
   it("should allow selecting db, schema, and table", async () => {
     const setTable = jest.fn();
-    render(
+    await renderDataSelector(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
@@ -87,12 +92,11 @@ describe("DataSelector", () => {
         isOpen={true}
         setSourceTableFn={setTable}
       />,
+      "Multi-schema Database",
     );
 
     // displays dbs
-    expect(
-      await screen.findByText("Multi-schema Database"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Multi-schema Database")).toBeInTheDocument();
     expect(screen.getByText("Sample Database")).toBeInTheDocument();
     expect(screen.getByText("Sample Empty Database")).toBeInTheDocument();
 
@@ -154,8 +158,9 @@ describe("DataSelector", () => {
     };
 
     // on initial load, we fetch databases
-    await delay(1);
-    expect(fetchDatabases).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(fetchDatabases).toHaveBeenCalled();
+    });
     rerender(<DataSelector {...props} loading />);
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
 
@@ -170,8 +175,9 @@ describe("DataSelector", () => {
     await userEvent.click(screen.getByText("Multi-schema Database"));
 
     // that triggers fetching schemas
-    await delay(1);
-    expect(fetchSchemas).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(fetchSchemas).toHaveBeenCalled();
+    });
 
     // select a schema
     nextMetadata = createMockMetadata({ databases });
@@ -182,8 +188,9 @@ describe("DataSelector", () => {
     await userEvent.click(screen.getByText("Second Schema"));
 
     // that triggers fetching tables
-    await delay(1);
-    expect(fetchSchemaTables).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(fetchSchemaTables).toHaveBeenCalled();
+    });
 
     // table is displayed
     rerenderWith(metadata);
@@ -191,7 +198,7 @@ describe("DataSelector", () => {
   });
 
   it("should skip db and schema steps if there's only one option", async () => {
-    render(
+    await renderDataSelector(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
@@ -200,9 +207,9 @@ describe("DataSelector", () => {
         metadata={metadata}
         isOpen={true}
       />,
+      "Orders",
     );
-    await delay(1); // state isn't updated until the next tick
-    expect(await screen.findByText("Orders")).toBeInTheDocument();
+    expect(screen.getByText("Orders")).toBeInTheDocument();
   });
 
   it("shouldn't fetch databases until it's opened", async () => {
@@ -218,12 +225,13 @@ describe("DataSelector", () => {
     );
     expect(fetchDatabases).not.toHaveBeenCalled();
     await userEvent.click(screen.getByText("button"));
-    await delay(1); // fetchDatabases hasn't been called until the next tick
-    expect(fetchDatabases).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(fetchDatabases).toHaveBeenCalled();
+    });
   });
 
   it("should click into a single-schema db after expanding a multi-schema db", async () => {
-    render(
+    await renderDataSelector(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
@@ -232,17 +240,17 @@ describe("DataSelector", () => {
         metadata={metadata}
         isOpen={true}
       />,
+      "Multi-schema Database",
     );
 
     await userEvent.click(screen.getByText("Multi-schema Database"));
     expect(screen.getByText("First Schema")).toBeInTheDocument();
     await userEvent.click(screen.getByText("Sample Database"));
-    await delay(1);
     expect(await screen.findByText("Orders")).toBeInTheDocument();
   });
 
   it("should expand multi-schema after clicking into single-schema", async () => {
-    render(
+    await renderDataSelector(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
@@ -251,10 +259,10 @@ describe("DataSelector", () => {
         metadata={metadata}
         isOpen={true}
       />,
+      "Multi-schema Database",
     );
 
     await userEvent.click(screen.getByText("Sample Database"));
-    await delay(1);
     // check that tables are listed
     expect(await screen.findByText("Orders")).toBeInTheDocument();
     // click header to return to db list
@@ -263,15 +271,16 @@ describe("DataSelector", () => {
     await userEvent.click(screen.getByText("Multi-schema Database"));
     // see schema appear and click to view tables for good measure
     await userEvent.click(screen.getByText("First Schema"));
-    await delay(1);
-    expect(screen.getByText("Table in First Schema")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Table in First Schema"),
+    ).toBeInTheDocument();
   });
 
   it("should expand schemas after viewing tables on a single-schema db", async () => {
     // This is the same and the previous test except that it first opens/closes
     // the multi-schema db. This left some lingering traces in component state
     // which caused a bug that the previous test didn't catch.
-    render(
+    await renderDataSelector(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
@@ -280,6 +289,7 @@ describe("DataSelector", () => {
         metadata={metadata}
         isOpen={true}
       />,
+      "Multi-schema Database",
     );
 
     // expand a multi-schema db to make sure it's schemas are loaded
@@ -289,7 +299,6 @@ describe("DataSelector", () => {
 
     // click into a single schema db, check for a table, and then return to db list
     await userEvent.click(screen.getByText("Sample Database"));
-    await delay(1);
     expect(await screen.findByText("Orders")).toBeInTheDocument();
     await userEvent.click(screen.getByText("Sample Database"));
 
@@ -297,12 +306,13 @@ describe("DataSelector", () => {
     await userEvent.click(screen.getByText("Multi-schema Database"));
     // see schema appear and click to view tables for good measure
     await userEvent.click(screen.getByText("First Schema"));
-    await delay(1);
-    expect(screen.getByText("Table in First Schema")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Table in First Schema"),
+    ).toBeInTheDocument();
   });
 
   it("should collapse expanded list of db's schemas", async () => {
-    render(
+    await renderDataSelector(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
@@ -311,6 +321,7 @@ describe("DataSelector", () => {
         metadata={metadata}
         isOpen={true}
       />,
+      "Multi-schema Database",
     );
 
     expect(screen.getByText("Sample Database")).toBeInTheDocument();
@@ -332,8 +343,8 @@ describe("DataSelector", () => {
     expect(getIcon("chevrondown")).toBeInTheDocument();
   });
 
-  it("should open database picker with correct database selected", () => {
-    render(
+  it("should open database picker with correct database selected", async () => {
+    await renderDataSelector(
       <DataSelector
         steps={["DATABASE"]}
         databases={[SAMPLE_DATABASE, MULTI_SCHEMA_DATABASE]}
@@ -342,6 +353,7 @@ describe("DataSelector", () => {
         metadata={metadata}
         isOpen={true}
       />,
+      "Sample Database",
     );
 
     expect(
@@ -350,7 +362,7 @@ describe("DataSelector", () => {
   });
 
   it("should move between selected multi-schema dbs", async () => {
-    render(
+    await renderDataSelector(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         databases={[MULTI_SCHEMA_DATABASE, OTHER_MULTI_SCHEMA_DATABASE]}
@@ -359,6 +371,7 @@ describe("DataSelector", () => {
         metadata={metadata}
         isOpen={true}
       />,
+      "Multi-schema Database",
     );
 
     await userEvent.click(screen.getByText("Multi-schema Database"));
@@ -371,7 +384,7 @@ describe("DataSelector", () => {
   });
 
   it("should skip schema when going to previous step", async () => {
-    render(
+    await renderDataSelector(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         databases={[SAMPLE_DATABASE, ANOTHER_DATABASE]}
@@ -380,12 +393,12 @@ describe("DataSelector", () => {
         metadata={metadata}
         isOpen={true}
       />,
+      "Sample Database",
     );
 
     // click into the first db
     await userEvent.click(screen.getByText("Sample Database"));
-    await delay(1);
-    expect(screen.getByText("Orders")).toBeInTheDocument();
+    expect(await screen.findByText("Orders")).toBeInTheDocument();
 
     // click to go back
     await userEvent.click(screen.getByText("Sample Database"));
@@ -393,18 +406,18 @@ describe("DataSelector", () => {
 
     // click back in
     await userEvent.click(screen.getByText("Sample Database"));
-    await delay(1);
-    expect(screen.getByText("Orders")).toBeInTheDocument();
+    expect(await screen.findByText("Orders")).toBeInTheDocument();
   });
 
-  it("shows an empty state without any databases", () => {
-    render(
+  it("shows an empty state without any databases", async () => {
+    await renderDataSelector(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         databases={[]}
         triggerElement={<div />}
         isOpen={true}
       />,
+      "To pick some data, you'll need to add some first",
     );
 
     expect(

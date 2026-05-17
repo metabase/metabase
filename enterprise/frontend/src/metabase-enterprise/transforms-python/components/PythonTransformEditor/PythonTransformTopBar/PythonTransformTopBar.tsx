@@ -1,8 +1,8 @@
+import { skipToken } from "metabase/api/api";
 import {
-  skipToken,
   useGetDatabaseQuery,
   useListDatabasesQuery,
-} from "metabase/api";
+} from "metabase/api/database";
 import { hasFeature } from "metabase/common/utils/database";
 import { DatabaseDataSelector } from "metabase/querying/common/components/DataSelector";
 import { useSelector } from "metabase/redux";

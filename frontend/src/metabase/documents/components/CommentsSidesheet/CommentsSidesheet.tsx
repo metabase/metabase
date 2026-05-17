@@ -4,7 +4,10 @@ import { useLatest, useLocation } from "react-use";
 import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
-import { useCreateCommentMutation, useListCommentsQuery } from "metabase/api";
+import {
+  useCreateCommentMutation,
+  useListCommentsQuery,
+} from "metabase/api/comment";
 import { CommentEditor } from "metabase/comments/components";
 import { Discussions } from "metabase/comments/components/Discussions";
 import {

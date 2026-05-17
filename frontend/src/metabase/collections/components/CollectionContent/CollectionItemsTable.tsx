@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 
-import { useListCollectionItemsQuery } from "metabase/api";
+import { useListCollectionItemsQuery } from "metabase/api/collection";
 import {
   ALL_MODELS,
   COLLECTION_PAGE_SIZE,

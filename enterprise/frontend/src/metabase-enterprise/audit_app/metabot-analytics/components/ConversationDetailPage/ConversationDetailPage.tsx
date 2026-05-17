@@ -3,7 +3,8 @@ import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
 import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
-import { skipToken, useGetAdhocQueryMetadataQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetAdhocQueryMetadataQuery } from "metabase/api/dataset";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";

@@ -3,7 +3,7 @@ import cx from "classnames";
 import { useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useSearchQuery } from "metabase/api";
+import { useSearchQuery } from "metabase/api/search";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { ListErrorState } from "metabase/common/components/ListErrorState";
 import { Card, Flex, Stack } from "metabase/ui";

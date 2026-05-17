@@ -1,6 +1,8 @@
 import { memo } from "react";
 
-import { skipToken, useGetCardQuery, useGetDatabaseQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetDatabaseQuery } from "metabase/api/database";
+import { useGetCardQuery } from "metabase/api/card";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { Box, Center, Stack } from "metabase/ui";
 import { SidebarResizableBox } from "metabase-enterprise/dependencies/components/DependencyDiagnostics/DiagnosticsSidebar/SidebarResizableBox";

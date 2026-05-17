@@ -1,11 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useGetUserQuery,
-  useUpdateUserMutation,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetUserQuery, useUpdateUserMutation } from "metabase/api/user";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Modal } from "metabase/ui";
 import type { User } from "metabase-types/api";

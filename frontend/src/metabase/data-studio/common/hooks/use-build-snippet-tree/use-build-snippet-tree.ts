@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
-import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
+import { useListCollectionsQuery } from "metabase/api/collection";
+import { useListSnippetsQuery } from "metabase/api/snippet";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";

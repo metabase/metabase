@@ -4,7 +4,7 @@ import { type WithRouterProps, withRouter } from "react-router";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
-import { useCopyDashboardMutation } from "metabase/api";
+import { useCopyDashboardMutation } from "metabase/api/dashboard";
 import { useInitialCollectionId } from "metabase/collections/hooks";
 import type { CopyDashboardFormProperties } from "metabase/dashboard/containers/CopyDashboardForm";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";

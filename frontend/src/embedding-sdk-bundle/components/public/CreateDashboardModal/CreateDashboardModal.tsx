@@ -7,7 +7,7 @@ import type {
   MetabaseDashboard,
   SdkCollectionId,
 } from "embedding-sdk-bundle/types";
-import { useGetCollectionQuery } from "metabase/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
 import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/common/CreateDashboard/CreateDashboardModal";
 import { useLocale } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";

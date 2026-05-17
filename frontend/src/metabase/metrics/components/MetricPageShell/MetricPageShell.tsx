@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 
-import { useDeleteCardMutation, useUpdateCardMutation } from "metabase/api";
+import {
+  useDeleteCardMutation,
+  useUpdateCardMutation,
+} from "metabase/api/card";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import type { CollectionPickerValueItem } from "metabase/common/components/Pickers/CollectionPicker";
 import type { Card } from "metabase-types/api";

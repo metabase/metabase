@@ -240,6 +240,8 @@ describe("useEntityListQuery", () => {
     });
 
     expect(fetchMock.callHistory.calls("path:/api/database")).toHaveLength(1);
-    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryAllByTestId("loading-indicator")).toHaveLength(0);
+    });
   });
 });

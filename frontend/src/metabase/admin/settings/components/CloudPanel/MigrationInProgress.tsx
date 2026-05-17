@@ -1,7 +1,7 @@
 /* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import { t } from "ttag";
 
-import { useCancelCloudMigrationMutation } from "metabase/api";
+import { useCancelCloudMigrationMutation } from "metabase/api/cloud-migration";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
 import { useToggle } from "metabase/common/hooks/use-toggle";

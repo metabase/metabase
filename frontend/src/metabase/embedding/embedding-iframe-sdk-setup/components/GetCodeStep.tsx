@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useUpdateSettingsMutation } from "metabase/api";
+import { useUpdateSettingsMutation } from "metabase/api/settings";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { EmbedServerSnippetLanguageSelect } from "metabase/embedding/components/EmbedServerSnippetLanguageSelect/EmbedServerSnippetLanguageSelect";
 import { MoreServerSnippetExamplesLink } from "metabase/embedding/components/MoreServerSnippetExamplesLink/MoreServerSnippetExamplesLink";

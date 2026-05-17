@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
-import { skipToken, useListNotificationsQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useListNotificationsQuery } from "metabase/api/notification";
 import { CommonNotificationsMenuItem } from "metabase/notifications/NotificationsActionsMenu/CommonNotificationsMenuItem";
 import type Question from "metabase-lib/v1/Question";
 

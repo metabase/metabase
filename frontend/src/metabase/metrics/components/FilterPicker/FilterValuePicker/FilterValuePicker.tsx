@@ -3,12 +3,14 @@ import { useMemo } from "react";
 
 import {
   useGetMeasureDimensionValuesQuery,
-  useGetMetricDimensionValuesQuery,
   useGetRemappedMeasureDimensionValueQuery,
-  useGetRemappedMetricDimensionValueQuery,
   useSearchMeasureDimensionValuesQuery,
+} from "metabase/api/measure";
+import {
+  useGetMetricDimensionValuesQuery,
+  useGetRemappedMetricDimensionValueQuery,
   useSearchMetricDimensionValuesQuery,
-} from "metabase/api";
+} from "metabase/api/metric";
 import {
   FieldValuePicker,
   type UseGetFieldValuesArgs,

@@ -2,7 +2,8 @@
 import { withRouter } from "react-router";
 import { t } from "ttag";
 
-import { skipToken, useGetCollectionQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
 import { ArchiveModal } from "metabase/common/components/ArchiveModal";
 import { useSetArchive } from "metabase/common/hooks";
 import * as Urls from "metabase/urls";

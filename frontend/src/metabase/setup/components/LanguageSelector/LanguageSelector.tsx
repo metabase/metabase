@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import { findWhere } from "underscore";
 
-import { useUpdateSettingMutation } from "metabase/api";
+import { useUpdateSettingMutation } from "metabase/api/settings";
 import { useDispatch, useSelector } from "metabase/redux";
 import {
   getAvailableLocales,

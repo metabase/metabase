@@ -13,7 +13,8 @@ import {
   screen,
   waitFor,
 } from "__support__/ui-with-store";
-import { useListDatabasesQuery, useListTablesQuery } from "metabase/api";
+import { useListDatabasesQuery } from "metabase/api/database";
+import { useListTablesQuery } from "metabase/api/table";
 import { useDispatch } from "metabase/redux";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { EnterpriseApi } from "metabase-enterprise/api/api";

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 
-import { useLazyGetAdhocQueryQuery } from "metabase/api";
+import { useLazyGetAdhocQueryQuery } from "metabase/api/dataset";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";

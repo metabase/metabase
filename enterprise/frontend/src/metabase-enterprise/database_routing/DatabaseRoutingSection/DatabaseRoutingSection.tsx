@@ -10,11 +10,9 @@ import {
   DatabaseInfoSection,
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
-import {
-  skipToken,
-  useListTransformsQuery,
-  useListUserAttributesQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useListTransformsQuery } from "metabase/api/transform";
+import { useListUserAttributesQuery } from "metabase/api/user";
 import { getErrorMessage } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
 import { useToast } from "metabase/common/hooks/use-toast";

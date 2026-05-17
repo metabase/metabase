@@ -3,7 +3,8 @@ import { Link } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useGetTaskQuery, useListDatabasesQuery } from "metabase/api";
+import { useGetTaskQuery } from "metabase/api/task";
+import { useListDatabasesQuery } from "metabase/api/database";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { DateTime } from "metabase/common/components/DateTime";

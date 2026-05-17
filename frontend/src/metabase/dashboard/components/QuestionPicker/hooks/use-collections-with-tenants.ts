@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { skipToken, useListCollectionsTreeQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useListCollectionsTreeQuery } from "metabase/api/collection";
 import { useSetting } from "metabase/common/hooks/use-setting";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import getExpandedCollectionsById from "metabase/entities/collections/getExpandedCollectionsById";

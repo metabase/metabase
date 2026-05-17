@@ -8,7 +8,7 @@ import {
   updateDashboard,
   updateDashboardEmbeddingParams,
   updateDashboardEnableEmbedding,
-} from "metabase/api";
+} from "metabase/api/dashboard";
 import { Dashboards } from "metabase/entities/dashboards";
 import { Questions } from "metabase/entities/questions";
 import { handleActions } from "metabase/redux";

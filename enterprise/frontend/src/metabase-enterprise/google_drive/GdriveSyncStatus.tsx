@@ -3,7 +3,7 @@ import { usePrevious } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { Api, skipToken } from "metabase/api";
+import { Api, skipToken } from "metabase/api/api";
 import { tag } from "metabase/api/tags";
 import { getErrorMessage } from "metabase/api/utils";
 import { useDispatch, useSelector } from "metabase/redux";

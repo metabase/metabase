@@ -4,11 +4,11 @@ import slugg from "slugg";
 import { t } from "ttag";
 
 import {
-  useLazyGetCardQuery,
   useLazyListAutocompleteSuggestionsQuery,
   useLazyListCardAutocompleteSuggestionsQuery,
-  useListSnippetsQuery,
-} from "metabase/api";
+} from "metabase/api/database";
+import { useListSnippetsQuery } from "metabase/api/snippet";
+import { useLazyGetCardQuery } from "metabase/api/card";
 import { useSetting } from "metabase/common/hooks";
 import { isNotNull } from "metabase/utils/types";
 import type { Card, CardId, DatabaseId, Field } from "metabase-types/api";

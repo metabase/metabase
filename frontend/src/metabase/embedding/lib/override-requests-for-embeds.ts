@@ -1,4 +1,4 @@
-import { sessionPropertiesPath } from "metabase/api";
+import { sessionPropertiesPath } from "metabase/api/session";
 import {
   PLUGIN_API,
   PLUGIN_CONTENT_TRANSLATION,

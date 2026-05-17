@@ -7,7 +7,7 @@ import { t } from "ttag";
 import "react-resizable/css/styles.css";
 
 import noResultsSource from "assets/img/no_results.svg";
-import { useUpdateSettingsMutation } from "metabase/api";
+import { useUpdateSettingsMutation } from "metabase/api/settings";
 import CS from "metabase/css/core/index.css";
 import { AuthenticationSection } from "metabase/embedding/embedding-iframe-sdk-setup/components/Authentication/AuthenticationSection";
 import { SdkIframeGuestEmbedStatusBar } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeGuestEmbedStatusBar";

@@ -5,11 +5,11 @@ import { isEqual } from "underscore";
 
 import {
   useCreateNotificationMutation,
-  useGetChannelInfoQuery,
-  useListChannelsQuery,
   useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
-} from "metabase/api";
+} from "metabase/api/notification";
+import { useGetChannelInfoQuery } from "metabase/api/subscription";
+import { useListChannelsQuery } from "metabase/api/channel";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {

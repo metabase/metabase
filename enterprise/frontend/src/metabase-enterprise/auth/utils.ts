@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useGetSettingsQuery } from "metabase/api";
+import { useGetSettingsQuery } from "metabase/api/session";
 import { hasAnySsoFeature } from "metabase/common/utils/plan";
 
 export const getSSOUrl = (siteUrl: string, redirectUrl?: string): string => {

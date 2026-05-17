@@ -1,6 +1,6 @@
 import { c, t } from "ttag";
 
-import { useRunTransformJobMutation } from "metabase/api";
+import { useRunTransformJobMutation } from "metabase/api/transform-job";
 import { Schedule } from "metabase/common/components/Schedule";
 import { useSetting } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";

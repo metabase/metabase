@@ -4,7 +4,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
-import { skipToken, useListActionsQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useListActionsQuery } from "metabase/api/action";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { useDatabaseListQuery } from "metabase/common/hooks";
@@ -247,9 +248,9 @@ export function ObjectDetailView({
 
   const areImplicitActionsEnabled = Boolean(
     question &&
-      question.canWrite() &&
-      question.type() === "model" &&
-      question.supportsImplicitActions(),
+    question.canWrite() &&
+    question.type() === "model" &&
+    question.supportsImplicitActions(),
   );
 
   const modelId = question?.type() === "model" ? question.id() : undefined;

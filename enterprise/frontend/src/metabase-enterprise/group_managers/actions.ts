@@ -1,7 +1,7 @@
 import { push } from "react-router-redux";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
-import { permissionApi } from "metabase/api";
+import { permissionApi } from "metabase/api/permission";
 import { createThunkAction } from "metabase/redux";
 
 import {

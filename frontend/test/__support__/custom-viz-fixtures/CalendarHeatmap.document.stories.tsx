@@ -11,7 +11,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { getNextId } from "__support__/utils";
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
-import { Api } from "metabase/api";
+import { Api } from "metabase/api/api";
 // Side-effect import: provides the `#popover-event-target { position: fixed }`
 // rule that ChartTooltip relies on to anchor near the hovered cell.
 import "metabase/common/components/Popover/Popover.module.css";

@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { useSearchQuery } from "metabase/api";
+import { useSearchQuery } from "metabase/api/search";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchFilterPopoverWrapper";
 import { enabledSearchTypes } from "metabase/search/constants";

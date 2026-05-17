@@ -1,4 +1,4 @@
-import { revisionApi } from "metabase/api";
+import { revisionApi } from "metabase/api/revision";
 import {
   fetchDashboard,
   fetchDashboardCardData,

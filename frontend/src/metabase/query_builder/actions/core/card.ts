@@ -1,4 +1,4 @@
-import { cardApi } from "metabase/api";
+import { cardApi } from "metabase/api/card";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import type { Card } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";

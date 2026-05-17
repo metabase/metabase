@@ -11,7 +11,8 @@ import {
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
+import { useListCollectionsQuery } from "metabase/api/collection";
+import { useListSnippetsQuery } from "metabase/api/snippet";
 import { getMetabotVisible } from "metabase/metabot/state";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { SnippetFormModal } from "metabase/query_builder/components/template_tags/SnippetFormModal";

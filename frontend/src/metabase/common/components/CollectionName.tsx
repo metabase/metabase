@@ -1,4 +1,4 @@
-import { useGetCollectionQuery } from "metabase/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { getName } from "metabase/utils/name";

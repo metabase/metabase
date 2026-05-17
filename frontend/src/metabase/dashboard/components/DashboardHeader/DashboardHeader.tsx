@@ -2,7 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import { useGetCollectionQuery } from "metabase/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import {
   cancelEditingDashboard,

@@ -2,7 +2,8 @@ import dayjs from "dayjs";
 import { type FormEvent, useState } from "react";
 import { c, t } from "ttag";
 
-import { skipToken, useGetUserQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetUserQuery } from "metabase/api/user";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Markdown } from "metabase/common/components/Markdown";

@@ -5,8 +5,8 @@ import { t } from "ttag";
 import {
   useListRecentsQuery,
   useLogRecentItemMutation,
-  useSearchQuery,
-} from "metabase/api";
+} from "metabase/api/activity";
+import { useSearchQuery } from "metabase/api/search";
 import { DefaultSelectItem, FixedSizeIcon, Loader, Select } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import {

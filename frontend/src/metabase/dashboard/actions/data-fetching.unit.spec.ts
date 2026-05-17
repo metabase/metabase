@@ -7,7 +7,7 @@ import {
   setupDatabaseEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { Api } from "metabase/api";
+import { Api } from "metabase/api/api";
 import type { DashboardState, State } from "metabase/redux/store";
 import {
   createMockDashboardState,

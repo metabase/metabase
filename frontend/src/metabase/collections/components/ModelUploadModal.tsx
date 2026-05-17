@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useListCollectionItemsQuery } from "metabase/api";
+import { useListCollectionItemsQuery } from "metabase/api/collection";
 import { UploadMode } from "metabase/redux/store/upload";
 import {
   Button,

@@ -5,10 +5,10 @@ import { t } from "ttag";
 
 import {
   fieldApi,
-  skipToken,
   useGetFieldQuery,
   useGetFieldValuesQuery,
-} from "metabase/api";
+} from "metabase/api/field";
+import { skipToken } from "metabase/api/api";
 import {
   compose,
   createAction,

@@ -5,7 +5,7 @@ import {
   createReducer,
 } from "@reduxjs/toolkit";
 
-import { sessionApi } from "metabase/api";
+import { sessionApi } from "metabase/api/session";
 import type { State } from "metabase/redux/store";
 import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
 import { SettingsApi } from "metabase/services";

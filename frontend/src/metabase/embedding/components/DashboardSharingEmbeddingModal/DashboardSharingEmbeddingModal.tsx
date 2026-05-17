@@ -1,7 +1,7 @@
 import {
   useUpdateDashboardEmbeddingParamsMutation,
   useUpdateDashboardEnableEmbeddingMutation,
-} from "metabase/api";
+} from "metabase/api/dashboard";
 import { getParameters } from "metabase/dashboard/selectors";
 import { EmbedModal } from "metabase/embedding/components/EmbedModal";
 import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";

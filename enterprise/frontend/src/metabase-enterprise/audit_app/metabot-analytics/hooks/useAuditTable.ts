@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useGetDatabaseMetadataQuery } from "metabase/api";
+import { useGetDatabaseMetadataQuery } from "metabase/api/database";
 import { useSelector } from "metabase/redux";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import type {

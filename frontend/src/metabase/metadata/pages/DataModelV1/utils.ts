@@ -1,4 +1,4 @@
-import { skipToken } from "metabase/api";
+import { skipToken } from "metabase/api/api";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import * as Urls from "metabase/urls";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";

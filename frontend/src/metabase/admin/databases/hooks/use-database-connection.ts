@@ -1,7 +1,8 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { skipToken, useGetDatabaseQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetDatabaseQuery } from "metabase/api/database";
 import { getDefaultEngineKey } from "metabase/databases/utils/engine";
 import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/constants";
 import { PLUGIN_DB_ROUTING } from "metabase/plugins";

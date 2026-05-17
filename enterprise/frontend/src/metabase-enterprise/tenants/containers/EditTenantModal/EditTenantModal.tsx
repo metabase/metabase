@@ -3,7 +3,7 @@ import type { Params } from "react-router/lib/Router";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { skipToken } from "metabase/api";
+import { skipToken } from "metabase/api/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import { Modal } from "metabase/ui";

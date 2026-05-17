@@ -6,7 +6,7 @@ import * as Yup from "yup";
 
 import { MembershipSelect } from "metabase/admin/people/components/MembershipSelect";
 import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
-import { useListPermissionsGroupsQuery } from "metabase/api";
+import { useListPermissionsGroupsQuery } from "metabase/api/permission";
 import { FormField } from "metabase/common/components/FormField";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import {

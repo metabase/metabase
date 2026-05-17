@@ -4,11 +4,11 @@ import type { Route } from "react-router";
 import { usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api/api";
 import {
-  skipToken,
   useGetSnippetQuery,
   useUpdateSnippetMutation,
-} from "metabase/api";
+} from "metabase/api/snippet";
 import { getErrorMessage } from "metabase/api/utils";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { EntityCreationInfo } from "metabase/common/components/EntityCreationInfo";

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { isDefaultGroup } from "metabase/admin/utils/groups";
-import { useListPermissionsGroupsQuery } from "metabase/api";
+import { useListPermissionsGroupsQuery } from "metabase/api/permission";
 import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Tabs } from "metabase/ui";

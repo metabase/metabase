@@ -1,7 +1,7 @@
 import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import { userApi } from "metabase/api";
+import { userApi } from "metabase/api/user";
 import { loadLocalization } from "metabase/api/localization";
 import { createDatabase } from "metabase/redux/databases";
 import {

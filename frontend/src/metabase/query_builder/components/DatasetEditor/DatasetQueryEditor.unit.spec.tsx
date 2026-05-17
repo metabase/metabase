@@ -72,6 +72,7 @@ const setup = async ({
   const { rerender } = renderWithProviders(
     <DatasetQueryEditor
       isActive={isActive}
+      availableHeight={height}
       height={height}
       query={query}
       question={question}
@@ -156,6 +157,7 @@ describe("DatasetQueryEditor", () => {
     rerender(
       <DatasetQueryEditor
         isActive={false}
+        availableHeight={0}
         height={0}
         query={query}
         question={question}

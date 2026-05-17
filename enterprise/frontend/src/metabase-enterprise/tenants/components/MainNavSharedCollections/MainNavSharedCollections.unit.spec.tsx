@@ -1,8 +1,13 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupCollectionsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui-with-store";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Collection } from "metabase-types/api";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
@@ -81,7 +86,7 @@ describe("MainNavSharedCollections > new shared collection modal", () => {
     fetchMock.get("path:/api/collection/1", MOCK_TENANT_COLLECTIONS[0]);
 
     const addButton = screen.getByRole("button", { name: /add/i });
-    addButton.click();
+    await userEvent.click(addButton);
 
     expect(
       await screen.findByText("New shared collection"),
@@ -107,17 +112,22 @@ describe("MainNavSharedCollections > section visibility", () => {
     expect(await screen.findByText("External collections")).toBeInTheDocument();
   });
 
-  it("hides the section for non-admins when there are no collections", () => {
+  it("hides the section for non-admins when there are no collections", async () => {
     setup({
       isAdmin: false,
       tenantCollections: [],
       canWriteToSharedCollectionRoot: false,
     });
 
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls("path:/api/collection")).toHaveLength(
+        1,
+      );
+    });
     expect(screen.queryByText("External collections")).not.toBeInTheDocument();
   });
 
-  it("hides the section for non-admins when collections exist but are filtered out by permissions", () => {
+  it("hides the section for non-admins when collections exist but are filtered out by permissions", async () => {
     const settings = mockSettings({ "use-tenants": true });
     const currentUser = createMockUser({ is_superuser: false });
 
@@ -154,6 +164,11 @@ describe("MainNavSharedCollections > section visibility", () => {
       },
     );
 
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls("path:/api/collection")).toHaveLength(
+        1,
+      );
+    });
     expect(screen.queryByText("External collections")).not.toBeInTheDocument();
   });
 });

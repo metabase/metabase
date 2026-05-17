@@ -4,7 +4,7 @@ import { jt, t } from "ttag";
 import {
   usePersistDatabaseMutation,
   useUnpersistDatabaseMutation,
-} from "metabase/api";
+} from "metabase/api/database";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import { hasFeature } from "metabase/common/utils/database";

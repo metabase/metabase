@@ -3,7 +3,7 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import type { SdkCollectionId } from "embedding-sdk-bundle/types";
-import { useCreateDashboardMutation } from "metabase/api";
+import { useCreateDashboardMutation } from "metabase/api/dashboard";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import { useInitialCollectionId } from "metabase/collections/hooks";
 import { FormFooter } from "metabase/common/components/FormFooter";

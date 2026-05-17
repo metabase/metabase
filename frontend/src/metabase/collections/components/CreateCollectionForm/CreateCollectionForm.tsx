@@ -4,7 +4,8 @@ import { withRouter } from "react-router";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { skipToken, useGetCollectionQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { useInitialCollectionId } from "metabase/collections/hooks";
 import { Button } from "metabase/common/components/Button";

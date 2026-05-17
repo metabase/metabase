@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useBulkUpdateTransformJobsActiveMutation } from "metabase/api";
+import { useBulkUpdateTransformJobsActiveMutation } from "metabase/api/transform-job";
 import {
   Form,
   FormErrorMessage,

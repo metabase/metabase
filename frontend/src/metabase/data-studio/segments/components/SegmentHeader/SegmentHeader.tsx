@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { useUpdateSegmentMutation } from "metabase/api";
+import { useUpdateSegmentMutation } from "metabase/api/segment";
 import { modelIconMap } from "metabase/common/utils/icon";
 import { EntityDetailTabs } from "metabase/data-studio/common/components/EntityDetailTabs/EntityDetailTabs";
 import {

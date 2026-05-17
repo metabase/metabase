@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { push, replace } from "react-router-redux";
 import { jt, t } from "ttag";
 
-import { useGetUserQuery } from "metabase/api";
+import { useGetUserQuery } from "metabase/api/user";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";

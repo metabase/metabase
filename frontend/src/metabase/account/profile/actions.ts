@@ -1,4 +1,4 @@
-import { userApi } from "metabase/api";
+import { userApi } from "metabase/api/user";
 import { createThunkAction } from "metabase/redux";
 import type { User } from "metabase-types/api";
 

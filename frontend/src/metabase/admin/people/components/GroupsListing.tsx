@@ -10,7 +10,7 @@ import {
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/admin/utils/groups";
-import { useListApiKeysQuery } from "metabase/api";
+import { useListApiKeysQuery } from "metabase/api/api-key";
 import { getErrorMessage } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";

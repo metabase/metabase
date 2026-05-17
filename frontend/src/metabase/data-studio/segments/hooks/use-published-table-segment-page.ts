@@ -2,11 +2,11 @@ import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api/api";
 import {
-  skipToken,
   useGetSegmentQuery,
   useUpdateSegmentMutation,
-} from "metabase/api";
+} from "metabase/api/segment";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch } from "metabase/redux";
 import * as Urls from "metabase/urls";

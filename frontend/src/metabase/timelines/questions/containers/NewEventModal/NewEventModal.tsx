@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import { useCreateTimelineEventMutation } from "metabase/api/timeline-event";
 import {
-  useCreateTimelineEventMutation,
   useCreateTimelineMutation,
-  useGetCollectionQuery,
   useListTimelinesQuery,
-} from "metabase/api";
+} from "metabase/api/timeline";
+import { useGetCollectionQuery } from "metabase/api/collection";
 import { getDefaultTimeline } from "metabase/common/utils/timelines";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { useDispatch } from "metabase/redux";

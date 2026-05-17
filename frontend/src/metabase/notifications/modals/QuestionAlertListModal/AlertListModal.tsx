@@ -1,7 +1,8 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useListChannelsQuery, useListUserRecipientsQuery } from "metabase/api";
+import { useListUserRecipientsQuery } from "metabase/api/user";
+import { useListChannelsQuery } from "metabase/api/channel";
 import { useSelector } from "metabase/redux";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,

@@ -10,11 +10,9 @@ import {
 } from "metabase/admin/components/SettingsSection";
 import { GroupMappingsWidget } from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
-import {
-  useGetAdminSettingsDetailsQuery,
-  useGetSettingsQuery,
-  useUpdateLdapMutation,
-} from "metabase/api";
+import { useGetAdminSettingsDetailsQuery } from "metabase/api/settings";
+import { useGetSettingsQuery } from "metabase/api/session";
+import { useUpdateLdapMutation } from "metabase/api/ldap";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,

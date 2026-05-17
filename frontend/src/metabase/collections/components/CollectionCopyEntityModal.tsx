@@ -2,10 +2,8 @@ import { dissoc } from "icepick";
 import { useState } from "react";
 import { t } from "ttag";
 
-import {
-  useCopyDashboardMutation,
-  useCopyDocumentMutation,
-} from "metabase/api";
+import { useCopyDocumentMutation } from "metabase/api/document";
+import { useCopyDashboardMutation } from "metabase/api/dashboard";
 import { useInitialCollectionId } from "metabase/collections/hooks";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { entityTypeForObject } from "metabase/entities/utils";

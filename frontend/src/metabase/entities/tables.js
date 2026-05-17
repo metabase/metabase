@@ -7,14 +7,16 @@ import _ from "underscore";
 
 import {
   databaseApi,
-  skipToken,
-  tableApi,
   useGetDatabaseMetadataQuery,
+  useListDatabaseSchemaTablesQuery,
+} from "metabase/api/database";
+import { skipToken } from "metabase/api/api";
+import {
+  tableApi,
   useGetTableQuery,
   useGetTableQueryMetadataQuery,
-  useListDatabaseSchemaTablesQuery,
   useListTablesQuery,
-} from "metabase/api";
+} from "metabase/api/table";
 import { Fields } from "metabase/entities/fields";
 import { Questions } from "metabase/entities/questions";
 import {

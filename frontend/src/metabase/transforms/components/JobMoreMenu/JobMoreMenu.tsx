@@ -2,7 +2,7 @@ import { type MouseEvent, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useUpdateTransformJobMutation } from "metabase/api";
+import { useUpdateTransformJobMutation } from "metabase/api/transform-job";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch } from "metabase/redux";
 import { ActionIcon, Icon, Menu } from "metabase/ui";

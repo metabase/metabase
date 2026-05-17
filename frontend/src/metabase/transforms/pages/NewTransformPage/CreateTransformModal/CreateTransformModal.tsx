@@ -4,11 +4,11 @@ import { t } from "ttag";
 import _ from "underscore";
 import type * as Yup from "yup";
 
+import { skipToken } from "metabase/api/api";
 import {
-  skipToken,
   useGetDatabaseQuery,
   useListSyncableDatabaseSchemasQuery,
-} from "metabase/api";
+} from "metabase/api/database";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { hasFeature } from "metabase/common/utils/database";

@@ -2,7 +2,7 @@ import fetchMock from "fetch-mock";
 import type { LocationDescriptorObject } from "history";
 
 import { createMockEntitiesState } from "__support__/store";
-import { snippetApi } from "metabase/api";
+import { snippetApi } from "metabase/api/snippet";
 import * as CardLib from "metabase/common/utils/card";
 import { Databases } from "metabase/entities/databases";
 import * as questionActions from "metabase/questions/actions";

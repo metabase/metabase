@@ -19,7 +19,7 @@ import _ from "underscore";
 
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { AppKBarProvider } from "metabase/AppKBarProvider";
-import { Api } from "metabase/api";
+import { Api } from "metabase/api/api";
 import { PUT } from "metabase/api/legacy-client";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";

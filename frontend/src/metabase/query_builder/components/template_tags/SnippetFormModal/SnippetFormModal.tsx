@@ -4,7 +4,7 @@ import { t } from "ttag";
 import {
   useCreateSnippetMutation,
   useUpdateSnippetMutation,
-} from "metabase/api";
+} from "metabase/api/snippet";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Flex, Modal } from "metabase/ui";
 import type {

@@ -3,7 +3,7 @@ import { useCallback } from "react";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
-import { useGetPasswordResetTokenStatusQuery } from "metabase/api";
+import { useGetPasswordResetTokenStatusQuery } from "metabase/api/session";
 import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
 import { useValidatePassword } from "metabase/common/hooks";

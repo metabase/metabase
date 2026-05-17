@@ -1,6 +1,9 @@
 import { useMemo } from "react";
 
-import { useListPopularItemsQuery, useListRecentsQuery } from "metabase/api";
+import {
+  useListPopularItemsQuery,
+  useListRecentsQuery,
+} from "metabase/api/activity";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDatabaseListQuery, useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";

@@ -5,7 +5,7 @@ import { t } from "ttag";
 import {
   useCreateActionPublicLinkMutation,
   useDeleteActionPublicLinkMutation,
-} from "metabase/api";
+} from "metabase/api/action";
 import { Button } from "metabase/common/components/Button";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { CopyWidget } from "metabase/common/components/CopyWidget";

@@ -6,7 +6,7 @@ import { c, t } from "ttag";
 import {
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
-} from "metabase/api";
+} from "metabase/api/bookmark";
 import { getCollectionName } from "metabase/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { EntityItem } from "metabase/common/components/EntityItem";

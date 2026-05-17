@@ -3,7 +3,7 @@ import { withRouter } from "react-router";
 import { c, t } from "ttag";
 import * as Yup from "yup";
 
-import { useGetDashboardQuery } from "metabase/api";
+import { useGetDashboardQuery } from "metabase/api/dashboard";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import { Button } from "metabase/common/components/Button";
 import { FormFooter } from "metabase/common/components/FormFooter";

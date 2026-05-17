@@ -22,7 +22,7 @@ import {
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/admin/utils/groups";
-import { collectionApi } from "metabase/api";
+import { collectionApi } from "metabase/api/collection";
 import {
   ROOT_COLLECTION,
   getCollectionIcon,

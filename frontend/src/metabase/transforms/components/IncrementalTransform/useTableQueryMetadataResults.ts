@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 
-import { tableApi } from "metabase/api";
+import { tableApi } from "metabase/api/table";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { Table } from "metabase-types/api";
 

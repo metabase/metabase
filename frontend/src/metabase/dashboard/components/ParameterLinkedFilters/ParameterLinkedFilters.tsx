@@ -1,11 +1,9 @@
 import { Fragment, useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
-import {
-  skipToken,
-  useGetFieldQuery,
-  useGetValidDashboardFilterFieldsQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetFieldQuery } from "metabase/api/field";
+import { useGetValidDashboardFilterFieldsQuery } from "metabase/api/dashboard";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDocsUrl, useLearnUrl } from "metabase/common/hooks";

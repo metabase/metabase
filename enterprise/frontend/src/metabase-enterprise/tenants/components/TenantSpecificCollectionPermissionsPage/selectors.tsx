@@ -21,7 +21,7 @@ import {
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/admin/utils/groups";
-import { collectionApi } from "metabase/api";
+import { collectionApi } from "metabase/api/collection";
 import { findCollectionById } from "metabase/common/utils/collections";
 import {
   ROOT_COLLECTION,

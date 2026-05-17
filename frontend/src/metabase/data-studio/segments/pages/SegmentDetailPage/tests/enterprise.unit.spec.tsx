@@ -1,19 +1,26 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui-minimal";
+import { screen, waitFor } from "__support__/ui-minimal";
 
 import { TEST_TABLE, setup } from "./setup";
+
+async function waitForBreadcrumbs() {
+  await waitFor(() => {
+    expect(screen.getByTestId("data-studio-breadcrumbs")).toBeVisible();
+  });
+}
 
 describe("SegmentDetailPage", () => {
   describe("readonly state", () => {
     describe("when remote sync is read-only and table is published", () => {
-      beforeEach(() => {
+      beforeEach(async () => {
         setup({
           remoteSyncType: "read-only",
           enterprisePlugins: ["remote_sync"],
           tokenFeatures: { remote_sync: true },
           table: { ...TEST_TABLE, is_published: true },
         });
+        await waitForBreadcrumbs();
       });
 
       it("has readonly segment name input", async () => {
@@ -47,6 +54,7 @@ describe("SegmentDetailPage", () => {
           remoteSyncType: "read-only",
           table: { ...TEST_TABLE, is_published: false },
         });
+        await waitForBreadcrumbs();
 
         expect(screen.getByDisplayValue("High Value Orders")).toBeEnabled();
         expect(screen.getByLabelText("Give it a description")).toBeEnabled();

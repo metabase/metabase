@@ -15,12 +15,12 @@ import _ from "underscore";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { SetByEnvVar } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { skipToken } from "metabase/api/api";
 import {
-  skipToken,
   useGetMetabotSettingsQuery,
   useUpdateMetabotSettingsMutation,
-  useUpdateSettingsMutation,
-} from "metabase/api";
+} from "metabase/api/metabot";
+import { useUpdateSettingsMutation } from "metabase/api/settings";
 import {
   getErrorMessage,
   useAdminSetting,

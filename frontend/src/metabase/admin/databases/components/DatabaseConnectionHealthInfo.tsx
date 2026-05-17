@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useGetDatabaseHealthQuery } from "metabase/api";
+import { useGetDatabaseHealthQuery } from "metabase/api/database";
 import { Badge, Flex, type FlexProps, Text, Tooltip } from "metabase/ui";
 import type { DatabaseConnectionType, DatabaseId } from "metabase-types/api";
 

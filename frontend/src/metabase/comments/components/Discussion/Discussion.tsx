@@ -6,7 +6,7 @@ import {
   useDeleteCommentMutation,
   useToggleReactionMutation,
   useUpdateCommentMutation,
-} from "metabase/api";
+} from "metabase/api/comment";
 import { getCommentsUrl } from "metabase/comments/utils";
 import { useToast } from "metabase/common/hooks";
 import { setHoveredChildTargetId } from "metabase/documents/documents.slice";

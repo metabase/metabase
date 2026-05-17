@@ -4,10 +4,8 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { isErrorWithMessage } from "metabase/admin/performance/utils";
-import {
-  useGetAdminSettingsDetailsQuery,
-  useGetSettingsQuery,
-} from "metabase/api";
+import { useGetAdminSettingsDetailsQuery } from "metabase/api/settings";
+import { useGetSettingsQuery } from "metabase/api/session";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import {

@@ -1,7 +1,7 @@
 import { jt, t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { useUpdateMetabotMutation } from "metabase/api";
+import { useUpdateMetabotMutation } from "metabase/api/metabot";
 import { useToast } from "metabase/common/hooks";
 import { Stack, Switch } from "metabase/ui";
 import type { MetabotInfo } from "metabase-types/api";

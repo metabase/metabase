@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { c } from "ttag";
 
-import { useUpdateTransformMutation } from "metabase/api";
+import { useUpdateTransformMutation } from "metabase/api/transform";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import type {
   EntityPickerOptions,

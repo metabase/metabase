@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useListSecurityAdvisoriesQuery } from "metabase/api";
+import { useListSecurityAdvisoriesQuery } from "metabase/api/security-center";
 import { AdminNavLink } from "metabase/nav/components/AdminNavbar/AdminNavLink";
 import { Box, Flex } from "metabase/ui";
 

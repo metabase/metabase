@@ -1,4 +1,4 @@
-import { useListCacheConfigsQuery } from "metabase/api";
+import { useListCacheConfigsQuery } from "metabase/api/cache-config";
 import type { ListCacheConfigsRequest } from "metabase-types/api";
 
 import { rootId } from "../constants/simple";

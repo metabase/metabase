@@ -20,7 +20,7 @@ import {
 import type { CollectionIdProps } from "metabase/admin/permissions/selectors/collection-permissions";
 import type { PermissionEditorEntity } from "metabase/admin/permissions/types";
 import { assertNumericId } from "metabase/admin/permissions/types";
-import { useListCollectionsTreeQuery } from "metabase/api";
+import { useListCollectionsTreeQuery } from "metabase/api/collection";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { Collection, CollectionId } from "metabase-types/api";
 

@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { useUpdateSlackSettingsMutation } from "metabase/api";
+import { useUpdateSlackSettingsMutation } from "metabase/api/slack";
 import {
   Form,
   FormErrorMessage,

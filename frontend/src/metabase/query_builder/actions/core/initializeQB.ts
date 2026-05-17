@@ -1,7 +1,7 @@
 import type { LocationDescriptorObject } from "history";
 import { replace } from "react-router-redux";
 
-import { snippetApi } from "metabase/api";
+import { snippetApi } from "metabase/api/snippet";
 import {
   cardIsEquivalent,
   deserializeCard,

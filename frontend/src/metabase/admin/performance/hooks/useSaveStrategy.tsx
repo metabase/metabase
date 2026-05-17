@@ -4,7 +4,7 @@ import _ from "underscore";
 import {
   useDeleteCacheConfigsMutation,
   useUpdateCacheConfigMutation,
-} from "metabase/api";
+} from "metabase/api/cache-config";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import type {
   CacheConfig,

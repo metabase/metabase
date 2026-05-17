@@ -11,7 +11,7 @@ import {
 import { usePrevious } from "react-use";
 import { isEqual } from "underscore";
 
-import { useListRecentsQuery } from "metabase/api";
+import { useListRecentsQuery } from "metabase/api/activity";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import {
   canPlaceEntityInCollection,

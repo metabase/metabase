@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
-import { useEditTablesMutation } from "metabase/api";
+import { useEditTablesMutation } from "metabase/api/table";
 import {
   trackDataStudioBulkAttributeUpdated,
   trackDataStudioBulkSyncSettingsClicked,

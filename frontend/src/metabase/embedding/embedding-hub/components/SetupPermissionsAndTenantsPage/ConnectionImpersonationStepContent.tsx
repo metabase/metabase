@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { useListDatabasesQuery } from "metabase/api";
+import { useListDatabasesQuery } from "metabase/api/database";
 import { getErrorMessage } from "metabase/api/utils";
 import { DatabaseMultiSelect } from "metabase/common/components/DatabaseMultiSelect";
 import { useToast } from "metabase/common/hooks";

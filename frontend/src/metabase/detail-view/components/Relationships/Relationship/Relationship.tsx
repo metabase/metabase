@@ -5,7 +5,8 @@ import { Link } from "react-router";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetAdhocQueryQuery } from "metabase/api/dataset";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Loader, Stack, Text, rem } from "metabase/ui";

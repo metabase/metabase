@@ -2,7 +2,7 @@ import {
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
   useListBookmarksQuery,
-} from "metabase/api";
+} from "metabase/api/bookmark";
 import { BookmarkToggle } from "metabase/common/components/BookmarkToggle";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";

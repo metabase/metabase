@@ -1,7 +1,7 @@
 import {
   useCreateDashboardPublicLinkMutation,
   useDeleteDashboardPublicLinkMutation,
-} from "metabase/api";
+} from "metabase/api/dashboard";
 import { PublicLinkPopover } from "metabase/embedding/components/PublicLinkPopover/PublicLinkPopover";
 import {
   trackPublicLinkCopied,

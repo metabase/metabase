@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useEditItemVerificationMutation } from "metabase/api";
+import { useEditItemVerificationMutation } from "metabase/api/moderation";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";

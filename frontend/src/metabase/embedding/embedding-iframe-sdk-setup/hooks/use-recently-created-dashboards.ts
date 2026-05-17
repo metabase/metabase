@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import _ from "underscore";
 
-import { useSearchQuery } from "metabase/api";
+import { useSearchQuery } from "metabase/api/search";
 import { useSelector } from "metabase/redux";
 import { getUserId } from "metabase/selectors/user";
 import type { SearchResult } from "metabase-types/api";

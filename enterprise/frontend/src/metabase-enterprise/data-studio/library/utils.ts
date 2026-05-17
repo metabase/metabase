@@ -2,7 +2,8 @@ import { useMemo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { skipToken, useListCollectionItemsQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useListCollectionItemsQuery } from "metabase/api/collection";
 import type {
   OmniPickerCollectionItem,
   OmniPickerItem,

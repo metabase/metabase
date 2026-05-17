@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useSyncTableSchemaMutation } from "metabase/api";
+import { useSyncTableSchemaMutation } from "metabase/api/table";
 import { useTemporaryState } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button } from "metabase/ui";

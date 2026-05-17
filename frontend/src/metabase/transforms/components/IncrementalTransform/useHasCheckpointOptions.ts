@@ -1,10 +1,8 @@
 import { match } from "ts-pattern";
 
-import {
-  skipToken,
-  useGetAdhocQueryMetadataQuery,
-  useGetTableQueryMetadataQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetAdhocQueryMetadataQuery } from "metabase/api/dataset";
+import { useGetTableQueryMetadataQuery } from "metabase/api/table";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getLibQuery, isMbqlQuery } from "metabase/transforms/utils";

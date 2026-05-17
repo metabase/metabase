@@ -4,7 +4,8 @@ import type { Route } from "react-router";
 import { replace } from "react-router-redux";
 import _ from "underscore";
 
-import { skipToken, useGetActionQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetActionQuery } from "metabase/api/action";
 import { Questions } from "metabase/entities/questions";
 import { connect } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";

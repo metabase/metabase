@@ -1,7 +1,8 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { Api, useDeleteDocumentMutation } from "metabase/api";
+import { Api } from "metabase/api/api";
+import { useDeleteDocumentMutation } from "metabase/api/document";
 import { listTag } from "metabase/api/tags";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner/ArchivedEntityBanner";
 import { useSetArchive, useSetCollection } from "metabase/common/hooks";

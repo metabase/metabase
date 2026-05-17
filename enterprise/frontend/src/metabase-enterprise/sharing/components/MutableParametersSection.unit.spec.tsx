@@ -13,6 +13,21 @@ import {
 
 import { MutableParametersSection } from "./MutableParametersSection";
 
+jest.mock("metabase/api/card", () => ({
+  ...jest.requireActual("metabase/api/card"),
+  useGetRemappedCardParameterValueQuery: () => ({}),
+}));
+
+jest.mock("metabase/api/dashboard", () => ({
+  ...jest.requireActual("metabase/api/dashboard"),
+  useGetRemappedDashboardParameterValueQuery: () => ({}),
+}));
+
+jest.mock("metabase/api/dataset", () => ({
+  ...jest.requireActual("metabase/api/dataset"),
+  useGetRemappedParameterValueQuery: () => ({}),
+}));
+
 type SetupOpts = {
   parameters: UiParameter[];
   dashboard: Dashboard;

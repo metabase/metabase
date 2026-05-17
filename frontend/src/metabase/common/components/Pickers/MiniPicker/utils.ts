@@ -2,7 +2,10 @@ import { useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
-import { cardApi, collectionApi, databaseApi, tableApi } from "metabase/api";
+import { cardApi } from "metabase/api/card";
+import { collectionApi } from "metabase/api/collection";
+import { databaseApi } from "metabase/api/database";
+import { tableApi } from "metabase/api/table";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux";
 import { useDispatch } from "metabase/redux";

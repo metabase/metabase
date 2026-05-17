@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
   useGetCollectionQuery,
   useListCollectionsTreeQuery,
-} from "metabase/api";
+} from "metabase/api/collection";
 import {
   currentUserPersonalCollections,
   isRootPersonalCollection,

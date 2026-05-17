@@ -1,6 +1,6 @@
 import { msgid, ngettext, t } from "ttag";
 
-import { useGetFieldValuesQuery } from "metabase/api";
+import { useGetFieldValuesQuery } from "metabase/api/field";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { formatNumber } from "metabase/utils/formatting";

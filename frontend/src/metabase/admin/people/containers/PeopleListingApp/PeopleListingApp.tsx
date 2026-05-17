@@ -3,7 +3,8 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { useListPermissionsGroupsQuery, useListUsersQuery } from "metabase/api";
+import { useListPermissionsGroupsQuery } from "metabase/api/permission";
+import { useListUsersQuery } from "metabase/api/user";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_TENANTS } from "metabase/plugins";

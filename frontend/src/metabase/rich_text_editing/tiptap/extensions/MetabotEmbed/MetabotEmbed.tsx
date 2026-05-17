@@ -11,7 +11,7 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { useLazyMetabotGenerateContentQuery } from "metabase/api";
+import { useLazyMetabotGenerateContentQuery } from "metabase/api/metabot";
 import CS from "metabase/css/core/index.css";
 import { trackDocumentAskMetabot } from "metabase/documents/analytics";
 import {

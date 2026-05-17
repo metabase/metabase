@@ -3,11 +3,9 @@ import type { HTMLAttributes } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useGetCollectionQuery,
-  useLazyGetDashboardQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
+import { useLazyGetDashboardQuery } from "metabase/api/dashboard";
 import {
   type EntityType,
   canonicalCollectionId,

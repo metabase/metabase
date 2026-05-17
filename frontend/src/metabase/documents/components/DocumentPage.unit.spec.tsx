@@ -15,6 +15,36 @@ import { createMockDocument } from "metabase-types/api/mocks";
 
 import { DocumentPage } from "./DocumentPage";
 
+jest.mock("./Editor", () => {
+  const React = jest.requireActual("react");
+
+  return {
+    Editor: ({
+      onEditorReady,
+    }: {
+      onEditorReady?: (editor: unknown) => void;
+    }) => {
+      React.useEffect(() => {
+        onEditorReady?.({
+          commands: {
+            clearContent: () => undefined,
+            focus: () => undefined,
+          },
+          getJSON: () => ({}),
+          isEmpty: true,
+          state: {
+            doc: {
+              descendants: () => undefined,
+            },
+          },
+        });
+      }, [onEditorReady]);
+
+      return <div data-testid="document-editor" />;
+    },
+  };
+});
+
 const setup = () => {
   setupBookmarksEndpoints([]);
   setupDocumentEndpoints(
@@ -42,8 +72,6 @@ const getDocumentTitle = async () =>
 
 describe("Document Page", () => {
   it("should show a save button when title changes", async () => {
-    const consoleWarn = jest.spyOn(console, "warn").mockImplementation();
-
     setup();
     await waitFor(async () =>
       expect(await getDocumentTitle()).toHaveValue("Ends with whitespace "),
@@ -68,9 +96,5 @@ describe("Document Page", () => {
         screen.queryByRole("button", { name: "Save" }),
       ).not.toBeInTheDocument(),
     );
-    expect(consoleWarn).toHaveBeenCalledWith(
-      expect.stringContaining("[tiptap warn]: Duplicate extension names found"),
-    );
-    consoleWarn.mockRestore();
   });
 });

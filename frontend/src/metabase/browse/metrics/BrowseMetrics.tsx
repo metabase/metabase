@@ -4,7 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import NoResults from "assets/img/metrics_bot.svg";
-import { skipToken } from "metabase/api";
+import { skipToken } from "metabase/api/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";

@@ -3,7 +3,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getDashboard } from "metabase/api";
+import { getDashboard } from "metabase/api/dashboard";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { Modal } from "metabase/common/components/Modal";
 import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";

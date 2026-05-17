@@ -1,4 +1,4 @@
-import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
+import { useGetSuggestedMetabotPromptsQuery } from "metabase/api/metabot";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { Button, Stack } from "metabase/ui";
 

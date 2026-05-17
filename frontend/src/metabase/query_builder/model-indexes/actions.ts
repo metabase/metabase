@@ -5,7 +5,7 @@ import {
   createModelIndex,
   deleteModelIndex,
   listModelIndexes,
-} from "metabase/api";
+} from "metabase/api/model-index";
 import type { Dispatch } from "metabase/redux/store";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetColumn, Field, FieldReference } from "metabase-types/api";

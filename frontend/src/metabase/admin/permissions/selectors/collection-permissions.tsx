@@ -9,7 +9,7 @@ import {
   getSpecialGroupType,
   isDefaultGroup,
 } from "metabase/admin/utils/groups";
-import { collectionApi } from "metabase/api";
+import { collectionApi } from "metabase/api/collection";
 import {
   isInstanceAnalyticsCollection,
   isLibraryCollection,

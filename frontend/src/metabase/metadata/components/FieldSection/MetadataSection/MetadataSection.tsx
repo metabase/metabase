@@ -1,10 +1,8 @@
 import { memo, useMemo } from "react";
 import { t } from "ttag";
 
-import {
-  useListDatabaseIdFieldsQuery,
-  useUpdateFieldMutation,
-} from "metabase/api";
+import { useListDatabaseIdFieldsQuery } from "metabase/api/database";
+import { useUpdateFieldMutation } from "metabase/api/field";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";

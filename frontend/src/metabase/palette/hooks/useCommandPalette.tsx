@@ -4,7 +4,8 @@ import { type PropsWithChildren, useEffect, useMemo, useState } from "react";
 import { useDebounce } from "react-use";
 import { jt, t } from "ttag";
 
-import { useListRecentsQuery, useSearchQuery } from "metabase/api";
+import { useListRecentsQuery } from "metabase/api/activity";
+import { useSearchQuery } from "metabase/api/search";
 import { getCollection } from "metabase/collections/utils";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { useSetting } from "metabase/common/hooks";

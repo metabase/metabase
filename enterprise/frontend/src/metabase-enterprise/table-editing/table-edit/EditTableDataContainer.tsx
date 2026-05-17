@@ -3,7 +3,8 @@ import type { Location } from "history";
 import { useCallback, useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import { useGetDatabaseQuery, useGetTableQuery } from "metabase/api";
+import { useGetDatabaseQuery } from "metabase/api/database";
+import { useGetTableQuery } from "metabase/api/table";
 import {
   BulkActionBar,
   BulkActionButton,

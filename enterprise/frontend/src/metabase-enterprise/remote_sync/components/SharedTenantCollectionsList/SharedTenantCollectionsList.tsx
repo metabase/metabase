@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useListCollectionItemsQuery } from "metabase/api";
+import { useListCollectionItemsQuery } from "metabase/api/collection";
 
 import { CollectionSyncList } from "../CollectionSyncList";
 

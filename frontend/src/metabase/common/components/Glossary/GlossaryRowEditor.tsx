@@ -2,7 +2,7 @@ import { useHotkeys } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import type { GlossaryItem } from "metabase/api";
+import type { GlossaryItem } from "metabase/api/glossary";
 import {
   ActionIcon,
   Box,

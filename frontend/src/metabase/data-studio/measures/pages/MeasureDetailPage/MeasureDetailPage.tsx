@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { Route } from "react-router";
 import { t } from "ttag";
 
-import { useUpdateMeasureMutation } from "metabase/api";
+import { useUpdateMeasureMutation } from "metabase/api/measure";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { getUserCanWriteMeasures } from "metabase/data-studio/selectors";

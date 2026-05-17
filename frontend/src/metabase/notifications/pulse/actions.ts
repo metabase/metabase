@@ -2,7 +2,7 @@ import { createAction } from "redux-actions";
 import { t } from "ttag";
 
 import { getActionErrorMessage } from "metabase/actions/utils";
-import { subscriptionApi } from "metabase/api";
+import { subscriptionApi } from "metabase/api/subscription";
 import { createThunkAction } from "metabase/redux";
 import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";

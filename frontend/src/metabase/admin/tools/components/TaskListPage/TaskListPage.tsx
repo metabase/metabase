@@ -1,6 +1,7 @@
 import type { WithRouterProps } from "react-router";
 
-import { useListDatabasesQuery, useListTasksQuery } from "metabase/api";
+import { useListDatabasesQuery } from "metabase/api/database";
+import { useListTasksQuery } from "metabase/api/task";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { Flex } from "metabase/ui";

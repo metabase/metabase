@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui-with-store";
-import type { GlossaryItem } from "metabase/api";
+import type { GlossaryItem } from "metabase/api/glossary";
 
 import { GlossaryTable } from "./GlossaryTable";
 

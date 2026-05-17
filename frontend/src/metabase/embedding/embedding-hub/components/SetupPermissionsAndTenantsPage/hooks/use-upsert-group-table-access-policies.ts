@@ -1,7 +1,8 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { tableApi, useListGroupTableAccessPoliciesQuery } from "metabase/api";
+import { tableApi } from "metabase/api/table";
+import { useListGroupTableAccessPoliciesQuery } from "metabase/api/group-table-access-policy";
 import { useDispatch } from "metabase/redux";
 
 import type { TableColumnSelection } from "../RlsDataSelector";

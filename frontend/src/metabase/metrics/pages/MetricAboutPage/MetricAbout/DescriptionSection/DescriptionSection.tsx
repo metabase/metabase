@@ -1,10 +1,8 @@
 import { t } from "ttag";
 
-import {
-  useGetDatabaseQuery,
-  useGetTableQuery,
-  useUpdateCardMutation,
-} from "metabase/api";
+import { useGetDatabaseQuery } from "metabase/api/database";
+import { useGetTableQuery } from "metabase/api/table";
+import { useUpdateCardMutation } from "metabase/api/card";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
 import { Link } from "metabase/common/components/Link/Link";

@@ -1,12 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api/api";
 import {
-  skipToken,
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
-  useUpdateTransformMutation,
-} from "metabase/api";
+} from "metabase/api/database";
+import { useUpdateTransformMutation } from "metabase/api/transform";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { UserInput } from "metabase/metadata/components";

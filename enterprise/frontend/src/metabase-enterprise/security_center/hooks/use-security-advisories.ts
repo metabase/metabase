@@ -4,7 +4,7 @@ import {
   useAcknowledgeAdvisoriesMutation,
   useAcknowledgeAdvisoryMutation,
   useListSecurityAdvisoriesQuery,
-} from "metabase/api";
+} from "metabase/api/security-center";
 import type { Advisory } from "metabase-types/api";
 
 const POLLING_INTERVAL = 2000;

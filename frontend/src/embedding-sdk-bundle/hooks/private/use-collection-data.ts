@@ -4,7 +4,7 @@ import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-br
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getCollectionIdSlugFromReference } from "embedding-sdk-bundle/store/collections";
 import type { SdkCollectionId } from "embedding-sdk-bundle/types/collection";
-import { useGetCollectionQuery } from "metabase/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
 import type { CollectionId } from "metabase-types/api";
 
 export const useCollectionData = (

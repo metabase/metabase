@@ -1,4 +1,4 @@
-import { useListCollectionItemsQuery } from "metabase/api";
+import { useListCollectionItemsQuery } from "metabase/api/collection";
 import { ItemList } from "metabase/common/components/Pickers/EntityPicker/components";
 
 export const TenantCollectionItemList = ({

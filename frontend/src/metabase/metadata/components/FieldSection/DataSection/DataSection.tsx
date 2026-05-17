@@ -1,7 +1,7 @@
 import { type ChangeEvent, memo, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useUpdateFieldMutation } from "metabase/api";
+import { useUpdateFieldMutation } from "metabase/api/field";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
 import {

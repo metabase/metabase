@@ -2,16 +2,14 @@ import { useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
-import {
-  cardApi,
-  collectionApi,
-  dashboardApi,
-  databaseApi,
-  documentApi,
-  snippetApi,
-  tableApi,
-  transformApi,
-} from "metabase/api";
+import { cardApi } from "metabase/api/card";
+import { collectionApi } from "metabase/api/collection";
+import { dashboardApi } from "metabase/api/dashboard";
+import { databaseApi } from "metabase/api/database";
+import { documentApi } from "metabase/api/document";
+import { snippetApi } from "metabase/api/snippet";
+import { tableApi } from "metabase/api/table";
+import { transformApi } from "metabase/api/transform";
 import { useGetPersonalCollection } from "metabase/common/hooks/use-get-personal-collection";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { type DispatchFn, useDispatch } from "metabase/redux";

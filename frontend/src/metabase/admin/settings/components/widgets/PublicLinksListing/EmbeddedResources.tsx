@@ -1,9 +1,7 @@
 import { t } from "ttag";
 
-import {
-  useListEmbeddableCardsQuery,
-  useListEmbeddableDashboardsQuery,
-} from "metabase/api";
+import { useListEmbeddableCardsQuery } from "metabase/api/card";
+import { useListEmbeddableDashboardsQuery } from "metabase/api/dashboard";
 import { Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {

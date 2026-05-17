@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useListRecentsQuery } from "metabase/api";
+import { useListRecentsQuery } from "metabase/api/activity";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useSelector } from "metabase/redux";

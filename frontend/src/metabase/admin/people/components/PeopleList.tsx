@@ -6,9 +6,9 @@ import {
   useCreateMembershipMutation,
   useDeleteMembershipMutation,
   useListUserMembershipsQuery,
-  useListUsersQuery,
   useUpdateMembershipMutation,
-} from "metabase/api";
+} from "metabase/api/permission";
+import { useListUsersQuery } from "metabase/api/user";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";

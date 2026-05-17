@@ -1,7 +1,8 @@
 import { useField } from "formik";
 import { useEffect, useMemo } from "react";
 
-import { skipToken, useGetDashboardQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetDashboardQuery } from "metabase/api/dashboard";
 import { FormSelect, type FormSelectProps } from "metabase/forms";
 import type { DashboardId } from "metabase-types/api";
 

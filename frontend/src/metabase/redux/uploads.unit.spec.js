@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { getStore } from "__support__/entities-store";
-import { Api } from "metabase/api";
+import { Api } from "metabase/api/api";
 import { mainReducers } from "metabase/reducers-main";
 import { createMockState } from "metabase/redux/store/mocks";
 

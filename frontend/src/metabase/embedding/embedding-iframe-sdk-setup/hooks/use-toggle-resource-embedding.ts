@@ -1,9 +1,11 @@
 import {
   useUpdateCardEmbeddingParamsMutation,
   useUpdateCardEnableEmbeddingMutation,
+} from "metabase/api/card";
+import {
   useUpdateDashboardEmbeddingParamsMutation,
   useUpdateDashboardEnableEmbeddingMutation,
-} from "metabase/api";
+} from "metabase/api/dashboard";
 import { useSetting } from "metabase/common/hooks";
 import { getStaticEmbedSetupPublishHandlers } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/lib/get-static-embed-setup-publish-handlers";
 import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";

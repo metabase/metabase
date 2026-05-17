@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useListPopularItemsQuery } from "metabase/api";
+import { useListPopularItemsQuery } from "metabase/api/activity";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import * as Urls from "metabase/urls";

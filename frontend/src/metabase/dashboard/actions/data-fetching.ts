@@ -4,7 +4,8 @@ import { denormalize, normalize, schema } from "normalizr";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { automagicDashboardsApi, dashboardApi } from "metabase/api";
+import { automagicDashboardsApi } from "metabase/api/automagic-dashboards";
+import { dashboardApi } from "metabase/api/dashboard";
 import { applyParameters } from "metabase/common/utils/card";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";

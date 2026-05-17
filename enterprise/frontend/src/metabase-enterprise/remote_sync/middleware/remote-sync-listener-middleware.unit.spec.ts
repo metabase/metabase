@@ -9,7 +9,7 @@ import {
   setupRemoteSyncDirtyEndpoint,
   setupUpdateCollectionEndpoint,
 } from "__support__/server-mocks";
-import { Api } from "metabase/api";
+import { Api } from "metabase/api/api";
 import { collectionApi } from "metabase/api/collection";
 import { settings as settingsReducer } from "metabase/redux/settings";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";

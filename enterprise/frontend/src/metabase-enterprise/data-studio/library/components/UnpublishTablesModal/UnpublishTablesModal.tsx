@@ -1,6 +1,6 @@
 import { jt, t } from "ttag";
 
-import { useGetTableSelectionInfoQuery } from "metabase/api";
+import { useGetTableSelectionInfoQuery } from "metabase/api/table";
 import { getErrorMessage } from "metabase/api/utils";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { trackDataStudioTableUnpublished } from "metabase/data-studio/analytics";

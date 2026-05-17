@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
-import { skipToken, useGetDatabaseQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetDatabaseQuery } from "metabase/api/database";
 import { Databases } from "metabase/entities/databases";
 import { useSelector } from "metabase/redux";
 import * as Urls from "metabase/urls";

@@ -1,4 +1,5 @@
-import { skipToken, useListDashboardItemsQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useListDashboardItemsQuery } from "metabase/api/dashboard";
 
 import type { OmniPickerItem } from "../../types";
 
