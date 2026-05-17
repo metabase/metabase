@@ -1,12 +1,9 @@
 import { useCallback } from "react";
 import { push } from "react-router-redux";
 
-import {
-  collectionApi,
-  skipToken,
-  useGetCollectionQuery,
-  useGetTimelineQuery,
-} from "metabase/api";
+import { collectionApi, useGetCollectionQuery } from "metabase/api/collection";
+import { skipToken } from "metabase/api/api";
+import { useGetTimelineQuery } from "metabase/api/timeline";
 import { useSetCollection } from "metabase/common/hooks";
 import { getDefaultTimelineName } from "metabase/common/utils/timelines";
 import type { ModalComponentProps } from "metabase/hoc/ModalRoute";

@@ -7,7 +7,7 @@ import {
   useCancelCurrentTransformRunMutation,
   useRunTransformMutation,
   useUpdateTransformMutation,
-} from "metabase/api";
+} from "metabase/api/transform";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";

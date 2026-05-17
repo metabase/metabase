@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { skipToken, useListTaskRunEntitiesQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useListTaskRunEntitiesQuery } from "metabase/api/task";
 import { Loader, Select, type SelectProps, Tooltip } from "metabase/ui";
 import type { TaskRunDateFilterOption, TaskRunType } from "metabase-types/api";
 

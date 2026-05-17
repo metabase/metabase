@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { Link } from "react-router";
 import { c, t } from "ttag";
 
-import { useListCommentsQuery } from "metabase/api";
+import { useListCommentsQuery } from "metabase/api/comment";
 import {
   DateTime,
   getFormattedTime,

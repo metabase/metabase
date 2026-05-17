@@ -11,7 +11,7 @@ import { getGroupNameLocalized } from "metabase/admin/utils/groups";
 import {
   useGetCollectionQuery,
   useListCollectionsTreeQuery,
-} from "metabase/api";
+} from "metabase/api/collection";
 import { useSetting } from "metabase/common/hooks/use-setting";
 import {
   type CollectionTreeItem,

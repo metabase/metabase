@@ -2,11 +2,9 @@ import type { Location } from "history";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useGetGroupTableAccessPolicyQuery,
-  useListUserAttributesQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetGroupTableAccessPolicyQuery } from "metabase/api/group-table-access-policy";
+import { useListUserAttributesQuery } from "metabase/api/user";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getParentPath } from "metabase/hoc/ModalRoute";
 import { useDispatch, useSelector } from "metabase/redux";

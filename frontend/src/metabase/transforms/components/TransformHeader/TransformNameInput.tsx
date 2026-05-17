@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useUpdateTransformMutation } from "metabase/api";
+import { useUpdateTransformMutation } from "metabase/api/transform";
 import { PaneHeaderInput } from "metabase/data-studio/common/components/PaneHeader";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { NAME_MAX_LENGTH } from "metabase/transforms/constants";

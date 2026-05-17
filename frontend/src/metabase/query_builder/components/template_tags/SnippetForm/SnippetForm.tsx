@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { useListCollectionsQuery } from "metabase/api";
+import { useListCollectionsQuery } from "metabase/api/collection";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { Button } from "metabase/common/components/Button";
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";

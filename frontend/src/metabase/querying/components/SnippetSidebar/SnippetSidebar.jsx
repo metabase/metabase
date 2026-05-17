@@ -8,8 +8,8 @@ import {
   useGetCollectionQuery,
   useListCollectionItemsQuery,
   useListCollectionsQuery,
-  useListSnippetsQuery,
-} from "metabase/api";
+} from "metabase/api/collection";
+import { useListSnippetsQuery } from "metabase/api/snippet";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarContent } from "metabase/common/components/SidebarContent";

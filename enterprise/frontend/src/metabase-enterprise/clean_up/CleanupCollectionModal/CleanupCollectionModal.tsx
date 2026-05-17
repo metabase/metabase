@@ -2,7 +2,7 @@ import type { Location } from "history";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { skipToken } from "metabase/api";
+import { skipToken } from "metabase/api/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUserSetting } from "metabase/common/hooks";

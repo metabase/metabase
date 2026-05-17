@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import { useUpdatePasswordMutation } from "metabase/api";
+import { useUpdatePasswordMutation } from "metabase/api/user";
 import {
   Form,
   FormErrorMessage,

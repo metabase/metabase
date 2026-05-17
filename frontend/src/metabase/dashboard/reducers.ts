@@ -1,7 +1,7 @@
 import { type UnknownAction, createReducer } from "@reduxjs/toolkit";
 import { assoc, chain, merge, updateIn } from "icepick";
 
-import { actionApi } from "metabase/api";
+import { actionApi } from "metabase/api/action";
 import { Questions } from "metabase/entities/questions";
 import { combineReducers } from "metabase/redux";
 import { SET_PARAMETER_VALUES, initialize } from "metabase/redux/dashboard";

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { skipToken, useListTableForeignKeysQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useListTableForeignKeysQuery } from "metabase/api/table";
 import { DetailViewSidesheet } from "metabase/detail-view/components";
 import { filterByPk } from "metabase/detail-view/utils";
 import Question from "metabase-lib/v1/Question";

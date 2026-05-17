@@ -3,11 +3,9 @@ import { useEffect, useMemo } from "react";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import {
-  skipToken,
-  useGetCardQuery,
-  useGetCollectionQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
+import { useGetCardQuery } from "metabase/api/card";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { connect } from "metabase/redux";
 import { closeNavbar, openNavbar } from "metabase/redux/app";

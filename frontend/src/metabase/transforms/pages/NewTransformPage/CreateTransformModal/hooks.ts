@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useCreateTransformMutation } from "metabase/api";
+import { useCreateTransformMutation } from "metabase/api/transform";
 import { trackTransformCreated } from "metabase/transforms/analytics";
 import type { Transform, TransformSource } from "metabase-types/api";
 

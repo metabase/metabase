@@ -1,6 +1,7 @@
 import { updateIn } from "icepick";
 
-import { cardApi, useGetCardQuery, useListCardsQuery } from "metabase/api";
+import { cardApi } from "metabase/api/card";
+import { useGetCardQuery, useListCardsQuery } from "metabase/api/card";
 import { getCollectionType } from "metabase/entities/collections";
 import { SOFT_RELOAD_CARD } from "metabase/redux/query-builder";
 import {

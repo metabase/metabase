@@ -1,7 +1,7 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useCreateUserMutation } from "metabase/api";
+import { useCreateUserMutation } from "metabase/api/user";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { Modal } from "metabase/ui";

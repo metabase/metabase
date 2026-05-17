@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api/api";
+import { useGetDatabaseQuery } from "metabase/api/database";
 import {
-  skipToken,
-  useGetDatabaseQuery,
   usePersistModelMutation,
   useUnpersistModelMutation,
-} from "metabase/api";
+} from "metabase/api/card";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { hasFeature } from "metabase/common/utils/database";
 import { Switch, Tooltip } from "metabase/ui";

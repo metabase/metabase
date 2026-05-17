@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useListCollectionsQuery } from "metabase/api";
+import { useListCollectionsQuery } from "metabase/api/collection";
 import { isPublicCollection } from "metabase/collections/utils";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { Input } from "metabase/common/components/Input";

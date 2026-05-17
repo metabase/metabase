@@ -7,7 +7,7 @@ import {
   useGetDatabaseMetadataQuery,
   useGetDatabaseQuery,
   useListDatabasesQuery,
-} from "metabase/api";
+} from "metabase/api/database";
 import { createThunkAction } from "metabase/redux";
 import { DatabaseSchema } from "metabase/schema";
 import {

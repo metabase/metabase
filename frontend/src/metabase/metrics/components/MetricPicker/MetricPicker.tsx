@@ -3,10 +3,12 @@ import { t } from "ttag";
 
 import {
   useLazyGetMeasureQuery,
-  useLazyGetMetricQuery,
   useListMeasuresQuery,
+} from "metabase/api/measure";
+import {
+  useLazyGetMetricQuery,
   useListMetricsQuery,
-} from "metabase/api";
+} from "metabase/api/metric";
 import {
   Combobox,
   Group,

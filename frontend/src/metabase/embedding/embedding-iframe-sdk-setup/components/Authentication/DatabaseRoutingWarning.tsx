@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useListDatabasesQuery } from "metabase/api";
+import { useListDatabasesQuery } from "metabase/api/database";
 import {
   dashboardUsesRoutingEnabledDatabases,
   questionUsesRoutingEnabledDatabase,

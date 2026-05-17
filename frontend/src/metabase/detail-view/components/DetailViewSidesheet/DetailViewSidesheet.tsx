@@ -4,12 +4,10 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
-import {
-  skipToken,
-  useGetAdhocQueryQuery,
-  useListActionsQuery,
-  useListDatabasesQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetAdhocQueryQuery } from "metabase/api/dataset";
+import { useListDatabasesQuery } from "metabase/api/database";
+import { useListActionsQuery } from "metabase/api/action";
 import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";

@@ -5,7 +5,7 @@ import {
   useDeactivateUserMutation,
   useListUsersQuery,
   useReactivateUserMutation,
-} from "metabase/api";
+} from "metabase/api/user";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 
 interface UserActivationModalInnerProps {

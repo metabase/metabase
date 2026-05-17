@@ -2,7 +2,8 @@ import { useState } from "react";
 import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
-import { collectionApi, useUpdateTableMutation } from "metabase/api";
+import { collectionApi } from "metabase/api/collection";
+import { useUpdateTableMutation } from "metabase/api/table";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { CollectionPickerModal } from "metabase/common/components/Pickers";
 import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";

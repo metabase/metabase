@@ -1,4 +1,5 @@
-import { skipToken, useSearchQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useSearchQuery } from "metabase/api/search";
 import type { SearchRequest } from "metabase-types/api";
 
 export const useFetchMetrics = (

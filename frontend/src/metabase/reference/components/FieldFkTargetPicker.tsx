@@ -1,4 +1,4 @@
-import { useListDatabaseIdFieldsQuery } from "metabase/api";
+import { useListDatabaseIdFieldsQuery } from "metabase/api/database";
 import { FkTargetPicker } from "metabase/metadata/components";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { SelectProps } from "metabase/ui";

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { useCreateCollectionMutation } from "metabase/api";
+import { useCreateCollectionMutation } from "metabase/api/collection";
 import { canPlaceEntityInCollection } from "metabase/collections/utils";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";

@@ -1,4 +1,4 @@
-import { useListDatabasesQuery } from "metabase/api";
+import { useListDatabasesQuery } from "metabase/api/database";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";

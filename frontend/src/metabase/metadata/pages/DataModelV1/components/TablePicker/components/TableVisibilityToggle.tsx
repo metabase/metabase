@@ -2,7 +2,7 @@ import type { MouseEvent } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { useUpdateTableMutation } from "metabase/api";
+import { useUpdateTableMutation } from "metabase/api/table";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ActionIcon, Icon, Loader, Tooltip } from "metabase/ui";
 import type { Table } from "metabase-types/api";

@@ -1,7 +1,7 @@
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
-import { useListCollectionsTreeQuery } from "metabase/api";
+import { useListCollectionsTreeQuery } from "metabase/api/collection";
 import { useSetting } from "metabase/common/hooks";
 import {
   Box,

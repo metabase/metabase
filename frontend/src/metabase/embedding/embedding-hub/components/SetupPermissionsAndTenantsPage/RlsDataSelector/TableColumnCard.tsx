@@ -2,7 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { useGetTableQueryMetadataQuery } from "metabase/api";
+import { useGetTableQueryMetadataQuery } from "metabase/api/table";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { DataPickerModal } from "metabase/common/components/Pickers/DataPicker";
 import { MiniPicker } from "metabase/common/components/Pickers/MiniPicker";

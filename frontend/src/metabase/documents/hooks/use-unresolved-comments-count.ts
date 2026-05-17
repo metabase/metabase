@@ -1,4 +1,4 @@
-import { useListCommentsQuery } from "metabase/api";
+import { useListCommentsQuery } from "metabase/api/comment";
 import { getTargetChildCommentThreads } from "metabase/comments/utils";
 import { getUnresolvedComments } from "metabase/documents/components/Editor/CommentsMenu";
 import { getCurrentDocument } from "metabase/documents/selectors";

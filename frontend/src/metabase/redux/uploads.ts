@@ -1,7 +1,8 @@
 import { assocIn, dissocIn, updateIn } from "icepick";
 import { t } from "ttag";
 
-import { Api, cardApi } from "metabase/api";
+import { Api } from "metabase/api/api";
+import { cardApi } from "metabase/api/card";
 import { listTag } from "metabase/api/tags";
 import { entityCompatibleQuery } from "metabase/entities/utils";
 import type { Dispatch, State } from "metabase/redux/store";

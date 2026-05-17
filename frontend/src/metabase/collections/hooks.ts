@@ -1,7 +1,8 @@
 import type { Location } from "history";
 import { useMemo } from "react";
 
-import { skipToken, useGetCollectionQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useGetCollectionQuery } from "metabase/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
 import { isRootCollection } from "metabase/collections/utils";
 import type { CollectionId } from "metabase-types/api";
 

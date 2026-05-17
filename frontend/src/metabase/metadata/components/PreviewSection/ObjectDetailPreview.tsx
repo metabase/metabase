@@ -1,7 +1,8 @@
 import { memo, useMemo, useRef } from "react";
 import { t } from "ttag";
 
-import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetAdhocQueryQuery } from "metabase/api/dataset";
 import { getErrorMessage } from "metabase/api/utils";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { DetailsGroup, Header } from "metabase/detail-view/components";

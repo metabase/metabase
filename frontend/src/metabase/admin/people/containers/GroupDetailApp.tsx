@@ -4,7 +4,7 @@ import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import {
   useGetPermissionsGroupQuery,
   useListUserMembershipsQuery,
-} from "metabase/api";
+} from "metabase/api/permission";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";

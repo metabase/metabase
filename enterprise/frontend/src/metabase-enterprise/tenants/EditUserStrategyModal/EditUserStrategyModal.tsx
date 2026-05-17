@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { permissionApi } from "metabase/api";
+import { permissionApi } from "metabase/api/permission";
 import { useAdminSetting } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";

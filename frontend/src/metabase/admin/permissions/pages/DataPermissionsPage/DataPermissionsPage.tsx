@@ -3,11 +3,9 @@ import type { Route } from "react-router";
 import { useAsync } from "react-use";
 
 import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
-import {
-  skipToken,
-  useGetDatabaseMetadataQuery,
-  useListPermissionsGroupsQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetDatabaseMetadataQuery } from "metabase/api/database";
+import { useListPermissionsGroupsQuery } from "metabase/api/permission";
 import { Databases } from "metabase/entities/databases";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";

@@ -1,10 +1,8 @@
 import dayjs from "dayjs";
 import { t } from "ttag";
 
-import {
-  useGetPersistedInfoByCardQuery,
-  useRefreshModelCacheMutation,
-} from "metabase/api";
+import { useGetPersistedInfoByCardQuery } from "metabase/api/persist";
+import { useRefreshModelCacheMutation } from "metabase/api/card";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 import { Box, Button, Flex, Icon } from "metabase/ui";

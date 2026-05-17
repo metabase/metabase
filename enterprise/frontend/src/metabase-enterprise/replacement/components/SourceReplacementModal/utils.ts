@@ -1,6 +1,6 @@
 import { msgid, ngettext } from "ttag";
 
-import { skipToken } from "metabase/api";
+import { skipToken } from "metabase/api/api";
 import type {
   Card,
   DatabaseId,

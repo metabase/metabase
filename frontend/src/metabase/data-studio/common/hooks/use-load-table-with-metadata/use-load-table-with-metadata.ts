@@ -2,9 +2,9 @@ import { useEffect } from "react";
 
 import {
   fetchForeignTablesMetadata,
-  skipToken,
   useGetTableQueryMetadataQuery,
-} from "metabase/api";
+} from "metabase/api/table";
+import { skipToken } from "metabase/api/api";
 import { useDispatch } from "metabase/redux";
 import type { TableId } from "metabase-types/api";
 

@@ -1,4 +1,5 @@
-import { skipToken, useListCollectionTimelinesQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useListCollectionTimelinesQuery } from "metabase/api/timeline";
 import * as Urls from "metabase/urls";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";

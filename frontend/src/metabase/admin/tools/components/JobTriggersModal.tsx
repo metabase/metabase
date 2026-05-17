@@ -2,7 +2,7 @@ import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useGetTasksInfoQuery } from "metabase/api";
+import { useGetTasksInfoQuery } from "metabase/api/task";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import AdminS from "metabase/css/admin.module.css";

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useUpdateSettingMutation } from "metabase/api";
+import { useUpdateSettingMutation } from "metabase/api/settings";
 import { useSetting } from "metabase/common/hooks";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";

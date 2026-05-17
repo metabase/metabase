@@ -3,7 +3,7 @@ import type { PropsWithChildren } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { skipToken } from "metabase/api";
+import { skipToken } from "metabase/api/api";
 import { UpsellStorage } from "metabase/common/components/upsells/UpsellStorage";
 import { useHasTokenFeature, useStoreUrl } from "metabase/common/hooks";
 import {

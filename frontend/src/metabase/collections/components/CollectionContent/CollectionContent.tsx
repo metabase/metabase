@@ -3,10 +3,12 @@ import { useCallback } from "react";
 import {
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
-  useGetCollectionQuery,
   useListBookmarksQuery,
+} from "metabase/api/bookmark";
+import {
+  useGetCollectionQuery,
   useListCollectionsTreeQuery,
-} from "metabase/api";
+} from "metabase/api/collection";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import { Databases } from "metabase/entities/databases";

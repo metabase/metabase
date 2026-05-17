@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { measureApi, metricApi, segmentApi } from "metabase/api";
+import { measureApi } from "metabase/api/measure";
+import { metricApi } from "metabase/api/metric";
+import { segmentApi } from "metabase/api/segment";
 import { useDispatch, useStore } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getObjectEntries, objectFromEntries } from "metabase/utils/objects";

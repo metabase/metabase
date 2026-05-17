@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
 import { navigateToArchive } from "metabase/account/notifications/actions";
+import { skipToken } from "metabase/api/api";
 import {
-  skipToken,
   useGetNotificationQuery,
   useUnsubscribeFromNotificationMutation,
-} from "metabase/api";
+} from "metabase/api/notification";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { UnsubscribeConfirmModal } from "metabase/notifications/modals/UnsubscribeConfirmModal";

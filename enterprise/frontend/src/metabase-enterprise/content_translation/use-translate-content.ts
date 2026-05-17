@@ -1,6 +1,6 @@
 import { useCallback, useSyncExternalStore } from "react";
 
-import { skipToken } from "metabase/api";
+import { skipToken } from "metabase/api/api";
 import { useLocale } from "metabase/common/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { useListContentTranslationsQuery } from "metabase-enterprise/api";

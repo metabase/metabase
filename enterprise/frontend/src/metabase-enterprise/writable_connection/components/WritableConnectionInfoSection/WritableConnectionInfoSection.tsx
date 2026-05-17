@@ -6,7 +6,7 @@ import {
   DatabaseInfoSection,
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
-import { useUpdateDatabaseMutation } from "metabase/api";
+import { useUpdateDatabaseMutation } from "metabase/api/database";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import {
   hasDbRoutingEnabled,

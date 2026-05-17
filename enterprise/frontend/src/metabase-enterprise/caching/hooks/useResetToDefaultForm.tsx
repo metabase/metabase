@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { useDeleteCacheConfigsMutation } from "metabase/api";
+import { useDeleteCacheConfigsMutation } from "metabase/api/cache-config";
 
 export const useResetToDefaultForm = ({
   databaseIds,

@@ -1,6 +1,6 @@
 import { memo } from "react";
 
-import { useGetAdhocQueryMetadataQuery } from "metabase/api";
+import { useGetAdhocQueryMetadataQuery } from "metabase/api/dataset";
 import { useSnapshotSelector } from "metabase/common/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Card, Loader, Stack } from "metabase/ui";

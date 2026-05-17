@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { useSearchQuery } from "metabase/api";
+import { useSearchQuery } from "metabase/api/search";
 import {
   ActionIcon,
   Box,

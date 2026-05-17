@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { skipToken, useGetDashboardQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetDashboardQuery } from "metabase/api/dashboard";
 import { getErrorMessage } from "metabase/api/utils";
 import { DashboardPickerModal } from "metabase/common/components/Pickers/DashboardPicker";
 import { Flex, Group, Icon } from "metabase/ui";

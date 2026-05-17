@@ -4,7 +4,7 @@ import { t } from "ttag";
 import {
   useRegenerateApiKeyMutation,
   useUpdateApiKeyMutation,
-} from "metabase/api";
+} from "metabase/api/api-key";
 import {
   Form,
   FormErrorMessage,

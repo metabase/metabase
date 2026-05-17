@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/actions/containers/ActionPicker/ActionPicker.styled";
-import type { GlossaryItem } from "metabase/api";
+import type { GlossaryItem } from "metabase/api/glossary";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Table as CommonTable } from "metabase/common/components/Table/Table";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";

@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import { useLogRecentItemMutation } from "metabase/api";
+import { useLogRecentItemMutation } from "metabase/api/activity";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { isLoggableActivityModel } from "metabase-types/api";
 

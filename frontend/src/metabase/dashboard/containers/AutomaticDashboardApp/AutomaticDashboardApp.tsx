@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
-import { dashboardApi } from "metabase/api";
+import { dashboardApi } from "metabase/api/dashboard";
 import { invalidateTags } from "metabase/api/tags";
 import { ActionButton } from "metabase/common/components/ActionButton";
 import { Button } from "metabase/common/components/Button";

@@ -6,7 +6,7 @@ import {
   useDismissDatabaseSyncSpinnerMutation,
   useRescanDatabaseFieldValuesMutation,
   useSyncDatabaseSchemaMutation,
-} from "metabase/api";
+} from "metabase/api/database";
 import { ActionButton } from "metabase/common/components/ActionButton";
 import { isDbModifiable } from "metabase/common/utils/database";
 import { Tables } from "metabase/entities/tables";

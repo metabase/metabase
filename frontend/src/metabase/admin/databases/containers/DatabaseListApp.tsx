@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   useAddSampleDatabaseMutation,
   useListDatabasesQuery,
-} from "metabase/api";
+} from "metabase/api/database";
 import { LoadingAndGenericErrorWrapper } from "metabase/common/components/LoadingAndGenericErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useListUsersQuery } from "metabase/api";
+import { useListUsersQuery } from "metabase/api/user";
 import { CollectionListView } from "metabase/common/components/CollectionListView";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import * as Urls from "metabase/urls";

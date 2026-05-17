@@ -2,18 +2,16 @@ import { useCallback } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import {
-  useUpdateActionMutation,
-  useUpdateCardMutation,
-  useUpdateCollectionMutation,
-  useUpdateDashboardMutation,
-  useUpdateDocumentMutation,
-  useUpdateSegmentMutation,
-  useUpdateSnippetMutation,
-  useUpdateSubscriptionMutation,
-  useUpdateTimelineEventMutation,
-  useUpdateTimelineMutation,
-} from "metabase/api";
+import { useUpdateCollectionMutation } from "metabase/api/collection";
+import { useUpdateDocumentMutation } from "metabase/api/document";
+import { useUpdateSegmentMutation } from "metabase/api/segment";
+import { useUpdateSnippetMutation } from "metabase/api/snippet";
+import { useUpdateSubscriptionMutation } from "metabase/api/subscription";
+import { useUpdateTimelineEventMutation } from "metabase/api/timeline-event";
+import { useUpdateTimelineMutation } from "metabase/api/timeline";
+import { useUpdateActionMutation } from "metabase/api/action";
+import { useUpdateCardMutation } from "metabase/api/card";
+import { useUpdateDashboardMutation } from "metabase/api/dashboard";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import type {

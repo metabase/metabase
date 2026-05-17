@@ -4,7 +4,7 @@ import { PublicLinksListing } from "metabase/admin/settings/components/widgets/P
 import {
   useDeleteDocumentPublicLinkMutation,
   useListPublicDocumentsQuery,
-} from "metabase/api";
+} from "metabase/api/document";
 import * as Urls from "metabase/urls";
 import type { Document } from "metabase-types/api";
 

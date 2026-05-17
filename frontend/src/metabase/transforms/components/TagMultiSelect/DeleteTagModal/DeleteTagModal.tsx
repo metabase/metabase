@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useDeleteTransformTagMutation } from "metabase/api";
+import { useDeleteTransformTagMutation } from "metabase/api/transform-tag";
 import {
   Form,
   FormErrorMessage,

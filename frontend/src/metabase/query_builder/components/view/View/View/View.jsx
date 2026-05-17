@@ -6,7 +6,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Api } from "metabase/api";
+import { Api } from "metabase/api/api";
 import { listTag } from "metabase/api/tags";
 import { deletePermanently } from "metabase/archive/actions";
 import { getEntityTypeFromCardType } from "metabase/collections/utils";

@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 
-import { useUpdateSettingMutation } from "metabase/api";
+import { useUpdateSettingMutation } from "metabase/api/settings";
 import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 import type { TokenStatus } from "metabase-types/api";

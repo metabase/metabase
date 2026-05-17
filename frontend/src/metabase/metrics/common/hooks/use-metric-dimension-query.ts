@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
-import { skipToken, useGetMetricDatasetQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetMetricDatasetQuery } from "metabase/api/metric";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 

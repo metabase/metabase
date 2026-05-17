@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useDiscardFieldValuesMutation } from "metabase/api";
+import { useDiscardFieldValuesMutation } from "metabase/api/field";
 import { useTemporaryState } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button } from "metabase/ui";

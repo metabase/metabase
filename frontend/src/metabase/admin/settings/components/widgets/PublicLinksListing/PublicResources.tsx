@@ -2,12 +2,16 @@ import { t } from "ttag";
 
 import {
   useDeleteActionPublicLinkMutation,
-  useDeleteCardPublicLinkMutation,
-  useDeleteDashboardPublicLinkMutation,
   useListPublicActionsQuery,
+} from "metabase/api/action";
+import {
+  useDeleteCardPublicLinkMutation,
   useListPublicCardsQuery,
+} from "metabase/api/card";
+import {
+  useDeleteDashboardPublicLinkMutation,
   useListPublicDashboardsQuery,
-} from "metabase/api";
+} from "metabase/api/dashboard";
 import { useSetting } from "metabase/common/hooks";
 import * as Urls from "metabase/urls";
 import type {

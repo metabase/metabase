@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import _ from "underscore";
 
-import { skipToken, useListSubscriptionsQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useListSubscriptionsQuery } from "metabase/api/subscription";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ScheduleChangeProp } from "metabase/common/components/SchedulePicker";
 import { Sidebar } from "metabase/common/components/Sidebar";

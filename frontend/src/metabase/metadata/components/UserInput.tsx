@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useListUsersQuery } from "metabase/api";
+import { useListUsersQuery } from "metabase/api/user";
 import { Ellipsified } from "metabase/ui";
 import { Avatar, Flex, Icon, Select, type SelectProps } from "metabase/ui";
 import { isEmail } from "metabase/utils/email";

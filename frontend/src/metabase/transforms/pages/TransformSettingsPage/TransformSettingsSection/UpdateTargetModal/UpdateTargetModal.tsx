@@ -2,13 +2,15 @@ import { useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import * as Yup from "yup";
 
+import { skipToken } from "metabase/api/api";
 import {
-  skipToken,
   useDeleteTransformTargetMutation,
+  useUpdateTransformMutation,
+} from "metabase/api/transform";
+import {
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
-  useUpdateTransformMutation,
-} from "metabase/api";
+} from "metabase/api/database";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { hasFeature } from "metabase/common/utils/database";
 import {

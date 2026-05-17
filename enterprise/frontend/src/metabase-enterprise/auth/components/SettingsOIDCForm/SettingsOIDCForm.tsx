@@ -13,7 +13,7 @@ import {
   useClearGroupMembershipMutation,
   useDeletePermissionsGroupMutation,
   useListPermissionsGroupsQuery,
-} from "metabase/api";
+} from "metabase/api/permission";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";

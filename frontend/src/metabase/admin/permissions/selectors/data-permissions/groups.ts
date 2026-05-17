@@ -7,7 +7,7 @@ import {
   isDataAnalystGroup,
   isDefaultGroup,
 } from "metabase/admin/utils/groups";
-import { permissionApi } from "metabase/api";
+import { permissionApi } from "metabase/api/permission";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import type { Group, GroupId } from "metabase-types/api";

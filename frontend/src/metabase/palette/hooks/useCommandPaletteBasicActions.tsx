@@ -5,7 +5,8 @@ import { push } from "react-router-redux";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { skipToken, useSearchQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useSearchQuery } from "metabase/api/search";
 import { useInitialCollectionId } from "metabase/collections/hooks";
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import { trackMetricCreateStarted } from "metabase/data-studio/analytics";

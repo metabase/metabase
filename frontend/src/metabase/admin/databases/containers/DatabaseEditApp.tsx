@@ -7,7 +7,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   useGetDatabaseQuery,
   useGetDatabaseSettingsAvailableQuery,
-} from "metabase/api";
+} from "metabase/api/database";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";

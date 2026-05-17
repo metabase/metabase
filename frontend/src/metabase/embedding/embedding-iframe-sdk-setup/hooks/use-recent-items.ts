@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
-import { useListRecentsQuery } from "metabase/api";
+import { useListRecentsQuery } from "metabase/api/activity";
 import type { RecentItem } from "metabase-types/api";
 
 import { EMBED_RESOURCE_LIST_MAX_RECENTS } from "../constants";

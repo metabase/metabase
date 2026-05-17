@@ -1,10 +1,8 @@
 import cx from "classnames";
 
-import {
-  skipToken,
-  useGetTableQuery,
-  useListDatabaseSchemasQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetTableQuery } from "metabase/api/table";
+import { useListDatabaseSchemasQuery } from "metabase/api/database";
 import { Ellipsified, Flex, Group, Icon } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 

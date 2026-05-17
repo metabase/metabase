@@ -1,7 +1,7 @@
 import { getIn } from "icepick";
 import { useCallback } from "react";
 
-import { useCheckPasswordMutation } from "metabase/api";
+import { useCheckPasswordMutation } from "metabase/api/session";
 import { passwordComplexityDescription } from "metabase/utils/password";
 
 export const useValidatePassword = () => {

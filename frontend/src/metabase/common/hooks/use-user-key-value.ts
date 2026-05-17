@@ -1,11 +1,11 @@
 import { useCallback } from "react";
 
+import { skipToken } from "metabase/api/api";
 import {
-  skipToken,
   useDeleteUserKeyValueMutation,
   useGetUserKeyValueQuery,
   useUpdateKeyValueMutation,
-} from "metabase/api";
+} from "metabase/api/user-key-value";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import type { UserKeyValue } from "metabase-types/api";

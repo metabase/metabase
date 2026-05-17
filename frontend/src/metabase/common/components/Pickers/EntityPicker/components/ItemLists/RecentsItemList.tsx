@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useListRecentsQuery } from "metabase/api";
+import { useListRecentsQuery } from "metabase/api/activity";
 import { Box } from "metabase/ui";
 import type { RecentItem } from "metabase-types/api";
 

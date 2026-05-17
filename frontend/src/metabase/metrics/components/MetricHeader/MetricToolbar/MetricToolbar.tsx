@@ -6,8 +6,8 @@ import {
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
   useListBookmarksQuery,
-  useListNotificationsQuery,
-} from "metabase/api";
+} from "metabase/api/bookmark";
+import { useListNotificationsQuery } from "metabase/api/notification";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";

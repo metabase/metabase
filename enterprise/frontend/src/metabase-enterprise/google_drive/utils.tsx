@@ -2,7 +2,7 @@ import { useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { skipToken } from "metabase/api";
+import { skipToken } from "metabase/api/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";

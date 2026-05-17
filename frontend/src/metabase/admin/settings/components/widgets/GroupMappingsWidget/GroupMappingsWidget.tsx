@@ -4,7 +4,7 @@ import {
   useClearGroupMembershipMutation,
   useDeletePermissionsGroupMutation,
   useListPermissionsGroupsQuery,
-} from "metabase/api";
+} from "metabase/api/permission";
 import { useDispatch, useSelector } from "metabase/redux";
 import { updateSetting } from "metabase/redux/settings";
 import { getSetting } from "metabase/selectors/settings";

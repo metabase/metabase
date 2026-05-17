@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useGetCardQuery } from "metabase/api";
+import { useGetCardQuery } from "metabase/api/card";
 import { QuestionResultLoader } from "metabase/common/components/QuestionResultLoader";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";

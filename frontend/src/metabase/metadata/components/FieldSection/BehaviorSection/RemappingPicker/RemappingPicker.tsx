@@ -1,15 +1,15 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api/api";
 import {
-  skipToken,
   useCreateFieldDimensionMutation,
   useDeleteFieldDimensionMutation,
   useGetFieldQuery,
   useGetFieldValuesQuery,
-  useGetTableQueryMetadataQuery,
   useUpdateFieldValuesMutation,
-} from "metabase/api";
+} from "metabase/api/field";
+import { useGetTableQueryMetadataQuery } from "metabase/api/table";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";

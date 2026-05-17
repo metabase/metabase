@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useGetVersionInfoQuery } from "metabase/api";
+import { useGetVersionInfoQuery } from "metabase/api/settings";
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";

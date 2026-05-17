@@ -11,7 +11,7 @@ import {
   useDeletePermissionsGroupMutation,
   useListPermissionsGroupsQuery,
   useUpdatePermissionsGroupMutation,
-} from "metabase/api";
+} from "metabase/api/permission";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";

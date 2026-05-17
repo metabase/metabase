@@ -11,6 +11,36 @@ import { createMockDocument } from "metabase-types/api/mocks";
 
 import { DocumentPage } from "./DocumentPage";
 
+jest.mock("./Editor", () => {
+  const React = jest.requireActual("react");
+
+  return {
+    Editor: ({
+      onEditorReady,
+    }: {
+      onEditorReady?: (editor: unknown) => void;
+    }) => {
+      React.useEffect(() => {
+        onEditorReady?.({
+          commands: {
+            clearContent: () => undefined,
+            focus: () => undefined,
+          },
+          getJSON: () => ({}),
+          isEmpty: true,
+          state: {
+            doc: {
+              descendants: () => undefined,
+            },
+          },
+        });
+      }, [onEditorReady]);
+
+      return <div data-testid="document-editor" />;
+    },
+  };
+});
+
 const setup = () => {
   setupBookmarksEndpoints([]);
   setupDocumentEndpoints(

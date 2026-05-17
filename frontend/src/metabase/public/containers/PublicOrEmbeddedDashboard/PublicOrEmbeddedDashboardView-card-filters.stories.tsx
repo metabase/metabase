@@ -6,7 +6,7 @@ import _ from "underscore";
 import { getStore } from "__support__/entities-store";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
-import { Api } from "metabase/api";
+import { Api } from "metabase/api/api";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,

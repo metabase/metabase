@@ -1,6 +1,6 @@
 import type { SkipToken } from "@reduxjs/toolkit/query";
 
-import { skipToken } from "metabase/api";
+import { skipToken } from "metabase/api/api";
 import { isWithinIframe } from "metabase/utils/iframe";
 import type { Document, ListCommentsRequest } from "metabase-types/api";
 

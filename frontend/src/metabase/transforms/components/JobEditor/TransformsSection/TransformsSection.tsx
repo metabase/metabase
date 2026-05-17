@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useListTransformJobTransformsQuery } from "metabase/api";
+import { useListTransformJobTransformsQuery } from "metabase/api/transform-job";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";

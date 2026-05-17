@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useListRevisionsQuery } from "metabase/api";
+import { useListRevisionsQuery } from "metabase/api/revision";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/redux";
 import { getUserId } from "metabase/selectors/user";

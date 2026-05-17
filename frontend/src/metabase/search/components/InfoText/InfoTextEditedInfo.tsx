@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import { t } from "ttag";
 import { isNull } from "underscore";
 
-import { useListUserRecipientsQuery } from "metabase/api";
+import { useListUserRecipientsQuery } from "metabase/api/user";
 import { Text, Tooltip } from "metabase/ui";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import { isNotNull } from "metabase/utils/types";

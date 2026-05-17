@@ -14,7 +14,7 @@ import {
   NumberColumn,
   StringColumn,
 } from "__support__/visualizations";
-import { Api } from "metabase/api";
+import { Api } from "metabase/api/api";
 import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider } from "metabase/redux";
 import {

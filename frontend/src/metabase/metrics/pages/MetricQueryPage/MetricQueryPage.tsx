@@ -3,7 +3,7 @@ import type { Route } from "react-router";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { useUpdateCardMutation } from "metabase/api";
+import { useUpdateCardMutation } from "metabase/api/card";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";

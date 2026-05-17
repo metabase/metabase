@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useCreateCollectionMutation } from "metabase/api";
+import { useCreateCollectionMutation } from "metabase/api/collection";
 import { getErrorMessage } from "metabase/api/utils";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import {

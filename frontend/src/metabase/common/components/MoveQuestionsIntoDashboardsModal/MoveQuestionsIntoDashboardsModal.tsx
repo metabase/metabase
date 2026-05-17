@@ -5,11 +5,11 @@ import { withRouter } from "react-router";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api/api";
 import {
-  skipToken,
   useListCollectionDashboardQuestionCandidatesQuery,
   useMoveCollectionDashboardQuestionCandidatesMutation,
-} from "metabase/api";
+} from "metabase/api/collection";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";

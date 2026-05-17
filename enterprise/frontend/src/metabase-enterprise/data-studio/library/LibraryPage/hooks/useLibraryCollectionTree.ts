@@ -3,9 +3,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   collectionApi,
-  skipToken,
   useListCollectionItemsQuery,
-} from "metabase/api";
+} from "metabase/api/collection";
+import { skipToken } from "metabase/api/api";
 import type {
   LibrarySectionType,
   TreeItem,

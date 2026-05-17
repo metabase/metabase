@@ -2,7 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { DeleteDatabaseModal } from "metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal";
-import { useDiscardDatabaseFieldValuesMutation } from "metabase/api";
+import { useDiscardDatabaseFieldValuesMutation } from "metabase/api/database";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Button, Flex } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";

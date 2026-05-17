@@ -8,7 +8,7 @@ import {
   setupCardsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-import { Api } from "metabase/api";
+import { Api } from "metabase/api/api";
 import { mainReducers } from "metabase/reducers-main";
 import type { State, StoreDashcard } from "metabase/redux/store";
 import {

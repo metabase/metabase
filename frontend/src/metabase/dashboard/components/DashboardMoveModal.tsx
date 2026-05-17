@@ -1,6 +1,6 @@
 import { c, t } from "ttag";
 
-import { useGetCollectionQuery } from "metabase/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
 import { Link } from "metabase/common/components/Link";
 import { MoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";
 import { useSetCollection } from "metabase/common/hooks";

@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import { useUpdateSettingsMutation } from "metabase/api";
+import { useUpdateSettingsMutation } from "metabase/api/settings";
 import { useToast } from "metabase/common/hooks";
 import {
   Anchor,

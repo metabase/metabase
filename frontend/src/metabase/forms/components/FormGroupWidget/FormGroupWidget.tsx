@@ -3,7 +3,7 @@ import type { FocusEvent, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 import { t } from "ttag";
 
-import { useListPermissionsGroupsQuery } from "metabase/api";
+import { useListPermissionsGroupsQuery } from "metabase/api/permission";
 import type { SelectProps } from "metabase/ui";
 import { Loader, Select } from "metabase/ui";
 import type { GroupId } from "metabase-types/api";

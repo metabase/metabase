@@ -1,12 +1,10 @@
 import { useCallback } from "react";
 import { match } from "ts-pattern";
 
-import {
-  useDeleteCardMutation,
-  useDeleteCollectionMutation,
-  useDeleteDashboardMutation,
-  useDeleteDocumentMutation,
-} from "metabase/api";
+import { useDeleteCollectionMutation } from "metabase/api/collection";
+import { useDeleteDocumentMutation } from "metabase/api/document";
+import { useDeleteCardMutation } from "metabase/api/card";
+import { useDeleteDashboardMutation } from "metabase/api/dashboard";
 import type {
   CardId,
   DashboardId,

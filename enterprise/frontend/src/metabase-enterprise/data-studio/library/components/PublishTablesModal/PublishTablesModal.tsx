@@ -1,7 +1,7 @@
 import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 
-import { useGetTableSelectionInfoQuery } from "metabase/api";
+import { useGetTableSelectionInfoQuery } from "metabase/api/table";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { trackDataStudioTablePublished } from "metabase/data-studio/analytics";

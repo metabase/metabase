@@ -4,7 +4,7 @@ import type { Location } from "history";
 import {
   useGetSubscriptionQuery,
   useUpdateSubscriptionMutation,
-} from "metabase/api";
+} from "metabase/api/subscription";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";

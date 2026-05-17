@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { useUpdateSnippetMutation } from "metabase/api";
+import { useUpdateSnippetMutation } from "metabase/api/snippet";
 import { getErrorMessage } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";

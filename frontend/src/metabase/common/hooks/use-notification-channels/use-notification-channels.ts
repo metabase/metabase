@@ -1,4 +1,4 @@
-import { useGetChannelInfoQuery } from "metabase/api";
+import { useGetChannelInfoQuery } from "metabase/api/subscription";
 
 export const useHasAnyNotificationChannel = (): boolean => {
   const { data: channelInfo } = useGetChannelInfoQuery();

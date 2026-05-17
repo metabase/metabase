@@ -24,6 +24,33 @@ import {
 
 import { ParameterFieldWidget } from "./ParameterFieldWidget";
 
+jest.mock("metabase/api/card", () => {
+  const actual = jest.requireActual("metabase/api/card");
+
+  return {
+    ...actual,
+    useGetRemappedCardParameterValueQuery: () => ({}),
+  };
+});
+
+jest.mock("metabase/api/dashboard", () => {
+  const actual = jest.requireActual("metabase/api/dashboard");
+
+  return {
+    ...actual,
+    useGetRemappedDashboardParameterValueQuery: () => ({}),
+  };
+});
+
+jest.mock("metabase/api/dataset", () => {
+  const actual = jest.requireActual("metabase/api/dataset");
+
+  return {
+    ...actual,
+    useGetRemappedParameterValueQuery: () => ({}),
+  };
+});
+
 const FIELD_ID = 100;
 
 type SetupOpts = {

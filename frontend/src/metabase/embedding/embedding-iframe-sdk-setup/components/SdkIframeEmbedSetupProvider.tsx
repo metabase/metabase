@@ -1,7 +1,7 @@
 import { type ReactNode, useMemo, useState } from "react";
 import { useMount } from "react-use";
 
-import { useSearchQuery } from "metabase/api";
+import { useSearchQuery } from "metabase/api/search";
 import { useSetting } from "metabase/common/hooks";
 import { trackEmbedWizardOpened } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
 import { useEmbeddingParameters } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-parameters";

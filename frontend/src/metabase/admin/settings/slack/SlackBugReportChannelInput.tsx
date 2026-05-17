@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useUpdateSlackSettingsMutation } from "metabase/api";
+import { useUpdateSlackSettingsMutation } from "metabase/api/slack";
 import { useSetting, useToast } from "metabase/common/hooks";
 import { Box, Text, TextInput } from "metabase/ui";
 

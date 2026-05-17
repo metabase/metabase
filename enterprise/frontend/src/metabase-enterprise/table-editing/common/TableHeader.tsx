@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from "react";
 
-import { useGetDatabaseQuery, useGetTableQuery } from "metabase/api";
+import { useGetDatabaseQuery } from "metabase/api/database";
+import { useGetTableQuery } from "metabase/api/table";
 import { Group, Skeleton, rem } from "metabase/ui";
 
 import { TableBreadcrumbs } from "./TableBreadcrumbs";

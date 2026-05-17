@@ -1,13 +1,12 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import { Api, skipToken } from "metabase/api/api";
+import { useListCollectionItemsQuery } from "metabase/api/collection";
 import {
-  Api,
-  skipToken,
   useCreateDashboardMutation,
-  useListCollectionItemsQuery,
   useUpdateDashboardMutation,
-} from "metabase/api";
+} from "metabase/api/dashboard";
 import { listTag } from "metabase/api/tags";
 import {
   createDashCard,

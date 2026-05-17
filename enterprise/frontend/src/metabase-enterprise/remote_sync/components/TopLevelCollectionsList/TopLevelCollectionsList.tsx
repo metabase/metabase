@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useListCollectionItemsQuery } from "metabase/api";
+import { useListCollectionItemsQuery } from "metabase/api/collection";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import type { CollectionItem } from "metabase-types/api";

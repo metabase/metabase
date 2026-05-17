@@ -5,7 +5,7 @@ import dayjs from "dayjs";
 import { merge, updateIn } from "icepick";
 import _ from "underscore";
 
-import { timelineApi } from "metabase/api";
+import { timelineApi } from "metabase/api/timeline";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { getSortedTimelines } from "metabase/common/utils/timelines";
 import {

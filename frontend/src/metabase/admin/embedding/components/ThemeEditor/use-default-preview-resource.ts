@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
-import { useListRecentsQuery, useSearchQuery } from "metabase/api";
+import { useListRecentsQuery } from "metabase/api/activity";
+import { useSearchQuery } from "metabase/api/search";
 
 import type { PreviewResource } from "./types";
 

@@ -5,10 +5,12 @@ import _ from "underscore";
 
 import {
   useGetCollectionQuery,
-  useListBookmarksQuery,
   useListCollectionsTreeQuery,
+} from "metabase/api/collection";
+import {
+  useListBookmarksQuery,
   useReorderBookmarksMutation,
-} from "metabase/api";
+} from "metabase/api/bookmark";
 import { logout } from "metabase/auth/actions";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import {

@@ -4,7 +4,10 @@ import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { DatabaseEditConnectionForm } from "metabase/admin/databases/components/DatabaseEditConnectionForm";
-import { useGetDatabaseQuery, useUpdateDatabaseMutation } from "metabase/api";
+import {
+  useGetDatabaseQuery,
+  useUpdateDatabaseMutation,
+} from "metabase/api/database";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";

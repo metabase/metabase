@@ -1,7 +1,8 @@
 import { useCallback, useMemo } from "react";
 import { pick } from "underscore";
 
-import { skipToken, useSearchQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useSearchQuery } from "metabase/api/search";
 import { trackSearchClick } from "metabase/search/analytics";
 import { Stack } from "metabase/ui";
 import {

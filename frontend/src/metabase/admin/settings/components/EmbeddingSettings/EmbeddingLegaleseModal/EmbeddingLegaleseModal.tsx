@@ -2,7 +2,7 @@ import { useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useUpdateSettingsMutation } from "metabase/api";
+import { useUpdateSettingsMutation } from "metabase/api/settings";
 import { Button, Group, List, Modal, type ModalProps, Text } from "metabase/ui";
 
 type SettingKey = "enable-embedding-sdk" | "enable-embedding-simple";

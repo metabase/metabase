@@ -12,9 +12,9 @@ import {
 } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import {
   useGetAdminSettingsDetailsQuery,
-  useGetSettingsQuery,
   useUpdateSettingMutation,
-} from "metabase/api";
+} from "metabase/api/settings";
+import { useGetSettingsQuery } from "metabase/api/session";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";

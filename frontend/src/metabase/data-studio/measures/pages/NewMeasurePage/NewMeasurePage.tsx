@@ -4,7 +4,7 @@ import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useCreateMeasureMutation } from "metabase/api";
+import { useCreateMeasureMutation } from "metabase/api/measure";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { trackMeasureCreated } from "metabase/data-studio/analytics";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";

@@ -1,8 +1,6 @@
-import {
-  useGetCollectionQuery,
-  useGetTimelineEventQuery,
-  useListTimelinesQuery,
-} from "metabase/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
+import { useGetTimelineEventQuery } from "metabase/api/timeline-event";
+import { useListTimelinesQuery } from "metabase/api/timeline";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import MoveEventModal, {
   type MoveEventModalProps,

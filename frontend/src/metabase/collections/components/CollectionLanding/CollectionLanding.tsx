@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { replace } from "react-router-redux";
 
-import { useGetCollectionQuery } from "metabase/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
 import { useDispatch } from "metabase/redux";
 import { extractCollectionId } from "metabase/urls";
 import { isNotNull } from "metabase/utils/types";

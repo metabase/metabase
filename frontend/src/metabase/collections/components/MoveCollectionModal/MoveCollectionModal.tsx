@@ -1,7 +1,8 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { skipToken, useGetCollectionQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
 import type {
   MoveDestination,
   OnMoveWithSourceAndDestination,

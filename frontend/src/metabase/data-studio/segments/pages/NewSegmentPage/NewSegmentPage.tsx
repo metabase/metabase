@@ -4,7 +4,7 @@ import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useCreateSegmentMutation } from "metabase/api";
+import { useCreateSegmentMutation } from "metabase/api/segment";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { trackSegmentCreated } from "metabase/data-studio/analytics";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";

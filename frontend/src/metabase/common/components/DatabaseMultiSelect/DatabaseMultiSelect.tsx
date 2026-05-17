@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useListDatabasesQuery } from "metabase/api";
+import { useListDatabasesQuery } from "metabase/api/database";
 import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
 import { type ComboboxItem, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import type { Database, DatabaseId } from "metabase-types/api";

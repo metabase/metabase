@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { isEqual } from "underscore";
 
 import { useDefaultEmbeddingThemeSettings } from "metabase/admin/embedding/hooks/use-default-embedding-theme-settings";
-import { skipToken } from "metabase/api";
+import { skipToken } from "metabase/api/api";
 import {
   useCreateEmbeddingThemeMutation,
   useGetEmbeddingThemeQuery,

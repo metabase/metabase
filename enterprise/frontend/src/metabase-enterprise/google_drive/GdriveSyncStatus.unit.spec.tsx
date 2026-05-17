@@ -8,7 +8,8 @@ import {
   setupTablesEndpoints,
 } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-import { useListDatabasesQuery, useListTablesQuery } from "metabase/api";
+import { useListDatabasesQuery } from "metabase/api/database";
+import { useListTablesQuery } from "metabase/api/table";
 import { useDispatch } from "metabase/redux";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { EnterpriseApi } from "metabase-enterprise/api/api";

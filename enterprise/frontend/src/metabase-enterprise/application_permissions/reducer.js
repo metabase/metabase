@@ -1,7 +1,7 @@
 import { assocIn } from "icepick";
 import { t } from "ttag";
 
-import { permissionApi } from "metabase/api";
+import { permissionApi } from "metabase/api/permission";
 import { getErrorMessage } from "metabase/api/utils";
 import {
   combineReducers,

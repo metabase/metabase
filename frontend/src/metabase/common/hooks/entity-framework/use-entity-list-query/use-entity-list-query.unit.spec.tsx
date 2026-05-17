@@ -211,6 +211,8 @@ describe("useEntityListQuery", () => {
     await delay(0); // trigger extra event loop to make sure React state has been updated
 
     expect(fetchMock.callHistory.calls("path:/api/database")).toHaveLength(1);
-    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryAllByTestId("loading-indicator")).toHaveLength(0);
+    });
   });
 });

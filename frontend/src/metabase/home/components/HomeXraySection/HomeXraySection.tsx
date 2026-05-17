@@ -3,11 +3,9 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  skipToken,
-  useListDatabaseXraysQuery,
-  useListDatabasesQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useListDatabaseXraysQuery } from "metabase/api/automagic-dashboards";
+import { useListDatabasesQuery } from "metabase/api/database";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Select } from "metabase/common/components/Select";
 import { useSelector } from "metabase/redux";

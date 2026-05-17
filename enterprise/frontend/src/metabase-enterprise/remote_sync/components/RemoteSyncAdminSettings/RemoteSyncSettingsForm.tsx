@@ -2,11 +2,9 @@ import { type ComponentProps, useCallback, useMemo, useRef } from "react";
 import { jt, t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import {
-  useGetAdminSettingsDetailsQuery,
-  useGetSettingsQuery,
-  useListCollectionItemsQuery,
-} from "metabase/api";
+import { useGetAdminSettingsDetailsQuery } from "metabase/api/settings";
+import { useGetSettingsQuery } from "metabase/api/session";
+import { useListCollectionItemsQuery } from "metabase/api/collection";
 import { getErrorMessage } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting, useToast } from "metabase/common/hooks";

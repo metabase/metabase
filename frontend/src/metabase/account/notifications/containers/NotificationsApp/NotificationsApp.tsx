@@ -2,11 +2,9 @@ import type { JSX, ReactNode } from "react";
 import { useMemo } from "react";
 
 import type { NotificationListItem } from "metabase/account/notifications/types";
-import {
-  skipToken,
-  useListNotificationsQuery,
-  useListSubscriptionsQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useListNotificationsQuery } from "metabase/api/notification";
+import { useListSubscriptionsQuery } from "metabase/api/subscription";
 import { useDispatch, useSelector } from "metabase/redux";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,

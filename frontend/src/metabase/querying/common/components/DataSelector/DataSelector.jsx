@@ -8,8 +8,8 @@ import _ from "underscore";
 import {
   useLazyListDatabaseSchemaTablesQuery,
   useLazyListDatabaseSchemasQuery,
-  useSearchQuery,
-} from "metabase/api";
+} from "metabase/api/database";
+import { useSearchQuery } from "metabase/api/search";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";

@@ -6,8 +6,8 @@ import { t } from "ttag";
 import {
   useCreateCollectionMutation,
   useListCollectionsTreeQuery,
-  useUpdateSettingMutation,
-} from "metabase/api";
+} from "metabase/api/collection";
+import { useUpdateSettingMutation } from "metabase/api/settings";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { Button, Group, Stack, Text } from "metabase/ui";

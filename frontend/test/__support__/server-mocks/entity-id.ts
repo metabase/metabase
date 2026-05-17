@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import type { TranslateEntityIdRequest } from "metabase/api";
+import type { TranslateEntityIdRequest } from "metabase/api/entity-id";
 import type {
   BaseEntityId,
   CardId,

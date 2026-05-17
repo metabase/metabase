@@ -6,7 +6,7 @@ import {
   useListNotificationsQuery,
   useUnsubscribeFromNotificationMutation,
   useUpdateNotificationMutation,
-} from "metabase/api";
+} from "metabase/api/notification";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { DeleteAlertConfirmModal } from "metabase/notifications/modals/DeleteAlertConfirmModal";
 import { UnsubscribeConfirmModal } from "metabase/notifications/modals/UnsubscribeConfirmModal";

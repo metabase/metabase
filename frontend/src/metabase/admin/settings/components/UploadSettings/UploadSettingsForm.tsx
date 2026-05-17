@@ -2,11 +2,11 @@ import { useRef, useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
+import { skipToken } from "metabase/api/api";
 import {
-  skipToken,
   useListDatabasesQuery,
   useListSyncableDatabaseSchemasQuery,
-} from "metabase/api";
+} from "metabase/api/database";
 import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
 import {
   ActionButton,

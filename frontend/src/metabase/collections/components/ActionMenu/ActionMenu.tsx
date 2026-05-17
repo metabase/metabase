@@ -4,7 +4,8 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Api, collectionApi } from "metabase/api";
+import { Api } from "metabase/api/api";
+import { collectionApi } from "metabase/api/collection";
 import { listTag } from "metabase/api/tags";
 import { HACK_getParentCollectionFromEntityUpdateAction } from "metabase/archive/utils";
 import { trackCollectionItemBookmarked } from "metabase/collections/analytics";

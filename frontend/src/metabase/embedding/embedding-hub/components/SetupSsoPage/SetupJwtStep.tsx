@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useUpdateSettingsMutation } from "metabase/api";
+import { useUpdateSettingsMutation } from "metabase/api/settings";
 import { useLazyGenerateRandomTokenQuery } from "metabase/api/util";
 import { useSetting, useToast } from "metabase/common/hooks";
 import { Button, Group, Stack, Text, TextInput } from "metabase/ui";

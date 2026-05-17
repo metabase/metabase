@@ -2,7 +2,10 @@ import { useEffect, useMemo } from "react";
 import { useUnmount } from "react-use";
 import { t } from "ttag";
 
-import { useGetCardQuery, useGetCardQueryMetadataQuery } from "metabase/api";
+import {
+  useGetCardQuery,
+  useGetCardQueryMetadataQuery,
+} from "metabase/api/card";
 import { skipToken } from "metabase/api/api";
 import { useGetAdhocQueryQuery } from "metabase/api/dataset";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";

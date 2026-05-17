@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
-import { skipToken, useGetCardQuery, useGetCardQueryQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetCardQuery, useGetCardQueryQuery } from "metabase/api/card";
 import {
   useGetAdhocPivotQueryQuery,
   useGetAdhocQueryQuery,

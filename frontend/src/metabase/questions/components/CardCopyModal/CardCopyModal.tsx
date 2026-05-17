@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useLatest } from "react-use";
 
-import { useCreateCardMutation } from "metabase/api";
+import { useCreateCardMutation } from "metabase/api/card";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import type { CopyCardProperties } from "metabase/questions/components/CopyCardForm";
