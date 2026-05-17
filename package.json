@@ -225,6 +225,7 @@
     "@storybook/test": "^8.5.0",
     "@svgr/webpack": "^8.1.0",
     "@swc/core": "^1.13.5",
+    "@swc/jest": "^0.2.39",
     "@swc/plugin-emotion": "^11.1.0",
     "@tanstack/table-core": "^8.21.3",
     "@testing-library/cypress": "^10.1.0",
