@@ -11,7 +11,7 @@ import {
   createMockDashboardState,
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
-import type { IconName } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 import {
   createMockDashboard,
   createMockDashboardCard,

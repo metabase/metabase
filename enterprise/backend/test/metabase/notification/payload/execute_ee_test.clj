@@ -2,6 +2,7 @@
   "EE-only tests for `metabase.notification.payload.execute`. Kept in its own ns to avoid
   colliding with the OSS `metabase.notification.payload.execute-test` ns, which lives under
   `test/` and would otherwise shadow this file on the classpath."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.notification.payload.execute-ee-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.notification.payload.execute :as notification.payload.execute]

@@ -53,6 +53,7 @@ const setupInList = ({ item }: { item: Partial<PaletteActionImpl> }) => {
             items={items.map((item) => mockPaletteActionImpl(item))}
             maxHeight={580}
             minHeight={220}
+            liveSearchTerm=""
             renderItem={({
               item,
               active,

@@ -7,6 +7,7 @@ import {
   setupDeleteTransformJobEndpoint,
   setupListTransformJobsEndpoint,
   setupUpdateTransformJobEndpoint,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -83,6 +84,7 @@ async function setup({
   jobs: TransformJob[];
   isAdmin?: boolean;
 }) {
+  setupUserMetabotPermissionsEndpoint();
   setupListTransformJobsEndpoint(jobs);
   jobs.forEach(setupUpdateTransformJobEndpoint);
   jobs.forEach((job) => setupDeleteTransformJobEndpoint(job.id));

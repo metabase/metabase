@@ -8,6 +8,7 @@ import {
   createMockRoutingState,
   createMockSettingsState,
 } from "metabase/redux/store/mocks";
+import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -21,10 +22,12 @@ const setup = async ({
   initialRoute,
   isHosted,
   customVizDevModeEnabled,
+  tokenFeatures,
 }: {
   initialRoute: string;
   isHosted?: boolean;
   customVizDevModeEnabled?: boolean;
+  tokenFeatures?: Partial<TokenFeatures>;
 }) => {
   const versionInfo = createMockVersionInfo();
   const settings = createMockSettings({
@@ -34,6 +37,7 @@ const setup = async ({
       hosting: Boolean(isHosted),
       "custom-viz": true,
       "custom-viz-available": true,
+      ...tokenFeatures,
     }),
   });
 
@@ -63,6 +67,24 @@ describe("SettingsNav", () => {
 
     expect(await screen.findByText("General")).toBeInTheDocument();
     expect(await screen.findByText("Authentication")).toBeInTheDocument();
+  });
+
+  it("should show Remote sync upsell nav item for non-pro plans", async () => {
+    await setup({
+      initialRoute: "/admin/settings/general",
+      tokenFeatures: {
+        "custom-viz": false,
+        "custom-viz-available": false,
+      },
+    });
+
+    expect(await screen.findByText("Remote sync")).toBeInTheDocument();
+  });
+
+  it("should hide Remote sync upsell nav item for pro plans", async () => {
+    await setup({ initialRoute: "/admin/settings/general" });
+
+    expect(screen.queryByText("Remote sync")).not.toBeInTheDocument();
   });
 
   it("should highlight the active nav item", async () => {

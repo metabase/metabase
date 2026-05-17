@@ -2,6 +2,7 @@
   "Tests for public sharing endpoints for Documents.
 
   These tests verify that public document endpoints work correctly."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.public-sharing-rest.api-documents-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.documents.test-util :as documents.test-util]

@@ -3,6 +3,7 @@ import type { State } from "metabase/redux/store";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { createMockAdminState } from "./admin";
+import { createMockApiState } from "./api";
 import { createMockAppState } from "./app";
 import { createMockAuthState } from "./auth";
 import { createMockDashboardState } from "./dashboard";
@@ -38,6 +39,7 @@ export function createMockState(opts: any) {
     embeddingDataPicker: createMockEmbeddingDataPickerState(),
     entities: createMockNormalizedEntitiesState(),
     metabot: createMockMetabotState(),
+    "metabase-api": createMockApiState(),
     parameters: createMockParametersState(),
     qb: createMockQueryBuilderState(),
     requests: createMockRequestsState(),

@@ -136,6 +136,8 @@ export const _SdkQuestion = ({
   dataPicker,
   targetCollection,
   initialSqlParameters,
+  sqlParameters,
+  onSqlParametersChange,
   hiddenParameters,
   withDownloads = false,
   withAlerts = false,
@@ -143,6 +145,7 @@ export const _SdkQuestion = ({
   backToDashboard,
   getClickActionMode,
   navigateToNewCard,
+  onDrillThrough,
 
   height,
   width,
@@ -150,6 +153,7 @@ export const _SdkQuestion = ({
   style,
   title,
   withChartTypeSelector = true,
+  withEditorButton = true,
   onVisualizationChange,
 }: SdkQuestionProps): JSX.Element | null => {
   const drillThroughQuestionProps: DrillThroughQuestionProps = {
@@ -159,6 +163,7 @@ export const _SdkQuestion = ({
     style,
     title,
     withChartTypeSelector,
+    withEditorButton,
     isSaveEnabled,
     targetCollection,
     entityTypes,
@@ -192,6 +197,8 @@ export const _SdkQuestion = ({
         dataPicker={dataPicker}
         targetCollection={targetCollection}
         initialSqlParameters={initialSqlParameters}
+        sqlParameters={sqlParameters}
+        onSqlParametersChange={onSqlParametersChange}
         hiddenParameters={hiddenParameters}
         withDownloads={withDownloads}
         withAlerts={withAlerts}
@@ -199,6 +206,7 @@ export const _SdkQuestion = ({
         backToDashboard={backToDashboard}
         getClickActionMode={getClickActionMode}
         navigateToNewCard={navigateToNewCard}
+        onDrillThrough={onDrillThrough}
         onVisualizationChange={onVisualizationChange}
       >
         {children ?? (
@@ -209,6 +217,7 @@ export const _SdkQuestion = ({
             style={style}
             title={title}
             withChartTypeSelector={withChartTypeSelector}
+            withEditorButton={withEditorButton}
           />
         )}
       </SdkQuestionProvider>

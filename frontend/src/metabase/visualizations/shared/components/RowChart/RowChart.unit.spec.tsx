@@ -231,6 +231,22 @@ describe("RowChart", () => {
         "_300_",
       ]);
     });
+
+    it("should pass the current bar to the data label formatter", () => {
+      const { dataLabels } = setup({
+        labelledSeries: ["series 1", "series 2"],
+        labelsFormatter: (value, bar) => `${bar?.series.seriesKey}_${value}`,
+      });
+
+      expect(dataLabels.map((el) => el.textContent)).toStrictEqual([
+        "series 1_100",
+        "series 1_200",
+        "series 1_300",
+        "series 2_200",
+        "series 2_400",
+        "series 2_600",
+      ]);
+    });
   });
 
   describe("goal line", () => {

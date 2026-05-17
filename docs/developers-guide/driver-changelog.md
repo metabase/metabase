@@ -6,6 +6,29 @@ title: Driver interface changelog
 
 ## Metabase 0.61.0
 
+- Added the following driver multimethods to support MBQL5 compilation migration:
+  - `sql.qp/compile-mbql` - Compiles an MBQL inner query to HoneySQL.
+  - `sql.qp/mbql-clause-with-opts` - Returns an MBQL clause in the desired MBQL format of the driver.
+  - `sql.qp/expression-by-name` - Gets an expression from a query or stage (`*inner-query`) by name.
+  - `sql.qp/aggregation-name` - Returns the name of an aggregation clause.
+  - `sql.qp/over-order-by->honeysql` - Returns the HoneySQL for an order by clause in the over clause of a window function.
+  - `sql.qp/clause-value-idx` - Returns the index of the value in a value clause.
+  - `sql.qp/breakout-options-index` - Returns the index of options in a breakout clause.
+  - `sql.params.substitution/field->clause` - Returns an MBQL field clause with the given options.
+  - `sql.params.substitution/to-clause` - Helper to dispatch to `params.ops/to-clause` or `qp.params.ops/to-clause`.
+  - `sql.params.substitution/desugar-filter-clause` - Helper to dispatch to `driver-api/desugar-filter-clause` or `lib/desugar-filter-clause`.
+  - `sql.params.substitution/wrap-value-literals-in-mbql` - Helper to dispatch to `driver-api/wrap-value-literals-in-mbql` or `driver-api/wrap-value-literals-in-mbql5`.
+  - `sql.params.substitution/date-string->filter` - Helper to dispatch to `params.dates/date-string->filter` or `qp.params.dates/date-string->filter`.
+
+  These methods have implementations for the `:sql` and `:sql-mbql5` drivers. Concrete drivers should *not* need to
+  implement these methods. Drivers can opt-in to MBQL5 compilation by adding the `:sql-mbql5` driver as a parent, and updating the `sql.qp/->honeysql`
+  methods to handle the clause options argument as the second parameter. See the `:h2` driver in https://github.com/metabase/metabase/pull/71439 for
+  an example. Drivers will need to be migrated to work with MBQL5 compilation over the next three releases by v64. After v64 these methods will be deprecated
+  in favour of the `:sql-mbql5` implementations once all drivers have been migrated.
+
+- Added a `driver` parameter to `sql.qp/maybe-cast-uuid-for-text-compare`. Any drivers that call this function should
+  update it to pass in the `driver` parameter now. An example is in the Snowflake driver's `string-filter` function.
+
 - `driver/field-reference-mlv2`, deprecated in 0.57.0, has now been removed.
 
 - `metabase.driver.sql/set-role-statement` has been deprecated in favor of

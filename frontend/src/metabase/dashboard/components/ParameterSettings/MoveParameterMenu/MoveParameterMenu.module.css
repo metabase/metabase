@@ -39,6 +39,6 @@
 .MoveParameterMenuOption[aria-selected="true"] {
   .MoveParameterMenuOptionIcon,
   .MoveParameterMenuOptionText {
-    color: var(--mb-color-text-primary-inverse);
+    color: var(--mb-color-text-selected);
   }
 }

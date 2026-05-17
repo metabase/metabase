@@ -35,9 +35,8 @@
   [f]
   (reset! experiments-enabled-fn f))
 
-(defonce ^{:private true
-           :doc "Atom holding the default report function. Set at application startup via [[set-default-report-fn!]].
-   Nil means no reporting. Can be overridden per-experiment via :report-fn in the opts map."}
+(defonce ^{:doc "Atom holding the default report function. Set at application startup via [[set-default-report-fn!]].
+                 Nil means no reporting. Can be overridden per-experiment via :report-fn in the opts map."}
   default-report-fn (atom nil))
 
 (defn set-default-report-fn!

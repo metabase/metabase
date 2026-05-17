@@ -1,4 +1,9 @@
+import { humanize, titleize } from "metabase/utils/formatting";
 import type { DatabaseId, SchemaId, SchemaName } from "metabase-types/api";
+
+export const getSchemaDisplayName = (
+  name: SchemaName | null | undefined,
+): string | null => (name ? titleize(humanize(name)) : null);
 
 export const getSchemaName = (id: string | null | undefined): SchemaId => {
   return parseSchemaId(id)[1];

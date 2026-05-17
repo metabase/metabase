@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.nested-field-test
   "Tests for nested field access."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.nested-field-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.nested-field-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.query-processor.test :as qp]

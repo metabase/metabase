@@ -113,7 +113,8 @@ export const useCommandPalette = ({
           ? t`Search documentation for "${debouncedSearchText}"`
           : t`View documentation`,
         section: "docs",
-        keywords: debouncedSearchText, // Always match the debouncedSearchText string
+        // Include search query in keywords so kbar always shows it
+        keywords: trimmedQuery,
         icon: "document",
         extra: {
           href: link,
@@ -121,7 +122,7 @@ export const useCommandPalette = ({
       },
     ];
     return ret;
-  }, [debouncedSearchText, docsUrl]);
+  }, [debouncedSearchText, docsUrl, trimmedQuery]);
 
   const showDocsAction = showMetabaseLinks && hasQuery && !disabled;
 
@@ -148,7 +149,7 @@ export const useCommandPalette = ({
           id: `search-without-typeahead`,
           name: t`View search results for "${debouncedSearchText}"`,
           section: "search",
-          keywords: debouncedSearchText,
+          keywords: trimmedQuery,
           icon: "link" as const,
           priority: Priority.HIGH,
           extra: {
@@ -161,7 +162,7 @@ export const useCommandPalette = ({
         {
           id: "search-is-loading",
           name: t`Loading...`,
-          keywords: searchQuery,
+          keywords: trimmedQuery,
           section: "search",
           disabled: true,
         },
@@ -186,7 +187,7 @@ export const useCommandPalette = ({
             icon: icon.name,
             iconUrl: icon.iconUrl,
             section: "search",
-            keywords: debouncedSearchText,
+            keywords: trimmedQuery,
             priority: Priority.NORMAL - index,
             perform: () => {
               trackSearchClick({
@@ -213,7 +214,7 @@ export const useCommandPalette = ({
           {
             id: "no-search-results",
             name: t`No results for “${debouncedSearchText}”`,
-            keywords: debouncedSearchText,
+            keywords: trimmedQuery,
             section: "search",
             disabled: true,
           },
@@ -224,7 +225,7 @@ export const useCommandPalette = ({
   }, [
     disabled,
     debouncedSearchText,
-    searchQuery,
+    trimmedQuery,
     isSearchLoading,
     searchError,
     searchResults,
@@ -306,7 +307,8 @@ export const useCommandPalette = ({
   return {
     searchRequestId,
     searchResults,
-    searchTerm: debouncedSearchText,
+    liveSearchTerm: trimmedQuery,
+    debouncedSearchTerm: debouncedSearchText,
   };
 };
 

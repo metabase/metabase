@@ -7,6 +7,7 @@ import {
   collection,
   dashboard,
   extractCollectionId,
+  extractCollectionIdFromPath,
   extractEntityId,
   extractQueryParams,
   isCollectionPath,
@@ -357,6 +358,52 @@ describe("urls", () => {
     testCases.forEach(({ path, expected }) => {
       it(`returns ${expected} for ${path}`, () => {
         expect(isCollectionPath(path)).toBe(expected);
+      });
+    });
+  });
+
+  describe("extractCollectionIdFromPath", () => {
+    const testCases: {
+      path: string;
+      expected: CollectionId | undefined;
+    }[] = [
+      // Numeric collection IDs (with and without slug suffixes)
+      { path: "/collection/1", expected: 1 },
+      { path: "/collection/123", expected: 123 },
+      { path: "/collection/1-stats", expected: 1 },
+      { path: "/collection/123-stats-stats", expected: 123 },
+      // Nested paths under a collection still resolve to the parent id
+      { path: "/collection/1-stats/new", expected: 1 },
+      { path: "/collection/1-stats/nested/url", expected: 1 },
+      // Magic slugs preserved as-is
+      { path: "/collection/root", expected: "root" },
+      { path: "/collection/users", expected: "users" },
+      { path: "/collection/tenant-specific", expected: "tenant-specific" },
+      { path: "/collection/tenant-users", expected: "tenant-users" },
+
+      // Anchored at start — `/collection/` must be the leading segment
+      {
+        path: "/admin/permissions/collections/1",
+        expected: undefined,
+      },
+      { path: "foo/collection/1", expected: undefined },
+
+      // Non-collection paths
+      { path: "/dashboard/1", expected: undefined },
+      { path: "/question/1-orders", expected: undefined },
+      { path: "/browse/databases/1", expected: undefined },
+
+      // Slug present but not parseable to a collection id
+      { path: "/collection/no-id-here", expected: undefined },
+
+      // Empty / malformed
+      { path: "", expected: undefined },
+      { path: "/collection/", expected: undefined },
+    ];
+
+    testCases.forEach(({ path, expected }) => {
+      it(`returns ${JSON.stringify(expected)} for "${path}"`, () => {
+        expect(extractCollectionIdFromPath(path)).toBe(expected);
       });
     });
   });

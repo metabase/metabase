@@ -40,9 +40,19 @@
                         :weights           complexity/weights}
                        (synonym-source/fingerprint-fragment)))))
 
+(defn maybe-advance-last-fingerprint!
+  "Advance [[settings/data-complexity-scoring-last-fingerprint]] only if Snowplow accepted the publish.
+  On failure we leave it untouched so the next boot or cron retries.
+  Shared by the cron, API recompute, and CLI appdb paths to keep all persisters in lockstep."
+  [fingerprint result]
+  (if (::complexity/snowplow-published? (meta result))
+    (settings/data-complexity-scoring-last-fingerprint! fingerprint)
+    (log/warn "Data Complexity Score: Snowplow publish failed; leaving fingerprint unchanged so the next boot or cron retries")))
+
 (defn- run-scoring!
-  "One scoring pass. Gated by [[settings/data-complexity-scoring-enabled]] so admins can silence
-  scoring without unscheduling the job.
+  "One scoring pass. Gated by [[settings/scoring-active?]] — the `:data-complexity-score` premium
+  feature token is authoritative, with the deprecated `data-complexity-scoring-enabled` setting as
+  a backward-compatible fallback — so the job can be silenced without unscheduling.
 
   `claim-fingerprint` is the fingerprint carried on the scoring claim that authorized this run.
   Using it (rather than re-sampling [[current-fingerprint]] at commit time) means a config change
@@ -53,23 +63,21 @@
   other outcome leaves it untouched so the next boot or cron retries and telemetry doesn't
   silently stall behind a transient publish failure."
   [claim-fingerprint]
-  (if (settings/data-complexity-scoring-enabled)
+  (if (settings/scoring-active?)
     (try
       (let [result (complexity/complexity-scores
                     (assoc (synonym-source/complexity-scores-opts)
                            :metabot-scope (metabot-scope/internal-metabot-scope)))]
         (try
-          (data-complexity-score/record-score! claim-fingerprint result)
-          (if (::complexity/snowplow-published? (meta result))
-            (settings/data-complexity-scoring-last-fingerprint! claim-fingerprint)
-            (log/warn "Data Complexity Score: Snowplow publish failed; leaving fingerprint unchanged so the next boot or cron retries"))
+          (data-complexity-score/record-score! claim-fingerprint "appdb" result)
+          (maybe-advance-last-fingerprint! claim-fingerprint result)
           (catch Throwable t
             (log/warn t "Data Complexity Score: failed to persist score snapshot; leaving fingerprint unchanged so the next boot or cron retries")))
         result)
       (catch Throwable t
         (log/warn t "Data Complexity Score run failed")
         nil))
-    (log/debug "Data Complexity Score run skipped — data-complexity-scoring-enabled is off")))
+    (log/debug "Data Complexity Score run skipped — scoring-active? is false")))
 
 ;; Long enough that any realistic scoring run finishes well inside it, short enough that a crashed
 ;; claimant unblocks the next tick's retry without operator intervention.
@@ -128,7 +136,7 @@
                                    :timeout-seconds 10}
     (binding [config/*disable-setting-cache* true]
       (let [current (current-fingerprint)]
-        (when (and (settings/data-complexity-scoring-enabled)
+        (when (and (settings/scoring-active?)
                    (or (not require-fingerprint-change?)
                        (not= current (settings/data-complexity-scoring-last-fingerprint)))
                    (not (scoring-claim-active?

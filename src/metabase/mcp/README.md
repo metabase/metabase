@@ -49,14 +49,14 @@ Browser-based sessions (cookie auth) are also supported and receive unrestricted
 
 Access tokens are scoped to limit what tools a client can use:
 
-| Scope                    | Grants access to                              |
-|--------------------------|-----------------------------------------------|
-| `agent:table:read`       | `get_table`, `get_table_field_values`         |
-| `agent:metric:read`      | `get_metric`, `get_metric_field_values`       |
-| `agent:search`           | `search`                                      |
-| `agent:query:construct`  | `construct_query`                             |
-| `agent:query`            | `query`                                       |
-| `agent:query:execute`    | `execute_query`                               |
+| Scope                   | Grants access to                        |
+| ----------------------- | --------------------------------------- |
+| `agent:table:read`      | `get_table`, `get_table_field_values`   |
+| `agent:metric:read`     | `get_metric`, `get_metric_field_values` |
+| `agent:search`          | `search`                                |
+| `agent:query:construct` | `construct_query`                       |
+| `agent:query`           | `query`                                 |
+| `agent:query:execute`   | `execute_query`                         |
 
 Wildcard patterns (e.g. `agent:*`) match any scope with that prefix.
 
@@ -72,16 +72,16 @@ By default our consent screen grants access to all scopes without the opportunit
 
 The MCP server exposes these tools, dynamically generated from the Agent API endpoint metadata:
 
-| Tool | Description |
-|------|-------------|
-| `search` | Search for tables and metrics using keyword or natural language search. |
-| `get_table` | Get details about a table including its fields, related tables, and metrics. |
-| `get_table_field_values` | Get sample values and statistics for a field in a table. |
-| `get_metric` | Get details about a metric including its queryable dimensions. |
-| `get_metric_field_values` | Get sample values and statistics for a field in a metric. |
-| `construct_query` | Construct a query against a table or metric. Returns an opaque query string for use with `execute_query`. |
-| `execute_query` | Execute a previously constructed query and return results with column metadata. |
-| `query` | Query a table or metric directly. Supports pagination via continuation tokens. |
+| Tool                      | Description                                                                                                                                                                           |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `search`                  | Search for tables and metrics using keyword or natural language search.                                                                                                               |
+| `get_table`               | Get details about a table including its fields, related tables, and metrics.                                                                                                          |
+| `get_table_field_values`  | Get sample values and statistics for a field in a table.                                                                                                                              |
+| `get_metric`              | Get details about a metric including its queryable dimensions.                                                                                                                        |
+| `get_metric_field_values` | Get sample values and statistics for a field in a metric.                                                                                                                             |
+| `construct_query`         | Construct a query against a table or metric. Accepts the user's original `prompt` when available. Returns an opaque `query_handle` for use with `execute_query` or `visualize_query`. |
+| `execute_query`           | Execute a previously constructed query and return results with column metadata.                                                                                                       |
+| `query`                   | Query a table or metric directly. Supports pagination via continuation tokens.                                                                                                        |
 
 Query results are limited to 200 rows per request. When more rows are available, the response includes a
 `continuation_token` that can be passed back to fetch the next page.
@@ -91,21 +91,21 @@ Query results are limited to 200 rows per request. When more rows are available,
 The server exposes MCP [resources](https://modelcontextprotocol.io/specification/2025-03-26/server/resources) so
 clients can fetch supplementary content by URI without inflating tool descriptions.
 
-| Resource URI | Description |
-|---|---|
+| Resource URI                         | Description                                                                                                        |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
 | `metabase://docs/construct-query.md` | Program syntax for `construct_query` and `query` — sources, operations, operator forms, worked examples, pitfalls. |
 
 ## Supported JSON-RPC methods
 
-| Method | Description |
-|--------|-------------|
-| `initialize` | Initialize the MCP connection. Returns server capabilities and a session ID. |
-| `notifications/initialized` | Client notification that initialization is complete. |
-| `tools/list` | List available tools (filtered by the token's scopes). |
-| `tools/call` | Call a tool with arguments. |
-| `resources/list` | List available resources (filtered by the token's scopes). |
-| `resources/read` | Read a resource by URI. Requires an initialized session. |
-| `ping` | Keepalive ping. |
+| Method                      | Description                                                                  |
+| --------------------------- | ---------------------------------------------------------------------------- |
+| `initialize`                | Initialize the MCP connection. Returns server capabilities and a session ID. |
+| `notifications/initialized` | Client notification that initialization is complete.                         |
+| `tools/list`                | List available tools (filtered by the token's scopes).                       |
+| `tools/call`                | Call a tool with arguments.                                                  |
+| `resources/list`            | List available resources (filtered by the token's scopes).                   |
+| `resources/read`            | Read a resource by URI. Requires an initialized session.                     |
+| `ping`                      | Keepalive ping.                                                              |
 
 Requests can be sent individually or as a JSON-RPC batch. The server responds with JSON or SSE depending on the
 `Accept` header.

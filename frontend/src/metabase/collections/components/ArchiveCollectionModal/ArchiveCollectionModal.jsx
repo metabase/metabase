@@ -1,11 +1,10 @@
 /* eslint-disable react/prop-types */
 import { withRouter } from "react-router";
 import { t } from "ttag";
-import _ from "underscore";
 
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { ArchiveModal } from "metabase/common/components/ArchiveModal";
 import { useSetArchive } from "metabase/common/hooks";
-import { Collections } from "metabase/entities/collections";
 import * as Urls from "metabase/urls";
 
 function ArchiveCollectionModalInner({ collection, onClose }) {
@@ -25,9 +24,19 @@ function ArchiveCollectionModalInner({ collection, onClose }) {
   );
 }
 
-export const ArchiveCollectionModal = _.compose(
-  Collections.load({
-    id: (state, props) => Urls.extractCollectionId(props.params.slug),
-  }),
-  withRouter,
-)(ArchiveCollectionModalInner);
+function ArchiveCollectionModalContainer({ params, onClose }) {
+  const collectionId = Urls.extractCollectionId(params.slug);
+  const { data: collection } = useGetCollectionQuery(
+    collectionId != null ? { id: collectionId } : skipToken,
+  );
+  if (!collection) {
+    return null;
+  }
+  return (
+    <ArchiveCollectionModalInner collection={collection} onClose={onClose} />
+  );
+}
+
+export const ArchiveCollectionModal = withRouter(
+  ArchiveCollectionModalContainer,
+);

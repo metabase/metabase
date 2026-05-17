@@ -29,7 +29,17 @@ describe("PaletteResults", () => {
     expect(await screen.findByText("New SQL query")).toBeInTheDocument();
     expect(await screen.findByText("New dashboard")).toBeInTheDocument();
 
-    expect(screen.getByText("Results")).toBeInTheDocument();
+    expect(await screen.findByText("Results")).toBeInTheDocument();
+  });
+
+  it("should surface static actions before the remote search debounce fires", async () => {
+    setup({ query: "new" });
+
+    expect(await screen.findByText("New question")).toBeInTheDocument();
+
+    // useCommandPaletteBasicActions makes one baseline /api/search call; any
+    // additional call means the debounced remote search has already run.
+    expect(fetchMock.callHistory.calls("path:/api/search").length).toBe(1);
   });
 
   //For some reason, New Question isn't showing up without searching. My guess is virtualization weirdness

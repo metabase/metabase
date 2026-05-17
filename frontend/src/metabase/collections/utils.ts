@@ -4,7 +4,8 @@ import {
   canPlaceEntityInCollection as canPlaceEntityInCollectionImpl,
   canPlaceEntityInCollectionOrDescendants as canPlaceEntityInCollectionOrDescendantsImpl,
 } from "metabase/data-studio/utils";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+// Importing from collections/constants to break import cycle
+import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import { PLUGIN_COLLECTIONS, PLUGIN_LIBRARY } from "metabase/plugins";
 import {
   type CardType,

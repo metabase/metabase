@@ -4,7 +4,6 @@ import { normalize } from "normalizr";
 import type { EntitiesState } from "metabase/redux/store";
 import { createMockNormalizedEntitiesState } from "metabase/redux/store/mocks";
 import {
-  ActionSchema,
   CollectionSchema,
   DashboardSchema,
   DatabaseSchema,
@@ -30,11 +29,9 @@ import type {
   Segment,
   Table,
   User,
-  WritebackAction,
 } from "metabase-types/api";
 
 export interface EntitiesStateOpts {
-  actions?: WritebackAction[];
   collections?: Collection[];
   dashboards?: Dashboard[];
   databases?: (Database | SavedQuestionDatabase)[];
@@ -49,7 +46,6 @@ export interface EntitiesStateOpts {
 }
 
 const EntitiesSchema: Record<keyof EntitiesState, NormalizrSchema<any>> = {
-  actions: [ActionSchema],
   collections: [CollectionSchema],
   dashboards: [DashboardSchema],
   databases: [DatabaseSchema],

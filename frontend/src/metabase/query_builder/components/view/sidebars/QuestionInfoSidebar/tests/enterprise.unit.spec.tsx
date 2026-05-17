@@ -5,6 +5,8 @@ import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockModerationReview,
+  createMockSettings,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import type { SetupOpts } from "./setup";
@@ -57,7 +59,14 @@ describe("QuestionInfoSidebar > enterprise", () => {
 
     describe("for admins", () => {
       it("should show tabs for Overview, History, Relationships, and Insights", async () => {
-        setup({ user: { is_superuser: true } });
+        setup({
+          user: { is_superuser: true },
+          settings: createMockSettings({
+            "token-features": createMockTokenFeatures({
+              audit_app: false,
+            }),
+          }),
+        });
         const tabs = await screen.findAllByRole("tab");
         expect(tabs).toHaveLength(4);
         expect(tabs.map((tab) => tab.textContent)).toEqual([
@@ -66,9 +75,8 @@ describe("QuestionInfoSidebar > enterprise", () => {
           "Relationships",
           "Insights",
         ]);
-        const insightsTab = await screen.findByRole("tab", {
-          name: "Insights",
-        });
+
+        const insightsTab = screen.getByText("Insights");
         await userEvent.click(insightsTab);
         expect(
           await screen.findByText(/See who.s doing what, when/),

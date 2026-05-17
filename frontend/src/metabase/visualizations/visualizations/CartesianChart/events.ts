@@ -861,10 +861,28 @@ export const getOtherSeriesTooltipModel = (
   };
 };
 
+const isMouseEventWithXAxis = (
+  event: EChartsSeriesMouseEvent,
+): event is EChartsSeriesMouseEvent<{ xAxis: string }> => {
+  return (
+    typeof event.data === "object" &&
+    event.data !== null &&
+    "xAxis" in event.data &&
+    typeof event.data.xAxis === "string" &&
+    event.data.xAxis.length > 0
+  );
+};
+
 export const getTimelineEventsForEvent = (
   timelineEventsModel: TimelineEventsModel,
   event: EChartsSeriesMouseEvent,
 ) => {
+  if (isMouseEventWithXAxis(event)) {
+    return timelineEventsModel.find(
+      (timelineEvents) => timelineEvents.date === event.data.xAxis,
+    )?.events;
+  }
+
   return timelineEventsModel.find(
     (timelineEvents) => timelineEvents.date === event.value,
   )?.events;

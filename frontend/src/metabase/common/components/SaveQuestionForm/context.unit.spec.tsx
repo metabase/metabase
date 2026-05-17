@@ -67,6 +67,9 @@ const setup = ({
   const onSave = jest.fn();
 
   setupAuditInfoEndpoint();
+  setupCollectionByIdEndpoint({
+    collections: [createMockCollection({ id: "root", can_write: true })],
+  });
 
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({

@@ -5,6 +5,7 @@ import {
   setupCollectionTreeEndpoint,
   setupDatabaseListEndpoint,
   setupListTransformsEndpoint,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
@@ -56,6 +57,7 @@ async function setup({ tokenFeatures = {} }: SetupOpts = {}) {
   setupCollectionTreeEndpoint([]);
   setupListTransformsEndpoint([]);
   setupDatabaseListEndpoint([]);
+  setupUserMetabotPermissionsEndpoint();
 
   const state = createMockState({
     settings: mockSettings({
