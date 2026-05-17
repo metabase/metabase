@@ -47,8 +47,8 @@ config = {}
 if os.path.exists(host_config):
     with open(host_config) as f:
         full = json.load(f)
-    # Copy only the auth-related keys
-    for key in ('oauthAccount', 'customApiKeyResponses'):
+    # Copy only the OAuth account key (not customApiKeyResponses which may store API keys)
+    for key in ('oauthAccount',):
         if key in full:
             config[key] = full[key]
 config['hasCompletedOnboarding'] = True
