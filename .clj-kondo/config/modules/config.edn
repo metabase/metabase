@@ -2311,8 +2311,7 @@
                     :model/Table
                     :model/Transform
                     :model/TransformRun}
-   :uses #{analytics-interface
-           database-routing
+   :uses #{database-routing
            driver
            events
            lib
