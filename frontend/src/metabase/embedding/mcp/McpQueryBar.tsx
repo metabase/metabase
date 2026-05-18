@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { QueryExplorerBar } from "./QueryExplorerBar";
+import { TimeControlBar } from "./TimeControlBar";
 import { useMcpQueryControls } from "./hooks/useMcpQueryControls";
 
 interface McpQueryBarProps {
@@ -19,12 +19,6 @@ export function McpQueryBar({ onVisibilityChange }: McpQueryBarProps) {
   }
 
   return (
-    <QueryExplorerBar
-      chartTypes={[]}
-      currentChartType=""
-      onChartTypeChange={() => {}}
-      timeRange={timeRange}
-      timeGranularity={timeGranularity}
-    />
+    <TimeControlBar timeRange={timeRange} timeGranularity={timeGranularity} />
   );
 }

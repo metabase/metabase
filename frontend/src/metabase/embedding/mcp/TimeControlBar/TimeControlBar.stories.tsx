@@ -1,29 +1,13 @@
 import type { Meta, StoryFn } from "@storybook/react";
 
-import {
-  QueryExplorerBar,
-  type QueryExplorerBarChartType,
-  type QueryExplorerBarProps,
-} from "./QueryExplorerBar";
-
-const CHART_TYPES: QueryExplorerBarChartType[] = [
-  { type: "line", icon: "line" },
-  { type: "area", icon: "area" },
-  { type: "bar", icon: "bar" },
-];
+import { TimeControlBar, type TimeControlBarProps } from "./TimeControlBar";
 
 export default {
-  title: "Embedding/MCP/QueryExplorerBar",
-  component: QueryExplorerBar,
-  argTypes: {
-    currentChartType: {
-      control: "select",
-      options: ["table", "line", "area", "bar"],
-    },
-  },
-} satisfies Meta<typeof QueryExplorerBar>;
+  title: "Embedding/MCP/TimeControlBar",
+  component: TimeControlBar,
+} satisfies Meta<typeof TimeControlBar>;
 
-const Template: StoryFn<QueryExplorerBarProps> = (args) => (
+const Template: StoryFn<TimeControlBarProps> = (args) => (
   <div
     style={{
       display: "flex",
@@ -52,7 +36,7 @@ const Template: StoryFn<QueryExplorerBarProps> = (args) => (
         justifyContent: "center",
       }}
     >
-      <QueryExplorerBar {...args} />
+      <TimeControlBar {...args} />
     </div>
   </div>
 );
@@ -60,9 +44,6 @@ const Template: StoryFn<QueryExplorerBarProps> = (args) => (
 export const Default = {
   render: Template,
   args: {
-    chartTypes: CHART_TYPES,
-    currentChartType: "bar",
-    onChartTypeChange: () => {},
     timeRange: {
       label: "All time",
       value: undefined,
@@ -77,15 +58,5 @@ export const Default = {
       availableItems: [],
       onChange: () => {},
     },
-    onExplore: () => {},
-  },
-};
-
-export const WithTable = {
-  render: Template,
-  args: {
-    ...Default.args,
-    chartTypes: [{ type: "table", icon: "table2" }, ...CHART_TYPES],
-    currentChartType: "table",
   },
 };

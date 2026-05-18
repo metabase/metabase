@@ -1,4 +1,4 @@
-import { ChartTypePicker } from "./QueryExplorerBar/ChartTypePicker";
+import { ChartTypePicker } from "./TimeControlBar/ChartTypePicker";
 import { useMcpQueryControls } from "./hooks/useMcpQueryControls";
 
 export function McpVisualizationTypeSelector() {

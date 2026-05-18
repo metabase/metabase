@@ -3,12 +3,7 @@ import type {
   DatePickerValue,
 } from "metabase/querying/common/types";
 import type * as Lib from "metabase-lib";
-import type { IconName, TemporalUnit } from "metabase-types/api";
-
-export type QueryExplorerBarChartType = {
-  type: string;
-  icon: IconName;
-};
+import type { TemporalUnit } from "metabase-types/api";
 
 export type TimeRangeConfig = {
   label: string;
@@ -32,11 +27,7 @@ export type TimeGranularityConfig = {
   onChange: (bucket: Lib.Bucket | null) => void;
 };
 
-export type QueryExplorerBarProps = {
-  chartTypes: QueryExplorerBarChartType[];
-  currentChartType: string;
-  onChartTypeChange: (type: string) => void;
+export type TimeControlBarProps = {
   timeRange?: TimeRangeConfig;
   timeGranularity?: TimeGranularityConfig;
-  onExplore?: () => void;
 };
