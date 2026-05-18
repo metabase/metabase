@@ -35,7 +35,6 @@ type RequestOptions = {
   retry: boolean;
   retryCount: number;
   retryDelayIntervals: number[];
-  fetch?: boolean;
   signal?: AbortSignal;
 };
 
@@ -256,9 +255,8 @@ export class LegacyApi extends EventEmitter<EventMap> {
         };
 
         // A `FormData` / `URLSearchParams` body must NOT carry our default
-        // `application/json` Content-Type — the browser (or XHR's
-        // `send(body)`) sets the correct value, with the multipart boundary
-        // for `FormData`. Both transports honor this.
+        // `application/json` Content-Type — the browser sets the correct
+        // value, with the multipart boundary for `FormData`.
         if (body instanceof FormData || body instanceof URLSearchParams) {
           delete headers["Content-Type"];
         }
