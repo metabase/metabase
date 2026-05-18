@@ -268,7 +268,7 @@
            :description "Get sample values and statistics for a field in a table."}}
   [{:keys [id field-id]} :- [:map
                              [:id       ms/PositiveInt]
-                             [:field-id {:tool/description "Field identifier in the format '<prefix><entity-id>-<field-index>', e.g. 't123-0' for a table field."}
+                             [:field-id {:tool/description "Field identifier - a real database field id (positive integer as a string) or a string alias for an expression/aggregation column."}
                               ms/NonBlankString]]]
   (check-tool-result
    (field-stats/field-values
@@ -306,7 +306,7 @@
            :description "Get sample values and statistics for a field in a metric."}}
   [{:keys [id field-id]} :- [:map
                              [:id       ms/PositiveInt]
-                             [:field-id {:tool/description "Field identifier in the format '<prefix><entity-id>-<field-index>', e.g. 'c456-2' for a metric field."}
+                             [:field-id {:tool/description "Field identifier - a real database field id (positive integer as a string) or a string alias for an expression/aggregation column."}
                               ms/NonBlankString]]]
   (check-tool-result
    (field-stats/field-values
@@ -728,12 +728,13 @@
 (api.macros/defendpoint :post "/v1/question" :- ::create-question-response
   "Save a previously constructed query as a named question (card).
 
-  The `query` parameter should be a base64-encoded string returned by construct_query.
+  The `query` parameter accepts a `query_handle` (UUID) returned by `construct_query`,
+  or a base64-encoded MBQL string. MCP callers should always use the handle.
   Optionally specify display type, description, collection, and visualization settings."
   {:scope metabot/agent-question-create
    :tool  {:name "create_question"
            :description (str "Save a query as a named question in Metabase. "
-                             "Pass the base64 query string from construct_query. "
+                             "Pass the `query_handle` returned by `construct_query`. "
                              "Optionally set display type (table, bar, line, pie, etc.), "
                              "description, and target collection.")}}
   [_route-params

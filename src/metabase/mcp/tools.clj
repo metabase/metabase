@@ -270,7 +270,7 @@
 
 ;; Tools that accept :query_handle as an alternative to a raw base64 :query string.
 (def ^:private tools-accepting-query-handle
-  #{"execute_query" "visualize_query"})
+  #{"execute_query" "visualize_query" "create_question"})
 
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------
 
