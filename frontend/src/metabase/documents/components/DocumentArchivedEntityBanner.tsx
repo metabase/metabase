@@ -4,7 +4,8 @@ import { t } from "ttag";
 import { Api, useDeleteDocumentMutation } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner/ArchivedEntityBanner";
-import { useSetArchive, useSetCollection } from "metabase/common/hooks";
+import { useSetArchive } from "metabase/archive/hooks";
+import { useSetCollection } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 
