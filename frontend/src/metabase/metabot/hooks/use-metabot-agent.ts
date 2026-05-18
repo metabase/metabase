@@ -112,7 +112,7 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
   );
 
   const retryMessage = useCallback(
-    async (messageId: string) => {
+    async (messageId: string, options?: { profile?: MetabotProfileId }) => {
       const context = await getChatContext();
       const action = await dispatch(
         retryPrompt({
@@ -120,6 +120,7 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
           context,
           metabot_id: metabotRequestId,
           agentId,
+          profile: options?.profile,
         }),
       );
       if (isFulfilled(action)) {

@@ -198,7 +198,9 @@ export function NewExplorationChat({
         >
           <Messages
             messages={messages}
-            onRetryMessage={retryMessage}
+            onRetryMessage={(id) =>
+              retryMessage(id, { profile: "explorations" })
+            }
             isDoingScience={isDoingScience}
             debug={false}
           />
