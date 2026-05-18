@@ -33,7 +33,7 @@ export function McpExploreButton({ app, instanceUrl }: McpExploreButtonProps) {
       lh="normal"
       p={0}
     >
-      {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Figma copy intentionally uses the product name. */}
+      {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- no whitelabel needed */}
       {t`Explore in Metabase`}
     </UnstyledButton>
   );
