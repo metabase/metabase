@@ -1,15 +1,23 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
-import { cardApi, dashboardApi, datasetApi, segmentApi } from "metabase/api";
+import {
+  cardApi,
+  dashboardApi,
+  datasetApi,
+  fieldApi,
+  segmentApi,
+} from "metabase/api";
 import { Databases } from "metabase/entities/databases";
-import { Fields } from "metabase/entities/fields";
 import { Tables } from "metabase/entities/tables";
 import { entityCompatibleQuery } from "metabase/entities/utils";
 import { isProduction } from "metabase/env";
 import { createThunkAction } from "metabase/redux";
+import { FieldSchema } from "metabase/schema";
 import { RevisionsApi } from "metabase/services";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
+
+import { updateMetadata } from "./metadata-typed";
 
 export * from "metabase/redux/metadata-typed";
 
@@ -73,25 +81,43 @@ export const fetchTableMetadata = (id, reload = false) => {
   return Tables.actions.fetchMetadataAndForeignTables({ id }, { reload });
 };
 
-export const updateFieldValues = (fieldId, fieldValuePairs) => {
+export const updateFieldValues = (fieldId, fieldValuePairs) => (dispatch) => {
   deprecated("metabase/redux/metadata updateFieldValues");
-  return Fields.actions.updateFieldValues({ id: fieldId }, fieldValuePairs);
+  return entityCompatibleQuery(
+    { id: fieldId, values: fieldValuePairs },
+    dispatch,
+    fieldApi.endpoints.updateFieldValues,
+  );
 };
 
-export const updateField = (field) => {
+export const updateField = (field) => async (dispatch) => {
   deprecated("metabase/redux/metadata updateField");
   const slimField = _.omit(field, "filter_operators_lookup");
-  return Fields.actions.update(slimField);
+  const result = await entityCompatibleQuery(
+    slimField,
+    dispatch,
+    fieldApi.endpoints.updateField,
+  );
+  dispatch(updateMetadata(result, FieldSchema));
+  return result;
 };
 
-export const deleteFieldDimension = (fieldId) => {
+export const deleteFieldDimension = (fieldId) => (dispatch) => {
   deprecated("metabase/redux/metadata deleteFieldDimension");
-  return Fields.actions.deleteFieldDimension({ id: fieldId });
+  return entityCompatibleQuery(
+    fieldId,
+    dispatch,
+    fieldApi.endpoints.deleteFieldDimension,
+  );
 };
 
-export const updateFieldDimension = (fieldId, dimension) => {
+export const updateFieldDimension = (fieldId, dimension) => (dispatch) => {
   deprecated("metabase/redux/metadata updateFieldDimension");
-  return Fields.actions.updateFieldDimension({ id: fieldId }, dimension);
+  return entityCompatibleQuery(
+    { id: fieldId, ...dimension },
+    dispatch,
+    fieldApi.endpoints.createFieldDimension,
+  );
 };
 
 export const FETCH_REVISIONS = "metabase/metadata/FETCH_REVISIONS";
@@ -151,9 +177,13 @@ export const fetchSegmentRevisions = createThunkAction(
   },
 );
 
-export const addRemappings = (fieldId, remappings) => {
+export const addRemappings = (fieldId, remappings) => (dispatch, getState) => {
   deprecated("metabase/redux/metadata addRemappings");
-  return Fields.actions.addRemappings({ id: fieldId }, remappings);
+  const existing = getState().entities.fields?.[fieldId]?.remappings ?? [];
+  const merged = Array.from(new Map(existing.concat(remappings)));
+  return dispatch(
+    updateMetadata({ id: fieldId, remappings: merged }, FieldSchema),
+  );
 };
 
 const FETCH_REMAPPING = "metabase/metadata/FETCH_REMAPPING";
