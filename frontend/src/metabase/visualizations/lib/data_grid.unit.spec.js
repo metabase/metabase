@@ -174,6 +174,7 @@ describe("data_grid", () => {
         collapsedRows = [],
         columnSorts = [],
         columnShowTotals = [],
+        columnSplit,
         showColumnTotals = true,
         showRowTotals = true,
         condenseDuplicateTotals = true,
@@ -188,10 +189,11 @@ describe("data_grid", () => {
             [COLUMN_SORT_ORDER]: columnSorts[columnIndex],
           };
         },
-        [COLUMN_SPLIT_SETTING]: _.mapObject(
-          { columns, rows, values },
-          (indexes) => indexes.map((index) => data.cols[index].name),
-        ),
+        [COLUMN_SPLIT_SETTING]:
+          columnSplit ??
+          _.mapObject({ columns, rows, values }, (indexes) =>
+            indexes.map((index) => data.cols[index].name),
+          ),
         [COLLAPSED_ROWS_SETTING]: { value: collapsedRows },
         "pivot.show_row_totals": showRowTotals,
         "pivot.show_column_totals": showColumnTotals,
@@ -233,6 +235,52 @@ describe("data_grid", () => {
       expect(leftHeaderItems).toEqual([]);
       expect(rowCount).toEqual(1);
       expect(columnCount).toEqual(7);
+    });
+
+    it("should ignore stale pivot column names and add current columns (#69100)", () => {
+      const { topHeaderItems, leftHeaderItems, rowCount, columnCount } =
+        multiLevelPivotForIndexes(data, [], [], [], {
+          columnSplit: {
+            columns: [D1.name],
+            rows: ["Old model - Dimension 2"],
+            values: [M.name],
+          },
+        });
+
+      expect(getPathsAndValues(topHeaderItems)).toEqual([
+        { value: "a", path: ["a"] },
+        { value: "b", path: ["b"] },
+        { value: "Row totals", path: null },
+      ]);
+      expect(getValues(leftHeaderItems)).toEqual([
+        "x",
+        "y",
+        "z",
+        "Grand totals",
+      ]);
+      expect(rowCount).toEqual(4);
+      expect(columnCount).toEqual(3);
+    });
+
+    it("should pivot raw rows without a pivot grouping column (#69100)", () => {
+      const rawData = makeData([
+        ["a", "x", 1],
+        ["a", "y", 2],
+        ["b", "x", 3],
+      ]);
+      const { topHeaderItems, leftHeaderItems, rowCount, columnCount } =
+        multiLevelPivotForIndexes(rawData, [0], [1], [2], {
+          columnSplit: {
+            columns: [D1.name],
+            rows: [D2.name],
+            values: [M.name],
+          },
+        });
+
+      expect(getValues(topHeaderItems)).toEqual(["a", "b", "Row totals"]);
+      expect(getValues(leftHeaderItems)).toEqual(["x", "y", "Grand totals"]);
+      expect(rowCount).toEqual(3);
+      expect(columnCount).toEqual(3);
     });
 
     it("should produce multi-level top header without row totals", () => {

@@ -517,6 +517,10 @@
                            (assoc-in [:constraints :max-results] pivot-limit)
                            (cond-> (get-in query [:constraints :max-results-bare-rows])
                              (update-in [:constraints :max-results-bare-rows] min pivot-limit))
-                           add-canonical-col-info)
-           all-queries (generate-queries query pivot-opts)]
-       (process-multiple-queries all-queries rff pivot-limit)))))
+                           add-canonical-col-info)]
+       (if (empty? (lib/breakouts query))
+         (qp/process-query (cond-> query
+                             (seq (:info query)) qp/userland-query)
+                           rff)
+         (let [all-queries (generate-queries query pivot-opts)]
+           (process-multiple-queries all-queries rff pivot-limit)))))))

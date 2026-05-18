@@ -4,6 +4,7 @@ import * as Pivot from "cljs/metabase.pivot.js";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
+import { isDimension } from "metabase-lib/v1/types/utils/isa";
 
 export function isPivotGroupColumn(col) {
   return col.name === "pivot-grouping";
@@ -21,12 +22,15 @@ export function multiLevelPivot(data, settings) {
   if (!settings[COLUMN_SPLIT_SETTING]) {
     return null;
   }
-  const columnSplit = migratePivotColumnSplitSetting(
+  data = ensurePivotGroupingColumn(data);
+
+  const migratedColumnSplit = migratePivotColumnSplitSetting(
     settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
     data.cols,
   );
 
   const columns = Pivot.columns_without_pivot_group(data.cols);
+  const columnSplit = removeStaleAndAddNewColumns(migratedColumnSplit, columns);
 
   const {
     columns: columnIndexes,
@@ -117,6 +121,48 @@ export function multiLevelPivot(data, settings) {
     console.error("Error processing pivot table data:", e);
     return null;
   }
+}
+
+function ensurePivotGroupingColumn(data) {
+  if (data.cols.some(isPivotGroupColumn)) {
+    return data;
+  }
+
+  return {
+    ...data,
+    cols: [...data.cols, { name: "pivot-grouping" }],
+    rows: data.rows.map((row) => [...row, 0]),
+  };
+}
+
+function removeStaleAndAddNewColumns(columnSplit, columns) {
+  const columnNames = columns.map((column) => column.name);
+  const settingColumnNames = Object.values(columnSplit).flatMap(
+    (names) => names ?? [],
+  );
+  const newColumnNames = _.difference(columnNames, settingColumnNames);
+
+  const nextColumnSplit = _.mapObject(columnSplit, (names) =>
+    names?.filter((name) => columnNames.includes(name)),
+  );
+
+  for (const columnName of newColumnNames) {
+    const column = columns.find((column) => column.name === columnName);
+
+    if (!column) {
+      continue;
+    }
+
+    if (isDimension(column)) {
+      nextColumnSplit.rows = nextColumnSplit.rows ?? [];
+      nextColumnSplit.rows.push(columnName);
+    } else {
+      nextColumnSplit.values = nextColumnSplit.values ?? [];
+      nextColumnSplit.values.push(columnName);
+    }
+  }
+
+  return nextColumnSplit;
 }
 
 // This is the pivot function used in the normal table visualization.
