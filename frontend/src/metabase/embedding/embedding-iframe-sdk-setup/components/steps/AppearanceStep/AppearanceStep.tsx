@@ -14,13 +14,13 @@ import { BehaviorCard } from "./BehaviorCard";
 import { ParametersCard } from "./ParametersCard";
 
 export const AppearanceStep = () => {
-  const { isFirstStep, isSimpleEmbedFeatureAvailable } =
+  const { isFirstStep, isSimpleEmbeddingTermsAccepted } =
     useSdkIframeEmbedSetupContext();
 
   // When the wizard lands directly on this step (initialState) on a Pro
   // instance, the user needs to configure auth first — dim the option cards
   // so the AuthenticationCard above takes focus.
-  const isDimmed = isFirstStep && isSimpleEmbedFeatureAvailable;
+  const isDimmed = isFirstStep && !isSimpleEmbeddingTermsAccepted;
   const dimmedProps = {
     opacity: isDimmed ? 0.5 : 1,
     className: cx(isDimmed && CS.pointerEventsNone),
