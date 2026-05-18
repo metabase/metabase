@@ -169,18 +169,22 @@ describe("scenarios - embedding hub", () => {
         .findByText("Get embed snippet")
         .click();
 
-      cy.log("choose dashboard experience");
       H.modal()
         .first()
         .within(() => {
+          cy.log("choose dashboard experience");
           cy.findByText("Dashboard").click();
-          cy.findByText("Next").click();
+          cy.log("pick a dashboard");
+          cy.findByTestId("embed-browse-entity-button").click();
         });
 
-      cy.log("pick a dashboard");
-      H.modal().first().findByTestId("embed-browse-entity-button").click();
       H.entityPickerModal().findByText("Test Dashboard").click();
-      H.modal().first().findByText("Next").click();
+
+      H.modal()
+        .first()
+        .within(() => {
+          cy.findByText("Next").click();
+        });
 
       cy.log("publish the embed");
       H.publishChanges("dashboard");

@@ -1,20 +1,14 @@
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router";
 import { P, match } from "ts-pattern";
 import { c, t } from "ttag";
 
-import { useListEmbeddingThemesQuery } from "metabase/api/embedding-theme";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useDocsUrl, useHasEmailSetup } from "metabase/common/hooks";
-import type {
-  MetabaseColors,
-  MetabaseThemePreset,
-} from "metabase/embedding-sdk/theme";
 import {
   Anchor,
   Card,
   Checkbox,
-  Divider,
   Flex,
   HoverCard,
   Icon,
@@ -23,30 +17,11 @@ import {
   Tooltip,
 } from "metabase/ui";
 
-import { UPSELL_CAMPAIGN_BEHAVIOR } from "../analytics";
-import { useSdkIframeEmbedSetupContext } from "../context";
-import { getBehaviorDocsUrlParams } from "../utils/get-behavior-docs-url-params";
+import { useSdkIframeEmbedSetupContext } from "../../../context";
+import { getBehaviorDocsUrlParams } from "../../../utils/get-behavior-docs-url-params";
+import { WithNotAvailableForOssOrGuestEmbedsGuard } from "../../Common/WithNotAvailableForOssOrGuestEmbedsGuard";
 
-import { BaseAppearanceSection } from "./Appearance/BaseAppearanceSection";
-import { SimpleThemeSwitcherSection } from "./Appearance/SimpleThemeSwitcherSection";
-import { ThemeSelectorSection } from "./Appearance/ThemeSelectorSection";
-import { EmbeddingUpsell } from "./Common/EmbeddingUpsell";
-import { WithNotAvailableForOssOrGuestEmbedsGuard } from "./Common/WithNotAvailableForOssOrGuestEmbedsGuard";
-import { LegacyStaticEmbeddingAlert } from "./LegacyStaticEmbeddingAlert";
-import { MetabotLayoutSetting } from "./MetabotLayoutSetting";
-import { ParameterSettings } from "./ParameterSettings";
-
-export const SelectEmbedOptionsStep = () => (
-  <Stack gap="md">
-    <BehaviorSection />
-    <ParametersSection />
-    <AppearanceSection />
-    <LegacyStaticEmbeddingAlert />
-    <EmbeddingUpsell campaign={UPSELL_CAMPAIGN_BEHAVIOR} />
-  </Stack>
-);
-
-const BehaviorSection = () => {
+export const BehaviorCard = () => {
   const { isSimpleEmbedFeatureAvailable, settings, updateSettings } =
     useSdkIframeEmbedSetupContext();
   const hasEmailSetup = useHasEmailSetup();
@@ -298,150 +273,6 @@ const BehaviorSection = () => {
       </Flex>
 
       {behaviorSection}
-    </Card>
-  );
-};
-
-const ParametersSection = () => {
-  const { experience } = useSdkIframeEmbedSetupContext();
-
-  if (experience !== "dashboard" && experience !== "chart") {
-    return null;
-  }
-
-  return (
-    <Card p="md">
-      <Text size="lg" fw="bold" mb="xs">
-        {t`Parameters`}
-      </Text>
-
-      <Text size="sm" c="text-secondary" mb="lg">
-        {experience === "dashboard"
-          ? t`Set default values and control visibility`
-          : t`Set default values`}
-      </Text>
-
-      <ParameterSettings />
-    </Card>
-  );
-};
-
-const AppearanceSection = () => {
-  const { isSimpleEmbedFeatureAvailable, settings, updateSettings } =
-    useSdkIframeEmbedSetupContext();
-
-  const { theme } = settings;
-
-  const { data: savedThemes } = useListEmbeddingThemesQuery(undefined, {
-    skip: !isSimpleEmbedFeatureAvailable,
-  });
-
-  const updateThemeId = useCallback(
-    (themeId: number | undefined) => {
-      updateSettings({
-        theme: themeId ? { id: themeId } : undefined,
-      } satisfies Partial<typeof settings>);
-    },
-    [updateSettings],
-  );
-
-  const initializeCustomTheme = useCallback(
-    (initialColors: Partial<MetabaseColors> | undefined) => {
-      updateSettings({
-        theme: initialColors ? { colors: initialColors } : undefined,
-      } satisfies Partial<typeof settings>);
-    },
-    [updateSettings],
-  );
-
-  const updateThemePreset = useCallback(
-    (preset: MetabaseThemePreset) => {
-      updateSettings({ theme: { preset } } satisfies Partial<typeof settings>);
-    },
-    [updateSettings],
-  );
-
-  const updateColors = useCallback(
-    (nextColors: Partial<MetabaseColors>) => {
-      updateSettings({
-        theme: { ...theme, colors: { ...theme?.colors, ...nextColors } },
-      } satisfies Partial<typeof settings>);
-    },
-    [theme, updateSettings],
-  );
-
-  const resetTheme = useCallback(
-    () =>
-      updateSettings({ theme: undefined } satisfies Partial<typeof settings>),
-    [updateSettings],
-  );
-
-  const hasSavedThemes = (savedThemes?.length ?? 0) > 0;
-  const showHeaderReset =
-    isSimpleEmbedFeatureAvailable && !hasSavedThemes && !!theme?.colors;
-
-  const appearanceSection = match(settings)
-    .with({ template: "exploration" }, () => null)
-    .with({ componentName: "metabase-metabot" }, () => <MetabotLayoutSetting />)
-    .with(
-      { componentName: P.union("metabase-question", "metabase-dashboard") },
-      (settings) => {
-        const label = match(settings.componentName)
-          .with("metabase-dashboard", () => t`Show dashboard title`)
-          .with("metabase-question", () => t`Show chart title`)
-          .exhaustive();
-
-        return (
-          <Checkbox
-            label={label}
-            checked={settings.withTitle}
-            onChange={(e) =>
-              updateSettings({
-                withTitle: e.target.checked,
-              } satisfies Partial<typeof settings>)
-            }
-          />
-        );
-      },
-    )
-    .otherwise(() => null);
-
-  return (
-    <Card p="md">
-      <BaseAppearanceSection
-        icons={
-          showHeaderReset ? (
-            <Tooltip label={t`Reset colors`}>
-              <Icon
-                name="revert"
-                size={16}
-                c="brand"
-                onClick={resetTheme}
-                aria-label={t`Reset colors`}
-                style={{ cursor: "pointer" }}
-              />
-            </Tooltip>
-          ) : null
-        }
-      >
-        {isSimpleEmbedFeatureAvailable ? (
-          <ThemeSelectorSection
-            savedThemes={savedThemes ?? []}
-            theme={theme}
-            onThemeChange={updateThemeId}
-            onCustomSelect={initializeCustomTheme}
-            onColorChange={updateColors}
-            onColorReset={resetTheme}
-          />
-        ) : (
-          <SimpleThemeSwitcherSection
-            preset={theme?.preset}
-            onPresetChange={updateThemePreset}
-          />
-        )}
-      </BaseAppearanceSection>
-      {appearanceSection && <Divider mt="lg" mb="md" />}
-      {appearanceSection}
     </Card>
   );
 };
