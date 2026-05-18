@@ -9,23 +9,26 @@ import { TimeGranularityControl } from "./TimeControlBar/TimeGranularityControl"
 import { TimeRangeControl } from "./TimeControlBar/TimeRangeControl";
 import { useMcpQueryControls } from "./hooks/useMcpQueryControls";
 
-interface McpTimeControlsProps {
-  onVisibilityChange?: (isVisible: boolean) => void;
-}
-
 export interface McpQuestionViewProps {
   contentStyle: CSSProperties;
-  isTimeControlsVisible: boolean;
-  onTimeControlsVisibilityChange: (isVisible: boolean) => void;
   visualizationHeight: string;
+
+  onTimeControlsVisibilityChange: (isVisible: boolean) => void;
 }
 
 export function McpQuestionView({
   contentStyle,
-  isTimeControlsVisible,
-  onTimeControlsVisibilityChange,
   visualizationHeight,
+
+  onTimeControlsVisibilityChange,
 }: McpQuestionViewProps) {
+  const { hasTimeControls, timeGranularity, timeRange } = useMcpQueryControls();
+
+  // This is used to adjust the parent MCP Apps iframe's container height.
+  useEffect(() => {
+    onTimeControlsVisibilityChange(hasTimeControls);
+  }, [hasTimeControls, onTimeControlsVisibilityChange]);
+
   return (
     <Flex
       direction="column"
@@ -55,47 +58,25 @@ export function McpQuestionView({
         <SdkQuestion.QuestionVisualization height={visualizationHeight} />
       </Flex>
 
-      {isTimeControlsVisible && (
+      {hasTimeControls && (
         <Flex px="lg" justify="center">
-          <McpTimeControls
-            onVisibilityChange={onTimeControlsVisibilityChange}
-          />
+          <Flex
+            h={32}
+            align="stretch"
+            bd="1px solid var(--mb-color-border)"
+            bdrs="md"
+            style={{ overflow: "hidden" }}
+            data-testid="query-explorer-bar"
+          >
+            {timeRange && <TimeRangeControl timeRange={timeRange} />}
+
+            {timeRange && timeGranularity && <Divider orientation="vertical" />}
+
+            {timeGranularity && (
+              <TimeGranularityControl timeGranularity={timeGranularity} />
+            )}
+          </Flex>
         </Flex>
-      )}
-
-      {!isTimeControlsVisible && (
-        <McpTimeControls onVisibilityChange={onTimeControlsVisibilityChange} />
-      )}
-    </Flex>
-  );
-}
-
-function McpTimeControls({ onVisibilityChange }: McpTimeControlsProps) {
-  const { hasTimeControls, timeGranularity, timeRange } = useMcpQueryControls();
-
-  useEffect(() => {
-    onVisibilityChange?.(hasTimeControls);
-  }, [hasTimeControls, onVisibilityChange]);
-
-  if (!hasTimeControls) {
-    return null;
-  }
-
-  return (
-    <Flex
-      h={32}
-      align="stretch"
-      bd="1px solid var(--mb-color-border)"
-      bdrs="md"
-      style={{ overflow: "hidden" }}
-      data-testid="query-explorer-bar"
-    >
-      {timeRange && <TimeRangeControl timeRange={timeRange} />}
-
-      {timeRange && timeGranularity && <Divider orientation="vertical" />}
-
-      {timeGranularity && (
-        <TimeGranularityControl timeGranularity={timeGranularity} />
       )}
     </Flex>
   );

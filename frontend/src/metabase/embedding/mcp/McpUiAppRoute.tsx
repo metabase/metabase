@@ -203,7 +203,6 @@ function McpUiAppRouteContent({
       <>
         <McpQuestionView
           contentStyle={contentStyle}
-          isTimeControlsVisible={isQueryBarVisible}
           onTimeControlsVisibilityChange={handleQueryBarVisibilityChange}
           visualizationHeight={visualizationHeight}
         />
