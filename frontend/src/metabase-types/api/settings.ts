@@ -548,6 +548,7 @@ type PrivilegedSettings = AdminSettings & SettingsManagerSettings;
 
 interface PublicSettings {
   "allowed-iframe-hosts": string;
+  "allowed-img-hosts": string;
   "ai-features-enabled?": boolean;
   "agent-api-enabled?": boolean;
   "analytics-uuid": string;

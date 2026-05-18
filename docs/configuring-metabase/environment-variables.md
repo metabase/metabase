@@ -122,6 +122,15 @@ x.com`
 
 Allowed iframe hosts.
 
+### `MB_ALLOWED_IMG_HOSTS`
+
+- Type: string
+- Default: `""`
+- [Exported as](../installation-and-operation/serialization.md): `allowed-img-hosts`.
+- [Configuration file name](./config-file.md): `allowed-img-hosts`
+
+Domains that images can load from in dashboard text cards, entity descriptions, and custom visualizations. Empty by default, which restricts images to those hosted by your Metabase. See [Allowed domains for images](./settings.md#allowed-domains-for-images).
+
 ### `MB_ANALYTICS_PII_RETENTION_ENABLED`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.

@@ -94,6 +94,7 @@ config:
       linkedin.com,
       twitter.com,
       x.com
+    allowed-img-hosts: ''
     analytics-pii-retention-enabled: false
     anon-tracking-enabled: true
     api-key: null

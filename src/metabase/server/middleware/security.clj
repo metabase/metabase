@@ -18,6 +18,7 @@
    [metabase.util.malli :as mu]
    [ring.util.codec :refer [base64-encode]])
   (:import
+   (java.net URI)
    (java.security MessageDigest SecureRandom)))
 
 (set! *warn-on-reflection* true)
@@ -121,6 +122,47 @@
   parse-allowed-iframe-hosts
   (memoize parse-allowed-iframe-hosts*))
 
+(defn- parse-allowed-resource-hosts*
+  [hosts-string]
+  (->> (str/split (or hosts-string "") #"[ ,\s\r\n]+")
+       (remove str/blank?)
+       (mapcat add-wildcard-entries)
+       vec))
+
+(def ^{:doc "Parse the string of allowed `img-src`/`font-src` hosts, adding wildcard prefixes as needed.
+  Unlike [[parse-allowed-iframe-hosts]] this has no implicitly-allowed seed hosts."}
+  parse-allowed-resource-hosts
+  (memoize parse-allowed-resource-hosts*))
+
+(defn- font-file-src->origin
+  "Extract the `scheme://host[:port]` origin from a custom font file `src` URL, or nil if it is
+  blank, relative, or unparseable."
+  [src]
+  (when (and (string? src) (not (str/blank? src)))
+    (try
+      (let [uri    (URI. src)
+            scheme (.getScheme uri)
+            host   (.getHost uri)
+        ;; URI#getHost strips IPv6 brackets, but CSP origins require bracketed IPv6 literals.
+            host   (if (and host
+                            (str/includes? host ":")
+                            (not (str/starts-with? host "[")))
+                     (str "[" host "]")
+                     host)
+            port   (.getPort uri)]
+        (when (and scheme host)
+          (str scheme "://" host (when (pos? port) (str ":" port)))))
+      (catch Exception _ nil))))
+
+(defn- application-font-files->hosts
+  "Origins of any custom font files configured via the `application-font-files` setting, so that
+  `font-src` allows the fonts an admin has explicitly opted into without a separate setting."
+  []
+  (->> (setting/get-value-of-type :json :application-font-files)
+       (keep (comp font-file-src->origin :src))
+       distinct
+       vec))
+
 (def ^:private frontend-dev-port (or (env/env :mb-frontend-dev-port) "8080"))
 (def ^:private frontend-address (str "http://localhost:" frontend-dev-port))
 (def ^:private cljs-dev-port (or (env/env :mb-cljs-dev-port) "9630"))
@@ -170,9 +212,13 @@
                                  "https://accounts.google.com"]
                   :style-src-attr ["'self'"]
                   :frame-src    (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts))
-                  :font-src     ["*"]
-                  :img-src      ["*"
-                                 "'self' data:"]
+                  ;; in dev, assets (logos, fonts, etc.) are served from the webpack dev server origin
+                  :font-src     (into (cond-> ["'self'" "data:"]
+                                        config/is-dev? (conj frontend-address))
+                                      (application-font-files->hosts))
+                  :img-src      (into (cond-> ["'self'" "data:"]
+                                        config/is-dev? (conj frontend-address))
+                                      (parse-allowed-resource-hosts (server.settings/allowed-img-hosts)))
                   :connect-src  ["'self'"
                                  ;; Google Identity Services
                                  "https://accounts.google.com"

@@ -40,6 +40,14 @@ x.com")
   :visibility :public
   :export?    true)
 
+(defsetting allowed-img-hosts
+  (deferred-tru "Allowed hosts for loading images (e.g. in dashboard text, entity descriptions, and custom visualizations). Empty by default, which restricts images to this Metabase instance.")
+  :encryption :no
+  :default    ""
+  :audit      :getter
+  :visibility :public
+  :export?    true)
+
 (defsetting redirect-all-requests-to-https
   (deferred-tru "Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS")
   :visibility :public

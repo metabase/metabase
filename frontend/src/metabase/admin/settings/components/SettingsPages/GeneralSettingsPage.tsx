@@ -21,6 +21,9 @@ export function GeneralSettingsPage() {
   const { url: iframeDocsUrl } = useDocsUrl("configuring-metabase/settings", {
     anchor: "allowed-domains-for-iframes-in-dashboards",
   });
+  const { url: imgDocsUrl } = useDocsUrl("configuring-metabase/settings", {
+    anchor: "allowed-domains-for-images",
+  });
   const hasHostingFeature = useHasTokenFeature("hosting");
   const hasAuditAppFeature = useHasTokenFeature("audit_app");
   const enableAnonymousTracking = !hasHostingFeature;
@@ -81,6 +84,17 @@ export function GeneralSettingsPage() {
           description={
             <>
               {jt`You should make sure to trust the sources you allow your users to embed in dashboards. ${<ExternalLink key="docs" href={iframeDocsUrl}>{t`Learn more`}</ExternalLink>}`}
+            </>
+          }
+          inputType="textarea"
+        />
+
+        <AdminSettingInput
+          name="allowed-img-hosts"
+          title={t`Allowed domains for images`}
+          description={
+            <>
+              {jt`Domains that images can be loaded from in dashboard text, entity descriptions, and custom visualizations. Leave empty to only allow images hosted by this Metabase instance. ${<ExternalLink key="img-docs" href={imgDocsUrl}>{t`Learn more`}</ExternalLink>}`}
             </>
           }
           inputType="textarea"

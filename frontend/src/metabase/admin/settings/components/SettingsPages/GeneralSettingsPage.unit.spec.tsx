@@ -34,6 +34,7 @@ const generalSettings = {
   "humanization-strategy": "simple",
   "enable-xrays": false,
   "allowed-iframe-hosts": "https://cooldashboards.limo",
+  "allowed-img-hosts": "https://imgcdn.example.com",
   "search-engine": "appdb",
 } as const;
 
@@ -98,6 +99,7 @@ describe("GeneralSettingsPage", () => {
       "Friendly table and field names",
       "Enable X-Ray features",
       "Allowed domains for iframes in dashboards",
+      "Allowed domains for images",
     ].forEach((text) => {
       expect(screen.getByText(text)).toBeInTheDocument();
     });
@@ -166,6 +168,29 @@ describe("GeneralSettingsPage", () => {
       const toasts = screen.getAllByLabelText("check_filled icon");
       expect(toasts).toHaveLength(2);
     });
+  });
+
+  it("should load and persist the allowed image domains setting", async () => {
+    await setup();
+
+    const imgInput = await screen.findByDisplayValue(
+      "https://imgcdn.example.com",
+    );
+    await userEvent.clear(imgInput);
+    await userEvent.type(imgInput, "https://images.example.org");
+    await userEvent.click(screen.getByText("Friendly table and field names")); // blur
+
+    await waitFor(async () => {
+      const puts = await findRequests("PUT");
+      expect(
+        puts.some((req) => req.url.includes("/api/setting/allowed-img-hosts")),
+      ).toBe(true);
+    });
+
+    const imgPut = (await findRequests("PUT")).find((req) =>
+      req.url.includes("/api/setting/allowed-img-hosts"),
+    );
+    expect(imgPut?.body).toEqual({ value: "https://images.example.org" });
   });
 
   it("should show Anonymous Tracking input for non-cloud plans", async () => {

@@ -176,6 +176,7 @@ export const createMockSettings = (
   "custom-viz-enabled": false,
   "custom-viz-plugin-dev-mode-enabled": false,
   "allowed-iframe-hosts": "*",
+  "allowed-img-hosts": "",
   "anon-tracking-enabled": false,
   "application-colors": {},
   "application-font": "Lato",
