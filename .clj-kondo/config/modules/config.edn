@@ -160,6 +160,7 @@
               metabase.agent-api.init}
    :uses    #{api
               auth-identity
+              collections
               dashboards
               events
               lib
@@ -172,6 +173,7 @@
               settings
               util}
    :model-imports #{:model/Card
+                    :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Table

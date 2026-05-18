@@ -705,3 +705,44 @@
     (mt/user-http-request :rasta :post 404 "agent/v1/dashboard"
                           {:name         "Bad Dashboard"
                            :question_ids [999999]})))
+
+(deftest create-collection-test
+  (testing "Creates a root-level collection"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/collection"
+                                       {:name "Agent Root Coll"})]
+        (is (=? {:id          pos?
+                 :name        "Agent Root Coll"
+                 :parent_id   nil
+                 :location    "/"
+                 :description nil}
+                resp))
+        (t2/delete! :model/Collection :id (:id resp)))))
+
+  (testing "Creates a nested collection under a parent"
+    (mt/with-temp [:model/Collection {parent-id :id} {:name "Agent Parent Coll"}]
+      (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/collection"
+                                       {:name                 "Agent Nested Coll"
+                                        :description          "Nested under parent"
+                                        :parent_collection_id parent-id})]
+        (is (=? {:id          pos?
+                 :name        "Agent Nested Coll"
+                 :parent_id   parent-id
+                 :description "Nested under parent"}
+                resp))
+        ;; location should encode the parent's id in the materialized path
+        (is (= (str "/" parent-id "/") (:location resp)))
+        (t2/delete! :model/Collection :id (:id resp)))))
+
+  (testing "Returns 404 when parent_collection_id does not exist"
+    (mt/user-http-request :crowberto :post 404 "agent/v1/collection"
+                          {:name                 "Bad Parent Coll"
+                           :parent_collection_id 999999}))
+
+  (testing "Returns 403 when caller lacks write access on the parent"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {parent-id :id} {:name "Locked Parent"}]
+        ;; Non-admin groups have no perms on the new collection by default.
+        (mt/user-http-request :rasta :post 403 "agent/v1/collection"
+                              {:name                 "Should Fail"
+                               :parent_collection_id parent-id})))))

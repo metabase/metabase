@@ -9,6 +9,8 @@
    [metabase.api.macros.scope :as scope]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -818,6 +820,55 @@
      :collection_id (:collection_id dash)
      :description  (:description dash)
      :dashcard_ids (mapv :id (t2/select :model/DashboardCard :dashboard_id (:id dash)))}))
+
+;;; ------------------------------------------------ Create Collection -----------------------------------------------
+
+(mr/def ::create-collection-request
+  [:map
+   [:name                 ms/NonBlankString]
+   [:description          {:optional true} [:maybe :string]]
+   [:parent_collection_id {:optional true} [:maybe ms/PositiveInt]]])
+
+(mr/def ::create-collection-response
+  [:map
+   [:id            ms/PositiveInt]
+   [:name          ms/NonBlankString]
+   [:parent_id     [:maybe ms/PositiveInt]]
+   [:location      ms/NonBlankString]
+   [:description   [:maybe :string]]])
+
+(api.macros/defendpoint :post "/v1/collection" :- ::create-collection-response
+  "Create a new Collection.
+
+  Pass `parent_collection_id` to nest under another collection; omit for a root-level collection.
+  The caller must have write access to the parent (or root, if no parent given)."
+  {:scope metabot/agent-collection-create
+   :tool  {:name "create_collection"
+           :description (str "Create a new collection in Metabase. "
+                             "Set parent_collection_id to nest under another collection; "
+                             "omit it for a root-level collection.")}}
+  [_route-params
+   _query-params
+   {:keys [description parent_collection_id]
+    collection-name :name}
+   :- ::create-collection-request]
+  (let [parent   (if parent_collection_id
+                   (api/check-404 (t2/select-one :model/Collection :id parent_collection_id))
+                   collection.root/root-collection)
+        _        (api/write-check parent)
+        location (collection/children-location parent)
+        coll     (first (t2/insert-returning-instances!
+                         :model/Collection
+                         {:name        collection-name
+                          :description description
+                          :location    location}))]
+    (events/publish-event! :event/collection-create
+                           {:object coll :user-id api/*current-user-id*})
+    {:id            (:id coll)
+     :name          (:name coll)
+     :parent_id     parent_collection_id
+     :location      (:location coll)
+     :description   (:description coll)}))
 
 ;;; ------------------------------------------------- Authentication -------------------------------------------------
 ;;
