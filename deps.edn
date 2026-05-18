@@ -4,7 +4,10 @@
  ;; !!                                   PLEASE KEEP THESE ORGANIZED ALPHABETICALLY                                  !!
  ;; !!                                   AND ADD A COMMENT EXPLAINING THEIR PURPOSE                                  !!
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- {amalloy/ring-gzip-middleware              {:mvn/version "0.1.4"}              ; Ring middleware to GZIP responses if client can handle it
+ {ai.djl/api                                {:mvn/version "0.36.0"}             ; PoC: in-JVM embedder (data-complexity-score) — core DJL API
+  ai.djl.huggingface/tokenizers             {:mvn/version "0.36.0"}             ; PoC: in-JVM embedder — HuggingFace BERT tokenizer JNI wrapper
+  ai.djl.onnxruntime/onnxruntime-engine     {:mvn/version "0.36.0"}             ; PoC: in-JVM embedder — ONNX Runtime engine (pulls Microsoft onnxruntime native libs)
+  amalloy/ring-gzip-middleware              {:mvn/version "0.1.4"}              ; Ring middleware to GZIP responses if client can handle it
   babashka/fs                               {:mvn/version "0.5.27"}             ; Portable filesystem operations
   buddy/buddy-core                          {:mvn/version "1.12.0-430"          ; various cryptographic functions
                                              :exclusions  [commons-codec/commons-codec

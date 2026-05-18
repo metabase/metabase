@@ -1081,8 +1081,8 @@
                                      "clients"       [0.0  0.0  1.0  0.0 0.0 0.0 0.0]
                                      "customers"     [0.0  0.0  0.99 0.1 0.0 0.0 0.0]   ; ≈ clients (library)
                                      "revenue"       [0.0  0.0  0.0  0.0 1.0 0.0 0.0]   ; "Revenue" cards normalize here
-                                     "audit_events"  [0.0  0.0  0.0  0.0 0.0 1.0 0.0]
-                                     "audit_log"     [0.0  0.0  0.0  0.0 0.0 0.99 0.1]}) ; ≈ audit_events (universe-only)
+                                     "audit events"  [0.0  0.0  0.0  0.0 0.0 1.0 0.0]   ; mock keys are now in normalized form
+                                     "audit log"     [0.0  0.0  0.0  0.0 0.0 0.99 0.1]}) ; ≈ audit_events (universe-only)
             {:keys [library universe]} (complexity/complexity-scores :embedder embedder)]
         (testing "library reflects exactly what we put in the Library collection tree"
           ;; Library: 4 tables + 2 metric cards = 6 entities.
