@@ -893,8 +893,9 @@
       (is (= "invalid metric"  (body-preview {:error "invalid metric"})))
       (is (= "missing prompt"  (body-preview {:detail "missing prompt"})))
       (is (= "bad request"     (body-preview {:message "bad request"}))))
-    (testing "unstructured maps fall back to pr-str"
-      (is (= "{:weird \"shape\"}" (body-preview {:weird "shape"}))))
+    (testing "maps without a recognised error field return nil — no internal blobs leak to users"
+      (is (nil? (body-preview {:request-id "abc" :trace ["frame1" "frame2"]})))
+      (is (nil? (body-preview {}))))
     (testing "InputStream bodies get slurped"
       (let [stream (java.io.ByteArrayInputStream. (.getBytes "boom from upstream" "UTF-8"))]
         (is (= "boom from upstream" (body-preview stream)))))
@@ -904,6 +905,15 @@
         (is (str/ends-with? preview "…"))
         (is (= 501 (count preview)))))))
 
+(defn- assert-rethrow-no-internals!
+  "`=?` is a subset match — it silently passes if a key is present in `ex-data` but
+   absent from the expectation. Raw clj-http responses carry `:headers`, `:http-client`
+   (a `Closeable`), `:trace-redirects`, etc., none of which should land in `ex-data`."
+  [data]
+  (is (= #{:status :reason-phrase :body :api-error :provider :error-code}
+         (set (keys data)))
+      "ex-data is an explicit allow-list, not a passthrough of the raw clj-http response"))
+
 (deftest rethrow-api-error!-test
   (testing ":api-error exceptions are rethrown unchanged"
     (let [original (ex-info "boom" {:api-error true :error-code :proxy-not-configured})]
@@ -912,10 +922,13 @@
                            (catch Exception e e))))))
   (testing "HTTP responses with a body get the upstream body appended and surfaced in ex-data"
     (let [upstream (ex-info "clj-http error"
-                            {:status 500
-                             :reason-phrase "Internal Server Error"
-                             :headers {"content-type" "application/json"}
-                             :body (json/encode {:error {:message "model decommissioned"}})})
+                            {:status                500
+                             :reason-phrase         "Internal Server Error"
+                             :headers               {"content-type" "application/json"}
+                             :body                  (json/encode {:error {:message "model decommissioned"}})
+                             :http-client           (reify java.io.Closeable (close [_]))
+                             :trace-redirects       ["http://elsewhere"]
+                             :orig-content-encoding "gzip"})
           ex       (try
                      (self.core/rethrow-api-error!
                       "anthropic"
@@ -930,13 +943,14 @@
                :error-code :provider-api-error
                :status     500
                :body       {:error {:message "model decommissioned"}}}
-              (ex-data ex)))))
+              (ex-data ex)))
+      (assert-rethrow-no-internals! (ex-data ex))))
   (testing "non-JSON bodies still get a preview appended"
     (let [upstream (ex-info "clj-http error"
-                            {:status 502
+                            {:status        502
                              :reason-phrase "Bad Gateway"
-                             :headers {"content-type" "text/plain"}
-                             :body "upstream gateway timeout"})
+                             :headers       {"content-type" "text/plain"}
+                             :body          "upstream gateway timeout"})
           ex       (try
                      (self.core/rethrow-api-error!
                       "openrouter"
@@ -945,7 +959,25 @@
                      nil
                      (catch Exception e e))]
       (is (str/includes? (ex-message ex) "OpenRouter upstream provider returned an error"))
-      (is (str/includes? (ex-message ex) "upstream gateway timeout"))))
+      (is (str/includes? (ex-message ex) "upstream gateway timeout"))
+      (assert-rethrow-no-internals! (ex-data ex))))
+  (testing "structured maps without :error/:detail/:message keep the user-facing message clean"
+    (let [upstream (ex-info "clj-http error"
+                            {:status        500
+                             :reason-phrase "Internal Server Error"
+                             :headers       {"content-type" "application/json"}
+                             :body          (json/encode {:request-id "abc" :trace ["frame1"]})})
+          ex       (try
+                     (self.core/rethrow-api-error!
+                      "anthropic"
+                      (constantly "Anthropic API is not working but not saying why")
+                      upstream)
+                     nil
+                     (catch Exception e e))]
+      (is (= "Anthropic API is not working but not saying why" (ex-message ex))
+          "no internal body fields leak into the exception message")
+      (is (= {:request-id "abc" :trace ["frame1"]} (get (ex-data ex) :body))
+          "the full body is still preserved in ex-data for debugging")))
   (testing "non-HTTP errors (no :body) fall through to the request-failed branch"
     (let [upstream (java.net.SocketTimeoutException. "Read timed out")
           ex       (try
@@ -954,7 +986,8 @@
                      (catch Exception e e))]
       (is (str/includes? (ex-message ex) "API request failed"))
       (is (str/includes? (ex-message ex) "Read timed out"))
-      (is (=? {:api-error  true
-               :provider   "openai"
-               :error-code :provider-request-failed}
+      (is (=? {:api-error       true
+               :provider        "openai"
+               :error-code      :provider-request-failed
+               :exception-class "java.net.SocketTimeoutException"}
               (ex-data ex))))))

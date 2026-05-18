@@ -509,19 +509,19 @@
 (defn- body-preview
   "Build a short, human-readable snippet of an upstream provider's response body for the
    exception message. Prefers structured JSON envelopes (`[:error :message]`, `:error`,
-   `:detail`, `:message`) over `pr-str`; slurps `InputStream` bodies. Returns `nil` when
-   there's nothing useful to surface."
+   `:detail`, `:message`); slurps `InputStream` bodies. Returns `nil` for maps that
+   don't carry a recognised human-readable field — the full body is still logged and
+   stashed in `ex-data`, so users don't see raw `{:request-id ...}` blobs in toasts."
   [body]
   (let [s (cond
             (nil? body)                  nil
             (string? body)               body
-            (map? body)                  (or (some-> (or (get-in body [:error :message])
-                                                         (:error body)
-                                                         (:detail body)
-                                                         (:message body))
-                                                     str
-                                                     not-empty)
-                                             (pr-str body))
+            (map? body)                  (some-> (or (get-in body [:error :message])
+                                                     (:error body)
+                                                     (:detail body)
+                                                     (:message body))
+                                                 str
+                                                 not-empty)
             (instance? InputStream body) (try (slurp body) (catch Throwable _ nil))
             :else                        (pr-str body))]
     (when-let [trimmed (some-> s str/trim not-empty)]
@@ -536,8 +536,14 @@
   provider-specific message (e.g. `\"Anthropic API key expired or invalid\"`). When
   the response carries a body, this function appends a truncated preview of that
   body to the message so engineers and admins can see what the upstream actually
-  said, and emits a `log/warn` with the *full* body at the failure boundary so
-  the response body never gets silently swallowed.
+  said, and emits a `log/warnf` line with the *full* body at the failure boundary
+  so the response body never gets silently swallowed.
+
+  `ex-data` is an explicit allow-list of `:status`, `:reason-phrase`, and `:body`
+  (plus provider tagging) rather than a passthrough of the raw clj-http response —
+  the raw response carries `:http-client` (a `Closeable`), `:trace-redirects`,
+  `:orig-content-encoding`, and other internals we don't want in ex-data or Sentry
+  payloads.
 
   If the exception already carries `:api-error true` in its ex-data (e.g. a
   missing-API-key error from [[resolve-auth]]) it is rethrown as-is so the
@@ -554,27 +560,26 @@
             preview (body-preview (:body res))
             msg     (cond-> base
                       preview (str " — " preview))]
-        (log/warn "Provider API request failed"
-                  {:provider provider
-                   :status   (:status res)
-                   :body     (:body res)})
+        ;; `log/warn` would `pr-str` a trailing map into the message, not record it as
+        ;; structured MDC. Use `log/warnf` so we knowingly emit one greppable blob.
+        (log/warnf "Provider API request failed: provider=%s status=%s body=%s"
+                   provider (:status res) (pr-str (:body res)))
         (throw (ex-info msg
-                        (assoc res
-                               :api-error  true
-                               :provider   provider
-                               :error-code :provider-api-error)
+                        (merge (select-keys res [:status :reason-phrase :body])
+                               {:api-error  true
+                                :provider   provider
+                                :error-code :provider-api-error})
                         e)))
 
       :else
-      (do
-        (log/warn "Provider API request failed (no response)"
-                  {:provider        provider
-                   :exception-class (some-> e .getClass .getName)
-                   :exception-msg   (ex-message e)})
+      (let [exception-class (some-> e .getClass .getName)]
+        (log/warnf "Provider API request failed (no response): provider=%s class=%s message=%s"
+                   provider exception-class (ex-message e))
         (throw (ex-info (tru "{0} API request failed: {1}" provider (ex-message e))
-                        {:api-error  true
-                         :provider   provider
-                         :error-code :provider-request-failed}
+                        {:api-error       true
+                         :provider        provider
+                         :error-code      :provider-request-failed
+                         :exception-class exception-class}
                         e))))))
 
 (defn missing-api-key-ex
