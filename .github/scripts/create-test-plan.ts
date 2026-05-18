@@ -57,6 +57,11 @@ const testPlan = createTestPlan({
     loki: listFiles(STORY_GLOBS),
     e2e: listFiles(E2E_GLOBS),
   },
+  infraTouchedBySuite: {
+    unit: process.env.UNIT_INFRA_TOUCHED === "true",
+    loki: process.env.LOKI_INFRA_TOUCHED === "true",
+    e2e: false,
+  },
 });
 
 process.stdout.write(JSON.stringify(testPlan) + "\n");

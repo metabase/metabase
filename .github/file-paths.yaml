@@ -82,6 +82,23 @@ frontend_loki_ci: &frontend_loki_ci
   - ".loki/**"
   - ".storybook/**"
 
+# Anchors consumed by .github/scripts/affected-tests.ts to decide when a
+# suite needs to run in full (config/CI/test-harness changes that affect
+# every test). Narrower than `frontend_specs` — we deliberately exclude
+# individual spec files, which the module-affected logic handles.
+frontend_unit_infra: &frontend_unit_infra
+  - *frontend_configs
+  - *frontend_ci
+  - "jest.config.js"
+  - "jest.tz.unit.conf.json"
+  - "frontend/test/**"
+  - "frontend/**/__mocks__/**"
+
+frontend_loki_infra: &frontend_loki_infra
+  - *frontend_configs
+  - *shared_ci
+  - *frontend_loki_ci
+
 backend_ci: &backend_ci
   - *shared_ci
   - ".github/actions/test-driver/**"

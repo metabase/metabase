@@ -39,9 +39,9 @@ jobs:
       embedding_sdk_ci: ${{ steps.changes.outputs.embedding_sdk_ci }}
       custom_viz_all: ${{ steps.changes.outputs.custom_viz_all }}
       stats: ${{ steps.compute.outputs.stats }}
-      unit_tests_to_run: ${{ steps.compute.outputs.unit_tests_to_run }}
+      fe_unit_specs_to_run: ${{ steps.compute.outputs.fe_unit_specs_to_run }}
       loki_stories_to_run: ${{ steps.compute.outputs.loki_stories_to_run }}
-      e2e_tests_to_run: ${{ steps.compute.outputs.e2e_tests_to_run }}
+      e2e_specs_to_run: ${{ steps.compute.outputs.e2e_specs_to_run }}
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
@@ -58,13 +58,15 @@ jobs:
         if: ${{ github.event_name == 'pull_request' }}
         env:
           CHANGED_FILES: ${{ steps.changes.outputs.all_changed_files }}
+          UNIT_INFRA_TOUCHED: ${{ steps.changes.outputs.frontend_unit_infra }}
+          LOKI_INFRA_TOUCHED: ${{ steps.changes.outputs.frontend_loki_infra }}
         run: |
           OUTPUT=$(bun .github/scripts/create-test-plan.ts)
           echo "$OUTPUT" | jq '.stats'
           echo "stats=$(echo "$OUTPUT" | jq -c '.stats')" >> $GITHUB_OUTPUT
-          echo "unit_tests_to_run=$(echo "$OUTPUT" | jq -c '.unit_tests_to_run')" >> $GITHUB_OUTPUT
+          echo "fe_unit_specs_to_run=$(echo "$OUTPUT" | jq -c '.fe_unit_specs_to_run')" >> $GITHUB_OUTPUT
           echo "loki_stories_to_run=$(echo "$OUTPUT" | jq -c '.loki_stories_to_run')" >> $GITHUB_OUTPUT
-          echo "e2e_tests_to_run=$(echo "$OUTPUT" | jq -c '.e2e_tests_to_run')" >> $GITHUB_OUTPUT
+          echo "e2e_specs_to_run=$(echo "$OUTPUT" | jq -c '.e2e_specs_to_run')" >> $GITHUB_OUTPUT
 
   upload-affected-tests-stats:
     needs: create-test-plan
