@@ -199,7 +199,7 @@ export const SdkQuestionDefaultView = ({
               <DefaultViewTitle title={title} />
             </Stack>
           </RenderIfHasContent>
-          {showSaveButton && <SaveButton onClick={openSaveModal} />}
+          {showSaveButton && <SaveButton onClick={openSaveModal} ml="auto" />}
         </RenderIfHasContent>
         {queryResults && (
           <RenderIfHasContent
