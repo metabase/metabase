@@ -68,6 +68,7 @@ export const runQuestionOnNavigateSdk =
       cancelDeferred,
       isGuestEmbed,
       token,
+      dispatch,
     });
 
     return state as SdkQuestionState;

@@ -35,9 +35,9 @@ import {
   AutoApi,
   DashboardApi,
   EmbedApi,
-  MetabaseApi,
   PublicApi,
   maybeUsePivotEndpoint,
+  runAdhocDatasetQuery,
   shouldUsePivotEndpoint,
 } from "metabase/services";
 import {
@@ -379,11 +379,13 @@ export const fetchCardDataAction = createAsyncThunk<
       )) as Dataset | { error: unknown };
     } else if (dashboardType === "transient" || dashboardType === "inline") {
       result = (await fetchDataOrError(
-        maybeUsePivotEndpoint(
-          MetabaseApi.dataset,
+        runAdhocDatasetQuery(
+          dispatch,
           card,
           metadata,
-        )({ ...datasetQuery, ignore_cache: ignoreCache }, queryOptions),
+          { ...datasetQuery, ignore_cache: ignoreCache },
+          deferred,
+        ),
       )) as Dataset | { error: unknown };
     } else {
       const dashcardBeforeEditing = getDashCardBeforeEditing(

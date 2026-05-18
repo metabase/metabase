@@ -1,3 +1,4 @@
+import { datasetApi } from "metabase/api/dataset";
 import { DELETE, GET, POST, PUT } from "metabase/api/legacy-client";
 import { isNative } from "metabase/common/utils/card";
 import { isEmbedPreview } from "metabase/embedding/config";
@@ -80,33 +81,11 @@ export function shouldUsePivotEndpoint(card, metadata) {
 }
 
 export function maybeUsePivotEndpoint(api, card, metadata) {
-  const question = new Question(card, metadata);
-
-  // we need to pass pivot_rows, pivot_cols, and totals settings only for ad-hoc queries endpoints
-  // in other cases the BE extracts these options from the viz settings
-  function wrap(api) {
-    return (params, ...rest) => {
-      const { pivot_rows, pivot_cols, show_row_totals, show_column_totals } =
-        getPivotOptions(question);
-      return api(
-        {
-          ...params,
-          pivot_rows,
-          pivot_cols,
-          show_row_totals,
-          show_column_totals,
-        },
-        ...rest,
-      );
-    };
-  }
-
   if (!shouldUsePivotEndpoint(card, metadata)) {
     return api;
   }
 
   const mapping = [
-    [MetabaseApi.dataset, MetabaseApi.dataset_pivot, { wrap: true }],
     [CardApi.query, CardApi.query_pivot],
     [DashboardApi.cardQuery, DashboardApi.cardQueryPivot],
     [PublicApi.cardQuery, PublicApi.cardQueryPivot],
@@ -114,12 +93,52 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
     [EmbedApi.cardQuery, EmbedApi.cardQueryPivot],
     [EmbedApi.dashboardCardQuery, EmbedApi.dashboardCardQueryPivot],
   ];
-  for (const [from, to, options = {}] of mapping) {
+  for (const [from, to] of mapping) {
     if (api === from) {
-      return options.wrap ? wrap(to) : to;
+      return to;
     }
   }
   return api;
+}
+
+// Dispatches the RTK `datasetApi` ad-hoc query endpoint (pivot or non-pivot)
+// and wires the `cancelDeferred` to RTK Query's `.abort()`. Translates aborts
+// into the `{ isCancelled: true }` shape that the legacy fetch helper threw,
+// so existing error-handling code (e.g. queryErrored) keeps working.
+export function runAdhocDatasetQuery(
+  dispatch,
+  card,
+  metadata,
+  body,
+  cancelDeferred,
+) {
+  const isPivot = shouldUsePivotEndpoint(card, metadata);
+  const requestBody = isPivot
+    ? { ...body, ...getPivotOptions(new Question(card, metadata)) }
+    : body;
+  const endpoint = isPivot
+    ? datasetApi.endpoints.getAdhocPivotQuery
+    : datasetApi.endpoints.getAdhocQuery;
+
+  const action = dispatch(
+    endpoint.initiate(requestBody, { forceRefetch: true }),
+  );
+
+  let isCancelled = false;
+  cancelDeferred?.promise.then(() => {
+    isCancelled = true;
+    action.abort?.();
+  });
+
+  return action
+    .unwrap()
+    .catch((error) => {
+      if (isCancelled) {
+        throw { isCancelled: true };
+      }
+      throw error;
+    })
+    .finally(() => action.unsubscribe?.());
 }
 
 /**
@@ -129,6 +148,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
 export async function runQuestionQuery(
   question,
   {
+    dispatch,
     cancelDeferred,
     isDirty = false,
     token,
@@ -170,27 +190,17 @@ export async function runQuestionQuery(
     ];
   }
 
-  const getDatasetQueryResult = (datasetQuery) => {
-    const datasetQueryWithParameters = { ...datasetQuery, parameters };
-    return handleQueryApiError(
-      maybeUsePivotEndpoint(
-        MetabaseApi.dataset,
+  return [
+    await handleQueryApiError(
+      runAdhocDatasetQuery(
+        dispatch,
         card,
         question.metadata(),
-      )(
-        datasetQueryWithParameters,
-        cancelDeferred
-          ? {
-              cancelled: cancelDeferred.promise,
-            }
-          : {},
+        { ...question.datasetQuery(), parameters },
+        cancelDeferred,
       ),
-    );
-  };
-
-  const datasetQueries = [question.datasetQuery()];
-
-  return Promise.all(datasetQueries.map(getDatasetQueryResult));
+    ),
+  ];
 }
 
 export const CardApi = {
@@ -261,11 +271,6 @@ export const AutoApi = {
     // this prevents the `subPath` parameter from being URL encoded
     raw: { subPath: true },
   }),
-};
-
-export const MetabaseApi = {
-  dataset: POST("/api/dataset"),
-  dataset_pivot: POST("/api/dataset/pivot"),
 };
 
 export const ParameterApi = {
