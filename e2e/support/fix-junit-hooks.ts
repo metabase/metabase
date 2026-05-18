@@ -39,11 +39,14 @@ type Action =
   | "skipped-include"
   | "skipped-no-spec";
 
+type Rewrite = { before: string; after: string };
+
 type Result = {
   action: Action;
   scanned: number;
   rewritten: number;
   specFile: string | null;
+  rewrites: Rewrite[];
 };
 
 const program = new Command();
@@ -161,47 +164,62 @@ function processFile(input: string, output: string): Result {
         scanned: 0,
         rewritten: 0,
         specFile,
+        rewrites: [],
       };
     }
   }
 
   let scanned = 0;
-  let rewritten = 0;
+  const rewrites: Rewrite[] = [];
   visitTestcases(tree, (tc) => {
     scanned++;
     const before = tc["@_name"];
     tc["@_name"] = fix(tc["@_name"]);
     tc["@_classname"] = fix(tc["@_classname"]);
-    if (tc["@_name"] !== before) {
-      rewritten++;
+    if (
+      tc["@_name"] !== before &&
+      before !== undefined &&
+      tc["@_name"] !== undefined
+    ) {
+      rewrites.push({ before, after: tc["@_name"] });
     }
   });
+  const rewritten = rewrites.length;
 
   if (dryRun) {
     passthrough(input, output);
-    return { action: "dry-run", scanned, rewritten, specFile };
+    return { action: "dry-run", scanned, rewritten, specFile, rewrites };
   }
   if (rewritten === 0) {
     passthrough(input, output);
-    return { action: "no-hooks", scanned, rewritten, specFile };
+    return { action: "no-hooks", scanned, rewritten, specFile, rewrites };
   }
   writeFileSync(output, builder.build(tree));
-  return { action: "rewrote", scanned, rewritten, specFile };
+  return { action: "rewrote", scanned, rewritten, specFile, rewrites };
 }
 
 function summarize(path: string, r: Result): string {
-  switch (r.action) {
-    case "rewrote":
-      return `${path}: rewrote ${r.rewritten}/${r.scanned}`;
-    case "dry-run":
-      return `${path}: dry-run would rewrite ${r.rewritten}/${r.scanned}`;
-    case "no-hooks":
-      return `${path}: no hooks (0/${r.scanned})`;
-    case "skipped-include":
-      return `${path}: skipped (${r.specFile} did not match --include)`;
-    case "skipped-no-spec":
-      return `${path}: skipped (no Root Suite file= attribute)`;
+  const head = (() => {
+    switch (r.action) {
+      case "rewrote":
+        return `${path}: rewrote ${r.rewritten}/${r.scanned}`;
+      case "dry-run":
+        return `${path}: dry-run would rewrite ${r.rewritten}/${r.scanned}`;
+      case "no-hooks":
+        return `${path}: no hooks (0/${r.scanned})`;
+      case "skipped-include":
+        return `${path}: skipped (${r.specFile} did not match --include)`;
+      case "skipped-no-spec":
+        return `${path}: skipped (no Root Suite file= attribute)`;
+    }
+  })();
+  if (r.rewrites.length === 0) {
+    return head;
   }
+  const detail = r.rewrites
+    .map(({ before, after }) => `  ${before} -> ${after}`)
+    .join("\n");
+  return `${head}\n${detail}`;
 }
 
 const files = readdirSync(inDir)
