@@ -868,4 +868,27 @@
         (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
                               {:name "Forbidden Rename"})))))
 
+;;; ------------------------------------------------- Execute SQL Tests --------------------------------------------
+
+(deftest execute-sql-test
+  (testing "Admin can run a native SQL query (default perms)"
+    (let [resp (mt/user-http-request :crowberto :post 202 "agent/v1/execute-sql"
+                                     {:database_id (mt/id)
+                                      :sql         "SELECT 1 AS one"})]
+      (is (= "completed" (:status resp)))
+      (is (= [[1]] (-> resp :data :rows)))))
+
+  (testing "Returns 403 when the user lacks native-query permission"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/user-http-request :rasta :post 403 "agent/v1/execute-sql"
+                            {:database_id (mt/id)
+                             :sql         "SELECT 1"})))
+
+  (testing "Returns 403 when the kill-switch setting is disabled"
+    (mt/with-temporary-setting-values [mcp-execute-sql-enabled false]
+      (mt/user-http-request :crowberto :post 403 "agent/v1/execute-sql"
+                            {:database_id (mt/id)
+                             :sql         "SELECT 1"}))))
+
+
 

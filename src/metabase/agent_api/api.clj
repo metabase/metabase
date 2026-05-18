@@ -3,6 +3,8 @@
   Endpoints are versioned (e.g., /v1/search) and use standard HTTP semantics."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
+   [metabase.agent-api.settings :as agent-api.settings]
    [metabase.agent-api.validation :as agent-api.validation]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -25,6 +27,7 @@
    [metabase.metabot.util :as metabot.u]
    [metabase.queries.core :as queries]
    [metabase.query-processor.core :as qp]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
@@ -707,6 +710,45 @@
                   json/decode+kw)]
     (qp.streaming/streaming-response [rff :api]
       (qp/process-query (prepare-combined-query query) rff))))
+
+;;; --------------------------------------------------- Execute SQL --------------------------------------------------
+
+(mr/def ::execute-sql-request
+  "Request shape for /v1/execute-sql. The LLM passes a raw SQL string against a target database."
+  [:map
+   [:database_id ms/PositiveInt]
+   [:sql         ms/NonBlankString]])
+
+(api.macros/defendpoint :post "/v1/execute-sql"
+  :- (streaming-response/streaming-response-schema ::execute-query-response)
+  "Execute a raw SQL query against a database. Returns rows + column metadata.
+
+  Requires the user to have native-query permission on the target database; the QP
+  middleware enforces this. The instance-level `mcp-execute-sql-enabled` setting
+  must also be on (it is by default)."
+  {:scope metabot/agent-sql-execute
+   :tool  {:name "execute_sql"
+           :description (str "Execute a raw SQL query against a Metabase-connected database. "
+                             "Use this ONLY when MBQL via construct_query cannot express the question. "
+                             "User must have native-query permission on the target database. "
+                             "Standard userspace query limits apply.")}}
+  [_route-params
+   _query-params
+   {:keys [database_id sql]} :- ::execute-sql-request]
+  ;; Kill-switch check: refuse with 403 when the admin has disabled execute_sql.
+  (when-not (agent-api.settings/mcp-execute-sql-enabled)
+    (throw (ex-info "execute_sql is disabled on this instance" {:status-code 403})))
+  (let [query {:database database_id
+               :type     :native
+               :native   {:query sql}}]
+    ;; Belt-and-suspenders: friendlier 403 from the tool layer than the QP's perms-exception.
+    ;; The QP middleware (query-processor.middleware.permissions) will re-check inside process-query.
+    (when-not (qp.perms/current-user-has-adhoc-native-query-perms? query)
+      (throw (ex-info "You do not have permission to run native queries against this database."
+                      {:status-code 403
+                       :database_id database_id})))
+    (qp.streaming/streaming-response [rff :api]
+      (qp/process-query query rff))))
 
 ;;; ------------------------------------------------- Create Question ------------------------------------------------
 
