@@ -25,6 +25,11 @@ const FOOTER_HEIGHT = "50px";
 const FOOTER_HORIZONTAL_PADDING = 16;
 const QUERY_BAR_RESERVED_HEIGHT = "calc(2rem + var(--mantine-spacing-sm))";
 
+interface McpUiAppRouteContentProps {
+  instanceUrl: string;
+  sessionToken: string;
+}
+
 // CSS for .mcp-loading and .mcp-spinner is defined globally in embed-mcp.html.
 const SimpleLoader = () => (
   <div className="mcp-loading">
@@ -68,11 +73,6 @@ export function McpUiAppRoute() {
       />
     </ComponentProvider>
   );
-}
-
-interface McpUiAppRouteContentProps {
-  instanceUrl: string;
-  sessionToken: string;
 }
 
 function McpUiAppRouteContent({
