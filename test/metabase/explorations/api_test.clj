@@ -841,41 +841,41 @@
                             {:user_interestingness 1})
       (mt/user-http-request u :delete 404 "exploration/query/9999999/interesting"))))
 
-(deftest exploration-create-auto-creates-findings-document-test
-  (testing "POST / auto-creates a 'Findings' document owned by the new exploration's thread"
-    (mt/with-temp [:model/User u {:email "findings-auto@example.com"}]
+(deftest exploration-create-auto-creates-scratchpad-document-test
+  (testing "POST / auto-creates a 'Scratchpad' document owned by the new exploration's thread"
+    (mt/with-temp [:model/User u {:email "scratchpad-auto@example.com"}]
       (let [resp (mt/user-http-request u :post 200 "exploration" {:name "x"})
             tid  (-> resp :threads first :id)
             docs (t2/select :model/Document :exploration_thread_id tid)]
         (is (= 1 (count docs)))
-        (is (= "Findings" (:name (first docs))))
+        (is (= "Scratchpad" (:name (first docs))))
         (is (= (:id u) (:creator_id (first docs))))))))
 
 (deftest exploration-documents-list-and-create-test
-  (testing "GET/POST /thread/:thread-id/documents list and create empty documents with auto-named Findings"
+  (testing "GET/POST /thread/:thread-id/documents list and create empty documents with auto-named Scratchpad"
     (mt/with-temp [:model/User u {:email "docs-api@example.com"}]
       (let [exp     (mt/user-http-request u :post 200 "exploration" {:name "doc host"})
             tid     (-> exp :threads first :id)
             url     (str "exploration/thread/" tid "/documents")
             initial (mt/user-http-request u :get 200 url)]
-        (is (= ["Findings"] (mapv :name initial))
-            "Listing returns the auto-created Findings doc")
+        (is (= ["Scratchpad"] (mapv :name initial))
+            "Listing returns the auto-created Scratchpad doc")
         (let [d2 (mt/user-http-request u :post 200 url {})]
-          (is (= "Findings 2" (:name d2)))
+          (is (= "Scratchpad 2" (:name d2)))
           (is (= tid (:exploration_thread_id d2)))
           (is (= {:type "doc" :content []} (:document (t2/select-one :model/Document :id (:id d2))))))
         (let [d3 (mt/user-http-request u :post 200 url {})]
-          (is (= "Findings 3" (:name d3))))
+          (is (= "Scratchpad 3" (:name d3))))
         (let [after (mt/user-http-request u :get 200 url)]
-          (is (= #{"Findings" "Findings 2" "Findings 3"} (set (map :name after)))))))))
+          (is (= #{"Scratchpad" "Scratchpad 2" "Scratchpad 3"} (set (map :name after)))))))))
 
-(deftest exploration-documents-next-findings-name-skips-gaps-test
-  (testing "Auto-naming picks max+1 even with gaps and ignores non-Findings docs"
+(deftest exploration-documents-next-document-name-skips-gaps-test
+  (testing "Auto-naming picks max+1 even with gaps and ignores unrelated docs"
     (mt/with-temp [:model/User u {:email "naming@example.com"}]
       (let [exp (mt/user-http-request u :post 200 "exploration" {:name "naming"})
             tid (-> exp :threads first :id)
             url (str "exploration/thread/" tid "/documents")]
-        (t2/insert! :model/Document {:name "Findings 5"
+        (t2/insert! :model/Document {:name "Scratchpad 5"
                                      :document {:type "doc" :content []}
                                      :content_type "application/json+vnd.prose-mirror"
                                      :creator_id (:id u)
@@ -885,7 +885,7 @@
                                      :content_type "application/json+vnd.prose-mirror"
                                      :creator_id (:id u)
                                      :exploration_thread_id tid})
-        (is (= "Findings 6" (:name (mt/user-http-request u :post 200 url {}))))))))
+        (is (= "Scratchpad 6" (:name (mt/user-http-request u :post 200 url {}))))))))
 
 (deftest exploration-documents-permissions-test
   (testing "Other users can't list or add documents on someone else's exploration thread"

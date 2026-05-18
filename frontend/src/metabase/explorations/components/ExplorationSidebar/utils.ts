@@ -61,7 +61,7 @@ export function getExplorationSidebarTree(
   });
   tree.push({
     id: "documents",
-    name: t`Scratchpad`,
+    name: t`Findings`,
     icon: "empty",
     data: {
       type: "heading",

@@ -29,6 +29,11 @@
 
 ;;; ----------------------------------------- helpers -----------------------------------------
 
+(def ^:private default-document-name
+  "Base name for auto-created exploration documents. Appended with \" 2\", \" 3\", etc. when
+  duplicates exist on a thread."
+  "Scratchpad")
+
 (defn- get-exploration-or-404 [id]
   (api/check-404 (t2/select-one :model/Exploration :id id)))
 
@@ -480,7 +485,7 @@
                                                               :position       0}))
           tid         (:id thread)
           _           (t2/insert! :model/Document
-                                  {:name                  "Findings"
+                                  {:name                  default-document-name
                                    :document              {:type "doc" :content []}
                                    :content_type          documents/prose-mirror-content-type
                                    :creator_id            api/*current-user-id*
@@ -607,32 +612,31 @@
              :archived false
              {:order-by [[:created_at :asc] [:id :asc]]}))
 
-(defn- next-findings-name
-  "Pick the next \"Findings\"-style name for a thread. Looks at existing non-archived documents
-  on the thread whose name is \"Findings\" or \"Findings <n>\":
-    - none                            -> \"Findings\"
-    - just \"Findings\"               -> \"Findings 2\"
-    - any with a numeric suffix       -> \"Findings <max+1>\" (treating bare \"Findings\" as 1)"
+(defn- next-document-name
+  "Return the next auto-incremented name for [[default-document-name]] on `thread-id`.
+  Bare name counts as 1, so the sequence is: Scratchpad, Scratchpad 2, Scratchpad 3, ..."
   [thread-id]
-  (let [names (->> (t2/select-fn-set :name :model/Document
-                                     :exploration_thread_id thread-id
-                                     :archived false
-                                     :name [:like "Findings%"])
-                   (keep (fn [n]
-                           (cond
-                             (= n "Findings") 1
-                             :else (when-let [m (re-matches #"Findings (\d+)" n)]
-                                     (parse-long (second m)))))))]
+  (let [base    default-document-name
+        pattern (re-pattern (str base " (\\d+)"))
+        names   (->> (t2/select-fn-set :name :model/Document
+                                       :exploration_thread_id thread-id
+                                       :archived false
+                                       :name [:like (str base "%")])
+                     (keep (fn [n]
+                             (cond
+                               (= n base) 1
+                               :else (when-let [m (re-matches pattern n)]
+                                       (parse-long (second m)))))))]
     (if (empty? names)
-      "Findings"
-      (str "Findings " (inc (apply max names))))))
+      base
+      (str base " " (inc (apply max names))))))
 
 (api.macros/defendpoint :post "/thread/:thread-id/documents" :- ::ExplorationDocument
   "Create an additional empty document on an exploration thread."
   [{:keys [thread-id]} :- [:map [:thread-id ms/PositiveInt]]]
   (write-check-thread thread-id)
   (let [doc-id (t2/insert-returning-pk! :model/Document
-                                        {:name                  (next-findings-name thread-id)
+                                        {:name                  (next-document-name thread-id)
                                          :document              {:type "doc" :content []}
                                          :content_type          documents/prose-mirror-content-type
                                          :creator_id            api/*current-user-id*
