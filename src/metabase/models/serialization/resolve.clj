@@ -8,7 +8,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.lib.util :as lib.util]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]))
@@ -75,7 +74,8 @@
   on. Measures and segments use this to omit the table_id property when it is derivable from the query. This should be
   an mbql query and not a native query."
   [serialized-query]
-  (lib.util/source-table-id* serialized-query))
+  (mu/disable-enforcement
+    (lib/primary-source-table-id serialized-query)))
 
 ;;; ============================================================
 ;;; import-mbql — depends only on protocols, match, lib.schema.id
