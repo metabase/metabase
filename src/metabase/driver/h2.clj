@@ -124,8 +124,8 @@
                                         bad-markers))]
     (pred s)))
 
-(defmethod driver/can-connect? :h2
-  [driver {:keys [db] :as details}]
+(defmethod driver/validate-db-details! :h2
+  [_driver {:keys [db]}]
   (when-not driver.settings/*allow-testing-h2-connections*
     (throw (ex-info (tru "H2 is not supported as a data warehouse") {:status-code 400})))
   (when (string? db)
@@ -141,7 +141,11 @@
       ;; keys are uppercased by h2 when parsed:
       ;; https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/engine/ConnectionInfo.java#L298
       (when (contains? properties "INIT")
-        (throw (ex-info "INIT not allowed" {:keys ["INIT"]})))))
+        (throw (ex-info "INIT not allowed" {:keys ["INIT"]}))))))
+
+(defmethod driver/can-connect? :h2
+  [driver details]
+  (driver/validate-db-details! driver details)
   (sql-jdbc.conn/can-connect? driver details))
 
 (defmethod driver/db-start-of-week :h2
