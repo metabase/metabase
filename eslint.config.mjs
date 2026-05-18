@@ -27,7 +27,7 @@ import metabasePlugin from "./frontend/lint/eslint-plugin-metabase/index.js";
 import {
   elements as boundaryElements,
   enforcedRules as boundaryRules,
-} from "./frontend/lint/module-boundaries.js";
+} from "./frontend/lint/module-boundaries.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
