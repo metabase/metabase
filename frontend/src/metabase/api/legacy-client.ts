@@ -15,6 +15,10 @@ import { delay } from "metabase/utils/promise";
 
 const ONE_SECOND = 1000;
 const MAX_RETRIES = 10;
+// Exponential backoff in millis: [1000, 2000, 4000, 8000...]
+const RETRY_DELAY_INTERVALS = new Array(MAX_RETRIES)
+  .fill(1)
+  .map((_, i) => ONE_SECOND * Math.pow(2, i));
 
 const ANTI_CSRF_HEADER = "X-Metabase-Anti-CSRF-Token";
 const METABASE_VERSION_HEADER = "X-Metabase-Version";
@@ -31,9 +35,6 @@ type RequestOptions = {
    */
   rawResponse?: boolean;
   headers: Record<string, string>;
-  retry: boolean;
-  retryCount: number;
-  retryDelayIntervals: number[];
   signal?: AbortSignal;
 };
 
@@ -41,13 +42,6 @@ const DEFAULT_OPTIONS: RequestOptions = {
   hasBody: false,
   noEvent: false,
   headers: {},
-  retry: false,
-  retryCount: MAX_RETRIES,
-  // Creates an array with exponential backoff in millis
-  // i.e. [1000, 2000, 4000, 8000...]
-  retryDelayIntervals: new Array(MAX_RETRIES)
-    .fill(1)
-    .map((_, i) => ONE_SECOND * Math.pow(2, i)),
 };
 
 type RequestClientInfo = string | { name: string; version: string | null };
@@ -131,10 +125,10 @@ export class LegacyApi extends EventEmitter<EventMap> {
 
   constructor() {
     super();
-    this.GET = this._makeMethod("GET", { retry: true });
-    this.DELETE = this._makeMethod("DELETE", {});
-    this.POST = this._makeMethod("POST", { hasBody: true, retry: true });
-    this.PUT = this._makeMethod("PUT", { hasBody: true });
+    this.GET = this._makeMethod("GET", {}, true);
+    this.DELETE = this._makeMethod("DELETE", {}, false);
+    this.POST = this._makeMethod("POST", { hasBody: true }, true);
+    this.PUT = this._makeMethod("PUT", { hasBody: true }, false);
   }
 
   getClientHeaders(): Record<string, string> {
@@ -187,6 +181,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
   _makeMethod(
     methodTemplate: string,
     creatorOptions: Partial<RequestOptions> = {},
+    retry: boolean = false,
   ): MethodCreator {
     return (urlTemplate, methodOptions = {}) => {
       const defaultOptions: RequestOptions = {
@@ -258,7 +253,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
           delete headers["Content-Type"];
         }
 
-        if (options.retry) {
+        if (retry) {
           return this._makeRequestWithRetries(
             method,
             url,
@@ -283,10 +278,10 @@ export class LegacyApi extends EventEmitter<EventMap> {
     options: RequestOptions,
   ): Promise<unknown> {
     // Get a copy of the delay intervals that we can pop items from as we retry
-    const retryDelays = options.retryDelayIntervals.slice().reverse();
+    const retryDelays = RETRY_DELAY_INTERVALS.slice().reverse();
     let retryCount = 0;
     // maxAttempts is the first attempt followed by the number of retries
-    const maxAttempts = options.retryCount + 1;
+    const maxAttempts = MAX_RETRIES + 1;
     // Make the first attempt for the request, then loop incrementing the retryCount
     do {
       try {
