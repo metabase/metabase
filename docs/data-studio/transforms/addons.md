@@ -21,7 +21,7 @@ With basic transform functionality, you can:
 
 ### Enable basic transforms
 
-- **Self-hosted Metabases**: Basic transform functionality is included on self-hosted Metabases by default. Just log into your Metabase, [enable transforms](../transforms/transforms-overview.md#enable), and you're good to go.
+- **Self-hosted Metabases**: Basic transform functionality is included on self-hosted Metabases by default. Just log into your Metabase, [enable transforms](../transforms/transforms-overview.md#enable-transforms), and you're good to go.
 
 - **Metabase Cloud**: Basic transform functionality on Metabase Cloud - Starter, Pro, or Enterprise - comes with an additional small fee per successful transform run, see [Pricing](https://www.metabase.com/pricing).
 
