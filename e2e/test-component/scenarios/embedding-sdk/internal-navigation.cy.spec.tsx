@@ -641,18 +641,14 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
       getSdkRoot().within(() => {
         cy.findByText("Dashboard A").should("be.visible");
 
-        // Pre-fix, navigating to another dashboard rendered a second nested
-        // SdkDashboardStyledWrapper inside the outer one (the navigation
-        // provider's wrapper plus SdkDashboard's own wrapper). The inner
-        // wrapper had no host style, so the dashboard chrome lost its
-        // height/scroll context and sticky filters broke. Asserting exactly
-        // one styled wrapper at every step pins that invariant.
+        // Pre-fix: nested wrapper dropped user height, broke sticky filters.
+        // Pin: exactly one styled wrapper at every step.
         cy.findAllByTestId("sdk-dashboard-styled-wrapper").should(
           "have.length",
           1,
         );
 
-        // Navigate to Dashboard B via custom click behavior.
+        cy.log("Navigate to Dashboard B via custom click behavior");
         H.getDashboardCard().findAllByText("Go to Dashboard B").first().click();
         cy.wait("@getDashboard");
         cy.findByText("Dashboard B").should("be.visible");
