@@ -4,7 +4,6 @@ import querystring from "querystring";
 
 import { substituteUrlTags } from "metabase/api/utils/substitute-url-tags";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { isTest } from "metabase/env";
 import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import type {
   OnBeforeRequestHandler,
@@ -323,133 +322,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
     } while (retryCount < maxAttempts);
   }
 
-  _makeRequest(
-    method: string,
-    url: string,
-    headers: Record<string, string>,
-    body: string | FormData | URLSearchParams | undefined,
-    data: Record<string, unknown>,
-    options: RequestOptions,
-  ): Promise<unknown> {
-    // this is temporary to not deal with failed cypress tests
-    // we should switch to using fetch in all cases (metabase#28489)
-    // `rawResponse` also forces fetch — XHR has no `Response` object.
-    if (isTest || options.fetch || options.rawResponse) {
-      return this._makeRequestWithFetch(
-        method,
-        url,
-        headers,
-        body,
-        data,
-        options,
-      );
-    } else {
-      return this._makeRequestWithXhr(
-        method,
-        url,
-        headers,
-        body,
-        data,
-        options,
-      );
-    }
-  }
-
-  _makeRequestWithXhr(
-    method: string,
-    url: string,
-    headers: Record<string, string>,
-    body: string | FormData | URLSearchParams | undefined,
-    data: Record<string, unknown>,
-    options: RequestOptions,
-  ): Promise<unknown> {
-    return new Promise((resolve, reject) => {
-      let isCancelled = false;
-      const xhr = new XMLHttpRequest();
-      xhr.open(method, this.basename + url);
-      for (const headerName in headers) {
-        xhr.setRequestHeader(headerName, headers[headerName]);
-      }
-      xhr.onreadystatechange = () => {
-        if (xhr.readyState === XMLHttpRequest.DONE) {
-          // getResponseHeader() is case-insensitive
-          const antiCsrfToken = xhr.getResponseHeader(ANTI_CSRF_HEADER);
-          const metabaseVersion = xhr.getResponseHeader(
-            METABASE_VERSION_HEADER,
-          );
-
-          if (antiCsrfToken) {
-            ANTI_CSRF_TOKEN = antiCsrfToken;
-          }
-
-          // An empty body (e.g. 204 No Content) surfaces as `null`, not `""`,
-          // so callers don't have to handle "the response was empty" via
-          // per-endpoint `transformResponse` workarounds.
-          let responseBody: Response | string | null | undefined =
-            xhr.status === 204 ? null : xhr.responseText;
-
-          if (options.json && xhr.responseText !== "") {
-            try {
-              responseBody = JSON.parse(xhr.responseText);
-            } catch (e) {}
-          }
-
-          let status = xhr.status;
-          if (
-            status === 202 &&
-            responseBody &&
-            typeof responseBody === "object" &&
-            "_status" in responseBody &&
-            (responseBody._status as number) > 0
-          ) {
-            status = responseBody._status as number;
-          }
-
-          if (isCancelled) {
-            // Surface aborts as the standard `DOMException` AbortError so
-            // callers can `isAbortError`-check the same shape both transports
-            // (and `fetch` itself) emit. Skip the responseError/status events
-            // since the request was cancelled — there's no real response.
-            reject(new DOMException("Aborted", "AbortError"));
-            return;
-          }
-
-          if (status >= 200 && status <= 299) {
-            resolve(responseBody);
-          } else {
-            this.emit("responseError", {
-              body: responseBody,
-              status,
-              metabaseVersion,
-            });
-
-            reject({
-              status: status,
-              data: responseBody,
-            });
-          }
-          if (!options.noEvent) {
-            this.emit(status, url);
-          }
-        }
-      };
-      xhr.send(body);
-
-      if (options.signal) {
-        const onAbort = () => {
-          isCancelled = true;
-          xhr.abort();
-        };
-        if (options.signal.aborted) {
-          onAbort();
-        } else {
-          options.signal.addEventListener("abort", onAbort);
-        }
-      }
-    });
-  }
-
-  async _makeRequestWithFetch(
+  async _makeRequest(
     method: string,
     url: string,
     headers: Record<string, string>,
