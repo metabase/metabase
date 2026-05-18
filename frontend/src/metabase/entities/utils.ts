@@ -396,7 +396,9 @@ export function createEntity(def: EntityDef): Entity {
   entity.getObjectStatePath = getObjectStatePath;
   entity.getListStatePath = getListStatePath;
 
-  const getWritableProperties = (object: EntityObject): Partial<EntityObject> =>
+  const getWritableProperties = (
+    object: EntityObject,
+  ): Partial<EntityObject> =>
     entity.writableProperties != null
       ? _.pick(object, "id", ...entity.writableProperties)
       : object;
@@ -975,6 +977,7 @@ type CombinedEntities = {
 const RETIRED_ENTITY_NAMES = [
   "collections",
   "dashboards",
+  "fields",
   "measures",
   "metrics",
   "schemas",

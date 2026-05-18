@@ -7,6 +7,7 @@ import _ from "underscore";
 
 import {
   databaseApi,
+  fieldApi,
   skipToken,
   tableApi,
   useGetDatabaseMetadataQuery,
@@ -15,7 +16,6 @@ import {
   useListDatabaseSchemaTablesQuery,
   useListTablesQuery,
 } from "metabase/api";
-import { Fields } from "metabase/entities/fields";
 import { Questions } from "metabase/entities/questions";
 import {
   compose,
@@ -196,7 +196,12 @@ export const Tables = createEntity({
               dispatch(Tables.actions.fetchMetadataDeprecated({ id }, options)),
             ),
             ...getTableForeignKeyFieldIds(table).map((id) =>
-              dispatch(Fields.actions.fetch({ id }, options)),
+              entityCompatibleQuery(
+                { id },
+                dispatch,
+                fieldApi.endpoints.getField,
+                { forceRefetch: options.reload ?? false },
+              ),
             ),
           ]);
         },
@@ -235,24 +240,6 @@ export const Tables = createEntity({
   },
 
   reducer: (state = {}, { type, payload, error }) => {
-    if (type === Fields.actionTypes.UPDATE && !error) {
-      const updatedField = payload.field;
-      const tableId = updatedField.table_id;
-      const table = state[tableId];
-
-      if (table) {
-        return {
-          ...state,
-          [tableId]: {
-            ...table,
-            original_fields: table.original_fields?.map((field) => {
-              return field.id === updatedField.id ? updatedField : field;
-            }),
-          },
-        };
-      }
-    }
-
     if (type === Questions.actionTypes.CREATE && !error) {
       const card = payload.question;
       const virtualQuestionTable = convertSavedQuestionToVirtualTable(card);
@@ -370,7 +357,9 @@ const useGetMetadataAndForeignTables = (entityQuery, options) => {
 
   useEffect(() => {
     for (const id of tableForeignKeyFieldIds) {
-      dispatch(Fields.actions.fetch({ id }, options));
+      entityCompatibleQuery({ id }, dispatch, fieldApi.endpoints.getField, {
+        forceRefetch: options.reload ?? false,
+      });
     }
   }, [dispatch, options, tableForeignKeyFieldIds]);
 
