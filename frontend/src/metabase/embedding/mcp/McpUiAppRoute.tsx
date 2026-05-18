@@ -183,16 +183,24 @@ function McpUiAppRouteContent({
     setIsQueryBarVisible(isVisible);
   }, []);
 
-  const renderQuestionCardView = () =>
-    deserializedCard && (
-      <SdkQuestion
-        deserializedCard={deserializedCard}
-        isSaveEnabled={false}
-        // we should never show query builder in chat interfaces
-        withEditorButton={false}
-        withChartTypeSelector={false}
-        onDrillThrough={handleDrillThrough}
-      >
+  const renderSdkQuestionContent = () => {
+    if (selectedFeedback !== null) {
+      return (
+        // Keep the feedback overlay inside SdkQuestion's container because
+        // it relies on the style from PublicComponentStyleWrapper
+        <Flex h={height} w="100%" style={feedbackContentStyle}>
+          <McpFeedbackArea
+            feedback={selectedFeedback}
+            isSubmitting={isSubmittingFeedback}
+            onCancel={() => setSelectedFeedback(null)}
+            onSubmit={handleFeedbackSubmit}
+          />
+        </Flex>
+      );
+    }
+
+    return (
+      <>
         <McpQuestionView
           contentStyle={contentStyle}
           isTimeControlsVisible={isQueryBarVisible}
@@ -208,19 +216,22 @@ function McpUiAppRouteContent({
           onSelectFeedback={setSelectedFeedback}
           submittedFeedback={submittedFeedback}
         />
-      </SdkQuestion>
+      </>
     );
+  };
 
-  const renderFeedbackView = () =>
-    selectedFeedback && (
-      <Flex h={height} w="100%" style={feedbackContentStyle}>
-        <McpFeedbackArea
-          feedback={selectedFeedback}
-          isSubmitting={isSubmittingFeedback}
-          onCancel={() => setSelectedFeedback(null)}
-          onSubmit={handleFeedbackSubmit}
-        />
-      </Flex>
+  const renderQuestionCardView = () =>
+    deserializedCard && (
+      <SdkQuestion
+        deserializedCard={deserializedCard}
+        isSaveEnabled={false}
+        // we should never show query builder in chat interfaces
+        withEditorButton={false}
+        withChartTypeSelector={false}
+        onDrillThrough={handleDrillThrough}
+      >
+        {renderSdkQuestionContent()}
+      </SdkQuestion>
     );
 
   const renderContentView = () => {
@@ -232,9 +243,7 @@ function McpUiAppRouteContent({
       return null;
     }
 
-    return selectedFeedback !== null
-      ? renderFeedbackView()
-      : renderQuestionCardView();
+    return renderQuestionCardView();
   };
 
   return <div style={containerStyle}>{renderContentView()}</div>;
