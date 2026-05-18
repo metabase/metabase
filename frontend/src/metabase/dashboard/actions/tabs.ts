@@ -575,7 +575,18 @@ export const tabsReducer = createReducer<DashboardState>(
     });
 
     builder.addMatcher(updateDashboard.matchFulfilled, (state, { payload }) => {
+      if (payload.id !== state.dashboardId) {
+        // Only react to saves for the dashboard that is currently loaded — otherwise
+        // updating an unrelated dashboard (e.g. moving/pinning from a collection) would
+        // remap dashcardData and selectedTabId using the other dashboard's data.
+        return;
+      }
+
       const { dashcards: newDashcards, tabs: newTabs } = payload;
+
+      if (!newDashcards && !newTabs) {
+        return;
+      }
 
       const { prevDash, prevTabs } = getPrevDashAndTabs({
         state,
