@@ -13,6 +13,11 @@
 
 (set! *warn-on-reflection* true)
 
+(def default-max-batch-messages
+  "Default `:max-batch-messages` for `listen!` when the caller doesn't specify one.
+   Bounds both DB-row size at publish time and the consumer slice size at handle time."
+  100)
+
 (def ^:dynamic *listeners*
   "channel → {:listener fn :max-batch-messages int ...} for all channels."
   (atom {}))
@@ -46,19 +51,30 @@
 
 (defn batch-listen!
   "Registers a batch listener for a queue or topic. The listener is always invoked
-   with a vec of messages, sized up to `:max-batch-messages`. Queues support `{:exclusive true}`"
+   with a vec of messages, sized up to `:max-batch-messages` (defaults to
+   `default-max-batch-messages`). Queues support `{:exclusive true}`."
   [channel listener config]
-  (let [defaults (transport/on-listen! channel config)]
+  (let [defaults (transport/on-listen! channel config)
+        config   (merge {:max-batch-messages default-max-batch-messages} config)]
     (register-listener! channel
                         (merge defaults config {:listener listener}))))
 
 (defn listen!
   "Registers a single-message listener for a queue or topic.
-   `opts` is an optional map; pass nil or {} for defaults. Queues support `{:exclusive true}`."
+  This is a convenience method vs `batch-listen!` when you want your listener logic to only care about individual messages.
+  Use `batch-listen!` when your listening logic can do optimizations by handling multiple messages at once, this method when it can't.
+
+  NOTE: It still batches up to :max-batch-messages over the wire and retries the entire batch on failure for any messages."
   [channel opts listener]
   (batch-listen! channel
-                 (partial run! listener)
-                 (assoc (or opts {}) :max-batch-messages 1)))
+                 (fn [messages]
+                   (let [error (volatile! nil)]
+                     (doseq [m messages]
+                       (try (listener m)
+                            (catch Throwable e
+                              (vreset! error e))))
+                     (when-let [e @error] (throw e))))
+                 (or opts {})))
 
 (defn unlisten!
   "Removes the listener for a channel."

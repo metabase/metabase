@@ -30,8 +30,8 @@
   "Starts the backend for the given transport type (`:queue` or `:topic`)."
   [transport-type]
   (case transport-type
-    :queue (q.backend/start!     q.backend/*backend*)
-    :topic (topic.backend/start! topic.backend/*backend*)))
+    :queue (q.backend/start!             q.backend/*backend*)
+    :topic (topic.backend/start-handling! topic.backend/*backend*)))
 
 (defn shutdown!
   "Shuts down the backend for the given transport type (`:queue` or `:topic`)."

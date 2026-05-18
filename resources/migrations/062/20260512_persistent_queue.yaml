@@ -65,16 +65,18 @@ databaseChangeLog:
   - changeSet:
       id: v62.gdasfg2e
       author: nvoxland
-      comment: Index queue_message_batch name and status
+      comment: Index queue_message_batch for efficient fetch
       changes:
         - createIndex:
             tableName: queue_message_batch
-            indexName: idx_queue_message_batch_queue_status
+            indexName: idx_queue_message_fetch
             columns:
               - column:
                   name: queue_name
               - column:
                   name: status
+              - column:
+                  name: id
 
 
   - changeSet:

@@ -12,15 +12,15 @@
   topic.backend/TopicBackend
   (publish! [_this topic-name messages]
     (memory/publish! layer topic-name messages))
-  (subscribe! [_this topic-name]
-    ;; Match the appdb topic semantic: late subscribers don't see the backlog.
-    ;; Clear any queued messages for this topic at subscribe time.
+  (start-receiving! [_this topic-name]
+    ;; Match the appdb topic semantic: receivers don't see the prior backlog.
+    ;; Clear any queued messages for this topic at this point.
     (when-let [^LinkedBlockingQueue q (get @(:channels layer) topic-name)]
       (.clear q))
-    (log/infof "Memory subscribed to topic %s" (name topic-name)))
+    (log/infof "Memory receiving topic %s" (name topic-name)))
+  (start-handling! [_this] (memory/start! layer))
   (unsubscribe! [_this topic-name]
     (log/infof "Memory unsubscribed from topic %s" (name topic-name)))
-  (start! [_this] (memory/start! layer))
   (shutdown! [_this] (memory/shutdown! layer)))
 
 (defn make-backend

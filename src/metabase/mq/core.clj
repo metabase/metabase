@@ -79,6 +79,7 @@
 
  [mq.init
   start!
+  start-receiving!
   stop!]
 
  [q.impl

@@ -175,11 +175,11 @@
     (publish! [_ topic-name messages]
       (topic.backend/publish! inner topic-name messages)
       (topic.backend/publish! inner topic-name messages))
-    (subscribe! [_ topic-name]
-      (topic.backend/subscribe! inner topic-name))
+    (start-receiving! [_ topic-name]
+      (topic.backend/start-receiving! inner topic-name))
     (unsubscribe! [_ topic-name]
       (topic.backend/unsubscribe! inner topic-name))
-    (start! [_] (topic.backend/start! inner))
+    (start-handling! [_] (topic.backend/start-handling! inner))
     (shutdown! [_] (topic.backend/shutdown! inner))))
 
 (defn do-with-test-mq!

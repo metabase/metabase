@@ -21,6 +21,7 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.llm.startup :as llm.startup]
    [metabase.logger.core :as logger]
+   [metabase.mq.core :as mq]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.plugins.core :as plugins]
@@ -187,6 +188,9 @@
   ;; and the test suite can take 2x longer. this is really unfortunate because it could lead to some false
   ;; negatives, but for now there's not much we can do
   (mdb/setup-db! :create-sample-content? (not config/is-test?))
+  ;; Capture topic starting offsets as early as possible so messages published during the rest of
+  ;; startup are delivered once polling begins.
+  (mq/start-receiving!)
   ;; In OSS, convert any Data Analysts group with members to a normal visible group
   (perms/sync-data-analyst-group-for-oss!)
   ;; Disable read-only mode if its on during startup.

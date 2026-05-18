@@ -102,16 +102,22 @@
     (when-not (mq.impl/channel-busy? topic-name)
       (mq.polling/notify! poll-state)))
 
-  (subscribe! [_this topic-name]
-    (let [offset (current-max-id topic-name)]
-      (swap! offsets assoc topic-name offset)
-      (log/infof "Subscribed to topic %s (starting offset %d)" (name topic-name) offset)))
+  (start-receiving! [_this topic-name]
+    ;; Idempotent: first caller wins so an early offset pinned by
+    ;; [[metabase.mq.init/start-receiving!]] is not clobbered by the later call
+    ;; from `on-listen!` during `register-listeners!`.
+    (let [[old _] (swap-vals! offsets update topic-name
+                              (fn [existing]
+                                (if (some? existing) existing (current-max-id topic-name))))]
+      (when-not (contains? old topic-name)
+        (log/infof "Started receiving topic %s (starting offset %d)"
+                   (name topic-name) (get @offsets topic-name)))))
 
   (unsubscribe! [_this topic-name]
     (swap! offsets dissoc topic-name)
     (log/infof "Unsubscribed from topic %s" (name topic-name)))
 
-  (start! [_this]
+  (start-handling! [_this]
     (mq.polling/start-polling! poll-state "Topic" 2000 poll-iteration!))
 
   (shutdown! [_this]

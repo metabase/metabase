@@ -69,17 +69,22 @@
                                 (remove #(contains? blocked-queues (name %)) queue-names)
                                 queue-names)]
           (when (seq fetchable-names)
-            ;; Fetch the oldest pending row per queue in a single query, locking them for update
-            (let [name-list (mapv name fetchable-names)
-                  rows      (t2/query conn {:select [:*]
-                                            :from   [:queue_message_batch]
-                                            :where  [:in :id {:select   [[[:min :id]]]
-                                                              :from     [:queue_message_batch]
-                                                              :where    [:and
-                                                                         [:in :queue_name name-list]
-                                                                         [:= :status "pending"]]
-                                                              :group-by [:queue_name]}]
-                                            :for    (for-update-clause)})]
+            ;; For each queue, pick the oldest pending row that isn't already locked by another
+            ;; node. The LATERAL subquery applies FOR UPDATE SKIP LOCKED to the per-queue scan,
+            ;; so concurrent consumers each get a different row instead of all contending on the
+            ;; same head-of-queue.
+            (let [name-rows (mapv (fn [n] [[:inline (name n)]]) fetchable-names)
+                  rows      (t2/query conn {:select [:q.*]
+                                            :from   [[{:values name-rows} [:qn {:columns [:queue_name]}]]
+                                                     [[:lateral {:select   [:*]
+                                                                 :from     [:queue_message_batch]
+                                                                 :where    [:and
+                                                                            [:= :queue_name :qn.queue_name]
+                                                                            [:= :status "pending"]]
+                                                                 :order-by [[:id :asc]]
+                                                                 :limit    1
+                                                                 :for      (for-update-clause)}]
+                                                      :q]]})]
               (when (seq rows)
                 (t2/query conn {:update [:queue_message_batch]
                                 :set    {:status_heartbeat (mi/now)

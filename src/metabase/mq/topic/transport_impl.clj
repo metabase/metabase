@@ -8,5 +8,5 @@
 (set! *warn-on-reflection* true)
 
 (defmethod transport/on-listen! :topic [channel _opts]
-  (topic.backend/subscribe! topic.backend/*backend* channel)
+  (topic.backend/start-receiving! topic.backend/*backend* channel)
   {})

@@ -84,20 +84,55 @@
    (alter-var-root #'q.backend/*backend* (constantly prev-queue-be))
    (alter-var-root #'topic.backend/*backend* (constantly prev-topic-be))))
 
-(defmethod startup/def-startup-logic! ::MqInit [_]
-  (let [queue-be (keyword "queue.backend" (mq.settings/queue-backend))
-        topic-be (keyword "topic.backend" (mq.settings/topic-backend))]
-    (when-not (contains? valid-queue-backends queue-be)
-      (throw (ex-info (str "Invalid queue backend: " queue-be
-                           ". Valid backends: " valid-queue-backends)
-                      {:backend queue-be :valid valid-queue-backends})))
+(defn- resolve-topic-be []
+  (let [topic-be (keyword "topic.backend" (mq.settings/topic-backend))]
     (when-not (contains? valid-topic-backends topic-be)
       (throw (ex-info (str "Invalid topic backend: " topic-be
                            ". Valid backends: " valid-topic-backends)
                       {:backend topic-be :valid valid-topic-backends})))
-    ;; Handle discarded — production shutdown goes through def-shutdown-logic! below.
-    (start! queue-be topic-be)
-    nil))
+    topic-be))
+
+(defn- resolve-queue-be []
+  (let [queue-be (keyword "queue.backend" (mq.settings/queue-backend))]
+    (when-not (contains? valid-queue-backends queue-be)
+      (throw (ex-info (str "Invalid queue backend: " queue-be
+                           ". Valid backends: " valid-queue-backends)
+                      {:backend queue-be :valid valid-queue-backends})))
+    queue-be))
+
+(defn start-receiving!
+  "Tells the configured backends to start retaining messages for every channel that has a
+   registered listener. Handlers will not run until [[start!]] later spins up the polling /
+   consumer threads — but from this point on, no published message will be missed.
+
+   Listeners are discovered via the [[listener/def-listener*]] multimethod, whose methods are
+   registered as a side effect of namespace loading — by the time `metabase.core.core/init!*`
+   runs, the `metabase.core.init` require chain has loaded them all.
+
+   For queues this is a no-op (the queue table retains rows regardless of consumer state).
+   For topics it pins the read position / registers the subscription with the broker via the
+   `TopicBackend/start-receiving!` protocol method, which is idempotent.
+
+   Called explicitly from `metabase.core.core/init!*` right after the app DB is set up, so
+   the rest of startup can publish messages without losing them."
+  []
+  (let [topic-be       (resolve-topic-be)
+        topic-instance (resolve-backend "topic" topic-backends topic-be)
+        topic-channels (filter #(= "topic" (namespace %))
+                               (keys (methods listener/def-listener*)))]
+    (alter-var-root #'topic.backend/*backend* (constantly topic-instance))
+    (doseq [ch topic-channels]
+      (topic.backend/start-receiving! topic-instance ch))
+    (log/infof "Started receiving on %d topic(s)" (count topic-channels))))
+
+(defmethod startup/def-startup-logic! ::MqStart [_]
+  (start! (resolve-queue-be) (resolve-topic-be)))
+
+;; Run after all other startup logic so listener registration, transports, and polling threads
+;; only come up once the rest of the system is ready. Topic starting offsets are pinned earlier
+;; by [[start-receiving!]], called explicitly from `metabase.core.core/init!*` right after the
+;; app DB is set up.
+(defmethod startup/startup-priority ::MqStart [_] Long/MAX_VALUE)
 
 (defmethod startup/def-shutdown-logic! ::MqShutdown [_]
   (stop!))

@@ -56,12 +56,15 @@
     (mq.polling/notify! poll-state)))
 
 (defn- drain!
-  "Removes and returns all messages currently in the channel's queue, or nil if empty."
-  [{:keys [channels]} channel-name]
+  "Removes and returns up to `max-elements` messages currently in the channel's queue,
+   or nil if empty. If `max-elements` is nil or non-positive, drains everything."
+  [{:keys [channels]} channel-name max-elements]
   (when-let [^LinkedBlockingQueue q (get @channels channel-name)]
     (when-not (.isEmpty q)
       (let [batch (ArrayList.)]
-        (.drainTo q batch)
+        (if (and max-elements (pos? (int max-elements)))
+          (.drainTo q batch (int max-elements))
+          (.drainTo q batch))
         (when-not (.isEmpty batch)
           (vec batch))))))
 
@@ -83,13 +86,14 @@
   [{:keys [queue-backend] :as layer}]
   (doseq [channel-name (remove mq.impl/channel-busy?
                                (concat (listener/queue-names) (listener/topic-names)))]
-    (when-let [messages (drain! layer channel-name)]
-      (if (= "queue" (namespace channel-name))
-        (let [batch-id (str (random-uuid))]
-          (register-batch! layer batch-id channel-name messages)
-          (mq.impl/submit-delivery! channel-name messages batch-id @queue-backend
-                                    {:batch-id batch-id}))
-        (mq.impl/submit-delivery! channel-name messages nil nil nil)))))
+    (let [max-elements (:max-batch-messages (listener/get-listener channel-name))]
+      (when-let [messages (drain! layer channel-name max-elements)]
+        (if (= "queue" (namespace channel-name))
+          (let [batch-id (str (random-uuid))]
+            (register-batch! layer batch-id channel-name messages)
+            (mq.impl/submit-delivery! channel-name messages batch-id @queue-backend
+                                      {:batch-id batch-id}))
+          (mq.impl/submit-delivery! channel-name messages nil nil nil))))))
 
 (defn start!
   "Starts the layer's polling thread. Idempotent — second call is a no-op."
