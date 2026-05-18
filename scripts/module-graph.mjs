@@ -403,16 +403,17 @@ function buildDot() {
   emit(`  "legend_${legendTiers[0].tierId}" -> "misc" [style="invis" weight="1000"]`);
   emit("");
 
-  // Modules whose outgoing boundary rules are actually enforced by the linter
-  const enforcedModules = new Set(
-    graphElements.filter((e) => e.enforceOutgoing).map((e) => getName(e.type)),
+  // Modules whose outgoing boundary rules are NOT enforced by the linter
+  const unenforcedModules = new Set(
+    graphElements.filter((e) => !e.enforceOutgoing).map((e) => moduleNameForElement(e)),
   );
 
-  // Module nodes — enforced modules get a bold border so they visually "pop"
+  // Module nodes — unenforced modules get a bold border so it's visible
+  // which modules still need their boundaries locked down.
   for (const tierId of tierOrder) {
     const { color, modules } = tiers[tierId];
     for (const mod of modules) {
-      const extra = enforcedModules.has(mod) ? ` penwidth="2"` : "";
+      const extra = unenforcedModules.has(mod) ? ` penwidth="2"` : "";
       emit(
         `  "${mod}" [label="${mod}" fillcolor="${color}" group="${tierId}"${extra}]`,
       );
@@ -545,9 +546,9 @@ function postProcessSvg(svg) {
       `  <line x1="${arrowX1}" y1="${arrowY}" x2="${arrowX2}" y2="${arrowY}" stroke="red" stroke-width="2" marker-end="url(#arrowhead-red)"/>`,
       `  <text x="${arrowX2 + 6}" y="${arrowY + 4}" font-family="Helvetica,sans-Serif" font-size="10" fill="#888888">violation</text>`,
       `</g>`,
-      `<g id="legend-enforced">`,
+      `<g id="legend-unenforced">`,
       `  <rect x="${sampleX}" y="${sampleY}" width="${sampleW}" height="${sampleH}" rx="4" ry="4" fill="none" stroke="#333333" stroke-width="2"/>`,
-      `  <text x="${sampleX + sampleW + 6}" y="${enforcedY + 4}" font-family="Helvetica,sans-Serif" font-size="10" fill="#888888">enforced</text>`,
+      `  <text x="${sampleX + sampleW + 6}" y="${enforcedY + 4}" font-family="Helvetica,sans-Serif" font-size="10" fill="#888888">unenforced</text>`,
       `</g>`,
     );
   }
