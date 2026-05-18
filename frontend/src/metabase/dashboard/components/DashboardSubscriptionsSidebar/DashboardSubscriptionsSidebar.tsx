@@ -3,10 +3,10 @@ import _ from "underscore";
 
 import { skipToken } from "metabase/api/api";
 import { useListSubscriptionsQuery } from "metabase/api/subscription";
+import { useSetArchive } from "metabase/archive/hooks";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ScheduleChangeProp } from "metabase/common/components/SchedulePicker";
 import { Sidebar } from "metabase/common/components/Sidebar";
-import { useSetArchive } from "metabase/common/hooks";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   cancelEditingPulse,

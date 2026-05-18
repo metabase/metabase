@@ -5,6 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { automagicDashboardsApi } from "metabase/api/automagic-dashboards";
+import { cardApi } from "metabase/api/card";
 import { dashboardApi } from "metabase/api/dashboard";
 import { applyParameters } from "metabase/common/utils/card";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
@@ -34,12 +35,12 @@ import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   AutoApi,
-  CardApi,
   DashboardApi,
   EmbedApi,
   MetabaseApi,
   PublicApi,
   maybeUsePivotEndpoint,
+  shouldUsePivotEndpoint,
 } from "metabase/services";
 import {
   getDashboardType,
@@ -403,28 +404,42 @@ export const fetchCardDataAction = createAsyncThunk<
         hasReplacedCard;
 
       // new dashcards and new additional series cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
-      const endpoint = shouldUseCardQueryEndpoint
-        ? CardApi.query
-        : DashboardApi.cardQuery;
-
-      const requestBody = shouldUseCardQueryEndpoint
-        ? { cardId: card.id, ignore_cache: ignoreCache }
-        : {
-            dashboardId: dashcard.dashboard_id,
-            dashcardId: dashcard.id,
-            cardId: card.id,
-            parameters: datasetQuery.parameters,
-            ignore_cache: ignoreCache,
-            dashboard_id: dashcard.dashboard_id,
-            dashboard_load_id: dashboardLoadId,
-          };
-      result = (await fetchDataOrError(
-        maybeUsePivotEndpoint(
-          endpoint,
-          card,
-          metadata,
-        )(requestBody, queryOptions),
-      )) as Dataset | { error: unknown };
+      if (shouldUseCardQueryEndpoint) {
+        const cardQueryEndpoint = shouldUsePivotEndpoint(card, metadata)
+          ? cardApi.endpoints.getCardQueryPivot
+          : cardApi.endpoints.getCardQuery;
+        const queryAction = dispatch(
+          cardQueryEndpoint.initiate(
+            { cardId: card.id, ignore_cache: ignoreCache },
+            { forceRefetch: true },
+          ),
+        );
+        deferred.promise.then(() => queryAction.abort());
+        try {
+          result = (await fetchDataOrError(queryAction.unwrap())) as
+            | Dataset
+            | { error: unknown };
+        } finally {
+          queryAction.unsubscribe?.();
+        }
+      } else {
+        const requestBody = {
+          dashboardId: dashcard.dashboard_id,
+          dashcardId: dashcard.id,
+          cardId: card.id,
+          parameters: datasetQuery.parameters,
+          ignore_cache: ignoreCache,
+          dashboard_id: dashcard.dashboard_id,
+          dashboard_load_id: dashboardLoadId,
+        };
+        result = (await fetchDataOrError(
+          maybeUsePivotEndpoint(
+            DashboardApi.cardQuery,
+            card,
+            metadata,
+          )(requestBody, queryOptions),
+        )) as Dataset | { error: unknown };
+      }
     }
 
     // If the request was not previously cancelled, then clear the defer for the card

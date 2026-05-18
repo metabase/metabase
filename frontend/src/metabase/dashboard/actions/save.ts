@@ -1,18 +1,17 @@
 import { assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
+import { cardApi } from "metabase/api";
 import { Dashboards } from "metabase/entities/dashboards";
 import { clickBehaviorIsValid } from "metabase/parameters/utils/click-behavior";
 import { createThunkAction } from "metabase/redux";
 import { UPDATE_DASHBOARD_AND_CARDS } from "metabase/redux/dashboard";
+import type { StoreDashboard, StoreDashcard } from "metabase/redux/store";
 import type {
-  Dispatch,
-  GetState,
-  StoreDashboard,
-  StoreDashcard,
-} from "metabase/redux/store";
-import { CardApi } from "metabase/services";
-import type { DashCardId, ParameterId } from "metabase-types/api";
+  DashCardId,
+  ParameterId,
+  UpdateCardRequest,
+} from "metabase-types/api";
 
 import { trackDashboardSaved } from "../analytics";
 import { getDashboardBeforeEditing } from "../selectors";
@@ -31,7 +30,7 @@ export const UPDATE_DASHBOARD = "metabase/dashboard/UPDATE_DASHBOARD";
 export const updateDashboardAndCards = createThunkAction(
   UPDATE_DASHBOARD_AND_CARDS,
   function () {
-    return async function (dispatch: Dispatch, getState: GetState) {
+    return async function (dispatch, getState) {
       const startTime = performance.now();
       const state = getState();
       const { dashboards, dashcards, dashboardId } = state.dashboard;
@@ -152,7 +151,13 @@ export const updateDashboardAndCards = createThunkAction(
       await Promise.all(
         dashboard.dashcards
           .filter((dc) => "isDirty" in dc.card && Boolean(dc.card.isDirty))
-          .map(async (dc) => CardApi.update(dc.card)),
+          .map((dc) =>
+            dispatch(
+              cardApi.endpoints.updateCard.initiate(
+                dc.card as UpdateCardRequest,
+              ),
+            ).unwrap(),
+          ),
       );
 
       trackAddedIFrameDashcards(dashboard);
@@ -238,7 +243,7 @@ export const updateDashboardAndCards = createThunkAction(
 export const updateDashboard = createThunkAction(
   UPDATE_DASHBOARD,
   function ({ attributeNames }: { attributeNames: string[] }) {
-    return async function (dispatch: Dispatch, getState: GetState) {
+    return async function (dispatch, getState) {
       const state = getState();
       const { dashboards, dashboardId } = state.dashboard;
 

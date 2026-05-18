@@ -5,7 +5,7 @@ import {
   useGetTimelineQuery,
   useUpdateTimelineMutation,
 } from "metabase/api/timeline";
-import { useSetArchive } from "metabase/common/hooks";
+import { useSetArchive } from "metabase/archive/hooks";
 import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
 import { useDispatch } from "metabase/redux";
 import EditTimelineModal from "metabase/timelines/common/components/EditTimelineModal";

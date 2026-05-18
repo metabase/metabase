@@ -4,8 +4,8 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api/api";
 import { useGetCollectionQuery } from "metabase/api/collection";
+import { useSetArchive } from "metabase/archive/hooks";
 import { ArchiveModal } from "metabase/common/components/ArchiveModal";
-import { useSetArchive } from "metabase/common/hooks";
 import * as Urls from "metabase/urls";
 
 function ArchiveCollectionModalInner({ collection, onClose }) {
