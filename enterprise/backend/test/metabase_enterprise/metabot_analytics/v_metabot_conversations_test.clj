@@ -210,6 +210,29 @@
                  :assistant_message_count 1}
                 (first (query-view [convo-id]))))))))
 
+(deftest profile-id-from-user-only-conversation-test
+  (testing "profile_id is surfaced from the user message when no live assistant exists"
+    (let [convo-user-only    (str (random-uuid))
+          convo-deleted-asst (str (random-uuid))]
+      (mt/with-temp [:model/User              {user-id :id} {}
+                     :model/MetabotConversation _ {:id convo-user-only    :user_id user-id}
+                     :model/MetabotConversation _ {:id convo-deleted-asst :user_id user-id}
+                     :model/MetabotMessage      _ {:conversation_id convo-user-only :role "user" :profile_id "embedding_next" :total_tokens 0 :data []}
+                     ;; deleted-assistant conversation: assistant is soft-deleted, only user remains live
+                     :model/MetabotMessage      _ {:conversation_id convo-deleted-asst :role "user"      :profile_id "embedding_next" :total_tokens 0 :data []}
+                     :model/MetabotMessage      _ {:conversation_id convo-deleted-asst :role "assistant" :profile_id "embedding_next" :total_tokens 0 :data [] :deleted_at (java.time.OffsetDateTime/now)}]
+        (let [rows (query-view [convo-user-only convo-deleted-asst])]
+          (is (=? {:profile_id "embedding_next"} (find-row rows convo-user-only)))
+          (is (=? {:profile_id "embedding_next"} (find-row rows convo-deleted-asst))))))))
+
+(deftest profile-name-from-user-only-conversation-test
+  (testing "profile_name is surfaced from the user message when no live assistant exists"
+    (let [convo-id (str (random-uuid))]
+      (mt/with-temp [:model/User              {user-id :id} {}
+                     :model/MetabotConversation _ {:id convo-id :user_id user-id}
+                     :model/MetabotMessage      _ {:conversation_id convo-id :role "user" :profile_id "embedding_next" :total_tokens 0 :data []}]
+        (is (=? {:profile_name "Embedding"} (first (query-view [convo-id]))))))))
+
 (deftest user-display-name-test
   (testing "user_display_name shows 'first last' when available, falls back to email"
     (let [convo-named   (str (random-uuid))

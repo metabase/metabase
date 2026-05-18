@@ -91,7 +91,7 @@
           (insert-message! {:conversation-id convo-1
                             :created-at      jan-2
                             :role            "user"
-                            :profile-id      "ignored-user-model"
+                            :profile-id      "nlq"
                             :total-tokens    3
                             :data            [{:role "user" :content "hello"}]})
           (insert-message! {:conversation-id convo-1
@@ -103,7 +103,7 @@
           (insert-message! {:conversation-id convo-2
                             :created-at      jan-4
                             :role            "user"
-                            :profile-id      "ignored-user-model"
+                            :profile-id      "internal"
                             :total-tokens    2
                             :data            [{:role "user" :content "question"}]})
           (insert-message! {:conversation-id convo-2
@@ -178,6 +178,32 @@
                 :profile_id              "internal"}
                (select-keys convo-2-response [:conversation_id :message_count :user_message_count
                                               :assistant_message_count :total_tokens :profile_id])))))))
+
+(deftest list-conversations-user-only-profile-id-test
+  (testing "GET /api/ee/metabot-analytics/conversations falls back to the user message's profile_id when no live assistant exists"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/User {test-user-id :id} {:email "user-only-profile@metabase.com"}]
+        (let [response-path   (format "ee/metabot-analytics/conversations?user_id=%s" test-user-id)
+              convo-user-only (str (random-uuid))
+              jan-1           (offset-date-time "2026-01-01T00:00:00Z")
+              jan-2           (offset-date-time "2026-01-02T00:00:00Z")]
+          (try
+            (insert-conversation! {:conversation-id convo-user-only
+                                   :user-id         test-user-id
+                                   :created-at      jan-1
+                                   :summary         "User-only conversation"})
+            (insert-message! {:conversation-id convo-user-only
+                              :created-at      jan-2
+                              :role            "user"
+                              :profile-id      "embedding_next"
+                              :total-tokens    5
+                              :data            [{:role "user" :content "orphaned turn"}]})
+            (let [response (mt/user-http-request :crowberto :get 200 response-path)
+                  convo    (find-conversation (:data response) convo-user-only)]
+              (is (= "embedding_next" (:profile_id convo))
+                  "profile_id falls back to the user message when no live assistant exists"))
+            (finally
+              (delete-conversations! [convo-user-only]))))))))
 
 (deftest list-conversations-pagination-test
   (with-list-conversations-fixture!
@@ -376,7 +402,7 @@
           (insert-message! {:conversation-id conversation-id
                             :created-at      jan-1
                             :role            "user"
-                            :profile-id      "ignored-user-profile"
+                            :profile-id      "internal"
                             :total-tokens    4
                             :data            [{:role "user" :content "hello"}]})
           (insert-message! {:conversation-id conversation-id
@@ -397,12 +423,36 @@
                    (select-keys (:user response) [:id :email :first_name :last_name])))
             (is (nil? (:slack_permalink response)))
             (is (= "internal" (:profile_id response))
-                "profile_id comes from the first assistant message, ignoring user-message placeholders")
+                "profile_id is surfaced from the conversation's live messages")
             (is (= 2 (count (:chat_messages response))))
             (is (= [] (:feedback response)))
             (let [{:keys [role type externalId]} (last (:chat_messages response))]
               (is (= ["agent" "text"] [role type]))
               (is (string? externalId))))
+          (finally
+            (delete-conversations! [conversation-id])))))))
+
+(deftest get-conversation-detail-user-only-profile-id-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "GET /api/ee/metabot-analytics/conversations/:id falls back to the user message's profile_id when no live assistant exists"
+      (let [conversation-id (str (random-uuid))
+            user-id         (mt/user->id :crowberto)
+            jan-1           (offset-date-time "2026-01-01T00:00:00Z")]
+        (try
+          (insert-conversation! {:conversation-id conversation-id
+                                 :user-id         user-id
+                                 :created-at      jan-1
+                                 :summary         "Orphaned user-only conversation"})
+          (insert-message! {:conversation-id conversation-id
+                            :created-at      jan-1
+                            :role            "user"
+                            :profile-id      "embedding_next"
+                            :total-tokens    4
+                            :data            [{:role "user" :content "hello"}]})
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               (format "ee/metabot-analytics/conversations/%s" conversation-id))]
+            (is (= "embedding_next" (:profile_id response))
+                "profile_id falls back to the user message when no live assistant exists"))
           (finally
             (delete-conversations! [conversation-id])))))))
 

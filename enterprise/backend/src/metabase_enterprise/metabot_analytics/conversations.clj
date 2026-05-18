@@ -92,14 +92,10 @@
                [[:count [:case [:= :m.role "assistant"] 1]] :assistant_message_count]
                [[:coalesce [:sum :m.total_tokens] 0] :total_tokens]
                [[:max :m.created_at] :last_message_at]
-               ;; First assistant message's profile_id, matching the
-               ;; `v_metabot_conversations` analytics view. User messages carry
-               ;; a placeholder `profile_id` and are excluded.
                [{:select   [:mm.profile_id]
                  :from     [[:metabot_message :mm]]
                  :where    [:and
                             [:= :mm.conversation_id :c.id]
-                            [:= :mm.role "assistant"]
                             [:= :mm.deleted_at nil]]
                  :order-by [[:mm.created_at :asc] [:mm.id :asc]]
                  :limit    1}
@@ -234,7 +230,7 @@
        :user            (trim-user (:user hydrated))
        :message_count   (count messages)
        :total_tokens    (transduce (keep :total_tokens) + 0 messages)
-       :profile_id      (some #(when (= :assistant (:role %)) (:profile_id %)) messages)
+       :profile_id      (some :profile_id messages)
        :slack_permalink (slack-permalink conversation)
        :chat_messages   (metabot-persistence/messages->chat-messages
                          messages {:include-errored? true})
