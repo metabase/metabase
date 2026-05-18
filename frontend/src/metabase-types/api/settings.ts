@@ -624,6 +624,7 @@ interface PublicSettings {
   "metabot-limit-unit": MetabotLimitType;
   "metabot-limit-reset-rate": MetabotLimitPeriod;
   "metabot-quota-reached-message": string | null;
+  "ai-usage-max-retention-days": number | null;
   "metabot-chat-system-prompt": string | null;
   "metabot-nlq-system-prompt": string | null;
   "metabot-sql-system-prompt": string | null;

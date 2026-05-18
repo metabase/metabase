@@ -12,6 +12,7 @@ import type { DateRangePickerValue } from "./types";
 export type DateRangePickerProps = {
   value: DateRangePickerValue;
   hasTimeToggle: boolean;
+  minDate?: Date;
   renderSubmitButton?: () => ReactNode;
   onChange: (value: DateRangePickerValue) => void;
   onSubmit: () => void;
@@ -20,6 +21,7 @@ export type DateRangePickerProps = {
 export function DateRangePicker({
   value,
   hasTimeToggle,
+  minDate,
   renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onSubmit,
@@ -49,6 +51,7 @@ export function DateRangePicker({
         <DateRangePickerBody
           value={dateRange}
           hasTime={hasTime}
+          minDate={minDate}
           onChange={handleDateRangeChange}
         />
       </Box>

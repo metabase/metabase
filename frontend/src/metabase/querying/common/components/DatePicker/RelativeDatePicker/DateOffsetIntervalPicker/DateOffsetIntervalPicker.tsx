@@ -13,6 +13,7 @@ import { renderDefaultSubmitButton } from "../../utils";
 import {
   formatDateRange,
   getInterval,
+  getRelativeStartDate,
   getUnitOptions,
   setInterval,
 } from "../utils";
@@ -31,6 +32,7 @@ import {
 interface DateOffsetIntervalPickerProps {
   value: RelativeDatePickerValue;
   availableUnits: DatePickerUnit[];
+  minDate?: Date;
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: RelativeDatePickerValue) => void;
   onSubmit: () => void;
@@ -39,6 +41,7 @@ interface DateOffsetIntervalPickerProps {
 export function DateOffsetIntervalPicker({
   value,
   availableUnits,
+  minDate,
   renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onSubmit,
@@ -49,6 +52,8 @@ export function DateOffsetIntervalPicker({
   const offsetUnitOptions = getOffsetUnitOptions(value, availableUnits);
   const directionText = getDirectionText(value);
   const dateRangeText = formatDateRange(value);
+  const isBeforeMinDate =
+    minDate != null && getRelativeStartDate(value) < minDate;
 
   const handleIntervalChange = (inputValue: number | string) => {
     if (typeof inputValue === "number") {
@@ -82,6 +87,9 @@ export function DateOffsetIntervalPicker({
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
+    if (isBeforeMinDate) {
+      return;
+    }
     onSubmit();
   };
 
@@ -143,7 +151,7 @@ export function DateOffsetIntervalPicker({
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>
-        {renderSubmitButton({ value })}
+        {renderSubmitButton({ value, isDisabled: isBeforeMinDate })}
       </Group>
     </form>
   );

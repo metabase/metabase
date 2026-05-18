@@ -335,6 +335,7 @@ describe("DateOffsetIntervalPicker", () => {
         setup({ value: defaultValue, renderSubmitButton });
         expect(renderSubmitButton).toHaveBeenCalledWith({
           value: defaultValue,
+          isDisabled: false,
         });
       });
     },

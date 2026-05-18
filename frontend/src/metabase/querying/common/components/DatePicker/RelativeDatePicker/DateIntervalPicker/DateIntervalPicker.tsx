@@ -23,6 +23,7 @@ import { IncludeCurrentSwitch } from "../IncludeCurrentSwitch";
 import {
   formatDateRange,
   getInterval,
+  getRelativeStartDate,
   getUnitOptions,
   setInterval,
 } from "../utils";
@@ -32,6 +33,7 @@ import { setDefaultOffset, setUnit } from "./utils";
 interface DateIntervalPickerProps {
   value: RelativeDatePickerValue;
   availableUnits: DatePickerUnit[];
+  minDate?: Date;
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: RelativeDatePickerValue) => void;
   onSubmit: () => void;
@@ -40,6 +42,7 @@ interface DateIntervalPickerProps {
 export function DateIntervalPicker({
   value,
   availableUnits,
+  minDate,
   renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onSubmit,
@@ -47,6 +50,8 @@ export function DateIntervalPicker({
   const interval = getInterval(value);
   const unitOptions = getUnitOptions(value, availableUnits);
   const dateRangeText = formatDateRange(value);
+  const isBeforeMinDate =
+    minDate != null && getRelativeStartDate(value) < minDate;
 
   const handleIntervalChange = (inputValue: number | string) => {
     if (typeof inputValue === "number") {
@@ -67,6 +72,9 @@ export function DateIntervalPicker({
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
+    if (isBeforeMinDate) {
+      return;
+    }
     onSubmit();
   };
 
@@ -110,7 +118,7 @@ export function DateIntervalPicker({
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>
-        {renderSubmitButton({ value, isDisabled: false })}
+        {renderSubmitButton({ value, isDisabled: isBeforeMinDate })}
       </Group>
     </form>
   );

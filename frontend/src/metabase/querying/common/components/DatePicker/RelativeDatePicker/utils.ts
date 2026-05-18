@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+
 import { DATE_PICKER_TRUNCATION_UNITS } from "metabase/querying/common/constants";
 import type {
   DatePickerTruncationUnit,
@@ -133,6 +135,24 @@ export function formatDateRange({
     offsetUnit,
     includeCurrent: options?.includeCurrent,
   });
+}
+
+export function getRelativeStartDate({
+  value,
+  unit,
+  offsetValue,
+  offsetUnit,
+}: RelativeDatePickerValue): Date {
+  let base = dayjs();
+  if (offsetValue != null && offsetUnit != null) {
+    base = base.add(offsetValue, offsetUnit);
+  }
+  // For a "past" interval (negative value) this lands on the start of the
+  // earliest covered period; for a "future" interval the start is today.
+  if (value < 0) {
+    return base.add(value, unit).startOf(unit).toDate();
+  }
+  return base.startOf(unit).toDate();
 }
 
 export function getDefaultValue(

@@ -1,11 +1,20 @@
+import dayjs from "dayjs";
 import { useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import { getOperatorDefaultValue } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/utils";
-import type { DatePickerOperator } from "metabase/querying/common/types";
+import type {
+  DateFilterValue,
+  DatePickerOperator,
+} from "metabase/querying/common/types";
+import { getDateFilterDisplayName } from "metabase/querying/common/utils/dates";
 import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
-import { serializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
+import {
+  deserializeDateParameterValue,
+  serializeDateParameterValue,
+} from "metabase/querying/parameters/utils/parsing";
 import { Flex, Icon, Popover, Select } from "metabase/ui";
 
 // width needed to show Previous 12 months option w/ clipping
@@ -22,17 +31,46 @@ type ConversationDateFilterProps = {
   onChange: (val: string) => void;
 };
 
+function getFilterStartDate(value: string): dayjs.Dayjs | null {
+  const parsed: DateFilterValue | null = deserializeDateParameterValue(value);
+  if (parsed?.type === "relative") {
+    const base =
+      parsed.offsetValue != null && parsed.offsetUnit != null
+        ? dayjs().add(parsed.offsetValue, parsed.offsetUnit)
+        : dayjs();
+    if (parsed.value < 0) {
+      return base.add(parsed.value, parsed.unit).startOf(parsed.unit);
+    }
+    return base.startOf(parsed.unit);
+  }
+  if (parsed?.type === "specific") {
+    return parsed.values.reduce<dayjs.Dayjs | null>((acc, d) => {
+      const candidate = dayjs(d);
+      return acc == null || candidate.isBefore(acc) ? candidate : acc;
+    }, null);
+  }
+  return null;
+}
+
 function ConversationDateFilter({
   value,
   onChange,
 }: ConversationDateFilterProps) {
   const [activeDropdown, setActiveDropdown] =
     useState<ActiveDropdown>("default");
+  const retentionDays = useSetting("ai-usage-max-retention-days");
+  const retentionCutoff = useMemo(
+    () =>
+      retentionDays == null
+        ? null
+        : dayjs().subtract(retentionDays, "day").startOf("day"),
+    [retentionDays],
+  );
 
   // `~` includes the current period by incrementing the day count, so `pastNdays~` spans N+1 days.
   // To get an N-day window ending today, use `past(N-1)days~`.
-  const data = useMemo(
-    () => [
+  const data = useMemo(() => {
+    const groups = [
       {
         group: "",
         items: [
@@ -57,9 +95,67 @@ function ConversationDateFilter({
           { label: t`Relative date range…`, value: RELATIVE_TYPE_VALUE },
         ],
       },
-    ],
-    [],
+    ];
+    if (retentionCutoff == null) {
+      return groups;
+    }
+    return groups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => {
+          const start = getFilterStartDate(item.value);
+          return start == null || !start.isBefore(retentionCutoff);
+        }),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [retentionCutoff]);
+
+  // When `value` is a custom range that doesn't match a known shortcut, we
+  // still want the matching Fixed/Relative entry to appear highlighted in the
+  // dropdown so clicking it re-opens the picker. The trigger's displayed
+  // label is overridden separately via `searchValue` so the user still sees
+  // the formatted range.
+  const parsedValue = useMemo(
+    () => (value ? deserializeDateParameterValue(value) : null),
+    [value],
   );
+  const isKnownItem = useMemo(
+    () =>
+      value != null &&
+      data.some((group) => group.items.some((item) => item.value === value)),
+    [data, value],
+  );
+  const selectValue = useMemo(() => {
+    if (value == null) {
+      return null;
+    }
+    if (isKnownItem) {
+      return value;
+    }
+    if (parsedValue?.type === "specific") {
+      return FIXED_TYPE_VALUE;
+    }
+    if (parsedValue?.type === "relative") {
+      return RELATIVE_TYPE_VALUE;
+    }
+    return null;
+  }, [value, isKnownItem, parsedValue]);
+
+  const searchValue = useMemo(() => {
+    if (value == null || isKnownItem || parsedValue == null) {
+      return undefined;
+    }
+    return getDateFilterDisplayName(parsedValue) ?? undefined;
+  }, [value, isKnownItem, parsedValue]);
+
+  const displayLabel = useMemo(() => {
+    if (searchValue != null) {
+      return searchValue;
+    }
+    return data
+      .flatMap((group) => group.items)
+      .find((item) => item.value === selectValue)?.label;
+  }, [data, searchValue, selectValue]);
 
   const handleSelect = (val: string | null) => {
     match(val)
@@ -72,9 +168,13 @@ function ConversationDateFilter({
 
   const customRangeSeed = match(activeDropdown)
     .with("fixed", () =>
-      serializeDateParameterValue(getOperatorDefaultValue("between")),
+      parsedValue?.type === "specific"
+        ? value
+        : serializeDateParameterValue(getOperatorDefaultValue("between")),
     )
-    .with("relative", () => "past30days~")
+    .with("relative", () =>
+      parsedValue?.type === "relative" ? value : "past30days~",
+    )
     .with("default", () => null)
     .exhaustive();
 
@@ -91,13 +191,17 @@ function ConversationDateFilter({
       <Popover.Target>
         <Select
           data={data}
-          value={value}
-          onChange={handleSelect}
+          value={selectValue}
+          searchValue={searchValue}
+          onChange={() => {}}
+          onSearchChange={() => {}}
+          onOptionSubmit={handleSelect}
           onDropdownOpen={() => setActiveDropdown("default")}
           w={FILTER_WIDTH}
           bdrs="sm"
           allowDeselect={false}
           leftSection={<Icon name="calendar" />}
+          title={displayLabel}
           data-testid="conversation-filters-date-select"
         />
       </Popover.Target>
@@ -106,6 +210,7 @@ function ConversationDateFilter({
           key={activeDropdown}
           value={customRangeSeed}
           availableOperators={DATE_OPERATORS}
+          minDate={retentionCutoff?.toDate()}
           onChange={(val) => {
             onChange(val);
             setActiveDropdown("default");

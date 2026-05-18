@@ -27,6 +27,7 @@ type DatePickerProps = {
   availableShortcuts?: DatePickerShortcut[];
   availableUnits?: DatePickerUnit[];
   availableDirections?: RelativeIntervalDirection[];
+  minDate?: Date;
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   renderBackButton?: () => ReactNode;
   onChange: (value: DatePickerValue) => void;
@@ -39,6 +40,7 @@ export function DatePicker({
   availableShortcuts = DATE_PICKER_SHORTCUTS,
   availableUnits = DATE_PICKER_UNITS,
   availableDirections = DATE_PICKER_DIRECTIONS,
+  minDate,
   renderSubmitButton = renderDefaultSubmitButton,
   renderBackButton,
   onChange,
@@ -57,6 +59,7 @@ export function DatePicker({
           value={value?.type === type ? value : undefined}
           availableOperators={availableOperators}
           availableUnits={availableUnits}
+          minDate={minDate}
           renderSubmitButton={renderSubmitButton}
           onChange={onChange}
           onBack={handleBack}
@@ -69,6 +72,7 @@ export function DatePicker({
           value={value?.type === type ? value : undefined}
           availableUnits={availableUnits}
           availableDirections={availableDirections}
+          minDate={minDate}
           renderSubmitButton={renderSubmitButton}
           onChange={onChange}
           onBack={handleBack}

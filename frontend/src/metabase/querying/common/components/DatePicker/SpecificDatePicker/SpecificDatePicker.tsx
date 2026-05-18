@@ -32,6 +32,7 @@ interface SpecificDatePickerProps {
   value?: SpecificDatePickerValue;
   availableOperators: DatePickerOperator[];
   availableUnits: DatePickerUnit[];
+  minDate?: Date;
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: SpecificDatePickerValue) => void;
   onBack: () => void;
@@ -42,6 +43,7 @@ export function SpecificDatePicker({
   value: initialValue,
   availableOperators,
   availableUnits,
+  minDate,
   renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onBack,
@@ -98,6 +100,7 @@ export function SpecificDatePicker({
             <DateRangePicker
               value={{ dateRange: value.values, hasTime: value.hasTime }}
               hasTimeToggle={hasTimeToggle}
+              minDate={minDate}
               renderSubmitButton={() =>
                 renderSubmitButton({ value: coercedValue })
               }
@@ -108,6 +111,7 @@ export function SpecificDatePicker({
             <SingleDatePicker
               value={{ date: getDate(value), hasTime: value.hasTime }}
               hasTimeToggle={hasTimeToggle}
+              minDate={minDate}
               renderSubmitButton={() =>
                 renderSubmitButton({ value: coercedValue })
               }

@@ -386,6 +386,7 @@ export const createMockSettings = (
   "metabot-limit-unit": "tokens",
   "metabot-limit-reset-rate": "monthly",
   "metabot-quota-reached-message": null,
+  "ai-usage-max-retention-days": 180,
   "metabot-chat-system-prompt": null,
   "metabot-nlq-system-prompt": null,
   "metabot-sql-system-prompt": null,

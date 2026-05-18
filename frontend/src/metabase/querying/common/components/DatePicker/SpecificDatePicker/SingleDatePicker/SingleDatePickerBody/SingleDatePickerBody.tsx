@@ -10,12 +10,14 @@ import { setDatePart, setTimePart } from "../../utils";
 interface SingleDatePickerBodyProps {
   value: Date;
   hasTime: boolean;
+  minDate?: Date;
   onChange: (value: Date) => void;
 }
 
 export function SingleDatePickerBody({
   value,
   hasTime,
+  minDate,
   onChange,
 }: SingleDatePickerBodyProps) {
   const [date, setDate] = useState<Date>(value);
@@ -37,6 +39,7 @@ export function SingleDatePickerBody({
       <DateInput
         value={value}
         date={date}
+        minDate={minDate}
         popoverProps={{ opened: false }}
         aria-label={t`Date`}
         onChange={handleDateChange}
@@ -52,6 +55,7 @@ export function SingleDatePickerBody({
       <DatePicker
         value={value}
         date={date}
+        minDate={minDate}
         onChange={handleDateChange}
         onDateChange={(val) => val && setDate(dayjs(val).toDate())}
       />
