@@ -501,7 +501,7 @@
                     (keep decode-predicate)
                     fingerprints)]
     (when (>= (count atoms) fim-k-min)
-      (lib/expression-clause :and atoms nil))))
+      (lib/simplify-compound-filter (apply lib/and atoms)))))
 
 (defn- existing-composite-atomsets*
   [[source-type source-id]]
@@ -541,9 +541,8 @@
 
   Each returned map describes one suggestion:
 
-    :clause         The reconstructed `[:and ...]` MBQL clause. This is what a caller would offer
-                    the user to save as a new Segment. Built via `lib/expression-clause`, so it's a
-                    proper normalized MBQL value, not a hand-rolled vector.
+    :clause         The reconstructed MBQL clause. This is what a caller would offer
+                    the user to save as a new Segment.
 
     :itemset-size   How many atomic predicates the suggestion combines (`k` in FIM terms). Bounded
                     by `fim-k-min`/`fim-k-max` (2..5). NOTE: not the size of the source baskets the
