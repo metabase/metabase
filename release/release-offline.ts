@@ -49,7 +49,6 @@ const isWithoutGithub = process.argv?.[5]?.trim() === "--without-github";
 let latestFlag: string | boolean | null = process.argv?.[6]?.trim();
 
 const log = (message, color = "blue") =>
-   
   console.log(chalk[color](`\n${message}\n`));
 
 function error(message) {
