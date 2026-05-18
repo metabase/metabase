@@ -73,26 +73,6 @@ export const fetchTableMetadata = (id, reload = false) => {
   return Tables.actions.fetchMetadataAndForeignTables({ id }, { reload });
 };
 
-export const METADATA_FETCH_FIELD = "metabase/metadata/FETCH_FIELD";
-export const fetchField = createThunkAction(
-  METADATA_FETCH_FIELD,
-  (id, reload = false) => {
-    deprecated("metabase/redux/metadata fetchField");
-    return async (dispatch) => {
-      const action = await dispatch(Fields.actions.fetch({ id }, { reload }));
-      const field = Fields.HACK_getObjectFromAction(action);
-      if (field?.dimensions?.[0]?.human_readable_field_id != null) {
-        await dispatch(
-          Fields.actions.fetch(
-            { id: field.dimensions?.[0]?.human_readable_field_id },
-            { reload },
-          ),
-        );
-      }
-    };
-  },
-);
-
 export const updateFieldValues = (fieldId, fieldValuePairs) => {
   deprecated("metabase/redux/metadata updateFieldValues");
   return Fields.actions.updateFieldValues({ id: fieldId }, fieldValuePairs);

@@ -2,6 +2,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { fieldApi } from "metabase/api";
 import type { EmbeddingParameterVisibility } from "metabase/embedding/types";
 import { TemporalUnitSettings } from "metabase/parameters/components/TemporalUnitSettings";
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
@@ -9,7 +10,6 @@ import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-t
 import { setTemplateTagConfig } from "metabase/query_builder/actions";
 import { getOriginalQuestion } from "metabase/query_builder/selectors";
 import { type DispatchFn, connect } from "metabase/redux";
-import { fetchField } from "metabase/redux/metadata";
 import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
@@ -99,8 +99,22 @@ const mapDispatchToProps = (
   props: OwnProps,
 ): DispatchProps => {
   return {
-    fetchField(fieldId, force) {
-      dispatch(fetchField(fieldId, force));
+    async fetchField(fieldId, force) {
+      const { data: field } = await dispatch(
+        fieldApi.endpoints.getField.initiate(
+          { id: fieldId },
+          { forceRefetch: force },
+        ),
+      );
+      const remapId = field?.dimensions?.[0]?.human_readable_field_id;
+      if (remapId != null) {
+        await dispatch(
+          fieldApi.endpoints.getField.initiate(
+            { id: remapId },
+            { forceRefetch: force },
+          ),
+        );
+      }
     },
     setTemplateTagConfig(tag, config) {
       if (props.setTemplateTagConfig) {
