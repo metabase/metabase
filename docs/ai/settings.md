@@ -106,7 +106,9 @@ Click **Regenerate suggested prompts** to generate a fresh set of prompts. You c
 
 ## Enable MCP server
 
-_Admin > AI > AI settings_
+_Admin > AI > MCP_
+
+MCP server and Agent API settings live on their own subpage. From **Admin > AI**, open the **MCP** tab in the left sidebar.
 
 Use the **MCP server** toggle to turn external access to the [MCP server](./mcp.md) on or off.
 
@@ -133,6 +135,8 @@ https://mcp.internal.example.com https://*.staging.example.com
 The field accepts wildcards (`*`) for subdomains. Changes take effect in about a minute. Might be a good time to get up and pour yourself a glass of water.
 
 ## Agent API settings
+
+_Admin > AI > MCP_
 
 Use the **Agent API** toggle to turn external access to the [Agent API](./agent-api.md) on or off.
 

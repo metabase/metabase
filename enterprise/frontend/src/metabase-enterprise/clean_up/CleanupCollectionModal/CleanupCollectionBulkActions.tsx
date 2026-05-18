@@ -2,12 +2,12 @@ import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { archiveAndTrack } from "metabase/archive/analytics";
+import { type ArchivableItem, useSetArchive } from "metabase/archive/hooks";
 import {
   BulkActionBar,
   BulkActionButton,
 } from "metabase/common/components/BulkActionBar";
 import { UndoListOverlay } from "metabase/common/components/UndoListing";
-import { type ArchivableItem, useSetArchive } from "metabase/common/hooks";
 import type { Undo } from "metabase/redux/store/undo";
 
 import type { StaleCollectionItem } from "../types";

@@ -155,6 +155,11 @@ export const setup = async ({
     key: "upsell-dev_instances",
     value: true,
   });
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "upsell-remote-sync-dev-instance",
+    value: true,
+  });
 
   fetchMock.get("path:/api/cloud-migration", { status: 204 });
   fetchMock.get("path:/api/ee/sso/oidc", []);

@@ -20,6 +20,7 @@ import {
   getMajorVersion,
   getVersionFromReleaseBranch,
   ignorePatches,
+  isPatchVersion,
   versionSort,
 } from "./version-helpers";
 
@@ -300,6 +301,13 @@ export async function checkMilestoneForRelease({
   version,
   commitHash,
 }: GithubProps & { version: string, commitHash: string }) {
+  // Patches don't have their own milestones — they share the parent minor's.
+  // There's nothing to check pre-release; skip cleanly.
+  if (isPatchVersion(version)) {
+    console.log(`Skipping milestone check for patch version ${version}`);
+    return;
+  }
+
   const releaseMilestone = await findMilestone({ github, owner, repo, version });
 
   if (!releaseMilestone) {
