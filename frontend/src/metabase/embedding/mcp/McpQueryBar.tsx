@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 
 import { QueryExplorerBar } from "./QueryExplorerBar";
@@ -5,7 +7,11 @@ import { useChartTypes } from "./hooks/useChartTypes";
 import { useDateFilter } from "./hooks/useDateFilter";
 import { useTemporalGranularity } from "./hooks/useTemporalGranularity";
 
-export function McpQueryBar() {
+interface McpQueryBarProps {
+  onVisibilityChange?: (isVisible: boolean) => void;
+}
+
+export function McpQueryBar({ onVisibilityChange }: McpQueryBarProps) {
   const { question, updateQuestion, queryResults } = useSdkQuestionContext();
 
   const {
@@ -33,10 +39,6 @@ export function McpQueryBar() {
     handleDateFilterClear,
   } = useDateFilter(question, updateQuestion, rawTemporalColumn);
 
-  if (!question || !queryResults || hasOnlyTable) {
-    return null;
-  }
-
   const timeRange =
     rawTemporalColumn !== null
       ? {
@@ -59,10 +61,18 @@ export function McpQueryBar() {
         }
       : undefined;
 
-  const hasControls =
-    sensibleChartTypes.length > 0 || timeRange || timeGranularity;
+  const hasControls = Boolean(
+    sensibleChartTypes.length > 0 || timeRange || timeGranularity,
+  );
 
-  if (!hasControls) {
+  const isVisible =
+    !!question && !!queryResults && !hasOnlyTable && hasControls;
+
+  useEffect(() => {
+    onVisibilityChange?.(isVisible);
+  }, [isVisible, onVisibilityChange]);
+
+  if (!isVisible) {
     return null;
   }
 

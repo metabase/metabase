@@ -1,4 +1,10 @@
-import { type CSSProperties, useEffect, useMemo } from "react";
+import {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
@@ -22,6 +28,7 @@ const store = getSdkStore();
 const DEFAULT_INSETS = { top: 0, right: 0, bottom: 0, left: 0 };
 const CONTENT_HEIGHT = "500px";
 const FOOTER_HEIGHT = "50px";
+const QUERY_BAR_RESERVED_HEIGHT = "calc(2rem + var(--mantine-spacing-sm))";
 
 // CSS for .mcp-loading and .mcp-spinner is defined globally in embed-mcp.html.
 const SimpleLoader = () => (
@@ -32,6 +39,7 @@ const SimpleLoader = () => (
 
 export function McpUiAppRoute() {
   const { query, prompt, hostContext, app } = useMcpApp();
+  const [isQueryBarVisible, setIsQueryBarVisible] = useState(false);
 
   const handleDrillThrough = useHandleMcpDrillThrough(app);
 
@@ -91,7 +99,11 @@ export function McpUiAppRoute() {
   }, [isReady, userAndSettingsFetchError]);
 
   const height = `calc(${CONTENT_HEIGHT} + ${FOOTER_HEIGHT})`;
-  const visualizationHeight = `calc(${CONTENT_HEIGHT} - 8.5rem)`;
+
+  const visualizationHeight = isQueryBarVisible
+    ? `calc(${CONTENT_HEIGHT} - 8.5rem)`
+    : `calc(${CONTENT_HEIGHT} - 8.5rem + ${QUERY_BAR_RESERVED_HEIGHT})`;
+
   const safeAreaPadding = {
     top: Math.max(safeAreaInsets.top, 0),
     right: Math.max(safeAreaInsets.right, 0),
@@ -118,6 +130,10 @@ export function McpUiAppRoute() {
     paddingBottom: safeAreaPadding.bottom,
     paddingLeft: safeAreaPadding.left,
   };
+
+  const handleQueryBarVisibilityChange = useCallback((isVisible: boolean) => {
+    setIsQueryBarVisible(isVisible);
+  }, []);
 
   const renderContent = () => {
     if (userAndSettingsFetchError) {
@@ -155,9 +171,17 @@ export function McpUiAppRoute() {
             <SdkQuestion.QuestionVisualization height={visualizationHeight} />
           </Flex>
 
-          <Flex px="lg">
-            <McpQueryBar />
-          </Flex>
+          {isQueryBarVisible && (
+            <Flex px="lg">
+              <McpQueryBar
+                onVisibilityChange={handleQueryBarVisibilityChange}
+              />
+            </Flex>
+          )}
+
+          {!isQueryBarVisible && (
+            <McpQueryBar onVisibilityChange={handleQueryBarVisibilityChange} />
+          )}
         </Flex>
 
         <Flex
