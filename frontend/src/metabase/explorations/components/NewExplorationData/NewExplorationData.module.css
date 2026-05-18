@@ -79,3 +79,11 @@
 .accordionRoot .accordionPanel {
   padding: 0 !important;
 }
+
+.pill .pillRemove {
+  opacity: 0;
+}
+
+.pill:hover .pillRemove {
+  opacity: 1;
+}

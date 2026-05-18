@@ -4,6 +4,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCreateExplorationMutation } from "metabase/api";
+import { useToast } from "metabase/common/hooks";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useDispatch } from "metabase/redux";
@@ -83,6 +84,7 @@ export function NewExplorationData({
   name,
 }: NewExplorationDataProps) {
   const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   const [isAddMetricsModalOpen, setIsAddMetricsModalOpen] = useState(false);
   const [isAddTimelinesModalOpen, setIsAddTimelinesModalOpen] = useState(false);
@@ -104,8 +106,17 @@ export function NewExplorationData({
       dimensions,
       timelines,
     );
-    const exploration = await createExploration(request).unwrap();
-    dispatch(push(Urls.exploration(exploration.id)));
+    try {
+      const exploration = await createExploration(request).unwrap();
+      dispatch(push(Urls.exploration(exploration.id)));
+    } catch (error) {
+      console.error(error);
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "warning",
+        message: t`Failed to create exploration`,
+      });
+    }
   }, [
     createExploration,
     dispatch,
@@ -114,6 +125,7 @@ export function NewExplorationData({
     dimensions,
     timelines,
     name,
+    sendToast,
   ]);
 
   const canStart = metrics.length > 0 && dimensions.length > 0;
@@ -340,6 +352,7 @@ function PillList({ items, onRemove }: PillListProps) {
             px="sm"
             maw="100%"
             data-interestingness={formatInterestingness(item.interestingness)}
+            classNames={{ root: S.pill, remove: S.pillRemove }}
             removeButtonProps={{
               mr: 0,
               "aria-hidden": false,
@@ -425,6 +438,7 @@ function DimensionCategoryList({
                   data-interestingness={formatInterestingness(
                     pickMaxInterestingness(pill.dimensions),
                   )}
+                  classNames={{ root: S.pill, remove: S.pillRemove }}
                   removeButtonProps={{
                     mr: 0,
                     "aria-hidden": false,
