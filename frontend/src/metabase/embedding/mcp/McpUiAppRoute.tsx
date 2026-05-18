@@ -10,16 +10,13 @@ import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponen
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { getSdkStore } from "embedding-sdk-bundle/store";
-import { Box, Flex } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 
-import { McpExploreButton } from "./McpExploreButton";
+import { McpCardFooter } from "./McpCardFooter";
 import { McpFeedbackArea } from "./McpFeedbackArea";
-import { McpFeedbackButtons } from "./McpFeedbackButtons";
-import { McpQueryBar } from "./McpQueryBar";
-import { McpQuestionTitle } from "./McpQuestionTitle";
+import { McpQuestionView } from "./McpQuestionView";
 import { getMcpDeserializedCard } from "./McpUiAppRoute.utils";
-import { McpVisualizationTypeSelector } from "./McpVisualizationTypeSelector";
 import { useHandleMcpDrillThrough } from "./hooks/useHandleMcpDrillThrough";
 import { useMcpApp } from "./hooks/useMcpApp";
 import { useMcpFeedback } from "./hooks/useMcpFeedback";
@@ -186,57 +183,8 @@ function McpUiAppRouteContent({
     setIsQueryBarVisible(isVisible);
   }, []);
 
-  const renderQuestionView = () => (
-    <Flex
-      direction="column"
-      justify="space-between"
-      h={CONTENT_HEIGHT}
-      py="lg"
-      gap="sm"
-      style={contentStyle}
-    >
-      <Flex
-        px="lg"
-        align="center"
-        justify="space-between"
-        gap="sm"
-        flex="0 0 auto"
-      >
-        <Box flex={1} miw={0}>
-          <McpQuestionTitle />
-        </Box>
-
-        <Flex align="center" flex="0 0 auto">
-          <McpVisualizationTypeSelector />
-        </Flex>
-      </Flex>
-
-      <Flex px="xs" flex={1} style={{ overflow: "hidden" }}>
-        <SdkQuestion.QuestionVisualization height={visualizationHeight} />
-      </Flex>
-
-      {isQueryBarVisible && (
-        <Flex px="lg">
-          <McpQueryBar onVisibilityChange={handleQueryBarVisibilityChange} />
-        </Flex>
-      )}
-
-      {!isQueryBarVisible && (
-        <McpQueryBar onVisibilityChange={handleQueryBarVisibilityChange} />
-      )}
-    </Flex>
-  );
-
-  const renderContent = () => {
-    if (userAndSettingsFetchError) {
-      return <SdkError message={userAndSettingsFetchError} />;
-    }
-
-    if (!isReady) {
-      return null;
-    }
-
-    return (
+  const renderQuestionCardView = () =>
+    deserializedCard && (
       <SdkQuestion
         deserializedCard={deserializedCard}
         isSaveEnabled={false}
@@ -245,41 +193,49 @@ function McpUiAppRouteContent({
         withChartTypeSelector={false}
         onDrillThrough={handleDrillThrough}
       >
-        {selectedFeedback == null ? (
-          renderQuestionView()
-        ) : (
-          <Flex h={height} w="100%" style={feedbackContentStyle}>
-            <McpFeedbackArea
-              feedback={selectedFeedback}
-              isSubmitting={isSubmittingFeedback}
-              onCancel={() => setSelectedFeedback(null)}
-              onSubmit={handleFeedbackSubmit}
-            />
-          </Flex>
-        )}
+        <McpQuestionView
+          contentStyle={contentStyle}
+          isTimeControlsVisible={isQueryBarVisible}
+          onTimeControlsVisibilityChange={handleQueryBarVisibilityChange}
+          visualizationHeight={visualizationHeight}
+        />
 
-        {selectedFeedback == null && (
-          <Flex
-            h={FOOTER_HEIGHT}
-            align="center"
-            justify="space-between"
-            bg="background-secondary"
-            style={footerStyle}
-          >
-            <Flex align="center" gap="xs">
-              <McpFeedbackButtons
-                isSubmitting={isSubmittingFeedback}
-                submittedFeedback={submittedFeedback}
-                onSelectFeedback={setSelectedFeedback}
-              />
-            </Flex>
-
-            <McpExploreButton app={app} instanceUrl={instanceUrl} />
-          </Flex>
-        )}
+        <McpCardFooter
+          app={app}
+          footerStyle={footerStyle}
+          instanceUrl={instanceUrl}
+          isSubmittingFeedback={isSubmittingFeedback}
+          onSelectFeedback={setSelectedFeedback}
+          submittedFeedback={submittedFeedback}
+        />
       </SdkQuestion>
     );
+
+  const renderFeedbackView = () =>
+    selectedFeedback && (
+      <Flex h={height} w="100%" style={feedbackContentStyle}>
+        <McpFeedbackArea
+          feedback={selectedFeedback}
+          isSubmitting={isSubmittingFeedback}
+          onCancel={() => setSelectedFeedback(null)}
+          onSubmit={handleFeedbackSubmit}
+        />
+      </Flex>
+    );
+
+  const renderContentView = () => {
+    if (userAndSettingsFetchError) {
+      return <SdkError message={userAndSettingsFetchError} />;
+    }
+
+    if (!isReady) {
+      return null;
+    }
+
+    return selectedFeedback !== null
+      ? renderFeedbackView()
+      : renderQuestionCardView();
   };
 
-  return <div style={containerStyle}>{renderContent()}</div>;
+  return <div style={containerStyle}>{renderContentView()}</div>;
 }
