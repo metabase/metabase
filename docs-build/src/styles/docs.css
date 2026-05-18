@@ -136,7 +136,6 @@ body::before {
     grid-template-columns: 226px minmax(0, 1fr);
     column-gap: 40px;
   }
-  .docs-rail { display: none; }
   .docs-shell > .docs-topbar { grid-column: 2 / 3; }
 }
 
@@ -232,10 +231,15 @@ body::before {
 }
 
 /* ---------- Top bar (flex row: breadcrumbs left, What's new + search right) ---------- */
+/* Search/right group is anchored with justify-content: flex-end so it stays
+ * on the right regardless of whether breadcrumbs are present (the docs home
+ * has no breadcrumbs, so without flex-end the single right child would
+ * collapse to flex-start). When breadcrumbs do render, margin-right: auto
+ * on the breadcrumb nav pushes it back to the left edge. */
 .docs-topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
   height: 57px;
   padding: 8px 0;
@@ -247,7 +251,6 @@ body::before {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-left: auto;
 }
 .docs-whats-new {
   display: inline-flex;
@@ -277,6 +280,7 @@ body::before {
 .docs-breadcrumbs {
   font-size: 14px;
   color: var(--neutral-60);
+  margin-right: auto;
 }
 .docs-breadcrumbs ol {
   list-style: none;
@@ -655,6 +659,16 @@ article.docs-content td code { background: var(--neutral-95); }
 
 .feedback-widget .hide { display: none; }
 
+/* Hide the right rail (TOC + feedback widget) at tablet/mobile widths.
+ * Placed AFTER the .docs-rail / .docs-toc / .feedback-widget blocks above
+ * because media queries don't add specificity — source order decides which
+ * rule wins when both match. Keeping this last for the rail ensures the
+ * hide always beats the visible-state styles. See breakpoint table at top
+ * of file. */
+@media (max-width: 1199px) {
+  .docs-rail { display: none; }
+}
+
 /* ---------- Section-link copy icon (anchor-links.js fallback) ---------- */
 .copy-clip-container { position: relative; display: flex; align-items: baseline; gap: 8px; }
 .copy-clip {
@@ -762,6 +776,49 @@ header.bootstrap.sticky {
 
 .bootstrap .navigation-header #hover-highlight {
   display: none;
+}
+
+/* chrome.css line 2720 — `.bootstrap .Button { background-color: transparent }`
+ * comes AFTER line 280 — `.bootstrap .btn-primary { background-color: #509ee3 }`
+ * in source order. Both selectors have equal specificity, so the later rule
+ * wins and the Get started pill renders transparent until :hover reapplies a
+ * background. Anchor the primary blue back on by ID so neither cascade order
+ * nor specificity comes into play. */
+.bootstrap .navigation-header #get-started-btn {
+  background-color: #509ee3;
+  color: #fff;
+}
+.bootstrap .navigation-header #get-started-btn:hover {
+  background-color: #1c6bb0;
+  color: #fff;
+}
+
+/* The marketing site sets `a { text-decoration: none }` globally on body
+ * (main.css:211-220) which the docs site does not carry — so anchors inside
+ * the chrome header (mobile menu links, mega-menu cards, "Watch 5-minute
+ * demo", section labels wrapped as <a>) render with the browser default
+ * underline. We already scoped this for the footer via `.bootstrap.footer-wrap
+ * a`; do the same for the nav header. */
+.bootstrap .navigation-header a {
+  text-decoration: none;
+}
+
+/* The mobile menu section labels are <span class="h4">. In standard Bootstrap
+ * `.h1`-`.h6` are utility classes that mimic the corresponding tag's typography,
+ * but the docs-build chrome subset only styles the actual <h1>-<h6> tags. Add
+ * the `.h4` class so "Product", "Features", "Docs", "Resources", "Pricing"
+ * (and "Log in" at the menu bottom) render bold instead of as plain inline
+ * text. Mirrors the cascade for <h4> in chrome.css. */
+.bootstrap .h4 {
+  font-size: calc(1.275rem + 0.3vw);
+  font-weight: 700;
+  line-height: 1.33;
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  color: #22242b;
+}
+@media (min-width: 1200px) {
+  .bootstrap .h4 { font-size: 1.5rem; }
 }
 
 /* Newsletter email input in the footer is hard-coded to 360px in the chrome
