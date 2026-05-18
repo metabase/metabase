@@ -40,35 +40,6 @@
                                        (into [:case] cat cases)
                                        1))))
 
-(defn- library-collection-ids
-  "All `:id`s of collections whose `:type` is a library variant (top-level libraries, library-data,
-   library-metrics). Used by `library-score-expr` to find items in library trees via location-path match."
-  []
-  (t2/select-fn-set :id :model/Collection
-                    :type [:in (vec collection/library-collection-types)]))
-
-(defn- library-score-expr
-  "SQL expression for the `:library` scorer. Returns 1 when the row's `collection_id` is itself a
-   library collection (i.e. the row IS a library collection, or is a card/dashboard/table directly
-   parented to one), OR when the row's `collection_location` path contains a library collection id
-   (i.e. the row is inside a sub-collection of a library). Returns 0 otherwise.
-
-   Library ids are queried at scorer build time — there are typically only a handful per instance,
-   so the `OR`-of-LIKEs stays small."
-  []
-  (let [lib-ids (library-collection-ids)]
-    (if (empty? lib-ids)
-      [:inline 0]
-      [:case
-       (into [:or]
-             (concat
-              (for [id lib-ids]
-                [:= :search_index.collection_id [:inline id]])
-              (for [id lib-ids]
-                [:like :search_index.collection_location [:inline (str "%/" id "/%")]])))
-       [:inline 1]
-       :else [:inline 0]])))
-
 (defn base-scorers
   "The default constituents of the search ranking scores."
   [{:keys [search-string] :as search-ctx}]
@@ -93,11 +64,16 @@
                      ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
                      (search.scoring/prefix [:lower :search_index.name] (u/lower-case-en search-string))
                      [:inline 0])
-     ;; :library matches items directly in library collections AND items in sub-collections of library
-     ;; collections (their immediate `collection_type` is non-library, but their `collection_location`
-     ;; path contains a library collection's id). We resolve library ids at scorer build time — there are
-     ;; usually very few library collections per instance, so the resulting OR-of-LIKEs stays small.
-     :library      (library-score-expr)
+     ;; :library matches items whose root (top-level) ancestor collection is one of the library types.
+     ;; The :root-collection-type attr is computed at ingestion time by walking the collection's
+     ;; materialized path (see metabase.collections.models.collection/root-collection-type), so items
+     ;; in arbitrarily deep sub-collections of a library tree still match here.
+     :library      [:case
+                    (into [:or]
+                          (for [t (sort collection/library-collection-types)]
+                            [:= :search_index.root_collection_type [:inline t]]))
+                    [:inline 1]
+                    :else [:inline 0]]
      ;; :data-layer mirrors the :model/* pattern — one scorer, per-tier weights live under :data-layer/*
      ;; (see metabase.search.config/scorer-param). Final/internal/hidden are mutually exclusive.
      :data-layer   [:case

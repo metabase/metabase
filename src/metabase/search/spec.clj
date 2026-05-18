@@ -122,6 +122,7 @@
    :source-type             :text
    :collection-type         :text
    :collection-location     :text
+   :root-collection-type    :text
    :data-layer              :text})
 
 (def ^:private explicit-attrs
@@ -147,8 +148,9 @@
          :temporal-info
          :is-published
          :source-type
-         :collection-type                                   ;;  indexed for :library scorer (collection.type ∈ library/library-data/library-metrics)
-         :collection-location                               ;;  indexed for :library scorer — lets sub-collections inherit the boost via location-path LIKE
+         :collection-type                                   ;;  surfaced for downstream consumers (metabase.search.impl/serialize)
+         :collection-location                               ;;  surfaced for downstream consumers (add-dataset-collection-hierarchy)
+         :root-collection-type                              ;;  indexed for :library scorer — type of the top-level ancestor collection
          :data-layer])                                      ;;  indexed for the :data-layer scorer (table.data_layer; per-tier weights under :data-layer/*)
        distinct
        vec))

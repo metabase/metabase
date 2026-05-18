@@ -319,8 +319,8 @@
 
 (deftest library-test
   (testing "Library-collection cards rank above non-library cards"
-    ;; Real Collections are needed in appdb so `library-score-expr` resolves their ids and matches the
-    ;; index rows by id and by `collection_location` path.
+    ;; Real Collections are needed in appdb so the `:root-collection-type` fn attr can resolve the
+    ;; top-level ancestor's `:type` from each row's `:collection_location` materialized path.
     (mt/with-temp [:model/Collection lib       {:name "lib top"        :type "library"        :location "/"}
                    :model/Collection lib-data  {:name "lib data"       :type "library-data"   :location "/"}
                    :model/Collection lib-met   {:name "lib metrics"    :type "library-metrics" :location "/"}

@@ -484,7 +484,8 @@
                   :created-at     true
                   :updated-at     true
                   :collection-type :collection.type
-                  :collection-location :collection.location}
+                  :collection-location :collection.location
+                  :root-collection-type {:fn collection/root-collection-type}}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level

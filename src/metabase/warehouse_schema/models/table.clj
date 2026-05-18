@@ -669,6 +669,7 @@
                   :is-published        :is_published
                   :collection-type     :collection.type
                   :collection-location :collection.location
+                  :root-collection-type {:fn collection/root-collection-type}
                   :data-layer          :data_layer}
    :search-terms {:name         search.spec/explode-camel-case
                   :display_name true
