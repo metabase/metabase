@@ -1,10 +1,12 @@
-import { Api } from "metabase/api/api";
+import { Api, } from "metabase/api/api";
 import { listTag } from "metabase/api/tags";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner/ArchivedEntityBanner";
-import { Dashboards } from "metabase/entities/dashboards";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import { useDispatch } from "metabase/redux";
+import type { Dispatch } from "metabase/redux/store";
 
 import { useDashboardContext } from "../context";
+import { dashboardApi } from "metabase/api/dashboard";
 
 export const DashboardArchivedEntityBanner = () => {
   const {
@@ -40,7 +42,12 @@ export const DashboardArchivedEntityBanner = () => {
       }}
       onMove={({ id }) => moveDashboardToCollection({ id })}
       onDeletePermanently={() => {
-        const deleteAction = Dashboards.actions.delete({ id: dashboard?.id });
+        const deleteAction = (innerDispatch: Dispatch) =>
+          entityCompatibleQuery(
+            dashboard.id,
+            innerDispatch,
+            dashboardApi.endpoints.deleteDashboard,
+          );
         deletePermanently(deleteAction);
       }}
     />

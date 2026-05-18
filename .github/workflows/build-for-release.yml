@@ -184,9 +184,13 @@ jobs:
   manage-milestones:
     # Close the milestone we're about to ship and open the next one BEFORE building,
     # so any PRs that merge while the build is in flight are tagged with the next
-    # milestone (not the one about to be released). Gated on the preflight checks
-    # so a bad version/commit input doesn't rotate the milestone spuriously.
-    needs: [check-version, check-commit]
+    # milestone (not the one about to be released).
+    #
+    # Sequenced after trigger-milestone-check so that the check sees the milestone
+    # in its open state. milestone-check is informational and must never block, so
+    # we run regardless of its outcome; only preflight failures suppress this.
+    needs: [check-version, check-commit, trigger-milestone-check]
+    if: ${{ !cancelled() && needs.check-version.result == 'success' && needs.check-commit.result == 'success' }}
     permissions:
       contents: read
       issues: write

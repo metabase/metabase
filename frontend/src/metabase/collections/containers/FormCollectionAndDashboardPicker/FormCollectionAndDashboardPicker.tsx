@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api/api";
 import { useGetCollectionQuery } from "metabase/api/collection";
-import { useLazyGetDashboardQuery } from "metabase/api/dashboard";
+import { useGetDashboardQuery, useLazyGetDashboardQuery } from "metabase/api/dashboard";
 import {
   type EntityType,
   canonicalCollectionId,
@@ -13,6 +13,7 @@ import {
   isValidCollectionId,
 } from "metabase/collections/utils";
 import { CollectionName } from "metabase/common/components/CollectionName";
+import { DashboardName } from "metabase/common/components/DashboardName";
 import { FormField } from "metabase/common/components/FormField";
 import type {
   EntityPickerOptions,
@@ -28,8 +29,6 @@ import {
 import { SnippetCollectionName } from "metabase/common/components/SnippetCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { getCollectionIcon } from "metabase/entities/collections/utils";
-import { Dashboards } from "metabase/entities/dashboards";
-import { useSelector } from "metabase/redux";
 import { Button, Flex, Icon } from "metabase/ui";
 import type { CollectionId, DashboardId } from "metabase-types/api";
 
@@ -51,7 +50,7 @@ function ItemName({
     return (
       <Flex align="center" gap="sm">
         <Icon name="dashboard" c="brand" />
-        <Dashboards.Name id={dashboardId} />
+        <DashboardName id={dashboardId} />
       </Flex>
     );
   }
@@ -124,10 +123,8 @@ export function FormCollectionAndDashboardPicker({
 
   const { data: openCollection } = useGetCollectionQuery({ id: "root" });
 
-  const selectedDashboard = useSelector((state) =>
-    Dashboards.selectors.getObject(state, {
-      entityId: dashboardIdInput.value,
-    }),
+  const { currentData: selectedDashboard } = useGetDashboardQuery(
+    dashboardIdInput.value != null ? { id: dashboardIdInput.value } : skipToken,
   );
   const { data: selectedCollection } = useGetCollectionQuery(
     collectionIdInput.value != null
@@ -136,7 +133,8 @@ export function FormCollectionAndDashboardPicker({
   );
   const selectedItem = selectedDashboard || selectedCollection;
 
-  const namespace = selectedItem?.namespace;
+  const namespace =
+    selectedCollection?.namespace ?? selectedDashboard?.collection?.namespace;
 
   const pickerValue: OmniPickerValue = dashboardIdInput.value
     ? { id: dashboardIdInput.value, model: "dashboard", namespace }
@@ -259,7 +257,7 @@ export function FormCollectionAndDashboardPicker({
           }}
         >
           {isValidCollectionId(collectionIdInput.value) ||
-          !!dashboardIdInput.value ? (
+            !!dashboardIdInput.value ? (
             <ItemName
               collectionId={collectionIdInput.value}
               dashboardId={dashboardIdInput.value}

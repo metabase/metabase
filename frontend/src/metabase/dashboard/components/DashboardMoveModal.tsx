@@ -1,18 +1,20 @@
 import { c, t } from "ttag";
 
+import { skipToken } from "metabase/api/api";
 import { useGetCollectionQuery } from "metabase/api/collection";
+import { useGetDashboardQuery } from "metabase/api/dashboard";
 import { Link } from "metabase/common/components/Link";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { MoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";
 import { useSetCollection } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { Dashboards } from "metabase/entities/dashboards";
-import type { State } from "metabase/redux/store";
 import { Flex, Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 import * as Urls from "metabase/urls";
 import type { CollectionId, Dashboard } from "metabase-types/api";
 
 import S from "./DashboardMoveModal.module.css";
+
 
 function DashboardMoveModal({
   dashboard,
@@ -70,8 +72,7 @@ const DashboardMoveToast = ({
         c="text-primary-inverse"
       />
       {c("{0} is a location where the dashboard was moved to")
-        .jt`Dashboard moved to ${
-        collection ? (
+        .jt`Dashboard moved to ${collection ? (
           <Link
             key="link"
             className={S.CollectionLink}
@@ -82,12 +83,32 @@ const DashboardMoveToast = ({
             {collection.name}
           </Link>
         ) : null
-      }`}
+        }`}
     </Flex>
   );
 };
 
-export const DashboardMoveModalConnected = Dashboards.load({
-  id: (_state: State, props: { params: { slug: string } }) =>
-    Urls.extractCollectionId(props.params.slug),
-})(DashboardMoveModal);
+export const DashboardMoveModalConnected = ({
+  params,
+  onClose,
+}: {
+  params: { slug: string };
+  onClose: () => void;
+}) => {
+  const id = Urls.extractCollectionId(params.slug);
+  const { currentData: dashboard, error } = useGetDashboardQuery(
+    id != null ? { id } : skipToken,
+  );
+
+  return (
+    <LoadingAndErrorWrapper
+      loading={id != null && !dashboard}
+      error={error}
+      noWrapper
+    >
+      {dashboard && (
+        <DashboardMoveModal dashboard={dashboard} onClose={onClose} />
+      )}
+    </LoadingAndErrorWrapper>
+  );
+};

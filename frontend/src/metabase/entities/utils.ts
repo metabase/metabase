@@ -974,6 +974,7 @@ type CombinedEntities = {
  */
 const RETIRED_ENTITY_NAMES = [
   "collections",
+  "dashboards",
   "measures",
   "metrics",
   "schemas",
