@@ -2,7 +2,7 @@ import type { App } from "@modelcontextprotocol/ext-apps/react";
 import { t } from "ttag";
 
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
-import { Button } from "metabase/ui";
+import { UnstyledButton } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 interface McpExploreButtonProps {
@@ -24,17 +24,17 @@ export function McpExploreButton({ app, instanceUrl }: McpExploreButtonProps) {
   }
 
   return (
-    <Button
-      variant="subtle"
-      size="xs"
-      h={32}
-      px="sm"
-      bg="transparent"
+    <UnstyledButton
       onClick={handleExploreClicked}
       disabled={!app || !question || !instanceUrl}
+      c="text-secondary"
+      fz={12}
+      fw={400}
+      lh="normal"
+      p={0}
     >
       {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Figma copy intentionally uses the product name. */}
       {t`Explore in Metabase`}
-    </Button>
+    </UnstyledButton>
   );
 }

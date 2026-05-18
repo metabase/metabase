@@ -28,6 +28,7 @@ const store = getSdkStore();
 const DEFAULT_INSETS = { top: 0, right: 0, bottom: 0, left: 0 };
 const CONTENT_HEIGHT = "500px";
 const FOOTER_HEIGHT = "50px";
+const FOOTER_HORIZONTAL_PADDING = 20;
 const QUERY_BAR_RESERVED_HEIGHT = "calc(2rem + var(--mantine-spacing-sm))";
 
 // CSS for .mcp-loading and .mcp-spinner is defined globally in embed-mcp.html.
@@ -125,10 +126,10 @@ export function McpUiAppRoute() {
 
   const footerStyle: CSSProperties = {
     boxSizing: "border-box",
-    paddingRight: safeAreaPadding.right,
+    paddingRight: Math.max(safeAreaPadding.right, FOOTER_HORIZONTAL_PADDING),
     paddingTop: safeAreaPadding.bottom,
     paddingBottom: safeAreaPadding.bottom,
-    paddingLeft: safeAreaPadding.left,
+    paddingLeft: Math.max(safeAreaPadding.left, FOOTER_HORIZONTAL_PADDING),
   };
 
   const handleQueryBarVisibilityChange = useCallback((isVisible: boolean) => {
