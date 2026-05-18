@@ -12,7 +12,7 @@ import { McpFeedbackArea } from "./McpFeedbackArea";
 import { McpQuestionView } from "./McpQuestionView";
 import { getMcpDeserializedCard } from "./McpUiAppRoute.utils";
 import { useHandleMcpDrillThrough } from "./hooks/useHandleMcpDrillThrough";
-import { useMcpApp } from "./hooks/useMcpApp";
+import { type McpAppState, useMcpApp } from "./hooks/useMcpApp";
 import { useMcpFeedback } from "./hooks/useMcpFeedback";
 import { useMcpUserAndSettingsFetch } from "./hooks/useMcpUserAndSettingsFetch";
 import { buildMcpAppsTheme } from "./utils/buildMcpAppsTheme";
@@ -26,7 +26,11 @@ const FOOTER_HORIZONTAL_PADDING = 16;
 const QUERY_BAR_RESERVED_HEIGHT = "calc(2rem + var(--mantine-spacing-sm))";
 
 interface McpUiAppRouteContentProps {
+  app: McpAppState["app"];
+  hostContext: McpAppState["hostContext"];
   instanceUrl: string;
+  prompt: McpAppState["prompt"];
+  query: McpAppState["query"];
   sessionToken: string;
 }
 
@@ -38,7 +42,7 @@ const SimpleLoader = () => (
 );
 
 export function McpUiAppRoute() {
-  const { hostContext } = useMcpApp();
+  const { app, hostContext, prompt, query } = useMcpApp();
 
   const { instanceUrl = "", sessionToken = "" } =
     (window.metabaseConfig as {
@@ -68,7 +72,11 @@ export function McpUiAppRoute() {
       loaderComponent={SimpleLoader}
     >
       <McpUiAppRouteContent
+        app={app}
+        hostContext={hostContext}
         instanceUrl={instanceUrl}
+        prompt={prompt}
+        query={query}
         sessionToken={sessionToken}
       />
     </ComponentProvider>
@@ -76,10 +84,13 @@ export function McpUiAppRoute() {
 }
 
 function McpUiAppRouteContent({
+  app,
+  hostContext,
   instanceUrl,
+  prompt,
+  query,
   sessionToken,
 }: McpUiAppRouteContentProps) {
-  const { query, prompt, hostContext, app } = useMcpApp();
   const [isTimeControlsVisible, setIsTimeControlsVisible] = useState(false);
 
   const handleDrillThrough = useHandleMcpDrillThrough(app);
