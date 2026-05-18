@@ -72,13 +72,13 @@ export function createTestPlan({
   const moduleGraph = buildModuleGraph(elements, rules);
 
   const changedModules = getChangedModules(moduleGraph, changedFiles);
-  const affectedModules = getAffectedModules(moduleGraph, changedFiles);
-  const modulesAffectedList = [...affectedModules].sort();
+  const modulesAffected = getAffectedModules(moduleGraph, changedFiles);
+  const modulesAffectedList = [...modulesAffected].sort();
 
   const specsToRun: Record<string, string[]> = {};
   const stats: Record<string, number | string[]> = {
     modules_changed: changedModules.size,
-    modules_affected: affectedModules.size,
+    modules_affected: modulesAffected.size,
     modules_affected_list: modulesAffectedList,
   };
 
