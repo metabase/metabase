@@ -231,7 +231,8 @@
               :endpoint       {:method "GET" :path "/api/agent/v1/table/{id}"}
               :inputSchema    {:type       "object"
                                :properties {:id {:type "integer"}}
-                               :required   [:id]}
+                               :required   [:id]
+                               :additionalProperties false}
               :responseSchema {:type       "object"
                                :properties {:name {:type "string"}}
                                :required   [:name]}
@@ -415,7 +416,8 @@
           :endpoint       {:method "GET" :path "/api/test/v1/test/{id}"}
           :inputSchema    {:type       "object"
                            :properties {:id {:type "integer"}}
-                           :required   [:id]}}
+                           :required   [:id]
+                           :additionalProperties false}}
          (test-tool "test_get_thing"))))
 
 (deftest ^:parallel generate-tools-manifest-post-with-annotation-override-test
@@ -426,7 +428,8 @@
           :endpoint       {:method "POST" :path "/api/test/v1/test-action"}
           :inputSchema    {:type       "object"
                            :properties {:name {:type "string"}}
-                           :required   [:name]}}
+                           :required   [:name]
+                           :additionalProperties false}}
          (test-tool "test_action"))))
 
 (deftest ^:parallel generate-tools-manifest-delete-test
@@ -437,7 +440,8 @@
           :endpoint       {:method "DELETE" :path "/api/test/v1/test/{id}"}
           :inputSchema    {:type       "object"
                            :properties {:id {:type "integer"}}
-                           :required   [:id]}}
+                           :required   [:id]
+                           :additionalProperties false}}
          (test-tool "delete_test"))))
 
 (deftest ^:parallel generate-tools-manifest-get-with-query-params-test
@@ -448,9 +452,10 @@
           :endpoint       {:method "GET" :path "/api/test/v1/test-search"}
           :inputSchema    {:type       "object"
                            :properties {:q     {:type "string"}
-                                        :limit {:type        "integer"
+                                        :limit {:type        ["integer" "null"]
                                                 :description "Maximum number of results to return"}}
-                           :required   [:q]}
+                           :required   [:q :limit]
+                           :additionalProperties false}
           :responseSchema {:type       "object"
                            :properties {:results {:type "array" :items {:type "string"}}}
                            :required   [:results]}}
@@ -465,7 +470,8 @@
           :inputSchema    {:type       "object"
                            :properties {:id     {:type "integer"}
                                         :action {:type "string"}}
-                           :required   [:id :action]}
+                           :required   [:id :action]
+                           :additionalProperties false}
           :responseSchema {:type       "object"
                            :properties {:id     {:type "integer"}
                                         :status {:type "string"
@@ -484,5 +490,6 @@
                            :properties {:id      {:type "integer"}
                                         :dry-run {:oneOf [{:type "boolean"} {:type "null"}]}
                                         :name    {:type "string"}}
-                           :required   [:id :name]}}
+                           :required   [:id :dry-run :name]
+                           :additionalProperties false}}
          (test-tool "test_resource"))))

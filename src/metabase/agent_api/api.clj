@@ -537,6 +537,55 @@
    "- A `metric` source already provides its own aggregation and time dimension. Add only the additional breakouts/filters you need.\n"
    "- When the user asks for an exact year (e.g. 2024), use `[\"=\", [\"field\", year_field], 2024]` or a `between` with explicit dates — not relative filters like `time-interval`.\n"))
 
+(defn- construct-query-tool-node-schema
+  "A deliberately permissive, OpenAI-strict-compatible schema for the JSON-like
+  values inside structured program operation tuples.
+
+  The runtime still validates against the richer Malli program schema. This MCP
+  schema avoids tuple-specific JSON Schema features like `prefixItems`, `const`,
+  and `allOf`, which strict tool-schema validators may reject."
+  [depth]
+  (let [scalar-schema {:anyOf [{:type "string"}
+                               {:type "integer"}
+                               {:type "number"}
+                               {:type "boolean"}
+                               {:type "null"}]}
+        page-schema   {:type                 "object"
+                       :properties           {:page  {:type "integer" :minimum 1}
+                                              :items {:type "integer" :minimum 1}}
+                       :required             [:page :items]
+                       :additionalProperties false}
+        binning-schema {:type                 "object"
+                        :properties           {:strategy  {:type "string"
+                                                           :enum ["num-bins" "bin-width" "default"]}
+                                               :num-bins  {:type ["integer" "null"] :minimum 1}
+                                               :bin-width {:type ["number" "null"]}}
+                        :required             [:strategy :num-bins :bin-width]
+                        :additionalProperties false}]
+    (cond-> {:anyOf [scalar-schema page-schema binning-schema]}
+      (pos? depth)
+      (update :anyOf conj {:type  "array"
+                           :items (construct-query-tool-node-schema (dec depth))}))))
+
+(def ^:private construct-query-tool-input-schema
+  {:type "object"
+   :properties
+   {:source     {:type                 "object"
+                 :properties           {:type {:type "string"
+                                               :enum ["table" "card" "dataset" "metric"]}
+                                        :id   {:type "integer" :minimum 1}}
+                 :required             [:type :id]
+                 :additionalProperties false}
+    :operations {:type        "array"
+                 :description "Structured program operations as operator tuples. See metabase://docs/construct-query.md for the tuple grammar."
+                 :items       {:type     "array"
+                               :minItems 1
+                               :items    (construct-query-tool-node-schema 6)}}
+    :prompt     {:type        ["string" "null"]
+                 :description "The user's exact original message, when available. Pass it as-is without summarizing or rewriting."}}
+   :required [:source :operations :prompt]
+   :additionalProperties false})
+
 (defn- evaluate-program-to-live-query
   "Resolve a program's source entity, evaluate the program via agent-lib, and return
   the live lib query (with lib metadata attached)."
@@ -566,6 +615,7 @@
   {:scope metabot/agent-query-construct
    :tool  {:name "construct_query"
            :description construct-query-tool-description
+           :input-schema construct-query-tool-input-schema
            :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params

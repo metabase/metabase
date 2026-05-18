@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.macros.scope :as scope]
    [metabase.lib.core :as lib]
@@ -220,16 +221,28 @@
           (is (= "string" (get-in (array-branch (property-schema "search" "term_queries")) [:items :type])))
           (is (contains? (leaf-types (property-schema "search" "semantic_queries")) "array"))
           (is (= "string" (get-in (array-branch (property-schema "search" "semantic_queries")) [:items :type])))))
-      (testing "construct_query exposes the optional user prompt"
+      (testing "construct_query exposes the nullable user prompt"
         (let [tools-by-name          (into {} (map (juxt :name identity)) tools)
               construct-query-tool   (get tools-by-name "construct_query")
               construct-query-schema (:inputSchema construct-query-tool)
               prompt-schema          (or (get-in construct-query-schema [:properties "prompt"])
                                          (get-in construct-query-schema [:properties :prompt]))
               required-fields        (set (:required construct-query-schema))
+              schema-keys            (atom #{})
               reference              (slurp (io/resource "metabase/agent_api/construct_query.md"))]
+          (walk/postwalk (fn [x]
+                           (when (map? x)
+                             (swap! schema-keys into (keys x)))
+                           x)
+                         construct-query-schema)
           (is (str/includes? (:description construct-query-tool) "include `\"prompt\""))
-          (is (not (contains? required-fields "prompt")))
+          (is (or (contains? required-fields "prompt")
+                  (contains? required-fields :prompt)))
+          (is (= false (:additionalProperties construct-query-schema)))
+          (is (or (= ["string" "null"] (:type prompt-schema))
+                  (= #{"string" "null"} (set (:type prompt-schema)))))
+          (is (empty? (select-keys (frequencies @schema-keys)
+                                   [:allOf :oneOf :prefixItems :const :minLength :maxLength])))
           (is (str/includes? (:description prompt-schema) "exact original message"))
           (is (str/includes? reference "MCP clients should include it whenever they have the user's message"))
           (is (str/includes? reference "{\"query_handle\": \"<uuid>\"}")))))))

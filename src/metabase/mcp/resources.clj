@@ -80,11 +80,13 @@
          :uri->resource (sorted-map)
          :tools         (sorted-map)}))
 
-(defn- ui-csp-meta []
+(defn- ui-resource-meta []
   (let [url (system/site-url)]
-    {:ui {:csp {:connectDomains  [url]
-                :resourceDomains [url]
-                :frameDomains    [url]}}}))
+    {:ui {:prefersBorder true
+          :domain        url
+          :csp           {:connectDomains  [url]
+                          :resourceDomains [url]
+                          :frameDomains    [url]}}}))
 
 (mu/defn register-resource!
   "Register an MCP resource. Overwrites any existing entry with the same `:uri`."
@@ -145,7 +147,7 @@
                     (comp (filter #(mcp.scope/public-or-matches? token-scopes (:scope %)))
                           (map (fn [resource]
                                  (cond-> (select-keys resource [:uri :name :description :mimeType])
-                                   (:ui? resource) (assoc :_meta (ui-csp-meta))))))
+                                   (:ui? resource) (assoc :_meta (ui-resource-meta))))))
                     (vals (:uri->resource @registry)))})
 
 (defn check-resource-access
@@ -169,7 +171,7 @@
       {:status   :ok
        :contents [(cond-> (select-keys resource [:uri :mimeType])
                     true (assoc :text (render-fn opts))
-                    ui?  (assoc :_meta (ui-csp-meta)))]}
+                    ui?  (assoc :_meta (ui-resource-meta)))]}
       {:status :scope-denied})
     {:status :not-found}))
 
