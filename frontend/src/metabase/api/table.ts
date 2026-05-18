@@ -118,11 +118,10 @@ export const tableApi = Api.injectEndpoints({
       Table,
       UpdateTableFieldsOrderRequest
     >({
-      query: ({ id, ...body }) => ({
+      query: ({ id, field_order }) => ({
         method: "PUT",
         url: `/api/table/${id}/fields/order`,
-        body,
-        bodyParamName: "field_order",
+        body: { field_order },
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [
