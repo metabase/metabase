@@ -91,12 +91,9 @@ export const NotificationsAdminPage = ({
   const ownerlessCount = ownerlessData?.total ?? 0;
 
   useEffect(() => {
-    if (urlState.tab === "failing" && failingData && failingCount === 0) {
-      patchUrlState({ tab: "all", page: 0 });
-    } else if (
-      urlState.tab === "ownerless" &&
-      ownerlessData &&
-      ownerlessCount === 0
+    if (
+      (urlState.tab === "failing" && failingData && failingCount === 0) ||
+      (urlState.tab === "ownerless" && ownerlessData && ownerlessCount === 0)
     ) {
       patchUrlState({ tab: "all", page: 0 });
     }
