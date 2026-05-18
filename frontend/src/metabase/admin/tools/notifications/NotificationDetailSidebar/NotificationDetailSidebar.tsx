@@ -112,6 +112,7 @@ export const NotificationDetailSidebar = ({
         withOverlay={false}
         lockScroll={false}
         shadow="lg"
+        zIndex={100}
         styles={{
           inner: {
             top: ADMIN_NAVBAR_HEIGHT,
