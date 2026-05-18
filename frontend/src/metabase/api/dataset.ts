@@ -46,6 +46,11 @@ export const datasetApi = Api.injectEndpoints({
         fetch: true,
       }),
       providesTags: () => provideAdhocDatasetTags(),
+      // Dataset results can be large and the cache key is the full
+      // DatasetQuery, so cross-caller cache hits are rare. Evict
+      // immediately on unsubscribe to match the legacy fetch-and-discard
+      // behavior used by the imperative `runAdhocDatasetQuery` runner.
+      keepUnusedDataFor: 0,
     }),
     getAdhocPivotQuery: builder.query<
       Dataset,
@@ -65,6 +70,7 @@ export const datasetApi = Api.injectEndpoints({
         fetch: true,
       }),
       providesTags: () => provideAdhocDatasetTags(),
+      keepUnusedDataFor: 0,
     }),
     getAdhocQueryMetadata: builder.query<CardQueryMetadata, DatasetQuery>({
       query: (body) => ({
