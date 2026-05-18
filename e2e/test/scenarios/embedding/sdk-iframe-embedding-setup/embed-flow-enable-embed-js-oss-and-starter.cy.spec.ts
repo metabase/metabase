@@ -79,7 +79,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
           .should("be.visible")
           .should("be.disabled");
 
-        // Selecting "Orders in a dashboard" explicitely on the first step
+        // Selecting "Orders in a dashboard" explicitly on the first step
         // because sometimes it selects another one that's been used recently
         // see EMB-1106
         cy.log("Selecting an item to embed on the first step");
