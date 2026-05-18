@@ -242,13 +242,15 @@
        ;; Register listeners on all shared channels
        (doseq [ch channels]
          (when-not (listener/get-listener ch)
-           (mq/listen! ch {}
-                       (fn [msg]
-                         (let [receive-ns  (System/nanoTime)
-                               publish-ns  (get msg "publish-ns")]
-                           (when publish-ns
-                             (swap! latencies conj (/ (- receive-ns (double publish-ns)) 1e6))))
-                         (swap! received inc)))))
+           (listener/batch-listen! ch
+                                   (fn [msgs]
+                                     (doseq [msg msgs]
+                                       (let [receive-ns (System/nanoTime)
+                                             publish-ns (get msg "publish-ns")]
+                                         (when publish-ns
+                                           (swap! latencies conj (/ (- receive-ns (double publish-ns)) 1e6))))
+                                       (swap! received inc)))
+                                   {})))
        (let [msgs-sec (rate->msgs-sec rate)
              start    (System/nanoTime)]
          ;; Publish to random shared channels
@@ -312,13 +314,15 @@
        ;; Register listeners on all shared channels
        (doseq [ch channels]
          (when-not (listener/get-listener ch)
-           (mq/listen! ch {}
-                       (fn [msg]
-                         (let [receive-ns  (System/nanoTime)
-                               publish-ns  (get msg "publish-ns")]
-                           (when publish-ns
-                             (swap! latencies conj (/ (- receive-ns (double publish-ns)) 1e6)))
-                           (swap! received inc))))))
+           (listener/batch-listen! ch
+                                   (fn [msgs]
+                                     (doseq [msg msgs]
+                                       (let [receive-ns (System/nanoTime)
+                                             publish-ns (get msg "publish-ns")]
+                                         (when publish-ns
+                                           (swap! latencies conj (/ (- receive-ns (double publish-ns)) 1e6)))
+                                         (swap! received inc))))
+                                   {})))
        (let [msgs-sec   (rate->msgs-sec rate)
              start      (System/nanoTime)
              pub-thread (Thread.
@@ -389,14 +393,10 @@
            ;; Register listeners on all shared queues
            (doseq [ch shared-queues]
              (when-not (listener/get-listener ch)
-               (if (= bs 1)
-                 (mq/listen! ch {}
-                             (fn [_msg]
-                               (swap! received inc)))
-                 (mq/batch-listen! ch
-                                   (fn [msgs]
-                                     (swap! received + (count msgs)))
-                                   {:max-batch-messages bs}))))
+               (listener/batch-listen! ch
+                                       (fn [msgs]
+                                         (swap! received + (count msgs)))
+                                       {:max-batch-messages bs})))
            ;; Publish all messages randomly to shared queues
            (dotimes [i n]
              (mq/with-queue (random-shared-queue) [q]
@@ -442,9 +442,10 @@
            ;; Register listeners
            (doseq [ch channels]
              (when-not (listener/get-listener ch)
-               (mq/listen! ch {}
-                           (fn [_msg]
-                             (swap! received inc)))))
+               (listener/batch-listen! ch
+                                       (fn [msgs]
+                                         (swap! received + (count msgs)))
+                                       {})))
            ;; Publish to the queues
            (let [start (System/nanoTime)]
              (doseq [ch channels]
@@ -517,9 +518,9 @@
     (signal-go!)"
   []
   (let [latch (CountDownLatch. 1)]
-    (mq/listen! :topic/bench-coordination {}
-                (fn [_msg]
-                  (.countDown latch)))
+    (listener/batch-listen! :topic/bench-coordination
+                            (fn [_msgs] (.countDown latch))
+                            {})
     (println "Waiting for go signal... (call (signal-go!) from any node)")
     (.await latch 300 TimeUnit/SECONDS)
     (mq/unlisten! :topic/bench-coordination)
