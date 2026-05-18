@@ -85,6 +85,8 @@ const usageLogTable = buildTable(
     ["text", "ip_address", null],
     ["integer", "prompt_tokens", "type/Quantity"],
     ["integer", "completion_tokens", "type/Quantity"],
+    ["integer", "cache_creation_tokens", "type/Quantity"],
+    ["integer", "cache_read_tokens", "type/Quantity"],
   ],
 );
 

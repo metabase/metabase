@@ -11,13 +11,12 @@ import {
   Flex,
   Group,
   Icon,
-  type IconName,
   Paper,
   Stack,
   Text,
   Title,
 } from "metabase/ui";
-import type { NotificationChannel } from "metabase-types/api";
+import type { IconName, NotificationChannel } from "metabase-types/api";
 
 import { CreateWebhookModal } from "../widgets/Notifications/CreateWebhookModal";
 import { EditWebhookModal } from "../widgets/Notifications/EditWebhookModal";

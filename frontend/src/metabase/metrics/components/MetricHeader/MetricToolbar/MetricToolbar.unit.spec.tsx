@@ -1,15 +1,17 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupBookmarksEndpoints } from "__support__/server-mocks/bookmark";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { CollectionType, User } from "metabase-types/api";
+import type { CollectionType } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
   createMockSettings,
+  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 
@@ -49,6 +51,8 @@ function setup({
   showDataStudioLink = false,
   collectionType = null,
 }: SetupOpts = {}) {
+  setupEnterpriseOnlyPlugin("library");
+
   const Lib = jest.requireMock("metabase-lib");
   Lib.queryDisplayInfo.mockReturnValue({ isEditable });
 
@@ -62,11 +66,13 @@ function setup({
     is_superuser: isAdmin,
   });
 
-  const settingValues = createMockSettings();
+  const settingValues = createMockSettings({
+    "token-features": createMockTokenFeatures({ library: true }),
+  });
 
   const state = createMockState({
     settings: mockSettings(settingValues),
-    currentUser: user as User,
+    currentUser: user,
   });
 
   setupBookmarksEndpoints([]);

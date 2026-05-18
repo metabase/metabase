@@ -1,6 +1,7 @@
 (ns metabase.query-processor.field-ref-repro-test
   "Reproduction tests for field ref(erence) issues. These are negative tests, if some fail,
   we might have actually fixed a bug."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.field-ref-repro-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]

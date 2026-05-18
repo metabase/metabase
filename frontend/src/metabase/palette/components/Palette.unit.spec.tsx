@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import {
+  setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
@@ -11,6 +12,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { SearchResult } from "metabase-types/api";
 import {
+  createMockCollection,
   createMockSearchResult,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -29,6 +31,9 @@ const setup = ({
   setupDatabasesEndpoints([]);
   setupSearchEndpoints(searchResults, searchResultsDelay);
   setupRecentViewsEndpoints([]);
+  setupCollectionByIdEndpoint({
+    collections: [createMockCollection({ id: "root", can_write: true })],
+  });
   renderWithProviders(<Route path="/" component={Palette} {...routeProps} />, {
     withKBar: true,
     withRouter: true,

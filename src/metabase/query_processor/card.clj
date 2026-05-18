@@ -13,7 +13,6 @@
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.queries.core :as queries]
@@ -33,6 +32,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [mapv select-keys not-empty]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
@@ -205,7 +205,7 @@
   [{parameter-name :name, :keys [target]}]
   (or
    parameter-name
-   (lib.util.match/match-lite target
+   (match/match-one target
      [:template-tag tag-name]
      (name tag-name))))
 

@@ -86,8 +86,8 @@ function setup() {
   const initialState = {
     entities: {
       widgets: {
-        1: { name: "foo " },
-        2: { name: "bar" },
+        1: { id: 1, name: "foo " },
+        2: { id: 2, name: "bar" },
       },
     },
   };
@@ -111,7 +111,7 @@ describe("entities", () => {
       const { widgets, initialState } = setup();
       expect(
         widgets.selectors.getObject(initialState, { entityId: 1 }),
-      ).toEqual({ name: "foo " });
+      ).toEqual({ id: 1, name: "foo " });
     });
 
     it("should cache the object", () => {

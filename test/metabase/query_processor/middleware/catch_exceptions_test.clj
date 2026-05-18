@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.catch-exceptions-test
   "There are additional tests in [[metabase.query-processor.failure-test]]."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.catch-exceptions-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]

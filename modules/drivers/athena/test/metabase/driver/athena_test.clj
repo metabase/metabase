@@ -1,4 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.athena-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.athena-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

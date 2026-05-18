@@ -7,6 +7,7 @@ export * from "./UpsellEmbeddingTheme";
 export * from "./UpsellHosting";
 export * from "./UpsellPerformanceTools";
 export * from "./UpsellPermissions";
+export * from "./UpsellRemoteSync";
 export * from "./UpsellSSO";
 export * from "./UpsellUploads";
 export * from "./UpsellWhitelabel";

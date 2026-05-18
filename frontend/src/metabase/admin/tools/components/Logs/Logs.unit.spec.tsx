@@ -7,7 +7,6 @@ import {
   createMockLocation,
   createMockRoutingState,
 } from "metabase/redux/store/mocks";
-import { UtilApi } from "metabase/services";
 
 import { DEFAULT_POLLING_DURATION_MS, Logs } from "./Logs";
 import { maybeMergeLogs } from "./utils";
@@ -23,7 +22,8 @@ const log = {
   process_uuid: "e7774ef2-42ab-43de-89f7-d6de9fdc624f",
 };
 
-let utilSpy: any;
+const countLogsCalls = () =>
+  fetchMock.callHistory.calls("path:/api/logger/logs").length;
 
 interface SetupOpts {
   location?: Location;
@@ -51,37 +51,43 @@ function setup({
 describe("Logs", () => {
   describe("log fetching", () => {
     beforeEach(() => {
-      utilSpy = jest.spyOn(UtilApi, "logs");
       jest.useFakeTimers({ advanceTimers: true });
     });
 
     afterEach(() => {
-      utilSpy.mockClear();
       jest.useRealTimers();
     });
 
-    it("should call UtilApi.logs every 1 second", async () => {
+    it("should fetch /api/logger/logs at least once on mount", async () => {
       fetchMock.get("path:/api/logger/logs", []);
       setup();
       await waitFor(() => {
-        expect(utilSpy).toHaveBeenCalledTimes(1);
+        expect(countLogsCalls()).toBe(1);
       });
     });
 
-    it("should skip calls to UtilsApi.logs if last request is still in-flight", async () => {
-      fetchMock.get("path:/api/logger/logs", []);
-      let resolve: any;
-      utilSpy.mockReturnValueOnce(new Promise((res) => (resolve = res)));
+    it("should skip log requests if last request is still in-flight", async () => {
+      let resolveFirst: (logs: unknown) => void = () => {};
+      let callCount = 0;
+      fetchMock.get("path:/api/logger/logs", () => {
+        callCount += 1;
+        if (callCount === 1) {
+          return new Promise<unknown>((res) => {
+            resolveFirst = res;
+          }) as Promise<any>;
+        }
+        return [log];
+      });
       setup();
       await waitFor(() => {
-        expect(utilSpy).toHaveBeenCalledTimes(1);
+        expect(countLogsCalls()).toBe(1);
       });
       act(() => {
         jest.advanceTimersByTime(DEFAULT_POLLING_DURATION_MS + 100);
       });
-      expect(utilSpy).toHaveBeenCalledTimes(1); // should not have been called
+      expect(countLogsCalls()).toBe(1); // should not have been called
       act(() => {
-        resolve([log]);
+        resolveFirst([log]);
       });
       await waitFor(() => {
         expect(screen.getByText(new RegExp(log.fqns))).toBeInTheDocument();
@@ -89,7 +95,9 @@ describe("Logs", () => {
       act(() => {
         jest.advanceTimersByTime(DEFAULT_POLLING_DURATION_MS + 100);
       });
-      expect(utilSpy).toHaveBeenCalledTimes(2); // should have issued new request
+      await waitFor(() => {
+        expect(countLogsCalls()).toBe(2); // should have issued new request
+      });
     });
 
     it("should display no results if there are no logs", async () => {
@@ -164,7 +172,7 @@ describe("Logs", () => {
       act(() => {
         jest.advanceTimersByTime(DEFAULT_POLLING_DURATION_MS + 100);
       });
-      expect(utilSpy).toHaveBeenCalledTimes(1);
+      expect(countLogsCalls()).toBe(1);
     });
   });
 

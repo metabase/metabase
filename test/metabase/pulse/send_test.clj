@@ -1,6 +1,7 @@
 (ns metabase.pulse.send-test
   "These are mostly Alerts test, dashboard subscriptions could be found in
   [[metabase.pulse.dashboard-subscription-test]]."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.pulse.send-test]}}}}}}
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]

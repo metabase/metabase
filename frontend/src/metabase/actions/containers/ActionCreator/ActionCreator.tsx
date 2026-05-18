@@ -3,16 +3,17 @@ import type { Route } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { skipToken, useGetActionQuery } from "metabase/api";
+import {
+  skipToken,
+  useCreateActionMutation,
+  useGetActionQuery,
+  useUpdateActionMutation,
+} from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { Modal } from "metabase/common/components/Modal";
 import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
-import type {
-  CreateActionParams,
-  UpdateActionParams,
-} from "metabase/entities/actions";
-import { Actions } from "metabase/entities/actions";
+import { useToast } from "metabase/common/hooks/use-toast";
 import { Databases } from "metabase/entities/databases";
 import { Questions } from "metabase/entities/questions";
 import { connect } from "metabase/redux";
@@ -55,32 +56,18 @@ interface StateProps {
   metadata: Metadata;
 }
 
-interface DispatchProps {
-  onCreateAction: (params: CreateActionParams) => void;
-  onUpdateAction: (params: UpdateActionParams) => void;
-}
-
 export type ActionCreatorProps = OwnProps;
 
-type Props = OwnProps & ModelLoaderProps & StateProps & DispatchProps;
+type Props = OwnProps & ModelLoaderProps & StateProps;
 
 const mapStateToProps = (state: State) => ({
   metadata: getMetadata(state),
 });
 
-const mapDispatchToProps = {
-  onCreateAction: Actions.actions.create,
-  onUpdateAction: Actions.actions.update,
-};
-
-function ActionCreator({
-  model,
-  onCreateAction,
-  onUpdateAction,
-  onSubmit,
-  onClose,
-  route,
-}: Props) {
+function ActionCreator({ model, onSubmit, onClose, route }: Props) {
+  const [createAction] = useCreateActionMutation();
+  const [updateAction] = useUpdateActionMutation();
+  const [sendToast] = useToast();
   const {
     action,
     formSettings,
@@ -112,38 +99,46 @@ function ActionCreator({
       return; // only query action creation is supported now
     }
 
-    const reduxAction = await onCreateAction({
-      ...action,
-      ...values,
-      visualization_settings: formSettings,
-    } as WritebackQueryAction);
-    const createdAction = Actions.HACK_getObjectFromAction(reduxAction);
+    try {
+      const createdAction = await createAction({
+        ...action,
+        ...values,
+        visualization_settings: formSettings,
+      } as WritebackQueryAction).unwrap();
 
-    // Sync the editor state with data from save modal form
-    handleActionChange(values);
+      // Sync the editor state with data from save modal form
+      handleActionChange(values);
 
-    setShowSaveModal(false);
-    onSubmit?.(createdAction);
+      setShowSaveModal(false);
+      onSubmit?.(createdAction);
 
-    scheduleCallback(() => {
-      onClose?.();
-    });
+      scheduleCallback(() => {
+        onClose?.();
+      });
+    } catch (_error) {
+      sendToast({ icon: "warning", message: t`Failed to create action` });
+    }
   };
 
   const handleUpdate = async () => {
-    if (isSavedAction(action)) {
-      const reduxAction = await onUpdateAction({
+    if (!isSavedAction(action)) {
+      return;
+    }
+
+    try {
+      const updatedAction = await updateAction({
         ...action,
         model_id: model?.id(),
         visualization_settings: formSettings,
-      });
+      }).unwrap();
 
-      const updatedAction = Actions.HACK_getObjectFromAction(reduxAction);
       onSubmit?.(updatedAction);
 
       scheduleCallback(() => {
         onClose?.();
       });
+    } catch (_error) {
+      sendToast({ icon: "warning", message: t`Failed to update action` });
     }
   };
 
@@ -155,7 +150,7 @@ function ActionCreator({
     if (isNew) {
       showSaveModal();
     } else {
-      handleUpdate();
+      void handleUpdate();
     }
   };
 
@@ -231,5 +226,5 @@ export default _.compose(
     entityAlias: "model",
   }),
   Databases.loadList(),
-  connect(mapStateToProps, mapDispatchToProps),
+  connect(mapStateToProps),
 )(ActionCreatorWithContext);

@@ -1,35 +1,34 @@
 import { push } from "react-router-redux";
 
-import { useCreateTimelineMutation } from "metabase/api";
-import { Collections } from "metabase/entities/collections";
+import {
+  skipToken,
+  useCreateTimelineMutation,
+  useGetCollectionQuery,
+} from "metabase/api";
 import { useDispatch } from "metabase/redux";
-import type { State } from "metabase/redux/store";
 import NewTimelineModal from "metabase/timelines/common/components/NewTimelineModal";
 import * as Urls from "metabase/urls";
-import type {
-  Collection,
-  CreateTimelineRequest,
-  Timeline,
-} from "metabase-types/api";
+import type { CreateTimelineRequest, Timeline } from "metabase-types/api";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import type { ModalParams } from "../../types";
 
 interface NewTimelineModalContainerProps {
   params: ModalParams;
-  collection: Collection;
   onClose?: () => void;
 }
-
-const collectionProps = {
-  id: (state: State, props: NewTimelineModalContainerProps) =>
-    Urls.extractCollectionId(props.params.slug),
-  LoadingAndErrorWrapper,
-};
 
 function NewTimelineModalContainer(props: NewTimelineModalContainerProps) {
   const dispatch = useDispatch();
   const [createTimeline] = useCreateTimelineMutation();
+  const collectionId = Urls.extractCollectionId(props.params.slug);
+  const {
+    data: collection,
+    isLoading,
+    error,
+  } = useGetCollectionQuery(
+    collectionId != null ? { id: collectionId } : skipToken,
+  );
 
   const onSubmit = async (values: Partial<Timeline>) => {
     const timeline = await createTimeline(
@@ -38,8 +37,14 @@ function NewTimelineModalContainer(props: NewTimelineModalContainerProps) {
     dispatch(push(Urls.timelineInCollection(timeline)));
   };
 
-  return <NewTimelineModal {...props} onSubmit={onSubmit} />;
+  if (isLoading || error || !collection) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return (
+    <NewTimelineModal {...props} collection={collection} onSubmit={onSubmit} />
+  );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Collections.load(collectionProps)(NewTimelineModalContainer);
+export default NewTimelineModalContainer;

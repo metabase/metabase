@@ -724,7 +724,13 @@ index 0d3b4e7..0571622 100644
      minMatchCharLength: 1,
  };
  function order(a, b) {
-@@ -195,7 +199,7 @@ function useInternalMatches(filtered, search, fuse) {
+@@ -190,12 +194,12 @@ function useInternalMatches(filtered, search, fuse) {
+         }
+         var matches = [];
+         // Use Fuse's `search` method to perform the search efficiently
+-        var searchResults = fuse.search(throttledSearch);
++        var searchResults = fuse.search(throttledSearch.trim());
+         // Format the search results to match the existing structure
          matches = searchResults.map(function (_a) {
              var action = _a.item, score = _a.score;
              return ({

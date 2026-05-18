@@ -23,13 +23,13 @@
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.number :as u.number]
    [metabase.util.performance :refer [mapv some select-keys not-empty get-in every? #?(:clj doseq) #?(:clj for)]]))
 
@@ -578,7 +578,7 @@
 
 (defn- referred-expressions
   [expr]
-  (set (lib.util.match/match-many expr [:expression _opts x & _] x)))
+  (set (match/match-many expr [:expression _opts x & _] x)))
 
 (defn- aggregation->name
   [query stage-number aggregation]
@@ -586,7 +586,7 @@
 
 (defn- referred-aggregations
   [agg]
-  (set (lib.util.match/match-many agg [:aggregation _opts x & _] x)))
+  (set (match/match-many agg [:aggregation _opts x & _] x)))
 
 (defn- cyclic-definition
   ([node->children]
@@ -756,11 +756,11 @@
                                   (-> nested name u/->camelCaseEn u/capitalize-first-char)))
              :friendly true})
           (when (and (= expression-mode :expression)
-                     (lib.util.match/match-lite expr :offset true))
+                     (match/match-one expr :offset true))
             {:message  (i18n/tru "OFFSET is not supported in custom columns")
              :friendly true})
           (when (and (= expression-mode :filter)
-                     (lib.util.match/match-lite expr :offset true))
+                     (match/match-one expr :offset true))
             {:message  (i18n/tru "OFFSET is not supported in custom filters")
              :friendly true})
           (when (and (lib.schema.common/is-clause? :value expr)

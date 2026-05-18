@@ -108,12 +108,12 @@ describe("CreateDashboardModal", () => {
     jest.restoreAllMocks();
   });
 
-  it("displays empty form fields", () => {
+  it("displays empty form fields", async () => {
     setup();
 
     expect(screen.getByLabelText("Name")).toHaveValue("");
     expect(screen.getByLabelText("Description")).toHaveValue("");
-    expect(screen.getByText("Our analytics")).toBeInTheDocument();
+    expect(await screen.findByText("Our analytics")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create" })).toBeInTheDocument();
   });
 

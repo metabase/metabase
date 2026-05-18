@@ -4,7 +4,12 @@ import { routerMiddleware, routerReducer as routing } from "react-router-redux";
 import { Api } from "metabase/api";
 import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
 
-export function getStore(reducers, history, initialState) {
+export function getStore(
+  reducers,
+  history,
+  initialState,
+  extraMiddlewares = [],
+) {
   const reducer = combineReducers({
     ...reducers,
     routing,
@@ -22,6 +27,7 @@ export function getStore(reducers, history, initialState) {
         Api.middleware,
         ...(history ? [routerMiddleware(history)] : []),
         ...PLUGIN_REDUX_MIDDLEWARES,
+        ...extraMiddlewares,
       ]),
   });
 }

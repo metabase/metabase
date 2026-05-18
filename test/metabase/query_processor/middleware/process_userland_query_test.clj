@@ -1,4 +1,7 @@
 (ns metabase.query-processor.middleware.process-userland-query-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.query-processor.middleware.process-userland-query-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.query-processor.middleware.process-userland-query-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.middleware.process-userland-query-test]}}}}}}
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.core.async :as a]

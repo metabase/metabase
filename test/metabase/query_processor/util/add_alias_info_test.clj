@@ -15,11 +15,11 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.lib.test-util.uuid-dogs-metadata-provider :as lib.tu.uuid-dogs-metadata-provider]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.match :as match]))
 
 (comment h2/keep-me)
 
@@ -1098,9 +1098,9 @@
                                    :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]}]}))]
       (is (=? [[:expression {::add/source-table ::add/none, ::add/desired-alias "pivot-grouping"} "pivot-grouping"]
                [:expression {::add/source-table ::add/none, ::add/desired-alias "pivot-grouping"} "pivot-grouping"]]
-              (lib.util.match/match-many (-> query
-                                             add/add-alias-info
-                                             qp.preprocess/preprocess)
+              (match/match-many (-> query
+                                    add/add-alias-info
+                                    qp.preprocess/preprocess)
                 [:expression & _] &match))))))
 
 (deftest ^:parallel remapped-columns-in-joined-source-queries-test

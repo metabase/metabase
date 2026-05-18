@@ -1,6 +1,6 @@
-import type { BulkTableSelection } from "metabase-types/api";
+import type { BulkTableRequest } from "metabase-types/api";
 
-export const unpublishTables = (request: BulkTableSelection) => {
+export const unpublishTables = (request: BulkTableRequest) => {
   return cy.request(
     "POST",
     "/api/ee/data-studio/table/unpublish-tables",
