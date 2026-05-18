@@ -257,6 +257,14 @@
   dispatch-on-initialized-driver-safe-keys
   :hierarchy #'hierarchy)
 
+(defmulti validate-db-details!
+  "Throw if `details` are unsafe to persist for `driver`, independent of whether the database is currently reachable."
+  {:added "0.57.0" :arglists '([driver details])}
+  dispatch-on-initialized-driver-safe-keys
+  :hierarchy #'hierarchy)
+
+(defmethod validate-db-details! :default [_driver _details] nil)
+
 (defmulti dbms-version
   "Return a map containing information that describes the version of the DBMS. This typically includes a
   `:version` containing the (semantic) version of the DBMS as a string and potentially a `:flavor`

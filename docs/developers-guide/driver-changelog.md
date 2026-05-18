@@ -33,6 +33,9 @@ title: Driver interface changelog
 
 ## Metabase 0.57.0
 
+- Added `metabase.driver/validate-db-details!` multimethod for rejecting connection details that are unsafe to
+  persist (independent of whether the database is currently reachable). The default implementation is a no-op.
+
 - `driver/field-reference-mlv2` is now deprecated, and is no longer used. Please remove your implementations.
 
 - The key `metabase.driver-api.core/qp.add.nfc-path` is now more consistently populated; other `qp.add.*` keys no
