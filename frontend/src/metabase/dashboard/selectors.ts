@@ -39,6 +39,7 @@ import type {
   DashboardCard,
   DashboardId,
   DashboardParameterMapping,
+  DashboardTabId,
   ParameterId,
   VirtualCard,
 } from "metabase-types/api";
@@ -571,13 +572,23 @@ export const getSelectedTabId = createSelector(
     (state) => getSetting(state, "site-url"),
     getDashboard,
     (state) => state.dashboard.selectedTabId,
+    (state: State): DashboardTabId | null | undefined =>
+      (
+        state as unknown as {
+          sdk?: { initialDashboardTabId?: DashboardTabId | null };
+        }
+      ).sdk?.initialDashboardTabId,
   ],
-  (isWebApp, siteUrl, dashboard, selectedTabId) => {
+  (isWebApp, siteUrl, dashboard, selectedTabId, sdkInitialDashboardTabId) => {
     if (dashboard && selectedTabId === null) {
-      return getInitialSelectedTabId(dashboard, siteUrl, isWebApp);
+      if (isEmbeddingSdk()) {
+        return getSdkInitialDashboardTabId(dashboard, sdkInitialDashboardTabId);
+      } else {
+        return getInitialSelectedTabId(dashboard, siteUrl, isWebApp);
+      }
+    } else {
+      return selectedTabId;
     }
-
-    return selectedTabId;
   },
 );
 
@@ -591,7 +602,7 @@ export const getSelectedTab = createSelector(
   },
 );
 
-export function getInitialSelectedTabId(
+function getInitialSelectedTabId(
   dashboard: Dashboard | StoreDashboard,
   siteUrl: string,
   isWebApp: boolean,
@@ -615,6 +626,19 @@ export function getInitialSelectedTabId(
   }
 
   return dashboard.tabs?.[0]?.id || null;
+}
+
+function getSdkInitialDashboardTabId(
+  dashboard: Dashboard | StoreDashboard,
+  sdkInitialDashboardTabId: DashboardTabId | null | undefined,
+) {
+  const hasTab = dashboard.tabs?.some(
+    (tab) => tab.id === sdkInitialDashboardTabId,
+  );
+  if (hasTab) {
+    return sdkInitialDashboardTabId ?? null;
+  }
+  return dashboard.tabs?.[0]?.id ?? null;
 }
 
 export const getCurrentTabDashcards = createSelector(
