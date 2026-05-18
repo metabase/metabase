@@ -211,7 +211,34 @@
         (is (< (count msg) 1200) "exception message is truncated near the body-preview cap")
         (is (= long-body (get-in (ex-data ex) [:response :body]))
             "full body is preserved in ex-data")
-        (assert-no-headers! (ex-data ex))))))
+        (assert-no-headers! (ex-data ex))))
+    (testing "structured maps without :error/:detail/:message keep the user-facing message clean"
+      (let [body {:request-id "abc" :trace ["frame1" "frame2"]}
+            {:keys [response request]} (check-response!-input {:status        500
+                                                               :reason-phrase "Internal Server Error"
+                                                               :body          body})
+            ex   (is (thrown? Exception (check! response request)))
+            msg  (ex-message ex)]
+        (is (= "AI service request failed: HTTP 500 Internal Server Error" msg)
+            "no internal body fields leak into the exception message")
+        (is (= body (get-in (ex-data ex) [:response :body]))
+            "the full body is still preserved in ex-data for debugging")))
+    (testing "ex-data :response is an explicit allow-list, not a passthrough of clj-http internals"
+      (let [{:keys [request]} (check-response!-input {})
+            ;; clj-http responses can carry `:http-client` (a Closeable), `:trace-redirects`,
+            ;; `:orig-content-encoding`, etc. — none of those should land in ex-data.
+            response {:status                500
+                      :reason-phrase         "ISE"
+                      :body                  "boom"
+                      :headers               {"x-secret" "hide-me"}
+                      :http-client           (reify java.io.Closeable (close [_]))
+                      :trace-redirects       ["http://elsewhere"]
+                      :orig-content-encoding "gzip"}
+            ex   (is (thrown? Exception (check! response request)))
+            data (ex-data ex)]
+        (is (= #{:status :reason-phrase :body} (set (keys (:response data))))
+            "only the allow-listed response keys appear in ex-data")
+        (is (= {:status 500 :reason-phrase "ISE" :body "boom"} (:response data)))))))
 
 (deftest example-generation-payload-unknown-field-types-test
   (let [mp (mt/metadata-provider)

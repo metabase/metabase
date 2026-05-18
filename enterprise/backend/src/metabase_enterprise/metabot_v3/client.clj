@@ -100,15 +100,17 @@
 
 (defn- body-preview
   "Build a short, human-readable snippet of an already-coerced response body for the
-   exception message. Pulls the upstream error message out of JSON envelopes when present."
+   exception message. Pulls the upstream error message out of JSON envelopes when one
+   of `:error`/`:detail`/`:message` is present. Returns `nil` for structured maps
+   without a recognised human-readable field — the full body is still logged and
+   carried in `ex-data`, so users don't see raw `{:request-id ...}` blobs."
   [body]
   (let [s (cond
             (nil? body)    nil
             (string? body) body
-            (map? body)    (or (some-> (or (:error body) (:detail body) (:message body))
-                                       str
-                                       not-empty)
-                               (pr-str body))
+            (map? body)    (some-> (or (:error body) (:detail body) (:message body))
+                                   str
+                                   not-empty)
             :else          (pr-str body))]
     (when-let [trimmed (some-> s str/trim not-empty)]
       (if (<= (count trimmed) max-body-preview-chars)
@@ -119,10 +121,11 @@
   "Return the response body on success (HTTP 200 or 202); throw on failure.
 
    On failure, builds an error message that includes the upstream status, reason
-   phrase, and a truncated preview of the response body, and emits a `log/warn`
-   with the *full* response body so engineers can correlate with AI-service logs
-   without reconstructing it from the stacktrace. The full (slurped) body also
-   survives into `ex-data` for downstream callers."
+   phrase, and a truncated preview of the response body (when a human-readable
+   one can be extracted), and emits a `log/warnf` line with the *full* response
+   body so engineers can correlate with AI-service logs without reconstructing it
+   from the stacktrace. The full (slurped) body also survives into `ex-data` for
+   downstream callers."
   [response request]
   (if (#{200 202} (:status response))
     (:body response)
@@ -134,16 +137,19 @@
           msg     (cond-> (format "AI service request failed: HTTP %d %s"
                                   (or status 0) (or phrase ""))
                     preview (str " — " preview))]
-      (log/warn "AI service request failed"
-                {:status status
-                 :phrase phrase
-                 :url    url
-                 :body   body})
+      ;; `log/warn` would `pr-str` a trailing map into the message, not record it as
+      ;; structured MDC. Use `log/warnf` so we knowingly emit one greppable blob.
+      (log/warnf "AI service request failed: HTTP %s %s url=%s body=%s"
+                 status phrase url (pr-str body))
       (throw (ex-info msg
                       {:error-code :ai-service-error
                        :status     status
                        :request    (dissoc request :headers)
-                       :response   (-> response (dissoc :headers) (assoc :body body))})))))
+                       ;; Allow-list rather than `dissoc :headers` — the raw clj-http
+                       ;; response carries `:http-client` (a closeable), `:trace-redirects`
+                       ;; and other internals we don't want in ex-data / Sentry payloads.
+                       :response   (-> (select-keys response [:status :reason-phrase])
+                                       (assoc :body body))})))))
 
 (defn- metric-selection-endpoint-url []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/select-metric"))
@@ -246,6 +252,10 @@
       (metabot-v3.context/log (:body response) :llm.log/llm->be)
       (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
       (when-not (#{200 202} (:status response))
+        ;; In dev, the two log calls above can touch the response body (an `InputStream`)
+        ;; — `metabot-v3.context/log` calls `json/encode` on it. `check-response!` calls
+        ;; `coerce-body` defensively (returning `nil` if the stream is already drained), so
+        ;; the production path still surfaces the body in the exception and logs.
         (check-response! response body))
       (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
         ;; see `quick-closing-body` docs and see `Connection` header supporting this behavior
