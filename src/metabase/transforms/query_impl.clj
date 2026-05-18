@@ -30,34 +30,35 @@
        (driver.conn/with-write-connection
          (log/info "Executing transform" id "with target" (pr-str target)
                    (when (driver.conn/write-connection-requested?) " using write connection"))
-         (tracing/with-span :tasks "task.transform.query"
-           {:transform/id                    id
-            :transform/target-type           (name (:type target))
-            :transform/incremental           (= :table-incremental (keyword (:type target)))
-            :transform/first-incremental-run (transforms-base.u/first-incremental-run? transform)
-            :db/id                           (:id db)
-            :db/engine                       (name driver)}
-           (let [conn-spec         (driver/connection-spec driver db)
-                 transform-details {:db-id (:id db) :conn-spec conn-spec :output-schema (:schema target)}
-                 _exec-result
-                 (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
-                   (transforms.u/run-cancelable-transform!
-                    run-id transform driver transform-details
-                    (fn [cancel-chan source-range-params]
-                      (let [result (transforms-base.i/execute-base!
-                                    transform
-                                    {:cancelled?           #(boolean (a/poll! cancel-chan))
-                                     :run-id               run-id
-                                     :source-range-params  source-range-params
-                                     :with-stage-timing-fn (fn [rid stage thunk]
-                                                             (transforms.instrumentation/with-stage-timing [rid stage]
-                                                               (thunk)))})]
-                        ;; Bridge result-map to exception-based flow for run-cancelable-transform!
-                        (when-not (= :succeeded (:status result))
-                          (throw (or (:error result) (ex-info "Transform failed" {:status (:status result)}))))
-                        result))))]
-             ;; Post-processing: sync, transform_id, events
-             (transforms-base.u/complete-execution! transform {})))))
+         (let [target-type (keyword (:type target))]
+           (tracing/with-span :tasks "task.transform.query"
+             {:transform/id                    id
+              :transform/target-type           (name target-type)
+              :transform/incremental           (= :table-incremental target-type)
+              :transform/first-incremental-run (transforms-base.u/first-incremental-run? transform)
+              :db/id                           (:id db)
+              :db/engine                       (name driver)}
+             (let [conn-spec         (driver/connection-spec driver db)
+                   transform-details {:db-id (:id db) :conn-spec conn-spec :output-schema (:schema target)}
+                   _exec-result
+                   (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
+                     (transforms.u/run-cancelable-transform!
+                      run-id transform driver transform-details
+                      (fn [cancel-chan source-range-params]
+                        (let [result (transforms-base.i/execute-base!
+                                      transform
+                                      {:cancelled?           #(boolean (a/poll! cancel-chan))
+                                       :run-id               run-id
+                                       :source-range-params  source-range-params
+                                       :with-stage-timing-fn (fn [rid stage thunk]
+                                                               (transforms.instrumentation/with-stage-timing [rid stage]
+                                                                 (thunk)))})]
+                          ;; Bridge result-map to exception-based flow for run-cancelable-transform!
+                          (when-not (= :succeeded (:status result))
+                            (throw (or (:error result) (ex-info "Transform failed" {:status (:status result)}))))
+                          result))))]
+               ;; Post-processing: sync, transform_id, events
+               (transforms-base.u/complete-execution! transform {}))))))
      (catch Throwable t
        (if (= :already-running (:error (ex-data t)))
          (log/warnf "Transform %d is already running" id)

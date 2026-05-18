@@ -109,36 +109,37 @@
       (some-> start-promise (deliver [:started run-id]))
       (with-open [_ (open-python-message-update-future! run-id message-log)]
         (driver.conn/with-write-connection
-          (tracing/with-span :tasks "task.transform.python"
-            {:transform/id                    transform-id
-             :transform/target-type           (name (:type target))
-             :transform/incremental           (= :table-incremental (keyword (:type target)))
-             :transform/first-incremental-run (transforms-base.u/first-incremental-run? transform)
-             :db/id                           (:id db)
-             :db/engine                       (name driver)}
-            (let [conn-spec         (driver/connection-spec driver db)
-                  transform-details {:db-id (:id db) :conn-spec conn-spec :output-schema (:schema target)}
-                  run-fn            (fn [cancel-chan source-range-params]
-                                      (let [result (transforms-base.i/execute-base!
-                                                    transform
-                                                    {:cancelled?           #(boolean (a/poll! cancel-chan))
-                                                     :cancel-chan          cancel-chan
-                                                     :run-id               run-id
-                                                     :source-range-params  source-range-params
-                                                     :message-log          message-log
-                                                     :with-stage-timing-fn (fn [rid stage thunk]
-                                                                             (transforms.instrumentation/with-stage-timing [rid stage]
-                                                                               (thunk)))})]
-                                        (save-log-to-transform-run-message! run-id message-log)
-                                        (when-not (= :succeeded (:status result))
-                                          (throw (or (:error result) (ex-info "Transform failed" {:status (:status result)}))))
-                                        result))
-                  ex-message-fn     #(exceptional-run-message message-log %)
-                  result            (transforms.instrumentation/with-stage-timing [run-id [:computation :python-execution]]
-                                      (transforms.u/run-cancelable-transform! run-id transform driver transform-details run-fn :ex-message-fn ex-message-fn))]
-            ;; Post-processing: sync, transform_id, events
-              (transforms-base.u/complete-execution! transform {})
-              {:run_id run-id :result result})))))
+          (let [target-type (keyword (:type target))]
+            (tracing/with-span :tasks "task.transform.python"
+              {:transform/id                    transform-id
+               :transform/target-type           (name target-type)
+               :transform/incremental           (= :table-incremental target-type)
+               :transform/first-incremental-run (transforms-base.u/first-incremental-run? transform)
+               :db/id                           (:id db)
+               :db/engine                       (name driver)}
+              (let [conn-spec         (driver/connection-spec driver db)
+                    transform-details {:db-id (:id db) :conn-spec conn-spec :output-schema (:schema target)}
+                    run-fn            (fn [cancel-chan source-range-params]
+                                        (let [result (transforms-base.i/execute-base!
+                                                      transform
+                                                      {:cancelled?           #(boolean (a/poll! cancel-chan))
+                                                       :cancel-chan          cancel-chan
+                                                       :run-id               run-id
+                                                       :source-range-params  source-range-params
+                                                       :message-log          message-log
+                                                       :with-stage-timing-fn (fn [rid stage thunk]
+                                                                               (transforms.instrumentation/with-stage-timing [rid stage]
+                                                                                 (thunk)))})]
+                                          (save-log-to-transform-run-message! run-id message-log)
+                                          (when-not (= :succeeded (:status result))
+                                            (throw (or (:error result) (ex-info "Transform failed" {:status (:status result)}))))
+                                          result))
+                    ex-message-fn     #(exceptional-run-message message-log %)
+                    result            (transforms.instrumentation/with-stage-timing [run-id [:computation :python-execution]]
+                                        (transforms.u/run-cancelable-transform! run-id transform driver transform-details run-fn :ex-message-fn ex-message-fn))]
+                ;; Post-processing: sync, transform_id, events
+                (transforms-base.u/complete-execution! transform {})
+                {:run_id run-id :result result}))))))
     (catch Throwable t
       (log/error t "Error executing Python transform")
       (throw t))))
