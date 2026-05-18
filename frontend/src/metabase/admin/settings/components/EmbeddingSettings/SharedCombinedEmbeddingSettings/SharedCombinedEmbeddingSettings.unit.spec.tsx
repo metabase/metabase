@@ -1,16 +1,16 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupEmbeddableEntitiesEndpoints } from "__support__/server-mocks/embed";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
 import {
-  findRequests,
-  setupEmbeddableEntitiesEndpoints,
   setupGenerateRandomTokenEndpoint,
-  setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
   setupUpdateSettingsEndpoint,
   setupUpsellEndpoints,
-  setupUserKeyValueEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/settings";
+import { setupUserKeyValueEndpoints } from "__support__/server-mocks/user-key-value";
+import { findRequests } from "__support__/server-mocks/util";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import {
   createMockCard,

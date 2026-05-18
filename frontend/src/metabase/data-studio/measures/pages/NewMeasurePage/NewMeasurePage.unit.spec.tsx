@@ -1,6 +1,6 @@
 import { Route } from "react-router";
 
-import { setupSchemaEndpoints } from "__support__/server-mocks";
+import { setupSchemaEndpoints } from "__support__/server-mocks/database";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockSettingsState } from "metabase/redux/store/mocks";

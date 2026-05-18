@@ -2,11 +2,9 @@ import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupCollectionPermissionsGraphEndpoint,
-  setupCollectionsEndpoints,
-  setupGroupsEndpoint,
-} from "__support__/server-mocks";
+import { setupCollectionsEndpoints } from "__support__/server-mocks/collection";
+import { setupGroupsEndpoint } from "__support__/server-mocks/group";
+import { setupCollectionPermissionsGraphEndpoint } from "__support__/server-mocks/permissions";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks/state";

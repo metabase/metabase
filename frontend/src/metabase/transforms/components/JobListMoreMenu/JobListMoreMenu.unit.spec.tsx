@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupBulkUpdateTransformJobsActiveEndpoint } from "__support__/server-mocks";
+import { setupBulkUpdateTransformJobsActiveEndpoint } from "__support__/server-mocks/transform";
 import {
   renderWithProviders,
   screen,

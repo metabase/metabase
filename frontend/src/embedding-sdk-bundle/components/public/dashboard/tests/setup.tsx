@@ -3,22 +3,26 @@ import { indexBy } from "underscore";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { setupAlertsEndpoints } from "__support__/server-mocks/alert";
+import { setupBookmarksEndpoints } from "__support__/server-mocks/bookmark";
 import {
-  setupAlertsEndpoints,
-  setupBookmarksEndpoints,
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
+} from "__support__/server-mocks/card";
+import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
+} from "__support__/server-mocks/collection";
+import {
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
-  setupDatabasesEndpoints,
-  setupLastDownloadFormatEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/dashboard";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks/user-key-value";
 import { screen } from "__support__/ui-minimal";
 import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";

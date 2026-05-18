@@ -1,12 +1,12 @@
 import * as formik from "formik";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks/activity";
 import {
   defaultAuditInfo,
   setupAuditInfoEndpoint,
-  setupCollectionByIdEndpoint,
-  setupRecentViewsAndSelectionsEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/audit";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
 import { mockSettings } from "__support__/settings";
 import {
   render,

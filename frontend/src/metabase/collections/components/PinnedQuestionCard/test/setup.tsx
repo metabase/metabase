@@ -2,7 +2,7 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/card";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui-with-store";

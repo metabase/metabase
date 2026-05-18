@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { setupDatabaseListEndpoint } from "__support__/server-mocks";
+import { setupDatabaseListEndpoint } from "__support__/server-mocks/database";
 import { mockSettings } from "__support__/settings";
 import {
   type RenderWithProvidersOptions,

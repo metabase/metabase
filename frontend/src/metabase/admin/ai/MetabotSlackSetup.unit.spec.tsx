@@ -2,15 +2,19 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
-  findRequests,
   setupMetabotSlackSettingsEndpoint,
   setupMetabotSlackSettingsEndpointWithError,
-  setupPropertiesEndpoints,
+} from "__support__/server-mocks/metabot";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import {
   setupSettingsEndpoints,
+  setupUpdateSettingEndpoint,
+} from "__support__/server-mocks/settings";
+import {
   setupSlackAppInfoEndpoint,
   setupSlackManifestEndpoint,
-  setupUpdateSettingEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/slack";
+import { findRequests } from "__support__/server-mocks/util";
 import {
   renderWithProviders,
   screen,

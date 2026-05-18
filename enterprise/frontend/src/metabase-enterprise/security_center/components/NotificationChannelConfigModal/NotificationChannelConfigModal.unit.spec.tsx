@@ -1,12 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  setupNotificationChannelsEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-  setupUpdateSettingsEndpoint,
-  setupUserRecipientsEndpoint,
-} from "__support__/server-mocks";
+import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks/activity";
+import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import { setupUpdateSettingsEndpoint } from "__support__/server-mocks/settings";
+import { setupUserRecipientsEndpoint } from "__support__/server-mocks/user";
 import { findRequests } from "__support__/server-mocks/util";
 import {
   renderWithProviders,

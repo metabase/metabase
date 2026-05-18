@@ -1,9 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupDatabaseListEndpoint,
-  setupUpdateSettingEndpoint,
-} from "__support__/server-mocks";
+import { setupDatabaseListEndpoint } from "__support__/server-mocks/database";
+import { setupUpdateSettingEndpoint } from "__support__/server-mocks/settings";
 import {
   getIcon,
   renderWithProviders,

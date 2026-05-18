@@ -1,9 +1,7 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupCardDataset,
-  setupSchemaEndpoints,
-  setupTableEndpoints,
-} from "__support__/server-mocks";
+import { setupSchemaEndpoints } from "__support__/server-mocks/database";
+import { setupCardDataset } from "__support__/server-mocks/dataset";
+import { setupTableEndpoints } from "__support__/server-mocks/table";
 import { mockSettings } from "__support__/settings";
 import { act, renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";

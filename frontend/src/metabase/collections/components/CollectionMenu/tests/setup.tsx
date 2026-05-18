@@ -6,8 +6,8 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupDashboardQuestionCandidatesEndpoint,
   setupStaleItemsEndpoint,
-  setupUserKeyValueEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/collection";
+import { setupUserKeyValueEndpoints } from "__support__/server-mocks/user-key-value";
 import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,

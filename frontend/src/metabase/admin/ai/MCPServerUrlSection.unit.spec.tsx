@@ -1,10 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
 import {
-  setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/settings";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { UndoListing } from "metabase/common/components/UndoListing";

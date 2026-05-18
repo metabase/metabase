@@ -1,4 +1,4 @@
-import { setupNotificationChannelsEndpoints } from "__support__/server-mocks";
+import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 
 import { useHasAnyNotificationChannel } from "./use-notification-channels";

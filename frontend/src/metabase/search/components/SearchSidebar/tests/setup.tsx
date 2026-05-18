@@ -1,5 +1,5 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";

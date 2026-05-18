@@ -1,5 +1,5 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupTenantEntpoints } from "__support__/server-mocks";
+import { setupTenantEntpoints } from "__support__/server-mocks/tenant";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";

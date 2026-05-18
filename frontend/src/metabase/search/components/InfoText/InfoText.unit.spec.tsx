@@ -1,12 +1,12 @@
 import dayjs from "dayjs";
 
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
+import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
+import { setupTableEndpoints } from "__support__/server-mocks/table";
 import {
-  setupCollectionByIdEndpoint,
-  setupDatabaseEndpoints,
-  setupTableEndpoints,
   setupUserRecipientsEndpoint,
   setupUsersEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/user";
 import {
   renderWithProviders,
   screen,

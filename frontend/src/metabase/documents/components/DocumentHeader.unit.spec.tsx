@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupCommentEndpoints } from "__support__/server-mocks";
+import { setupCommentEndpoints } from "__support__/server-mocks/comment";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockDocument, createMockUser } from "metabase-types/api/mocks";
 

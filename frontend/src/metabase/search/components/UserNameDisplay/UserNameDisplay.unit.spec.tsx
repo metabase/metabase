@@ -1,4 +1,4 @@
-import { setupUserRecipientsEndpoint } from "__support__/server-mocks";
+import { setupUserRecipientsEndpoint } from "__support__/server-mocks/user";
 import { render, screen, waitFor } from "__support__/ui-minimal";
 import type { UserListResult } from "metabase-types/api";
 import { createMockUserListResult } from "metabase-types/api/mocks";

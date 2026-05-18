@@ -1,10 +1,8 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock, { type UserRouteConfig } from "fetch-mock";
 
-import {
-  setupBugReportingDetailsEndpoint,
-  setupPropertiesEndpoints,
-} from "__support__/server-mocks";
+import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks/bug-report";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
 import {
   renderWithProviders,
   screen,

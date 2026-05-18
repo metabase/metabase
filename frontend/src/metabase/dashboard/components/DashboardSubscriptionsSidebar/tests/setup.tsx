@@ -2,8 +2,8 @@
 import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { setupUserRecipientsEndpoint } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import { setupUserRecipientsEndpoint } from "__support__/server-mocks/user";
 import { mockSettings } from "__support__/settings";
 import type { Screen } from "__support__/ui-minimal";
 import { renderWithProviders } from "__support__/ui-with-store";

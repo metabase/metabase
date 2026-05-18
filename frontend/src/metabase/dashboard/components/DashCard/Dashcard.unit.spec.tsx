@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks/user-key-value";
 import { createMockEntitiesState } from "__support__/store";
 import {
   act,

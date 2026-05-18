@@ -1,7 +1,7 @@
 import {
   setupDashboardEndpoints,
   setupDashboardNotFoundEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/dashboard";
 import {
   renderWithProviders,
   screen,

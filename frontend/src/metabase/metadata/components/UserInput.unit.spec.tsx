@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
-import { setupUsersEndpoints } from "__support__/server-mocks";
+import { setupUsersEndpoints } from "__support__/server-mocks/user";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { UserInput } from "metabase/metadata/components/UserInput";
 import { createMockUserListResult } from "metabase-types/api/mocks";

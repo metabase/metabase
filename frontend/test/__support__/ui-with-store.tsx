@@ -59,6 +59,7 @@ export interface RenderWithProvidersOptions {
   withKBar?: boolean;
   withDND?: boolean;
   withUndos?: boolean;
+  storeProfile?: "static" | "common" | "app";
   customReducers?: Record<string, Reducer<any, any, any>>;
   theme?: MantineThemeOverride;
 }
@@ -82,6 +83,7 @@ function getStoreAndWrapper({
   withKBar = false,
   withDND = false,
   withUndos = false,
+  storeProfile = "app",
   customReducers = {},
   theme,
 }: RenderWithProvidersOptions) {
@@ -96,20 +98,7 @@ function getStoreAndWrapper({
   });
   const history = withRouter ? browserHistory : undefined;
 
-  const realReducers =
-    mode === "public"
-      ? publicReducers
-      : {
-          ...commonReducers,
-          admin: adminReducer,
-          pulse: combineReducers(pulse),
-          qb: combineReducers(qb),
-          reference,
-          revisions,
-          setup: setupReducer,
-          plugins: combineReducers(PLUGIN_REDUCERS),
-          visualizer,
-        };
+  const realReducers = getRealReducers(mode, storeProfile);
 
   const reducers = {
     ...createStaticReducers(initialState, [
@@ -181,6 +170,7 @@ export function renderWithProviders(
     withKBar,
     withDND,
     withUndos,
+    storeProfile,
     customReducers,
     theme,
     ...renderOptions
@@ -193,6 +183,7 @@ export function renderWithProviders(
     withKBar,
     withDND,
     withUndos,
+    storeProfile,
     customReducers,
     theme,
   });
@@ -226,6 +217,7 @@ export function renderHookWithProviders<TProps, TResult>(
     withKBar,
     withDND,
     withUndos,
+    storeProfile,
     customReducers,
     theme,
     ...renderHookOptions
@@ -238,6 +230,7 @@ export function renderHookWithProviders<TProps, TResult>(
     withKBar,
     withDND,
     withUndos,
+    storeProfile,
     customReducers,
     theme,
   });
@@ -256,6 +249,35 @@ export function renderHookWithProviders<TProps, TResult>(
     ...renderHookOptions,
   });
   return { ...renderHookReturn, store, history };
+}
+
+function getRealReducers(
+  mode: RenderWithProvidersOptions["mode"],
+  storeProfile: NonNullable<RenderWithProvidersOptions["storeProfile"]>,
+) {
+  if (storeProfile === "static") {
+    return {};
+  }
+
+  if (mode === "public") {
+    return publicReducers;
+  }
+
+  if (storeProfile === "common") {
+    return commonReducers;
+  }
+
+  return {
+    ...commonReducers,
+    admin: adminReducer,
+    pulse: combineReducers(pulse),
+    qb: combineReducers(qb),
+    reference,
+    revisions,
+    setup: setupReducer,
+    plugins: combineReducers(PLUGIN_REDUCERS),
+    visualizer,
+  };
 }
 
 function MaybeKBar({

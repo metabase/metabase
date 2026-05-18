@@ -1,9 +1,9 @@
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
 import {
   setupAdhocQueryMetadataEndpoint,
   setupCardDataset,
-  setupCollectionByIdEndpoint,
-  setupNotificationChannelsEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/dataset";
+import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import {
   mockGetBoundingClientRect,
   screen,

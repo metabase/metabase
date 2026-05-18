@@ -28,8 +28,11 @@ import {
 } from "metabase/browse/models/test-utils";
 import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
 import { checkNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
-import { SAMPLE_METADATA, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import {
+  SAMPLE_METADATA,
+  SAMPLE_PROVIDER,
+  createTestQuery,
+} from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { CardType, RecentItem } from "metabase-types/api";
 import {
@@ -192,7 +195,7 @@ function setup({
 }
 
 function createSummarizedQuestion(type: CardType) {
-  const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+  const query = createTestQuery(SAMPLE_PROVIDER, {
     stages: [
       {
         source: { type: "table", id: ORDERS_ID },

@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import {
   setupCreateLibraryEndpoint,
   setupCreateLibraryEndpointError,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/library";
 import {
   renderWithProviders,
   screen,

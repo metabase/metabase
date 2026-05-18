@@ -1,8 +1,8 @@
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
 import {
-  setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/settings";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockSettings } from "metabase-types/api/mocks";
 

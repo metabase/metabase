@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import {
   setupDeleteTransformJobEndpoint,
   setupDeleteTransformJobEndpointWithError,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/transform";
 import {
   renderWithProviders,
   screen,

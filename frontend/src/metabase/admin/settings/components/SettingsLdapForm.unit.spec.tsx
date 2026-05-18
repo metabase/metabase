@@ -1,11 +1,9 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  findRequests,
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupSettingsEndpoints } from "__support__/server-mocks/settings";
+import { findRequests } from "__support__/server-mocks/util";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockGroup, createMockSettings } from "metabase-types/api/mocks";
 

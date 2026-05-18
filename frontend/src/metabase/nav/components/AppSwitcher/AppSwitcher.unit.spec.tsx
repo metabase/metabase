@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 import { Route } from "react-router";
 
-import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
+import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks/bug-report";
 import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,

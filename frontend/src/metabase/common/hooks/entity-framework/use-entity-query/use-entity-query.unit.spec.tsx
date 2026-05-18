@@ -1,9 +1,7 @@
 import fetchMock from "fetch-mock";
 
-import {
-  setupDatabaseEndpoints,
-  setupTableEndpoints,
-} from "__support__/server-mocks";
+import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
+import { setupTableEndpoints } from "__support__/server-mocks/table";
 import {
   renderWithProviders,
   screen,

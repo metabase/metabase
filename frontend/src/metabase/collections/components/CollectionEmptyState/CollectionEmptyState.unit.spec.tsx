@@ -1,8 +1,6 @@
-import {
-  setupDatabasesEndpoints,
-  setupSearchEndpoints,
-  setupUserMetabotPermissionsEndpoint,
-} from "__support__/server-mocks";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks/metabot";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
 import type { Collection } from "metabase-types/api";

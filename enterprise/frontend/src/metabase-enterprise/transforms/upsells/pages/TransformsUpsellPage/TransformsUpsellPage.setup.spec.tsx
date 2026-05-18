@@ -1,11 +1,9 @@
 import { Route } from "react-router";
 
-import {
-  setupBillingEndpoints,
-  setupBugReportingDetailsEndpoint,
-  setupDatabaseListEndpoint,
-  setupPropertiesEndpoints,
-} from "__support__/server-mocks";
+import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks/bug-report";
+import { setupDatabaseListEndpoint } from "__support__/server-mocks/database";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupBillingEndpoints } from "__support__/server-mocks/store";
 import {
   renderWithProviders,
   screen,

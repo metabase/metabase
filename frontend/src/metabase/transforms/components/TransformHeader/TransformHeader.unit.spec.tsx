@@ -1,10 +1,8 @@
 import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import {
-  setupCollectionByIdEndpoint,
-  setupUserMetabotPermissionsEndpoint,
-} from "__support__/server-mocks";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks/metabot";
 import {
   renderWithProviders,
   screen,

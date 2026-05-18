@@ -1,12 +1,12 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupDatabaseListEndpoint } from "__support__/server-mocks/database";
 import {
-  setupDatabaseListEndpoint,
   setupGdriveGetFolderEndpoint,
   setupGdriveServiceAccountEndpoint,
-  setupTablesEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/gdrive";
+import { setupTablesEndpoints } from "__support__/server-mocks/table";
 import {
   act,
   renderWithProviders,

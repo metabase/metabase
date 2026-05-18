@@ -1,7 +1,5 @@
-import {
-  findRequests,
-  setupCollectionByIdEndpoint,
-} from "__support__/server-mocks";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
+import { findRequests } from "__support__/server-mocks/util";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { CollectionId } from "metabase-types/api";

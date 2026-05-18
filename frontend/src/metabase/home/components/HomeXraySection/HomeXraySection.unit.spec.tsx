@@ -1,7 +1,5 @@
-import {
-  setupDatabaseCandidatesEndpoint,
-  setupDatabasesEndpoints,
-} from "__support__/server-mocks";
+import { setupDatabaseCandidatesEndpoint } from "__support__/server-mocks/automagic-dashboards";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import {
   renderWithProviders,
   screen,

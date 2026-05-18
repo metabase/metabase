@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { findRequests } from "__support__/server-mocks";
+import { findRequests } from "__support__/server-mocks/util";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 
 import { setup as baseSetup } from "../../tests/setup";

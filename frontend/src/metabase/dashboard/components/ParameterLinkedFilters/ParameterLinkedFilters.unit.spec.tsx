@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupValidFilterFieldsEndpoint } from "__support__/server-mocks";
+import { setupValidFilterFieldsEndpoint } from "__support__/server-mocks/dashboard";
 import {
   getIcon,
   renderWithProviders,

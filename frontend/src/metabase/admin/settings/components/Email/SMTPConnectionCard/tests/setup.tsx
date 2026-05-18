@@ -1,8 +1,6 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupSettingsEndpoints } from "__support__/server-mocks/settings";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui-with-store";
 import { SMTPConnectionCard } from "metabase/admin/settings/components/Email/SMTPConnectionCard/SMTPConnectionCard";

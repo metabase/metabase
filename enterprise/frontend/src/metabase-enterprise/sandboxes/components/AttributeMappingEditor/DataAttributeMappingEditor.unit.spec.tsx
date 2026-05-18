@@ -2,11 +2,11 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import {
-  setupAdhocQueryMetadataEndpoint,
   setupCardEndpoints,
   setupCardQueryMetadataEndpoint,
-  setupTableQueryMetadataEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/card";
+import { setupAdhocQueryMetadataEndpoint } from "__support__/server-mocks/dataset";
+import { setupTableQueryMetadataEndpoint } from "__support__/server-mocks/table";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import type { DataAttributeMap } from "metabase-enterprise/sandboxes/types";
 import type { DimensionRef, GroupTableAccessPolicy } from "metabase-types/api";

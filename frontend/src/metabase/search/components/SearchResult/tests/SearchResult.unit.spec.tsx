@@ -1,11 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
 import {
-  setupCollectionByIdEndpoint,
   setupUserRecipientsEndpoint,
   setupUsersEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/user";
 import {
   getIcon,
   renderWithProviders,

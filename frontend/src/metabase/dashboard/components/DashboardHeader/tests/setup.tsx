@@ -1,11 +1,11 @@
 import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { setupBookmarksEndpoints } from "__support__/server-mocks/bookmark";
 import {
-  setupBookmarksEndpoints,
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/collection";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
 import {

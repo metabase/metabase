@@ -1,4 +1,4 @@
-import { setupTableEndpoints } from "__support__/server-mocks";
+import { setupTableEndpoints } from "__support__/server-mocks/table";
 import { createMockEntitiesState } from "__support__/store";
 import {
   act,

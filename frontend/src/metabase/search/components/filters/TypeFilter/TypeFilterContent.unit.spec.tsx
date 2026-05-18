@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { setupSearchEndpoints } from "__support__/server-mocks";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import {
   renderWithProviders,
   screen,

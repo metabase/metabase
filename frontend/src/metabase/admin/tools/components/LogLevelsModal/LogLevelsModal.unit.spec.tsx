@@ -7,7 +7,7 @@ import {
   setupDeleteLoggerAdjustmentEndpoint,
   setupLoggerPresetsEndpoint,
   setupPostLoggerAdjustmentEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/logger";
 import {
   renderWithProviders,
   screen,

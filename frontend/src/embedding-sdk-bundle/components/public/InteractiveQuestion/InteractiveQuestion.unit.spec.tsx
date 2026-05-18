@@ -4,26 +4,30 @@ import {
   setupEnterpriseOnlyPlugin,
   setupEnterprisePlugins,
 } from "__support__/enterprise";
+import { setupAlertsEndpoints } from "__support__/server-mocks/alert";
 import {
-  setupAlertsEndpoints,
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
-  setupCollectionByIdEndpoint,
+} from "__support__/server-mocks/card";
+import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
+import {
   setupDatabaseEndpoints,
   setupDatabaseListEndpoint,
   setupDatabasesEndpoints,
-  setupEmbeddingDataPickerDecisionEndpoints,
-  setupNotificationChannelsEndpoints,
-  setupSearchEndpoints,
-  setupTableEndpoints,
-  setupUserRecipientsEndpoint,
-} from "__support__/server-mocks";
-import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
+} from "__support__/server-mocks/database";
 import {
   setupCreateNotificationEndpoint,
   setupListNotificationEndpoints,
 } from "__support__/server-mocks/notification";
+import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import {
+  setupEmbeddingDataPickerDecisionEndpoints,
+  setupSearchEndpoints,
+} from "__support__/server-mocks/search";
+import { setupTableEndpoints } from "__support__/server-mocks/table";
+import { setupUserRecipientsEndpoint } from "__support__/server-mocks/user";
 import {
   mockGetBoundingClientRect,
   screen,

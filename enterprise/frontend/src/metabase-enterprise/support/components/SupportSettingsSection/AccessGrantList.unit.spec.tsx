@@ -4,7 +4,7 @@ import fetchMock from "fetch-mock";
 import {
   setupRevokeAccessGrantEndpoint,
   setupRevokeAccessGrantEndpointWithError,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/support-access-grants";
 import {
   fireEvent,
   renderWithProviders,

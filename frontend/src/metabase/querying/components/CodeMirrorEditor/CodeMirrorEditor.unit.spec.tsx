@@ -1,10 +1,13 @@
 import fetchMock from "fetch-mock";
 
-import { createMockMetadata } from "__support__/metadata";
+import {
+  createMockMetadata } from "__support__/metadata";
 import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks/metabot";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
-import * as Lib from "metabase-lib";
-import { createMetadataProvider } from "metabase-lib/test-helpers";
+import {
+  createMetadataProvider,
+  createTestNativeQuery,
+} from "metabase-lib/test-helpers";
 import type { NativeQuerySnippet } from "metabase-types/api";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -38,7 +41,7 @@ function setup({
     metadata,
   });
 
-  const query = Lib.createTestNativeQuery(provider, { query: text });
+  const query = createTestNativeQuery(provider, { query: text });
 
   renderWithProviders(
     <CodeMirrorEditor

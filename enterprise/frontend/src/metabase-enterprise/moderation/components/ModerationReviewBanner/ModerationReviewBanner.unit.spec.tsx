@@ -1,4 +1,4 @@
-import { setupUserEndpoints } from "__support__/server-mocks";
+import { setupUserEndpoints } from "__support__/server-mocks/user";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import Question from "metabase-lib/v1/Question";
 import type { ModerationReview, User } from "metabase-types/api";

@@ -1,10 +1,8 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import {
-  setupDatabasesEndpoints,
-  setupRecentViewsEndpoints,
-  setupSearchEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+import { setupRecentViewsEndpoints } from "__support__/server-mocks/activity";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
+import { setupSettingsEndpoints } from "__support__/server-mocks/settings";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui-with-store";
 import { BrowseModels } from "metabase/browse";

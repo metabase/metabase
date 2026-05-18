@@ -1,10 +1,8 @@
 import { screen } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
-import {
-  setupCurrentUserEndpoint,
-  setupPropertiesEndpoints,
-} from "__support__/server-mocks";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupCurrentUserEndpoint } from "__support__/server-mocks/user";
 import {
   renderWithProviders,
   waitForLoaderToBeRemoved,

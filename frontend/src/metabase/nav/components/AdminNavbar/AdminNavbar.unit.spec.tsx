@@ -1,8 +1,8 @@
 import { Route } from "react-router";
 
-import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
+import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks/bug-report";
 import { mockSettings } from "__support__/settings";
-import { act, renderWithProviders, screen } from "__support__/ui-with-store";
+import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockSettings,
@@ -33,7 +33,6 @@ const setup = async ({ isAdmin = false, isPaidPlan = false }) => {
       withRouter: true,
     },
   );
-  await act(async () => {});
   return view;
 };
 

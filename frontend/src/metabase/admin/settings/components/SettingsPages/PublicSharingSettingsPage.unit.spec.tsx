@@ -1,16 +1,16 @@
 import userEvent from "@testing-library/user-event";
 import { act } from "react-dom/test-utils";
 
+import { setupListPublicActionsEndpoint } from "__support__/server-mocks/action";
+import { setupListPublicCardsEndpoint } from "__support__/server-mocks/card";
+import { setupListPublicDashboardsEndpoint } from "__support__/server-mocks/dashboard";
+import { setupListPublicDocumentsEndpoint } from "__support__/server-mocks/document";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
 import {
-  findRequests,
-  setupListPublicActionsEndpoint,
-  setupListPublicCardsEndpoint,
-  setupListPublicDashboardsEndpoint,
-  setupListPublicDocumentsEndpoint,
-  setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/settings";
+import { findRequests } from "__support__/server-mocks/util";
 import {
   renderWithProviders,
   screen,

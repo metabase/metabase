@@ -1,12 +1,12 @@
 import { screen, waitFor } from "@testing-library/react";
 
 import {
-  findRequests,
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
-  setupNotificationChannelsEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/dashboard";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
+import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import { findRequests } from "__support__/server-mocks/util";
 import { renderWithProviders } from "__support__/ui-with-store";
 import { DashboardContextProvider } from "metabase/dashboard/context";
 import type { DashboardCard } from "metabase-types/api";

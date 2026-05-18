@@ -1,10 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupActionsEndpoints,
-  setupCardsEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
+import { setupActionsEndpoints } from "__support__/server-mocks/action";
+import { setupCardsEndpoints } from "__support__/server-mocks/card";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import {
   renderWithProviders,
   screen,

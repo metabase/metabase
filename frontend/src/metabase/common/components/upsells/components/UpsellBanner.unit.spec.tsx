@@ -1,10 +1,8 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
-import {
-  findRequests,
-  setupUserKeyValueEndpoints,
-} from "__support__/server-mocks";
+import { setupUserKeyValueEndpoints } from "__support__/server-mocks/user-key-value";
+import { findRequests } from "__support__/server-mocks/util";
 import {
   renderWithProviders,
   screen,

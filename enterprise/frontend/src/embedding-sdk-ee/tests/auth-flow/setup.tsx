@@ -4,8 +4,8 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
-  setupCollectionByIdEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/card";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
 import { renderWithProviders } from "__support__/ui-with-store";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";

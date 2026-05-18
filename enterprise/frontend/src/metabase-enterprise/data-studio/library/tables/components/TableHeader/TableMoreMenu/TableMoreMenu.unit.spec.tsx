@@ -8,10 +8,10 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
-  setupLibraryEndpoints,
   setupRootCollectionItemsEndpoint,
-  setupTableEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/collection";
+import { setupLibraryEndpoints } from "__support__/server-mocks/library";
+import { setupTableEndpoints } from "__support__/server-mocks/table";
 import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,

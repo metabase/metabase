@@ -3,7 +3,7 @@ import { Route } from "react-router";
 import {
   setupListTransformJobTransformsEndpoint,
   setupListTransformTagsEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/transform";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import type { TransformJob } from "metabase-types/api";
 import { createMockTransformJob } from "metabase-types/api/mocks";

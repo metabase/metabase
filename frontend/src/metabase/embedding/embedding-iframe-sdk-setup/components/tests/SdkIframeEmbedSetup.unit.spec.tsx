@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import {
   setupCardEndpoints,
   setupCardQueryMetadataEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/card";
 import { screen, waitFor } from "__support__/ui-minimal";
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import {

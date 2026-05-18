@@ -1,12 +1,12 @@
+import { setupEmbeddableEntitiesEndpoints } from "__support__/server-mocks/embed";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
 import {
-  setupEmbeddableEntitiesEndpoints,
   setupGenerateRandomTokenEndpoint,
-  setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
   setupUpsellEndpoints,
-  setupUserKeyValueEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/settings";
+import { setupUserKeyValueEndpoints } from "__support__/server-mocks/user-key-value";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import {
   createMockCard,

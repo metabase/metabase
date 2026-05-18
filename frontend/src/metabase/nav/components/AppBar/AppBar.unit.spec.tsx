@@ -1,4 +1,4 @@
-import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks/metabot";
 import {
   createMockMediaQueryList,
   renderWithProviders,

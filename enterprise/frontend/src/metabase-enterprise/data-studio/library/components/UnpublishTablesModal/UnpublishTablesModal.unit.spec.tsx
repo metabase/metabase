@@ -4,7 +4,7 @@ import {
   setupTableSelectionInfoEndpoint,
   setupUnpublishTablesEndpoint,
   setupUnpublishTablesEndpointError,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/data-studio";
 import {
   renderWithProviders,
   screen,

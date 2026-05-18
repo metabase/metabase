@@ -1,12 +1,12 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
+import { setupDatabaseListEndpoint } from "__support__/server-mocks/database";
 import {
-  setupCollectionByIdEndpoint,
-  setupDatabaseListEndpoint,
   setupGdriveGetFolderEndpoint,
   setupGdrivePostFolderEndpoint,
   setupGdriveServiceAccountEndpoint,
-  setupTokenStatusEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/gdrive";
+import { setupTokenStatusEndpoint } from "__support__/server-mocks/premium-features";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui-with-store";

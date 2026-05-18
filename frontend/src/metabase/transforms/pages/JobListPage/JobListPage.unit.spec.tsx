@@ -3,12 +3,12 @@ import fetchMock from "fetch-mock";
 import type { ReactNode } from "react";
 import { Route } from "react-router";
 
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks/metabot";
 import {
   setupDeleteTransformJobEndpoint,
   setupListTransformJobsEndpoint,
   setupUpdateTransformJobEndpoint,
-  setupUserMetabotPermissionsEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/transform";
 import {
   renderWithProviders,
   screen,

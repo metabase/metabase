@@ -1,11 +1,14 @@
 import { render, screen } from "__support__/ui-minimal";
-import * as Lib from "metabase-lib";
-import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  createTestQuery,
+} from "metabase-lib/test-helpers";
 
 import { MeasureEditor } from "./MeasureEditor";
 
 describe("MeasureEditor", () => {
-  const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+  const query = createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const description = "A sample description";
   const onQueryChange = jest.fn();
   const onDescriptionChange = jest.fn();

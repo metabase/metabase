@@ -1,13 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
-import {
-  setupCollectionByIdEndpoint,
-  setupDatabasesEndpoints,
-  setupSearchEndpoints,
-  setupTableEndpoints,
-  setupUserRecipientsEndpoint,
-} from "__support__/server-mocks";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
+import { setupTableEndpoints } from "__support__/server-mocks/table";
+import { setupUserRecipientsEndpoint } from "__support__/server-mocks/user";
 import {
   renderWithProviders,
   screen,

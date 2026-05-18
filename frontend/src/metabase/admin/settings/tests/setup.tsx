@@ -7,22 +7,24 @@ import {
   setupEnterpriseOnlyPlugin,
   setupEnterprisePlugins,
 } from "__support__/enterprise";
+import { setupApiKeyEndpoints } from "__support__/server-mocks/api-key";
+import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupEmailEndpoints } from "__support__/server-mocks/email";
+import { setupGroupsEndpoint } from "__support__/server-mocks/group";
+import { setupTokenStatusEndpoint } from "__support__/server-mocks/premium-features";
+import { setupRemoteSyncEndpoints } from "__support__/server-mocks/remote-sync";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
 import {
-  setupApiKeyEndpoints,
-  setupDatabasesEndpoints,
-  setupEmailEndpoints,
-  setupGroupsEndpoint,
-  setupPropertiesEndpoints,
-  setupRemoteSyncEndpoints,
   setupSettingEndpoint,
   setupSettingsEndpoints,
+} from "__support__/server-mocks/settings";
+import {
   setupSlackAppInfoEndpoint,
   setupSlackManifestEndpoint,
-  setupTokenStatusEndpoint,
-  setupUploadManagementEndpoint,
-  setupUserKeyValueEndpoints,
-} from "__support__/server-mocks";
-import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
+} from "__support__/server-mocks/slack";
+import { setupUploadManagementEndpoint } from "__support__/server-mocks/table";
+import { setupUserKeyValueEndpoints } from "__support__/server-mocks/user-key-value";
 import { mockSettings } from "__support__/settings";
 import { getTestStoreAndWrapper, screen } from "__support__/ui-with-store";
 import { getSettingsRoutes } from "metabase/admin/settingsRoutes";

@@ -3,19 +3,23 @@ import fetchMock from "fetch-mock";
 import { IndexRedirect, Link, Redirect, Route } from "react-router";
 
 import {
-  setupCardDataset,
   setupDatabaseIdFieldsEndpoints,
   setupDatabasesEndpoints,
+} from "__support__/server-mocks/database";
+import { setupCardDataset } from "__support__/server-mocks/dataset";
+import {
   setupFieldsValuesEndpoints,
-  setupLibraryEndpoints,
+  setupUnauthorizedFieldEndpoint,
+  setupUnauthorizedFieldValuesEndpoints,
+} from "__support__/server-mocks/field";
+import { setupLibraryEndpoints } from "__support__/server-mocks/library";
+import {
   setupTableEndpoints,
   setupTableSearchEndpoint,
   setupTablesBulkEndpoints,
-  setupUnauthorizedFieldEndpoint,
-  setupUnauthorizedFieldValuesEndpoints,
-  setupUserAcknowledgementEndpoints,
-  setupUsersEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/table";
+import { setupUsersEndpoints } from "__support__/server-mocks/user";
+import { setupUserAcknowledgementEndpoints } from "__support__/server-mocks/user-key-value";
 import {
   act,
   mockGetBoundingClientRect,

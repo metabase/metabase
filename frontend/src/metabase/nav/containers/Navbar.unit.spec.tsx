@@ -5,11 +5,11 @@ import { Route } from "react-router";
 import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
-  setupGdriveGetFolderEndpoint,
-  setupSearchEndpoints,
-  setupSettingEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupGdriveGetFolderEndpoint } from "__support__/server-mocks/gdrive";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
+import { setupSettingEndpoint } from "__support__/server-mocks/settings";
 import {
   act,
   renderWithProviders,

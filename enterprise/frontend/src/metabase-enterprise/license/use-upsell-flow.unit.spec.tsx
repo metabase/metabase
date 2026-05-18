@@ -1,9 +1,9 @@
 import {
-  findRequests,
   setupTokenActivationEndpoint,
   setupTokenStatusEndpoint,
   setupTokenStatusEndpointEmpty,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/premium-features";
+import { findRequests } from "__support__/server-mocks/util";
 import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,

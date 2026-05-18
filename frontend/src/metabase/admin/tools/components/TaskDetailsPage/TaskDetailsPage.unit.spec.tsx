@@ -2,10 +2,8 @@ import { useClipboard } from "@mantine/hooks";
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
-import {
-  setupDatabasesEndpoints,
-  setupTaskEndpoint,
-} from "__support__/server-mocks";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupTaskEndpoint } from "__support__/server-mocks/task";
 import {
   renderWithProviders,
   screen,

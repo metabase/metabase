@@ -4,7 +4,7 @@ import fetchMock from "fetch-mock";
 import {
   setupCollectionByIdEndpoint,
   setupUpdateCollectionEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/collection";
 import { createMockEntitiesState } from "__support__/store";
 import {
   renderWithProviders,

@@ -1,12 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
-import {
-  setupDatabasesEndpoints,
-  setupTableSearchEndpoint,
-  setupUserKeyValueEndpoints,
-  setupUsersEndpoints,
-} from "__support__/server-mocks";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupTableSearchEndpoint } from "__support__/server-mocks/table";
+import { setupUsersEndpoints } from "__support__/server-mocks/user";
+import { setupUserKeyValueEndpoints } from "__support__/server-mocks/user-key-value";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,

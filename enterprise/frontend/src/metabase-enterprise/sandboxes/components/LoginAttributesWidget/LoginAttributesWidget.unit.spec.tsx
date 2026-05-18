@@ -1,6 +1,6 @@
 import { userEvent } from "@testing-library/user-event";
 
-import { setupUserEndpoints } from "__support__/server-mocks";
+import { setupUserEndpoints } from "__support__/server-mocks/user";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 import type {

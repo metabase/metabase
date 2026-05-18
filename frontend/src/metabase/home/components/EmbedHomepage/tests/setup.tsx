@@ -2,10 +2,8 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupSettingsEndpoints } from "__support__/server-mocks/settings";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import {
   createMockSettingsState,

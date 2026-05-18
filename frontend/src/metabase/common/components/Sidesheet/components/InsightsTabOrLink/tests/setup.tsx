@@ -1,7 +1,7 @@
 import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupAuditInfoEndpoint } from "__support__/server-mocks";
+import { setupAuditInfoEndpoint } from "__support__/server-mocks/audit";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import {

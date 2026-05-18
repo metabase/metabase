@@ -4,6 +4,7 @@ const path = require("path");
 const REPO_ROOT = path.resolve(__dirname, "../..");
 const EXTENSIONS = [".ts", ".tsx", ".js", ".jsx"];
 const SCAN_ROOTS = ["frontend/src", "frontend/test", "enterprise/frontend/src"];
+const DEFAULT_TOP_LIMIT = 20;
 
 function toPosix(filePath) {
   return filePath.split(path.sep).join("/");
@@ -247,6 +248,45 @@ function topEntries(map, limit = 20) {
     .map(([file, count]) => ({ file: normalizeReportPath(file), count }));
 }
 
+function parseArgs(argv) {
+  const options = {
+    top: DEFAULT_TOP_LIMIT,
+    pathsFor: null,
+    category: null,
+  };
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+
+    if (arg === "--top") {
+      options.top = Number(argv[++index]);
+    } else if (arg === "--paths-for") {
+      options.pathsFor = argv[++index];
+    } else if (arg === "--category") {
+      options.category = argv[++index];
+    } else {
+      throw new Error(`Unknown argument: ${arg}`);
+    }
+  }
+
+  if (!Number.isInteger(options.top) || options.top < 1) {
+    throw new Error("--top must be a positive integer");
+  }
+
+  if (
+    options.category &&
+    !["unitSpecs", "productFiles", "supportFiles", "otherTestFiles"].includes(
+      options.category,
+    )
+  ) {
+    throw new Error(
+      "--category must be one of unitSpecs, productFiles, supportFiles, otherTestFiles",
+    );
+  }
+
+  return options;
+}
+
 function normalizeReportPath(value) {
   if (typeof value === "string" && path.isAbsolute(value)) {
     return toRelative(value);
@@ -258,7 +298,7 @@ function isUnitSpec(file) {
   return /\.(unit\.)?spec\.[jt]sx?$/.test(file) || /\.test\.[jt]sx?$/.test(file);
 }
 
-function classifyRootImporter(file) {
+function classifyFile(file) {
   const relativePath = toRelative(file);
   if (isUnitSpec(relativePath)) {
     return "unitSpecs";
@@ -272,9 +312,22 @@ function classifyRootImporter(file) {
   return "productFiles";
 }
 
+function normalizeInputPath(filePath) {
+  const absolutePath = path.isAbsolute(filePath)
+    ? filePath
+    : path.resolve(REPO_ROOT, filePath);
+
+  return resolveFile(absolutePath);
+}
+
 function main() {
+  const options = parseArgs(process.argv.slice(2));
   const files = SCAN_ROOTS.flatMap((root) => collectFiles(toAbsolute(root)));
   const unitSpecs = files.filter((file) => isUnitSpec(toRelative(file)));
+  const selectedCategory = options.category ?? "unitSpecs";
+  const selectedFiles = options.category
+    ? files.filter((file) => classifyFile(file) === options.category)
+    : unitSpecs;
   const {
     reverseGraph,
     directCljsImporters,
@@ -289,15 +342,15 @@ function main() {
 
   const firstHops = new Map();
   const reexportFilesOnCljsPaths = new Map();
-  const unitSpecPathsToCljs = [];
+  const selectedPathsToCljs = [];
 
-  for (const unitSpec of unitSpecs) {
-    if (!distance.has(unitSpec)) {
+  for (const file of selectedFiles) {
+    if (!distance.has(file)) {
       continue;
     }
 
-    const importPath = pathToCljs(unitSpec, nextTowardCljs);
-    unitSpecPathsToCljs.push(importPath);
+    const importPath = pathToCljs(file, nextTowardCljs);
+    selectedPathsToCljs.push(importPath);
 
     if (importPath[1]) {
       increment(firstHops, importPath[1]);
@@ -318,8 +371,14 @@ function main() {
   };
 
   for (const file of rootMetabaseLibImporters.sort()) {
-    rootImportersByCategory[classifyRootImporter(file)].push(toRelative(file));
+    rootImportersByCategory[classifyFile(file)].push(toRelative(file));
   }
+
+  const topFirstHopsToCljs = topEntries(firstHops, options.top);
+  const topBarrelOrReexportFilesOnCljsPaths = topEntries(
+    reexportFilesOnCljsPaths,
+    options.top,
+  );
 
   const report = {
     totals: {
@@ -327,7 +386,13 @@ function main() {
       runtimeEdges,
       directCljsImporters: directCljsImporters.size,
       unitSpecs: unitSpecs.length,
-      unitSpecsWithRuntimePathToCljs: unitSpecPathsToCljs.length,
+      unitSpecsWithRuntimePathToCljs:
+        selectedCategory === "unitSpecs"
+          ? selectedPathsToCljs.length
+          : unitSpecs.filter((file) => distance.has(file)).length,
+      selectedCategory,
+      selectedFiles: selectedFiles.length,
+      selectedFilesWithRuntimePathToCljs: selectedPathsToCljs.length,
       metabaseLibRootRuntimeImporters: rootMetabaseLibImporters.length,
       metabaseLibRootRuntimeImportingUnitSpecs:
         rootImportersByCategory.unitSpecs.length,
@@ -336,7 +401,10 @@ function main() {
       metabaseLibRootRuntimeImportingProductFiles:
         rootImportersByCategory.productFiles.length,
     },
-    topFirstHopsToCljsFromUnitSpecs: topEntries(firstHops),
+    topFirstHopsToCljs,
+    ...(selectedCategory === "unitSpecs"
+      ? { topFirstHopsToCljsFromUnitSpecs: topFirstHopsToCljs }
+      : {}),
     topDirectCljsImporters: topEntries(
       new Map(
         [...directCljsImporters.entries()].map(([file]) => [
@@ -344,10 +412,39 @@ function main() {
           [...(reverseGraph.get(file) ?? [])].length,
         ]),
       ),
+      options.top,
     ),
-    topBarrelOrReexportFilesOnCljsPaths: topEntries(reexportFilesOnCljsPaths),
-    metabaseLibRootRuntimeImporters: rootImportersByCategory,
+    topBarrelOrReexportFilesOnCljsPaths,
+    metabaseLibRootRuntimeImporters: options.category
+      ? {
+          [options.category]: rootImportersByCategory[options.category],
+        }
+      : rootImportersByCategory,
   };
+
+  report.shortestPathSamplesByTopFirstHop =
+    report.topFirstHopsToCljs.map(({ file }) => {
+      const absoluteFile = toAbsolute(file);
+      const samplePath = selectedPathsToCljs.find(
+        (importPath) => importPath[1] === absoluteFile,
+      );
+
+      return {
+        file,
+        path: samplePath?.map(normalizeReportPath) ?? [],
+      };
+    });
+
+  if (options.pathsFor) {
+    const file = normalizeInputPath(options.pathsFor);
+    report.shortestPathFor = {
+      file: options.pathsFor,
+      path:
+        file && distance.has(file)
+          ? pathToCljs(file, nextTowardCljs).map(normalizeReportPath)
+          : [],
+    };
+  }
 
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
 }

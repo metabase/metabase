@@ -1,8 +1,6 @@
 import { callMockEvent } from "__support__/events";
-import {
-  setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
-} from "__support__/server-mocks";
+import { setupCollectionsEndpoints } from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import {
   renderWithProviders,
   screen,

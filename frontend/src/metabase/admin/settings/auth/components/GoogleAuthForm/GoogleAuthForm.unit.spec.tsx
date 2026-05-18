@@ -1,11 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  findRequests,
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-  setupUpdateGoogleAuthEndpoint,
-} from "__support__/server-mocks";
+import { setupUpdateGoogleAuthEndpoint } from "__support__/server-mocks/google";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupSettingsEndpoints } from "__support__/server-mocks/settings";
+import { findRequests } from "__support__/server-mocks/util";
 import {
   renderWithProviders,
   screen,

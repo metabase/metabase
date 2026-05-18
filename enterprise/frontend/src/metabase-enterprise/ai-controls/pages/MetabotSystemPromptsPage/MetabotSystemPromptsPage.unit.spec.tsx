@@ -1,11 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
 import {
-  setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/settings";
 import {
   fireEvent,
   renderWithProviders,

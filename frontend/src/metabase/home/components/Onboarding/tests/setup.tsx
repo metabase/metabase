@@ -1,10 +1,8 @@
 import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupBugReportingDetailsEndpoint,
-  setupPropertiesEndpoints,
-} from "__support__/server-mocks";
+import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks/bug-report";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui-with-store";
 import {

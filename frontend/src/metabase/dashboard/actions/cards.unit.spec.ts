@@ -7,8 +7,8 @@ import {
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
-  setupDatabasesEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/card";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import { Api } from "metabase/api/api";
 import { mainReducers } from "metabase/reducers-main";
 import type { State, StoreDashcard } from "metabase/redux/store";

@@ -4,8 +4,8 @@ import { getStore } from "__support__/entities-store";
 import {
   setupDashboardQueryMetadataEndpoint,
   setupDashboardsEndpoints,
-  setupDatabaseEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/dashboard";
+import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
 import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api/api";
 import type { DashboardState, State } from "metabase/redux/store";

@@ -1,11 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  findRequests,
-  setupEmailEndpoints,
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+import { setupEmailEndpoints } from "__support__/server-mocks/email";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupSettingsEndpoints } from "__support__/server-mocks/settings";
+import { findRequests } from "__support__/server-mocks/util";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import {
   createMockSettingsState,

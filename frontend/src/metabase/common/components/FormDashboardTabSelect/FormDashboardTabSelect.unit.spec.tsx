@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupDashboardEndpoints } from "__support__/server-mocks";
+import { setupDashboardEndpoints } from "__support__/server-mocks/dashboard";
 import {
   renderWithProviders,
   screen,

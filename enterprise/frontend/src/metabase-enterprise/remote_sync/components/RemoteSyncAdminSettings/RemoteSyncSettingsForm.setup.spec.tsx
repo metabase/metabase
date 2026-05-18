@@ -1,12 +1,10 @@
 import fetchMock from "fetch-mock";
 
-import {
-  setupPropertiesEndpoints,
-  setupRemoteSyncEndpoints,
-  setupRootCollectionItemsEndpoint,
-  setupSettingsEndpoints,
-  setupUserKeyValueEndpoints,
-} from "__support__/server-mocks";
+import { setupRootCollectionItemsEndpoint } from "__support__/server-mocks/collection";
+import { setupRemoteSyncEndpoints } from "__support__/server-mocks/remote-sync";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupSettingsEndpoints } from "__support__/server-mocks/settings";
+import { setupUserKeyValueEndpoints } from "__support__/server-mocks/user-key-value";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";

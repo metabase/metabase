@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { setupPropertiesEndpoints } from "__support__/server-mocks";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import {
   createMockSettings,

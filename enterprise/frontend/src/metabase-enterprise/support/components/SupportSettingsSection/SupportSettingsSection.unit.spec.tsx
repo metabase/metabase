@@ -6,7 +6,7 @@ import {
   setupCurrentAccessGrantEndpoint,
   setupListAccessGrantsEndpoint,
   setupListAccessGrantsEndpointWithError,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/support-access-grants";
 import {
   fireEvent,
   renderWithProviders,

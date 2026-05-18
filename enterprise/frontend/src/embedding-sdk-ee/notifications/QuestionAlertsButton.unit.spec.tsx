@@ -1,9 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 
-import {
-  findRequests,
-  setupNotificationChannelsEndpoints,
-} from "__support__/server-mocks";
+import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import { findRequests } from "__support__/server-mocks/util";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import {

@@ -1,8 +1,6 @@
-import {
-  setupDatabasesEndpoints,
-  setupSearchEndpoints,
-  setupTablesEndpoints,
-} from "__support__/server-mocks";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
+import { setupTablesEndpoints } from "__support__/server-mocks/table";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import type { PythonTransformEditorUiOptions } from "metabase/plugins/oss/transforms";
 import { createMockState } from "metabase/redux/store/mocks";

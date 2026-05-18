@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import {
   setupGetTransformJobEndpoint,
   setupRunTransformJobEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/transform";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import type { TransformJob } from "metabase-types/api";
 import {

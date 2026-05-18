@@ -12,9 +12,17 @@ import "__support__/mocks";
 // window.location or similar jsdom properties after the tests have ended and
 // jsdom has been torn down
 // NOTE: probably not needed in jest >= 23
-process.on("uncaughtException", (err) =>
-  console.error("WARNING: UNCAUGHT EXCEPTION", err),
-);
+process.on("uncaughtException", (err) => {
+  if (
+    err?.message?.includes(
+      "Cannot read properties of undefined (reading 'left')",
+    )
+  ) {
+    return;
+  }
+
+  console.error("WARNING: UNCAUGHT EXCEPTION", err);
+});
 
 if (process.env["DISABLE_LOGGING"] || process.env["DISABLE_LOGGING_FRONTEND"]) {
   global.console = {

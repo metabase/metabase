@@ -2,11 +2,9 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
-import {
-  findRequests,
-  setupPropertiesEndpoints,
-  setupUpdateSettingsEndpoint,
-} from "__support__/server-mocks";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupUpdateSettingsEndpoint } from "__support__/server-mocks/settings";
+import { findRequests } from "__support__/server-mocks/util";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import type { EmbeddingHubChecklist } from "metabase/api/embedding-hub";
 import {

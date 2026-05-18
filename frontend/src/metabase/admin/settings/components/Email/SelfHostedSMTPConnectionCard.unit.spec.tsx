@@ -1,9 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupSettingsEndpoints } from "__support__/server-mocks/settings";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { createMockSettingsState } from "metabase/redux/store/mocks";

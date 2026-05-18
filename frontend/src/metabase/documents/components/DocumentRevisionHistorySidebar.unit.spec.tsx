@@ -1,9 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupDocumentRevisionsEndpoint,
-  setupUsersEndpoints,
-} from "__support__/server-mocks";
+import { setupDocumentRevisionsEndpoint } from "__support__/server-mocks/revision";
+import { setupUsersEndpoints } from "__support__/server-mocks/user";
 import {
   renderWithProviders,
   screen,

@@ -2,11 +2,9 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupNotificationChannelsEndpoints,
-  setupUserRecipientsEndpoint,
-} from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
+import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import { setupUserRecipientsEndpoint } from "__support__/server-mocks/user";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import {

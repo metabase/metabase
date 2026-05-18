@@ -5,7 +5,7 @@ import {
   setupChangePlanPreviewEndpoint,
   setupGetPlanEndpoint,
   setupTrialAvailableEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/cloud-proxy";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockUser } from "metabase-types/api/mocks";

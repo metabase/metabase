@@ -1,11 +1,11 @@
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
 import {
-  setupPropertiesEndpoints,
   setupSettingEndpoint,
   setupSettingsEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/settings";
 import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,

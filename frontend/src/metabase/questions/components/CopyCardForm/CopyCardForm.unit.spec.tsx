@@ -2,9 +2,9 @@ import userEvent from "@testing-library/user-event";
 
 import {
   setupCollectionsEndpoints,
-  setupDashboardEndpoints,
   setupGetCollectionEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/collection";
+import { setupDashboardEndpoints } from "__support__/server-mocks/dashboard";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import type { CardType } from "metabase-types/api";
 import {

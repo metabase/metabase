@@ -1,14 +1,14 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupAlertsEndpoints } from "__support__/server-mocks/alert";
 import {
-  setupAlertsEndpoints,
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
-  setupCollectionByIdEndpoint,
-  setupDatabaseEndpoints,
-  setupTableEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/card";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
+import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
+import { setupTableEndpoints } from "__support__/server-mocks/table";
 import { screen } from "__support__/ui-minimal";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";

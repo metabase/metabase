@@ -5,9 +5,9 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
-  setupDatabaseEndpoints,
-  setupTableEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/card";
+import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
+import { setupTableEndpoints } from "__support__/server-mocks/table";
 import { act, screen, waitFor, waitForLoaderToBeRemoved } from "__support__/ui";
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";

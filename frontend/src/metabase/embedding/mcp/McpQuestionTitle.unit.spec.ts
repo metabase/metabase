@@ -1,11 +1,14 @@
-import * as Lib from "metabase-lib";
-import { SAMPLE_METADATA, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import {
+  SAMPLE_METADATA,
+  SAMPLE_PROVIDER,
+  createTestQuery,
+} from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { getMcpQuestionTitle } from "./McpQuestionTitle";
 
-const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+const query = createTestQuery(SAMPLE_PROVIDER, {
   stages: [
     {
       source: { type: "table", id: ORDERS_ID },

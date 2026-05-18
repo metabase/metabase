@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { setupUpdateCollectionEndpoint } from "__support__/server-mocks";
+import { setupUpdateCollectionEndpoint } from "__support__/server-mocks/collection";
 import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,

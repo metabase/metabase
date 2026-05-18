@@ -1,20 +1,20 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { setupAlertsEndpoints } from "__support__/server-mocks/alert";
 import {
-  setupAlertsEndpoints,
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
-  setupCollectionByIdEndpoint,
-  setupDatabaseEndpoints,
-  setupNotificationChannelsEndpoints,
-  setupTableEndpoints,
-  setupUserRecipientsEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/card";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
+import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
 import {
   setupCreateNotificationEndpoint,
   setupListNotificationEndpoints,
 } from "__support__/server-mocks/notification";
+import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import { setupTableEndpoints } from "__support__/server-mocks/table";
+import { setupUserRecipientsEndpoint } from "__support__/server-mocks/user";
 import {
   mockGetBoundingClientRect,
   screen,

@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 import { P, isMatching } from "ts-pattern";
 import _ from "underscore";
 
-import { setupDatabaseListEndpoint } from "__support__/server-mocks";
+import { setupDatabaseListEndpoint } from "__support__/server-mocks/database";
 import { screen } from "__support__/ui-minimal";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton";

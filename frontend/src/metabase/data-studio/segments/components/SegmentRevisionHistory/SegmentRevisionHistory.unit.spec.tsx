@@ -1,7 +1,5 @@
-import {
-  setupSegmentRevisionsEndpoint,
-  setupSegmentRevisionsEndpointError,
-} from "__support__/server-mocks";
+import { setupSegmentRevisionsEndpoint } from "__support__/server-mocks/revision";
+import { setupSegmentRevisionsEndpointError } from "__support__/server-mocks/segment";
 import {
   renderWithProviders,
   screen,

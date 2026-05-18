@@ -2,11 +2,11 @@ import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
 import {
   setupBillingEndpoints,
-  setupPropertiesEndpoints,
   setupStoreEECloudAddOnsEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/store";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui-with-store";
 import { createMockState } from "metabase/redux/store/mocks";

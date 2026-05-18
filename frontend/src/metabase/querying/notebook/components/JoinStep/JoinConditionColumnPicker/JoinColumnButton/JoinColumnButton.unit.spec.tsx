@@ -1,7 +1,9 @@
 import { renderWithProviders } from "__support__/ui-with-store";
 import { isTouchDevice } from "metabase/utils/browser";
-import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import {
+  SAMPLE_PROVIDER,
+  createTestQuery,
+} from "metabase-lib/test-helpers";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { JoinColumnButton } from "./JoinColumnButton";
@@ -13,7 +15,7 @@ jest.mock("metabase/utils/browser", () => ({
 
 const scrollIntoViewMock = jest.fn();
 
-const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+const query = createTestQuery(SAMPLE_PROVIDER, {
   stages: [
     {
       source: { type: "table", id: ORDERS_ID },

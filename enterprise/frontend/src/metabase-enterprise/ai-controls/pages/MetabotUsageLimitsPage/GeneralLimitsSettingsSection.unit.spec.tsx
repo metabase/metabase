@@ -1,14 +1,14 @@
 import userEvent from "@testing-library/user-event";
 
 import {
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-  setupUpdateSettingEndpoint,
-} from "__support__/server-mocks";
-import {
   setupAIControlsInstanceLimitEndpoint,
   setupUpdateAIControlsInstanceLimitEndpoint,
 } from "__support__/server-mocks/metabot";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import {
+  setupSettingsEndpoints,
+  setupUpdateSettingEndpoint,
+} from "__support__/server-mocks/settings";
 import {
   renderWithProviders,
   screen,

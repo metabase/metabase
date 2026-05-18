@@ -1,14 +1,14 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupDashboardEndpoints } from "__support__/server-mocks/dashboard";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
 import {
-  findRequests,
-  setupDashboardEndpoints,
-  setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
-  setupUserKeyValueEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/settings";
+import { setupUserKeyValueEndpoints } from "__support__/server-mocks/user-key-value";
+import { findRequests } from "__support__/server-mocks/util";
 import {
   renderWithProviders,
   screen,

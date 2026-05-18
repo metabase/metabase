@@ -1,18 +1,18 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupAlertsEndpoints } from "__support__/server-mocks/alert";
 import {
-  setupAlertsEndpoints,
   setupCardByEntityIdEndpoints,
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
-  setupCollectionByIdEndpoint,
-  setupDatabaseEndpoints,
-  setupTableEndpoints,
   setupUnauthorizedCardEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/card";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
+import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
 import { setupEntityIdEndpoint } from "__support__/server-mocks/entity-id";
+import { setupTableEndpoints } from "__support__/server-mocks/table";
 import {
   act,
   mockGetBoundingClientRect,

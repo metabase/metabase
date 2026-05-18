@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
-import { setupCardDataset } from "__support__/server-mocks";
+import { setupCardDataset } from "__support__/server-mocks/dataset";
 import { createMockEntitiesState } from "__support__/store";
 import {
   renderWithProviders,

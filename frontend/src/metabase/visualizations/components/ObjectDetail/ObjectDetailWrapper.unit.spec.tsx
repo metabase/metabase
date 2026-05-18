@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupTableEndpoints } from "__support__/server-mocks";
+import { setupTableEndpoints } from "__support__/server-mocks/table";
 import { createMockEntitiesState } from "__support__/store";
 import { testDataset } from "__support__/testDataset";
 import {

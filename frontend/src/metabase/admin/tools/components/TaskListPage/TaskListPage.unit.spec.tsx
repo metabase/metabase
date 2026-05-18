@@ -3,11 +3,11 @@ import fetchMock from "fetch-mock";
 import type { Location } from "history";
 import { Route } from "react-router";
 
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import {
-  setupDatabasesEndpoints,
   setupTasksEndpoints,
   setupUniqueTasksEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/task";
 import {
   act,
   renderWithProviders,

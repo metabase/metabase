@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupRemoteSyncEndpoints } from "__support__/server-mocks";
+import { setupRemoteSyncEndpoints } from "__support__/server-mocks/remote-sync";
 import {
   renderWithProviders,
   screen,

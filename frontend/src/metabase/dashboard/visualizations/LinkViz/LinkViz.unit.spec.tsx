@@ -1,11 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupCollectionByIdEndpoint,
-  setupRecentViewsEndpoints,
-  setupSearchEndpoints,
-  setupUserRecipientsEndpoint,
-} from "__support__/server-mocks";
+import { setupRecentViewsEndpoints } from "__support__/server-mocks/activity";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
+import { setupUserRecipientsEndpoint } from "__support__/server-mocks/user";
 import {
   fireEvent,
   getIcon,

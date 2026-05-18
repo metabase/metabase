@@ -1,11 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupModelActionsEndpoints } from "__support__/server-mocks/action";
 import {
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
-  setupDatabasesEndpoints,
-  setupModelActionsEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/card";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import {
   renderWithProviders,
   screen,

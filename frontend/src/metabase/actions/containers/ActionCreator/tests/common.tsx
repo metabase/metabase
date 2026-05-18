@@ -1,10 +1,8 @@
 /* istanbul ignore file */
 import fetchMock from "fetch-mock";
 
-import {
-  setupCardsEndpoints,
-  setupDatabasesEndpoints,
-} from "__support__/server-mocks";
+import { setupCardsEndpoints } from "__support__/server-mocks/card";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import {
   renderWithProviders,
   waitFor,

@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { setupLogoutEndpoint } from "__support__/server-mocks";
+import { setupLogoutEndpoint } from "__support__/server-mocks/session";
 import { renderWithProviders, waitFor } from "__support__/ui-with-store";
 import * as domUtils from "metabase/utils/dom";
 

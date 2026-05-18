@@ -1,13 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
 import {
-  findRequests,
   setupGdriveGetFolderEndpoint,
   setupGdrivePostFolderEndpoint,
   setupGdriveServiceAccountEndpoint,
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/gdrive";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupSettingsEndpoints } from "__support__/server-mocks/settings";
+import { findRequests } from "__support__/server-mocks/util";
 import {
   renderWithProviders,
   screen,

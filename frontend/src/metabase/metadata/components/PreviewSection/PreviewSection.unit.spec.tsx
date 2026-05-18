@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { setupCardDataset } from "__support__/server-mocks";
+import { setupCardDataset } from "__support__/server-mocks/dataset";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import registerVisualizations from "metabase/visualizations/register";
 import {

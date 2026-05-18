@@ -4,7 +4,7 @@ import type { ComponentProps } from "react";
 import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/collection";
 import { screen, waitFor, within } from "__support__/ui-minimal";
 import {
   CollectionBrowser,

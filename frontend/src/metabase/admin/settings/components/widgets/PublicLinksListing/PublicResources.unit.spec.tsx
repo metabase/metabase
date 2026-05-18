@@ -1,8 +1,6 @@
-import {
-  setupListPublicActionsEndpoint,
-  setupListPublicCardsEndpoint,
-  setupListPublicDashboardsEndpoint,
-} from "__support__/server-mocks";
+import { setupListPublicActionsEndpoint } from "__support__/server-mocks/action";
+import { setupListPublicCardsEndpoint } from "__support__/server-mocks/card";
+import { setupListPublicDashboardsEndpoint } from "__support__/server-mocks/dashboard";
 import {
   renderWithProviders,
   screen,

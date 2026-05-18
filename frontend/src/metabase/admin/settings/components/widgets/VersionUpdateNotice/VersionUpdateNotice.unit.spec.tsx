@@ -1,9 +1,9 @@
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
 import {
-  setupPropertiesEndpoints,
   setupSettingEndpoint,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/settings";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { createMockSettingsState } from "metabase/redux/store/mocks";

@@ -1,10 +1,8 @@
 import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupSchemaEndpoints,
-  setupSegmentEndpoint,
-} from "__support__/server-mocks";
+import { setupSchemaEndpoints } from "__support__/server-mocks/database";
+import { setupSegmentEndpoint } from "__support__/server-mocks/segment";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui-with-store";

@@ -1,12 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupGeoJSONEndpoint } from "__support__/server-mocks/geojson";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
 import {
-  findRequests,
-  setupGeoJSONEndpoint,
-  setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/settings";
+import { findRequests } from "__support__/server-mocks/util";
 import {
   renderWithProviders,
   screen,

@@ -4,7 +4,7 @@ import fetchMock from "fetch-mock";
 import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/collection";
 import {
   renderWithProviders,
   screen,

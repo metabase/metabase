@@ -1,4 +1,4 @@
-import { setupCardQueryEndpoints } from "__support__/server-mocks";
+import { setupCardQueryEndpoints } from "__support__/server-mocks/card";
 import { render, screen, waitFor } from "__support__/ui-minimal";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";

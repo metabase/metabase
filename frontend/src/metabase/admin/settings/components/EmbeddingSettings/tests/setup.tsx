@@ -1,14 +1,14 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { setupTokenStatusEndpoint } from "__support__/server-mocks/premium-features";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
 import {
-  findRequests,
-  setupPropertiesEndpoints,
   setupSettingsEndpoints,
-  setupTokenStatusEndpoint,
   setupUpdateSettingEndpoint,
   setupUpdateSettingsEndpoint,
   setupUpsellEndpoints,
-  setupUserKeyValueEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/settings";
+import { setupUserKeyValueEndpoints } from "__support__/server-mocks/user-key-value";
+import { findRequests } from "__support__/server-mocks/util";
 import { mockSettings } from "__support__/settings";
 import { waitFor } from "__support__/ui-minimal";
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";

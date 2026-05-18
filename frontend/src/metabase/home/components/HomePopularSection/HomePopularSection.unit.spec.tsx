@@ -1,4 +1,4 @@
-import { setupPopularItemsEndpoints } from "__support__/server-mocks";
+import { setupPopularItemsEndpoints } from "__support__/server-mocks/activity";
 import {
   renderWithProviders,
   screen,

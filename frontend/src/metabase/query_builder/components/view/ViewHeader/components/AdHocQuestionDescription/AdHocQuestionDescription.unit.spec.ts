@@ -1,12 +1,14 @@
-import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import {
+  SAMPLE_PROVIDER,
+  createTestQuery,
+} from "metabase-lib/test-helpers";
 import { ORDERS_ID, PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
 import { describeQueryStage } from "./utils";
 
 describe("describeQueryStage", () => {
   it("can strip temporal bucket suffixes from breakout names", () => {
-    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+    const query = createTestQuery(SAMPLE_PROVIDER, {
       stages: [
         {
           source: { type: "table", id: ORDERS_ID },
@@ -33,7 +35,7 @@ describe("describeQueryStage", () => {
   });
 
   it("preserves non-temporal breakout suffixes when stripping temporal buckets", () => {
-    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+    const query = createTestQuery(SAMPLE_PROVIDER, {
       stages: [
         {
           source: { type: "table", id: PRODUCTS_ID },

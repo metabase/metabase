@@ -1,16 +1,16 @@
 import { renderWithProviders, screen } from "__support__/ui-with-store";
-import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,
   SAMPLE_METADATA,
   SAMPLE_PROVIDER,
+  createTestQuery,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { FilterHeaderButton } from "./FilterHeaderButton";
 
-const queryWithFilters = Lib.createTestQuery(SAMPLE_PROVIDER, {
+const queryWithFilters = createTestQuery(SAMPLE_PROVIDER, {
   stages: [
     {
       source: { type: "table", id: ORDERS_ID },
@@ -32,7 +32,7 @@ const QUESTION_WITH_FILTERS = Question.create({
   metadata: SAMPLE_METADATA,
 }).setQuery(queryWithFilters);
 
-const queryWithoutFilters = Lib.createTestQuery(
+const queryWithoutFilters = createTestQuery(
   SAMPLE_PROVIDER,
   DEFAULT_TEST_QUERY,
 );

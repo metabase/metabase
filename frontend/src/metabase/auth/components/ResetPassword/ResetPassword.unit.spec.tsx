@@ -2,12 +2,12 @@ import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
 import {
-  setupCurrentUserEndpoint,
-  setupPasswordCheckEndpoint,
   setupPasswordResetTokenEndpoint,
   setupPropertiesEndpoints,
   setupResetPasswordEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/session";
+import { setupCurrentUserEndpoint } from "__support__/server-mocks/user";
+import { setupPasswordCheckEndpoint } from "__support__/server-mocks/util";
 import {
   act,
   renderWithProviders,

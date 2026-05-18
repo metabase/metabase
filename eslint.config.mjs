@@ -36,6 +36,9 @@ const shouldLintCssModules =
 
 const TEST_FILES_NAME_PATTERN_ERROR_MESSAGE = `Please name your test setup and utils files with a ".spec.*" in the filename, or put them under "/tests", e.g. "setup.spec.ts", "MyComponent.setup.spec.ts", or "tests/setup.ts". This is to ensure they won't be imported in the SDK build.`;
 
+const TEST_CLJS_DEPENDENCY_IMPORT_MESSAGE =
+  "Avoid broad test imports that can pull CLJS into unrelated Jest specs. Use a direct module import instead, or add an eslint-disable comment explaining why this test intentionally exercises the broad barrel.";
+
 const baseMetabaseRestrictedConfig = {
   patterns: [
     { group: ["metabase-enterprise"] },
@@ -1029,6 +1032,34 @@ const configs = [
       "import/order": "off",
       "import/no-unresolved": "off",
       "metabase/no-color-literals": "off",
+    },
+  },
+  {
+    files: [
+      "**/*.unit.spec.{js,jsx,ts,tsx}",
+      "**/*.spec.{js,jsx,ts,tsx}",
+      "**/*.test.{js,jsx,ts,tsx}",
+      "**/tests/**/*.{js,jsx,ts,tsx}",
+      "**/test/**/*.{js,jsx,ts,tsx}",
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "warn",
+        {
+          selector: "ImportDeclaration[source.value='metabase-lib']",
+          message: TEST_CLJS_DEPENDENCY_IMPORT_MESSAGE,
+        },
+        {
+          selector:
+            "ImportDeclaration[source.value='__support__/server-mocks']",
+          message: TEST_CLJS_DEPENDENCY_IMPORT_MESSAGE,
+        },
+        {
+          selector:
+            "ImportDeclaration[source.value='metabase/utils/formatting']",
+          message: TEST_CLJS_DEPENDENCY_IMPORT_MESSAGE,
+        },
+      ],
     },
   },
   {

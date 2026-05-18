@@ -1,13 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
 import {
-  findRequests,
-  setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
   setupUpdateSettingsEndpoint,
-  setupUserKeyValueEndpoints,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/settings";
+import { setupUserKeyValueEndpoints } from "__support__/server-mocks/user-key-value";
+import { findRequests } from "__support__/server-mocks/util";
 import {
   fireEvent,
   renderWithProviders,

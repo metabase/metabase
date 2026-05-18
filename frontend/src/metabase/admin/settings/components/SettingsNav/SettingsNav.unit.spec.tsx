@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
-import { setupSettingEndpoint } from "__support__/server-mocks";
+import { setupSettingEndpoint } from "__support__/server-mocks/settings";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import {
   createMockLocation,

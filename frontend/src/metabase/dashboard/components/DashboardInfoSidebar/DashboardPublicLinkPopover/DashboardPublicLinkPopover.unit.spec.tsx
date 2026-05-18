@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { useState } from "react";
 
-import { setupDashboardPublicLinkEndpoints } from "__support__/server-mocks";
+import { setupDashboardPublicLinkEndpoints } from "__support__/server-mocks/dashboard";
 import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,

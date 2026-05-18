@@ -3,11 +3,9 @@ import fetchMock from "fetch-mock";
 import { useEffect, useState } from "react";
 import _ from "underscore";
 
-import {
-  setupTableEndpoints,
-  setupUserKeyValueEndpoints,
-  setupUsersEndpoints,
-} from "__support__/server-mocks";
+import { setupTableEndpoints } from "__support__/server-mocks/table";
+import { setupUsersEndpoints } from "__support__/server-mocks/user";
+import { setupUserKeyValueEndpoints } from "__support__/server-mocks/user-key-value";
 import {
   renderWithProviders,
   screen,

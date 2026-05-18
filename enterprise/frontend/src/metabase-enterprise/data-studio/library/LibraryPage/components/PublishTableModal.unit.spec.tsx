@@ -5,10 +5,12 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
-  setupLibraryEndpoints,
+} from "__support__/server-mocks/collection";
+import {
   setupPublishTablesEndpoint,
   setupTableSelectionInfoEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/data-studio";
+import { setupLibraryEndpoints } from "__support__/server-mocks/library";
 import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,

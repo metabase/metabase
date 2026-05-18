@@ -1,10 +1,8 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  setupDatabasesEndpoints,
-  setupTablesEndpoints,
-} from "__support__/server-mocks";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupTablesEndpoints } from "__support__/server-mocks/table";
 import {
   act,
   renderWithProviders,
@@ -128,8 +126,6 @@ describe("useEntityListQuery", () => {
         ) {
           return;
         }
-
-        // eslint-disable-next-line no-console
         console.warn(message, ...args);
       });
   });

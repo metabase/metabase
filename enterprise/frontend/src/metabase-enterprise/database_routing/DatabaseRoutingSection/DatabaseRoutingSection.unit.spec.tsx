@@ -1,8 +1,6 @@
-import {
-  setupDatabasesEndpoints,
-  setupListTransformsEndpoint,
-  setupUserAttributesEndpoint,
-} from "__support__/server-mocks";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupListTransformsEndpoint } from "__support__/server-mocks/transform";
+import { setupUserAttributesEndpoint } from "__support__/server-mocks/user";
 import { renderWithProviders, screen } from "__support__/ui-with-store";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { Database } from "metabase-types/api";

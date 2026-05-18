@@ -1,8 +1,8 @@
 import { createMockMetadata } from "__support__/metadata";
-import * as Lib from "metabase-lib";
 import {
   SAMPLE_DATABASE,
   createMetadataProvider,
+  createTestQuery,
 } from "metabase-lib/test-helpers";
 import { createMockSegment, createMockTable } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -50,7 +50,7 @@ describe("suggestSegments", () => {
       databaseId: DATABASE.id,
     });
 
-    const query = Lib.createTestQuery(provider, {
+    const query = createTestQuery(provider, {
       stages: [
         {
           source: {

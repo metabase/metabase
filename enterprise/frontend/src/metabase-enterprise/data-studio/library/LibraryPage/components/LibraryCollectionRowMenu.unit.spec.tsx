@@ -4,7 +4,7 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupUpdateCollectionEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/collection";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import {

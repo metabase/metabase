@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { findRequests } from "__support__/server-mocks";
+import { findRequests } from "__support__/server-mocks/util";
 import { act, screen, waitFor, within } from "__support__/ui-minimal";
 import {
   createMockCollection,

@@ -1,12 +1,12 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks/metabot";
 import {
   setupListTransformRunsEndpoint,
   setupListTransformTagsEndpoint,
   setupListTransformsEndpoint,
-  setupUserMetabotPermissionsEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/transform";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,

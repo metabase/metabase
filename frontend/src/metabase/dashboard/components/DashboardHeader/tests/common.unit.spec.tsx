@@ -1,6 +1,6 @@
 import { waitFor } from "@testing-library/react";
 
-import { findRequests } from "__support__/server-mocks";
+import { findRequests } from "__support__/server-mocks/util";
 import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
 
 import { setup } from "./setup";

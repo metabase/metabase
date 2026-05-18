@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks/user-key-value";
 import { screen, waitFor } from "__support__/ui-minimal";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";

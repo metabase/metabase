@@ -3,11 +3,9 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupBillingEndpoints,
-  setupMetabaseManagedAiEndpoints,
-  setupPropertiesEndpoints,
-} from "__support__/server-mocks";
+import { setupMetabaseManagedAiEndpoints } from "__support__/server-mocks/metabot";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupBillingEndpoints } from "__support__/server-mocks/store";
 import { mockSettings } from "__support__/settings";
 import {
   act,

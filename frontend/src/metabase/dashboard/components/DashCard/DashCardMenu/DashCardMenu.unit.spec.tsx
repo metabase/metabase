@@ -1,10 +1,8 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
-import {
-  setupCardQueryDownloadEndpoint,
-  setupLastDownloadFormatEndpoints,
-} from "__support__/server-mocks";
+import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks/card";
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks/user-key-value";
 import { createMockEntitiesState } from "__support__/store";
 import {
   getIcon,

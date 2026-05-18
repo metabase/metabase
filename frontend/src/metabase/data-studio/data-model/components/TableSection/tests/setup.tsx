@@ -1,10 +1,8 @@
 import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupUserKeyValueEndpoints,
-  setupUsersEndpoints,
-} from "__support__/server-mocks";
+import { setupUsersEndpoints } from "__support__/server-mocks/user";
+import { setupUserKeyValueEndpoints } from "__support__/server-mocks/user-key-value";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui-with-store";
 import type { RouteParams } from "metabase/data-studio/data-model/pages/DataModel/types";

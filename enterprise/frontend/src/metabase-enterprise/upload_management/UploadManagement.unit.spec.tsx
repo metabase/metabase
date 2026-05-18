@@ -5,7 +5,7 @@ import fetchMock from "fetch-mock";
 import {
   setupDeleteUploadManagementDeleteEndpoint,
   setupUploadManagementEndpoint,
-} from "__support__/server-mocks";
+} from "__support__/server-mocks/table";
 import {
   renderWithProviders,
   screen,
