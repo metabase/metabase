@@ -23,7 +23,7 @@ describe("api", () => {
       const inputData = {
         method: "GET" as const,
         url: "/api/test",
-        options: { hasBody: false, json: true },
+        options: { hasBody: false },
         data: {},
       };
 
@@ -37,7 +37,7 @@ describe("api", () => {
       const inputData = {
         method: "POST" as const,
         url: "/api/test",
-        options: { hasBody: true, json: true, headers: { "X-Test": "value" } },
+        options: { hasBody: true, headers: { "X-Test": "value" } },
         data: {},
       };
 
@@ -61,7 +61,7 @@ describe("api", () => {
       const inputData = {
         method: "GET" as const,
         url: "/api/original",
-        options: { hasBody: false, json: true },
+        options: { hasBody: false },
         data: {},
       };
 
@@ -93,14 +93,14 @@ describe("api", () => {
       const inputData = {
         method: "GET" as const,
         url: "/api/original",
-        options: { hasBody: false, json: true },
+        options: { hasBody: false },
         data: {},
       };
 
       const modifications = {
         method: "POST" as const,
         url: "/api/modified",
-        options: { hasBody: true, json: false, custom: "value" },
+        options: { hasBody: true, custom: "value" },
       };
 
       jest
@@ -119,7 +119,6 @@ describe("api", () => {
         url: "/api/test",
         options: {
           hasBody: true,
-          json: true,
           headers: { "X-Original": "value" },
           retry: true,
         },
@@ -150,7 +149,6 @@ describe("api", () => {
         "X-Modified": "new-value",
       });
       expect(result.options.hasBody).toBe(true);
-      expect(result.options.json).toBe(true);
       expect(result.options.retry).toBe(true);
     });
 
@@ -240,7 +238,7 @@ describe("api", () => {
       const inputData = {
         method: "POST" as const,
         url: "/api/async",
-        options: { hasBody: true, json: true },
+        options: { hasBody: true },
         data: {},
       };
 
@@ -296,7 +294,6 @@ describe("api", () => {
     it("should preserve all original options when handler does not modify them", async () => {
       const complexOptions = {
         hasBody: true,
-        json: true,
         headers: { "X-Custom": "header" },
         retry: true,
         retryCount: 5,

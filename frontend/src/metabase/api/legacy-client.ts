@@ -22,7 +22,6 @@ const METABASE_VERSION_HEADER = "X-Metabase-Version";
 let ANTI_CSRF_TOKEN: string | null = null;
 
 type RequestOptions = {
-  json: boolean;
   hasBody: boolean;
   noEvent: boolean;
   /**
@@ -39,7 +38,6 @@ type RequestOptions = {
 };
 
 const DEFAULT_OPTIONS: RequestOptions = {
-  json: true,
   hasBody: false,
   noEvent: false,
   headers: {},
@@ -248,9 +246,8 @@ export class LegacyApi extends EventEmitter<EventMap> {
 
         const headers: Record<string, string> = {
           ...this.getClientHeaders(),
-          ...(options.json
-            ? { Accept: "application/json", "Content-Type": "application/json" }
-            : {}),
+          Accept: "application/json",
+          "Content-Type": "application/json",
           ...options.headers,
         };
 
@@ -361,7 +358,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
           let body: string | Response | null | undefined =
             response.status === 204 ? null : bodyText;
 
-          if (options.json && bodyText !== "") {
+          if (bodyText !== "") {
             try {
               body = JSON.parse(bodyText);
             } catch (e) {}
