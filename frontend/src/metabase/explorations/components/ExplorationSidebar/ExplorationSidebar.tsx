@@ -2,7 +2,6 @@ import cx from "classnames";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { t } from "ttag";
 
-import { datasetApi } from "metabase/api/dataset";
 import {
   explorationApi,
   useUpdateExplorationMutation,
@@ -31,11 +30,7 @@ import {
 import type { Exploration, ExplorationQueryStatus } from "metabase-types/api";
 
 import type { SelectedEntityId } from "../../pages/ExplorationPage";
-import {
-  getAdjacentById,
-  getGroupDatasetQueryForMetadata,
-  shouldIgnoreKeyboardEvent,
-} from "../../utils";
+import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../../utils";
 import { PotentiallyInterestingMarker } from "../PotentiallyInterestingMarker";
 
 import S from "./ExplorationSidebar.module.css";
@@ -88,9 +83,6 @@ export function ExplorationSidebar({
   const prefetchQueryResult = explorationApi.usePrefetch(
     "getExplorationQueryResult",
   );
-  const prefetchMetadata = datasetApi.usePrefetch(
-    "getAdhocQueryMetadataCached",
-  );
 
   const handlePrefetch = useCallback(
     (item: ITreeNodeItem<ExplorationTreeNode>) => {
@@ -101,11 +93,8 @@ export function ExplorationSidebar({
       for (const query of queries) {
         prefetchQueryResult(query.id);
       }
-      if (queries.length > 0) {
-        prefetchMetadata(getGroupDatasetQueryForMetadata(queries));
-      }
     },
-    [prefetchQueryResult, prefetchMetadata],
+    [prefetchQueryResult],
   );
 
   useEffect(() => {
