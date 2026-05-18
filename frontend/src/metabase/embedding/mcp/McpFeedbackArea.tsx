@@ -38,8 +38,8 @@ export function McpFeedbackArea({
         px="lg"
         align="center"
         justify="space-between"
-        bd="0 0 1px solid var(--mb-color-border)"
         flex="0 0 auto"
+        style={{ borderBottom: "1px solid var(--mb-color-border)" }}
       >
         <Text c="text-primary" fw={700} fz="md">
           {feedbackAreaTitle}
@@ -55,7 +55,15 @@ export function McpFeedbackArea({
         </UnstyledButton>
       </Flex>
 
-      <Flex flex={1} w="100%" align="center" justify="center" px="xl" py="lg">
+      <Flex
+        flex={1}
+        w="100%"
+        align="center"
+        justify="center"
+        px="xl"
+        py="lg"
+        bg="background-secondary"
+      >
         <FormProvider
           initialValues={{
             issue_type: isPositive ? undefined : "",

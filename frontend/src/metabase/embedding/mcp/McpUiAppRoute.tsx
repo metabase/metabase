@@ -157,9 +157,6 @@ function McpUiAppRouteContent({
 
   const feedbackContentStyle: CSSProperties = {
     boxSizing: "border-box",
-    paddingTop: safeAreaPadding.top,
-    paddingRight: safeAreaPadding.right,
-    paddingLeft: safeAreaPadding.left,
   };
 
   const footerStyle: CSSProperties = {
@@ -240,7 +237,7 @@ function McpUiAppRouteContent({
         {selectedFeedback == null ? (
           renderQuestionView()
         ) : (
-          <Flex h={CONTENT_HEIGHT} w="100%" style={feedbackContentStyle}>
+          <Flex h={height} w="100%" style={feedbackContentStyle}>
             <McpFeedbackArea
               feedback={selectedFeedback}
               isSubmitting={isSubmittingFeedback}
@@ -250,23 +247,25 @@ function McpUiAppRouteContent({
           </Flex>
         )}
 
-        <Flex
-          h={FOOTER_HEIGHT}
-          align="center"
-          justify="space-between"
-          bg="background-secondary"
-          style={footerStyle}
-        >
-          <Flex align="center" gap="xs">
-            <McpFeedbackButtons
-              isSubmitting={isSubmittingFeedback}
-              submittedFeedback={submittedFeedback}
-              onSelectFeedback={setSelectedFeedback}
-            />
-          </Flex>
+        {selectedFeedback == null && (
+          <Flex
+            h={FOOTER_HEIGHT}
+            align="center"
+            justify="space-between"
+            bg="background-secondary"
+            style={footerStyle}
+          >
+            <Flex align="center" gap="xs">
+              <McpFeedbackButtons
+                isSubmitting={isSubmittingFeedback}
+                submittedFeedback={submittedFeedback}
+                onSelectFeedback={setSelectedFeedback}
+              />
+            </Flex>
 
-          <McpExploreButton app={app} instanceUrl={instanceUrl} />
-        </Flex>
+            <McpExploreButton app={app} instanceUrl={instanceUrl} />
+          </Flex>
+        )}
       </SdkQuestion>
     );
   };
