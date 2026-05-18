@@ -3,8 +3,8 @@ import { type CSSProperties, useEffect } from "react";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { Box, Divider, Flex } from "metabase/ui";
 
+import { ChartTypePicker } from "./ChartTypePicker/ChartTypePicker";
 import { McpQuestionTitle } from "./McpQuestionTitle";
-import { McpVisualizationTypeSelector } from "./McpVisualizationTypeSelector";
 import { TimeGranularityControl } from "./TimeControlBar/TimeGranularityControl";
 import { TimeRangeControl } from "./TimeControlBar/TimeRangeControl";
 import { useMcpQueryControls } from "./hooks/useMcpQueryControls";
@@ -22,7 +22,15 @@ export function McpQuestionView({
 
   onTimeControlsVisibilityChange,
 }: McpQuestionViewProps) {
-  const { hasTimeControls, timeGranularity, timeRange } = useMcpQueryControls();
+  const {
+    hasChartTypeSelector,
+    hasTimeControls,
+    timeGranularity,
+    timeRange,
+    chartTypes,
+    currentChartType,
+    onChartTypeChange,
+  } = useMcpQueryControls();
 
   // This is used to adjust the parent's visualization height.
   // We leave more room for the visualization when there are no time control.
@@ -51,7 +59,13 @@ export function McpQuestionView({
         </Box>
 
         <Flex align="center" flex="0 0 auto">
-          <McpVisualizationTypeSelector />
+          {hasChartTypeSelector && (
+            <ChartTypePicker
+              chartTypes={chartTypes}
+              value={currentChartType}
+              onChange={onChartTypeChange}
+            />
+          )}
         </Flex>
       </Flex>
 
