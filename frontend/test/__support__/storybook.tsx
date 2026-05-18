@@ -148,3 +148,61 @@ export function createWaitForResizeToStopDecorator(timeoutMs: number = 1000) {
     return <Story />;
   };
 }
+
+/**
+ * Loki decorator that defers the snapshot until lazily-rendered
+ * visualizations have mounted and painted.
+ *
+ * Document card embeds render their visualization only once an
+ * IntersectionObserver reports them on-screen (see `useNodeInViewport`),
+ * so a fixed delay races the async chain — IO callback, card query, then
+ * the ECharts paint. Instead we poll for the expected number of
+ * `visualization-root` nodes, then settle for `settleMs` so charts can
+ * finish their entry animation before the screenshot.
+ *
+ * `timeoutMs` is a hard cap: the Loki async callback always resolves, so
+ * a story that never renders its chart fails loudly with a screenshot
+ * instead of hanging the run.
+ */
+export function createWaitForChartsDecorator({
+  count,
+  settleMs = 1000,
+  timeoutMs = 20000,
+}: {
+  count: number;
+  settleMs?: number;
+  timeoutMs?: number;
+}) {
+  return function WaitForChartsDecorator(Story: StoryFn) {
+    const asyncCallback = useMemo(() => createAsyncCallback(), []);
+
+    useEffect(() => {
+      const startedAt = Date.now();
+      let frameId = 0;
+      let settleTimer: ReturnType<typeof setTimeout> | undefined;
+
+      const poll = () => {
+        const renderedCount = document.querySelectorAll(
+          '[data-testid="visualization-root"]',
+        ).length;
+        const timedOut = Date.now() - startedAt > timeoutMs;
+
+        if (renderedCount >= count || timedOut) {
+          settleTimer = setTimeout(asyncCallback, settleMs);
+          return;
+        }
+        frameId = requestAnimationFrame(poll);
+      };
+      frameId = requestAnimationFrame(poll);
+
+      return () => {
+        cancelAnimationFrame(frameId);
+        if (settleTimer != null) {
+          clearTimeout(settleTimer);
+        }
+      };
+    }, [asyncCallback]);
+
+    return <Story />;
+  };
+}

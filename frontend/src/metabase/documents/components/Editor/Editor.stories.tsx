@@ -6,6 +6,7 @@ import _ from "underscore";
 import { getStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
+import { createWaitForChartsDecorator } from "__support__/storybook";
 import { Api } from "metabase/api";
 import { commonReducers } from "metabase/reducers-common";
 import { MetabaseReduxProvider } from "metabase/redux";
@@ -127,4 +128,7 @@ export const CardEmbed = {
   args: {
     initialContent: Data.cardEmbed,
   },
+  // The two embedded cards render lazily once IntersectionObserver reports
+  // them on-screen — hold the Loki snapshot until both charts have painted.
+  decorators: [createWaitForChartsDecorator({ count: 2 })],
 };
