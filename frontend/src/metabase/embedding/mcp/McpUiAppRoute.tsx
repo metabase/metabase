@@ -1,10 +1,4 @@
-import {
-  type CSSProperties,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { type CSSProperties, useEffect, useMemo, useState } from "react";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
@@ -86,7 +80,7 @@ function McpUiAppRouteContent({
   sessionToken,
 }: McpUiAppRouteContentProps) {
   const { query, prompt, hostContext, app } = useMcpApp();
-  const [isTimeControlVisible, setIsTimeControlVisible] = useState(false);
+  const [isTimeControlsVisible, setIsTimeControlsVisible] = useState(false);
 
   const handleDrillThrough = useHandleMcpDrillThrough(app);
 
@@ -131,7 +125,7 @@ function McpUiAppRouteContent({
 
   const height = `calc(${CONTENT_HEIGHT} + ${FOOTER_HEIGHT})`;
 
-  const visualizationHeight = isTimeControlVisible
+  const visualizationHeight = isTimeControlsVisible
     ? `calc(${CONTENT_HEIGHT} - 8.5rem)`
     : `calc(${CONTENT_HEIGHT} - 8.5rem + ${QUERY_BAR_RESERVED_HEIGHT})`;
 
@@ -179,10 +173,6 @@ function McpUiAppRouteContent({
     sessionToken,
   });
 
-  const handleQueryBarVisibilityChange = useCallback((isVisible: boolean) => {
-    setIsTimeControlVisible(isVisible);
-  }, []);
-
   const renderSdkQuestionContent = () => {
     if (selectedFeedback !== null) {
       return (
@@ -203,7 +193,7 @@ function McpUiAppRouteContent({
       <>
         <McpQuestionView
           contentStyle={contentStyle}
-          onTimeControlsVisibilityChange={handleQueryBarVisibilityChange}
+          onTimeControlsVisibilityChange={setIsTimeControlsVisible}
           visualizationHeight={visualizationHeight}
         />
 
