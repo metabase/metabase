@@ -10,16 +10,18 @@ import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponen
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { getSdkStore } from "embedding-sdk-bundle/store";
-import { Flex } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 
 import { McpExploreButton } from "./McpExploreButton";
+import { McpFeedbackArea } from "./McpFeedbackArea";
 import { McpFeedbackButtons } from "./McpFeedbackButtons";
 import { McpQueryBar } from "./McpQueryBar";
 import { McpQuestionTitle } from "./McpQuestionTitle";
 import { getMcpDeserializedCard } from "./McpUiAppRoute.utils";
 import { useHandleMcpDrillThrough } from "./hooks/useHandleMcpDrillThrough";
 import { useMcpApp } from "./hooks/useMcpApp";
+import { useMcpFeedback } from "./hooks/useMcpFeedback";
 import { useMcpUserAndSettingsFetch } from "./hooks/useMcpUserAndSettingsFetch";
 import { buildMcpAppsTheme } from "./utils/buildMcpAppsTheme";
 
@@ -28,7 +30,7 @@ const store = getSdkStore();
 const DEFAULT_INSETS = { top: 0, right: 0, bottom: 0, left: 0 };
 const CONTENT_HEIGHT = "500px";
 const FOOTER_HEIGHT = "50px";
-const FOOTER_HORIZONTAL_PADDING = 20;
+const FOOTER_HORIZONTAL_PADDING = 16;
 const QUERY_BAR_RESERVED_HEIGHT = "calc(2rem + var(--mantine-spacing-sm))";
 
 // CSS for .mcp-loading and .mcp-spinner is defined globally in embed-mcp.html.
@@ -39,20 +41,14 @@ const SimpleLoader = () => (
 );
 
 export function McpUiAppRoute() {
-  const { query, prompt, hostContext, app } = useMcpApp();
-  const [isQueryBarVisible, setIsQueryBarVisible] = useState(false);
+  const { hostContext } = useMcpApp();
 
-  const handleDrillThrough = useHandleMcpDrillThrough(app);
-
-  const {
-    instanceUrl = "",
-    sessionToken = "",
-    mcpSessionId = "",
-  } = (window.metabaseConfig as {
-    instanceUrl: string;
-    sessionToken: string;
-    mcpSessionId: string;
-  }) ?? {};
+  const { instanceUrl = "", sessionToken = "" } =
+    (window.metabaseConfig as {
+      instanceUrl: string;
+      sessionToken: string;
+      mcpSessionId: string;
+    }) ?? {};
 
   const scheme: ResolvedColorScheme =
     hostContext?.theme === "dark" ? "dark" : "light";
@@ -61,6 +57,47 @@ export function McpUiAppRoute() {
     () => hostContext?.styles?.variables ?? {},
     [hostContext?.styles?.variables],
   );
+
+  const theme = useMemo(
+    () => buildMcpAppsTheme(hostCssVariables, scheme),
+    [hostCssVariables, scheme],
+  );
+
+  return (
+    <ComponentProvider
+      authConfig={{ metabaseInstanceUrl: instanceUrl }}
+      theme={theme}
+      reduxStore={store}
+      loaderComponent={SimpleLoader}
+    >
+      <McpUiAppRouteContent
+        instanceUrl={instanceUrl}
+        sessionToken={sessionToken}
+      />
+    </ComponentProvider>
+  );
+}
+
+interface McpUiAppRouteContentProps {
+  instanceUrl: string;
+  sessionToken: string;
+}
+
+function McpUiAppRouteContent({
+  instanceUrl,
+  sessionToken,
+}: McpUiAppRouteContentProps) {
+  const { query, prompt, hostContext, app } = useMcpApp();
+  const [isQueryBarVisible, setIsQueryBarVisible] = useState(false);
+
+  const handleDrillThrough = useHandleMcpDrillThrough(app);
+
+  const { mcpSessionId = "" } =
+    (window.metabaseConfig as {
+      instanceUrl: string;
+      sessionToken: string;
+      mcpSessionId: string;
+    }) ?? {};
 
   const safeAreaInsets = hostContext?.safeAreaInsets ?? DEFAULT_INSETS;
 
@@ -71,11 +108,6 @@ export function McpUiAppRoute() {
 
     return getMcpDeserializedCard(query);
   }, [query]);
-
-  const theme = useMemo(
-    () => buildMcpAppsTheme(hostCssVariables, scheme),
-    [hostCssVariables, scheme],
-  );
 
   const { isSettingsReady, userAndSettingsFetchError } =
     useMcpUserAndSettingsFetch({
@@ -114,12 +146,18 @@ export function McpUiAppRoute() {
 
   const containerStyle: CSSProperties = {
     height,
-    background: theme.colors?.background,
   };
 
   const contentStyle: CSSProperties = {
     boxSizing: "border-box",
     paddingTop: `calc(var(--mantine-spacing-lg) + ${safeAreaPadding.top}px)`,
+    paddingRight: safeAreaPadding.right,
+    paddingLeft: safeAreaPadding.left,
+  };
+
+  const feedbackContentStyle: CSSProperties = {
+    boxSizing: "border-box",
+    paddingTop: safeAreaPadding.top,
     paddingRight: safeAreaPadding.right,
     paddingLeft: safeAreaPadding.left,
   };
@@ -132,9 +170,54 @@ export function McpUiAppRoute() {
     paddingLeft: Math.max(safeAreaPadding.left, FOOTER_HORIZONTAL_PADDING),
   };
 
+  const {
+    isSubmittingFeedback,
+    selectedFeedback,
+    submittedFeedback,
+    setSelectedFeedback,
+    handleFeedbackSubmit,
+  } = useMcpFeedback({
+    instanceUrl,
+    mcpSessionId,
+    prompt,
+    query,
+    sessionToken,
+  });
+
   const handleQueryBarVisibilityChange = useCallback((isVisible: boolean) => {
     setIsQueryBarVisible(isVisible);
   }, []);
+
+  const renderQuestionView = () => (
+    <Flex
+      direction="column"
+      justify="space-between"
+      h={CONTENT_HEIGHT}
+      py="lg"
+      gap="sm"
+      style={contentStyle}
+    >
+      <Flex px="lg" align="center" flex="0 0 auto">
+        <Box flex={1} miw={0}>
+          <McpQuestionTitle />
+        </Box>
+      </Flex>
+
+      <Flex px="xs" flex={1} style={{ overflow: "hidden" }}>
+        <SdkQuestion.QuestionVisualization height={visualizationHeight} />
+      </Flex>
+
+      {isQueryBarVisible && (
+        <Flex px="lg">
+          <McpQueryBar onVisibilityChange={handleQueryBarVisibilityChange} />
+        </Flex>
+      )}
+
+      {!isQueryBarVisible && (
+        <McpQueryBar onVisibilityChange={handleQueryBarVisibilityChange} />
+      )}
+    </Flex>
+  );
 
   const renderContent = () => {
     if (userAndSettingsFetchError) {
@@ -154,36 +237,18 @@ export function McpUiAppRoute() {
         withChartTypeSelector={false}
         onDrillThrough={handleDrillThrough}
       >
-        <Flex
-          direction="column"
-          justify="space-between"
-          h={CONTENT_HEIGHT}
-          py="lg"
-          gap="sm"
-          style={contentStyle}
-        >
-          <Flex px="lg" align="center" style={{ flexShrink: 0 }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <McpQuestionTitle />
-            </div>
+        {selectedFeedback == null ? (
+          renderQuestionView()
+        ) : (
+          <Flex h={CONTENT_HEIGHT} w="100%" style={feedbackContentStyle}>
+            <McpFeedbackArea
+              feedback={selectedFeedback}
+              isSubmitting={isSubmittingFeedback}
+              onCancel={() => setSelectedFeedback(null)}
+              onSubmit={handleFeedbackSubmit}
+            />
           </Flex>
-
-          <Flex px="xs" flex={1} style={{ overflow: "hidden" }}>
-            <SdkQuestion.QuestionVisualization height={visualizationHeight} />
-          </Flex>
-
-          {isQueryBarVisible && (
-            <Flex px="lg">
-              <McpQueryBar
-                onVisibilityChange={handleQueryBarVisibilityChange}
-              />
-            </Flex>
-          )}
-
-          {!isQueryBarVisible && (
-            <McpQueryBar onVisibilityChange={handleQueryBarVisibilityChange} />
-          )}
-        </Flex>
+        )}
 
         <Flex
           h={FOOTER_HEIGHT}
@@ -194,11 +259,9 @@ export function McpUiAppRoute() {
         >
           <Flex align="center" gap="xs">
             <McpFeedbackButtons
-              instanceUrl={instanceUrl}
-              sessionToken={sessionToken}
-              mcpSessionId={mcpSessionId}
-              prompt={prompt}
-              query={query}
+              isSubmitting={isSubmittingFeedback}
+              submittedFeedback={submittedFeedback}
+              onSelectFeedback={setSelectedFeedback}
             />
           </Flex>
 
@@ -208,14 +271,5 @@ export function McpUiAppRoute() {
     );
   };
 
-  return (
-    <ComponentProvider
-      authConfig={{ metabaseInstanceUrl: instanceUrl }}
-      theme={theme}
-      reduxStore={store}
-      loaderComponent={SimpleLoader}
-    >
-      <div style={containerStyle}>{renderContent()}</div>
-    </ComponentProvider>
-  );
+  return <div style={containerStyle}>{renderContent()}</div>;
 }
