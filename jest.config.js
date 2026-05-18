@@ -2,7 +2,42 @@
 /** eslint-disable-next-line import/no-commonjs */
 const esmPackages = require("./jest.esm-packages.js");
 
+const swcJestTransform = [
+  "@swc/jest",
+  {
+    jsc: {
+      loose: true,
+      parser: {
+        syntax: "typescript",
+        tsx: true,
+      },
+      transform: {
+        react: {
+          runtime: "automatic",
+        },
+      },
+      experimental: {
+        plugins: [
+          ["swc_mut_cjs_exports", {}],
+          ["@swc/plugin-emotion", { sourceMap: true }],
+        ],
+      },
+    },
+    module: {
+      type: "commonjs",
+    },
+    sourceMaps: "inline",
+    minify: false,
+    env: {
+      targets: ["defaults"],
+    },
+  },
+];
+
 const baseConfig = {
+  transform: {
+    "^.+\\.[jt]sx?$": swcJestTransform,
+  },
   moduleNameMapper: {
     // Force jose to use Node.js runtime instead of browser runtime in jsdom environment.
     // The browser runtime expects CryptoKey to be globally available, which jsdom doesn't provide.
@@ -147,6 +182,7 @@ const config = {
       displayName: "lint-rules",
       testMatch: ["<rootDir>/frontend/lint/tests/**/*.unit.spec.js"],
       testEnvironment: "node",
+      transform: baseConfig.transform,
       transformIgnorePatterns: baseConfig.transformIgnorePatterns,
     },
   ],
