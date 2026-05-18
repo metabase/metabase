@@ -52,8 +52,10 @@
 (def ^:private rating-tables
   (update-vals complexity-thresholds ->rating-table))
 
-(defn rating-for-score
-  "Presentation for `score` from `rating-table`, or `nil-rating` when nothing matches."
+(defn- rating-for-score
+  "Presentation for `score` from a preprocessed `rating-table`, or `nil-rating` when nothing matches.
+  Private because the table shape is an internal detail of [[->rating-table]]; the public path is
+  [[decorate-with-ratings]], which wires the preprocessed tables in itself."
   [{:keys [bands lookup]} score]
   (or (when (some? score)
         (some (fn [{:keys [rating max]}]
@@ -62,7 +64,7 @@
               bands))
       nil-rating))
 
-(defn decorate-with-ratings*
+(defn- decorate-with-ratings*
   "Rate `:total` and each `:components` value of one catalog via the matching `tables` entry."
   [tables {:keys [total] :as catalog}]
   (let [rate-component (fn [m k {:keys [score] :as c}]

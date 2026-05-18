@@ -126,10 +126,10 @@
             :let [table (get @#'complexity/rating-tables k)]
             [score expected] cases]
       (testing (str k " score=" score)
-        (is (= expected (complexity/rating-for-score table score))))))
+        (is (= expected (@#'complexity/rating-for-score table score))))))
   (testing "nil or empty rating-table falls through to nil-rating"
-    (is (= {:rating nil :rating-label nil} (complexity/rating-for-score nil 12345)))
-    (is (= {:rating nil :rating-label nil} (complexity/rating-for-score {} 12345)))))
+    (is (= {:rating nil :rating-label nil} (@#'complexity/rating-for-score nil 12345)))
+    (is (= {:rating nil :rating-label nil} (@#'complexity/rating-for-score {} 12345)))))
 
 (deftest ^:parallel decorate-with-ratings-test
   (testing "catalog totals get rating fields; components get present-but-nil rating keys"
@@ -180,7 +180,7 @@
                                              :score        50
                                              :rating       nil
                                              :rating-label nil}}}
-              (complexity/decorate-with-ratings* rating-tables catalog))))))
+              (@#'complexity/decorate-with-ratings* rating-tables catalog))))))
 
 (deftest ^:parallel score-from-entities-metabot-fallback-test
   (testing "score-from-entities marks :metabot as a universe fallback when no metabot-entities are passed"

@@ -15,28 +15,30 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private Rating
+  "A rating band label drawn from `complexity-thresholds`."
+  [:maybe [:enum "low" "medium" "high"]])
+
 (def ^:private SubScore
-  "Either a computed sub-score (`:measurement` + `:score`) or an uncomputed one (`:error`).
-  Rating keys are present but always nil — thresholds apply to the catalog total only."
+  "Either a computed sub-score (`:measurement` + `:score`) or an uncomputed one (`:error`)."
   [:or
    [:map {:closed true}
     [:measurement  number?]
     [:score        nat-int?]
-    [:rating       nil?]
-    [:rating_label nil?]]
+    [:rating       Rating]
+    [:rating_label [:maybe string?]]]
    [:map {:closed true}
     [:measurement  nil?]
     [:score        nil?]
     [:error        string?]
-    [:rating       nil?]
-    [:rating_label nil?]]])
+    [:rating       Rating]
+    [:rating_label [:maybe string?]]]])
 
 (def ^:private Catalog
-  "One catalog's total + per-component breakdown.
-  A failed sub-score cascades nil through both the total and the rating keys."
+  "One catalog's total + per-component breakdown."
   [:map
    [:total        [:maybe nat-int?]]
-   [:rating       [:maybe [:enum "low" "medium" "high"]]]
+   [:rating       Rating]
    [:rating_label [:maybe string?]]
    [:components
     [:map
