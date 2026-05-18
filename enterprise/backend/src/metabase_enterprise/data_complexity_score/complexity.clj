@@ -84,7 +84,8 @@
                               (t2/select [:model/Measure :table_id :name]
                                          :archived false
                                          :table_id [:in chunk]))))
-        (partition-all in-clause-chunk-size table-ids)))
+        ;; Workaround for an instance without the Measure table
+        nil #_(partition-all in-clause-chunk-size table-ids)))
 
 (defn- ->card-entity
   "Shape a Card row into an entity map for scoring. Cards don't contribute to `:field-count` in
