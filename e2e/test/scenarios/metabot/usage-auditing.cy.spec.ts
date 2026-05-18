@@ -97,8 +97,8 @@ const ROBERT_CHART_LABELS: CompleteChartLabels = {
 type DateFilterLabel =
   | "Today"
   | "Yesterday"
-  | "Previous 7 days"
-  | "Previous 30 days"
+  | "Last 7 days"
+  | "Last 30 days"
   | "Previous month"
   | "Previous 3 months"
   | "Previous 12 months";
@@ -133,7 +133,7 @@ const DATE_FILTER_CASES: Array<{
   chartLabels: ChartLabels;
 }> = [
   { label: "Today", chartLabels: TODAY_CHART_LABELS },
-  { label: "Previous 7 days", chartLabels: PREVIOUS_WEEK_CHART_LABELS },
+  { label: "Last 7 days", chartLabels: PREVIOUS_WEEK_CHART_LABELS },
 ];
 
 const MAIN_PROFILE_LABELS: string[] = [

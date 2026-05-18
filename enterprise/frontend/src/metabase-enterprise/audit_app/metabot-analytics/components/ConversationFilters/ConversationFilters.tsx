@@ -38,8 +38,8 @@ function ConversationDateFilter({
         items: [
           { label: t`Today`, value: "thisday" },
           { label: t`Yesterday`, value: "past1days" },
-          { label: t`Previous 7 days`, value: "past6days~" },
-          { label: t`Previous 30 days`, value: "past29days~" },
+          { label: t`Last 7 days`, value: "past6days~" },
+          { label: t`Last 30 days`, value: "past29days~" },
         ],
       },
       {
