@@ -11,6 +11,7 @@ import {
   useListUserRecipientsQuery,
   useUpdateSettingsMutation,
 } from "metabase/api";
+import type { SendTestNotificationBody } from "metabase/api/security-center";
 import { useSetting } from "metabase/common/hooks";
 import type {
   ChannelApiResponse,
@@ -60,6 +61,29 @@ function isAdminGroupRecipient(r: NotificationRecipient): boolean {
     r.type === "notification-recipient/group" &&
     r.permissions_group_id === ADMIN_GROUP_ID
   );
+}
+
+/**
+ * Flatten the modal's config into the wire shape used by both
+ * POST /api/ee/security-center/test-notification (for unsaved test sends)
+ * and PUT /api/setting/security-center-email-recipients (for saving).
+ */
+export function serializeNotificationConfig(
+  config: NotificationConfig,
+): SendTestNotificationBody {
+  const adminGroupRecipient: NotificationRecipient = {
+    type: "notification-recipient/group",
+    permissions_group_id: ADMIN_GROUP_ID,
+  };
+  const email_recipients: NotificationRecipient[] = [
+    ...(config.email.sendToAllAdmins ? [adminGroupRecipient] : []),
+    ...config.email.handler.recipients,
+  ];
+  const slack_channel: string | null =
+    config.slack.enabled && config.slack.handler.recipients.length > 0
+      ? config.slack.handler.recipients[0].details.value
+      : null;
+  return { email_recipients, slack_channel };
 }
 
 function configFromSettings(
@@ -183,24 +207,11 @@ export function useNotificationConfigState(): NotificationConfigValue {
   }, []);
 
   const save = useCallback(async () => {
-    const adminGroupRecipient: NotificationRecipient = {
-      type: "notification-recipient/group",
-      permissions_group_id: ADMIN_GROUP_ID,
-    };
-
-    const emailRecipients: NotificationRecipient[] = [
-      ...(config.email.sendToAllAdmins ? [adminGroupRecipient] : []),
-      ...config.email.handler.recipients,
-    ];
-
-    const slackChannel: string | null =
-      config.slack.enabled && config.slack.handler.recipients.length > 0
-        ? config.slack.handler.recipients[0].details.value
-        : null;
-
+    const { email_recipients, slack_channel } =
+      serializeNotificationConfig(config);
     await updateSettings({
-      "security-center-email-recipients": emailRecipients,
-      "security-center-slack-channel": slackChannel,
+      "security-center-email-recipients": email_recipients,
+      "security-center-slack-channel": slack_channel,
     }).unwrap();
   }, [config, updateSettings]);
 
