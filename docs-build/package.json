@@ -5,7 +5,7 @@
   "version": "0.0.0",
   "scripts": {
     "dev": "astro dev",
-    "dev:clean": "pkill -f 'docs-build/node_modules/.bin/astro' || true",
+    "dev:clean": "pkill -f 'docs-build/node_modules/.bin/astro' || true && rm -rf .astro node_modules/.astro dist",
     "build": "astro build",
     "preview": "astro preview",
     "check": "node scripts/validate-nav.mjs && astro check",

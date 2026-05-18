@@ -4,14 +4,14 @@
  * imported as a raw string; per-page behavior (hover-highlight, mobile
  * hamburger, etc.) is in `public/js/main-nav.js`.
  *
- * `/images/...` references inside the markup are rewritten at render time so
+ * Asset URLs in the markup are written with a `__DOCS_BASE__` placeholder so
  * they resolve against the docs base URL, which varies by version
  * (`/docs/latest`, `/docs/v0.NN`, etc.). Image assets live in `public/images/`.
  */
 import headerHtml from "../data/header.html?raw";
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-const html = headerHtml.replace(/(["'\s])\/images\//g, `$1${base}/images/`);
+const html = headerHtml.replaceAll("__DOCS_BASE__", base);
 ---
 
 <header class="bootstrap sticky" set:html={html} />

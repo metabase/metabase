@@ -432,14 +432,16 @@
   `mage.docs-test` asserts the dev guide's bracketed block matches the
   generated markdown so drift is a CI failure."
   [["bun run docs:dev"                "Hot-reload Astro dev server (skips auto-generated artifacts)" "Astro"]
-   ["bun run docs:dev:clean"          "Kill orphaned dev server on port 4321 and restart"            "Astro"]
+   ["bun run docs:dev:clean"          "Kill orphaned dev server on port 4321 and clear plugin caches" "Astro"]
    ["bun run docs:preview"            "Lazy-regen production build + Astro preview server"           "`./bin/mage docs-build --preview --lazy`"]
    ["bun run docs:build"              "Full production build (what CI runs)"                         "`./bin/mage docs-build`"]
+   ["bun run docs:build-branch"       "Build a release branch into a versioned URL prefix"           "`./bin/mage docs-build-branch`"]
+   ["bun run docs:clean-worktrees"    "List or remove leftover docs worktrees"                       "`./bin/mage docs-clean-worktrees`"]
    ["bun run docs:generate"           "Regenerate auto-derived backend docs (env vars, config, …)"   "`./bin/mage docs-generate`"]
    ["bun run docs:generate:embedding" "Regenerate SDK / Embed.js typedoc reference"                  "`./bin/mage docs-generate-embedding`"]
-   ["bun run docs:check"              "Astro/TypeScript check + nav.yml reference validator"        "Astro"]
-   ["bun run docs:test"               "Unit tests for the custom remark/rehype plugins"             "Node"]
-   ["bun run docs:help"               "Print this listing in the terminal"                          "`./bin/mage docs-help`"]])
+   ["bun run docs:check"              "Astro/TypeScript check + nav.yml reference validator"         "Astro"]
+   ["bun run docs:test"               "Unit tests for the custom remark/rehype plugins"              "Node"]
+   ["bun run docs:help"               "Print this listing in the terminal"                           "`./bin/mage docs-help`"]])
 
 (def ^:private dev-guide-relpath "docs/developers-guide/docs.md")
 (def ^:private help-table-begin "<!-- BEGIN docs-help-table -->")
@@ -506,8 +508,7 @@
                     desc)))
     (println)
     (println (str "Run " (c/cyan "./bin/mage <task> --help")
-                  " for flag-level help on commands that wrap a mage task"))
-    (println "(docs-build, docs-generate, docs-generate-embedding).")
+                  " for flag-level help on any of the wrapped mage tasks."))
     (println)))
 
 (defn print-help!

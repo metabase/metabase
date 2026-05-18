@@ -54,6 +54,16 @@
   --mb-z-header: 1001;
 }
 
+/* ----------------------------------------------------------------------------
+ * Responsive breakpoints used in @media queries throughout this file:
+ *   991px   — tablet max (rail hides, sidebar hides at deeper level)
+ *   1199px  — desktop narrow max (rail hides, breadcrumb spans wider)
+ *   1200px  — desktop mid max ("What's new" pill hides)
+ * Kept as literals because CSS media-query feature values cannot resolve
+ * custom properties (spec: media queries evaluate before style computation).
+ * If you change a breakpoint, search the file for that pixel value.
+ * --------------------------------------------------------------------------*/
+
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 /* Paint the canvas (viewport surface outside body's border box) white so the
