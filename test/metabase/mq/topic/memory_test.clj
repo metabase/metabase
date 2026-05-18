@@ -12,9 +12,9 @@
 (deftest publish-and-subscribe-test
   (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
-      (mq/listen! :topic/test {}
-                  (fn [message]
-                    (swap! received conj message)))
+      (mq.tu/listen! :topic/test {}
+                     (fn [message]
+                       (swap! received conj message)))
       (mq/with-topic :topic/test [t]
         (mq/put t "hello"))
       (mq/with-topic :topic/test [t]
@@ -29,9 +29,9 @@
 (deftest batch-publish-test
   (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
-      (mq/listen! :topic/batch {}
-                  (fn [message]
-                    (swap! received conj message)))
+      (mq.tu/listen! :topic/batch {}
+                     (fn [message]
+                       (swap! received conj message)))
       (mq/with-topic :topic/batch [t]
         (mq/put t "msg-1")
         (mq/put t "msg-2")
@@ -46,9 +46,9 @@
 (deftest unsubscribe-stops-delivery-test
   (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
-      (mq/listen! :topic/unsub {}
-                  (fn [message]
-                    (swap! received conj message)))
+      (mq.tu/listen! :topic/unsub {}
+                     (fn [message]
+                       (swap! received conj message)))
 
       (mq/with-topic :topic/unsub [t]
         (mq/put t "before"))
@@ -67,11 +67,11 @@
 (deftest error-handling-test
   (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
-      (mq/listen! :topic/errors {}
-                  (fn [message]
-                    (when (= "error!" message)
-                      (throw (ex-info "Test error" {})))
-                    (swap! received conj message)))
+      (mq.tu/listen! :topic/errors {}
+                     (fn [message]
+                       (when (= "error!" message)
+                         (throw (ex-info "Test error" {})))
+                       (swap! received conj message)))
 
       (mq/with-topic :topic/errors [t]
         (mq/put t "good"))
@@ -88,10 +88,10 @@
 
 (deftest double-subscribe-throws-test
   (mq.tu/with-test-mq [_ctx]
-    (mq/listen! :topic/double {} (fn [_] nil))
+    (mq.tu/listen! :topic/double {} (fn [_] nil))
     (testing "Subscribing twice to the same topic throws"
       (is (thrown-with-msg? ExceptionInfo #"Listener already registered"
-                            (mq/listen! :topic/double {} (fn [_] nil)))))
+                            (mq.tu/listen! :topic/double {} (fn [_] nil)))))
     (mq/unlisten! :topic/double)))
 
 (deftest concurrent-publish-ordering-test
@@ -100,9 +100,9 @@
       (let [received (atom [])
             n        20
             barrier  (CyclicBarrier. n)]
-        (mq/listen! :topic/concurrent-order {}
-                    (fn [message]
-                      (swap! received conj message)))
+        (mq.tu/listen! :topic/concurrent-order {}
+                       (fn [message]
+                         (swap! received conj message)))
         ;; Publish concurrently from n threads
         (let [threads (mapv (fn [i]
                               (let [f (bound-fn []
@@ -124,12 +124,12 @@
   (mq.tu/with-test-mq [ctx]
     (let [received-a (atom [])
           received-b (atom [])]
-      (mq/listen! :topic/isolated-a {}
-                  (fn [message]
-                    (swap! received-a conj message)))
-      (mq/listen! :topic/isolated-b {}
-                  (fn [message]
-                    (swap! received-b conj message)))
+      (mq.tu/listen! :topic/isolated-a {}
+                     (fn [message]
+                       (swap! received-a conj message)))
+      (mq.tu/listen! :topic/isolated-b {}
+                     (fn [message]
+                       (swap! received-b conj message)))
 
       (mq/with-topic :topic/isolated-a [t]
         (mq/put t "for-a"))

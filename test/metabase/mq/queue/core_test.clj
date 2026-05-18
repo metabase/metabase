@@ -4,6 +4,7 @@
    [metabase.app-db.connection :as app-db.conn]
    [metabase.mq.core :as mq]
    [metabase.mq.impl :as mq.impl]
+   [metabase.mq.listener :as listener]
    [metabase.mq.publish :as mq.publish]
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.test-util :as mq.tu])
@@ -65,7 +66,7 @@
     {:queue/test (fn [_] nil)}
     (testing "Registering a second listener on the same queue throws"
       (is (thrown-with-msg? ExceptionInfo #"Listener already registered"
-                            (mq/listen! :queue/test {} (fn [_] nil)))))))
+                            (mq.tu/listen! :queue/test {} (fn [_] nil)))))))
 
 (deftest concurrent-listen-throws-test
   (mq.tu/with-test-mq [_test-mq]
@@ -78,7 +79,7 @@
                               (let [f (bound-fn []
                                         (.await barrier)
                                         (try
-                                          (mq/listen! queue-name {} (fn [_] nil))
+                                          (mq.tu/listen! queue-name {} (fn [_] nil))
                                           (swap! results conj :ok)
                                           (catch ExceptionInfo _
                                             (swap! results conj :error))))]
@@ -107,9 +108,9 @@
 (deftest batch-listen-exclusive-test
   (let [heard-batches (atom [])]
     (mq.tu/with-test-mq [test-mq]
-      (mq/batch-listen! :queue/batch-exclusive
-                        (fn [batch] (swap! heard-batches conj batch))
-                        {:max-batch-messages 10 :exclusive true})
+      (listener/batch-listen! :queue/batch-exclusive
+                              (fn [batch] (swap! heard-batches conj batch))
+                              {:max-batch-messages 10 :exclusive true})
       (testing "Exclusive batch-listen! registers and processes"
         (mq/with-queue :queue/batch-exclusive [q]
           (mq/put q "a")
@@ -195,9 +196,9 @@
 (deftest buffering-combines-messages-test
   (let [heard (atom [])]
     (mq.tu/with-test-mq [test-mq]
-      (mq/batch-listen! :queue/test
-                        (fn [batch] (swap! heard into batch))
-                        {:max-batch-messages 50})
+      (listener/batch-listen! :queue/test
+                              (fn [batch] (swap! heard into batch))
+                              {:max-batch-messages 50})
       (binding [publish-buffer/*publish-buffer-ms* 100
                 publish-buffer/*publish-buffer*    (atom {})]
         (testing "buffered-publish! buffers when *publish-buffer-ms* > 0"
@@ -235,9 +236,9 @@
 (deftest buffering-flush-delivers-test
   (let [heard (atom [])]
     (mq.tu/with-test-mq [test-mq]
-      (mq/batch-listen! :queue/test
-                        (fn [batch] (swap! heard into batch))
-                        {:max-batch-messages 3})
+      (listener/batch-listen! :queue/test
+                              (fn [batch] (swap! heard into batch))
+                              {:max-batch-messages 3})
       (binding [publish-buffer/*publish-buffer-ms*  1
                 publish-buffer/*publish-buffer-max-ms* 0
                 publish-buffer/*publish-buffer*     (atom {})]
@@ -269,8 +270,8 @@
   (mq.tu/with-test-mq [_test-mq]
     (let [queue-name :queue/exclusive-concurrency-test
           latch      (CountDownLatch. 1)]
-      (mq/listen! queue-name {:exclusive true}
-                  (fn [_] (.await latch))) ; Block listener until released
+      (mq.tu/listen! queue-name {:exclusive true}
+                     (fn [_] (.await latch))) ; Block listener until released
       (testing "First submission succeeds and marks the channel as busy"
         (is (true? (mq.impl/submit-delivery! queue-name ["msg1"] nil nil nil)))
         (Thread/sleep 50) ; Give worker thread time to start and block on latch

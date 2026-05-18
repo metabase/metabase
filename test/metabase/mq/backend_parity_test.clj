@@ -78,7 +78,7 @@
    :queue/parity-delivery
    (fn [ctx queue-name]
      (let [received (atom [])]
-       (mq/listen! queue-name {} #(swap! received conj %))
+       (mq.tu/listen! queue-name {} #(swap! received conj %))
        (mq/with-queue queue-name [q]
          (mq/put q "a")
          (mq/put q "b")
@@ -97,7 +97,7 @@
    :topic/parity-delivery
    (fn [ctx topic-name]
      (let [received (atom [])]
-       (mq/listen! topic-name {} #(swap! received conj %))
+       (mq.tu/listen! topic-name {} #(swap! received conj %))
        (mq/with-topic topic-name [t]
          (mq/put t "x")
          (mq/put t "y"))
@@ -113,11 +113,11 @@
    :topic/parity-errors
    (fn [ctx topic-name]
      (let [received (atom [])]
-       (mq/listen! topic-name {}
-                   (fn [msg]
-                     (when (= "bad" msg)
-                       (throw (ex-info "handler error" {})))
-                     (swap! received conj msg)))
+       (mq.tu/listen! topic-name {}
+                      (fn [msg]
+                        (when (= "bad" msg)
+                          (throw (ex-info "handler error" {})))
+                        (swap! received conj msg)))
        (mq/with-topic topic-name [t]
          (mq/put t "good-1")
          (mq/put t "bad")
@@ -136,11 +136,11 @@
    :queue/parity-retry
    (fn [ctx queue-name]
      (let [calls-by-msg (atom {})]
-       (mq/listen! queue-name {}
-                   (fn [msg]
-                     (let [n (get (swap! calls-by-msg update msg (fnil inc 0)) msg)]
-                       (when (= 1 n)
-                         (throw (ex-info "first attempt" {:msg msg}))))))
+       (mq.tu/listen! queue-name {}
+                      (fn [msg]
+                        (let [n (get (swap! calls-by-msg update msg (fnil inc 0)) msg)]
+                          (when (= 1 n)
+                            (throw (ex-info "first attempt" {:msg msg}))))))
        (mq/with-queue queue-name [q]
          (mq/put q "retry-me"))
        (mq.tu/eventually! ctx

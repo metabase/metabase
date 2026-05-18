@@ -16,20 +16,9 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private offsets
-  "Map of topic-name -> long offset."
-  (atom {}))
-
-(def ^:private poll-state (mq.polling/make-poll-state))
-
 (def ^:private batch-size
   "Maximum number of messages to fetch in a single poll."
   100)
-
-;; Cleanup old messages
-(def ^:private last-cleanup-ms (atom 0))
-
-(def ^:private last-lag-gauge-ms (atom 0))
 
 (defn- current-max-id
   "Returns the current maximum id in topic_message_batch for the given topic, or 0."
@@ -58,7 +47,7 @@
       (log/infof "Cleaned up %d old topic messages" deleted)
       (analytics/inc! :metabase-mq/appdb-cleanup-deleted {:transport "topic" :channel "all"} deleted))))
 
-(defn- update-lag-gauges! []
+(defn- update-lag-gauges! [offsets]
   (doseq [[topic-name offset] @offsets]
     (let [max-id (current-max-id topic-name)]
       (analytics/set-gauge! :metabase-mq/appdb-topic-subscriber-lag
@@ -74,9 +63,9 @@
   retry, so a listener that throws does not roll the offset back, and a graceful
   `stop!`/`start!` within the same process will not re-deliver an in-flight batch
   (offsets live in memory)."
-  []
-  (mq.polling/periodically! last-cleanup-ms   (* 10 60 1000) "topic cleanup"    cleanup-old-messages!)
-  (mq.polling/periodically! last-lag-gauge-ms (* 30 1000)    "topic lag gauge"  update-lag-gauges!)
+  [{:keys [offsets last-cleanup-ms last-lag-gauge-ms]}]
+  (mq.polling/periodically! last-cleanup-ms   (* 10 60 1000) "topic cleanup"   cleanup-old-messages!)
+  (mq.polling/periodically! last-lag-gauge-ms (* 30 1000)    "topic lag gauge" #(update-lag-gauges! offsets))
   (let [found-work? (atom false)]
     (doseq [topic-name (remove mq.impl/channel-busy? (listener/topic-names))]
       (let [offset (if (contains? @offsets topic-name)
@@ -93,12 +82,12 @@
               (reset! found-work? true))))))
     @found-work?))
 
-(defrecord AppDbTopicBackend []
+(defrecord AppDbTopicBackend [offsets poll-state last-cleanup-ms last-lag-gauge-ms]
   topic.backend/TopicBackend
   (publish! [_this topic-name messages]
-    (t2/insert-returning-pk! :topic_message_batch
-                             {:topic_name (name topic-name)
-                              :messages   (json/encode messages)})
+    (t2/insert! :topic_message_batch
+                {:topic_name (name topic-name)
+                 :messages   (json/encode messages)})
     (when-not (mq.impl/channel-busy? topic-name)
       (mq.polling/notify! poll-state)))
 
@@ -117,13 +106,20 @@
     (swap! offsets dissoc topic-name)
     (log/infof "Unsubscribed from topic %s" (name topic-name)))
 
-  (start-handling! [_this]
-    (mq.polling/start-polling! poll-state "Topic" 2000 poll-iteration!))
+  (start-handling! [this]
+    (mq.polling/start-polling! poll-state "Topic" 2000 #(poll-iteration! this)))
 
   (shutdown! [_this]
     (mq.polling/stop-polling! poll-state "Topic")
     (reset! offsets {})))
 
+(defn make-backend
+  "Constructs a fresh `AppDbTopicBackend` with its own offsets atom, poll-state, and
+   periodic-task rate-limit atoms. Tests can build isolated ones so their `start-handling!` /
+   `shutdown!` don't touch production state."
+  []
+  (->AppDbTopicBackend (atom {}) (mq.polling/make-poll-state) (atom 0) (atom 0)))
+
 (def backend
   "Singleton instance of the appdb topic backend."
-  (->AppDbTopicBackend))
+  (make-backend))

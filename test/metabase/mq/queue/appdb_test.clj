@@ -38,7 +38,7 @@
       (try
         (t2/with-connection [_conn]
           (testing "Returns nil if no rows are found"
-            (is (nil? (#'q.appdb/fetch! (listener/queue-names)))))
+            (is (nil? (#'q.appdb/fetch! (:owner-id q.appdb/backend) (listener/queue-names)))))
 
           (t2/insert! :queue_message_batch
                       {:queue_name (name invalid-queue)
@@ -52,9 +52,9 @@
 
           (testing "Returns nil if no queues are defined"
             (binding [listener/*listeners* (atom {})]
-              (is (nil? (#'q.appdb/fetch! (listener/queue-names))))))
+              (is (nil? (#'q.appdb/fetch! (:owner-id q.appdb/backend) (listener/queue-names))))))
           (testing "Fetches one row per queue in a single call"
-            (let [results (#'q.appdb/fetch! (listener/queue-names))
+            (let [results (#'q.appdb/fetch! (:owner-id q.appdb/backend) (listener/queue-names))
                   by-queue (into {} (map (juxt :queue identity)) results)]
               (is (= 2 (count results)))
               (testing "queue1 row"
@@ -66,13 +66,13 @@
                       (is (= "processing" (:status updated-row)))
                       (is (not= (:created_at updated-row) (:status_heartbeat updated-row)))
                       (is (= 0 (:failures updated-row)))
-                      (is (= @#'q.appdb/owner-id (:owner updated-row)))))))
+                      (is (= (:owner-id q.appdb/backend) (:owner updated-row)))))))
               (testing "queue2 row"
                 (let [{:keys [batch-id messages]} (get by-queue queue2)]
                   (is (pos-int? batch-id))
                   (is (= ["data2"] messages))))))
           (testing "When everything valid is processing, return nil"
-            (is (nil? (#'q.appdb/fetch! (listener/queue-names))))))
+            (is (nil? (#'q.appdb/fetch! (:owner-id q.appdb/backend) (listener/queue-names))))))
         (finally
           (t2/delete! :queue_message_batch :queue_name [:in [(name queue1) (name queue2) (name invalid-queue)]]))))))
 
@@ -87,7 +87,7 @@
             (t2/insert! :queue_message_batch
                         {:queue_name (name exclusive-q)
                          :messages   (json/encode ["exclusive-msg1"])})
-            (let [results (#'q.appdb/fetch! (listener/queue-names))
+            (let [results (#'q.appdb/fetch! (:owner-id q.appdb/backend) (listener/queue-names))
                   {:keys [queue messages]} (first results)]
               (is (= 1 (count results)))
               (is (= exclusive-q queue))
@@ -98,14 +98,14 @@
                         {:queue_name (name exclusive-q)
                          :messages   (json/encode ["exclusive-msg2"])})
             ;; The first message is now 'processing', so the second should be skipped
-            (is (nil? (#'q.appdb/fetch! (listener/queue-names)))
+            (is (nil? (#'q.appdb/fetch! (:owner-id q.appdb/backend) (listener/queue-names)))
                 "Should return nil because exclusive queue has a processing row"))
 
           (testing "Non-exclusive queue is still fetchable even when exclusive queue is blocked"
             (t2/insert! :queue_message_batch
                         {:queue_name (name normal-q)
                          :messages   (json/encode ["normal-msg1"])})
-            (let [results (#'q.appdb/fetch! (listener/queue-names))
+            (let [results (#'q.appdb/fetch! (:owner-id q.appdb/backend) (listener/queue-names))
                   {:keys [queue messages]} (first results)]
               (is (= 1 (count results)))
               (is (= normal-q queue))
@@ -114,7 +114,7 @@
           (testing "After exclusive processing completes, next message can be fetched"
             ;; Mark the processing row as done by deleting it (simulating batch-successful!)
             (t2/delete! :queue_message_batch :queue_name (name exclusive-q) :status "processing")
-            (let [results (#'q.appdb/fetch! (listener/queue-names))
+            (let [results (#'q.appdb/fetch! (:owner-id q.appdb/backend) (listener/queue-names))
                   {:keys [queue messages]} (first results)]
               (is (= exclusive-q queue))
               (is (= ["exclusive-msg2"] messages)))))
@@ -128,7 +128,7 @@
                                                 {:queue_name (name queue-name)
                                                  :messages (json/encode ["test-message"])
                                                  :status "processing"
-                                                 :owner @#'q.appdb/owner-id})]
+                                                 :owner (:owner-id q.appdb/backend)})]
         (q.backend/batch-successful! q.appdb/backend queue-name message-id)
         (is (nil? (t2/select-one :queue_message_batch :id message-id)))))
 
@@ -146,7 +146,7 @@
                                                    :messages (json/encode ["test-message"])
                                                    :status "processing"
                                                    :failures 0
-                                                   :owner @#'q.appdb/owner-id})]
+                                                   :owner (:owner-id q.appdb/backend)})]
           (q.backend/batch-failed! q.appdb/backend queue-name message-id)
           (let [updated-message (t2/select-one :queue_message_batch :id message-id)]
             (is (= "pending" (:status updated-message)))
@@ -160,7 +160,7 @@
                                                    :messages (json/encode ["test-message"])
                                                    :status "processing"
                                                    :failures 2
-                                                   :owner @#'q.appdb/owner-id})]
+                                                   :owner (:owner-id q.appdb/backend)})]
           (q.backend/batch-failed! q.appdb/backend queue-name message-id)
           (let [updated-message (t2/select-one :queue_message_batch :id message-id)]
             (is (= "pending" (:status updated-message)))
@@ -173,7 +173,7 @@
                                                    :messages (json/encode ["test-message"])
                                                    :status "processing"
                                                    :failures (dec (mq.settings/queue-max-retries))
-                                                   :owner @#'q.appdb/owner-id})]
+                                                   :owner (:owner-id q.appdb/backend)})]
           (q.backend/batch-failed! q.appdb/backend queue-name message-id)
           (let [updated-message (t2/select-one :queue_message_batch :id message-id)]
             (is (= "failed" (:status updated-message)))
@@ -251,12 +251,12 @@
                                                         {:queue_name (name queue-name)
                                                          :messages   (json/encode ["msg"])
                                                          :status     "processing"
-                                                         :owner      @#'q.appdb/owner-id})
+                                                         :owner      (:owner-id q.appdb/backend)})
             original-heartbeat (:status_heartbeat (t2/select-one :queue_message_batch :id message-id))]
         (Thread/sleep 100) ; Ensure enough time passes for timestamp to differ
         (with-redefs [mq.impl/busy-channels          (constantly #{queue-name})
                       mq.impl/active-handler-metadata (fn [_ch] {:batch-id message-id})]
-          (#'q.appdb/update-heartbeats!))
+          (#'q.appdb/update-heartbeats! (:owner-id q.appdb/backend)))
         (testing "Heartbeat is updated after update-heartbeats!"
           (let [updated-heartbeat (:status_heartbeat (t2/select-one :queue_message_batch :id message-id))]
             (is (not= original-heartbeat updated-heartbeat)

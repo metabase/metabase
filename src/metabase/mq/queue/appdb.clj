@@ -18,24 +18,10 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private owner-id (str (random-uuid)))
-(def ^:private poll-state (mq.polling/make-poll-state))
-
 ;; Stale processing recovery
 (def ^:private stale-processing-timeout-ms
   "Messages in 'processing' status for longer than this are considered stale and recovered."
   (* 10 60 1000))
-
-(def ^:private last-stale-check-ms (atom 0))
-
-;; Failed batch cleanup
-(def ^:private last-cleanup-ms (atom 0))
-
-;; Queue depth gauge
-(def ^:private last-depth-gauge-ms (atom 0))
-
-;; Heartbeat
-(def ^:private last-heartbeat-ms (atom 0))
 
 (defn- for-update-clause
   "Returns the FOR UPDATE clause for the current app DB.
@@ -52,7 +38,7 @@
   "Fetches the oldest pending row for each of the given queue names.
   Returns a seq of maps with :batch-id, :queue, and :messages keys, or nil if no messages are available.
   Selects one row per queue, marks them all as 'processing', and returns them — all within one transaction."
-  [queue-names]
+  [owner-id queue-names]
   (when (seq queue-names)
     (let [exclusive-names (q.impl/exclusive-queue-names)]
       (t2/with-transaction [conn]
@@ -103,31 +89,38 @@
   []
   (let [max-retries (mq.settings/queue-max-retries)
         threshold   (Timestamp/from (.minusMillis (Instant/now) stale-processing-timeout-ms))
-        recovered   (atom 0)]
-    (doseq [row (t2/select :queue_message_batch :status "processing" :status_heartbeat [:< threshold])]
-      (let [new-failures (inc (:failures row))
-            ;; Guard on status + heartbeat so concurrent recovery attempts from another
-            ;; node only "win" once — the loser updates zero rows and skips its log/analytics.
-            where        {:id               (:id row)
-                          :status           "processing"
-                          :status_heartbeat [:< threshold]}
-            updated      (if (>= new-failures max-retries)
-                           (t2/update! :queue_message_batch where
-                                       {:status "failed" :failures new-failures :status_heartbeat (mi/now) :owner nil})
-                           (t2/update! :queue_message_batch where
-                                       {:status "pending" :failures new-failures :status_heartbeat (mi/now) :owner nil}))]
-        (when (pos? updated)
-          (if (>= new-failures max-retries)
-            (do
-              (log/warnf "Processing batch %d on queue '%s' has reached max failures (%d), marking as failed"
-                         (:id row) (:queue_name row) max-retries)
-              (analytics/inc! :metabase-mq/queue-batch-permanent-failures {:channel (:queue_name row)}))
-            (do
-              (log/warnf "Recovering processing batch %d on queue '%s' (failures: %d -> %d)"
-                         (:id row) (:queue_name row) (:failures row) new-failures)
-              (analytics/inc! :metabase-mq/batch-stale-recoveries {:transport "queue" :channel (:queue_name row)})))
-          (swap! recovered inc))))
-    @recovered))
+        candidates  (t2/select :queue_message_batch
+                               :status "processing"
+                               :status_heartbeat [:< threshold])
+        {retryable false permanent true}
+        (group-by #(>= (inc (:failures %)) max-retries) candidates)
+        bulk-update! (fn [rows new-status]
+                       (when (seq rows)
+                         (t2/query {:update :queue_message_batch
+                                    :set    {:status           new-status
+                                             :failures         [:+ :failures 1]
+                                             :status_heartbeat (mi/now)
+                                             :owner            nil}
+                                    :where  [:and
+                                             [:in :id (mapv :id rows)]
+                                             [:= :status "processing"]
+                                             [:< :status_heartbeat threshold]]})))]
+    (bulk-update! retryable "pending")
+    (bulk-update! permanent "failed")
+    (when (seq retryable)
+      (log/warnf "Recovering %d stale processing batch(es)" (count retryable))
+      (doseq [[queue-name rows] (group-by :queue_name retryable)]
+        (analytics/inc! :metabase-mq/batch-stale-recoveries
+                        {:transport "queue" :channel queue-name}
+                        (count rows))))
+    (when (seq permanent)
+      (log/warnf "Marking %d stale processing batch(es) as failed (reached max-retries %d)"
+                 (count permanent) max-retries)
+      (doseq [[queue-name rows] (group-by :queue_name permanent)]
+        (analytics/inc! :metabase-mq/queue-batch-permanent-failures
+                        {:channel queue-name}
+                        (count rows))))
+    (+ (count retryable) (count permanent))))
 
 (defn- cleanup-failed-batches! []
   (let [threshold (Timestamp/from (.minusMillis (Instant/now) (* 7 24 60 60 1000)))
@@ -143,7 +136,7 @@
                      :group-by [:queue_name :status]})]
     (analytics/set-gauge! :metabase-mq/appdb-queue-depth {:channel queue_name :status status} cnt)))
 
-(defn- update-heartbeats! []
+(defn- update-heartbeats! [owner-id]
   (doseq [channel (filter #(= "queue" (namespace %)) (mq.impl/busy-channels))]
     (when-let [{:keys [batch-id]} (mq.impl/active-handler-metadata channel)]
       (try
@@ -159,19 +152,20 @@
   "One iteration of the polling loop: run periodic tasks, then try to process batches.
   Fetches one pending row per available queue and submits each for delivery.
   Returns true if any work was found."
-  [this]
-  (mq.polling/periodically! last-stale-check-ms  (* 60 1000)       "stale batch recovery"  recover-stale-processing-batches!)
-  (mq.polling/periodically! last-heartbeat-ms     (* 2 60 1000)     "heartbeat update"      update-heartbeats!)
-  (mq.polling/periodically! last-cleanup-ms       (* 24 60 60 1000) "failed batch cleanup"  cleanup-failed-batches!)
-  (mq.polling/periodically! last-depth-gauge-ms   (* 30 1000)       "queue depth gauge"     update-depth-gauges!)
+  [{:keys [owner-id last-stale-check-ms last-heartbeat-ms last-cleanup-ms last-depth-gauge-ms] :as this}]
+  (mq.polling/periodically! last-stale-check-ms (* 60 1000)       "stale batch recovery"  recover-stale-processing-batches!)
+  (mq.polling/periodically! last-heartbeat-ms   (* 2 60 1000)     "heartbeat update"      #(update-heartbeats! owner-id))
+  (mq.polling/periodically! last-cleanup-ms     (* 24 60 60 1000) "failed batch cleanup"  cleanup-failed-batches!)
+  (mq.polling/periodically! last-depth-gauge-ms (* 30 1000)       "queue depth gauge"     update-depth-gauges!)
   (boolean
    (when-let [available-queues (seq (remove mq.impl/channel-busy? (listener/queue-names)))]
-     (when-let [batches (seq (fetch! available-queues))]
+     (when-let [batches (seq (fetch! owner-id available-queues))]
        (doseq [{:keys [batch-id queue messages]} batches]
          (mq.impl/submit-delivery! queue messages batch-id this {:batch-id batch-id}))
        true))))
 
-(defrecord AppDbQueueBackend []
+(defrecord AppDbQueueBackend
+           [owner-id poll-state last-stale-check-ms last-heartbeat-ms last-cleanup-ms last-depth-gauge-ms]
   q.backend/QueueBackend
   (publish! [_this queue messages]
     (t2/insert! :queue_message_batch
@@ -209,6 +203,15 @@
   (shutdown! [_this]
     (mq.polling/stop-polling! poll-state "Queue")))
 
+(defn make-backend
+  "Constructs a fresh `AppDbQueueBackend` with its own owner-id, poll-state, and periodic-task
+   rate-limit atoms. The production [[backend]] singleton is one such instance; tests can build
+   isolated ones so their `start!`/`shutdown!` don't touch production state."
+  []
+  (->AppDbQueueBackend (str (random-uuid))
+                       (mq.polling/make-poll-state)
+                       (atom 0) (atom 0) (atom 0) (atom 0)))
+
 (def backend
   "Singleton instance of the appdb queue backend."
-  (->AppDbQueueBackend))
+  (make-backend))

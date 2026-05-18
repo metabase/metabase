@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase.app-db.connection :as app-db.conn]
    [metabase.mq.core :as mq]
-   [metabase.mq.listener :as listener]
    [metabase.mq.publish :as mq.publish]
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.test-util :as mq.tu])
@@ -15,9 +14,9 @@
 (deftest e2e-publish-subscribe-test
   (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
-      (mq/listen! :topic/e2e {}
-                  (fn [message]
-                    (swap! received conj message)))
+      (mq.tu/listen! :topic/e2e {}
+                     (fn [message]
+                       (swap! received conj message)))
 
       (testing "Messages are received by subscriber"
         (mq/with-topic :topic/e2e [t]
@@ -37,9 +36,9 @@
 (deftest batch-publish-e2e-test
   (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
-      (mq/listen! :topic/batch {}
-                  (fn [message]
-                    (swap! received conj message)))
+      (mq.tu/listen! :topic/batch {}
+                     (fn [message]
+                       (swap! received conj message)))
 
       (mq/with-topic :topic/batch [t]
         (mq/put t "a")
@@ -55,11 +54,11 @@
 (deftest error-handling-e2e-test
   (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
-      (mq/listen! :topic/errors {}
-                  (fn [message]
-                    (when (= "fail" message)
-                      (throw (ex-info "Handler error" {})))
-                    (swap! received conj message)))
+      (mq.tu/listen! :topic/errors {}
+                     (fn [message]
+                       (when (= "fail" message)
+                         (throw (ex-info "Handler error" {})))
+                       (swap! received conj message)))
 
       (mq/with-topic :topic/errors [t]
         (mq/put t "ok-1"))
@@ -78,11 +77,11 @@
   (testing "When listener throws on one message in a batch, remaining messages are still delivered"
     (mq.tu/with-test-mq [ctx]
       (let [received (atom [])]
-        (mq/listen! :topic/batch-fail {}
-                    (fn [message]
-                      (when (= "boom" message)
-                        (throw (ex-info "Handler error" {})))
-                      (swap! received conj message)))
+        (mq.tu/listen! :topic/batch-fail {}
+                       (fn [message]
+                         (when (= "boom" message)
+                           (throw (ex-info "Handler error" {})))
+                         (swap! received conj message)))
 
         (mq/with-topic :topic/batch-fail [t]
           (mq/put t "msg-1")
@@ -106,7 +105,7 @@
                               (let [f (bound-fn []
                                         (.await barrier)
                                         (try
-                                          (listener/listen! topic-name {} (fn [_] nil))
+                                          (mq.tu/listen! topic-name {} (fn [_] nil))
                                           (swap! results conj :ok)
                                           (catch ExceptionInfo _
                                             (swap! results conj :error))))]
@@ -125,9 +124,9 @@
     (mq.tu/flush! ctx)
 
     (let [received (atom [])]
-      (mq/listen! :topic/late {}
-                  (fn [message]
-                    (swap! received conj message)))
+      (mq.tu/listen! :topic/late {}
+                     (fn [message]
+                       (swap! received conj message)))
 
       (mq/with-topic :topic/late [t]
         (mq/put t "new-message"))
@@ -141,9 +140,9 @@
 (deftest transaction-defers-topic-publish-test
   (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
-      (mq/listen! :topic/txn-test {}
-                  (fn [message]
-                    (swap! received conj message)))
+      (mq.tu/listen! :topic/txn-test {}
+                     (fn [message]
+                       (swap! received conj message)))
       (binding [app-db.conn/*after-commit*      (atom [])
                 app-db.conn/*transaction-state* (atom {})]
         (testing "Inside a transaction, messages are accumulated, not published immediately"
@@ -167,9 +166,9 @@
 (deftest transaction-rollback-discards-topic-messages-test
   (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
-      (mq/listen! :topic/txn-rollback {}
-                  (fn [message]
-                    (swap! received conj message)))
+      (mq.tu/listen! :topic/txn-rollback {}
+                     (fn [message]
+                       (swap! received conj message)))
       (binding [app-db.conn/*after-commit*      (atom [])
                 app-db.conn/*transaction-state* (atom {})]
         (testing "Messages accumulated during a failed transaction are discarded"
@@ -186,9 +185,9 @@
 (deftest outside-transaction-publishes-topic-immediately-test
   (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
-      (mq/listen! :topic/txn-immediate {}
-                  (fn [message]
-                    (swap! received conj message)))
+      (mq.tu/listen! :topic/txn-immediate {}
+                     (fn [message]
+                       (swap! received conj message)))
       (testing "Outside a transaction, messages are published"
         (is (nil? app-db.conn/*transaction-state*))
         (mq/with-topic :topic/txn-immediate [t]
@@ -201,10 +200,10 @@
   (mq.tu/with-test-mq [ctx]
     (let [received-a (atom [])
           received-b (atom [])]
-      (mq/listen! :topic/txn-multi-a {}
-                  (fn [message] (swap! received-a conj message)))
-      (mq/listen! :topic/txn-multi-b {}
-                  (fn [message] (swap! received-b conj message)))
+      (mq.tu/listen! :topic/txn-multi-a {}
+                     (fn [message] (swap! received-a conj message)))
+      (mq.tu/listen! :topic/txn-multi-b {}
+                     (fn [message] (swap! received-b conj message)))
       (binding [app-db.conn/*after-commit*      (atom [])
                 app-db.conn/*transaction-state* (atom {})]
         (mq/with-topic :topic/txn-multi-a [t]
@@ -230,8 +229,8 @@
 (deftest buffering-combines-topic-messages-test
   (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
-      (mq/listen! :topic/buffer-test {}
-                  (fn [message] (swap! received conj message)))
+      (mq.tu/listen! :topic/buffer-test {}
+                     (fn [message] (swap! received conj message)))
       (binding [publish-buffer/*publish-buffer-ms* 100
                 publish-buffer/*publish-buffer*    (atom {})]
         (testing "buffered-publish! buffers topic messages when *publish-buffer-ms* > 0"
@@ -256,8 +255,8 @@
 (deftest buffering-immediate-when-zero-test
   (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
-      (mq/listen! :topic/buffer-zero {}
-                  (fn [message] (swap! received conj message)))
+      (mq.tu/listen! :topic/buffer-zero {}
+                     (fn [message] (swap! received conj message)))
       (binding [publish-buffer/*publish-buffer-ms* 0
                 publish-buffer/*publish-buffer*    (atom {})]
         (testing "With *publish-buffer-ms* 0, topic messages publish without buffering"

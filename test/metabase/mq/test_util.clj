@@ -115,6 +115,21 @@
 
 ;;; ------------------------------------------- Fixture -------------------------------------------
 
+(defn listen!
+  "Test helper — registers a per-message listener by wrapping `listener-fn` so it's called
+  once per message in each batch, with error isolation. Production code should use
+  [[metabase.mq.core/def-listener!]] instead; this is for ad-hoc test registration where
+  declaring at namespace-load time isn't convenient."
+  [channel opts listener-fn]
+  (listener/batch-listen! channel
+                          (fn [messages]
+                            (let [error (volatile! nil)]
+                              (doseq [m messages]
+                                (try (listener-fn m)
+                                     (catch Throwable e (vreset! error e))))
+                              (when-let [e @error] (throw e))))
+                          (or opts {})))
+
 (defn- merge-listeners!
   "Merges a user-supplied listener map on top of whatever listeners
   `register-listeners!` already registered. Values can be plain single-message
@@ -137,17 +152,19 @@
 
 (defn- make-fixture-backends
   "Constructs backend instances for the given fixture kind. Memory gets a fresh
-  isolated layer; appdb reuses its process-wide singleton since the DB is shared."
+  isolated layer; appdb shares the DB table but gets its own per-instance state
+  (poll-state, owner-id, offsets, periodic-task rate-limit atoms) so that
+  test teardown doesn't tear down the production singleton's polling thread."
   [kind]
   (case kind
     :memory (let [layer (memory/make-layer)]
-              {:backend     :memory
+              {:backend  :memory
                :layer    layer
                :queue-be (q.memory/make-backend layer)
                :topic-be (topic.memory/make-backend layer)})
-    :appdb  {:backend     :appdb
-             :queue-be q.appdb/backend
-             :topic-be topic.appdb/backend}))
+    :appdb  {:backend  :appdb
+             :queue-be (q.appdb/make-backend)
+             :topic-be (topic.appdb/make-backend)}))
 
 (defn- double-delivery-queue-backend!
   "Wraps an inner `QueueBackend` so that `publish!` calls the inner backend's
@@ -255,7 +272,7 @@
   (testing "With :duplicate-delivery? true, the queue backend delivers each message twice"
     (with-test-mq [ctx {:duplicate-delivery? true}]
       (let [received (atom [])]
-        (mq/listen! :queue/chaos-smoke {} #(swap! received conj %))
+        (listen! :queue/chaos-smoke {} #(swap! received conj %))
         (mq/with-queue :queue/chaos-smoke [q]
           (mq/put q "hello"))
         (eventually! ctx #(= 2 (count @received)) 5000)
@@ -267,7 +284,7 @@
   (testing "With :duplicate-delivery? true, the topic backend delivers each message twice"
     (with-test-mq [ctx {:duplicate-delivery? true}]
       (let [received (atom [])]
-        (mq/listen! :topic/chaos-smoke {} #(swap! received conj %))
+        (listen! :topic/chaos-smoke {} #(swap! received conj %))
         (mq/with-topic :topic/chaos-smoke [t]
           (mq/put t "ping"))
         (eventually! ctx #(= 2 (count @received)) 5000)
@@ -279,7 +296,7 @@
   (testing "The default fixture delivers each message exactly once"
     (with-test-mq [ctx]
       (let [received (atom [])]
-        (mq/listen! :queue/chaos-default {} #(swap! received conj %))
+        (listen! :queue/chaos-default {} #(swap! received conj %))
         (mq/with-queue :queue/chaos-default [q]
           (mq/put q "once"))
         (eventually! ctx #(>= (count @received) 1) 5000)

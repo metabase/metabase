@@ -44,23 +44,30 @@
    `metabase.mq.test-util/with-test-mq` with isolated memory backends.
 
    Backends are set globally via `alter-var-root`. For test isolation, bind
-   `listener/*listeners*` and `publish-buffer/*publish-buffer*` with fresh atoms."
+   `listener/*listeners*` and `publish-buffer/*publish-buffer*` with fresh atoms.
+
+   The returned handle records whether THIS call started the global worker pool and
+   publish-buffer flush executor (`:owns-worker-pool?`, `:owns-buffer-flush?`). The
+   matching [[stop!]] only shuts those down if this call started them — so a test
+   fixture running against an already-live server can no-op the global teardown."
   [queue-be topic-be]
-  (let [queue-instance (resolve-backend "queue" queue-backends queue-be)
-        topic-instance (resolve-backend "topic" topic-backends topic-be)
-        prev-queue-be  q.backend/*backend*
-        prev-topic-be  topic.backend/*backend*]
+  (let [queue-instance     (resolve-backend "queue" queue-backends queue-be)
+        topic-instance     (resolve-backend "topic" topic-backends topic-be)
+        prev-queue-be      q.backend/*backend*
+        prev-topic-be      topic.backend/*backend*]
     (alter-var-root #'q.backend/*backend* (constantly queue-instance))
     (alter-var-root #'topic.backend/*backend* (constantly topic-instance))
     (log/infof "Queue backend: %s, Topic backend: %s" queue-be topic-be)
     (listener/register-listeners!)
-    (publish-buffer/start-publish-buffer-flush!)
-    (mq.impl/start-worker-pool!)
-    (mq.impl/start-transports)
-    {:prev-queue-be prev-queue-be
-     :prev-topic-be prev-topic-be
-     :queue-be      queue-instance
-     :topic-be      topic-instance}))
+    (let [owns-buffer-flush? (publish-buffer/start-publish-buffer-flush!)
+          owns-worker-pool?  (mq.impl/start-worker-pool!)]
+      (mq.impl/start-transports)
+      {:prev-queue-be      prev-queue-be
+       :prev-topic-be      prev-topic-be
+       :queue-be           queue-instance
+       :topic-be           topic-instance
+       :owns-buffer-flush? owns-buffer-flush?
+       :owns-worker-pool?  owns-worker-pool?})))
 
 (defn stop!
   "Shuts down the MQ subsystem.
@@ -68,18 +75,21 @@
    Called with no arguments (production): shuts down all services using the current backend vars.
 
    Called with a handle (the map returned by [[start!]]): additionally restores the previous
-   backend state. Used by `metabase.mq.test-util/with-test-mq` for test isolation."
+   backend state and only shuts down globals (worker pool, publish-buffer flush) if this call
+   owned them. Used by `metabase.mq.test-util/with-test-mq` for test isolation — a test
+   that borrows an already-running server's globals leaves them alone on teardown."
   ([]
    (publish-buffer/stop-publish-buffer-flush!)
    (when-let [qb q.backend/*backend*] (q.backend/shutdown! qb))
    (when-let [tb topic.backend/*backend*] (topic.backend/shutdown! tb))
    (mq.impl/shutdown-worker-pool!)
    (reset! listener/*listeners* {}))
-  ([{:keys [prev-queue-be prev-topic-be queue-be topic-be]}]
-   (publish-buffer/stop-publish-buffer-flush!)
+  ([{:keys [prev-queue-be prev-topic-be queue-be topic-be
+            owns-buffer-flush? owns-worker-pool?]}]
+   (when owns-buffer-flush? (publish-buffer/stop-publish-buffer-flush!))
    (when queue-be (q.backend/shutdown! queue-be))
    (when topic-be (topic.backend/shutdown! topic-be))
-   (mq.impl/shutdown-worker-pool!)
+   (when owns-worker-pool? (mq.impl/shutdown-worker-pool!))
    (reset! listener/*listeners* {})
    (alter-var-root #'q.backend/*backend* (constantly prev-queue-be))
    (alter-var-root #'topic.backend/*backend* (constantly prev-topic-be))))

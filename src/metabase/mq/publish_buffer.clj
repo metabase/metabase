@@ -33,18 +33,16 @@
   (let [n (:max-batch-messages (listener/get-listener channel))]
     (when (and n (pos? n)) n)))
 
-(declare flush-publish-buffer!)
-
 (defn buffered-publish!
-  "Routes messages through *publish-buffer* or publishes immediately based on *publish-buffer-ms*.
-   The background flush thread handles actual delivery. If buffering pushes a channel's
-   queued count to or past its `:max-batch-messages`, the channel is flushed synchronously
-   so the buffer doesn't grow unbounded.
+  "Routes messages through *publish-buffer* or publishes immediately based on `*publish-buffer-ms*`.
 
    The sync path (when `*publish-buffer-ms*` is 0) splits `messages` into chunks of
-   `:max-batch-messages` before handing them to the transport. The buffered path can
-   overshoot slightly between the size check and the flush — that's intentional, the
-   tradeoff is staying simple instead of partitioning on every put."
+   `:max-batch-messages` before handing them to the transport.
+
+   The buffered path appends to the buffer and, if buffering pushes the channel's queued
+   count to or past `:max-batch-messages`, trips the channel's deadline so the next tick
+   of the background flush executor drains it. The actual flush stays on the executor
+   thread — publisher threads never block on backend writes."
   [channel messages]
   (let [max-size (max-batch-size channel)]
     (if (zero? *publish-buffer-ms*)
@@ -61,11 +59,11 @@
                                                   (update :messages into messages)
                                                   (assoc :deadline-ms (+ now *publish-buffer-ms*))))))))]
         (when (and max-size (>= (count (get-in new [channel :messages])) max-size))
-          ;; Trip this channel's deadline so the next flush call drains it. Other channels
-          ;; whose deadlines haven't passed are left untouched.
+          ;; Buffer reached the per-channel max-batch limit. Trip its deadline so the next
+          ;; background flush tick drains it. Other channels' deadlines are left untouched.
+          ;; The publisher does not flush synchronously — that would block on a backend write.
           (swap! *publish-buffer*
-                 (fn [buf] (cond-> buf (contains? buf channel) (assoc-in [channel :deadline-ms] 1))))
-          (flush-publish-buffer!))))))
+                 (fn [buf] (cond-> buf (contains? buf channel) (assoc-in [channel :deadline-ms] 1)))))))))
 
 (defn flush-publish-buffer!
   "Drains publish buffer entries past their deadline.
@@ -119,7 +117,8 @@
 (defonce ^:private publish-buffer-executor (atom nil))
 
 (defn start-publish-buffer-flush!
-  "Starts a daemon thread that flushes the publish buffer every 100ms."
+  "Starts a daemon thread that flushes the publish buffer every 100ms. Idempotent.
+  Returns `true` if THIS call created the executor, `false` if one was already running."
   []
   (let [exec (Executors/newSingleThreadScheduledExecutor
               (reify ThreadFactory
@@ -127,8 +126,9 @@
                   (doto (Thread. r "mq-publish-buffer-flush")
                     (.setDaemon true)))))]
     (if (compare-and-set! publish-buffer-executor nil exec)
-      (.scheduleAtFixedRate exec ^Runnable flush-publish-buffer! 100 100 TimeUnit/MILLISECONDS)
-      (.shutdown exec))))
+      (do (.scheduleAtFixedRate exec ^Runnable flush-publish-buffer! 100 100 TimeUnit/MILLISECONDS)
+          true)
+      (do (.shutdown exec) false))))
 
 (defn stop-publish-buffer-flush!
   "Stops the publish buffer flush thread and force-drains all remaining entries

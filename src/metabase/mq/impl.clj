@@ -157,13 +157,13 @@
         true))))
 
 (defn start-worker-pool!
-  "Starts the shared worker pool for non-blocking message delivery. Idempotent."
+  "Starts the shared worker pool for non-blocking message delivery. Idempotent.
+  Returns `true` if THIS call created the pool, `false` if one was already running."
   []
-  (when-not @worker-pool
-    (let [pool (Executors/newCachedThreadPool)]
-      (when-not (compare-and-set! worker-pool nil pool)
-        ;; Another thread won the race — shut down our pool
-        (.shutdown ^ExecutorService pool)))))
+  (let [pool (Executors/newCachedThreadPool)]
+    (if (compare-and-set! worker-pool nil pool)
+      true
+      (do (.shutdown ^ExecutorService pool) false))))
 
 (defn shutdown-worker-pool!
   "Cancels all active handler futures and shuts down the worker pool."

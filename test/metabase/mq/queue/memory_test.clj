@@ -10,7 +10,7 @@
   (mq.tu/with-test-mq [ctx]
     (let [queue-name (keyword "queue" (str "publish-test-" (gensym)))
           received   (atom [])]
-      (mq/listen! queue-name {} (fn [msg] (swap! received conj msg)))
+      (mq.tu/listen! queue-name {} (fn [msg] (swap! received conj msg)))
       (testing "Publish lazily creates channel and delivers messages"
         (mq/with-queue queue-name [q]
           (mq/put q "test-message")
@@ -22,9 +22,9 @@
   (mq.tu/with-test-mq [ctx]
     (let [queue-name :queue/exclusive-test
           received   (atom [])]
-      (mq/listen! queue-name
-                  {:exclusive true}
-                  (fn [msg] (swap! received conj msg)))
+      (mq.tu/listen! queue-name
+                     {:exclusive true}
+                     (fn [msg] (swap! received conj msg)))
       (testing "Exclusive queue processes all messages"
         (mq/with-queue queue-name [q]
           (mq/put q "msg1")

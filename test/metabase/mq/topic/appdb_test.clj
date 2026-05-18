@@ -4,6 +4,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.listener :as listener]
+   [metabase.mq.test-util :as mq.tu]
    [metabase.mq.topic.appdb :as topic.appdb]
    [metabase.mq.topic.backend :as topic.backend]
    [metabase.util.json :as json]
@@ -40,15 +41,15 @@
     (try
       ;; Register listener (this also subscribes, setting the offset via the current *backend*)
       (binding [topic.backend/*backend* topic.appdb/backend]
-        (listener/listen! topic-name
-                          {}
-                          (fn [message]
-                            (swap! received conj message))))
+        (mq.tu/listen! topic-name
+                       {}
+                       (fn [message]
+                         (swap! received conj message))))
       ;; Publish then deliver synchronously via poll-iteration! + deliver!
       (topic.backend/publish! topic.appdb/backend topic-name ["hello-appdb"])
       ;; poll-iteration! fetches rows and calls submit-delivery! which is async.
       ;; Instead, poll the messages and deliver synchronously on this thread.
-      (let [offset (or (get @@#'topic.appdb/offsets topic-name) 0)
+      (let [offset (or (get @(:offsets topic.appdb/backend) topic-name) 0)
             rows   (#'topic.appdb/poll-messages! topic-name offset)]
         (when (seq rows)
           (let [all-messages (into [] (mapcat (comp json/decode :messages)) rows)]
@@ -103,7 +104,7 @@
                                        :order-by [[:id :desc]]
                                        :limit    1})))]
         ;; Subscriber has read up to id1
-        (swap! @#'topic.appdb/offsets assoc topic-name id1)
+        (swap! (:offsets topic.appdb/backend) assoc topic-name id1)
         ;; Publish a second message (unread)
         (topic.backend/publish! topic.appdb/backend topic-name ["m2"])
         (let [id2 (:id (first (t2/query {:select   [:id]
@@ -114,12 +115,12 @@
           (with-redefs [analytics/set-gauge! (fn [metric labels value]
                                                (when (= metric :metabase-mq/appdb-topic-subscriber-lag)
                                                  (swap! gauge-calls conj {:labels labels :value value})))]
-            (#'topic.appdb/update-lag-gauges!))
+            (#'topic.appdb/update-lag-gauges! (:offsets topic.appdb/backend)))
           (testing "Lag gauge is emitted with the correct unread count"
             (let [call (first (filter #(= (name topic-name) (-> % :labels :channel)) @gauge-calls))]
               (is (some? call) "Gauge should be recorded for the test topic")
               (is (= (- id2 id1) (:value call))
                   "Lag should equal the difference between max-id and current offset")))))
       (finally
-        (swap! @#'topic.appdb/offsets dissoc topic-name)
+        (swap! (:offsets topic.appdb/backend) dissoc topic-name)
         (t2/delete! :topic_message_batch :topic_name (name topic-name))))))

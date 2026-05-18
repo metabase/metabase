@@ -14,7 +14,7 @@
 (set! *warn-on-reflection* true)
 
 (def default-max-batch-messages
-  "Default `:max-batch-messages` for `listen!` when the caller doesn't specify one.
+  "Default `:max-batch-messages` when the listener doesn't specify one.
    Bounds both DB-row size at publish time and the consumer slice size at handle time."
   100)
 
@@ -50,31 +50,18 @@
                       {:channel channel})))))
 
 (defn batch-listen!
-  "Registers a batch listener for a queue or topic. The listener is always invoked
-   with a vec of messages, sized up to `:max-batch-messages` (defaults to
-   `default-max-batch-messages`). Queues support `{:exclusive true}`."
+  "Low-level listener registration. Prefer [[def-listener!]] for production code — the macro
+   is the supported way to wire a handler so it gets activated through `register-listeners!`
+   at the correct point in startup, and discovered early by `mq/start-receiving!`.
+
+   Use this directly only when you need a runtime-dynamic registration (e.g. plugins, ad-hoc
+   tests). The listener is invoked with a vec of messages, sized up to `:max-batch-messages`
+   (defaults to `default-max-batch-messages`). Queues support `{:exclusive true}`."
   [channel listener config]
   (let [defaults (transport/on-listen! channel config)
         config   (merge {:max-batch-messages default-max-batch-messages} config)]
     (register-listener! channel
                         (merge defaults config {:listener listener}))))
-
-(defn listen!
-  "Registers a single-message listener for a queue or topic.
-  This is a convenience method vs `batch-listen!` when you want your listener logic to only care about individual messages.
-  Use `batch-listen!` when your listening logic can do optimizations by handling multiple messages at once, this method when it can't.
-
-  NOTE: It still batches up to :max-batch-messages over the wire and retries the entire batch on failure for any messages."
-  [channel opts listener]
-  (batch-listen! channel
-                 (fn [messages]
-                   (let [error (volatile! nil)]
-                     (doseq [m messages]
-                       (try (listener m)
-                            (catch Throwable e
-                              (vreset! error e))))
-                     (when-let [e @error] (throw e))))
-                 (or opts {})))
 
 (defn unlisten!
   "Removes the listener for a channel."
@@ -89,26 +76,29 @@
   [:map [:exclusive {:optional true} :boolean]])
 
 (defmulti def-listener*
-  "Multimethod backing [[def-listener!]]. Each implementation registers its listener
-   by calling [[listen!]] or [[batch-listen!]].
-   Do not call or implement directly — use [[def-listener!]] instead."
+  "Multimethod backing [[def-listener!]]."
   {:arglists '([channel])}
   identity)
 
 (defmacro def-listener!
-  "Defines a listener for a queue or topic, detected from the keyword namespace.
+  "Declares a listener for a queue or topic.
 
-   **Topic listener** — receives a single message:
+   The listener body receives a vec of messages; for per-message handling write
+   `(doseq [m messages] ...)` inside the body. The keyword's namespace decides the transport:
+   `:queue/*` for at-least-once queues, `:topic/*` for fire-and-forget pub/sub.
 
-       (mq/def-listener! :topic/settings-cache-invalidated [msg]
-         (restore-cache!))
+   Optional config keys:
+   - `:max-batch-messages` — slice size (defaults to [[default-max-batch-messages]]).
+   - `:exclusive` (queues only) — when true, at most one batch is in-flight cluster-wide.
+   - `:dedup-fn` — function that filters duplicates from a batch before delivery.
 
-   **Queue listener** — receives a single message, with optional config:
+   Examples:
 
-       (mq/def-listener! :queue/simple-task {:exclusive true} [msg]
-         (process msg))
+       (mq/def-listener! :topic/settings-cache-invalidated [messages]
+         (doseq [_ messages] (restore-cache!)))
 
-   **Queue batch listener** — receives a vec of messages (config must include :max-batch-messages):
+       (mq/def-listener! :queue/simple-task {:exclusive true} [messages]
+         (doseq [msg messages] (process msg)))
 
        (mq/def-listener! :queue/search-reindex
          {:max-batch-messages 50 :exclusive true}
@@ -117,19 +107,13 @@
   {:arglists '([channel bindings & body]
                [channel config bindings & body])}
   [channel & args]
-  (let [[config & args] (if (map? (first args))
-                          args
-                          (cons nil args))
-        [bindings & body] args
-        batch?          (and config (:max-batch-messages config))]
-    (if batch?
-      `(defmethod def-listener* ~channel [~'_]
-         (batch-listen!
-          ~channel
-          (fn [~@bindings] ~@body)
-          ~(select-keys config [:max-batch-messages :exclusive :dedup-fn])))
-      `(defmethod def-listener* ~channel [~'_]
-         (listen! ~channel ~(or config {}) (fn [~@bindings] ~@body))))))
+  (let [[config & args]  (if (map? (first args)) args (cons nil args))
+        [bindings & body] args]
+    `(defmethod def-listener* ~channel [~'_]
+       (batch-listen!
+        ~channel
+        (fn [~@bindings] ~@body)
+        ~(or (select-keys config [:max-batch-messages :exclusive :dedup-fn]) {})))))
 
 (defn register-listeners!
   "Call all [[def-listener!]] implementations to register their listeners.

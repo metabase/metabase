@@ -10,19 +10,25 @@
   **Topic** — single-consumer pub/sub.  Each active node receives every published message.
   There can be up to one listener per node for each topic. Failed messages are never retried.
 
-  Listeners for both types are registered with `def-listener`
+  Listeners for both types are declared with `def-listener!`. The macro adds the listener
+  to a registry; `mq.init/start!` later activates everything in that registry at the right
+  point in startup. The listener body always receives a vec of messages — use
+  `(doseq [m messages] ...)` for per-message processing.
 
-      (mq/def-listener! :queue/simple-task [msg]
-        (process msg))
+      (mq/def-listener! :queue/simple-task [messages]
+        (doseq [msg messages] (process msg)))
 
-      (mq/def-listener! :topic/my-events [msg]
-        (handle-event msg))
+      (mq/def-listener! :topic/my-events [messages]
+        (doseq [msg messages] (handle-event msg)))
 
-  For queues, a config map enables batching:
+  Optional config controls batch size, exclusivity, and dedup:
        (mq/def-listener! :queue/my-task
-         {:max-batch-messages 10}
+         {:max-batch-messages 10 :exclusive true}
          [messages]
-         (process messages))
+         (process-batch messages))
+
+  See [[metabase.mq.listener/def-listener!]] for the full set of options and the rationale
+  behind the deferred-registration design.
 
   Publishing is done using `with-queue` or `with-topic` which binds a queue you can put messages on.
   When the body finishes successfully, the message(s) in the bound queue actually publishes the messages.
@@ -65,9 +71,7 @@
 
 (p/import-vars
  [mq.listener
-  batch-listen!
   def-listener!
-  listen!
   register-listeners!
   unlisten!]
 
