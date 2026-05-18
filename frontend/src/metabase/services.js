@@ -264,7 +264,6 @@ export const AutoApi = {
 };
 
 export const MetabaseApi = {
-  db_usage_info: GET("/api/database/:dbId/usage_info"),
   tableAppendCSV: POST("/api/table/:tableId/append-csv", {
     formData: true,
     fetch: true,
