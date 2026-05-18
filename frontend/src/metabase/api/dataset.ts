@@ -40,6 +40,10 @@ export const datasetApi = Api.injectEndpoints({
         url: "/api/dataset",
         body,
         noEvent: ignore_error,
+        // Use fetch so RTK Query's AbortSignal actually cancels the
+        // request. The XHR path only honors a `cancelled` promise, which
+        // we can't thread through `endpoint.initiate(...).abort()`.
+        fetch: true,
       }),
       providesTags: () => provideAdhocDatasetTags(),
     }),
@@ -58,6 +62,7 @@ export const datasetApi = Api.injectEndpoints({
         url: "/api/dataset/pivot",
         body,
         noEvent: ignore_error,
+        fetch: true,
       }),
       providesTags: () => provideAdhocDatasetTags(),
     }),
