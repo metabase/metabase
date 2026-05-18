@@ -87,7 +87,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
                 row: 0,
                 col: 0,
                 size_x: 24,
-                size_y: 8,
+                size_y: 30,
                 parameter_mappings: [
                   {
                     parameter_id: DASHBOARD_B_FILTER.id,
@@ -624,7 +624,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
       });
     });
 
-    it("should preserve user style on the navigated dashboard (EMB-1746)", () => {
+    it("should keep filters sticky on the navigated dashboard (EMB-1746)", () => {
       cy.get<number>("@dashboardAId").then((dashboardAId) => {
         mountSdkContent(
           <InteractiveDashboard
@@ -641,28 +641,27 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
       getSdkRoot().within(() => {
         cy.findByText("Dashboard A").should("be.visible");
 
-        // Pre-fix: nested wrapper dropped user height, broke sticky filters.
-        // Pin: exactly one styled wrapper at every step.
-        cy.findAllByTestId("sdk-dashboard-styled-wrapper").should(
-          "have.length",
-          1,
-        );
-
         cy.log("Navigate to Dashboard B via custom click behavior");
         H.getDashboardCard().findAllByText("Go to Dashboard B").first().click();
         cy.wait("@getDashboard");
         cy.findByText("Dashboard B").should("be.visible");
-        cy.findAllByTestId("sdk-dashboard-styled-wrapper").should(
-          "have.length",
-          1,
-        );
+        H.filterWidget().should("be.visible");
 
-        cy.findByText("Back to Dashboard A").click();
-        cy.findByText("Dashboard A").should("be.visible");
-        cy.findAllByTestId("sdk-dashboard-styled-wrapper").should(
-          "have.length",
-          1,
-        );
+        // Pre-fix: nested wrapper dropped user height, so the scroll context
+        // was gone and the filter row scrolled off with the content.
+        cy.log("Scroll dashboard; filter row must stay pinned at wrapper top");
+        cy.findByTestId("sdk-dashboard-styled-wrapper").scrollTo("bottom");
+
+        cy.findByTestId("sdk-dashboard-styled-wrapper").then(($wrapper) => {
+          const wrapperTop = $wrapper[0].getBoundingClientRect().top;
+
+          H.filterWidget()
+            .should("be.visible")
+            .and(($filter) => {
+              const filterTop = $filter[0].getBoundingClientRect().top;
+              expect(filterTop).to.be.closeTo(wrapperTop, 20);
+            });
+        });
       });
     });
   });
