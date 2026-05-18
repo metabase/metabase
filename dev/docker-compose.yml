@@ -21,14 +21,9 @@ version: '3.1'
 # ;; connect (e.g. metabasedb_postgres_14_data:5432 vs. localhost:15432).
 # COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data,dev-app docker-compose --file dev/docker-compose.yml up
 # ;; All of the above, and builds the frontend, too. No need for `bun run build-hot` locally.
-# ;; NOTE: See comment below on fe-builder service. This isn't quite ready yet.
 # COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data,fe-builder,dev-app docker-compose --file dev/docker-compose.yml up
 #
 # TODOs:
-# - Get the fe-builder service working correctly. If anyone wants to see what it
-#   does, uncomment it and try
-#   COMPOSE_PROFILES=fe-builder docker-compose --file dev/docker-compose.yml up
-#   It will hang on step 4/5.
 # - Consider using swarm to declaratively scale up/down.
 services:
 
@@ -69,23 +64,29 @@ services:
     networks:
       - metabasenet
 
-# NOTE: This service isn't ready for prime time. It takes a LONG time to start
-#       up. I think there's some mounts to caches that are needed or something.
-#       Hopefully one of our node geniuses can figure it out.
-  # Just build the frontend. Mounts local dev so nothing else needed
+  # Builds the frontend with hot reload. Mounts local dev so nothing else
+  # needed.
   fe-builder:
-    image: node:22-bullseye
+    # Reuses the repo's devcontainer image (JDK + Node + Bun + Clojure
+    # CLI) so the FE/CLJS toolchain is maintained in exactly one place.
+    build:
+      context: ../.devcontainer
+      dockerfile: Dockerfile
     container_name: fe-builder
     working_dir: /dev/metabase
+    # In hot mode rspack inlines an absolute publicPath of
+    # http://localhost:8080/ into index.html (see rspack.main.config.js), so
+    # the browser loads the bundle from the host's :8080 — it must be
+    # published, not just exposed on the docker network.
+    ports:
+      - "8080:8080"
     volumes:
       - ../:/dev/metabase
-      - ~/.npm:/root/.npm
       - ~/.bun/install/cache:/root/.bun/install/cache
     command:
       - /bin/sh
       - -c
       - |
-        npm install -g bun
         bun install
         bun run build-hot
     profiles:

@@ -2,6 +2,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import type Field from "metabase-lib/v1/metadata/Field";
 import {
   PRODUCTS,
   createSampleDatabase,
@@ -16,21 +17,20 @@ const state = createMockState({
 });
 const metadata = getMetadata(state);
 
-function setup(field) {
+function setup(field: Field, timezone?: string) {
   return renderWithProviders(
     <div data-testid="container">
-      <TableColumnFingerprintInfo
-        field={field}
-        timezone={field.table?.database?.timezone}
-      />
+      <TableColumnFingerprintInfo field={field} timezone={timezone} />
     </div>,
     { storeInitialState: state },
   );
 }
 
 describe("FieldFingerprintInfo", () => {
+  const dateField = metadata.field(PRODUCTS.CREATED_AT)!;
+
   describe("without fingerprint", () => {
-    const field = metadata.field(PRODUCTS.CREATED_AT).clone();
+    const field = dateField.clone();
 
     delete field.fingerprint;
 
@@ -41,8 +41,6 @@ describe("FieldFingerprintInfo", () => {
   });
 
   describe("Date field", () => {
-    const dateField = metadata.field(PRODUCTS.CREATED_AT);
-
     describe("without type/DateTime fingerprint", () => {
       const field = dateField.clone();
       field.fingerprint = { type: {} };
@@ -63,31 +61,27 @@ describe("FieldFingerprintInfo", () => {
           },
         },
       };
-      field.table = {
-        database: {
-          timezone: "America/Los_Angeles",
-        },
-      };
+      const timezone = "America/Los_Angeles";
 
       it("should show the timezone of the field", () => {
-        setup(field);
+        setup(field, timezone);
         expect(screen.getByText("America/Los_Angeles")).toBeVisible();
       });
 
       it("should render formatted earliest time", () => {
-        setup(field);
+        setup(field, timezone);
         expect(screen.getByText("November 9, 2021, 4:43 AM")).toBeVisible();
       });
 
       it("should render formatted latest time", () => {
-        setup(field);
+        setup(field, timezone);
         expect(screen.getByText("December 9, 2021, 4:43 AM")).toBeVisible();
       });
     });
   });
 
   describe("Number field", () => {
-    const numberField = metadata.field(PRODUCTS.RATING).clone();
+    const numberField = metadata.field(PRODUCTS.RATING)!.clone();
 
     numberField.semantic_type = null;
 
@@ -168,15 +162,13 @@ describe("FieldFingerprintInfo", () => {
   });
 
   describe("Other field types", () => {
-    const idField = metadata.field(PRODUCTS.ID);
+    const idField = metadata.field(PRODUCTS.ID)!;
     const field = idField.clone();
     field.fingerprint = {
-      type: {
-        global: {
-          "distinct-count": 123,
-        },
-        "type/ID": {},
+      global: {
+        "distinct-count": 123,
       },
+      type: {},
     };
 
     it("should render nothing", () => {

@@ -17,13 +17,13 @@ const state = createMockState({
 });
 const metadata = getMetadata(state);
 
-function setup(semanticType) {
+function setup(semanticType: string | null | undefined) {
   return renderWithProviders(<SemanticTypeLabel semanticType={semanticType} />);
 }
 
 describe("SemanticTypeLabel", () => {
   describe("given a dimension with a semantic type", () => {
-    const field = metadata.field(PRODUCTS.CREATED_AT);
+    const field = metadata.field(PRODUCTS.CREATED_AT)!;
 
     it("should show an icon corresponding to the given semantic type", () => {
       setup(field.semantic_type);
@@ -37,7 +37,7 @@ describe("SemanticTypeLabel", () => {
   });
 
   describe("given a dimension without a semantic type", () => {
-    const field = metadata.field(ORDERS.TAX);
+    const field = metadata.field(ORDERS.TAX)!;
 
     it("should show an ellipsis icon representing the lack of semantic type", () => {
       setup(field.semantic_type);

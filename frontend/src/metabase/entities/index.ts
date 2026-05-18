@@ -68,7 +68,6 @@
  *   )(BookContainer);
  */
 
-export { Dashboards as dashboards } from "./dashboards";
 export { Questions as questions } from "./questions";
 
 export { Databases as databases } from "./databases";
