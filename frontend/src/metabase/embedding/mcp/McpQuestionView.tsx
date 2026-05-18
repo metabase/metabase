@@ -24,7 +24,8 @@ export function McpQuestionView({
 }: McpQuestionViewProps) {
   const { hasTimeControls, timeGranularity, timeRange } = useMcpQueryControls();
 
-  // This is used to adjust the parent MCP Apps iframe's container height.
+  // This is used to adjust the parent's visualization height.
+  // We leave more room for the visualization when there are no time control.
   useEffect(() => {
     onTimeControlsVisibilityChange(hasTimeControls);
   }, [hasTimeControls, onTimeControlsVisibilityChange]);

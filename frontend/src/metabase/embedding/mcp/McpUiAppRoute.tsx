@@ -86,7 +86,7 @@ function McpUiAppRouteContent({
   sessionToken,
 }: McpUiAppRouteContentProps) {
   const { query, prompt, hostContext, app } = useMcpApp();
-  const [isQueryBarVisible, setIsQueryBarVisible] = useState(false);
+  const [isTimeControlVisible, setIsTimeControlVisible] = useState(false);
 
   const handleDrillThrough = useHandleMcpDrillThrough(app);
 
@@ -131,7 +131,7 @@ function McpUiAppRouteContent({
 
   const height = `calc(${CONTENT_HEIGHT} + ${FOOTER_HEIGHT})`;
 
-  const visualizationHeight = isQueryBarVisible
+  const visualizationHeight = isTimeControlVisible
     ? `calc(${CONTENT_HEIGHT} - 8.5rem)`
     : `calc(${CONTENT_HEIGHT} - 8.5rem + ${QUERY_BAR_RESERVED_HEIGHT})`;
 
@@ -180,7 +180,7 @@ function McpUiAppRouteContent({
   });
 
   const handleQueryBarVisibilityChange = useCallback((isVisible: boolean) => {
-    setIsQueryBarVisible(isVisible);
+    setIsTimeControlVisible(isVisible);
   }, []);
 
   const renderSdkQuestionContent = () => {
