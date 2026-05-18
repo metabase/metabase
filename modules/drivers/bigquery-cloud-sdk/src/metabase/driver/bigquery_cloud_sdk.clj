@@ -1467,7 +1467,7 @@
           (>= attempt max-attempts)
           (let [elapsed-s   (/ (- (System/nanoTime) started-ns) 1e9)
                 last-msg    (some-> last-error ex-message)
-                last-cls    (some-> last-error (.getClass) (.getName))
+                last-cls    (some-> last-error class .getName)
                 histogram   (->> error-classes
                                  (sort-by (comp - val))
                                  (map (fn [[k v]] (format "%s=%d" (name k) v)))
