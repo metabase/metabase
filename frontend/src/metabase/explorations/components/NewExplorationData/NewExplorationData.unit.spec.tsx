@@ -82,7 +82,7 @@ function setup({
       setDimensions={setDimensions}
       timelines={timelines}
       setTimelines={setTimelines}
-      name={null}
+      name=""
     />,
   );
 

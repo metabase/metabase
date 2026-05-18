@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
 import type {
@@ -6,7 +7,6 @@ import type {
   ExplorationQuery,
   ExplorationQueryGroup,
   ExplorationQueryStatus,
-  ThreadsWithSortedQueries,
 } from "metabase-types/api";
 
 import { ExplorationSidebar } from "./ExplorationSidebar";
@@ -22,7 +22,7 @@ function createQuery(
     exploration_thread_id: 1,
     card_id: 1,
     dimension_id: "dim-1",
-    dimension_name: "Dim 1",
+    dimension_name: overrides.name,
     position: 0,
     error_message: null,
     started_at: null,
@@ -40,24 +40,31 @@ interface CreateExplorationOpts {
   groups?: ExplorationQueryGroup[];
 }
 
+const METRIC_HEADING_ID = "metric:1";
+
 function createExploration({ queries, groups }: CreateExplorationOpts): {
   exploration: Exploration;
-  threadsWithSortedQueries: ThreadsWithSortedQueries[];
 } {
-  // Default to one `singleton` auto-group per query so each query renders
-  // as a flat row (singleton groups skip the collapsible wrapper). Tests
-  // that need multi-query groups pass `groups` explicitly.
-  const finalGroups: ExplorationQueryGroup[] =
-    groups ??
-    queries.map((q, i) => ({
-      id: `auto:1:dim-${q.id}`,
+  const finalGroups: ExplorationQueryGroup[] = groups ?? [
+    {
+      id: METRIC_HEADING_ID,
       parent_group_id: null,
+      position: 0,
+      type: "auto" as const,
+      display_type: "sidebar" as const,
+      name: "Initial investigation",
+      query_ids: [],
+    },
+    ...queries.map((q, i) => ({
+      id: `auto:1:dim-${q.id}`,
+      parent_group_id: METRIC_HEADING_ID,
       position: i,
       type: "auto" as const,
       display_type: "singleton" as const,
       name: q.name,
       query_ids: [q.id],
-    }));
+    })),
+  ];
 
   const threads = [
     {
@@ -76,11 +83,12 @@ function createExploration({ queries, groups }: CreateExplorationOpts): {
     },
   ];
 
-  const exploration = {
+  const exploration: Exploration = {
     id: 1,
     name: "My exploration",
     description: null,
     creator_id: 1,
+    can_write: true,
     archived: false,
     entity_id: "expl00000000000000001",
     created_at: "2026-04-30T00:00:00Z",
@@ -88,18 +96,10 @@ function createExploration({ queries, groups }: CreateExplorationOpts): {
     threads,
   };
 
-  // Test fixture: queries are constructed via `createQuery` which returns
-  // the wider `ExplorationQuery` (`name: string | null`); the prod page
-  // narrows to `ExplorationQueryWithName` by filtering. We trust the
-  // fixture inputs here and cast.
-  return {
-    exploration,
-    threadsWithSortedQueries: threads as ThreadsWithSortedQueries[],
-  };
+  return { exploration };
 }
 
 type TestSelectedEntityId =
-  | { type: "query"; id: number }
   | { type: "group"; id: string }
   | { type: "document"; id: number }
   | null;
@@ -119,24 +119,45 @@ function setup({
 }: SetupOpts) {
   const setSelectedEntityId = jest.fn();
 
-  const { exploration, threadsWithSortedQueries } = createExploration({
-    queries,
-    groups,
+  fetchMock.get("express:/api/exploration/query/:id", {
+    data: { rows: [], cols: [] },
+  });
+  fetchMock.post("path:/api/dataset/query_metadata", {
+    databases: [],
+    tables: [],
+    fields: [],
   });
 
-  const resolvedEntityId =
-    selectedEntityId !== undefined
-      ? selectedEntityId
-      : selectedQueryId == null
-        ? null
-        : { type: "query" as const, id: selectedQueryId };
+  const { exploration } = createExploration({ queries, groups });
+
+  const allGroups = exploration.threads?.flatMap((t) => t.groups ?? []) ?? [];
+  const findGroupForQuery = (queryId: number) =>
+    allGroups.find(
+      (g) => g.parent_group_id != null && g.query_ids.includes(queryId),
+    );
+
+  let resolvedEntityId: TestSelectedEntityId;
+  if (selectedEntityId !== undefined) {
+    resolvedEntityId = selectedEntityId;
+  } else if (selectedQueryId != null) {
+    const owningGroup = findGroupForQuery(selectedQueryId);
+    resolvedEntityId = owningGroup
+      ? { type: "group" as const, id: owningGroup.id }
+      : null;
+  } else if (queries.length > 0) {
+    const firstLeaf = findGroupForQuery(queries[0].id);
+    resolvedEntityId = firstLeaf
+      ? { type: "group" as const, id: firstLeaf.id }
+      : null;
+  } else {
+    resolvedEntityId = null;
+  }
 
   renderWithProviders(
     <ExplorationSidebar
       exploration={exploration}
       selectedEntityId={resolvedEntityId}
       setSelectedEntityId={setSelectedEntityId}
-      threadsWithSortedQueries={threadsWithSortedQueries}
     />,
   );
   return { setSelectedEntityId };
@@ -162,7 +183,9 @@ const errorQuery = createQuery({
 function getRow(name: string): HTMLElement {
   return screen
     .getAllByRole("listitem")
-    .find((el) => within(el).queryByText(name)) as HTMLElement;
+    .find((el) =>
+      within(el).queryByText(name, { exact: false }),
+    ) as HTMLElement;
 }
 
 describe("ExplorationSidebar", () => {
@@ -170,7 +193,7 @@ describe("ExplorationSidebar", () => {
     setup({ queries: [pendingQuery] });
 
     expect(
-      within(getRow("Revenue by plan")).getByLabelText("Generating chart…"),
+      within(getRow("Revenue by plan")).getByLabelText("Loading…"),
     ).toBeInTheDocument();
   });
 
@@ -178,22 +201,17 @@ describe("ExplorationSidebar", () => {
     setup({ queries: [doneQuery] });
 
     expect(
-      within(getRow("Revenue by region")).getByLabelText("Chart ready"),
+      within(getRow("Revenue by region")).getByLabelText("Ready"),
     ).toBeInTheDocument();
   });
 
-  it("shows a warning icon and the error message tooltip for error queries", async () => {
+  it("shows a warning icon for error queries", () => {
     setup({ queries: [errorQuery] });
 
     const row = getRow("Revenue by source");
     expect(
-      within(row).getByLabelText("Failed to generate chart"),
+      within(row).getByLabelText("Failed to generate"),
     ).toBeInTheDocument();
-
-    await userEvent.hover(row);
-    expect(await screen.findByRole("tooltip")).toHaveTextContent(
-      "Database timed out",
-    );
   });
 
   it("calls setSelectedEntityId when a row is clicked", async () => {
@@ -204,8 +222,8 @@ describe("ExplorationSidebar", () => {
     await userEvent.click(getRow("Revenue by region"));
 
     expect(setSelectedEntityId).toHaveBeenCalledWith({
-      type: "query",
-      id: doneQuery.id,
+      type: "group",
+      id: `auto:1:dim-${doneQuery.id}`,
     });
   });
 
@@ -220,8 +238,13 @@ describe("ExplorationSidebar", () => {
   });
 
   describe("query groups", () => {
+    // Each metric heading + leaves block.
     const planQueries: ExplorationQuery[] = [
-      createQuery({ id: 11, name: "Revenue by plan (all)", status: "done" }),
+      createQuery({
+        id: 11,
+        name: "Revenue by plan (all)",
+        status: "done",
+      }),
       createQuery({
         id: 12,
         name: "Revenue by plan (US)",
@@ -229,204 +252,286 @@ describe("ExplorationSidebar", () => {
       }),
     ];
     const regionQueries: ExplorationQuery[] = [
-      createQuery({ id: 21, name: "Revenue by region (all)", status: "done" }),
+      createQuery({
+        id: 21,
+        name: "Revenue by region (all)",
+        status: "done",
+      }),
       createQuery({
         id: 22,
         name: "Revenue by region (EU)",
         status: "done",
       }),
     ];
+
+    const PLAN_HEADING_ID = "metric:plan";
+    const REGION_HEADING_ID = "metric:region";
+    const planLeafAllId = `leaf:plan:${planQueries[0].id}`;
+    const planLeafUsId = `leaf:plan:${planQueries[1].id}`;
+    const regionLeafAllId = `leaf:region:${regionQueries[0].id}`;
+    const regionLeafEuId = `leaf:region:${regionQueries[1].id}`;
+
+    // Two top-level metric headings, each containing two singleton leaves.
     const groups: ExplorationQueryGroup[] = [
       {
-        id: "auto:1:plan",
+        id: PLAN_HEADING_ID,
         parent_group_id: null,
         position: 0,
         type: "auto",
         display_type: "sidebar",
         name: "Revenue by plan",
-        query_ids: planQueries.map((q) => q.id),
+        query_ids: [],
       },
       {
-        id: "auto:1:region",
+        id: planLeafAllId,
+        parent_group_id: PLAN_HEADING_ID,
+        position: 0,
+        type: "auto",
+        display_type: "singleton",
+        name: planQueries[0].name,
+        query_ids: [planQueries[0].id],
+      },
+      {
+        id: planLeafUsId,
+        parent_group_id: PLAN_HEADING_ID,
+        position: 1,
+        type: "auto",
+        display_type: "singleton",
+        name: planQueries[1].name,
+        query_ids: [planQueries[1].id],
+      },
+      {
+        id: REGION_HEADING_ID,
         parent_group_id: null,
         position: 1,
         type: "auto",
         display_type: "sidebar",
         name: "Revenue by region",
-        query_ids: regionQueries.map((q) => q.id),
+        query_ids: [],
+      },
+      {
+        id: regionLeafAllId,
+        parent_group_id: REGION_HEADING_ID,
+        position: 0,
+        type: "auto",
+        display_type: "singleton",
+        name: regionQueries[0].name,
+        query_ids: [regionQueries[0].id],
+      },
+      {
+        id: regionLeafEuId,
+        parent_group_id: REGION_HEADING_ID,
+        position: 1,
+        type: "auto",
+        display_type: "singleton",
+        name: regionQueries[1].name,
+        query_ids: [regionQueries[1].id],
       },
     ];
 
-    it("renders one collapsible header per multi-query group; expanded panel shows the queries", async () => {
-      const { setSelectedEntityId } = setup({
+    it("renders one collapsible heading per metric and toggles its leaf rows when clicked", async () => {
+      setup({
         queries: [...planQueries, ...regionQueries],
         groups,
+        selectedEntityId: { type: "group", id: planLeafAllId },
       });
 
-      // Headers are visible and report collapsed by default.
-      const planHeader = screen.getByRole("button", {
+      const planHeading = screen.getByRole("button", {
         name: /Revenue by plan/,
       });
-      const regionHeader = screen.getByRole("button", {
+      const regionHeading = screen.getByRole("button", {
         name: /Revenue by region/,
       });
-      expect(planHeader).toHaveAttribute("aria-expanded", "false");
-      expect(regionHeader).toHaveAttribute("aria-expanded", "false");
+      expect(planHeading).toHaveAttribute("aria-expanded", "true");
+      expect(regionHeading).toHaveAttribute("aria-expanded", "false");
 
-      // Bodies are hidden by default.
+      // Plan leaves are in the DOM; region leaves aren't until that
+      // heading is opened.
+      expect(getRow("Revenue by plan (all)")).toBeInTheDocument();
       expect(
-        screen.queryByText("Revenue by plan (all)"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByText("Revenue by region (all)"),
-      ).not.toBeInTheDocument();
-
-      // Expand the plan group → its queries become visible AND the first
-      // query gets selected.
-      await userEvent.click(planHeader);
-      expect(planHeader).toHaveAttribute("aria-expanded", "true");
-      expect(screen.getByText("Revenue by plan (all)")).toBeInTheDocument();
-      expect(setSelectedEntityId).toHaveBeenLastCalledWith({
-        type: "query",
-        id: planQueries[0].id,
-      });
-      expect(
-        screen.queryByText("Revenue by region (all)"),
+        screen.queryByText("Revenue by region (all)", { exact: false }),
       ).not.toBeInTheDocument();
 
-      // Collapse the plan group → its queries hide.
-      await userEvent.click(planHeader);
-      expect(planHeader).toHaveAttribute("aria-expanded", "false");
+      // Click the region heading → expands and reveals its leaves.
+      await userEvent.click(regionHeading);
+      expect(regionHeading).toHaveAttribute("aria-expanded", "true");
+      expect(getRow("Revenue by region (all)")).toBeInTheDocument();
+      expect(getRow("Revenue by region (EU)")).toBeInTheDocument();
+
+      // Toggle the plan heading off — its leaves disappear; the
+      // region heading stays expanded.
+      await userEvent.click(planHeading);
+      expect(planHeading).toHaveAttribute("aria-expanded", "false");
       expect(
-        screen.queryByText("Revenue by plan (all)"),
+        screen.queryByText("Revenue by plan (all)", { exact: false }),
       ).not.toBeInTheDocument();
+      expect(regionHeading).toHaveAttribute("aria-expanded", "true");
     });
 
-    it("single-query groups render the lone query directly without a group header", () => {
+    it("a heading wrapping a single leaf is collapsible — collapsing it removes the leaf from the DOM", async () => {
       const onlyQuery = createQuery({
         id: 99,
         name: "Solo dimension",
         status: "done",
       });
+      const HEADING_ID = "metric:solo";
+      const LEAF_ID = "leaf:solo";
       setup({
         queries: [onlyQuery],
         groups: [
           {
-            id: "auto:1:solo",
+            id: HEADING_ID,
             parent_group_id: null,
             position: 0,
             type: "auto",
+            display_type: "sidebar",
+            name: "Solo metric",
+            query_ids: [],
+          },
+          {
+            id: LEAF_ID,
+            parent_group_id: HEADING_ID,
+            position: 0,
+            type: "auto",
             display_type: "singleton",
-            name: "Solo dimension",
+            name: onlyQuery.name,
             query_ids: [onlyQuery.id],
           },
         ],
+        // Anchor selection on the leaf so the thread + metric
+        // headings start auto-expanded.
+        selectedEntityId: { type: "group", id: LEAF_ID },
       });
 
-      // The query row is visible directly — no expandable header for the group.
+      const heading = screen.getByRole("button", { name: /Solo metric/ });
+      expect(heading).toHaveAttribute("aria-expanded", "true");
       expect(getRow("Solo dimension")).toBeInTheDocument();
+
+      // Collapsing the heading removes the lone leaf from the DOM.
+      await userEvent.click(heading);
+      expect(heading).toHaveAttribute("aria-expanded", "false");
       expect(
-        screen.queryByRole("button", { expanded: false }),
+        screen.queryByText("Solo dimension", { exact: false }),
       ).not.toBeInTheDocument();
     });
 
-    it("group header status reflects the worst case across its queries", () => {
-      const runningGroupQueries = [
-        createQuery({ id: 1001, name: "Q1", status: "pending" }),
-        createQuery({ id: 1002, name: "Q2", status: "done" }),
+    it("each leaf row's status icon reflects the worst-case status of its own queries (headings have no status icon)", () => {
+      // One heading with three leaves: one pending, one error, one done.
+      // The heading button has no status indicator — only the leaf
+      // listitems do.
+      const runningLeafQueries = [
+        createQuery({ id: 1001, name: "Pending leaf q1", status: "pending" }),
+        createQuery({ id: 1002, name: "Pending leaf q2", status: "done" }),
       ];
-      const errorGroupQueries = [
-        createQuery({ id: 2001, name: "Q3", status: "done" }),
+      const errorLeafQueries = [
+        createQuery({ id: 2001, name: "Error leaf q1", status: "done" }),
         createQuery({
           id: 2002,
-          name: "Q4",
+          name: "Error leaf q2",
           status: "error",
           error_message: "boom",
         }),
       ];
-      const doneGroupQueries = [
-        createQuery({ id: 3001, name: "Q5", status: "done" }),
-        createQuery({ id: 3002, name: "Q6", status: "done" }),
-      ];
-      const statusGroups: ExplorationQueryGroup[] = [
-        {
-          id: "g-running",
-          parent_group_id: null,
-          position: 0,
-          type: "auto",
-          display_type: "sidebar",
-          name: "Still running",
-          query_ids: runningGroupQueries.map((q) => q.id),
-        },
-        {
-          id: "g-error",
-          parent_group_id: null,
-          position: 1,
-          type: "auto",
-          display_type: "sidebar",
-          name: "Has an error",
-          query_ids: errorGroupQueries.map((q) => q.id),
-        },
-        {
-          id: "g-done",
-          parent_group_id: null,
-          position: 2,
-          type: "auto",
-          display_type: "sidebar",
-          name: "All settled",
-          query_ids: doneGroupQueries.map((q) => q.id),
-        },
+      const doneLeafQueries = [
+        createQuery({ id: 3001, name: "Done leaf q1", status: "done" }),
+        createQuery({ id: 3002, name: "Done leaf q2", status: "done" }),
       ];
 
+      const HEADING_ID = "metric:status";
+      const RUNNING_LEAF_ID = "leaf:running";
       setup({
         queries: [
-          ...runningGroupQueries,
-          ...errorGroupQueries,
-          ...doneGroupQueries,
+          ...runningLeafQueries,
+          ...errorLeafQueries,
+          ...doneLeafQueries,
         ],
-        groups: statusGroups,
+        groups: [
+          {
+            id: HEADING_ID,
+            parent_group_id: null,
+            position: 0,
+            type: "auto",
+            display_type: "sidebar",
+            name: "Status metric",
+            query_ids: [],
+          },
+          {
+            id: RUNNING_LEAF_ID,
+            parent_group_id: HEADING_ID,
+            position: 0,
+            type: "auto",
+            display_type: "page",
+            name: "Still running",
+            query_ids: runningLeafQueries.map((q) => q.id),
+          },
+          {
+            id: "leaf:error",
+            parent_group_id: HEADING_ID,
+            position: 1,
+            type: "auto",
+            display_type: "page",
+            name: "Has an error",
+            query_ids: errorLeafQueries.map((q) => q.id),
+          },
+          {
+            id: "leaf:done",
+            parent_group_id: HEADING_ID,
+            position: 2,
+            type: "auto",
+            display_type: "page",
+            name: "All settled",
+            query_ids: doneLeafQueries.map((q) => q.id),
+          },
+        ],
+        // Select the first leaf so the heading auto-expands and all
+        // three leaves are in the DOM.
+        selectedEntityId: { type: "group", id: RUNNING_LEAF_ID },
       });
 
-      const runningHeader = screen.getByRole("button", {
-        name: /Still running/,
-      });
-      const errorHeader = screen.getByRole("button", {
-        name: /Has an error/,
-      });
-      const doneHeader = screen.getByRole("button", { name: /All settled/ });
+      // The leaf rows show "By <dimension_name>"; we matched
+      // dimension_name to query name in `createQuery`.
+      expect(
+        within(getRow("Pending leaf q1")).getByLabelText("Loading…"),
+      ).toBeInTheDocument();
+      expect(
+        within(getRow("Error leaf q1")).getByLabelText("Failed to generate"),
+      ).toBeInTheDocument();
+      expect(
+        within(getRow("Done leaf q1")).getByLabelText("Ready"),
+      ).toBeInTheDocument();
 
+      // Heading has no status icon — none of the labels appear inside it.
+      const heading = screen.getByRole("button", { name: /Status metric/ });
       expect(
-        within(runningHeader).getByLabelText("Generating chart…"),
-      ).toBeInTheDocument();
+        within(heading).queryByLabelText("Loading…"),
+      ).not.toBeInTheDocument();
       expect(
-        within(errorHeader).getByLabelText("Failed to generate chart"),
-      ).toBeInTheDocument();
-      expect(
-        within(doneHeader).getByLabelText("Chart ready"),
-      ).toBeInTheDocument();
+        within(heading).queryByLabelText("Failed to generate"),
+      ).not.toBeInTheDocument();
+      expect(within(heading).queryByLabelText("Ready")).not.toBeInTheDocument();
     });
 
-    it("auto-expands the group containing the selected query", () => {
+    it("auto-expands the heading that owns the selected leaf and leaves the other heading collapsed", () => {
       setup({
         queries: [...planQueries, ...regionQueries],
         groups,
-        selectedQueryId: regionQueries[0].id,
+        // Selecting a region leaf should bubble up the auto-expand to
+        // the `Revenue by region` heading.
+        selectedEntityId: { type: "group", id: regionLeafAllId },
       });
 
-      const planHeader = screen.getByRole("button", {
+      const planHeading = screen.getByRole("button", {
         name: /Revenue by plan/,
       });
-      const regionHeader = screen.getByRole("button", {
+      const regionHeading = screen.getByRole("button", {
         name: /Revenue by region/,
       });
 
-      // The region group contains the selection so it auto-opens; the
-      // plan group stays collapsed.
-      expect(regionHeader).toHaveAttribute("aria-expanded", "true");
-      expect(planHeader).toHaveAttribute("aria-expanded", "false");
-      expect(screen.getByText("Revenue by region (all)")).toBeInTheDocument();
+      expect(regionHeading).toHaveAttribute("aria-expanded", "true");
+      expect(planHeading).toHaveAttribute("aria-expanded", "false");
+      expect(getRow("Revenue by region (all)")).toBeInTheDocument();
       expect(
-        screen.queryByText("Revenue by plan (all)"),
+        screen.queryByText("Revenue by plan (all)", { exact: false }),
       ).not.toBeInTheDocument();
     });
 
@@ -435,287 +540,233 @@ describe("ExplorationSidebar", () => {
         createQuery({ id: 31, name: "Revenue (US)", status: "done" }),
         createQuery({ id: 32, name: "Revenue (EU)", status: "done" }),
       ];
-      const pageGroup: ExplorationQueryGroup = {
-        id: "auto:1:revenue-page",
-        parent_group_id: null,
-        position: 0,
-        type: "auto",
-        display_type: "page",
-        name: "Revenue across regions",
-        query_ids: pageQueries.map((q) => q.id),
-      };
+      const PAGE_HEADING_ID = "metric:page";
+      const PAGE_LEAF_ID = "leaf:page";
+      const pageGroups: ExplorationQueryGroup[] = [
+        {
+          id: PAGE_HEADING_ID,
+          parent_group_id: null,
+          position: 0,
+          type: "auto",
+          display_type: "sidebar",
+          name: "Page metric",
+          query_ids: [],
+        },
+        {
+          id: PAGE_LEAF_ID,
+          parent_group_id: PAGE_HEADING_ID,
+          position: 0,
+          type: "auto",
+          display_type: "page",
+          // The leaf row label is always `By <dimension_name>`, so the
+          // group's own `name` only matters for analytics — it never
+          // surfaces in the sidebar.
+          name: "Revenue across regions",
+          query_ids: pageQueries.map((q) => q.id),
+        },
+      ];
 
-      it("renders a single sidebar row labeled with the group's name and exposes no individual queries", () => {
-        setup({ queries: pageQueries, groups: [pageGroup] });
-
-        // The group's name is visible…
-        expect(getRow("Revenue across regions")).toBeInTheDocument();
-        // …and the individual queries' names are NOT exposed in the
-        // sidebar.
-        expect(screen.queryByText("Revenue (US)")).not.toBeInTheDocument();
-        expect(screen.queryByText("Revenue (EU)")).not.toBeInTheDocument();
-        // No expand/collapse chevron either.
-        expect(
-          screen.queryByRole("button", { expanded: false }),
-        ).not.toBeInTheDocument();
-      });
-
-      it("clicking the row selects the group entity (not a query)", async () => {
-        const { setSelectedEntityId } = setup({
+      it("renders a single `By <dimension>` leaf row that fans the queries out behind it without exposing them individually", () => {
+        setup({
           queries: pageQueries,
-          groups: [pageGroup],
+          groups: pageGroups,
+          selectedEntityId: { type: "group", id: PAGE_LEAF_ID },
         });
 
-        await userEvent.click(getRow("Revenue across regions"));
+        // One leaf row labelled after the first query's dimension_name.
+        expect(getRow("Revenue (US)")).toBeInTheDocument();
+        // The other constituent query name is NOT exposed as its own row.
+        const allRows = screen.getAllByRole("listitem");
+        expect(
+          allRows.filter((row) =>
+            within(row).queryByText("Revenue (EU)", { exact: false }),
+          ),
+        ).toHaveLength(0);
+        // Exactly one listitem (the single page-leaf) is rendered.
+        expect(allRows).toHaveLength(1);
+      });
+
+      it("clicking the page leaf row dispatches a group selection carrying the leaf's id", async () => {
+        const { setSelectedEntityId } = setup({
+          queries: pageQueries,
+          groups: pageGroups,
+          selectedEntityId: { type: "group", id: PAGE_LEAF_ID },
+        });
+
+        await userEvent.click(getRow("Revenue (US)"));
 
         expect(setSelectedEntityId).toHaveBeenCalledWith({
           type: "group",
-          id: pageGroup.id,
+          id: PAGE_LEAF_ID,
         });
       });
 
-      it("marks the selected group row as pressed when the entity matches", () => {
-        const setSelectedEntityId = jest.fn();
-        const { exploration, threadsWithSortedQueries } = createExploration({
+      it("marks the page leaf row as pressed when its group is the selected entity", () => {
+        setup({
           queries: pageQueries,
-          groups: [pageGroup],
+          groups: pageGroups,
+          selectedEntityId: { type: "group", id: PAGE_LEAF_ID },
         });
-        renderWithProviders(
-          <ExplorationSidebar
-            exploration={exploration}
-            selectedEntityId={{ type: "group", id: pageGroup.id }}
-            setSelectedEntityId={setSelectedEntityId}
-            threadsWithSortedQueries={threadsWithSortedQueries}
-          />,
-        );
 
-        expect(getRow("Revenue across regions")).toHaveAttribute(
-          "aria-pressed",
-          "true",
-        );
+        expect(getRow("Revenue (US)")).toHaveAttribute("aria-pressed", "true");
       });
 
-      it("group row status reflects the worst case across its queries", () => {
+      it("a mixed-status page leaf reports the worst-case status on its single row", () => {
         const mixedPageQueries = [
-          createQuery({ id: 41, name: "OK", status: "done" }),
+          createQuery({ id: 41, name: "OK query", status: "done" }),
           createQuery({
             id: 42,
-            name: "Boom",
+            name: "Boom query",
             status: "error",
             error_message: "kaboom",
           }),
         ];
+        const MIXED_LEAF_ID = "leaf:mixed-page";
         setup({
           queries: mixedPageQueries,
           groups: [
             {
-              ...pageGroup,
-              id: "auto:1:mixed-page",
-              query_ids: mixedPageQueries.map((q) => q.id),
+              id: PAGE_HEADING_ID,
+              parent_group_id: null,
+              position: 0,
+              type: "auto",
+              display_type: "sidebar",
+              name: "Mixed metric",
+              query_ids: [],
+            },
+            {
+              id: MIXED_LEAF_ID,
+              parent_group_id: PAGE_HEADING_ID,
+              position: 0,
+              type: "auto",
+              display_type: "page",
               name: "Mixed page",
+              query_ids: mixedPageQueries.map((q) => q.id),
             },
           ],
+          selectedEntityId: { type: "group", id: MIXED_LEAF_ID },
         });
 
+        // The error wins — the row's icon is the warning.
         expect(
-          within(getRow("Mixed page")).getByLabelText(
-            "Failed to generate chart",
-          ),
+          within(getRow("OK query")).getByLabelText("Failed to generate"),
         ).toBeInTheDocument();
       });
     });
 
     describe("arrow-key navigation", () => {
-      it("Right advances to the next query within the same group", () => {
+      it("Right moves selection from one leaf to the next within the same heading and keeps that heading expanded", () => {
         const { setSelectedEntityId } = setup({
           queries: [...planQueries, ...regionQueries],
           groups,
-          selectedQueryId: planQueries[0].id,
-        });
-
-        fireEvent.keyDown(document.body, { key: "ArrowRight" });
-
-        // Selection moves to the second query of the same group.
-        expect(setSelectedEntityId).toHaveBeenLastCalledWith({
-          type: "query",
-          id: planQueries[1].id,
-        });
-        // The plan group stays open; the region group remains collapsed.
-        const regionHeader = screen.getByRole("button", {
-          name: /Revenue by region/,
-        });
-        expect(regionHeader).toHaveAttribute("aria-expanded", "false");
-      });
-
-      it("Right at the last query in a group collapses it, expands the next, and selects its first query", () => {
-        const { setSelectedEntityId } = setup({
-          queries: [...planQueries, ...regionQueries],
-          groups,
-          selectedQueryId: planQueries[planQueries.length - 1].id,
-        });
-
-        fireEvent.keyDown(document.body, { key: "ArrowRight" });
-
-        expect(setSelectedEntityId).toHaveBeenLastCalledWith({
-          type: "query",
-          id: regionQueries[0].id,
-        });
-
-        const planHeader = screen.getByRole("button", {
-          name: /Revenue by plan/,
-        });
-        const regionHeader = screen.getByRole("button", {
-          name: /Revenue by region/,
-        });
-        expect(planHeader).toHaveAttribute("aria-expanded", "false");
-        expect(regionHeader).toHaveAttribute("aria-expanded", "true");
-      });
-
-      it("Left at the first query in a group collapses it, expands the previous, and selects its last query", () => {
-        const { setSelectedEntityId } = setup({
-          queries: [...planQueries, ...regionQueries],
-          groups,
-          selectedQueryId: regionQueries[0].id,
-        });
-
-        fireEvent.keyDown(document.body, { key: "ArrowLeft" });
-
-        expect(setSelectedEntityId).toHaveBeenLastCalledWith({
-          type: "query",
-          id: planQueries[planQueries.length - 1].id,
-        });
-
-        const planHeader = screen.getByRole("button", {
-          name: /Revenue by plan/,
-        });
-        const regionHeader = screen.getByRole("button", {
-          name: /Revenue by region/,
-        });
-        expect(planHeader).toHaveAttribute("aria-expanded", "true");
-        expect(regionHeader).toHaveAttribute("aria-expanded", "false");
-      });
-
-      it("Right onto a page group selects the group entity (and collapses the source sidebar group)", () => {
-        const pageGroupNav: ExplorationQueryGroup = {
-          id: "auto:1:page-after-plan",
-          parent_group_id: null,
-          position: 1,
-          type: "auto",
-          display_type: "page",
-          name: "Page after plan",
-          query_ids: [101, 102],
-        };
-        const pageQueriesNav = [
-          createQuery({ id: 101, name: "Page q1", status: "done" }),
-          createQuery({ id: 102, name: "Page q2", status: "done" }),
-        ];
-        const { setSelectedEntityId } = setup({
-          queries: [...planQueries, ...pageQueriesNav],
-          groups: [
-            {
-              ...groups[0], // plan group, sidebar
-              position: 0,
-            },
-            pageGroupNav,
-          ],
-          selectedQueryId: planQueries[planQueries.length - 1].id,
+          selectedEntityId: { type: "group", id: planLeafAllId },
         });
 
         fireEvent.keyDown(document.body, { key: "ArrowRight" });
 
         expect(setSelectedEntityId).toHaveBeenLastCalledWith({
           type: "group",
-          id: pageGroupNav.id,
+          id: planLeafUsId,
         });
-        // The plan (sidebar) group collapses since we left it.
-        const planHeader = screen.getByRole("button", {
-          name: /Revenue by plan/,
+        // Region heading stayed closed; we never left the plan heading.
+        const regionHeading = screen.getByRole("button", {
+          name: /Revenue by region/,
         });
-        expect(planHeader).toHaveAttribute("aria-expanded", "false");
+        expect(regionHeading).toHaveAttribute("aria-expanded", "false");
       });
 
-      it("Right from a selected page group advances to the next entity", () => {
-        const pageGroupNav: ExplorationQueryGroup = {
-          id: "auto:1:page-before-region",
-          parent_group_id: null,
-          position: 0,
-          type: "auto",
-          display_type: "page",
-          name: "Page before region",
-          query_ids: [201, 202],
-        };
-        const pageQueriesNav = [
-          createQuery({ id: 201, name: "Page q1", status: "done" }),
-          createQuery({ id: 202, name: "Page q2", status: "done" }),
-        ];
+      it("Right past the last leaf in a heading selects the first leaf of the next heading and collapses the source heading", () => {
         const { setSelectedEntityId } = setup({
-          queries: [...pageQueriesNav, ...regionQueries],
-          groups: [
-            pageGroupNav,
-            {
-              ...groups[1], // region group, sidebar
-              position: 1,
-            },
-          ],
-          selectedEntityId: { type: "group", id: pageGroupNav.id },
+          queries: [...planQueries, ...regionQueries],
+          groups,
+          // Selection sits on the LAST leaf of the plan heading.
+          selectedEntityId: { type: "group", id: planLeafUsId },
         });
 
         fireEvent.keyDown(document.body, { key: "ArrowRight" });
 
-        // Lands on the first query of the region (sidebar) group, which
-        // also auto-expands.
         expect(setSelectedEntityId).toHaveBeenLastCalledWith({
-          type: "query",
-          id: regionQueries[0].id,
+          type: "group",
+          id: regionLeafAllId,
         });
-        const regionHeader = screen.getByRole("button", {
-          name: /Revenue by region/,
+
+        // The keyboard handler imperatively collapses the source
+        // heading via `treeRef.current?.collapse`. Auto-expanding the
+        // target heading happens via `getInitialExpandedIds` on the
+        // next render — that's a parent-side effect we don't model
+        // here (the `setSelectedEntityId` is a mock so the controlled
+        // `selectedEntityId` prop never updates).
+        const planHeading = screen.getByRole("button", {
+          name: /Revenue by plan/,
         });
-        expect(regionHeader).toHaveAttribute("aria-expanded", "true");
+        expect(planHeading).toHaveAttribute("aria-expanded", "false");
       });
 
-      it("Left from a selected page group lands on the previous singleton query", () => {
-        const singletonQuery = createQuery({
-          id: 901,
-          name: "Solo before page",
-          status: "done",
-        });
-        const pageGroupNav: ExplorationQueryGroup = {
-          id: "auto:1:page-trailing",
-          parent_group_id: null,
-          position: 1,
-          type: "auto",
-          display_type: "page",
-          name: "Trailing page",
-          query_ids: [301, 302],
-        };
-        const pageQueriesNav = [
-          createQuery({ id: 301, name: "Page q1", status: "done" }),
-          createQuery({ id: 302, name: "Page q2", status: "done" }),
-        ];
+      it("Left past the first leaf in a heading selects the last leaf of the previous heading and collapses the source heading", () => {
         const { setSelectedEntityId } = setup({
-          queries: [singletonQuery, ...pageQueriesNav],
-          groups: [
-            {
-              id: "auto:1:singleton",
-              parent_group_id: null,
-              position: 0,
-              type: "auto",
-              display_type: "singleton",
-              name: "Solo before page",
-              query_ids: [singletonQuery.id],
-            },
-            pageGroupNav,
-          ],
-          selectedEntityId: { type: "group", id: pageGroupNav.id },
+          queries: [...planQueries, ...regionQueries],
+          groups,
+          selectedEntityId: { type: "group", id: regionLeafAllId },
         });
 
         fireEvent.keyDown(document.body, { key: "ArrowLeft" });
 
         expect(setSelectedEntityId).toHaveBeenLastCalledWith({
-          type: "query",
-          id: singletonQuery.id,
+          type: "group",
+          id: planLeafUsId,
         });
+
+        const regionHeading = screen.getByRole("button", {
+          name: /Revenue by region/,
+        });
+        expect(regionHeading).toHaveAttribute("aria-expanded", "false");
+      });
+
+      it("Right onto a page leaf in a different heading still dispatches a group selection and collapses the source heading", () => {
+        const pageQueriesNav = [
+          createQuery({ id: 101, name: "Page q1", status: "done" }),
+          createQuery({ id: 102, name: "Page q2", status: "done" }),
+        ];
+        const PAGE_HEADING = "metric:page-after";
+        const PAGE_LEAF = "leaf:page-after";
+        const { setSelectedEntityId } = setup({
+          queries: [...planQueries, ...pageQueriesNav],
+          groups: [
+            ...groups.slice(0, 3), // plan heading + its two singleton leaves
+            {
+              id: PAGE_HEADING,
+              parent_group_id: null,
+              position: 1,
+              type: "auto",
+              display_type: "sidebar",
+              name: "Page after plan",
+              query_ids: [],
+            },
+            {
+              id: PAGE_LEAF,
+              parent_group_id: PAGE_HEADING,
+              position: 0,
+              type: "auto",
+              display_type: "page",
+              name: "Page leaf",
+              query_ids: pageQueriesNav.map((q) => q.id),
+            },
+          ],
+          // Selection on the last plan leaf — Right should bridge to
+          // the next heading's first (and only) leaf.
+          selectedEntityId: { type: "group", id: planLeafUsId },
+        });
+
+        fireEvent.keyDown(document.body, { key: "ArrowRight" });
+
+        expect(setSelectedEntityId).toHaveBeenLastCalledWith({
+          type: "group",
+          id: PAGE_LEAF,
+        });
+        const planHeading = screen.getByRole("button", {
+          name: /Revenue by plan/,
+        });
+        expect(planHeading).toHaveAttribute("aria-expanded", "false");
       });
     });
   });

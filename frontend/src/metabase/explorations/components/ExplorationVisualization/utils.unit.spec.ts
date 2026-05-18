@@ -166,12 +166,20 @@ describe("getMostInterestingTimelineId", () => {
     expect(id).toBeNull();
   });
 
-  it("returns null when no timeline has scores at all", () => {
+  it("returns null when no timeline has scores and more than one is available", () => {
+    const id = getMostInterestingTimelineId(
+      [makeQuery({ id: 1 })],
+      new Set([10, 20]),
+    );
+    expect(id).toBeNull();
+  });
+
+  it("auto-picks the sole available timeline even when no query has scored it", () => {
     const id = getMostInterestingTimelineId(
       [makeQuery({ id: 1 })],
       new Set([10]),
     );
-    expect(id).toBeNull();
+    expect(id).toBe(10);
   });
 
   it("uses max-across-queries when picking the best", () => {

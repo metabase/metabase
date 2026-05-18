@@ -1,6 +1,7 @@
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type {
   Dataset,
+  Exploration,
   ExplorationQuery,
   ExplorationQueryGroup,
   ExplorationQueryStatus,
@@ -42,6 +43,7 @@ jest.mock("metabase/api/exploration", () => ({
 jest.mock("metabase/api/dataset", () => ({
   __esModule: true,
   useGetAdhocQueryMetadataQuery: () => ({ isLoading: false }),
+  useGetAdhocQueryMetadataCachedQuery: () => ({ isLoading: false }),
 }));
 
 // `Lib.fromJsQueryAndMetadata` + `Lib.defaultDisplay` need a working
@@ -148,6 +150,19 @@ const thread: ExplorationThread = {
   updated_at: "2026-04-30T00:00:00Z",
 };
 
+const exploration: Exploration = {
+  id: 1,
+  name: "Test exploration",
+  description: null,
+  creator_id: 1,
+  archived: false,
+  can_write: true,
+  entity_id: "expl00000000000000001",
+  created_at: "2026-04-30T00:00:00Z",
+  updated_at: "2026-04-30T00:00:00Z",
+  threads: [thread],
+};
+
 const group: ExplorationQueryGroup = {
   id: "auto:1:dim-page",
   parent_group_id: null,
@@ -176,6 +191,7 @@ function setup({ queries, datasets }: SetupOpts) {
       group={{ ...group, query_ids: queries.map((q) => q.id) }}
       queries={queries}
       explorationThread={thread}
+      exploration={exploration}
       availableTimelines={[]}
       selectedTimelineId={null}
       onSelectTimelineId={jest.fn()}
