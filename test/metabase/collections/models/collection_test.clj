@@ -39,11 +39,11 @@
 (deftest format-personal-collection-name-length-test
   (testing "test that an unrealistically long collection name with unicode letters is still less than the max length for a slug (metabase#33917)"
     (mt/with-temporary-setting-values [site-locale "ru"]
-      (is (< (count (#'collection/slugify (collection/format-personal-collection-name (apply str (repeat 34 "Б"))
-                                                                                      (apply str (repeat 35 "Б"))
-                                                                                      "MetaBase@metabase.com"
-                                                                                      :site)))
-             (var-get #'collection/collection-slug-max-length))))))
+      (is (<= (count (#'collection/slugify (collection/format-personal-collection-name (apply str (repeat 256 "Б"))
+                                                                                       (apply str (repeat 256 "Б"))
+                                                                                       "MetaBase@metabase.com"
+                                                                                       :site)))
+              (var-get #'collection/collection-slug-max-length))))))
 
 (deftest user->personal-collection-name-test
   (testing "test that we can get the name of a user's personal collection as :site"

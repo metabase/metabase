@@ -274,7 +274,6 @@ export const getRoutes = (
           <Route key="index-layout" component={MetabotAdminLayout}>
             <IndexRoute key="index" component={AISettingsPage} />
             <Route key="mcp" path="mcp" component={McpSettingsPage} />
-            <Route key="metabot" path=":metabotId" component={AISettingsPage} />
           </Route>
           <Route
             key="layout"

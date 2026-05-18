@@ -17,12 +17,12 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [every? mapv select-keys update-keys some get-in #?(:clj for)]]))
 
 #?(:clj
@@ -502,7 +502,7 @@
         query     (fresh-uuids query (fn [old-uuid new-uuid]
                                        (vswap! remapping assoc! old-uuid new-uuid)))
         remapping (persistent! @remapping)]
-    (lib.util.match/replace-lite query
+    (match/replace query
       [:aggregation opts old-uuid]
       [:aggregation opts (or (remapping old-uuid)
                              (throw (ex-info "Could not convert old :aggregation ref to new UUIDs"

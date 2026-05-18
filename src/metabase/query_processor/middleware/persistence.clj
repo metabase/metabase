@@ -1,8 +1,8 @@
 (ns metabase.query-processor.middleware.persistence
   (:require
    [metabase.api.common :as api]
-   [metabase.lib.util.match :as lib.util.match]
-   [metabase.permissions.core :as perms]))
+   [metabase.permissions.core :as perms]
+   [metabase.util.match :as match]))
 
 (defn substitute-persisted-query
   "Removes persisted information if user is sandboxed or uses connection impersonation. `:persisted-info/native` is set
@@ -14,9 +14,9 @@
   work, but for now we skip the cache in these cases."
   [query]
   (if (and api/*current-user-id*
-           (or (lib.util.match/match-lite query {:query-permissions/sandboxed-table &truthy} true)
+           (or (match/match-one query {:query-permissions/sandboxed-table &truthy} true)
                (perms/impersonation-enforced-for-db? (:database query))))
-    (lib.util.match/replace-lite query
+    (match/replace query
       {:persisted-info/native &truthy}
       (dissoc &match :persisted-info/native))
     query))
