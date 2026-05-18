@@ -141,18 +141,28 @@ const loadCardParameterValues = async (
   dispatch: DispatchFn,
 ) => {
   const isSearch = "query" in request && request.query;
-  const { values, has_more_values } = await dispatch(
+  // `fetchParameterValuesWithCache` already provides caching keyed on the full
+  // request and is cleared on `API_UPDATE_QUESTION`; bypass RTK's own cache so
+  // a refetch after that reset actually hits the network.
+  const queryAction = dispatch(
     isSearch
       ? cardApi.endpoints.searchCardParameterValues.initiate(
           request as SearchCardParameterValuesRequest,
+          { forceRefetch: true },
         )
-      : cardApi.endpoints.getCardParameterValues.initiate(request),
-  ).unwrap();
-
-  return {
-    values: values,
-    has_more_values: isSearch ? true : has_more_values,
-  };
+      : cardApi.endpoints.getCardParameterValues.initiate(request, {
+          forceRefetch: true,
+        }),
+  );
+  try {
+    const { values, has_more_values } = await queryAction.unwrap();
+    return {
+      values,
+      has_more_values: isSearch ? true : has_more_values,
+    };
+  } finally {
+    queryAction.unsubscribe?.();
+  }
 };
 
 interface DashboardParameterValuesRequest {
