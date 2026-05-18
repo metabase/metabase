@@ -2,8 +2,8 @@ import type { InputHTMLAttributes, MouseEvent, ReactNode, Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
-import type { IconName } from "metabase/ui";
 import { Icon, Tooltip } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import type { InputSize } from "../../style/types";
 

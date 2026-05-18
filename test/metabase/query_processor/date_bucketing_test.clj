@@ -14,6 +14,9 @@
 
   If a report timezone is specified and the database supports it, the JVM timezone should have no impact on queries or
   their results."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.query-processor.date-bucketing-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.query-processor.date-bucketing-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.date-bucketing-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

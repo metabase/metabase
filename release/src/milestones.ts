@@ -253,7 +253,10 @@ export async function setMilestoneForCommits({
       .filter(isNotNull)
   );
   if (!PRsToCheck.length) {
-    throw new Error('No PRs found in commit messages');
+    // Not every commit on a release branch is a squash-merged PR (e.g. the
+    // version-bump commit from cutting the branch). Nothing to backfill here.
+    console.log('No PRs found in commit messages, skipping milestone backfill');
+    return;
   }
 
   console.log(`Checking ${PRsToCheck.length} PRs for issues to tag`);

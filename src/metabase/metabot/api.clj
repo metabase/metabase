@@ -263,7 +263,13 @@
             [:issue_type        {:optional true} [:maybe :string]]
             [:freeform_feedback {:optional true} [:maybe :string]]]]
   (metabot.config/check-metabot-enabled!)
-  (metabot.feedback/persist-feedback! body)
+  (let [message (metabot.feedback/persist-feedback! body)]
+    (try
+      (api/check-400 (metabot.feedback/submit-to-harbormaster!
+                      (metabot.feedback/harbormaster-payload body message))
+                     "Cannot submit feedback. The license token and/or Store API URL are missing!")
+      (catch Exception e
+        (log/error "Failed to submit feedback to Harbormaster: " (ex-message e)))))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/source-feedback" :- [:map

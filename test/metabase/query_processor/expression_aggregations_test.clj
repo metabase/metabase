@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.expression-aggregations-test
   "Tests for expression aggregations and for named aggregations."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.expression-aggregations-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.expression-aggregations-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]

@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.parameters-test
   "Tests for support for parameterized queries in drivers that support it. (There are other tests for parameter support
   in various places; these are mainly for high-level verification that parameters are working.)"
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.parameters-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

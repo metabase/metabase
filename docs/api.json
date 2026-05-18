@@ -3368,10 +3368,39 @@
         },
         "required" : [ "name", "base_type", "display_name" ]
       },
-      "metabase.agent-api.api.construct-query-response" : {
-        "description" : "Response containing a base64-encoded MBQL query for use with /v1/execute.",
+      "metabase.agent-api.api.construct-query-request" : {
+        "description" : "Request body for /v2/construct-query. Same as program-request, with an optional prompt\n  capturing the user's original intent when a caller has one.",
         "type" : "object",
         "properties" : {
+          "operations" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.agent-lib.schema.top-level-op"
+            }
+          },
+          "prompt" : {
+            "type" : "string",
+            "minLength" : 1,
+            "maxLength" : 10000,
+            "description" : "The user's exact original message, when available. Pass it as-is without summarizing or rewriting."
+          },
+          "source" : {
+            "$ref" : "#/components/schemas/metabase.agent-lib.schema.source"
+          }
+        },
+        "required" : [ "source", "operations" ],
+        "additionalProperties" : false
+      },
+      "metabase.agent-api.api.construct-query-response" : {
+        "description" : "Response containing a base64-encoded MBQL query and, when supplied, the original prompt for use with /v1/execute.",
+        "type" : "object",
+        "properties" : {
+          "prompt" : {
+            "type" : "string",
+            "minLength" : 1,
+            "maxLength" : 10000,
+            "description" : "The user's exact original message, when available. Pass it as-is without summarizing or rewriting."
+          },
           "query" : {
             "type" : "string",
             "minLength" : 1
@@ -3819,7 +3848,7 @@
         "required" : [ "id", "type", "name" ]
       },
       "metabase.agent-api.api.program-request" : {
-        "description" : "Request body for /v2/construct-query and /v2/query.\n  An agent-lib structured program with `:source` and `:operations`. The top-level\n  `:source` must reference a database entity (`table`, `card`, `dataset`, or\n  `metric`); `context` and nested `program` sources are rejected at the HTTP\n  boundary by [[evaluate-program-for-execution]] because they require an\n  in-process evaluation context.",
+        "description" : "Request body for /v2/query.\n  An agent-lib structured program with `:source` and `:operations`. The top-level\n  `:source` must reference a database entity (`table`, `card`, `dataset`, or\n  `metric`); `context` and nested `program` sources are rejected at the HTTP\n  boundary by [[evaluate-program-for-execution]] because they require an\n  in-process evaluation context.",
         "$ref" : "#/components/schemas/metabase.agent-lib.schema.program"
       },
       "metabase.agent-api.api.query-request" : {
@@ -15230,7 +15259,7 @@
       "post" : {
         "operationId" : "post-api-agent-v2-construct-query",
         "summary" : "POST /api/agent/v2/construct-query",
-        "description" : "Construct an MBQL query from a structured agent-lib program.\n\n  The body is the program itself: a JSON object with `source` (identifying the\n  table/card/dataset/metric to query) and `operations` (an array of operator\n  tuples). Returns a base64-encoded MBQL query that can be executed via\n  /v1/execute. See the agent_api reference for the full program syntax.",
+        "description" : "Construct an MBQL query from a structured agent-lib program.\n\n  The body is the program itself: a JSON object with `source` (identifying the\n  table/card/dataset/metric to query), `operations` (an array of operator\n  tuples), and `prompt` (the user's original request). Returns a base64-encoded\n  MBQL query that can be executed via /v1/execute. See the agent_api reference\n  for the full program syntax.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -15254,7 +15283,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase.agent-api.api.program-request"
+                "$ref" : "#/components/schemas/metabase.agent-api.api.construct-query-request"
               }
             }
           }
@@ -32119,6 +32148,143 @@
           }
         },
         "tags" : [ "/api/email" ]
+      }
+    },
+    "/api/embed-mcp/drills" : {
+      "post" : {
+        "operationId" : "post-api-embed-mcp-drills",
+        "summary" : "POST /api/embed-mcp/drills",
+        "description" : "Stash a base64-encoded MBQL query for the iframe's pending drill-through and\n   return a handle UUID the iframe will thread into the agent message so the\n   `render_drill_through` tool can fetch it.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "encodedQuery" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "encodedQuery" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/embed-mcp" ]
+      }
+    },
+    "/api/embed-mcp/feedback" : {
+      "post" : {
+        "operationId" : "post-api-embed-mcp-feedback",
+        "summary" : "POST /api/embed-mcp/feedback",
+        "description" : "Proxy MCP Apps visualization feedback to Harbormaster.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "body" : {
+                      "type" : "null"
+                    },
+                    "status" : {
+                      "const" : 204
+                    }
+                  },
+                  "required" : [ "status", "body" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "conversation_data" : {
+                    "type" : "object",
+                    "properties" : {
+                      "prompt" : {
+                        "oneOf" : [ {
+                          "type" : "string",
+                          "maxLength" : 10000
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "query" : {
+                        "oneOf" : [ {
+                          "type" : "string",
+                          "maxLength" : 10000
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "source" : {
+                        "const" : "mcp"
+                      }
+                    },
+                    "required" : [ "source" ]
+                  },
+                  "feedback" : {
+                    "type" : "object",
+                    "properties" : {
+                      "freeform_feedback" : {
+                        "oneOf" : [ {
+                          "type" : "string",
+                          "maxLength" : 10000
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "issue_type" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "message_id" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "positive" : {
+                        "type" : "boolean"
+                      }
+                    },
+                    "required" : [ "message_id", "positive" ]
+                  }
+                },
+                "required" : [ "feedback", "conversation_data" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/embed-mcp" ]
       }
     },
     "/api/embed-theme" : {

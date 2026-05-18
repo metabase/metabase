@@ -18,7 +18,6 @@ import {
 import { Modal } from "metabase/common/components/Modal";
 import type { CollectionTreeItem } from "metabase/entities/collections";
 import {
-  Collections,
   ROOT_COLLECTION,
   buildCollectionTree,
   getCollectionIcon,
@@ -60,7 +59,6 @@ interface Props extends MainNavbarProps {
   currentUser: User;
   databases: Database[];
   selectedItems: SelectedItem[];
-  rootCollection: Collection;
   hasDataAccess: boolean;
   allError: boolean;
   allFetched: boolean;
@@ -76,7 +74,6 @@ function MainNavbarContainer({
   selectedItems,
   isOpen,
   currentUser,
-  rootCollection,
   hasDataAccess,
   location,
   params,
@@ -93,6 +90,10 @@ function MainNavbarContainer({
 
   const { data: bookmarks = [] } = useListBookmarksQuery();
   const [reorderBookmarksMutation] = useReorderBookmarksMutation();
+
+  const { data: rootCollection } = useGetCollectionQuery({
+    id: ROOT_COLLECTION.id,
+  });
 
   const {
     data: trashCollection,
@@ -239,11 +240,6 @@ function MainNavbarContainer({
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
-  Collections.load({
-    id: ROOT_COLLECTION.id,
-    entityAlias: "rootCollection",
-    loadingAndErrorWrapper: false,
-  }),
   Databases.loadList({
     loadingAndErrorWrapper: false,
   }),

@@ -16,7 +16,7 @@ export function CollectionPermissionsModal({
     <Modal onClose={onClose}>
       <CollectionPermissionsModalBase
         params={{ slug: String(collectionId) }}
-        namespace={namespace}
+        namespace={namespace ?? null}
         onClose={onClose}
       />
     </Modal>

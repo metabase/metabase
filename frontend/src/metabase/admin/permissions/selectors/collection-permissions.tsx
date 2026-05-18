@@ -16,7 +16,6 @@ import {
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
 import {
-  Collections,
   ROOT_COLLECTION,
   getCollectionIcon,
 } from "metabase/entities/collections";
@@ -49,11 +48,10 @@ import { getPermissionWarningModal } from "./confirmations";
 import { selectGroupList } from "./data-permissions/groups";
 
 export const collectionsQuery = {
-  tree: true,
   "exclude-other-user-collections": true,
   "exclude-archived": true,
   "include-library": true,
-};
+} as const;
 
 export const getIsDirty = createSelector(
   (state: State) => state.admin.permissions.collectionPermissions,
@@ -91,12 +89,11 @@ const getRootCollectionTreeItem = () => {
   };
 };
 
-const getCollections = (state: State) =>
-  (
-    Collections.selectors.getList(state, {
-      entityQuery: collectionsQuery,
-    }) ?? []
-  ).filter(nonPersonalOrArchivedCollection);
+const getCollections = (state: State) => {
+  const queryState =
+    collectionApi.endpoints.listCollectionsTree.select(collectionsQuery)(state);
+  return (queryState?.data ?? []).filter(nonPersonalOrArchivedCollection);
+};
 
 const getCollectionsTree = createSelector([getCollections], (collections) => {
   const libraryCollections = collections.filter(isLibraryCollection);

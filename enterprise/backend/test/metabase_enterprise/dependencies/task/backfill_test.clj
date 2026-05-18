@@ -1,4 +1,5 @@
 (ns metabase-enterprise.dependencies.task.backfill-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.dependencies.task.backfill-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [environ.core :as env]

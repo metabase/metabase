@@ -1,7 +1,10 @@
 const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ADMIN_USER_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
   SAMPLE_DATABASE;
@@ -10,6 +13,34 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+  });
+
+  it("keeps the notebook editor mounted when opening the question info sidebar (UXW-224)", () => {
+    H.activateToken("pro-self-hosted");
+    H.visitQuestion(ORDERS_QUESTION_ID);
+    H.openNotebook();
+
+    // The Visualize button only renders while the notebook editor is mounted.
+    cy.location("pathname").should("include", "/notebook");
+    cy.button("Visualize").should("be.visible");
+
+    // Open the question info sidesheet — the notebook should stay mounted behind it.
+    H.questionInfoButton().click();
+    H.sidesheet().should("be.visible");
+    cy.button("Visualize").should("be.visible");
+
+    // Closing the sidesheet should leave us in notebook mode with the editor intact.
+    H.sidesheet().findByLabelText("Close").click();
+    cy.location("pathname").should("include", "/notebook");
+    cy.button("Visualize").should("be.visible");
+
+    // Open Edit settings from the actions menu — same expectation.
+    // ("Edit settings" only appears with granular caching enabled, so this
+    // step requires EE.)
+    H.openQuestionActions("Edit settings");
+    H.sidesheet().should("be.visible");
+    cy.location("pathname").should("include", "/notebook");
+    cy.button("Visualize").should("be.visible");
   });
 
   it("shouldn't offer to save the question when there were no changes (metabase#13470)", () => {

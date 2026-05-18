@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-introspection-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.clickhouse-introspection-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.clickhouse-introspection-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]

@@ -1,5 +1,6 @@
 (ns metabase-enterprise.remote-sync.core
   (:require
+   [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
@@ -91,6 +92,7 @@
   "Sets remote sync to true/false on one or collections in a single transaction. Checks that the remote sync state
   afterwards is consistent in terms of dependency rules. Collections are provided as a map of collection-id -> sync state."
   [collection-states :- [:map-of pos-int? :boolean]]
+  (guards/ensure-no-active-task!)
   (let [{:keys [sync-on sync-off]} (-> (reduce-kv (fn [sync-states collection-id sync-state]
                                                     (if sync-state
                                                       (update sync-states :sync-on conj collection-id)

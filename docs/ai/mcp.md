@@ -56,7 +56,7 @@ If the site URL doesn't match an address your MCP client can reach, like if you'
 
 ## With the MCP server, your client provides the AI
 
-MCP server requests are handled by whatever AI client you're using (like an desktop AI app or editor plugin). The MCP server just provides tools (like searching for an entity or running the query) for your AI.
+MCP server requests are handled by whatever AI client you're using (like a desktop AI app or editor plugin). The MCP server just provides tools (like searching for an entity or running the query) for your AI.
 
 For example, if you ask your AI client to use your Metabase's MCP server "what's our q3 revenue," your client will interact with the MCP server to figure out which tools it needs to field your request. Your AI can decide that it needs to use the tool **construct_query** and **execute_query**, and what those queries might be. Then your client will call those tools for Metabase to run.
 
