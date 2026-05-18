@@ -1,7 +1,8 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { findRequests } from "__support__/server-mocks";
+import { renderWithProviders, screen } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import {
   createMockCard,
@@ -30,16 +31,10 @@ const clickRestore = async () => {
   await userEvent.click(screen.getByRole("button", { name: "Restore" }));
 };
 
-const expectPutWithArchivedFalse = async (path: string) => {
-  await waitFor(() => {
-    expect(fetchMock.callHistory.calls(path, { method: "PUT" })).toHaveLength(
-      1,
-    );
-  });
-  const [putCall] = fetchMock.callHistory.calls(path, { method: "PUT" });
-  expect(JSON.parse(putCall.options.body as string)).toMatchObject({
-    archived: false,
-  });
+const expectPutWithArchivedFalse = async () => {
+  const puts = await findRequests("PUT");
+  expect(puts).toHaveLength(1);
+  expect(puts[0].body).toMatchObject({ archived: false });
 };
 
 describe("useRestore", () => {
