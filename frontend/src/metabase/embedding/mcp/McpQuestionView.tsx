@@ -1,11 +1,12 @@
 import { type CSSProperties, useEffect } from "react";
 
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
-import { Box, Flex } from "metabase/ui";
+import { Box, Divider, Flex } from "metabase/ui";
 
 import { McpQuestionTitle } from "./McpQuestionTitle";
 import { McpVisualizationTypeSelector } from "./McpVisualizationTypeSelector";
-import { TimeControlBar } from "./TimeControlBar";
+import { TimeGranularityControl } from "./TimeControlBar/TimeGranularityControl";
+import { TimeRangeControl } from "./TimeControlBar/TimeRangeControl";
 import { useMcpQueryControls } from "./hooks/useMcpQueryControls";
 
 interface McpTimeControlsProps {
@@ -81,6 +82,21 @@ function McpTimeControls({ onVisibilityChange }: McpTimeControlsProps) {
   }
 
   return (
-    <TimeControlBar timeRange={timeRange} timeGranularity={timeGranularity} />
+    <Flex
+      h={32}
+      align="stretch"
+      bd="1px solid var(--mb-color-border)"
+      bdrs="md"
+      style={{ overflow: "hidden" }}
+      data-testid="query-explorer-bar"
+    >
+      {timeRange && <TimeRangeControl timeRange={timeRange} />}
+
+      {timeRange && timeGranularity && <Divider orientation="vertical" />}
+
+      {timeGranularity && (
+        <TimeGranularityControl timeGranularity={timeGranularity} />
+      )}
+    </Flex>
   );
 }
