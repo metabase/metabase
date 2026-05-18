@@ -76,3 +76,14 @@
              :name     "Construct Query Reference"}
             (some #(when (= "metabase://docs/construct-query.md" (:uri %)) %)
                   (:resources (mcp.resources/list-resources #{})))))))
+
+(deftest builtin-ui-resource-prefers-border-test
+  (testing "the visualize query UI resource explicitly asks the host to provide a border"
+    (mcp.resources/with-fallback-template
+      (is (=? {:status   :ok
+               :contents [{:uri      "ui://metabase/visualize-query.html"
+                           :mimeType "text/html;profile=mcp-app"
+                           :_meta    {:ui {:prefersBorder true}}}]}
+              (mcp.resources/read-resource "ui://metabase/visualize-query.html"
+                                           #{"agent:visualize"}
+                                           {}))))))

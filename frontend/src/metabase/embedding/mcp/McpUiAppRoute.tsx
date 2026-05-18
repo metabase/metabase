@@ -7,6 +7,7 @@ import { getSdkStore } from "embedding-sdk-bundle/store";
 import { Flex } from "metabase/ui";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 
+import { McpExploreButton } from "./McpExploreButton";
 import { McpFeedbackButtons } from "./McpFeedbackButtons";
 import { McpQueryBar } from "./McpQueryBar";
 import { McpQuestionTitle } from "./McpQuestionTitle";
@@ -19,6 +20,8 @@ import { buildMcpAppsTheme } from "./utils/buildMcpAppsTheme";
 const store = getSdkStore();
 
 const DEFAULT_INSETS = { top: 0, right: 0, bottom: 0, left: 0 };
+const CONTENT_HEIGHT = "500px";
+const FOOTER_HEIGHT = "50px";
 
 // CSS for .mcp-loading and .mcp-spinner is defined globally in embed-mcp.html.
 const SimpleLoader = () => (
@@ -87,14 +90,33 @@ export function McpUiAppRoute() {
     }
   }, [isReady, userAndSettingsFetchError]);
 
-  const height = "500px";
-  const visualizationHeight = `calc(${height} - 8.5rem)`;
-  const safeAreaMargins = `${Math.max(safeAreaInsets.top, 0)}px ${Math.max(safeAreaInsets.right, 0)}px ${Math.max(safeAreaInsets.bottom, 0)}px ${Math.max(safeAreaInsets.left, 0)}px`;
+  const height = `calc(${CONTENT_HEIGHT} + ${FOOTER_HEIGHT})`;
+  const visualizationHeight = `calc(${CONTENT_HEIGHT} - 8.5rem)`;
+  const safeAreaPadding = {
+    top: Math.max(safeAreaInsets.top, 0),
+    right: Math.max(safeAreaInsets.right, 0),
+    bottom: Math.max(safeAreaInsets.bottom, 0),
+    left: Math.max(safeAreaInsets.left, 0),
+  };
 
   const containerStyle: CSSProperties = {
     height,
-    margin: safeAreaMargins,
     background: theme.colors?.background,
+  };
+
+  const contentStyle: CSSProperties = {
+    boxSizing: "border-box",
+    paddingTop: `calc(var(--mantine-spacing-lg) + ${safeAreaPadding.top}px)`,
+    paddingRight: safeAreaPadding.right,
+    paddingLeft: safeAreaPadding.left,
+  };
+
+  const footerStyle: CSSProperties = {
+    boxSizing: "border-box",
+    paddingRight: safeAreaPadding.right,
+    paddingTop: safeAreaPadding.bottom,
+    paddingBottom: safeAreaPadding.bottom,
+    paddingLeft: safeAreaPadding.left,
   };
 
   const renderContent = () => {
@@ -118,29 +140,15 @@ export function McpUiAppRoute() {
         <Flex
           direction="column"
           justify="space-between"
-          h="100%"
+          h={CONTENT_HEIGHT}
           py="lg"
           gap="sm"
+          style={contentStyle}
         >
-          <Flex
-            px="lg"
-            align="center"
-            justify="space-between"
-            style={{ flexShrink: 0 }}
-          >
+          <Flex px="lg" align="center" style={{ flexShrink: 0 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <McpQuestionTitle />
             </div>
-
-            <Flex align="center" gap="xs" style={{ flexShrink: 0 }}>
-              <McpFeedbackButtons
-                instanceUrl={instanceUrl}
-                sessionToken={sessionToken}
-                mcpSessionId={mcpSessionId}
-                prompt={prompt}
-                query={query}
-              />
-            </Flex>
           </Flex>
 
           <Flex px="xs" flex={1} style={{ overflow: "hidden" }}>
@@ -148,8 +156,28 @@ export function McpUiAppRoute() {
           </Flex>
 
           <Flex px="lg">
-            <McpQueryBar app={app} instanceUrl={instanceUrl} />
+            <McpQueryBar />
           </Flex>
+        </Flex>
+
+        <Flex
+          h={FOOTER_HEIGHT}
+          align="center"
+          justify="space-between"
+          bg="background-secondary"
+          style={footerStyle}
+        >
+          <Flex align="center" gap="xs">
+            <McpFeedbackButtons
+              instanceUrl={instanceUrl}
+              sessionToken={sessionToken}
+              mcpSessionId={mcpSessionId}
+              prompt={prompt}
+              query={query}
+            />
+          </Flex>
+
+          <McpExploreButton app={app} instanceUrl={instanceUrl} />
         </Flex>
       </SdkQuestion>
     );
