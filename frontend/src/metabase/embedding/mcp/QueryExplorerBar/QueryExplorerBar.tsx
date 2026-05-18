@@ -23,10 +23,11 @@ export function QueryExplorerBar({
   timeGranularity,
   onExplore,
 }: QueryExplorerBarProps) {
-  const hasCenterControls = timeRange || timeGranularity;
+  const hasTimeControl = timeRange || timeGranularity;
   const hasChartTypes = chartTypes.length > 0;
-  const hasOnlyCenterControls =
-    hasCenterControls && !hasChartTypes && onExplore == null;
+
+  const hasOnlyTimeControl =
+    hasTimeControl && !hasChartTypes && onExplore == null;
 
   return (
     <Flex
@@ -34,8 +35,8 @@ export function QueryExplorerBar({
       direction={{ base: "column", xs: "row" }}
       align={{ base: "flex-start", xs: "center" }}
       justify={{
-        base: hasOnlyCenterControls ? "center" : "flex-start",
-        xs: hasOnlyCenterControls ? "center" : "space-between",
+        base: hasOnlyTimeControl ? "center" : "flex-start",
+        xs: hasOnlyTimeControl ? "center" : "space-between",
       }}
       gap={{ base: "sm", xs: "xs" }}
       data-testid="query-explorer-bar"
@@ -50,7 +51,7 @@ export function QueryExplorerBar({
         </Flex>
       )}
 
-      {hasCenterControls && (
+      {hasTimeControl && (
         <Flex
           h={32}
           align="stretch"
