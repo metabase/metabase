@@ -19,7 +19,7 @@ import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
+import { rawNativeQuery } from "metabase-lib/query/native";
 import type Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
@@ -57,7 +57,7 @@ const TEST_NATIVE_CARD = createMockCard({
 const QuerySuggestionProbe = ({ question }: { question: Question }) => {
   const inlinePrompt = useInlineSQLPrompt(question, "qb");
   const proposedSql = inlinePrompt.proposedQuestion
-    ? Lib.rawNativeQuery(inlinePrompt.proposedQuestion.query())
+    ? rawNativeQuery(inlinePrompt.proposedQuestion.query())
     : "";
 
   return <div data-testid="qb-proposed-sql">{proposedSql}</div>;

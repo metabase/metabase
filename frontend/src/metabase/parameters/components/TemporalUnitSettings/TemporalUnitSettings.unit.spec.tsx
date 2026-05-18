@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui-minimal";
-import * as Lib from "metabase-lib";
+import { availableTemporalUnits } from "metabase-lib/query/temporal_bucket";
 import type { Parameter, TemporalUnit } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -27,7 +27,7 @@ function setup({ parameter = createMockParameter() }: SetupOpts = {}) {
 describe("TemporalUnitSettings", () => {
   it.each<[string, TemporalUnit[] | undefined]>([
     ["All", undefined],
-    ["All", Lib.availableTemporalUnits()],
+    ["All", availableTemporalUnits()],
     ["None", []],
     ["Minute", ["minute"]],
     ["Month, Quarter", ["month", "quarter"]],
@@ -86,9 +86,7 @@ describe("TemporalUnitSettings", () => {
     });
     await userEvent.click(await screen.findByText("Minute"));
     await userEvent.click(await screen.findByLabelText("Select all"));
-    expect(onChangeTemporalUnits).toHaveBeenCalledWith(
-      Lib.availableTemporalUnits(),
-    );
+    expect(onChangeTemporalUnits).toHaveBeenCalledWith(availableTemporalUnits());
   });
 
   it("should select all the units when none was selected", async () => {
@@ -100,16 +98,14 @@ describe("TemporalUnitSettings", () => {
     });
     await userEvent.click(await screen.findByText("None"));
     await userEvent.click(await screen.findByLabelText("Select all"));
-    expect(onChangeTemporalUnits).toHaveBeenCalledWith(
-      Lib.availableTemporalUnits(),
-    );
+    expect(onChangeTemporalUnits).toHaveBeenCalledWith(availableTemporalUnits());
   });
 
   it("should select none when deselecting all the units", async () => {
     const { onChangeTemporalUnits } = setup({
       parameter: createMockParameter({
         type: "temporal-unit",
-        temporal_units: Lib.availableTemporalUnits(),
+        temporal_units: availableTemporalUnits(),
       }),
     });
     await userEvent.click(await screen.findByText("All"));

@@ -1,7 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui-with-store";
-import * as Lib from "metabase-lib";
+import { displayInfo } from "metabase-lib/query/metadata";
+import type {
+  ColumnMetadata,
+  FilterClause,
+  Query,
+} from "metabase-lib/query/types";
 
 import {
   createQuery,
@@ -13,10 +18,10 @@ import {
 import { DefaultFilterPicker } from "./DefaultFilterPicker";
 
 type SetupOpts = {
-  query?: Lib.Query;
+  query?: Query;
   stageIndex?: number;
-  column?: Lib.ColumnMetadata;
-  filter?: Lib.FilterClause;
+  column?: ColumnMetadata;
+  filter?: FilterClause;
   withAddButton?: boolean;
 };
 
@@ -48,9 +53,7 @@ function setup({
 
   function getNextFilterName() {
     const [filter] = onChange.mock.lastCall;
-    return filter
-      ? Lib.displayInfo(query, stageIndex, filter).displayName
-      : null;
+    return filter ? displayInfo(query, stageIndex, filter).displayName : null;
   }
 
   const getNextFilterChangeOpts = () => {

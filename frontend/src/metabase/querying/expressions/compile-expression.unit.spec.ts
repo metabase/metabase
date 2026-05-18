@@ -1,4 +1,7 @@
-import * as Lib from "metabase-lib";
+import {
+  type ExpressionMode,
+  expressionableColumns,
+} from "metabase-lib/query/expression";
 
 import { compileExpression } from "./compile-expression";
 import {
@@ -15,7 +18,7 @@ function expr(
   {
     expressionMode = "expression",
   }: {
-    expressionMode?: Lib.ExpressionMode;
+    expressionMode?: ExpressionMode;
   } = {},
 ) {
   const { expressionParts, error } = compileExpression({
@@ -23,7 +26,7 @@ function expr(
     expressionMode,
     query,
     stageIndex,
-    availableColumns: Lib.expressionableColumns(query, stageIndex),
+    availableColumns: expressionableColumns(query, stageIndex),
   });
 
   if (error) {

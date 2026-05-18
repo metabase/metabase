@@ -14,7 +14,7 @@ import {
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import MetabaseSettings from "metabase/utils/settings";
-import * as Lib from "metabase-lib";
+import { sourceTableOrCardId } from "metabase-lib/query/query";
 import Question from "metabase-lib/v1/Question";
 import { COMMON_DATABASE_FEATURES } from "metabase-types/api/mocks";
 import {
@@ -437,7 +437,7 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
     const { question, onOpenModal } = setupAdHoc();
     const table = question
       .metadata()
-      .table(Lib.sourceTableOrCardId(question.query()));
+      .table(sourceTableOrCardId(question.query()));
     const tableName = table.displayName();
 
     fireEvent.click(await screen.findByText(tableName));

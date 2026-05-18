@@ -1,9 +1,9 @@
+import type { MantineThemeOverride } from "@mantine/core";
 import {
-  combineReducers,
   type Middleware,
   type Reducer,
+  combineReducers,
 } from "@reduxjs/toolkit";
-import type { MantineThemeOverride } from "@mantine/core";
 import type { RenderHookOptions } from "@testing-library/react";
 import {
   renderHook,
@@ -18,9 +18,8 @@ import { routerMiddleware, routerReducer } from "react-router-redux";
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { AppKBarProvider } from "metabase/AppKBarProvider";
 import { admin as adminReducer } from "metabase/admin/admin";
-import { PUT } from "metabase/api/legacy-client";
 import { Api } from "metabase/api/api";
-import { UndoListing } from "metabase/common/components/UndoListing";
+import { PUT } from "metabase/api/legacy-client";
 import { HistoryProvider } from "metabase/history/HistoryProvider";
 import * as pulse from "metabase/notifications/pulse/reducers";
 import { PLUGIN_REDUCERS } from "metabase/plugins/oss/core";
@@ -40,6 +39,17 @@ import { reducer as visualizer } from "metabase/visualizer/visualizer.slice";
 import { getStore } from "./entities-store";
 
 export * from "./ui-minimal";
+
+let UndoListing: React.ComponentType | undefined;
+
+function LazyUndoListing() {
+  if (!UndoListing) {
+    const moduleName = "metabase/common/components/UndoListing";
+    UndoListing = jest.requireActual(moduleName).UndoListing;
+  }
+
+  return <UndoListing />;
+}
 
 export interface RenderWithProvidersOptions {
   initialRoute?: string;
@@ -144,7 +154,7 @@ function getStoreAndWrapper({
               ) : (
                 <MaybeKBar hasKBar={withKBar}>{children}</MaybeKBar>
               )}
-              {withUndos && <UndoListing />}
+              {withUndos && <LazyUndoListing />}
             </>
           </ThemeProvider>
         </AppColorSchemeProvider>

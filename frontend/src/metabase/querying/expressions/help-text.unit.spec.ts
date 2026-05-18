@@ -1,6 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
+import { MBQL_CLAUSES } from "metabase-lib/query/clauses";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks/database";
 
@@ -150,7 +150,7 @@ describe("getHelpText", () => {
   });
 
   it("all help texts can be formatted", async () => {
-    for (const name in Lib.MBQL_CLAUSES) {
+    for (const name in MBQL_CLAUSES) {
       const { database } = setup();
       const helpText = getHelpText(name, database, reportTimezone);
       if (!helpText) {

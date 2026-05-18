@@ -1,5 +1,8 @@
 import { createMockMetadata } from "__support__/metadata";
-import * as Lib from "metabase-lib";
+import {
+  type ExpressionMode,
+  expressionableColumns,
+} from "metabase-lib/query/expression";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -15,7 +18,7 @@ describe("diagnostics", () => {
       metadata,
     }: {
       expression: string;
-      expressionMode?: Lib.ExpressionMode;
+      expressionMode?: ExpressionMode;
       metadata?: Metadata;
     }) {
       return diagnose({
@@ -23,14 +26,14 @@ describe("diagnostics", () => {
         expressionMode,
         query,
         stageIndex,
-        availableColumns: Lib.expressionableColumns(query, stageIndex),
+        availableColumns: expressionableColumns(query, stageIndex),
         metadata,
       });
     }
 
     function err(
       expression: string,
-      expressionMode: Lib.ExpressionMode = "expression",
+      expressionMode: ExpressionMode = "expression",
       metadata?: Metadata,
     ) {
       return setup({ expression, expressionMode, metadata })?.message;
@@ -535,7 +538,7 @@ describe("diagnostics", () => {
         query,
         stageIndex,
         expressionMode: "expression",
-        availableColumns: Lib.expressionableColumns(query, stageIndex),
+        availableColumns: expressionableColumns(query, stageIndex),
       });
     }
 

@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui-minimal";
-import * as Lib from "metabase-lib";
+import { describeTemporalUnit } from "metabase-lib/query/metadata";
+import {
+  availableTemporalUnits,
+} from "metabase-lib/query/temporal_bucket";
 import type { TemporalUnit } from "metabase-types/api";
 
 import {
@@ -9,10 +12,10 @@ import {
   TemporalUnitPicker,
 } from "./TemporalUnitPicker";
 
-const DEFAULT_ITEMS: TemporalUnitItem[] = Lib.availableTemporalUnits().map(
+const DEFAULT_ITEMS: TemporalUnitItem[] = availableTemporalUnits().map(
   (unit) => ({
     value: unit,
-    label: Lib.describeTemporalUnit(unit),
+    label: describeTemporalUnit(unit),
   }),
 );
 

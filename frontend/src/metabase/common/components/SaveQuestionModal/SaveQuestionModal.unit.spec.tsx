@@ -29,7 +29,7 @@ import {
   createMockQueryBuilderState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import * as Lib from "metabase-lib";
+import { limit } from "metabase-lib/query/limit";
 import Question from "metabase-lib/v1/Question";
 import type {
   BaseEntityId,
@@ -225,7 +225,7 @@ function getQuestion({
 
 function getDirtyQuestion(originalQuestion: Question) {
   return originalQuestion
-    .setQuery(Lib.limit(originalQuestion.query(), -1, 1))
+    .setQuery(limit(originalQuestion.query(), -1, 1))
     .markDirty();
 }
 

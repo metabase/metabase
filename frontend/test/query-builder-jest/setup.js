@@ -1,5 +1,4 @@
 // @ts-nocheck
-/* eslint-disable import/no-commonjs */
 
 /**
  * Minimal `setupFiles` entry for the standalone query_builder Jest project.
@@ -240,10 +239,14 @@ jest.mock("metabase/common/components/ExplicitSize", () =>
 );
 
 // NativeQueryEditor pulls in the CodeMirror editor; mock it so tests don't
-// depend on a real editor instance.
-jest.mock("metabase/query_builder/components/NativeQueryEditor", () =>
-  require("metabase/query_builder/components/NativeQueryEditor/__mocks__/NativeQueryEditor"),
-);
+// depend on a real editor instance. Query-builder standalone tests keep the
+// full mock because some of them cover native editor data source selectors and
+// synced parameters.
+const {
+  mockFullNativeQueryEditor,
+} = require("../__support__/native-query-editor-mock");
+
+mockFullNativeQueryEditor();
 
 jest.mock("@uiw/react-codemirror", () => {
   const { forwardRef } = jest.requireActual("react");

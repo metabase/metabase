@@ -1,24 +1,24 @@
-import * as Lib from "metabase-lib";
+import { metadataProvider } from "metabase-lib/query/metadata";
+import {
+  templateTags as getTemplateTags,
+  nativeQuery,
+  withNativeQuery,
+  withTemplateTags,
+} from "metabase-lib/query/native";
+import type { MetadataProvider } from "metabase-lib/query/types";
 
 import { SAMPLE_DATABASE, SAMPLE_METADATA } from "./test-helpers";
 
 describe("native query template tags", () => {
-  let metadataProvider: Lib.MetadataProvider;
+  let provider: MetadataProvider;
 
   beforeEach(() => {
-    metadataProvider = Lib.metadataProvider(
-      SAMPLE_DATABASE.id,
-      SAMPLE_METADATA,
-    );
+    provider = metadataProvider(SAMPLE_DATABASE.id, SAMPLE_METADATA);
   });
 
   it("should preserve required attribute when creating native query (metabase#38263)", () => {
     const queryText = "SELECT * FROM orders WHERE state = {{state}}";
-    const query = Lib.nativeQuery(
-      SAMPLE_DATABASE.id,
-      metadataProvider,
-      queryText,
-    );
+    const query = nativeQuery(SAMPLE_DATABASE.id, provider, queryText);
 
     const templateTags = {
       state: {
@@ -31,20 +31,16 @@ describe("native query template tags", () => {
       },
     };
 
-    const queryWithTags = Lib.withTemplateTags(query, templateTags);
-    const updatedQuery = Lib.withNativeQuery(queryWithTags, queryText);
-    const retrievedTags = Lib.templateTags(updatedQuery);
+    const queryWithTags = withTemplateTags(query, templateTags);
+    const updatedQuery = withNativeQuery(queryWithTags, queryText);
+    const retrievedTags = getTemplateTags(updatedQuery);
 
     expect(retrievedTags.state.required).toBe(true);
   });
 
   it("should preserve required=false attribute (metabase#38263)", () => {
     const queryText = "SELECT * FROM orders WHERE state = {{state}}";
-    const query = Lib.nativeQuery(
-      SAMPLE_DATABASE.id,
-      metadataProvider,
-      queryText,
-    );
+    const query = nativeQuery(SAMPLE_DATABASE.id, provider, queryText);
 
     // Set template tags with required=false
     const templateTags = {
@@ -58,8 +54,8 @@ describe("native query template tags", () => {
       },
     };
 
-    const queryWithTags = Lib.withTemplateTags(query, templateTags);
-    const retrievedTags = Lib.templateTags(queryWithTags);
+    const queryWithTags = withTemplateTags(query, templateTags);
+    const retrievedTags = getTemplateTags(queryWithTags);
 
     expect(retrievedTags.state.required).toBe(false);
   });

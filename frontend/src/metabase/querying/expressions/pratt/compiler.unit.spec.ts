@@ -1,4 +1,8 @@
-import * as Lib from "metabase-lib";
+import type { ExpressionType } from "metabase-lib/query/clauses";
+import {
+  type ExpressionMode,
+  expressionableColumns,
+} from "metabase-lib/query/expression";
 
 import { compileExpression } from "../compile-expression";
 import { query } from "../test/shared";
@@ -800,7 +804,7 @@ describe("pratt/compiler", () => {
 describe("resolve", () => {
   function collect(
     source: string,
-    expressionMode: Lib.ExpressionMode = "expression",
+    expressionMode: ExpressionMode = "expression",
   ) {
     const fields: string[] = [];
     const segments: string[] = [];
@@ -813,8 +817,8 @@ describe("resolve", () => {
       expressionMode,
       query,
       stageIndex,
-      availableColumns: Lib.expressionableColumns(query, stageIndex),
-      resolver(type: Lib.ExpressionType, name: string) {
+      availableColumns: expressionableColumns(query, stageIndex),
+      resolver(type: ExpressionType, name: string) {
         if (type === "boolean") {
           segments.push(name);
         } else if (type === "aggregation") {

@@ -20,7 +20,7 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import registerVisualizations from "metabase/visualizations/register";
-import * as Lib from "metabase-lib";
+import { sourceTableOrCardId } from "metabase-lib/query/query";
 import Question from "metabase-lib/v1/Question";
 import type {
   ConcreteFieldReference,
@@ -109,9 +109,7 @@ describe("getQuestion", () => {
 
     const question = getQuestion(getBaseState({ card }));
 
-    expect(question && Lib.sourceTableOrCardId(question.query())).toBe(
-      "card__1",
-    );
+    expect(question && sourceTableOrCardId(question.query())).toBe("card__1");
   });
 
   it("should return real dataset when dataset is open in 'dataset' QB mode", () => {

@@ -21,7 +21,6 @@ import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { AppKBarProvider } from "metabase/AppKBarProvider";
 import { Api } from "metabase/api/api";
 import { PUT } from "metabase/api/legacy-client";
-import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { HistoryProvider } from "metabase/history";
 import { makeMainReducers } from "metabase/reducers-main";
@@ -43,6 +42,17 @@ type ReducerValue = ReducerObject | Reducer;
 
 interface ReducerObject {
   [slice: string]: ReducerValue;
+}
+
+let UndoListing: React.ComponentType | undefined;
+
+function LazyUndoListing() {
+  if (!UndoListing) {
+    const moduleName = "metabase/common/components/UndoListing";
+    UndoListing = jest.requireActual(moduleName).UndoListing;
+  }
+
+  return <UndoListing />;
 }
 
 export interface RenderWithProvidersOptions {
@@ -293,7 +303,7 @@ export function TestWrapper({
                   {children}
                 </MaybeRouter>
               </MaybeKBar>
-              {withUndos && <UndoListing />}
+              {withUndos && <LazyUndoListing />}
             </ThemeProvider>
           </ThemeProviderContext.Provider>
         </AppColorSchemeProvider>
