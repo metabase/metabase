@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { fieldApi } from "metabase/api";
 import type { EmbeddingParameterVisibility } from "metabase/embedding/types";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import { TemporalUnitSettings } from "metabase/parameters/components/TemporalUnitSettings";
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
 import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";
@@ -100,19 +101,19 @@ const mapDispatchToProps = (
 ): DispatchProps => {
   return {
     async fetchField(fieldId, force) {
-      const { data: field } = await dispatch(
-        fieldApi.endpoints.getField.initiate(
-          { id: fieldId },
-          { forceRefetch: force },
-        ),
+      const field = await entityCompatibleQuery(
+        { id: fieldId },
+        dispatch,
+        fieldApi.endpoints.getField,
+        { forceRefetch: force ?? false },
       );
       const remapId = field?.dimensions?.[0]?.human_readable_field_id;
       if (remapId != null) {
-        await dispatch(
-          fieldApi.endpoints.getField.initiate(
-            { id: remapId },
-            { forceRefetch: force },
-          ),
+        await entityCompatibleQuery(
+          { id: remapId },
+          dispatch,
+          fieldApi.endpoints.getField,
+          { forceRefetch: force ?? false },
         );
       }
     },
