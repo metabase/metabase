@@ -480,6 +480,22 @@
    :phase-1-llm-config phase1/llm-config
    :phase-2-llm-config phase2/llm-config})
 
+(defn- prepend-disclaimer
+  "Prepend an AI-generated disclaimer blockquote to the top of the PM doc.
+  Reminds the reader that the analysis is machine-written and should be
+  sanity-checked before being shared or acted on."
+  [pm-doc]
+  (let [disclaimer {:type    "blockquote"
+                    :content [{:type    "paragraph"
+                               :content [{:type  "text"
+                                          :marks [{:type "italic"}]
+                                          :text  (str "Generated automatically by AI. It can miss context "
+                                                      "or get things wrong — read it over and trust your own "
+                                                      "judgment before sharing or acting on the findings.")}]}]}]
+    (cond-> pm-doc
+      (and (map? pm-doc) (sequential? (:content pm-doc)))
+      (update :content (fn [content] (into [disclaimer] content))))))
+
 (defn- wrap-card-embeds-in-resize-nodes
   "Walk the LLM-generated PM doc and wrap each top-level `cardEmbed` in a `resizeNode` so the
   FE node-view inherits an explicit height (matching the structure produced by the user-facing
@@ -693,14 +709,15 @@
 
                       ;; -------- Both phases OK — write the real analysis --------
                       (let [pm-doc  (:value p2)
-                            pm-doc+ (append-reasoning-section
-                                     pm-doc
-                                     {:phase-1   {:reasonings p1-reasonings
-                                                  :rationale  rationale
-                                                  :prompt     curation-prompt}
-                                      :phase-2   {:reasonings p2-reasonings
-                                                  :prompt     analysis-prompt}
-                                      :thread-id thread-id})
+                            pm-doc+ (-> pm-doc
+                                        prepend-disclaimer
+                                        (append-reasoning-section
+                                         {:phase-1   {:reasonings p1-reasonings
+                                                      :rationale  rationale
+                                                      :prompt     curation-prompt}
+                                          :phase-2   {:reasonings p2-reasonings
+                                                      :prompt     analysis-prompt}
+                                          :thread-id thread-id}))
                             {:keys [document-id rendered-pm-doc]}
                             (write-document! {:doc        placeholder-doc
                                               :pm-doc     pm-doc+
