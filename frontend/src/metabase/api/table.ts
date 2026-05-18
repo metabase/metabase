@@ -163,7 +163,7 @@ export const tableApi = Api.injectEndpoints({
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
     appendTableCsv: builder.mutation<
-      number,
+      void,
       { tableId: TableId; formData: FormData }
     >({
       query: ({ tableId, formData }) => ({
@@ -181,7 +181,7 @@ export const tableApi = Api.injectEndpoints({
         ]),
     }),
     replaceTableCsv: builder.mutation<
-      number,
+      void,
       { tableId: TableId; formData: FormData }
     >({
       query: ({ tableId, formData }) => ({
