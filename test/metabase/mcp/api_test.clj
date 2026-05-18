@@ -122,6 +122,21 @@
       (is (= 401 (:status response)))
       (is (= -32603 (get-in response [:body :error :code]))))))
 
+(deftest origin-validation-test
+  (testing "cross-origin browser requests are rejected when the origin is not configured"
+    (let [response (mcp-request (jsonrpc-request "initialize")
+                                {"host"   "mbtest.poom.dev"
+                                 "origin" "http://127.0.0.1:6274"})]
+      (is (= 403 (:status response)))
+      (is (= "Origin not allowed" (get-in response [:body :error :message])))))
+  (testing "cross-origin browser requests are accepted for configured MCP client origins"
+    (mt/with-temporary-setting-values [mcp-apps-cors-custom-origins "http://127.0.0.1:6274"]
+      (let [response (mcp-request (jsonrpc-request "initialize")
+                                  {"host"   "mbtest.poom.dev"
+                                   "origin" "http://127.0.0.1:6274"})]
+        (is (= 200 (:status response)))
+        (is (some? (get-in response [:headers "Mcp-Session-Id"])))))))
+
 (deftest mcp-enabled-setting-test
   (testing "external MCP requests return 403 when disabled"
     (mt/with-temporary-setting-values [mcp.settings/mcp-enabled? false]
