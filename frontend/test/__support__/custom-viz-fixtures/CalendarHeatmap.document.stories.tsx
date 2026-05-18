@@ -15,6 +15,7 @@ import { Api } from "metabase/api";
 // rule that ChartTooltip relies on to anchor near the hovered cell.
 import "metabase/common/components/Popover/Popover.module.css";
 import { Editor } from "metabase/documents/components/Editor/Editor";
+import { PrintContext } from "metabase/documents/contexts/PrintContext";
 import { commonReducers } from "metabase/reducers-common";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -93,20 +94,33 @@ function DocumentProviders({
   );
 }
 
+// Card embeds render their visualization only once an IntersectionObserver
+// reports them on-screen (see useNodeInViewport). IO callbacks are delivered
+// per rendered frame, and Loki's headless Chrome produces no frames on an
+// idle page — so the card would stay a skeleton forever. `isPrinting` forces
+// `isInViewport` true, rendering the card eagerly without the observer.
+// (The `@media print` styles that hide `[data-hide-on-print]` are keyed on
+// the print media query, not this flag, so the snapshot is unaffected.)
+const FORCE_RENDER_PRINT_CONTEXT = {
+  isPrinting: true,
+  prepareForPrint: async () => {},
+};
+
 const Template: StoryFn<{ theme: "light" | "dark" }> = ({ theme }) => {
   const ready = useHeatmapPlugin();
 
   return (
     <DocumentProviders theme={theme}>
       {ready ? (
-        <Editor initialContent={DOCUMENT_CONTENT} editable={false} />
+        <PrintContext.Provider value={FORCE_RENDER_PRINT_CONTEXT}>
+          <Editor initialContent={DOCUMENT_CONTENT} editable={false} />
+        </PrintContext.Provider>
       ) : null}
     </DocumentProviders>
   );
 };
 
-// The embedded card renders lazily once IntersectionObserver reports it
-// on-screen — hold the Loki snapshot until the heatmap has painted.
+// Hold the Loki snapshot until the heatmap has rendered and painted.
 const decorators = [
   createWaitForChartsDecorator({
     count: 1,

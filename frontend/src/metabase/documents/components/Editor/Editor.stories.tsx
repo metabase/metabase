@@ -8,6 +8,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { createWaitForChartsDecorator } from "__support__/storybook";
 import { Api } from "metabase/api";
+import { PrintContext } from "metabase/documents/contexts/PrintContext";
 import { commonReducers } from "metabase/reducers-common";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -123,12 +124,29 @@ export const Markdown = {
   },
 };
 
+// Card embeds render their visualization only once an IntersectionObserver
+// reports them on-screen (see useNodeInViewport). IO callbacks are delivered
+// per rendered frame, and Loki's headless Chrome produces no frames on an
+// idle page — so the cards would stay skeletons forever. `isPrinting` forces
+// `isInViewport` true, rendering the cards eagerly without the observer.
+// (The `@media print` styles that hide `[data-hide-on-print]` are keyed on
+// the print media query, not this flag, so the snapshot is unaffected.)
+const ForcePrintContextDecorator = (Story: StoryFn) => (
+  <PrintContext.Provider
+    value={{ isPrinting: true, prepareForPrint: async () => {} }}
+  >
+    <Story />
+  </PrintContext.Provider>
+);
+
 export const CardEmbed = {
   render: DefaultTemplate,
   args: {
     initialContent: Data.cardEmbed,
   },
-  // The two embedded cards render lazily once IntersectionObserver reports
-  // them on-screen — hold the Loki snapshot until both charts have painted.
-  decorators: [createWaitForChartsDecorator({ count: 2 })],
+  // Render the cards eagerly, then hold the snapshot until both charts paint.
+  decorators: [
+    ForcePrintContextDecorator,
+    createWaitForChartsDecorator({ count: 2 }),
+  ],
 };
