@@ -105,6 +105,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
 // and wires the `cancelDeferred` to RTK Query's `.abort()`. Translates aborts
 // into the `{ isCancelled: true }` shape that the legacy fetch helper threw,
 // so existing error-handling code (e.g. queryErrored) keeps working.
+let adhocDatasetQueryCounter = 0;
 export function runAdhocDatasetQuery(
   dispatch,
   card,
@@ -113,9 +114,17 @@ export function runAdhocDatasetQuery(
   cancelDeferred,
 ) {
   const isPivot = shouldUsePivotEndpoint(card, metadata);
-  const requestBody = isPivot
-    ? { ...body, ...getPivotOptions(new Question(card, metadata)) }
-    : body;
+  // Disambiguate the RTK cache key so two callers running the same MBQL
+  // query get independent cache entries and abort signals. Without this,
+  // one caller cancelling would abort the shared in-flight request for
+  // every co-subscribed caller. `_refetchDeps` is stripped from the body
+  // before it hits the server.
+  const requestBody = {
+    ...(isPivot
+      ? { ...body, ...getPivotOptions(new Question(card, metadata)) }
+      : body),
+    _refetchDeps: ++adhocDatasetQueryCounter,
+  };
   const endpoint = isPivot
     ? datasetApi.endpoints.getAdhocPivotQuery
     : datasetApi.endpoints.getAdhocQuery;
