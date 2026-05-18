@@ -119,6 +119,39 @@
           (let [response (mt/user-http-request :rasta :get 200 "exploration/dimensions")]
             (is (not-any? #(= "Hidden Metric" (:name %)) (:metrics response)))))))))
 
+(deftest dimensions-drops-unresolvable-dimensions-test
+  (testing "GET /api/exploration/dimensions silently drops dimensions whose target ref doesn't resolve against the metric's dataset_query (UXW-4083)"
+    (with-sample-metrics-archived
+      (mt/with-temp [:model/Card metric {:name          "Filter target"
+                                         :type          :metric
+                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+        (let [good-id "11111111-1111-1111-1111-111111111111"
+              bad-id  "22222222-2222-2222-2222-222222222222"
+              good-mapping {:dimension_id good-id
+                            :type         :table
+                            :target       [:field {} (mt/id :venues :name)]
+                            :table_id     (mt/id :venues)}
+              bad-mapping  {:dimension_id bad-id
+                            :type         :table
+                            :target       [:field {} 999999999]
+                            :table_id     (mt/id :venues)}]
+          ;; Replace whatever sync wrote with a minimal pair: one resolvable, one not.
+          (t2/update! :model/Card (:id metric)
+                      {:dimensions         [{:id good-id :name "NAME" :display_name "Good"
+                                             :effective_type :type/Text}
+                                            {:id bad-id  :name "ZZZ"  :display_name "Unresolvable"
+                                             :effective_type :type/Text}]
+                       :dimension_mappings [good-mapping bad-mapping]})
+          (let [response   (mt/user-http-request :rasta :get 200 "exploration/dimensions")
+                the-metric (first (filter #(= (:id metric) (:id %)) (:metrics response)))]
+            (is (some? the-metric) "metric should be present in response")
+            (is (contains? (set (:dimension_ids the-metric)) good-id)
+                "resolvable dimension should be retained")
+            (is (not (contains? (set (:dimension_ids the-metric)) bad-id))
+                "dimension whose target field doesn't exist should be silently dropped")
+            (is (= [good-id] (mapv :dimension_id (:dimension_mappings the-metric)))
+                "matching mapping should be dropped too")))))))
+
 (defn- valid-metric-card [user-id]
   {:type          :metric
    :creator_id    user-id

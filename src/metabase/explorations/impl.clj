@@ -9,9 +9,12 @@
   (:require
    [clojure.string :as str]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.metrics.core :as metrics]
    [metabase.queries.models.card :as card]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defn routed-database-ids
@@ -170,6 +173,42 @@
           by-id  (into {} (map (juxt :id identity)) rows)]
       (into [] (keep by-id) card-ids))))
 
+(defn target-resolvable?
+  "True if `target` (an MBQL field ref from a metric's `:dimension_mappings`) resolves to a
+   breakoutable column in the metric's single-stage `dataset-query`. Used to silently drop
+   dimensions that the Explorations query-generation path can't actually use — UXW-4083.
+
+   Returns `false` defensively on any normalization/resolution exception so a bad dim never
+   blocks the rest of the response."
+  [mp dataset-query target]
+  (try
+    (let [query (lib/query mp dataset-query)
+          ref   (lib/normalize :metabase.lib.schema.ref/ref target)]
+      (some? (lib/find-matching-column query -1 ref (lib/breakoutable-columns query))))
+    (catch Exception e
+      (log/debugf e "Dimension target %s not resolvable, dropping" (pr-str target))
+      false)))
+
+(defn- filter-resolvable-dimensions
+  "Drop any `:dimensions` and corresponding `:dimension_mappings` on `metric` whose target
+   field ref doesn't resolve against the metric's `:dataset_query`. A dimension with no
+   mapping at all is kept (no target = no breakout = nothing to resolve)."
+  [metric]
+  (if-not (:dataset_query metric)
+    metric
+    (let [mp             (lib-be/application-database-metadata-provider (:database_id metric))
+          mappings-by-id (into {} (map (juxt :dimension_id identity)) (:dimension_mappings metric))
+          keep?          (fn [dim]
+                           (if-let [target (get-in mappings-by-id [(:id dim) :target])]
+                             (target-resolvable? mp (:dataset_query metric) target)
+                             true))
+          kept-dims      (filterv keep? (:dimensions metric))
+          kept-ids       (into #{} (map :id) kept-dims)]
+      (-> metric
+          (assoc :dimensions kept-dims)
+          (update :dimension_mappings
+                  (fn [ms] (filterv #(contains? kept-ids (:dimension_id %)) ms)))))))
+
 (defn exploration-data
   "Returns the data shape used by `GET /api/exploration/dimensions`, the metabot
    `select_exploration_metrics` tool, and any other caller that needs the
@@ -193,8 +232,10 @@
                         (mapv (fn [m]
                                 (-> m
                                     metrics/filter-dimensions-for-user
+                                    filter-resolvable-dimensions
                                     with-result-column-name
-                                    ;; dataset_query was only needed to compute result_column_name.
+                                    ;; dataset_query was only needed to compute result_column_name
+                                    ;; and to resolve dimension targets.
                                     (dissoc :dataset_query))))
                         (metrics/annotate-dimensions-with-field-data [:dimension_interestingness]))
         filtered   (if (str/blank? q)
