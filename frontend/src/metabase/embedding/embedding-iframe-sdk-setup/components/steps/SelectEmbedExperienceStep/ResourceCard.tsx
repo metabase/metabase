@@ -2,9 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { skipToken, useGetCollectionQuery } from "metabase/api";
 import {
-  CollectionPickerModal,
   DashboardPickerModal,
   QuestionPickerModal,
 } from "metabase/common/components/Pickers";
@@ -35,7 +33,6 @@ export const ResourceCard = () => {
     resource,
     recentDashboards,
     recentQuestions,
-    recentCollections,
     addRecentItem,
   } = useSdkIframeEmbedSetupContext();
 
@@ -44,27 +41,16 @@ export const ResourceCard = () => {
 
   const selectedItemId = getResourceIdFromSettings(settings);
 
-  const { data: selectedCollection } = useGetCollectionQuery(
-    experience === "browser" && selectedItemId != null
-      ? { id: selectedItemId as CollectionId }
-      : skipToken,
-  );
-
   if (!hasResourceSelectionStep(experience)) {
     return null;
   }
 
   const recentItems = match(experience)
     .with("dashboard", () => recentDashboards)
-    .with("browser", () => recentCollections)
     .with("chart", () => recentQuestions)
     .exhaustive();
 
-  const selectedResourceName = match(experience)
-    .with("dashboard", () => resource?.name)
-    .with("chart", () => resource?.name)
-    .with("browser", () => selectedCollection?.name)
-    .exhaustive();
+  const selectedResourceName = resource?.name;
 
   const fallbackResourceName = recentItems.find(
     (item) => item.id === selectedItemId,
@@ -73,15 +59,13 @@ export const ResourceCard = () => {
   const { title, icon, placeholder, label } = getResourceCopy(experience);
 
   const updateEmbedSettings = (
-    experience: SdkIframeEmbedSetupExperience,
+    experience: ResourceExperience,
     id: string | number,
   ) => {
     // Do not update if the selected item is already selected.
     if (
       (experience === "dashboard" && settings.dashboardId === id) ||
-      (experience === "chart" && settings.questionId === id) ||
-      (settings.componentName === "metabase-browser" &&
-        settings.initialCollection === id)
+      (experience === "chart" && settings.questionId === id)
     ) {
       return;
     }
@@ -104,10 +88,6 @@ export const ResourceCard = () => {
         hiddenParameters: [],
         lockedParameters: [],
       });
-    } else if (experience === "browser") {
-      updateSettings({
-        initialCollection: id as CollectionId,
-      });
     }
   };
 
@@ -126,7 +106,6 @@ export const ResourceCard = () => {
       SdkIframeEmbedSetupRecentItemType
     >(experience)
       .with("chart", () => "question")
-      .with("browser", () => "collection")
       .with("dashboard", () => "dashboard")
       .exhaustive();
 
@@ -162,18 +141,6 @@ export const ResourceCard = () => {
           onChange={handlePickerModalResourceSelect}
           onClose={closePicker}
           options={MODAL_OPTIONS}
-        />
-      );
-    }
-
-    if (experience === "browser") {
-      return (
-        <CollectionPickerModal
-          title={t`Select a collection`}
-          value={PICKER_RECENTS_VALUE}
-          onChange={handlePickerModalResourceSelect}
-          onClose={closePicker}
-          options={COLLECTION_MODAL_OPTIONS}
         />
       );
     }
@@ -233,12 +200,6 @@ const getResourceCopy = (experience: ResourceExperience) =>
       placeholder: t`Select a chart`,
       label: t`Change chart`,
     }))
-    .with("browser", () => ({
-      title: t`Select a collection to embed`,
-      icon: "collection",
-      placeholder: t`Select a collection`,
-      label: t`Change collection`,
-    }))
     .exhaustive();
 
 const MODAL_OPTIONS = {
@@ -247,18 +208,9 @@ const MODAL_OPTIONS = {
   hasConfirmButtons: false,
 } as const;
 
-const COLLECTION_MODAL_OPTIONS = {
-  showPersonalCollections: true,
-  showRootCollection: true,
-  hasConfirmButtons: true,
-} as const;
-
 const hasResourceSelectionStep = (
   experience: SdkIframeEmbedSetupExperience,
-): experience is Exclude<
-  SdkIframeEmbedSetupExperience,
-  (typeof EXPERIENCES_WITHOUT_RESOURCE_SELECTION)[number]
-> =>
+): experience is ResourceExperience =>
   !(
     EXPERIENCES_WITHOUT_RESOURCE_SELECTION as SdkIframeEmbedSetupExperience[]
   ).includes(experience);

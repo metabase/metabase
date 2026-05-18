@@ -110,6 +110,88 @@ describe("Embed flow > forward and backward navigation", () => {
     expect(screen.getByText("Appearance")).toBeInTheDocument();
   });
 
+  describe.each(["Exploration", "Browser"])(
+    "when %s is selected",
+    (experienceLabel) => {
+      it("hides the authentication and resource selection cards", async () => {
+        setup({ simpleEmbeddingEnabled: true });
+
+        expect(screen.getByText("Authentication")).toBeInTheDocument();
+        expect(
+          screen.getByText("Select a dashboard to embed"),
+        ).toBeInTheDocument();
+
+        await userEvent.click(
+          screen.getByRole("radio", { name: new RegExp(experienceLabel) }),
+        );
+
+        expect(screen.queryByText("Authentication")).not.toBeInTheDocument();
+        expect(
+          screen.queryByText("Select a dashboard to embed"),
+        ).not.toBeInTheDocument();
+      });
+    },
+  );
+
+  it("renders the SSO radio above the Guest radio in the authentication card", () => {
+    setup({ simpleEmbeddingEnabled: true });
+
+    const radios = screen.getAllByRole("radio");
+    const ssoIndex = radios.findIndex((r) => r.getAttribute("value") === "sso");
+    const guestIndex = radios.findIndex(
+      (r) => r.getAttribute("value") === "guest-embed",
+    );
+
+    expect(ssoIndex).toBeGreaterThanOrEqual(0);
+    expect(guestIndex).toBeGreaterThanOrEqual(0);
+    expect(ssoIndex).toBeLessThan(guestIndex);
+  });
+
+  describe("SSO not configured warnings", () => {
+    const warningText =
+      /This embed will only work for local testing\. To get production ready code, configure/;
+
+    it("shows a warning on the authentication card when SSO is selected but not configured", () => {
+      setup({ simpleEmbeddingEnabled: true, jwtReady: false });
+
+      expect(screen.getByDisplayValue("sso")).toBeChecked();
+      expect(screen.getByText("Authentication")).toBeInTheDocument();
+      expect(screen.getByText(warningText)).toBeInTheDocument();
+    });
+
+    it("hides the warning when Guest is selected", async () => {
+      setup({ simpleEmbeddingEnabled: true, jwtReady: false });
+
+      await userEvent.click(screen.getByRole("radio", { name: "Guest" }));
+
+      expect(screen.queryByText(warningText)).not.toBeInTheDocument();
+    });
+
+    it("hides the warning when SSO is configured", () => {
+      setup({ simpleEmbeddingEnabled: true, jwtReady: true });
+
+      expect(screen.queryByText(warningText)).not.toBeInTheDocument();
+    });
+
+    it("shows a warning on the experience card when Exploration is selected and SSO is not configured", async () => {
+      setup({ simpleEmbeddingEnabled: true, jwtReady: false });
+
+      await userEvent.click(screen.getByRole("radio", { name: /Exploration/ }));
+
+      expect(screen.getByText(warningText)).toBeInTheDocument();
+      // Authentication card is hidden so its warning is gone
+      expect(screen.queryByText("Authentication")).not.toBeInTheDocument();
+    });
+
+    it("hides the experience card warning when Exploration is selected and SSO is configured", async () => {
+      setup({ simpleEmbeddingEnabled: true, jwtReady: true });
+
+      await userEvent.click(screen.getByRole("radio", { name: /Exploration/ }));
+
+      expect(screen.queryByText(warningText)).not.toBeInTheDocument();
+    });
+  });
+
   it("disables next and back buttons when simple embedding is disabled", () => {
     setup({ simpleEmbeddingEnabled: false });
 

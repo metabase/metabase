@@ -72,6 +72,7 @@ type EmbedStepConfig = {
 export const EXPERIENCES_WITHOUT_RESOURCE_SELECTION = [
   "exploration",
   "metabot",
+  "browser",
 ] as const satisfies SdkIframeEmbedSetupExperience[];
 
 export const EMBED_STEPS: EmbedStepConfig[] = [

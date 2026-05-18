@@ -11,6 +11,7 @@ import { getAuthTypeForSettings } from "../../utils/get-auth-type-for-settings";
 import { getResourceTypeFromExperience } from "../../utils/get-resource-type-from-experience";
 import { isQuestionOrDashboardExperience } from "../../utils/is-question-or-dashboard-experience";
 import { isStepWithResource } from "../../utils/is-step-with-resource";
+import { SetupSsoAlert } from "../Common/SetupSsoAlert";
 import { DatabaseRoutingWarning } from "../DatabaseRoutingWarning";
 
 import { EnableGuestEmbedsSection } from "./EnableGuestEmbedsSection";
@@ -25,6 +26,7 @@ export const AuthenticationCard = () => {
   const {
     experience,
     isSimpleEmbedFeatureAvailable,
+    isSsoEnabledAndConfigured,
     currentStep,
     settings,
     updateSettings,
@@ -38,6 +40,9 @@ export const AuthenticationCard = () => {
 
   const resourceType = getResourceTypeFromExperience(experience);
   const authType = getAuthTypeForSettings(settings);
+
+  const showSsoNotConfiguredWarning =
+    !isSsoEnabledAndConfigured && authType === "sso";
 
   const handleAuthTypeChange = (value: string) => {
     const isGuest = value === "guest-embed";
@@ -110,6 +115,8 @@ export const AuthenticationCard = () => {
             </Stack>
           </Stack>
         </Radio.Group>
+
+        {showSsoNotConfiguredWarning && <SetupSsoAlert />}
       </Stack>
     </Card>
   );
