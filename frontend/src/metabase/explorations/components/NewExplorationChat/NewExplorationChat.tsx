@@ -174,7 +174,9 @@ export function NewExplorationChat({
       // but not if the click landed on or inside an interactive element
       const target = event.target as HTMLElement;
       if (
-        target.closest("button, a, input, select, textarea, [role='button']")
+        target.closest(
+          "button, a, input, select, textarea, [contenteditable], [role='button']",
+        )
       ) {
         return;
       }
