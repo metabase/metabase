@@ -260,9 +260,11 @@
          {:type "text"
           :text suffix}]))))
 
-(defn- anthropic-errors [res]
-  (let [status    (long (:status res 0))
-        error-msg (get-in res [:body :error :message])]
+(defn- anthropic-errors
+  "Return the canonical, status-specific Anthropic error message.
+   [[core/rethrow-api-error!]] appends an upstream body preview when one is available."
+  [res]
+  (let [status (long (:status res 0))]
     (case status
       401 (tru "Anthropic API key expired or invalid")
       403 (tru "Anthropic API key has insufficient permissions")
@@ -271,9 +273,7 @@
       429 (tru "Anthropic API has rate limited us")
       500 (tru "Anthropic API is not working but not saying why")
       529 (tru "Anthropic API is overloaded and is asking us to wait")
-      (if error-msg
-        (tru "Anthropic API error (HTTP {0}): {1}" status error-msg)
-        (tru "Anthropic API error (HTTP {0})" status)))))
+      (tru "Anthropic API error (HTTP {0})" status))))
 
 (defn list-models
   "List available Anthropic models.

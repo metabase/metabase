@@ -11,7 +11,7 @@
    [metabase.util.log :as log]
    [metabase.util.o11y :refer [with-span]])
   (:import
-   (java.io BufferedReader Closeable)
+   (java.io BufferedReader Closeable InputStream)
    (java.util.concurrent Callable Executors ExecutorService)))
 
 (set! *warn-on-reflection* true)
@@ -501,29 +501,81 @@
 
          (rf result chunk))))))
 
+(def ^:private max-body-preview-chars
+  "Cap on the size of the response-body snippet we splice into provider error messages.
+   The full body is still logged in full and survives into `ex-data` via the decoded `res`."
+  500)
+
+(defn- body-preview
+  "Build a short, human-readable snippet of an upstream provider's response body for the
+   exception message. Prefers structured JSON envelopes (`[:error :message]`, `:error`,
+   `:detail`, `:message`) over `pr-str`; slurps `InputStream` bodies. Returns `nil` when
+   there's nothing useful to surface."
+  [body]
+  (let [s (cond
+            (nil? body)                  nil
+            (string? body)               body
+            (map? body)                  (or (some-> (or (get-in body [:error :message])
+                                                         (:error body)
+                                                         (:detail body)
+                                                         (:message body))
+                                                     str
+                                                     not-empty)
+                                             (pr-str body))
+            (instance? InputStream body) (try (slurp body) (catch Throwable _ nil))
+            :else                        (pr-str body))]
+    (when-let [trimmed (some-> s str/trim not-empty)]
+      (if (<= (count trimmed) max-body-preview-chars)
+        trimmed
+        (str (subs trimmed 0 max-body-preview-chars) "…")))))
+
 (defn rethrow-api-error!
   "Rethrow a provider HTTP exception with a translated, user-facing message.
 
-  `res->message` receives the decoded response map and must return the message
-  to surface to the client.  If the exception already carries `:api-error true`
-  in its ex-data (e.g. a missing-API-key error from [[resolve-auth]]) it is
-  rethrown as-is so the original message is preserved."
+  `res->message` receives the decoded response map and must return the canonical,
+  provider-specific message (e.g. `\"Anthropic API key expired or invalid\"`). When
+  the response carries a body, this function appends a truncated preview of that
+  body to the message so engineers and admins can see what the upstream actually
+  said, and emits a `log/warn` with the *full* body at the failure boundary so
+  the response body never gets silently swallowed.
+
+  If the exception already carries `:api-error true` in its ex-data (e.g. a
+  missing-API-key error from [[resolve-auth]]) it is rethrown as-is so the
+  original message is preserved."
   [provider res->message e]
   (let [data (ex-data e)]
     (cond
-      (:api-error data) (throw e)
-      (:body data)      (let [res (json/decode-body data)]
-                          (throw (ex-info (res->message res)
-                                          (assoc res
-                                                 :api-error  true
-                                                 :provider   provider
-                                                 :error-code :provider-api-error)
-                                          e)))
-      :else             (throw (ex-info (tru "{0} API request failed: {1}" provider (ex-message e))
-                                        {:api-error  true
-                                         :provider   provider
-                                         :error-code :provider-request-failed}
-                                        e)))))
+      (:api-error data)
+      (throw e)
+
+      (:body data)
+      (let [res     (json/decode-body data)
+            base    (res->message res)
+            preview (body-preview (:body res))
+            msg     (cond-> base
+                      preview (str " — " preview))]
+        (log/warn "Provider API request failed"
+                  {:provider provider
+                   :status   (:status res)
+                   :body     (:body res)})
+        (throw (ex-info msg
+                        (assoc res
+                               :api-error  true
+                               :provider   provider
+                               :error-code :provider-api-error)
+                        e)))
+
+      :else
+      (do
+        (log/warn "Provider API request failed (no response)"
+                  {:provider        provider
+                   :exception-class (some-> e .getClass .getName)
+                   :exception-msg   (ex-message e)})
+        (throw (ex-info (tru "{0} API request failed: {1}" provider (ex-message e))
+                        {:api-error  true
+                         :provider   provider
+                         :error-code :provider-request-failed}
+                        e))))))
 
 (defn missing-api-key-ex
   "Create a standardized missing-API-key exception for provider adapters."

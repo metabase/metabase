@@ -878,3 +878,83 @@
                                   "tag"                  "test-tag"
                                   "session_id"           "00000000-0000-0000-0000-000000000002"}}]
                       token-events)))))))))
+
+(deftest ^:parallel body-preview-test
+  (let [body-preview #'self.core/body-preview]
+    (testing "nil and blank → nil"
+      (is (nil? (body-preview nil)))
+      (is (nil? (body-preview "")))
+      (is (nil? (body-preview "   "))))
+    (testing "plain strings pass through trimmed"
+      (is (= "Internal Server Error" (body-preview "  Internal Server Error  "))))
+    (testing "JSON envelopes prefer [:error :message] over :error/:detail/:message"
+      (is (= "model decommissioned"
+             (body-preview {:error {:message "model decommissioned" :type "deprecated"}})))
+      (is (= "invalid metric"  (body-preview {:error "invalid metric"})))
+      (is (= "missing prompt"  (body-preview {:detail "missing prompt"})))
+      (is (= "bad request"     (body-preview {:message "bad request"}))))
+    (testing "unstructured maps fall back to pr-str"
+      (is (= "{:weird \"shape\"}" (body-preview {:weird "shape"}))))
+    (testing "InputStream bodies get slurped"
+      (let [stream (java.io.ByteArrayInputStream. (.getBytes "boom from upstream" "UTF-8"))]
+        (is (= "boom from upstream" (body-preview stream)))))
+    (testing "long bodies are truncated to 500 chars with an ellipsis"
+      (let [long-body (apply str (repeat 2000 \x))
+            preview   (body-preview long-body)]
+        (is (str/ends-with? preview "…"))
+        (is (= 501 (count preview)))))))
+
+(deftest rethrow-api-error!-test
+  (testing ":api-error exceptions are rethrown unchanged"
+    (let [original (ex-info "boom" {:api-error true :error-code :proxy-not-configured})]
+      (is (identical? original
+                      (try (self.core/rethrow-api-error! "anthropic" (constantly "X") original)
+                           (catch Exception e e))))))
+  (testing "HTTP responses with a body get the upstream body appended and surfaced in ex-data"
+    (let [upstream (ex-info "clj-http error"
+                            {:status 500
+                             :reason-phrase "Internal Server Error"
+                             :headers {"content-type" "application/json"}
+                             :body (json/encode {:error {:message "model decommissioned"}})})
+          ex       (try
+                     (self.core/rethrow-api-error!
+                      "anthropic"
+                      (fn [res] (str "Anthropic API error (HTTP " (:status res) ")"))
+                      upstream)
+                     nil
+                     (catch Exception e e))]
+      (is (= "Anthropic API error (HTTP 500) — model decommissioned"
+             (ex-message ex)))
+      (is (=? {:api-error  true
+               :provider   "anthropic"
+               :error-code :provider-api-error
+               :status     500
+               :body       {:error {:message "model decommissioned"}}}
+              (ex-data ex)))))
+  (testing "non-JSON bodies still get a preview appended"
+    (let [upstream (ex-info "clj-http error"
+                            {:status 502
+                             :reason-phrase "Bad Gateway"
+                             :headers {"content-type" "text/plain"}
+                             :body "upstream gateway timeout"})
+          ex       (try
+                     (self.core/rethrow-api-error!
+                      "openrouter"
+                      (fn [_] "OpenRouter upstream provider returned an error")
+                      upstream)
+                     nil
+                     (catch Exception e e))]
+      (is (str/includes? (ex-message ex) "OpenRouter upstream provider returned an error"))
+      (is (str/includes? (ex-message ex) "upstream gateway timeout"))))
+  (testing "non-HTTP errors (no :body) fall through to the request-failed branch"
+    (let [upstream (java.net.SocketTimeoutException. "Read timed out")
+          ex       (try
+                     (self.core/rethrow-api-error! "openai" (constantly "unused") upstream)
+                     nil
+                     (catch Exception e e))]
+      (is (str/includes? (ex-message ex) "API request failed"))
+      (is (str/includes? (ex-message ex) "Read timed out"))
+      (is (=? {:api-error  true
+               :provider   "openai"
+               :error-code :provider-request-failed}
+              (ex-data ex))))))

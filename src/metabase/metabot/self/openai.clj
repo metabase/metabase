@@ -160,18 +160,18 @@
      :description doc
      :parameters  (mjs/transform params {:additionalProperties false})}))
 
-(defn- openai-errors [res]
-  (let [status    (long (:status res 0))
-        error-msg (get-in res [:body :error :message])]
+(defn- openai-errors
+  "Return the canonical, status-specific OpenAI error message.
+   [[core/rethrow-api-error!]] appends an upstream body preview when one is available."
+  [res]
+  (let [status (long (:status res 0))]
     (case status
       401 (tru "OpenAI API key expired or invalid")
       403 (tru "OpenAI API key has insufficient permissions")
       404 (tru "OpenAI API endpoint or model listing is unavailable")
       429 (tru "OpenAI API has rate limited us")
       500 (tru "OpenAI API is not working but not saying why")
-      (if error-msg
-        (tru "OpenAI API error (HTTP {0}): {1}" status error-msg)
-        (tru "OpenAI API error (HTTP {0})" status)))))
+      (tru "OpenAI API error (HTTP {0})" status))))
 
 (defn list-models
   "List available OpenAI models.

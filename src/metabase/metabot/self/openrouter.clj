@@ -92,9 +92,11 @@
                 :description doc
                 :parameters  (mjs/transform params {:additionalProperties false})}}))
 
-(defn- openrouter-errors [res]
-  (let [status    (long (:status res 0))
-        error-msg (get-in res [:body :error :message])]
+(defn- openrouter-errors
+  "Return the canonical, status-specific OpenRouter error message.
+   [[core/rethrow-api-error!]] appends an upstream body preview when one is available."
+  [res]
+  (let [status (long (:status res 0))]
     (case status
       401 (tru "OpenRouter API key expired or invalid")
       402 (tru "OpenRouter has insufficient credits")
@@ -104,9 +106,7 @@
       500 (tru "OpenRouter returned an internal server error")
       502 (tru "OpenRouter upstream provider returned an error")
       503 (tru "OpenRouter service is unavailable")
-      (if error-msg
-        (tru "OpenRouter API error (HTTP {0}): {1}" status error-msg)
-        (tru "OpenRouter API error (HTTP {0})" status)))))
+      (tru "OpenRouter API error (HTTP {0})" status))))
 
 (defn list-models
   "List available OpenRouter models.
