@@ -219,7 +219,6 @@ function toTimeseriesRawSeries(
           "graph.x_axis.scale": "timeseries",
           "graph.x_axis.title_text": "",
           "graph.y_axis.title_text": "",
-          "line.interpolate": "cardinal",
           ...getMetricSeriesSettings(metric, getColor, aggregationColumnNames, {
             dualAxis: true,
           }),
