@@ -7,6 +7,7 @@
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
+   [metabase-enterprise.data-complexity-score.models.data-complexity-score :as data-complexity-score]
    [metabase-enterprise.data-complexity-score.representation :as representation]
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
@@ -334,11 +335,17 @@
     (let [calls         (atom [])
           advance-calls (atom 0)]
       (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!                       (fn [])
+                                  appdb-source/verify-write-target-shape!                (fn [])
                                   task.complexity-score/current-fingerprint              (constantly "test-fp")
                                   task.complexity-score/maybe-advance-last-fingerprint!  (fn [& _]
                                                                                            (swap! advance-calls inc))
                                   appdb-source/record-score!                             (fn [fp source _result]
-                                                                                           (swap! calls conj [fp source]))]
+                                                                                           (swap! calls conj [fp source]))
+                                  ;; The Toucan-based persister belongs to the cron / API. If a
+                                  ;; future change reintroduces it on the CLI path, fail loud here
+                                  ;; rather than letting both writers fire silently in parallel.
+                                  data-complexity-score/record-score!                    (fn [& _]
+                                                                                           (throw (ex-info "CLI must not call the Toucan record-score!" {})))]
         (#'cli/run-cli {:representation-dir representation-fixture-dir
                         :write-to-appdb     true})
         (is (= 1 (count @calls)) "exactly one row written via the raw-JDBC writer")
@@ -355,6 +362,7 @@
           advance-calls (atom [])
           score-opts    (atom nil)]
       (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!                       (fn [])
+                                  appdb-source/verify-write-target-shape!                (fn [])
                                   complexity/complexity-scores                           (fn [& {:as opts}]
                                                                                            (reset! score-opts opts)
                                                                                            {:meta {}})
@@ -364,7 +372,11 @@
                                   task.complexity-score/maybe-advance-last-fingerprint!  (fn [fp _result]
                                                                                            (swap! advance-calls conj fp))
                                   appdb-source/record-score!                             (fn [fp source _result]
-                                                                                           (swap! calls conj [fp source]))]
+                                                                                           (swap! calls conj [fp source]))
+                                  ;; See companion stub in the representation-mode test — guards
+                                  ;; against a regression that reintroduces a Toucan-based write.
+                                  data-complexity-score/record-score!                    (fn [& _]
+                                                                                           (throw (ex-info "CLI must not call the Toucan record-score!" {})))]
         (#'cli/run-cli {:source "appdb"})
         (is (= [["appdb-fp" "appdb"]] @calls)
             "appdb-mode default must write exactly one row stamped source=\"appdb\" via the raw-JDBC writer")
