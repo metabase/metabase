@@ -136,18 +136,18 @@
                                 (assoc handlers channel {:future nil :metadata metadata :gen gen}))))]
     (if (contains? old channel)
       false
-      (let [f (.submit ^ExecutorService @worker-pool
-                       ^Callable (bound-fn []
-                                   (try
-                                     (deliver! channel messages batch-id backend)
-                                     (finally
-                                       ;; Only remove if this generation still owns the slot
-                                       (swap! active-handlers
-                                              (fn [handlers]
-                                                (if (identical? gen (:gen (get handlers channel)))
-                                                  (dissoc handlers channel)
-                                                  handlers)))
-                                       (mq.polling/notify-all!)))))]
+      (let [^Callable task (bound-fn []
+                             (try
+                               (deliver! channel messages batch-id backend)
+                               (finally
+                                 ;; Only remove if this generation still owns the slot
+                                 (swap! active-handlers
+                                        (fn [handlers]
+                                          (if (identical? gen (:gen (get handlers channel)))
+                                            (dissoc handlers channel)
+                                            handlers)))
+                                 (mq.polling/notify-all!))))
+            f    (.submit ^ExecutorService @worker-pool task)]
         ;; Only set the future if this generation still owns the slot
         (swap! active-handlers
                (fn [handlers]

@@ -29,6 +29,7 @@
    [clojure.string :as str]
    [metabase.mq.core :as mq]
    [metabase.mq.listener :as listener]
+   [metabase.mq.polling :as polling]
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.appdb :as q.appdb]
    [metabase.mq.queue.backend :as q.backend]
@@ -54,7 +55,7 @@
     (setup-prometheus!))
   (require 'metabase.mq.init)
   (let [startup! (requiring-resolve 'metabase.startup.core/def-startup-logic!)]
-    (startup! :metabase.mq.init/MqInit))
+    (startup! :metabase.mq.init/MqStart))
   (reset! started? true)
   (println "MQ system started."))
 
@@ -471,6 +472,145 @@
       ["Queues" "Total Msgs" "Received" "Total ms" "Msgs/sec"]
       @results))))
 
+;;; ---------------------------------------- Benchmark 6: Concurrent Consumers (LATERAL/SKIP LOCKED) ----------------------------------------
+
+(defn bench-concurrent-consumers!
+  "Validates the LATERAL/SKIP LOCKED fetch under real consumer contention by spinning up
+  multiple `AppDbQueueBackend` instances *in the same JVM*, each with its own listener
+  atom and poll thread. All instances share one queue and the same DB rows.
+
+  Expected: total throughput grows ~linearly with `:consumer-counts` until the DB write
+  ceiling. Every batch-id should be processed exactly once across all consumers.
+
+  Options:
+    :consumer-counts - vector of consumer counts to test (default [1 2 4 8])
+    :n               - total messages per run (default 2000)
+    :queue-name      - queue to use (default :queue/bench-concurrent)"
+  ([] (bench-concurrent-consumers! {}))
+  ([{:keys [consumer-counts n queue-name]
+     :or   {consumer-counts [1 2 4 8] n 2000 queue-name :queue/bench-concurrent}}]
+   (ensure-started!)
+   (let [results (atom [])]
+     (doseq [c consumer-counts]
+       (let [per-consumer-received (vec (repeatedly c #(atom 0)))
+             seen-batch-ids        (atom #{})
+             duplicates            (atom 0)
+             backends              (vec (repeatedly c q.appdb/make-backend))
+             listener-atoms        (vec (repeatedly c #(atom {})))]
+         (try
+           (doseq [i (range c)]
+             (binding [listener/*listeners* (nth listener-atoms i)]
+               (listener/batch-listen! queue-name
+                                       (fn [msgs]
+                                         (doseq [m msgs]
+                                           (let [bid (get m "batch-id" m)]
+                                             (when (contains? @seen-batch-ids bid)
+                                               (swap! duplicates inc))
+                                             (swap! seen-batch-ids conj bid)))
+                                         (swap! (nth per-consumer-received i) + (count msgs)))
+                                       {})
+               (q.backend/start! (nth backends i))))
+           (let [start (System/nanoTime)]
+             ;; Publish via root listener atom (so the buffer flush sees them); use unique
+             ;; ids so duplicate detection in the listener is meaningful.
+             (binding [listener/*listeners* (atom {queue-name {:listener identity
+                                                               :max-batch-messages 100}})]
+               (dotimes [i n]
+                 (mq/with-queue queue-name [q]
+                   (mq/put q {:id i})))
+               (publish-buffer/flush-publish-buffer!))
+             (Thread/sleep 300)
+             (publish-buffer/flush-publish-buffer!)
+             (let [total (atom 0)
+                   deadline (+ (System/currentTimeMillis) 60000)]
+               (while (and (< @total n)
+                           (< (System/currentTimeMillis) deadline))
+                 ;; Notify all poll threads so consumer backends drain promptly. In production
+                 ;; the publish-side notify reaches the same node; multi-instance benchmarks
+                 ;; sit between nodes where no cross-node wakeup exists.
+                 (polling/notify-all!)
+                 (reset! total (reduce + (map deref per-consumer-received)))
+                 (Thread/sleep 50))
+               (let [elapsed-ms (/ (- (System/nanoTime) start) 1e6)
+                     received-per-consumer (mapv deref per-consumer-received)
+                     min-c   (apply min received-per-consumer)
+                     max-c   (apply max received-per-consumer)
+                     spread  (when (pos? max-c)
+                               (* 100.0 (- 1.0 (/ (double min-c) max-c))))]
+                 (swap! results conj
+                        [(str c)
+                         (str @total)
+                         (str (apply max received-per-consumer))
+                         (str (apply min received-per-consumer))
+                         (if spread (format "%.1f%%" spread) "n/a")
+                         (str @duplicates)
+                         (fmt elapsed-ms)
+                         (fmt (/ @total (/ elapsed-ms 1000.0)))]))))
+           (finally
+             ;; Shut each backend's polling thread (per-instance, doesn't touch production)
+             (doseq [be backends] (q.backend/shutdown! be))
+             ;; Clean DB rows for this queue
+             (t2/delete! :queue_message_batch :queue_name (name queue-name))))))
+     (print-table!
+      (str "Concurrent Consumers (n=" n " per run, queue=" (name queue-name) ")")
+      ["Consumers" "Total" "Max/c" "Min/c" "Imbalance" "Dups" "Total ms" "Msgs/sec"]
+      @results))))
+
+;;; ---------------------------------------- Benchmark 7: Stale-Recovery Race ----------------------------------------
+
+(defn bench-stale-recovery-race!
+  "Pre-populates `:n` rows as `status=processing` with a stale heartbeat, then runs the
+  recovery function from `:workers` threads simultaneously. Validates that the guarded
+  bulk UPDATE delivers each row to exactly one winner regardless of concurrency.
+
+  Options:
+    :n       - number of stale rows to seed (default 500)
+    :workers - concurrent recovery threads (default 8)"
+  ([] (bench-stale-recovery-race! {}))
+  ([{:keys [n workers] :or {n 500 workers 8}}]
+   (ensure-started!)
+   (let [queue-name (keyword "queue" (str "bench-stale-" (run-id)))
+         stale-ts   (java.sql.Timestamp/from
+                     (.minusMillis (java.time.Instant/now) (* 20 60 1000)))]
+     (try
+       (let [rows (vec (for [_ (range n)]
+                         {:queue_name (name queue-name)
+                          :messages   "[]"
+                          :status     "processing"
+                          :status_heartbeat stale-ts
+                          :owner      "dead-node"}))]
+         (t2/insert! :queue_message_batch rows))
+       (let [recoveries (atom [])
+             latch      (CountDownLatch. 1)
+             threads    (mapv (fn [_]
+                                (let [r (bound-fn []
+                                          (.await latch)
+                                          (let [n-recovered (@#'q.appdb/recover-stale-processing-batches!)]
+                                            (swap! recoveries conj n-recovered)))]
+                                  (Thread. ^Runnable r)))
+                              (range workers))
+             start      (System/nanoTime)]
+         (run! #(.start ^Thread %) threads)
+         (.countDown latch)
+         (run! #(.join ^Thread % 30000) threads)
+         (let [elapsed-ms  (/ (- (System/nanoTime) start) 1e6)
+               total-rec   (reduce + @recoveries)
+               final-state (frequencies (map :status (t2/select :queue_message_batch
+                                                                :queue_name (name queue-name))))]
+           (print-table!
+            (str "Stale Recovery Race (n=" n " stale, workers=" workers ")")
+            ["Metric" "Value"]
+            [["Sum of returned counts" (str total-rec)]
+             ["Stale rows pre-populated" (str n)]
+             ["Sum == n? (correctness)" (if (= total-rec n) "YES" (str "NO  diff=" (- total-rec n)))]
+             ["Final 'pending'" (str (get final-state "pending" 0))]
+             ["Final 'failed'" (str (get final-state "failed" 0))]
+             ["Final 'processing'" (str (get final-state "processing" 0))]
+             ["Total wall-clock ms" (fmt elapsed-ms)]
+             ["Per-row ms (effective)" (fmt (/ elapsed-ms (max 1 n)))]])))
+       (finally
+         (t2/delete! :queue_message_batch :queue_name (name queue-name)))))))
+
 ;;; ---------------------------------------- Run All ----------------------------------------
 
 (defn run-all-benchmarks!
@@ -498,8 +638,14 @@
   (println "--- 4/5: Batch Listener Comparison ---")
   (bench-batch-listener! {:n 200})
 
-  (println "--- 5/5: Multiple Queues ---")
+  (println "--- 5/7: Multiple Queues ---")
   (bench-multi-queue! {:queue-counts [1 5 10 20] :msgs-per-queue 50})
+
+  (println "--- 6/7: Concurrent Consumers ---")
+  (bench-concurrent-consumers! {:consumer-counts [1 2 4 8] :n 2000})
+
+  (println "--- 7/7: Stale Recovery Race ---")
+  (bench-stale-recovery-race! {:n 500 :workers 8})
 
   (println "=== All benchmarks complete ==="))
 
