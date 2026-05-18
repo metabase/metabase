@@ -7,6 +7,7 @@ import {
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
 } from "metabase/api";
+import { useSetArchive } from "metabase/archive/hooks";
 import { getCollectionName } from "metabase/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { EntityItem } from "metabase/common/components/EntityItem";
@@ -23,7 +24,6 @@ import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
-import { useSetArchive } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import {
   Button,

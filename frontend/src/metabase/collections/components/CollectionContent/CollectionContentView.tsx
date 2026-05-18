@@ -14,6 +14,7 @@ import {
 } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
+import { useSetArchive } from "metabase/archive/hooks";
 import { trackCollectionBookmarked } from "metabase/collections/analytics";
 import { CollectionBulkActions } from "metabase/collections/components/CollectionBulkActions";
 import {
@@ -35,11 +36,7 @@ import {
 } from "metabase/collections/utils";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import { ItemsDragLayer } from "metabase/common/components/dnd/ItemsDragLayer";
-import {
-  useSetArchive,
-  useSetCollection,
-  useToast,
-} from "metabase/common/hooks";
+import { useSetCollection, useToast } from "metabase/common/hooks";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";

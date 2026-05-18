@@ -1,4 +1,5 @@
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+import type { DashboardTabId, ParameterValueOrArray } from "metabase-types/api";
 
 import type {
   ClickObject,
@@ -13,6 +14,7 @@ import { NativeQueryClickFallback } from "../actions/NativeQueryClickFallback";
 import {
   getClickBehavior,
   getClickBehaviorData,
+  getParameterIdValuePairs,
   getParameterValuesBySlug,
 } from "../lib/dashboard-click-drill";
 
@@ -21,6 +23,13 @@ export type ClickBehaviorTarget = {
   id: number;
   name: string;
   parameters: ParameterValues;
+  /**
+   * Same parameter values as {@link parameters}, but keyed by parameter id.
+   * Used for same-dashboard click behaviors that need to dispatch per-id
+   * setParameterValue actions (mirrors core app DashboardClickAction).
+   */
+  parameterIdValuePairs: [string, ParameterValueOrArray | null][];
+  tabId?: DashboardTabId;
 };
 
 const getClickBehaviorTarget = (
@@ -31,7 +40,7 @@ const getClickBehaviorTarget = (
     return null;
   }
 
-  const { linkType, targetId, extraData, parameterMapping, data } =
+  const { linkType, targetId, extraData, parameterMapping, data, tabId } =
     getClickBehaviorData(clicked, clickBehavior);
 
   if (linkType !== "dashboard" && linkType !== "question") {
@@ -46,6 +55,16 @@ const getClickBehaviorTarget = (
       })
     : {};
 
+  const parameterIdValuePairs = (
+    parameterMapping
+      ? getParameterIdValuePairs(parameterMapping, {
+          data,
+          extraData,
+          clickBehavior,
+        })
+      : []
+  ) as [string, ParameterValueOrArray | null][];
+
   const entitiesMap =
     linkType === "dashboard" ? extraData?.dashboards : extraData?.questions;
   const target = entitiesMap?.[targetId];
@@ -57,7 +76,14 @@ const getClickBehaviorTarget = (
     return null;
   }
 
-  return { type: linkType, id: target.id, name: target.name, parameters };
+  return {
+    type: linkType,
+    id: target.id,
+    name: target.name,
+    parameters,
+    parameterIdValuePairs,
+    tabId,
+  };
 };
 
 type CreateEmbeddingSdkModeOptions = {

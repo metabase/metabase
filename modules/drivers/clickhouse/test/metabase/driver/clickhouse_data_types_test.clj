@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-data-types-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.clickhouse-data-types-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.clickhouse-data-types-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]

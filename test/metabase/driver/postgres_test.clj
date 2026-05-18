@@ -1,5 +1,8 @@
 (ns metabase.driver.postgres-test
   "Tests for features/capabilities specific to PostgreSQL driver, such as support for Postgres UUID or enum types."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.driver.postgres-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.driver.postgres-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.postgres-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.java.jdbc :as jdbc]

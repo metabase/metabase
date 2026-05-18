@@ -1,5 +1,8 @@
 (ns ^:mb/driver-tests metabase.query-processor.middleware.parameters.mbql-test
   "Tests for *MBQL* parameter substitution."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.query-processor.middleware.parameters.mbql-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.query-processor.middleware.parameters.mbql-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.middleware.parameters.mbql-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

@@ -1,4 +1,5 @@
 (ns metabase.pulse.dashboard-subscription-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.pulse.dashboard-subscription-test]}}}}}}
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]

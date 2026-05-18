@@ -1,4 +1,5 @@
 (ns metabase.channel.impl.http-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.channel.impl.http-test]}}}}}}
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
