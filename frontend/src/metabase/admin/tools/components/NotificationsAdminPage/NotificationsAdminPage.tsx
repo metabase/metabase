@@ -13,6 +13,7 @@ import {
   BulkActionButton,
   BulkActionDangerButton,
 } from "metabase/common/components/BulkActionBar";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
@@ -72,18 +73,20 @@ export const NotificationsAdminPage = ({
   const total = data?.total ?? 0;
   const selectedCount = selectedIds.length;
 
-  const { data: failingData } = useAdminListNotificationsQuery({
-    limit: 1,
-    offset: 0,
-    active: true,
-    last_sent_status: "failing",
-  });
-  const { data: ownerlessData } = useAdminListNotificationsQuery({
-    limit: 1,
-    offset: 0,
-    active: true,
-    owner_active: false,
-  });
+  const { data: failingData, isLoading: isFailingLoading } =
+    useAdminListNotificationsQuery({
+      limit: 1,
+      offset: 0,
+      active: true,
+      last_sent_status: "failing",
+    });
+  const { data: ownerlessData, isLoading: isOwnerlessLoading } =
+    useAdminListNotificationsQuery({
+      limit: 1,
+      offset: 0,
+      active: true,
+      owner_active: false,
+    });
   const failingCount = failingData?.total ?? 0;
   const ownerlessCount = ownerlessData?.total ?? 0;
 
@@ -272,6 +275,10 @@ export const NotificationsAdminPage = ({
   );
 
   const isSidebarOpen = notificationId !== undefined;
+
+  if (isLoading || isFailingLoading || isOwnerlessLoading) {
+    return <LoadingAndErrorWrapper loading />;
+  }
 
   const { prevNotificationId, nextNotificationId } = (() => {
     if (notificationId === undefined) {
