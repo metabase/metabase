@@ -139,6 +139,56 @@
                   (is (not (contains? (:response data) :headers))
                       "Exception data should not contain :headers in response"))))))))))
 
+(deftest check-response!-test
+  (let [check! #'metabot-v3.client/check-response!]
+    (testing "200/202 returns the body unchanged"
+      (is (= {:ok true} (check! {:status 200 :body {:ok true}} {:req :body})))
+      (is (= {:ok true} (check! {:status 202 :body {:ok true}} {:req :body}))))
+    (testing "non-2xx throws an :ai-service-error with the status, body preview, and full body in ex-data"
+      (let [ex (is (thrown-with-msg?
+                    Exception
+                    #"AI service request failed: HTTP 500 Internal Server Error — Internal Server Error"
+                    (check! {:status        500
+                             :reason-phrase "Internal Server Error"
+                             :body          "Internal Server Error"
+                             :headers       {"x-secret" "hide-me"}}
+                            {:foo :bar :headers {"x-secret-req" "hide-me-too"}})))
+            data (ex-data ex)]
+        (is (=? {:error-code :ai-service-error
+                 :status     500
+                 :request    {:foo :bar}
+                 :response   {:status 500 :body "Internal Server Error"}}
+                data))
+        (is (not (contains? (:response data) :headers)))
+        (is (not (contains? (:request data) :headers)))))
+    (testing "structured JSON error bodies surface the upstream :error/:detail/:message"
+      (let [ex (is (thrown-with-msg?
+                    Exception
+                    #"AI service request failed: HTTP 400 Bad Request — invalid metric"
+                    (check! {:status        400
+                             :reason-phrase "Bad Request"
+                             :body          {:error "invalid metric" :request-id "abc"}}
+                            {})))]
+        (testing "and the full body survives into ex-data"
+          (is (=? {:response {:body {:error "invalid metric" :request-id "abc"}}}
+                  (ex-data ex))))))
+    (testing "stream bodies get slurped — preview surfaces in the message and the full body survives in ex-data"
+      (let [stream (java.io.ByteArrayInputStream. (.getBytes "boom from upstream" "UTF-8"))
+            ex     (is (thrown-with-msg?
+                        Exception
+                        #"boom from upstream"
+                        (check! {:status 502 :reason-phrase "Bad Gateway" :body stream} {})))]
+        (is (= "boom from upstream" (get-in (ex-data ex) [:response :body])))))
+    (testing "long bodies are truncated in the exception message but kept in full in ex-data"
+      (let [long-body (apply str (repeat 2000 \x))
+            ex        (is (thrown? Exception
+                                   (check! {:status 500 :reason-phrase "ISE" :body long-body} {})))
+            msg       (ex-message ex)]
+        (is (str/includes? msg "…"))
+        (is (< (count msg) 1200) "exception message is truncated near the body-preview cap")
+        (is (= long-body (get-in (ex-data ex) [:response :body]))
+            "full body is preserved in ex-data")))))
+
 (deftest example-generation-payload-unknown-field-types-test
   (let [mp (mt/metadata-provider)
         metabot-eid (get-in metabot-v3.config/metabot-config [metabot-v3.config/internal-metabot-id

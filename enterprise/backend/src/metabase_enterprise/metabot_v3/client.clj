@@ -81,15 +81,69 @@
 (defn- ai-url [path]
   (str (metabot-v3.settings/ai-service-base-url) path))
 
+(def ^:private max-body-preview-chars
+  "Cap on the size of the response-body snippet we splice into the *exception message*.
+   The full body is still logged in full via `log/warn` and stashed in `ex-data`."
+  500)
+
+(defn- coerce-body
+  "Read a response body into a printable value, slurping `InputStream` bodies (the streaming
+   endpoint case) so they survive into logs and ex-data. Returns `nil` when the body is
+   empty or unreadable."
+  [body]
+  (try
+    (cond
+      (nil? body)                  nil
+      (instance? InputStream body) (slurp body)
+      :else                        body)
+    (catch Throwable _ nil)))
+
+(defn- body-preview
+  "Build a short, human-readable snippet of an already-coerced response body for the
+   exception message. Pulls the upstream error message out of JSON envelopes when present."
+  [body]
+  (let [s (cond
+            (nil? body)    nil
+            (string? body) body
+            (map? body)    (or (some-> (or (:error body) (:detail body) (:message body))
+                                       str
+                                       not-empty)
+                               (pr-str body))
+            :else          (pr-str body))]
+    (when-let [trimmed (some-> s str/trim not-empty)]
+      (if (<= (count trimmed) max-body-preview-chars)
+        trimmed
+        (str (subs trimmed 0 max-body-preview-chars) "…")))))
+
 (defn- check-response!
-  "Returns response body on success (200 or 202), throws on failure."
+  "Return the response body on success (HTTP 200 or 202); throw on failure.
+
+   On failure, builds an error message that includes the upstream status, reason
+   phrase, and a truncated preview of the response body, and emits a `log/warn`
+   with the *full* response body so engineers can correlate with AI-service logs
+   without reconstructing it from the stacktrace. The full (slurped) body also
+   survives into `ex-data` for downstream callers."
   [response request]
   (if (#{200 202} (:status response))
     (:body response)
-    (throw (ex-info (format "Unexpected status code: %d %s"
-                            (:status response) (:reason-phrase response))
-                    {:request  (dissoc request :headers)
-                     :response (dissoc response :headers)}))))
+    (let [status  (:status response)
+          phrase  (:reason-phrase response)
+          body    (coerce-body (:body response))
+          url     (some-> response :request :url)
+          preview (body-preview body)
+          msg     (cond-> (format "AI service request failed: HTTP %d %s"
+                                  (or status 0) (or phrase ""))
+                    preview (str " — " preview))]
+      (log/warn "AI service request failed"
+                {:status status
+                 :phrase phrase
+                 :url    url
+                 :body   body})
+      (throw (ex-info msg
+                      {:error-code :ai-service-error
+                       :status     status
+                       :request    (dissoc request :headers)
+                       :response   (-> response (dissoc :headers) (assoc :body body))})))))
 
 (defn- metric-selection-endpoint-url []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/select-metric"))
