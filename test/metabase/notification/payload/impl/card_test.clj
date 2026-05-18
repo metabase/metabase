@@ -1,4 +1,5 @@
 (ns metabase.notification.payload.impl.card-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.notification.payload.impl.card-test]}}}}}}
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]

@@ -16,6 +16,7 @@ import type {
   MetabotAgentTextChatMessage,
   MetabotChatMessage,
 } from "metabase/metabot/state/types";
+import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -43,7 +44,6 @@ import { useGetMetabotConversationQuery } from "../../api";
 import type { ConversationFeedback, GeneratedQuery } from "../../types";
 
 import { ConversationHeader } from "./ConversationHeader";
-import { convertSlackChatMessage } from "./slack-mrkdwn";
 
 export function ConversationDetailPage({ params }: WithRouterProps) {
   const convoId = params.convoId;
@@ -57,11 +57,11 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   });
 
   const chatMessages = useMemo(() => {
-    const isSlackbot =
-      conversation?.profile_id === "slackbot" ||
-      conversation?.profile_id === "slack";
-    const msgs = conversation?.chat_messages ?? [];
-    return isSlackbot ? msgs.map(convertSlackChatMessage) : msgs;
+    return normalizeFetchedChatMessages(conversation?.chat_messages ?? [], {
+      isSlack:
+        conversation?.profile_id === "slackbot" ||
+        conversation?.profile_id === "slack",
+    });
   }, [conversation]);
 
   if (isLoading || error) {
@@ -127,7 +127,6 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
           <Card withBorder shadow="none" p="xl">
             <Messages
               messages={chatMessages}
-              errorMessages={[]}
               isDoingScience={false}
               debug
               readonly
@@ -233,7 +232,7 @@ function FeedbackCard({
   );
 }
 
-function GeneratedQueryCard({ query }: { query: GeneratedQuery }) {
+export function GeneratedQueryCard({ query }: { query: GeneratedQuery }) {
   if (query.query_type === "notebook" && query.mbql) {
     return (
       <NotebookGeneratedQueryCard mbql={query.mbql} display={query.display} />
@@ -270,7 +269,13 @@ function SqlGeneratedQueryCard({ query }: { query: GeneratedQuery }) {
     <Card withBorder shadow="none" p="md">
       <Stack gap="sm">
         <Flex justify="space-between" align="center" gap="sm">
-          <Text size="lg" fw={700}>{t`SQL query`}</Text>
+          <Text
+            size="lg"
+            fw={700}
+            style={{ flex: "1 1 auto", minWidth: 0, overflowWrap: "anywhere" }}
+          >
+            {t`SQL query`}
+          </Text>
           {runUrl && (
             <Button
               component="a"
@@ -279,6 +284,7 @@ function SqlGeneratedQueryCard({ query }: { query: GeneratedQuery }) {
               rel="noreferrer"
               variant="filled"
               leftSection={<Icon name="play_outlined" aria-hidden />}
+              style={{ flexShrink: 0 }}
             >
               {t`Run`}
             </Button>
@@ -363,7 +369,11 @@ function NotebookGeneratedQueryCard({
     >
       <Stack gap="md">
         <Flex justify="space-between" align="center" gap="sm">
-          <Text size="lg" fw={700}>
+          <Text
+            size="lg"
+            fw={700}
+            style={{ flex: "1 1 auto", minWidth: 0, overflowWrap: "anywhere" }}
+          >
             {title}
           </Text>
           <Button
@@ -373,6 +383,7 @@ function NotebookGeneratedQueryCard({
             rel="noreferrer"
             variant="filled"
             leftSection={<Icon name="play_outlined" aria-hidden />}
+            style={{ flexShrink: 0 }}
           >
             {t`Run`}
           </Button>

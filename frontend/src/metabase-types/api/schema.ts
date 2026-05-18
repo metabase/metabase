@@ -1,4 +1,3 @@
-import type { WritebackAction } from "./actions";
 import type { Card, CardId } from "./card";
 import type { Collection, CollectionId, CollectionItemId } from "./collection";
 import type { Dashboard } from "./dashboard";
@@ -20,7 +19,6 @@ import type {
 } from "./table";
 import type { Timeline, TimelineEventId } from "./timeline";
 
-export type NormalizedWritebackAction = WritebackAction;
 export type NormalizedDashboard = Dashboard;
 export type NormalizedDocument = Document;
 export type NormalizedCard = Card;

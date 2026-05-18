@@ -3,12 +3,11 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
-import { useSearchQuery } from "metabase/api";
+import { useListActionsQuery, useSearchQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Modal } from "metabase/common/components/Modal";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
-import { Actions } from "metabase/entities/actions";
 import type { Card, WritebackAction } from "metabase-types/api";
 
 import {
@@ -156,13 +155,18 @@ function ModelActionPicker({
 }
 
 function ActionPickerWithModels(
-  props: Omit<Parameters<typeof ActionPicker>[0], "models">,
+  props: Omit<Parameters<typeof ActionPicker>[0], "models" | "actions">,
 ) {
   const {
     data: searchResponse,
-    isLoading,
-    error,
+    isLoading: isLoadingSearch,
+    error: searchError,
   } = useSearchQuery({ models: ["dataset"] });
+  const {
+    data: actions = [],
+    isLoading: isLoadingActions,
+    error: actionsError,
+  } = useListActionsQuery({});
   const models = (searchResponse?.data ?? []).flatMap((result) =>
     typeof result.id === "number"
       ? [
@@ -174,13 +178,13 @@ function ActionPickerWithModels(
         ]
       : [],
   );
+  const isLoading = isLoadingSearch || isLoadingActions;
+  const error = searchError || actionsError;
   return (
     <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
-      <ActionPicker {...props} models={models} />
+      <ActionPicker {...props} models={models} actions={actions} />
     </LoadingAndErrorWrapper>
   );
 }
 
-export const ConnectedActionPicker = Actions.loadList({
-  loadingAndErrorWrapper: false,
-})(ActionPickerWithModels);
+export const ConnectedActionPicker = ActionPickerWithModels;

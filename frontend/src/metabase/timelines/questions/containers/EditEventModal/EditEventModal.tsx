@@ -4,7 +4,7 @@ import {
   useGetTimelineEventQuery,
   useUpdateTimelineEventMutation,
 } from "metabase/api";
-import { useSetArchive } from "metabase/common/hooks";
+import { useSetArchive } from "metabase/archive/hooks";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import EditEventModal from "metabase/timelines/common/components/EditEventModal";

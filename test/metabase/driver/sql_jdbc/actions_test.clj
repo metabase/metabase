@@ -1,6 +1,8 @@
 (ns ^:mb/driver-tests metabase.driver.sql-jdbc.actions-test
   "Most of the tests for code in [[metabase.driver.sql-jdbc.actions]] are e2e tests that live
   in [[metabase.actions-rest.api-test]]."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sql-jdbc.actions-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.sql-jdbc.actions-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.actions.actions :as actions]

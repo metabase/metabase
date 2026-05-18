@@ -1,10 +1,11 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useDeleteDocumentMutation } from "metabase/api";
+import { Api, useDeleteDocumentMutation } from "metabase/api";
+import { listTag } from "metabase/api/tags";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner/ArchivedEntityBanner";
-import { useSetArchive, useSetCollection } from "metabase/common/hooks";
-import { Bookmarks } from "metabase/entities/bookmarks";
+import { useSetArchive } from "metabase/archive/hooks";
+import { useSetCollection } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 
@@ -30,7 +31,7 @@ export const DocumentArchivedEntityBanner = () => {
       canDelete={document.can_delete}
       onUnarchive={async () => {
         await archive({ id: document.id, model: "document" }, false);
-        await dispatch(Bookmarks.actions.invalidateLists());
+        dispatch(Api.util.invalidateTags([listTag("bookmark")]));
       }}
       onMove={({ id }) =>
         setCollection({ model: "document", id: document.id }, { id })

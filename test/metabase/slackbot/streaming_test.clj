@@ -179,55 +179,53 @@
                @posted-message))))))
 
 (deftest slackbot-streaming-sets-ai-proxied-on-messages-test
-  (testing "user + assistant persists receive ai-proxy? = true for metabase/ prefixed provider"
+  (testing "start-turn! receives ai-proxy? = true (and writes it to both user and assistant rows)
+            for metabase/ prefixed provider"
     (tu/with-slackbot-setup
       (let [event-body tu/base-dm-event
-            store-opts (atom [])]
+            start-opts (atom [])]
         (tu/with-slackbot-mocks
           {:ai-text "Hello!"}
           (fn [{:keys [stop-stream-calls]}]
             (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
               (with-redefs [premium-features/token-status
                             (constantly nil)
-                            metabot.persistence/store-message!
-                            (fn [_conv-id _profile-id _messages & {:as opts}]
-                              (swap! store-opts conj opts)
-                              nil)
-                            metabot.persistence/store-native-parts!
-                            (fn [_conv-id _profile-id _parts & {:as opts}]
-                              (swap! store-opts conj opts)
-                              nil)]
+                            metabot.persistence/start-turn!
+                            (fn [_conv-id _profile-id _user-message & {:as opts}]
+                              (swap! start-opts conj opts)
+                              {:assistant-msg-id 1 :assistant-external-id "ext"})
+                            metabot.persistence/finalize-assistant-turn!
+                            (fn [& _] nil)]
                 (mt/client :post 200 "metabot/slack/events"
                            (tu/slack-request-options event-body)
                            event-body)
                 (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
                          :done?      true?
                          :timeout-ms 5000})))
-            (testing "user (store-message!) + assistant (store-native-parts!) both received ai-proxy? = true"
-              (is (=? [{:ai-proxy? true}
-                       {:ai-proxy? true}]
-                      @store-opts)))))))))
+            (testing "start-turn! received ai-proxy? = true"
+              (is (=? [{:ai-proxy? true}] @start-opts)))))))))
 
 (deftest slackbot-streaming-persists-failed-conversations-test
-  (testing "User message is persisted even if setup throws after it (BOT-1279)"
+  (testing "User row is persisted even if setup throws after it (BOT-1279). With placeholders,
+            start-turn! inserts user + placeholder atomically before any setup runs."
     (tu/with-slackbot-setup
       (let [event-body tu/base-dm-event
             stored     (promise)]
         (tu/with-slackbot-mocks
           {:ai-text "Hello!"}
           (fn [_ctx]
-            (with-redefs [metabot.persistence/store-message!
-                          (fn [_conv-id _profile-id _messages & {:as opts}]
+            (with-redefs [metabot.persistence/start-turn!
+                          (fn [_conv-id _profile-id _user-message & {:as opts}]
                             (deliver stored opts)
-                            nil)
-                          ;; Force setup to throw *after* the user message has been stored.
+                            {:assistant-msg-id 1 :assistant-external-id "ext"})
+                          ;; Force setup to throw *after* start-turn! has run.
                           slackbot.persistence/message-history
                           (fn [& _] (throw (ex-info "boom" {})))]
               (mt/client :post 200 "metabot/slack/events"
                          (tu/slack-request-options event-body)
                          event-body)
               (let [opts (deref stored 5000 ::timeout)]
-                (testing "user store-message! was called before the failure"
+                (testing "start-turn! was called before the failure"
                   (is (not= ::timeout opts))
                   (is (some? (:slack-msg-id opts))))))))))))
 
@@ -238,53 +236,52 @@
         (let [event-body tu/base-dm-event]
           (doseq [flag-on? [true false]]
             (testing (str "with analytics-pii-retention-enabled=" flag-on?)
-              (let [store-opts (atom [])]
+              (let [start-opts (atom [])]
                 (tu/with-slackbot-mocks
                   {:ai-text "Hello!"}
                   (fn [{:keys [stop-stream-calls]}]
                     (mt/with-temporary-setting-values [analytics-pii-retention-enabled flag-on?]
-                      (with-redefs [metabot.persistence/store-native-parts!
-                                    (fn [_conv-id _profile-id _parts & {:as opts}]
-                                      (swap! store-opts conj opts)
-                                      nil)]
+                      (with-redefs [metabot.persistence/start-turn!
+                                    (fn [_conv-id _profile-id _user-message & {:as opts}]
+                                      (swap! start-opts conj opts)
+                                      {:assistant-msg-id 1 :assistant-external-id "ext"})
+                                    metabot.persistence/finalize-assistant-turn!
+                                    (fn [& _] nil)]
                         (mt/client :post 200 "metabot/slack/events"
                                    (tu/slack-request-options event-body)
                                    event-body)
                         (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
                                  :done?      true?
                                  :timeout-ms 5000})))
-                    (testing "store-native-parts! never received :hostname or :pii-info from the slackbot path"
-                      (doseq [opts @store-opts]
+                    (testing "start-turn! never received :hostname or :pii-info from the slackbot path"
+                      (doseq [opts @start-opts]
                         (is (not (contains? opts :hostname)))
                         (is (not (contains? opts :pii-info)))))))))))))))
 
 (deftest slackbot-streaming-sets-ai-proxied-false-for-byok-test
-  (testing "user + assistant persists receive ai-proxy? = false for direct BYOK provider"
+  (testing "start-turn! receives ai-proxy? = false (and writes it to both user and assistant rows)
+            for direct BYOK provider"
     (tu/with-slackbot-setup
       (let [event-body tu/base-dm-event
-            store-opts (atom [])]
+            start-opts (atom [])]
         (tu/with-slackbot-mocks
           {:ai-text "Hello!"}
           (fn [{:keys [stop-stream-calls]}]
             (mt/with-temporary-setting-values [llm-metabot-provider "anthropic/claude-haiku-4-5"]
-              (with-redefs [metabot.persistence/store-message!
-                            (fn [_conv-id _profile-id _messages & {:as opts}]
-                              (swap! store-opts conj opts)
-                              nil)
-                            metabot.persistence/store-native-parts!
-                            (fn [_conv-id _profile-id _parts & {:as opts}]
-                              (swap! store-opts conj opts)
-                              nil)]
+              (with-redefs [metabot.persistence/start-turn!
+                            (fn [_conv-id _profile-id _user-message & {:as opts}]
+                              (swap! start-opts conj opts)
+                              {:assistant-msg-id 1 :assistant-external-id "ext"})
+                            metabot.persistence/finalize-assistant-turn!
+                            (fn [& _] nil)]
                 (mt/client :post 200 "metabot/slack/events"
                            (tu/slack-request-options event-body)
                            event-body)
                 (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
                          :done?      true?
                          :timeout-ms 5000})))
-            (testing "user (store-message!) + assistant (store-native-parts!) both received ai-proxy? = false"
-              (is (=? [{:ai-proxy? false}
-                       {:ai-proxy? false}]
-                      @store-opts)))))))))
+            (testing "start-turn! received ai-proxy? = false"
+              (is (=? [{:ai-proxy? false}] @start-opts)))))))))
 
 ;;; ------------------------------------------------ Flush throttle tests ------------------------------------------------
 

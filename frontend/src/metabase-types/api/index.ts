@@ -26,6 +26,7 @@ export * from "./entity-id";
 export * from "./field";
 export * from "./geojson";
 export * from "./group";
+export * from "./icon";
 export * from "./insight";
 export * from "./llm";
 export * from "./logger";

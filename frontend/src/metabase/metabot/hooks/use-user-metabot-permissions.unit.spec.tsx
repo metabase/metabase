@@ -20,11 +20,13 @@ function TestComponent() {
 function setup({
   isMetabotEnabled = true,
   isAuthenticated = true,
+  isConfigured = true,
   apiResponse,
   apiStatus = 200,
 }: {
   isMetabotEnabled?: boolean;
   isAuthenticated?: boolean;
+  isConfigured?: boolean;
   apiResponse?: UserMetabotPermissionsResponse;
   apiStatus?: number;
 } = {}) {
@@ -38,7 +40,7 @@ function setup({
   }
 
   const settings = mockSettings({
-    "llm-metabot-configured?": true,
+    "llm-metabot-configured?": isConfigured,
     "metabot-enabled?": isMetabotEnabled,
     "token-features": createMockTokenFeatures({ ai_controls: true }),
   });
@@ -76,6 +78,32 @@ describe("useUserMetabotPermissions", () => {
   it("returns all false when metabot is globally disabled", async () => {
     setup({ isMetabotEnabled: false });
     const perms = await getPerms();
+    expect(perms.hasMetabotAccess).toBe(false);
+    expect(perms.canUseMetabot).toBe(false);
+    expect(perms.canUseSqlGeneration).toBe(false);
+    expect(perms.canUseNlq).toBe(false);
+    expect(perms.canUseOtherTools).toBe(false);
+  });
+
+  it("does not fetch user permissions without an authenticated user", async () => {
+    setup({ isAuthenticated: false });
+    const perms = await getPerms();
+    expect(perms.hasMetabotAccess).toBe(false);
+    expect(
+      fetchMock.callHistory.called(
+        "path:/api/metabot/permissions/user-permissions",
+      ),
+    ).toBe(false);
+  });
+
+  it("returns access booleans but no usage booleans when AI is not configured", async () => {
+    setup({ isConfigured: false });
+    const perms = await getPerms();
+    expect(perms.hasMetabotAccess).toBe(true);
+    expect(perms.hasSqlGenerationAccess).toBe(true);
+    expect(perms.hasNlqAccess).toBe(true);
+    expect(perms.hasOtherToolsAccess).toBe(true);
+    expect(perms.isConfigured).toBe(false);
     expect(perms.canUseMetabot).toBe(false);
     expect(perms.canUseSqlGeneration).toBe(false);
     expect(perms.canUseNlq).toBe(false);
@@ -113,6 +141,7 @@ describe("useUserMetabotPermissions", () => {
       apiResponse: createMockUserMetabotPermissions({ metabot: "no" }),
     });
     const perms = await getPerms();
+    expect(perms.hasMetabotAccess).toBe(false);
     expect(perms.canUseMetabot).toBe(false);
     expect(perms.canUseSqlGeneration).toBe(false);
     expect(perms.canUseNlq).toBe(false);
@@ -126,6 +155,7 @@ describe("useUserMetabotPermissions", () => {
       }),
     });
     const perms = await getPerms();
+    expect(perms.hasSqlGenerationAccess).toBe(false);
     expect(perms.canUseMetabot).toBe(true);
     expect(perms.canUseSqlGeneration).toBe(false);
     expect(perms.canUseNlq).toBe(true);
@@ -137,6 +167,7 @@ describe("useUserMetabotPermissions", () => {
       apiResponse: createMockUserMetabotPermissions({ "metabot-nlq": "no" }),
     });
     const perms = await getPerms();
+    expect(perms.hasNlqAccess).toBe(false);
     expect(perms.canUseMetabot).toBe(true);
     expect(perms.canUseSqlGeneration).toBe(true);
     expect(perms.canUseNlq).toBe(false);
@@ -150,6 +181,7 @@ describe("useUserMetabotPermissions", () => {
       }),
     });
     const perms = await getPerms();
+    expect(perms.hasOtherToolsAccess).toBe(false);
     expect(perms.canUseMetabot).toBe(true);
     expect(perms.canUseSqlGeneration).toBe(true);
     expect(perms.canUseNlq).toBe(true);

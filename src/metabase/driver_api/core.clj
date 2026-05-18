@@ -167,8 +167,8 @@
  qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation
  qp.util/default-query->remark
  qp.util/query->remark
- qp.wrap-value-literals/unwrap-value-literal
  qp.wrap-value-literals/wrap-value-literals-in-mbql
+ qp.wrap-value-literals/wrap-value-literals-in-mbql5
  qp.writeback/execute-write-sql!
  qp/process-query
  secrets/clean-secret-properties-from-details
@@ -202,6 +202,7 @@
 (p/import-def qp.error-type/invalid-query qp.error-type.invalid-query)
 (p/import-def qp.error-type/missing-required-parameter qp.error-type.missing-required-parameter)
 (p/import-def qp.error-type/qp qp.error-type.qp)
+(p/import-def qp.error-type/unable-to-acquire-connection qp.error-type.unable-to-acquire-connection)
 (p/import-def qp.error-type/unsupported-feature qp.error-type.unsupported-feature)
 
 (def schema.common.non-blank-string

@@ -64,9 +64,7 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
       readDependencies: ["gauge.segments"],
     },
     "gauge.segments": {
-      get section() {
-        return t`Ranges`;
-      },
+      getSection: () => t`Ranges`,
       getDefault(series) {
         let value = 100;
         try {

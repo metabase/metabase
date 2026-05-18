@@ -1,8 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
+import { getGroupNameLocalized } from "metabase/admin/utils/groups";
 import type { State } from "metabase/redux/store";
-import { getGroupNameLocalized } from "metabase/utils/groups";
 import type { Group } from "metabase-types/api";
 
 import type { PermissionsSidebarContentProps } from "../../components/PermissionsSidebar/PermissionsSidebarContent";

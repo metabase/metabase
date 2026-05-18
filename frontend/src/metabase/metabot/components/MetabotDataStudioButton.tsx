@@ -16,12 +16,12 @@ import { trackMetabotChatOpened } from "../analytics";
 import { MetabotIcon } from "./MetabotIcon";
 
 export const MetabotDataStudioButton = () => {
-  const { canUseMetabot } = useUserMetabotPermissions();
+  const { hasMetabotAccess } = useUserMetabotPermissions();
   const metabot = useMetabotAgent("omnibot");
   const metabotName = useMetabotName();
   const location = useSelector(getLocation);
 
-  if (!canUseMetabot) {
+  if (!hasMetabotAccess) {
     return null;
   }
 

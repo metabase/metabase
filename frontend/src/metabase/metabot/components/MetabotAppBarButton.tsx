@@ -20,11 +20,11 @@ export function MetabotAppBarButton({
   className,
   ...rest
 }: MetabotAppBarButtonProps) {
-  const { canUseMetabot } = useUserMetabotPermissions();
+  const { hasMetabotAccess } = useUserMetabotPermissions();
   const metabot = useMetabotAgent("omnibot");
   const metabotName = useMetabotName();
 
-  if (!canUseMetabot) {
+  if (!hasMetabotAccess) {
     return null;
   }
 

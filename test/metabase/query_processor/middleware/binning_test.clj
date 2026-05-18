@@ -1,5 +1,7 @@
 (ns metabase.query-processor.middleware.binning-test
   "There are more 'e2e' tests related to binning in [[metabase.query-processor.breakout-test]]."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.binning-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.middleware.binning-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]

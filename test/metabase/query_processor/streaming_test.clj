@@ -1,4 +1,5 @@
 (ns metabase.query-processor.streaming-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.streaming-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.data.csv :as csv]

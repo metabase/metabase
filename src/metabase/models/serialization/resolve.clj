@@ -69,6 +69,14 @@
        (or (entity-id? s)
            (identity-hash? s))))
 
+(defn serialized-query-source-table
+  "Given a serialized query (with portable references), returns the portable reference of the table it is based
+  on. Measures and segments use this to omit the table_id property when it is derivable from the query. This should be
+  an mbql query and not a native query."
+  [serialized-query]
+  (mu/disable-enforcement
+    (lib/primary-source-table-id serialized-query)))
+
 ;;; ============================================================
 ;;; import-mbql — depends only on protocols, match, lib.schema.id
 ;;; ============================================================

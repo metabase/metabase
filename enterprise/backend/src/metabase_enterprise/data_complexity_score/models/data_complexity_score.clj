@@ -20,21 +20,25 @@
 
 (defn latest-entry
   "Return the most recently persisted Data Complexity Score row for `fingerprint`, or nil if none exist."
-  [fingerprint]
-  (t2/select-one :model/DataComplexityScore :fingerprint fingerprint {:order-by [[:id :desc]]}))
+  ([fingerprint] (latest-entry fingerprint "appdb"))
+  ([fingerprint source]
+   (t2/select-one :model/DataComplexityScore
+                  :fingerprint fingerprint :source source {:order-by [[:id :desc]]})))
 
 (defn latest-score
   "Return the latest persisted Data Complexity Score payload for `fingerprint`, or nil if none exist."
-  [fingerprint]
-  (some-> (latest-entry fingerprint)
-          score-with-calculated-at))
+  ([fingerprint] (latest-score fingerprint "appdb"))
+  ([fingerprint source]
+   (some-> (latest-entry fingerprint source)
+           score-with-calculated-at)))
 
 (defn record-score!
   "Persist one append-only Data Complexity Score snapshot."
-  [fingerprint score]
+  [fingerprint source score]
   (let [id (t2/insert-returning-pk! :model/DataComplexityScore
                                     {:fingerprint fingerprint
+                                     :source      source
                                      :score_data  score})]
     (if id
       (score-with-calculated-at (t2/select-one :model/DataComplexityScore :id id))
-      (latest-score fingerprint))))
+      (latest-score fingerprint source))))

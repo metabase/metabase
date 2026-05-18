@@ -80,3 +80,10 @@ export function extractCollectionId(slug = ""): CollectionId | undefined {
   }
   return extractEntityId(slug);
 }
+
+export function extractCollectionIdFromPath(
+  path: string,
+): CollectionId | undefined {
+  const match = path.match(/^\/collection\/([^/]+)/);
+  return match ? extractCollectionId(match[1]) : undefined;
+}

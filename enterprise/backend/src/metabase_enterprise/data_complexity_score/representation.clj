@@ -29,7 +29,10 @@
    [metabase.util.json :as json]
    [metabase.util.yaml :as yaml])
   (:import
-   (java.io File)))
+   (java.io File)
+   (java.nio.file Files)
+   (java.nio.file OpenOption)
+   (java.security DigestInputStream MessageDigest)))
 
 (set! *warn-on-reflection* true)
 
@@ -201,10 +204,55 @@
     (let [default (io/file dir "embeddings.json")]
       (if (.exists default) (json/decode (slurp default) false) {}))))
 
+;;; ------------------------------------------- directory digest -------------------------------------------
+
+(defn- sha256-bytes ^bytes [^bytes input]
+  (.digest (MessageDigest/getInstance "SHA-256") input))
+
+(defn- hex [^bytes bs]
+  (let [sb (StringBuilder. (* 2 (alength bs)))]
+    (dotimes [i (alength bs)]
+      (.append sb (format "%02x" (bit-and (aget bs i) 0xff))))
+    (.toString sb)))
+
+(def ^:private ^"[Ljava.nio.file.OpenOption;" no-open-options
+  (make-array OpenOption 0))
+
+(defn- sha256-file-hex
+  "SHA-256 of a file's bytes, streamed in 64 KiB chunks to keep large exports off the heap."
+  [^File f]
+  (let [md  (MessageDigest/getInstance "SHA-256")
+        buf (byte-array 65536)]
+    (with-open [^DigestInputStream is (DigestInputStream. (Files/newInputStream (.toPath f) no-open-options) md)]
+      (while (not= -1 (.read is buf))))
+    (hex (.digest md))))
+
+(defn dir-digest
+  "Stable SHA-256 over the file contents of `dir`.
+  Two directories with byte-identical files at the same relative paths produce the same digest.
+  Used as the `<digest>` part of the `source` column on `data_complexity_score` rows.
+
+  Relative paths are joined with `/` regardless of the host OS so that a digest computed on
+  Linux/macOS matches one computed on Windows for the same export."
+  [dir]
+  (let [dir-file (io/file dir)
+        root     (.toPath dir-file)
+        entries  (->> (file-seq dir-file)
+                      (filter #(.isFile ^File %))
+                      (map (fn [^File f]
+                             [(->> (.relativize root (.toPath f))
+                                   .iterator
+                                   iterator-seq
+                                   (map str)
+                                   (str/join "/"))
+                              (sha256-file-hex f)]))
+                      (sort-by first))]
+    (hex (sha256-bytes (.getBytes (pr-str entries) "UTF-8")))))
+
 ;;; ------------------------------------------- public entry point -------------------------------------------
 
 (defn load-dir
-  "Load a serdes export and return `{:library :universe :embedder}` for the complexity scorer.
+  "Load a serdes export and return `{:library :universe :embedder :digest}` for the complexity scorer.
 
   Filters mirror the live appdb scorer:
     - Universe Cards : `type ∈ {metric model}`, not archived
@@ -243,4 +291,5 @@
                             (mapv ->table-entity (filter library-table? tables))))
      :universe (vec (concat (mapv ->card-entity  (filter universe-card?  cards))
                             (mapv ->table-entity (filter universe-table? tables))))
-     :embedder (embedders/file-embedder embeddings)}))
+     :embedder (embedders/file-embedder embeddings)
+     :digest   (dir-digest dir-file)}))

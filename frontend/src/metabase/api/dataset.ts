@@ -29,8 +29,42 @@ interface IgnorableError {
   ignore_error?: boolean;
 }
 
+export type DownloadDatasetArgs = {
+  method: "GET" | "POST";
+  url: string;
+  body?: Record<string, unknown>;
+};
+
 export const datasetApi = Api.injectEndpoints({
   endpoints: (builder) => ({
+    downloadDataset: builder.mutation<Response, DownloadDatasetArgs>({
+      query: ({ method, url, body }) => {
+        if (method === "POST") {
+          // BE expects the body to be form-encoded :(
+          const formData = new URLSearchParams();
+          if (body != null) {
+            for (const key in body) {
+              formData.append(key, JSON.stringify(body[key]));
+            }
+          }
+          return {
+            method: "POST",
+            url,
+            body: { formData },
+            formData: true,
+            fetch: true,
+            transformResponse: ({ response }: { response: Response }) =>
+              response,
+          };
+        }
+        return {
+          method: "GET",
+          url,
+          fetch: true,
+          transformResponse: ({ response }: { response: Response }) => response,
+        };
+      },
+    }),
     getAdhocQuery: builder.query<
       Dataset,
       DatasetQuery & RefetchDeps & IgnorableError
@@ -97,6 +131,7 @@ export const datasetApi = Api.injectEndpoints({
 });
 
 export const {
+  useDownloadDatasetMutation,
   useGetAdhocQueryQuery,
   useLazyGetAdhocQueryQuery,
   useGetAdhocPivotQueryQuery,

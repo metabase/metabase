@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.parameters-test
   "Testings to make sure the parameter substitution middleware works as expected. Even though the below tests are
   SQL-specific, they still confirm that the middleware itself is working correctly."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.parameters-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

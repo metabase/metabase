@@ -192,13 +192,13 @@
       (sql.helpers/where where-clause)))
 
 (defn- spec-index-reducible [search-model & [where-clause]]
+  ;; Joins in the spec (e.g. card → revision on most_recent = true) can produce duplicate rows when the
+  ;; joined side has its own integrity violations. Downstream upserts hit a unique constraint on
+  ;; (model, model_id), so dedup here at the streaming boundary — bounded by per-model row count.
   (->> (spec-index-query-where search-model where-clause)
        mdb/streaming-reducible-query
-       (eduction (cond-> (map #(assoc % :model search-model))
-                   ;; It's possible to get redundant entries from the indexed-entities table.
-                   ;; We deduplicate only that model to avoid an unbounded set over all documents.
-                   (= "indexed-entity" search-model)
-                   (comp (m/distinct-by (juxt :id :model)))))))
+       (eduction (comp (map #(assoc % :model search-model))
+                       (m/distinct-by (juxt :id :model))))))
 
 (defn- search-items-reducible []
   (reduce u/rconcat [] (map spec-index-reducible search.spec/search-models)))

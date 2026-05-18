@@ -1,5 +1,6 @@
 (ns metabase.collections-rest.api-test
   "Tests for /api/collection endpoints."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.collections-rest.api-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]

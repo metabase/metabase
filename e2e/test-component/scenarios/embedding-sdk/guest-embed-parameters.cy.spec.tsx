@@ -415,6 +415,71 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
         });
       });
     });
+
+    it("should apply controllable `sqlParameters` alongside a locked parameter", () => {
+      signInAsAdminAndSetupGuestEmbedding({
+        token: "starter",
+      });
+
+      createNativeQuestion(
+        {
+          name: "Orders native question",
+          native: {
+            query:
+              "SELECT * FROM ORDERS JOIN PEOPLE ON ORDERS.USER_ID = PEOPLE.ID WHERE {{quantity}} AND {{product_id_fk}} AND {{user_id_pk}}",
+            "template-tags": TEMPLATE_TAGS,
+          },
+          parameters: PARAMETERS,
+          enable_embedding: true,
+          embedding_params: {
+            quantity: "enabled",
+            product_id_fk: "locked",
+            user_id_pk: "enabled",
+          },
+        },
+        {
+          wrapId: true,
+        },
+      );
+
+      cy.signOut();
+
+      cy.intercept("GET", "/api/embed/card/*/params/*/values").as(
+        "parameterValuesApiRequest",
+      );
+
+      cy.get("@questionId").then(async (questionId) => {
+        const token = await getSignedJwtForResource({
+          resourceId: questionId as unknown as number,
+          resourceType: "question",
+          params: {
+            product_id_fk: 1,
+          },
+        });
+
+        mountGuestEmbedQuestion(
+          {
+            token,
+            sqlParameters: { user_id_pk: "74" },
+          },
+          {
+            shouldAssertCardQuery: false,
+          },
+        );
+
+        getSdkRoot().within(() => {
+          cy.findAllByTestId("parameter-widget").should("have.length", 2);
+
+          cy.findAllByTestId("parameter-widget")
+            .filter(':contains("PK->Name")')
+            .should("contain.text", "74");
+
+          cy.findByTestId("table-body")
+            .findAllByRole("row")
+            .should("have.length", 1);
+        });
+      });
+    });
   });
 
   describe("dashboard", () => {
@@ -830,6 +895,99 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
 
         cy.get("@parameterRemappingApiRequest.all").then((interceptions) => {
           expect(interceptions).to.have.length.greaterThan(0);
+        });
+      });
+    });
+
+    it("should apply controllable `parameters` alongside a locked parameter", () => {
+      signInAsAdminAndSetupGuestEmbedding({
+        token: "starter",
+      });
+
+      createNativeQuestionAndDashboard({
+        questionDetails: {
+          name: "Orders native question",
+          native: {
+            query:
+              "SELECT * FROM ORDERS JOIN PEOPLE ON ORDERS.USER_ID = PEOPLE.ID WHERE {{quantity}} AND {{product_id_fk}} AND {{user_id_pk}}",
+            "template-tags": TEMPLATE_TAGS,
+          },
+        },
+        dashboardDetails: {
+          name: "Embedding SDK Test Dashboard",
+          embedding_type: "guest-embed",
+          parameters: PARAMETERS,
+          enable_embedding: true,
+          embedding_params: {
+            quantity: "enabled",
+            product_id_fk: "locked",
+            user_id_pk: "enabled",
+          },
+        },
+      }).then(({ body: { id: dashcardId, card_id, dashboard_id } }) => {
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
+            {
+              id: dashcardId,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 16,
+              size_y: 8,
+              parameter_mappings: [
+                {
+                  parameter_id: "quantity",
+                  card_id,
+                  target: ["dimension", ["template-tag", "quantity"]],
+                },
+                {
+                  parameter_id: "product_id_fk",
+                  card_id,
+                  target: ["dimension", ["template-tag", "product_id_fk"]],
+                },
+                {
+                  parameter_id: "user_id_pk",
+                  card_id,
+                  target: ["dimension", ["template-tag", "user_id_pk"]],
+                },
+              ],
+            },
+          ],
+        });
+
+        cy.wrap(dashboard_id).as("dashboardId");
+      });
+
+      cy.signOut();
+
+      cy.intercept("GET", "/api/embed/dashboard/*/params/*/values").as(
+        "parameterValuesApiRequest",
+      );
+
+      cy.get("@dashboardId").then(async (dashboardId) => {
+        const token = await getSignedJwtForResource({
+          resourceId: dashboardId as unknown as number,
+          resourceType: "dashboard",
+          params: {
+            product_id_fk: 1,
+          },
+        });
+
+        mountGuestEmbedDashboard({
+          token,
+          parameters: { user_id_pk: "74" },
+        });
+
+        getSdkRoot().within(() => {
+          cy.findAllByTestId("parameter-widget").should("have.length", 2);
+
+          cy.findAllByTestId("parameter-widget")
+            .filter(':contains("PK->Name")')
+            .should("contain.text", "74");
+
+          cy.findByTestId("table-body")
+            .findAllByRole("row")
+            .should("have.length", 1);
         });
       });
     });

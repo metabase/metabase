@@ -49,17 +49,18 @@ const setup = ({
   collections: Collection[];
   hasRootAccess?: boolean;
 }) => {
-  setupCollectionByIdEndpoint({ collections });
+  const allCollections = [
+    createMockCollection({
+      id: "root",
+      name: "Our analytics",
+      can_write: hasRootAccess,
+    }),
+    ...collections,
+  ];
+  setupCollectionByIdEndpoint({ collections: allCollections });
 
   const entitiesState = createMockEntitiesState({
-    collections: [
-      createMockCollection({
-        id: "root",
-        name: "Our analytics",
-        can_write: hasRootAccess,
-      }),
-      ...collections,
-    ],
+    collections: allCollections,
   });
   const state = createMockState({ currentUser: user, entities: entitiesState });
 

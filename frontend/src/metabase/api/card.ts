@@ -16,9 +16,12 @@ import type {
   GetPublicCard,
   GetRemappedCardParameterValueRequest,
   ListCardsRequest,
+  ParameterId,
+  ParameterValues,
   UpdateCardKeyRequest,
   UpdateCardRequest,
 } from "metabase-types/api";
+import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import { Api } from "./api";
 import {
@@ -35,6 +38,16 @@ import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
 import { handleQueryFulfilled } from "./utils/lifecycle";
 
 const PERSISTED_MODEL_REFRESH_DELAY = 200;
+
+export type CardParameterValuesRequest = {
+  cardId?: CardId | EntityToken;
+  entityIdentifier?: EntityUuid | EntityToken | null;
+  paramId: ParameterId;
+};
+
+export type SearchCardParameterValuesRequest = CardParameterValuesRequest & {
+  query: string;
+};
 
 export const cardApi = Api.injectEndpoints({
   endpoints: (builder) => {
@@ -95,6 +108,39 @@ export const cardApi = Api.injectEndpoints({
         }),
         providesTags: (_data, _error, { cardId }) =>
           provideCardQueryTags(cardId),
+      }),
+      getCardQueryPivot: builder.query<Dataset, CardQueryRequest>({
+        query: ({ cardId, ...body }) => ({
+          method: "POST",
+          url: `/api/card/pivot/${cardId}/query`,
+          body,
+        }),
+        providesTags: (_data, _error, { cardId }) =>
+          provideCardQueryTags(cardId),
+      }),
+      getCardParameterValues: builder.query<
+        ParameterValues,
+        CardParameterValuesRequest
+      >({
+        query: (params) => ({
+          method: "GET",
+          url: "/api/card/:cardId/params/:paramId/values",
+          params,
+        }),
+        providesTags: (_response, _error, { paramId }) =>
+          provideParameterValuesTags(paramId),
+      }),
+      searchCardParameterValues: builder.query<
+        ParameterValues,
+        SearchCardParameterValuesRequest
+      >({
+        query: (params) => ({
+          method: "GET",
+          url: "/api/card/:cardId/params/:paramId/search/:query",
+          params,
+        }),
+        providesTags: (_response, _error, { paramId }) =>
+          provideParameterValuesTags(paramId),
       }),
       getRemappedCardParameterValue: builder.query<
         FieldValue,
@@ -327,6 +373,10 @@ export const {
   useGetCardQueryMetadataQuery,
   useGetCardQueryQuery,
   useLazyGetCardQueryQuery,
+  useGetCardQueryPivotQuery,
+  useLazyGetCardQueryPivotQuery,
+  useGetCardParameterValuesQuery,
+  useSearchCardParameterValuesQuery,
   useGetRemappedCardParameterValueQuery,
   useCreateCardMutation,
   useUpdateCardMutation,
