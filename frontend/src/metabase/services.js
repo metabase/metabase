@@ -264,14 +264,6 @@ export const AutoApi = {
 };
 
 export const MetabaseApi = {
-  tableAppendCSV: POST("/api/table/:tableId/append-csv", {
-    formData: true,
-    fetch: true,
-  }),
-  tableReplaceCSV: POST("/api/table/:tableId/replace-csv", {
-    formData: true,
-    fetch: true,
-  }),
   dataset: POST("/api/dataset"),
   dataset_pivot: POST("/api/dataset/pivot"),
 };
