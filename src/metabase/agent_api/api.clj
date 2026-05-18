@@ -209,26 +209,34 @@
    [:statistics {:optional true} [:maybe ::statistics]]
    [:values {:optional true} [:maybe [:sequential :any]]]])
 
-(def ^:private agent-database-projection
-  "Allowlist of database fields exposed to LLM agents. Explicit deny-by-default;
-   extending requires updating this vector AND `::database` (closed schema). The
-   test [[metabase.agent-api.api-test/list-databases-test]] asserts set equality
-   on response keys, so accidental additions fail loudly."
-  [:id :name :engine :description :is_sample :is_attached_dwh :created_at :updated_at])
+(def ^:private agent-database-fields
+  "Single source of truth for the LLM-safe database allowlist. Each entry is a Malli
+   `:map` child — `[key schema]` (required) or `[key {:optional true} schema]`
+   (optional). Drives both the `::database` Malli schema (`into [:map ...]` below) and
+   [[->agent-database]]'s `select-keys` projection (via [[agent-database-projection]]).
 
-(mr/def ::database
-  "LLM-safe database summary. Never includes connection details (credentials),
-   settings, sync schedules, or routing config. Allowlist enforced by `:closed`
-   plus the [[->agent-database]] projection — defense in depth."
-  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en) :closed true}
-   [:id :int]
-   [:name :string]
-   [:engine :string]
+   Anything not listed here is rejected by the `:closed` schema. Fields with
+   security implications (e.g. `details`, `settings`, `metadata_sync_schedule`,
+   `router_database_id`) are deliberately absent."
+  [[:id              :int]
+   [:name            :string]
+   [:engine          :string]
    [:description     {:optional true} [:maybe :string]]
    [:is_sample       {:optional true} [:maybe :boolean]]
    [:is_attached_dwh {:optional true} [:maybe :boolean]]
    [:created_at      {:optional true} [:maybe :any]]
    [:updated_at      {:optional true} [:maybe :any]]])
+
+(def ^:private agent-database-projection
+  "Allowlist vector derived from [[agent-database-fields]] — used by
+   [[->agent-database]] to drop everything outside the schema before serialization."
+  (mapv first agent-database-fields))
+
+(mr/def ::database
+  "LLM-safe database summary. Schema is generated from [[agent-database-fields]];
+   `:closed true` rejects any field not in that allowlist."
+  (into [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en) :closed true}]
+        agent-database-fields))
 
 (mr/def ::database-list-response
   "Response shape for listing databases visible to the current user."
