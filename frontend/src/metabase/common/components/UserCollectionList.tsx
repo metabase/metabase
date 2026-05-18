@@ -1,5 +1,4 @@
 import { useListUsersQuery } from "metabase/api/user";
-import { CollectionListView } from "metabase/common/components/CollectionListView";
 import {
   PERSONAL_COLLECTIONS,
   ROOT_COLLECTION,
