@@ -160,9 +160,15 @@ export function createWaitForResizeToStopDecorator(timeoutMs: number = 1000) {
  * `visualization-root` nodes, then settle for `settleMs` so charts can
  * finish their entry animation before the screenshot.
  *
- * `timeoutMs` is a hard cap: the Loki async callback always resolves, so
- * a story that never renders its chart fails loudly with a screenshot
- * instead of hanging the run.
+ * Polling uses `setTimeout`, not `requestAnimationFrame`: rAF does not
+ * fire reliably in Loki's headless Chrome, which would strand the async
+ * callback and hang the run. For the same reason the callback is fired
+ * exactly once and is also flushed on unmount — a never-resolved Loki
+ * async callback crashes the whole test run, not just one story.
+ *
+ * `timeoutMs` is a hard cap: the callback always resolves, so a story
+ * that never renders its chart fails loudly with a screenshot instead
+ * of hanging.
  */
 export function createWaitForChartsDecorator({
   count,
@@ -178,8 +184,17 @@ export function createWaitForChartsDecorator({
 
     useEffect(() => {
       const startedAt = Date.now();
-      let frameId = 0;
+      let pollTimer: ReturnType<typeof setTimeout> | undefined;
       let settleTimer: ReturnType<typeof setTimeout> | undefined;
+      let resolved = false;
+
+      const resolve = () => {
+        if (resolved) {
+          return;
+        }
+        resolved = true;
+        asyncCallback();
+      };
 
       const poll = () => {
         const renderedCount = document.querySelectorAll(
@@ -188,18 +203,19 @@ export function createWaitForChartsDecorator({
         const timedOut = Date.now() - startedAt > timeoutMs;
 
         if (renderedCount >= count || timedOut) {
-          settleTimer = setTimeout(asyncCallback, settleMs);
+          settleTimer = setTimeout(resolve, settleMs);
           return;
         }
-        frameId = requestAnimationFrame(poll);
+        pollTimer = setTimeout(poll, 100);
       };
-      frameId = requestAnimationFrame(poll);
+      poll();
 
       return () => {
-        cancelAnimationFrame(frameId);
-        if (settleTimer != null) {
-          clearTimeout(settleTimer);
-        }
+        clearTimeout(pollTimer);
+        clearTimeout(settleTimer);
+        // Never leave the Loki async callback unresolved, even if the
+        // story unmounts mid-wait — an orphaned callback hangs the run.
+        resolve();
       };
     }, [asyncCallback]);
 
