@@ -13,6 +13,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.session.models.session :as session.models]
@@ -286,6 +288,49 @@
             "Superuser sees the blocked DB (superuser short-circuit)")
         (is (not (contains? user-ids db-id))
             "Rasta MUST NOT see a DB she has zero data-permissions on")))))
+
+(deftest list-databases-partial-visibility-test
+  (testing "User sees only the DBs she has permission for, not all the temp DBs in the test run"
+    ;; The real-world scenario: a user's group has access to DB A but not DB B.
+    ;; `list_databases` must return A and omit B — proving the perm-filter partitions
+    ;; visibility per-database, not all-or-nothing.
+    (mt/with-temp [:model/Database {db-a-id :id} {:name   "agent-api-partial-vis-db-A"
+                                                  :engine :h2}
+                   :model/Database {db-b-id :id} {:name   "agent-api-partial-vis-db-B"
+                                                  :engine :h2}]
+      ;; Wipe defaults on both, then grant data-access ONLY on A. B is left with zero grants.
+      (t2/delete! :model/DataPermissions :db_id db-a-id)
+      (t2/delete! :model/DataPermissions :db_id db-b-id)
+      (data-perms/set-database-permission! (perms-group/all-users) db-a-id
+                                           :perms/view-data :unrestricted)
+      (data-perms/set-database-permission! (perms-group/all-users) db-a-id
+                                           :perms/create-queries :query-builder)
+      (let [user-ids  (->> (mt/user-http-request :rasta :get 200 "agent/v1/database")
+                           :data (map :id) set)
+            admin-ids (->> (mt/user-http-request :crowberto :get 200 "agent/v1/database")
+                           :data (map :id) set)]
+        (is (contains? user-ids db-a-id) "Rasta sees DB A (granted)")
+        (is (not (contains? user-ids db-b-id)) "Rasta MUST NOT see DB B (no grants)")
+        (testing "superuser still sees both — confirms the test fixtures, not just denial"
+          (is (contains? admin-ids db-a-id))
+          (is (contains? admin-ids db-b-id)))))))
+
+(deftest list-databases-metadata-only-perms-test
+  (testing "A user with ONLY :perms/manage-table-metadata sees the DB (no data-access required)"
+    ;; Positive test for the `manage-table-metadata` OR-branch in
+    ;; `warehouses/visible-databases`. Wipe defaults, grant only that one perm to All
+    ;; Users — rasta (in All Users) has zero data-access but should still see the DB.
+    ;; Without this test a typo like `:perms/manage-table-metadata :no` in the OR clause
+    ;; would silently pass every other test.
+    (mt/with-temp [:model/Database {db-id :id} {:name   "agent-api-metadata-only-db"
+                                                :engine :h2}]
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      (data-perms/set-database-permission! (perms-group/all-users) db-id
+                                           :perms/manage-table-metadata :yes)
+      (let [user-ids (->> (mt/user-http-request :rasta :get 200 "agent/v1/database")
+                          :data (map :id) set)]
+        (is (contains? user-ids db-id)
+            "Rasta should see a DB she can only edit table metadata on")))))
 
 (deftest get-database-blocked-perms-test
   (testing "`api/read-check` denies `/v1/database/:id` for a DB the user cannot access"
