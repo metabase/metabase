@@ -42,7 +42,7 @@
     (is (true? (transforms-base.u/first-incremental-run?
                 {:target {:type :table-incremental} :last_checkpoint_value nil})))))
 
-(deftest checkpoint-span-attrs-test
+(deftest ^:parallel checkpoint-span-attrs-test
   (testing "nil source-range-params yields an empty attrs map"
     (is (= {} (transforms-base.u/checkpoint-span-attrs nil))))
   (testing "field-id only (no lo/hi) yields just :transform/checkpoint-field-id"
