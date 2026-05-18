@@ -86,6 +86,11 @@
    (reset! listener/*listeners* {}))
   ([{:keys [prev-queue-be prev-topic-be queue-be topic-be
             owns-buffer-flush? owns-worker-pool?]}]
+   ;; Always force-drain the (currently bound) publish buffer so test fixtures that bound a
+   ;; fresh `*publish-buffer*` don't lose buffered messages when their teardown runs without
+   ;; owning the global flush executor. The executor itself is only shut down if THIS call
+   ;; started it.
+   (publish-buffer/flush-publish-buffer! true)
    (when owns-buffer-flush? (publish-buffer/stop-publish-buffer-flush!))
    (when queue-be (q.backend/shutdown! queue-be))
    (when topic-be (topic.backend/shutdown! topic-be))

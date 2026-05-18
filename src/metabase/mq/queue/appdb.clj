@@ -34,10 +34,38 @@
 
 ;;; ------------------------------------------- Fetch -------------------------------------------
 
+(defn- fetch-one-pending!
+  "Selects and locks the oldest pending row for a single queue, marks it 'processing' with
+  the given owner, and returns the original row map. Returns nil if no pending row exists
+  or the row at the head of the queue is locked by another transaction (FOR UPDATE SKIP
+  LOCKED). Must be called inside an open transaction so the row lock survives the UPDATE."
+  [conn queue-name owner-id]
+  (when-let [row (first (t2/query conn {:select   [:*]
+                                        :from     [:queue_message_batch]
+                                        :where    [:and
+                                                   [:= :queue_name (name queue-name)]
+                                                   [:= :status "pending"]]
+                                        :order-by [[:id :asc]]
+                                        :limit    1
+                                        :for      (for-update-clause)}))]
+    (t2/query conn {:update [:queue_message_batch]
+                    :set    {:status_heartbeat (mi/now)
+                             :status           "processing"
+                             :owner            owner-id}
+                    :where  [:= :id (:id row)]})
+    row))
+
 (defn- fetch!
   "Fetches the oldest pending row for each of the given queue names.
-  Returns a seq of maps with :batch-id, :queue, and :messages keys, or nil if no messages are available.
-  Selects one row per queue, marks them all as 'processing', and returns them — all within one transaction."
+  Returns a seq of maps with :batch-id, :queue, and :messages keys, or nil if no messages
+  are available.
+
+  Implemented as a per-queue loop inside one transaction rather than a single LATERAL query
+  for cross-database portability — Postgres, MySQL 8+, and H2 support LATERAL but MariaDB
+  does not. Each per-queue SELECT uses FOR UPDATE SKIP LOCKED so concurrent consumers each
+  get a different row instead of all contending on the same head-of-queue. The cost is N
+  small queries per iteration; in practice N is the number of registered queue listeners,
+  which is small."
   [owner-id queue-names]
   (when (seq queue-names)
     (let [exclusive-names (q.impl/exclusive-queue-names)]
@@ -55,33 +83,14 @@
                                 (remove #(contains? blocked-queues (name %)) queue-names)
                                 queue-names)]
           (when (seq fetchable-names)
-            ;; For each queue, pick the oldest pending row that isn't already locked by another
-            ;; node. The LATERAL subquery applies FOR UPDATE SKIP LOCKED to the per-queue scan,
-            ;; so concurrent consumers each get a different row instead of all contending on the
-            ;; same head-of-queue.
-            (let [name-rows (mapv (fn [n] [[:inline (name n)]]) fetchable-names)
-                  rows      (t2/query conn {:select [:q.*]
-                                            :from   [[{:values name-rows} [:qn {:columns [:queue_name]}]]
-                                                     [[:lateral {:select   [:*]
-                                                                 :from     [:queue_message_batch]
-                                                                 :where    [:and
-                                                                            [:= :queue_name :qn.queue_name]
-                                                                            [:= :status "pending"]]
-                                                                 :order-by [[:id :asc]]
-                                                                 :limit    1
-                                                                 :for      (for-update-clause)}]
-                                                      :q]]})]
-              (when (seq rows)
-                (t2/query conn {:update [:queue_message_batch]
-                                :set    {:status_heartbeat (mi/now)
-                                         :status           "processing"
-                                         :owner            owner-id}
-                                :where  [:in :id (mapv :id rows)]})
-                (mapv (fn [row]
-                        {:batch-id (:id row)
-                         :queue     (keyword "queue" (:queue_name row))
-                         :messages  (json/decode (:messages row))})
-                      rows)))))))))
+            (let [batches (into []
+                                (keep (fn [qn]
+                                        (when-let [row (fetch-one-pending! conn qn owner-id)]
+                                          {:batch-id (:id row)
+                                           :queue     (keyword "queue" (:queue_name row))
+                                           :messages  (json/decode (:messages row))})))
+                                fetchable-names)]
+              (when (seq batches) batches))))))))
 
 (defn- recover-stale-processing-batches!
   "Recovers processing batches whose heartbeat is older than the stale timeout. Returns the
