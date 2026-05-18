@@ -5,7 +5,7 @@ import * as Urls from "metabase/urls";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 // Models that participate in the trash lifecycle (restore + permanent delete).
-// A superset of ArchivableItem.model exists in metabase/common/hooks/use-set-archive.ts —
+// A superset of ArchivableItem.model exists in metabase/archive/hooks/use-set-archive.ts —
 // items like snippets and timelines can be archived but not surfaced in the trash UI.
 export const TRASHABLE_MODELS_ARRAY = [
   "card",

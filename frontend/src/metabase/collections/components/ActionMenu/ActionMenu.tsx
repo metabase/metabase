@@ -3,10 +3,12 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import {
+  type ArchivableItem,
   isDeletable,
   isRestorable,
   useDeleteItem,
   useRestore,
+  useSetArchive,
 } from "metabase/archive/hooks";
 import { trackCollectionItemBookmarked } from "metabase/collections/analytics";
 import type {
@@ -26,11 +28,9 @@ import {
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { EntityItem } from "metabase/common/components/EntityItem";
 import {
-  type ArchivableItem,
   canMoveItem,
   canPinItem,
   isPinnable,
-  useSetArchive,
   useSetPinned,
 } from "metabase/common/hooks";
 import { useSetCollectionPreview } from "metabase/common/hooks/use-set-collection-preview";

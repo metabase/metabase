@@ -2,14 +2,18 @@ import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { canDelete, useDeleteItem } from "metabase/archive/hooks";
+import {
+  canDelete,
+  useDeleteItem,
+  useSetArchive,
+} from "metabase/archive/hooks";
 import { isRootTrashCollection } from "metabase/collections/utils";
 import {
   BulkActionButton,
   BulkActionDangerButton,
 } from "metabase/common/components/BulkActionBar";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { canMoveItem, useSetArchive } from "metabase/common/hooks";
+import { canMoveItem } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import type { Collection, CollectionItem } from "metabase-types/api";
