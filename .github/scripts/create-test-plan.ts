@@ -2,7 +2,7 @@
 
 import { execFileSync } from "node:child_process";
 
-import { elements, rules } from "../../frontend/lint/module-boundaries";
+import { elements, rules } from "../../frontend/lint/module-boundaries.mjs";
 
 import { TEST_SUITES, createTestPlan } from "./affected-tests";
 
