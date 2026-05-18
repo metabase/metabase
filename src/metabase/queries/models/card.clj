@@ -1464,13 +1464,13 @@
                   :updated-at           true
                   :display-type         :this.display
                   :collection-type      :collection.type
+                  :collection-location  :collection.location
                   :temporal-info        {:fn       extract-temporal-info
                                          :fields   [:dataset_query :query_type]
                                          :provides [:has-temporal-dim :non-temporal-dim-ids]}}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
-                  :collection-location        :collection.location
                   :collection-name            :collection.name
                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
                   :collection-position        true

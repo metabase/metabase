@@ -83,6 +83,17 @@
        (mapcat :fields)
        distinct))
 
+(def legacy-input-excluded-keys
+  "Keys present on the ingestion document `m` that must NOT be encoded into `legacy_input`. These are
+   internal signals (ranking, filtering, ingestion bookkeeping) that the search API response should not
+   surface to clients. Consumers: `metabase.search.ingestion/->document`."
+  ;; `:collection_type` and `:collection_location` deliberately stay IN `legacy_input`:
+  ;; - `metabase.search.impl/serialize` reads `:collection_type` to build the response's `:collection.type`
+  ;; - `metabase.search.impl/add-dataset-collection-hierarchy` reads `:collection_location` to hydrate
+  ;;   `:collection_effective_ancestors`, and the collection-result hydration path reads `:location` from
+  ;;   the toucan instance (which the render-term keeps populated).
+  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :data_layer})
+
 (def attr-types
   "The abstract types of each attribute."
   {:archived                :boolean
@@ -110,6 +121,7 @@
    :is-published            :boolean
    :source-type             :text
    :collection-type         :text
+   :collection-location     :text
    :data-layer              :text})
 
 (def ^:private explicit-attrs
@@ -136,7 +148,8 @@
          :is-published
          :source-type
          :collection-type                                   ;;  indexed for :library scorer (collection.type ∈ library/library-data/library-metrics)
-         :data-layer])                                      ;;  indexed for :final/:internal/:hidden scorers (table.data_layer)
+         :collection-location                               ;;  indexed for :library scorer — lets sub-collections inherit the boost via location-path LIKE
+         :data-layer])                                      ;;  indexed for the :data-layer scorer (table.data_layer; per-tier weights under :data-layer/*)
        distinct
        vec))
 

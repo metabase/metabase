@@ -2,6 +2,7 @@
   (:require
    [clojure.core.memoize :as memoize]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.appdb.index :as search.index]
@@ -39,6 +40,35 @@
                                        (into [:case] cat cases)
                                        1))))
 
+(defn- library-collection-ids
+  "All `:id`s of collections whose `:type` is a library variant (top-level libraries, library-data,
+   library-metrics). Used by `library-score-expr` to find items in library trees via location-path match."
+  []
+  (t2/select-fn-set :id :model/Collection
+                    :type [:in (vec collection/library-collection-types)]))
+
+(defn- library-score-expr
+  "SQL expression for the `:library` scorer. Returns 1 when the row's `collection_id` is itself a
+   library collection (i.e. the row IS a library collection, or is a card/dashboard/table directly
+   parented to one), OR when the row's `collection_location` path contains a library collection id
+   (i.e. the row is inside a sub-collection of a library). Returns 0 otherwise.
+
+   Library ids are queried at scorer build time — there are typically only a handful per instance,
+   so the `OR`-of-LIKEs stays small."
+  []
+  (let [lib-ids (library-collection-ids)]
+    (if (empty? lib-ids)
+      [:inline 0]
+      [:case
+       (into [:or]
+             (concat
+              (for [id lib-ids]
+                [:= :search_index.collection_id [:inline id]])
+              (for [id lib-ids]
+                [:like :search_index.collection_location [:inline (str "%/" id "/%")]])))
+       [:inline 1]
+       :else [:inline 0]])))
+
 (defn base-scorers
   "The default constituents of the search ranking scores."
   [{:keys [search-string] :as search-ctx}]
@@ -63,15 +93,21 @@
                      ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
                      (search.scoring/prefix [:lower :search_index.name] (u/lower-case-en search-string))
                      [:inline 0])
-     :library      [:case
-                    [:or [:= :search_index.collection_type [:inline "library"]]
-                     [:= :search_index.collection_type [:inline "library-data"]]
-                     [:= :search_index.collection_type [:inline "library-metrics"]]]
-                    [:inline 1]
-                    :else [:inline 0]]
-     :final        (search.scoring/equal :search_index.data_layer [:inline "final"])
-     :internal     (search.scoring/equal :search_index.data_layer [:inline "internal"])
-     :hidden       (search.scoring/equal :search_index.data_layer [:inline "hidden"])}))
+     ;; :library matches items directly in library collections AND items in sub-collections of library
+     ;; collections (their immediate `collection_type` is non-library, but their `collection_location`
+     ;; path contains a library collection's id). We resolve library ids at scorer build time — there are
+     ;; usually very few library collections per instance, so the resulting OR-of-LIKEs stays small.
+     :library      (library-score-expr)
+     ;; :data-layer mirrors the :model/* pattern — one scorer, per-tier weights live under :data-layer/*
+     ;; (see metabase.search.config/scorer-param). Final/internal/hidden are mutually exclusive.
+     :data-layer   [:case
+                    [:= :search_index.data_layer [:inline "final"]]
+                    [:inline (or (search.config/scorer-param search-ctx :data-layer :final) 0)]
+                    [:= :search_index.data_layer [:inline "internal"]]
+                    [:inline (or (search.config/scorer-param search-ctx :data-layer :internal) 0)]
+                    [:= :search_index.data_layer [:inline "hidden"]]
+                    [:inline (or (search.config/scorer-param search-ctx :data-layer :hidden) 0)]
+                    :else [:inline 0]]}))
 
 (defenterprise scorers
   "Return the select-item expressions used to calculate the score for each search result."

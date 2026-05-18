@@ -666,9 +666,10 @@
                   :view-count      true
                   :created-at      true
                   :updated-at      true
-                  :is-published    :is_published
-                  :collection-type :collection.type
-                  :data-layer      :data_layer}
+                  :is-published        :is_published
+                  :collection-type     :collection.type
+                  :collection-location :collection.location
+                  :data-layer          :data_layer}
    :search-terms {:name         search.spec/explode-camel-case
                   :display_name true
                   :description  true}
@@ -679,7 +680,6 @@
                   :table-schema               :schema
                   :database-name              :db.name
                   :collection-authority_level :collection.authority_level
-                  :collection-location        :collection.location
                   ;; For published tables with no collection, show "Our analytics" as the collection name
                   :collection-name            [:coalesce :collection.name
                                                [:case

@@ -140,11 +140,7 @@
                         (update :archived boolean)
                         (assoc
                          :display_data (display-data m)
-                         ;; :data_layer is an internal scoring signal (see search.appdb.scoring); it lives on the index
-                         ;; for ranking but should not surface in API responses. (:collection_type is consumed by
-                         ;; metabase.search.impl/serialize to build :collection.type — must stay in legacy_input.)
-                         :legacy_input (json/encode (dissoc m :pinned :view_count :last_viewed_at :native_query :dataset_query
-                                                            :data_layer))
+                         :legacy_input (json/encode (apply dissoc m search.spec/legacy-input-excluded-keys))
                          :searchable_text (searchable-text m)
                          :embeddable_text (embeddable-text m)))]
     (merge fn-results sql-results)))

@@ -73,6 +73,13 @@
   "The value of the `:type` field for collections that only allow metrics."
   "library-metrics")
 
+(def library-collection-types
+  "All library `:type` values — collections users curate as the canonical place to find content.
+   Kept as a set so callers (e.g. search ranking) can enumerate them without hard-coding strings."
+  #{library-collection-type
+    library-data-collection-type
+    library-metrics-collection-type})
+
 (def ^:constant tenant-specific-root-collection-type
   "The value of the `:type` field for root collections that belong to a single tenant"
   "tenant-specific-root-collection")
@@ -2405,20 +2412,24 @@
 
 (search.spec/define-spec "collection"
   {:model        :model/Collection
-   :attrs        {:collection-id   :id
-                  :creator-id      false
-                  :database-id     false
-                  :archived        true
-                  :created-at      true
+   :attrs        {:collection-id       :id
+                  :collection-type     :type
+                  :collection-location :location
+                  :creator-id          false
+                  :database-id         false
+                  :archived            true
+                  :created-at          true
                   ;; intentionally not tracked
-                  :updated-at      false
-                  :collection-type :type}
+                  :updated-at          false}
    :search-terms [:name]
    :render-terms {:archived-directly          true
                   ;; Why not make this a search term? I suspect it was just overlooked before.
                   :description                true
                   :collection_authority_level :authority_level
                   :collection_name            :name
+                  ;; `:location` is read by the toucan2 effective-location hydration when collection
+                  ;; results pass through `metabase.search.impl/add-collection-effective-location`.
+                  ;; Keep the snake_case `location` key flowing alongside the indexed `collection_location`.
                   :location                   true}
    :where [:or [:= :namespace nil]
            [:= :namespace "analytics"]

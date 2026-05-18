@@ -112,9 +112,10 @@
    {:library             100
     :official-collection 80
     :verified            80
-    :final               33
-    :internal            10
-    :hidden              1}})
+    :data-layer          1     ; overall multiplier; per-tier weights live under :data-layer/* below
+    :data-layer/final    33
+    :data-layer/internal 10
+    :data-layer/hidden   1}})
 
 (def ^:private FilterDef
   "A relaxed definition, capturing how we can write the filter - with some fields omitted."

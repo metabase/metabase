@@ -483,7 +483,8 @@
                   :view-count     true
                   :created-at     true
                   :updated-at     true
-                  :collection-type :collection.type}
+                  :collection-type :collection.type
+                  :collection-location :collection.location}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level

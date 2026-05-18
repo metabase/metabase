@@ -24,20 +24,19 @@
            (search.config/filter-default :search.engine/in-place :search-app :filter-items-in-personal-collection)))))
 
 (deftest metabot-weights-test
-  (testing "the :metabot context returns the tuned curation tier weights"
-    (let [w (search.config/weights {:context :metabot})]
-      (is (= 100 (:library w)))
-      (is (= 80  (:official-collection w)))
-      (is (= 80  (:verified w)))
-      (is (= 33  (:final w)))
-      (is (= 10  (:internal w)))
-      (is (= 1   (:hidden w)))))
-  (testing "the :metabot context still inherits :default scorers it doesn't override"
-    (let [defaults (search.config/weights {:context :default})
-          metabot  (search.config/weights {:context :metabot})]
-      (doseq [k [:text :exact :rrf :model :view-count :recency]]
-        (is (= (get defaults k) (get metabot k))
-            (str "Inherited " k " from :default")))))
+  (testing "the :metabot context resolves the tuned curation tier weights and inherits :default"
+    (is (=? {:library             100
+             :official-collection 80
+             :verified            80
+             :data-layer          1
+             :data-layer/final    33
+             :data-layer/internal 10
+             :data-layer/hidden   1
+             ;; sanity check on inherited :default weights — if any of these change in :default,
+             ;; this test will flag whether :metabot still inherits or has overridden them.
+             :text                5
+             :rrf                 500}
+            (search.config/weights {:context :metabot}))))
   (testing "request-level :weights override beats :metabot static weights"
     (is (= 7 (-> (search.config/weights {:context :metabot :weights {:library 7}})
                  :library)))))
