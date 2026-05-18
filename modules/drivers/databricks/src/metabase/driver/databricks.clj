@@ -73,6 +73,9 @@
 
 (defmethod driver/can-connect? :databricks
   [driver details]
+  (when-let [opts (not-empty (:additional-options details))]
+    (when (re-find #"VolumeOperationAllowedLocalPaths" opts)
+      (throw (Exception. "Potentially dangerous keys in connection details"))))
   (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
     (and (catalog-present? jdbc-spec (:catalog details))
          (sql-jdbc.conn/can-connect-with-spec? jdbc-spec))))
