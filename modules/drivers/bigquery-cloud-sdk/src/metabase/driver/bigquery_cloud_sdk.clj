@@ -161,9 +161,9 @@
           :let [dataset-id (.. dataset getDatasetId getDataset)]
           :when ((if logging-schema-exclusions?
                    sql-jdbc.describe-database/include-schema-logging-exclusion
-                   driver.s/include-schema?) inclusion-patterns
-                                             exclusion-patterns
-                                             dataset-id)]
+                   driver.s/include-schema? inclusion-patterns
+                   exclusion-patterns
+                   dataset-id))]
       dataset-id)))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
@@ -1404,56 +1404,101 @@
    from an early failure persist for the duration of the loop, so even after
    the underlying IAM grant propagates, every subsequent check inherits the
    negative-cached state and the loop times out. Per-iteration creation
-   isolates each attempt."
+   isolates each attempt.
+
+   On timeout, throws an `ex-info` with a verbose diagnostic so CI logs
+   immediately show why we gave up: total wait time, ceiling vs Google's
+   documented worst case (7 min for direct IAM policy edits), last GCP error
+   message + class, and a histogram of error classes seen across attempts.
+   See https://docs.cloud.google.com/iam/docs/access-change-propagation."
   [details ^String target-sa-email & {:keys [max-attempts interval-ms]
                                       :or   {max-attempts 120
                                              interval-ms  1000}}]
   (log/info "Waiting for IAM impersonation to be ready...")
-  (let [project-id (get-project-id details)]
-    (loop [attempt 1]
+  (let [project-id (get-project-id details)
+        started-ns (System/nanoTime)]
+    (loop [attempt        1
+           last-error     nil
+           error-classes  {}]
       (log/debugf "Checking impersonation readiness (attempt %d/%d)" attempt max-attempts)
-      (let [result (try
-                     ;; Build fresh credentials each iteration to avoid cached
-                     ;; negative results from earlier attempts.
-                     (let [base-creds   (.createScoped (ws-service-account-credentials details)
-                                                       (doto (java.util.ArrayList.)
-                                                         (.add "https://www.googleapis.com/auth/bigquery")))
-                           impersonated (ImpersonatedCredentials/create
-                                         base-creds
-                                         target-sa-email
-                                         nil  ;; delegates
-                                         (doto (java.util.ArrayList.)
-                                           (.add "https://www.googleapis.com/auth/bigquery"))
-                                         3600)
-                           client       (-> (BigQueryOptions/newBuilder)
-                                            ^BigQueryOptions$Builder (.setCredentials impersonated)
-                                            ^BigQueryOptions$Builder (.setProjectId project-id)
-                                            ^BigQueryOptions (.build)
-                                            ^BigQuery (.getService))]
-                       ;; Try a simple operation - list datasets (limited to 1)
-                       (.listDatasets client project-id (into-array BigQuery$DatasetListOption []))
-                       :ready)
-                     (catch Exception e
-                       (if (or (str/includes? (str (ex-message e)) "permission")
-                               (str/includes? (str (ex-message e)) "403")
-                               (str/includes? (str (ex-message e)) "Access Denied"))
-                         :not-ready
-                         (do
-                           (log/debugf "Unexpected error checking impersonation: %s" (ex-message e))
-                           :not-ready))))]
+      (let [{:keys [status error err-class]}
+            (try
+              ;; Build fresh credentials each iteration to avoid cached
+              ;; negative results from earlier attempts.
+              (let [base-creds   (.createScoped (ws-service-account-credentials details)
+                                                (doto (java.util.ArrayList.)
+                                                  (.add "https://www.googleapis.com/auth/bigquery")))
+                    impersonated (ImpersonatedCredentials/create
+                                  base-creds
+                                  target-sa-email
+                                  nil  ;; delegates
+                                  (doto (java.util.ArrayList.)
+                                    (.add "https://www.googleapis.com/auth/bigquery"))
+                                  3600)
+                    client       (-> (BigQueryOptions/newBuilder)
+                                     ^BigQueryOptions$Builder (.setCredentials impersonated)
+                                     ^BigQueryOptions$Builder (.setProjectId project-id)
+                                     ^BigQueryOptions (.build)
+                                     ^BigQuery (.getService))]
+                ;; Try a simple operation - list datasets (limited to 1)
+                (.listDatasets client project-id (into-array BigQuery$DatasetListOption []))
+                {:status :ready})
+              (catch Exception e
+                (let [msg (str (ex-message e))
+                      cls (cond
+                            (or (str/includes? msg "permission")
+                                (str/includes? msg "403")
+                                (str/includes? msg "Access Denied")) :access-denied
+                            (or (str/includes? msg "DEADLINE_EXCEEDED")
+                                (str/includes? msg "deadline")
+                                (str/includes? msg "timeout"))        :deadline
+                            (str/includes? msg "UNAVAILABLE")         :unavailable
+                            (or (str/includes? msg "UNAUTHENTICATED")
+                                (str/includes? msg "401"))            :unauthenticated
+                            :else                                     :other)]
+                  (when (= cls :other)
+                    (log/debugf "Unexpected error checking impersonation: %s" msg))
+                  {:status :not-ready :error e :err-class cls})))]
         (cond
-          (= result :ready)
-          (log/info "IAM impersonation is ready")
+          (= status :ready)
+          (log/infof "IAM impersonation ready after %d attempt(s) (%.1fs)"
+                     attempt (/ (- (System/nanoTime) started-ns) 1e9))
 
           (>= attempt max-attempts)
-          (throw (ex-info "Timeout waiting for IAM impersonation to propagate"
-                          {:target-sa target-sa-email
-                           :attempts  attempt}))
+          (let [elapsed-s   (/ (- (System/nanoTime) started-ns) 1e9)
+                last-msg    (some-> last-error ex-message)
+                last-cls    (some-> last-error (.getClass) (.getName))
+                histogram   (->> error-classes
+                                 (sort-by (comp - val))
+                                 (map (fn [[k v]] (format "%s=%d" (name k) v)))
+                                 (str/join ", "))]
+            (throw (ex-info
+                    (format (str "Timeout waiting for IAM impersonation to propagate "
+                                 "after %d attempts / %.1fs (ceiling %ds). "
+                                 "Google's documented worst case for direct IAM policy edits is ~7min "
+                                 "(see https://docs.cloud.google.com/iam/docs/access-change-propagation). "
+                                 "Errors seen: {%s}. Last error (%s): %s")
+                            attempt elapsed-s (long (/ (* max-attempts interval-ms) 1000))
+                            (or (not-empty histogram) "<none>")
+                            (or last-cls "n/a")
+                            (or last-msg "n/a"))
+                    {:target-sa            target-sa-email
+                     :project-id           project-id
+                     :attempts             attempt
+                     :elapsed-seconds      elapsed-s
+                     :ceiling-seconds      (long (/ (* max-attempts interval-ms) 1000))
+                     :error-class-counts   error-classes
+                     :last-error-message   last-msg
+                     :last-error-class     last-cls
+                     :iam-propagation-doc  "https://docs.cloud.google.com/iam/docs/access-change-propagation"}
+                    last-error)))
 
           :else
           (do
             (Thread/sleep ^long interval-ms)
-            (recur (inc attempt))))))))
+            (recur (inc attempt)
+                   error
+                   (update error-classes err-class (fnil inc 0)))))))))
 
 (defn- ws-role-name->acl-role
   "Convert a BigQuery IAM role name to an Acl$Role."
