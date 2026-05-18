@@ -59,7 +59,7 @@ export interface DownloadQueryResultsOpts {
 }
 
 interface DownloadQueryResultsParams {
-  method: string;
+  method: "GET" | "POST";
   url: string;
   body?: Record<string, unknown>;
   params?: URLSearchParams | string;
@@ -250,7 +250,7 @@ export const downloadDataset = createAsyncThunk(
     const params = getDatasetParams(opts);
     const promise = dispatch(
       datasetApi.endpoints.downloadDataset.initiate({
-        method: params.method as "GET" | "POST",
+        method: params.method,
         url: getDatasetDownloadUrl(params.url, params.params),
         body: params.body,
       }),
