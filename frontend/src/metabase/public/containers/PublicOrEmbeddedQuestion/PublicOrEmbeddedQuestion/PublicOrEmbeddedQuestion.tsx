@@ -12,7 +12,8 @@ import { usePublicEndpoints } from "metabase/public/hooks/use-public-endpoints";
 import { useSetEmbedFont } from "metabase/public/hooks/use-set-embed-font";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
-import { addFields } from "metabase/redux/metadata";
+import { updateMetadata } from "metabase/redux/metadata";
+import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { EmbedApi, PublicApi, maybeUsePivotEndpoint } from "metabase/services";
@@ -70,7 +71,11 @@ export const PublicOrEmbeddedQuestion = ({
       }
 
       if (card.param_fields) {
-        await dispatch(addFields(Object.values(card.param_fields).flat()));
+        await dispatch(
+          updateMetadata(Object.values(card.param_fields).flat(), [
+            FieldSchema,
+          ]),
+        );
       }
 
       const parameters = getCardUiParameters(

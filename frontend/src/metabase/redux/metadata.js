@@ -98,11 +98,6 @@ export const updateFieldValues = (fieldId, fieldValuePairs) => {
   return Fields.actions.updateFieldValues({ id: fieldId }, fieldValuePairs);
 };
 
-export { ADD_FIELDS } from "metabase/entities/fields";
-export const addFields = (fields) => {
-  return Fields.actions.addFields(fields);
-};
-
 export const updateField = (field) => {
   deprecated("metabase/redux/metadata updateField");
   const slimField = _.omit(field, "filter_operators_lookup");
