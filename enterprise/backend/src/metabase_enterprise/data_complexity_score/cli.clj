@@ -88,6 +88,8 @@
     :parse-fn #(case % "true" true "false" false ::invalid)
     :validate [#(not= % ::invalid) "--write-to-appdb must be 'true' or 'false'."]]
    ["-o" "--output PATH"             "Write pretty JSON to a file instead of single-line JSON on stdout."]
+   ["-E" "--embedder NAME"           "Override the synonym embedder. 'jvm' runs all-MiniLM-L6-v2 in-process via ONNX Runtime."
+    :validate [#{"jvm"} "--embedder currently only supports 'jvm'."]]
    ;; Consumed by `metabase.core.bootstrap` when invoked as `java -jar metabase.jar --mode …`. Declared
    ;; here so tools.cli accepts it and `parse-opts` doesn't report it as an unknown flag.
    [nil  "--mode MODE"               "(JAR invocation only; handled by bootstrap before reaching this CLI.)"]
@@ -127,27 +129,44 @@
                         {:cli-validation true})))
       (validate-dir! representation-dir))))
 
+(defn- embedder-override
+  "Resolve the `--embedder` flag into `{:embedder :embedding-model-meta}` to splice over the
+  default synonym embedder. `nil` when the flag wasn't passed.
+
+  `requiring-resolve` keeps DJL + ONNX Runtime out of the load graph for runs that don't opt in."
+  [embedder-name]
+  (case embedder-name
+    "jvm" {:embedder             ((requiring-resolve 'metabase-enterprise.data-complexity-score.jvm-embedder/jvm-embedder))
+           :embedding-model-meta {:provider         "in-process"
+                                  :model-name       "all-MiniLM-L6-v2"
+                                  :model-dimensions 384}}
+    nil))
+
 (defn- run-appdb-mode!
   "Score against the live appdb; optionally persist the row.
   Snowplow is off here, so we don't advance `data-complexity-scoring-last-fingerprint` — leave that to the cron."
-  [write?]
+  [write? override]
   (mdb/setup-db-without-migrations!)
   (let [result (complexity/complexity-scores
-                (assoc (synonym-source/complexity-scores-opts)
-                       :metabot-scope (metabot-scope/internal-metabot-scope)
-                       :emit-snowplow? false))]
+                (-> (synonym-source/complexity-scores-opts)
+                    (merge override)
+                    (assoc :metabot-scope (metabot-scope/internal-metabot-scope)
+                           :emit-snowplow? false)))]
     (when write?
       (data-complexity-score/record-score! (task.complexity-score/current-fingerprint) "appdb" result))
     result))
 
 (defn- run-representation-mode!
   "Score against an on-disk serdes export; optionally persist with `source` = `representation:<digest>`."
-  [{:keys [representation-dir embeddings]} write?]
+  [{:keys [representation-dir embeddings]} write? override]
   (when write?
     (mdb/setup-db-without-migrations!))
   (let [{:keys [library universe embedder digest]} (representation/load-dir representation-dir
                                                                             :embeddings-path embeddings)
-        result                                     (complexity/score-from-entities library universe embedder {})]
+        embedder                                   (or (:embedder override) embedder)
+        result                                     (complexity/score-from-entities
+                                                    library universe embedder
+                                                    (select-keys override [:embedding-model-meta]))]
     (when write?
       (data-complexity-score/record-score! (task.complexity-score/current-fingerprint)
                                            (str "representation:" digest)
@@ -171,10 +190,11 @@
   (let [options (with-defaults options)]
     (validate-options! options)
     (let [appdb-source? (= (:source options) "appdb")
-          write?        (resolve-write? options appdb-source?)]
+          write?        (resolve-write? options appdb-source?)
+          override      (embedder-override (:embedder options))]
       (if appdb-source?
-        (run-appdb-mode! write?)
-        (run-representation-mode! options write?)))))
+        (run-appdb-mode! write? override)
+        (run-representation-mode! options write? override)))))
 
 (defn entrypoint
   "Main entrypoint. Receives raw args (a seq) and owns the process — it always calls `System/exit`.
