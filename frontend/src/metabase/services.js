@@ -1,4 +1,3 @@
-import { datasetApi } from "metabase/api/dataset";
 import { DELETE, GET, POST, PUT } from "metabase/api/legacy-client";
 import { isNative } from "metabase/common/utils/card";
 import { isEmbedPreview } from "metabase/embedding/config";
@@ -106,13 +105,18 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
 // into the `{ isCancelled: true }` shape that the legacy fetch helper threw,
 // so existing error-handling code (e.g. queryErrored) keeps working.
 let adhocDatasetQueryCounter = 0;
-export function runAdhocDatasetQuery(
+export async function runAdhocDatasetQuery(
   dispatch,
   card,
   metadata,
   body,
   cancelDeferred,
 ) {
+  // Dynamic import to avoid a module-init cycle: `metabase/api/dataset` pulls
+  // in `metabase/api` → `metabase/redux/user` → `metabase/redux/query-builder`
+  // → `metabase/services` (this module). Deferring resolution until call time
+  // means the cycle closes only after every module has finished initializing.
+  const { datasetApi } = await import("metabase/api/dataset");
   const isPivot = shouldUsePivotEndpoint(card, metadata);
   // Disambiguate the RTK cache key so two callers running the same MBQL
   // query get independent cache entries and abort signals. Without this,
