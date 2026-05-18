@@ -25,13 +25,18 @@ export function QueryExplorerBar({
 }: QueryExplorerBarProps) {
   const hasCenterControls = timeRange || timeGranularity;
   const hasChartTypes = chartTypes.length > 0;
+  const hasOnlyCenterControls =
+    hasCenterControls && !hasChartTypes && onExplore == null;
 
   return (
     <Flex
       w="100%"
       direction={{ base: "column", xs: "row" }}
       align={{ base: "flex-start", xs: "center" }}
-      justify={{ base: "flex-start", xs: "space-between" }}
+      justify={{
+        base: hasOnlyCenterControls ? "center" : "flex-start",
+        xs: hasOnlyCenterControls ? "center" : "space-between",
+      }}
       gap={{ base: "sm", xs: "xs" }}
       data-testid="query-explorer-bar"
     >

@@ -19,6 +19,7 @@ import { McpFeedbackButtons } from "./McpFeedbackButtons";
 import { McpQueryBar } from "./McpQueryBar";
 import { McpQuestionTitle } from "./McpQuestionTitle";
 import { getMcpDeserializedCard } from "./McpUiAppRoute.utils";
+import { McpVisualizationTypeSelector } from "./McpVisualizationTypeSelector";
 import { useHandleMcpDrillThrough } from "./hooks/useHandleMcpDrillThrough";
 import { useMcpApp } from "./hooks/useMcpApp";
 import { useMcpFeedback } from "./hooks/useMcpFeedback";
@@ -194,10 +195,20 @@ function McpUiAppRouteContent({
       gap="sm"
       style={contentStyle}
     >
-      <Flex px="lg" align="center" flex="0 0 auto">
+      <Flex
+        px="lg"
+        align="center"
+        justify="space-between"
+        gap="sm"
+        flex="0 0 auto"
+      >
         <Box flex={1} miw={0}>
           <McpQuestionTitle />
         </Box>
+
+        <Flex align="center" flex="0 0 auto">
+          <McpVisualizationTypeSelector />
+        </Flex>
       </Flex>
 
       <Flex px="xs" flex={1} style={{ overflow: "hidden" }}>
