@@ -1,4 +1,4 @@
-import { jt, t } from "ttag";
+import { c, t } from "ttag";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { useDocsUrl } from "metabase/common/hooks";
@@ -38,7 +38,8 @@ export const EmbedCodeCard = ({ snippet, onCopy }: EmbedCodeCardProps) => {
           {t`Embed code`}
         </Text>
         <Text size="sm" c="text-secondary">
-          {jt`Add this snippet to your app. To modify this code and tweak additional options, refer to the ${docsLink}.`}
+          {c("{0} is a link labeled 'docs'")
+            .jt`Add this snippet to your app. To modify this code and tweak additional options, refer to the ${docsLink}.`}
         </Text>
       </Stack>
 
