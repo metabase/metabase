@@ -69,6 +69,7 @@ export function TreeTableHeader<TData extends TreeNodeData>({
         >
           {showCheckboxes && (
             <Flex
+              className={cx(S.cell, classNames?.headerCell)}
               align="center"
               pl="0.75rem"
               style={{
