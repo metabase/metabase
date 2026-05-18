@@ -3,44 +3,9 @@ import { t } from "ttag";
 import type {
   NotificationChannelType,
   NotificationHandler,
-  NotificationHandlerEmail,
   NotificationHandlerHttp,
-  NotificationHandlerSlack,
   NotificationRecipient,
 } from "metabase-types/api";
-
-export const findEmailHandler = (
-  handlers: NotificationHandler[],
-): NotificationHandlerEmail | undefined => {
-  for (const handler of handlers) {
-    if (handler.channel_type === "channel/email") {
-      return handler;
-    }
-  }
-  return undefined;
-};
-
-export const findSlackHandler = (
-  handlers: NotificationHandler[],
-): NotificationHandlerSlack | undefined => {
-  for (const handler of handlers) {
-    if (handler.channel_type === "channel/slack") {
-      return handler;
-    }
-  }
-  return undefined;
-};
-
-export const findHttpHandler = (
-  handlers: NotificationHandler[],
-): NotificationHandlerHttp | undefined => {
-  for (const handler of handlers) {
-    if (handler.channel_type === "channel/http") {
-      return handler;
-    }
-  }
-  return undefined;
-};
 
 export const getUniqueChannelTypes = (
   handlers: NotificationHandler[] | undefined,

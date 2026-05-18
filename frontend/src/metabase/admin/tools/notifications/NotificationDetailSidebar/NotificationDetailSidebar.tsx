@@ -43,6 +43,9 @@ import Question from "metabase-lib/v1/Question";
 import type {
   AdminNotification,
   NotificationHandler,
+  NotificationHandlerEmail,
+  NotificationHandlerHttp,
+  NotificationHandlerSlack,
   NotificationId,
   NotificationRecipient,
   TaskRun,
@@ -76,9 +79,6 @@ import type {
   SlackChannelsSectionProps,
 } from "./types";
 import {
-  findEmailHandler,
-  findHttpHandler,
-  findSlackHandler,
   formatChannelSummary,
   getEmailRowText,
   getUniqueChannelTypes,
@@ -320,9 +320,18 @@ const ChannelAvatar = ({ channel, bordered }: ChannelAvatarProps) => {
 
 const SidebarBody = ({ notification }: { notification: AdminNotification }) => {
   const handlers = notification.handlers ?? [];
-  const emailHandler = findEmailHandler(handlers);
-  const slackHandler = findSlackHandler(handlers);
-  const httpHandler = findHttpHandler(handlers);
+  const emailHandler = handlers.find(
+    (handler): handler is NotificationHandlerEmail =>
+      handler.channel_type === "channel/email",
+  );
+  const slackHandler = handlers.find(
+    (handler): handler is NotificationHandlerSlack =>
+      handler.channel_type === "channel/slack",
+  );
+  const httpHandler = handlers.find(
+    (handler): handler is NotificationHandlerHttp =>
+      handler.channel_type === "channel/http",
+  );
   const emailRecipientCount = emailHandler?.recipients.length ?? 0;
   const slackChannelCount = slackHandler?.recipients.length ?? 0;
 
