@@ -79,10 +79,7 @@ import type {
   SdkQuestionProps,
 } from "../SdkQuestion";
 
-import {
-  SdkDashboardStyledWrapper,
-  SdkDashboardStyledWrapperWithRef,
-} from "./SdkDashboardStyleWrapper";
+import { SdkDashboardStyledWrapper } from "./SdkDashboardStyleWrapper";
 import { SdkDashboardProvider } from "./context";
 import { useCommonDashboardParams } from "./use-common-dashboard-params";
 
@@ -538,10 +535,7 @@ const SdkDashboardInner = ({
       >
         {match({ finalRenderMode, isGuestEmbed })
           .with({ finalRenderMode: "question" }, () => (
-            <SdkDashboardStyledWrapperWithRef
-              className={className}
-              style={style}
-            >
+            <SdkDashboardStyledWrapper className={className} style={style}>
               <SdkAdHocQuestion
                 // `adhocQuestionUrl` would have value if renderMode is "question"
                 questionPath={adhocQuestionUrl!}
@@ -551,7 +545,7 @@ const SdkDashboardInner = ({
               >
                 {AdHocQuestionView && <AdHocQuestionView />}
               </SdkAdHocQuestion>
-            </SdkDashboardStyledWrapperWithRef>
+            </SdkDashboardStyledWrapper>
           ))
           .with({ finalRenderMode: "dashboard" }, () => (
             <SdkDashboardProvider
@@ -559,13 +553,10 @@ const SdkDashboardInner = ({
               onEditQuestion={onEditQuestion}
             >
               {children ?? (
-                <SdkDashboardStyledWrapperWithRef
-                  className={className}
-                  style={style}
-                >
+                <SdkDashboardStyledWrapper className={className} style={style}>
                   <Dashboard className={EmbedFrameS.EmbedFrame} />
                   <AutoRefreshController refreshPeriod={autoRefreshInterval} />
-                </SdkDashboardStyledWrapperWithRef>
+                </SdkDashboardStyledWrapper>
               )}
             </SdkDashboardProvider>
           ))
