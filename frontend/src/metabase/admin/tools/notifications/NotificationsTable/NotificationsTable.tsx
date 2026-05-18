@@ -5,17 +5,16 @@ import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import type { SelectionState, TreeTableColumnDef } from "metabase/ui";
 import {
   Badge,
   Card,
   Ellipsified,
   Flex,
   Icon,
-  type SelectionState,
   Text,
   Tooltip,
   TreeTable,
-  type TreeTableColumnDef,
   useTreeTableInstance,
 } from "metabase/ui";
 import type {
@@ -25,7 +24,10 @@ import type {
   NotificationRunSummary,
 } from "metabase-types/api";
 
-import { getChannelIconName, getChannelLabel } from "./utils";
+import {
+  getChannelIconName,
+  getChannelLabel,
+} from "../NotificationsAdminPage/utils";
 
 type Props = {
   notifications: AdminNotification[];
@@ -62,11 +64,7 @@ const summarizeChannels = (
   }));
 };
 
-type TimestampCellProps = {
-  run: NotificationRunSummary | null;
-};
-
-const TimestampCell = ({ run }: TimestampCellProps) => {
+const TimestampCell = ({ run }: { run: NotificationRunSummary | null }) => {
   if (!run) {
     return <span>{t`Never`}</span>;
   }
@@ -270,7 +268,7 @@ export const NotificationsTable = ({
     [],
   );
 
-  if (isLoading || !!error) {
+  if (isLoading || error !== undefined) {
     return (
       <Card withBorder p="lg" data-testid="notifications-admin-table">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />

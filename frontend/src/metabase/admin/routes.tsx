@@ -44,7 +44,6 @@ import {
   ModelCachePage,
   ModelCacheRefreshJobModal,
 } from "metabase/admin/tools/components/ModelCacheRefreshJobs";
-import { NotificationsAdminPage } from "metabase/admin/tools/components/NotificationsAdminPage";
 import {
   SetupPermissionsAndTenantsPage,
   SetupSsoPage,
@@ -75,7 +74,7 @@ import { PerformanceTabId } from "./performance/types";
 import { getSettingsRoutes } from "./settingsRoutes";
 import { ToolsApp } from "./tools/components/ToolsApp";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
-import { getTasksRoutes } from "./tools/routes";
+import { getNotificationsRoutes, getTasksRoutes } from "./tools/routes";
 import {
   RedirectToAllowedSettings,
   createAdminRouteGuard,
@@ -320,11 +319,7 @@ export const getRoutes = (
               )}
             </Route>
             <Route path="tasks">{getTasksRoutes()}</Route>
-            <Route path="notifications" component={NotificationsAdminPage} />
-            <Route
-              path="notifications/:notificationId"
-              component={NotificationsAdminPage}
-            />
+            <Route path="notifications">{getNotificationsRoutes()}</Route>
             <Route path="jobs" component={JobInfoApp}>
               <ModalRoute
                 path=":jobKey"

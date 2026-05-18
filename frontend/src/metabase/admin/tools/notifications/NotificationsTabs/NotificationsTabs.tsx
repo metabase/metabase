@@ -1,9 +1,14 @@
 import { t } from "ttag";
 
-import { Flex, Icon, UnstyledButton } from "metabase/ui";
+import { Icon, Tabs } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
-import type { NotificationsTab, NotificationsUrlState } from "./utils";
+import type {
+  NotificationsTab,
+  NotificationsUrlState,
+} from "../NotificationsAdminPage/types";
+
+import S from "./NotificationsTabs.module.css";
 
 type Props = {
   tab: NotificationsTab;
@@ -28,6 +33,7 @@ export const NotificationsTabs = ({
   if (failingCount === 0 && ownerlessCount === 0) {
     return null;
   }
+
   const tabs: TabConfig[] = [
     {
       value: "all",
@@ -37,7 +43,7 @@ export const NotificationsTabs = ({
     },
   ];
 
-  if (failingCount) {
+  if (failingCount > 0) {
     tabs.push({
       value: "failing",
       icon: "warning_round",
@@ -46,7 +52,7 @@ export const NotificationsTabs = ({
     });
   }
 
-  if (ownerlessCount) {
+  if (ownerlessCount > 0) {
     tabs.push({
       value: "ownerless",
       icon: "ghost",
@@ -55,33 +61,39 @@ export const NotificationsTabs = ({
     });
   }
 
+  const handleTabChange = (value: string | null) => {
+    const next = tabs.find((config) => config.value === value);
+    if (next !== undefined) {
+      onChange(next.patch);
+    }
+  };
+
   return (
-    <Flex gap="md" align="center" data-testid="notifications-admin-tabs">
-      {tabs.map((config) => {
-        const isActive = config.value === tab;
-        return (
-          <UnstyledButton
+    <Tabs
+      variant="pills"
+      value={tab}
+      onChange={handleTabChange}
+      radius="xl"
+      data-testid="notifications-admin-tabs"
+      classNames={{
+        list: S.list,
+        tab: S.tab,
+        tabLabel: S.tabLabel,
+        tabSection: S.tabSection,
+      }}
+    >
+      <Tabs.List>
+        {tabs.map((config) => (
+          <Tabs.Tab
             key={config.value}
-            role="tab"
-            aria-selected={isActive}
+            value={config.value}
+            leftSection={<Icon name={config.icon} size={16} />}
             data-testid={`notifications-admin-tab-${config.value}`}
-            onClick={() => onChange(config.patch)}
-            bg={isActive ? "background-selected" : "transparent"}
-            c={isActive ? "brand" : "text-primary"}
-            fw={700}
-            fz="md"
-            px={12}
-            lh="24px"
-            py={6}
-            style={{ borderRadius: 68 }}
           >
-            <Flex gap={8} align="center">
-              <Icon name={config.icon} size={16} />
-              {config.label}
-            </Flex>
-          </UnstyledButton>
-        );
-      })}
-    </Flex>
+            {config.label}
+          </Tabs.Tab>
+        ))}
+      </Tabs.List>
+    </Tabs>
   );
 };

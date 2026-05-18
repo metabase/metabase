@@ -20,51 +20,24 @@ import type {
   NotificationRunStatus,
 } from "metabase-types/api";
 
+import { CHANNEL_VALUES } from "../NotificationsAdminPage/constants";
+import type {
+  FilterDraft,
+  NotificationsUrlState,
+} from "../NotificationsAdminPage/types";
 import {
-  type NotificationsUrlState,
   getChannelIconName,
   getChannelLabel,
-} from "./utils";
+} from "../NotificationsAdminPage/utils";
+
+import { hasActiveFilters, stateToDraft } from "./utils";
 
 type Props = {
   state: NotificationsUrlState;
   onChange: (patch: Partial<NotificationsUrlState>) => void;
 };
 
-const CHANNEL_VALUES: NotificationChannelType[] = [
-  "channel/email",
-  "channel/slack",
-  "channel/http",
-];
-
-type FilterDraft = {
-  channel: NotificationChannelType | null;
-  owner_active: boolean | null;
-  last_sent_status: NotificationRunStatus | null;
-  recipient_email: string;
-};
-
-const stateToDraft = (state: NotificationsUrlState): FilterDraft => ({
-  channel: state.channel,
-  owner_active: state.owner_active,
-  last_sent_status: state.last_sent_status,
-  recipient_email: state.recipient_email,
-});
-
-const hasActiveFilters = (state: NotificationsUrlState): boolean => {
-  if (state.channel !== null) {
-    return true;
-  }
-  if (state.tab !== "failing" && state.last_sent_status !== null) {
-    return true;
-  }
-  if (state.recipient_email !== "") {
-    return true;
-  }
-  return state.tab !== "ownerless" && state.owner_active !== null;
-};
-
-export const NotificationsFiltersDropdown = ({ state, onChange }: Props) => {
+export const NotificationsFilters = ({ state, onChange }: Props) => {
   const [opened, setOpened] = useState(false);
   const [draft, setDraft] = useState<FilterDraft>(() => stateToDraft(state));
   const hasActive = hasActiveFilters(state);
@@ -243,10 +216,10 @@ const FilterPill = ({ icon, label, selected, onClick }: FilterPillProps) => (
     bg={selected ? "background-selected" : "background-primary"}
     bd="1px solid var(--mb-color-border)"
     px={12}
-    py={8}
-    style={{ borderRadius: 9999 }}
+    py="sm"
+    bdrs="xl"
   >
-    <Flex gap={8} align="center">
+    <Flex gap="sm" align="center">
       <Icon name={icon} size={16} c="text-secondary" />
       <Text fz="md" c="text-primary" lh="16px">
         {label}

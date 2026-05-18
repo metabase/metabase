@@ -106,10 +106,20 @@ export const createMockNotificationCronSubscription = (
   ...opts,
 });
 
-export const createMockAdminNotificationListItem = (
+export const createMockAdminNotification = (
   opts?: Partial<AdminNotification>,
-): AdminNotification => ({
-  ...createMockNotification(opts),
-  status: opts?.status ?? "healthy",
-  last_sent_at: opts?.last_sent_at ?? null,
-});
+): AdminNotification => {
+  const {
+    creator_id: _creator_id,
+    creator: _creator,
+    ...rest
+  } = createMockNotification();
+  return {
+    ...rest,
+    owner_id: 1,
+    owner: createMockUserInfo({ is_active: true }),
+    last_check: null,
+    last_sent: null,
+    ...opts,
+  };
+};

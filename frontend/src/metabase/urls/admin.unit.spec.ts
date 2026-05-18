@@ -1,4 +1,8 @@
-import { adminToolsTasksRunsFor } from "./admin";
+import {
+  adminToolsNotificationDetail,
+  adminToolsNotifications,
+  adminToolsTasksRunsFor,
+} from "./admin";
 
 describe("adminToolsTasksRunsFor", () => {
   it("builds a runs URL scoped by run type and entity", () => {
@@ -23,6 +27,20 @@ describe("adminToolsTasksRunsFor", () => {
       startedAt: "past30days~",
     });
     expect(parseUrl(url).search.get("started-at")).toBe("past30days~");
+  });
+});
+
+describe("adminToolsNotifications", () => {
+  it("returns the list pathname", () => {
+    expect(adminToolsNotifications()).toBe("/admin/tools/notifications");
+  });
+});
+
+describe("adminToolsNotificationDetail", () => {
+  it("returns the detail pathname for an id", () => {
+    expect(adminToolsNotificationDetail(42)).toBe(
+      "/admin/tools/notifications/42",
+    );
   });
 });
 

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Children, Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
@@ -42,12 +43,8 @@ import {
 import * as Urls from "metabase/urls";
 import Question from "metabase-lib/v1/Question";
 import type {
-  AdminNotificationDetail,
-  NotificationChannelType,
+  AdminNotification,
   NotificationHandler,
-  NotificationHandlerEmail,
-  NotificationHandlerHttp,
-  NotificationHandlerSlack,
   NotificationId,
   NotificationRecipient,
   TaskRun,
@@ -55,21 +52,38 @@ import type {
   UserId,
 } from "metabase-types/api";
 
+import {
+  formatRelativeDate,
+  getChannelIconName,
+} from "../NotificationsAdminPage/utils";
+
 import S from "./NotificationDetailSidebar.module.css";
-import { formatRelativeDate, getChannelIconName } from "./utils";
-
-export const SIDEBAR_WIDTH = 560;
-const RECENT_RUNS_LIMIT = 3;
-const RECENT_RUNS_FETCH_LIMIT = 20;
-
-type Props = {
-  notificationId: NotificationId;
-  isBulkLoading: boolean;
-  prevNotificationId: NotificationId | null;
-  nextNotificationId: NotificationId | null;
-  onClose: () => void;
-  onDelete: (notification: AdminNotificationDetail) => void;
-};
+import {
+  RECENT_RUNS_FETCH_LIMIT,
+  RECENT_RUNS_LIMIT,
+  SIDEBAR_WIDTH,
+} from "./constants";
+import type {
+  ChannelAvatarProps,
+  DetailsRowProps,
+  DetailsSectionProps,
+  EmailRecipientsSectionProps,
+  NotificationEditModalLoaderProps,
+  OwnerSectionProps,
+  RunHistorySectionProps,
+  SidebarHeaderProps,
+  SidebarProps,
+  SidebarSectionProps,
+  SlackChannelsSectionProps,
+} from "./types";
+import {
+  findEmailHandler,
+  findHttpHandler,
+  findSlackHandler,
+  formatChannelSummary,
+  getEmailRowText,
+  getUniqueChannelTypes,
+} from "./utils";
 
 export const NotificationDetailSidebar = ({
   notificationId,
@@ -78,7 +92,7 @@ export const NotificationDetailSidebar = ({
   nextNotificationId,
   onClose,
   onDelete,
-}: Props) => {
+}: SidebarProps) => {
   const {
     data: notification,
     error,
@@ -106,25 +120,23 @@ export const NotificationDetailSidebar = ({
           },
         }}
       >
-        <Stack gap={0} h="100%">
-          {notification && (
-            <SidebarHeader
-              isBulkLoading={isBulkLoading}
-              notification={notification}
-              prevNotificationId={prevNotificationId}
-              nextNotificationId={nextNotificationId}
-              onClose={onClose}
-              onDelete={onDelete}
-              onEdit={() => setIsEditModalOpen(true)}
-            />
-          )}
-          <Box px="xl" pb="xl" style={{ overflowY: "auto" }} flex={1}>
-            {isLoading || error || !notification ? (
-              <LoadingAndErrorWrapper loading={isLoading} error={error} />
-            ) : (
+        <Stack h="100%" p="lg" gap="lg">
+          {isLoading || error || !notification ? (
+            <LoadingAndErrorWrapper loading={isLoading} error={error} />
+          ) : (
+            <>
+              <SidebarHeader
+                isBulkLoading={isBulkLoading}
+                notification={notification}
+                prevNotificationId={prevNotificationId}
+                nextNotificationId={nextNotificationId}
+                onClose={onClose}
+                onDelete={onDelete}
+                onEdit={() => setIsEditModalOpen(true)}
+              />
               <SidebarBody notification={notification} />
-            )}
-          </Box>
+            </>
+          )}
         </Stack>
       </Drawer>
       {isEditModalOpen && notification && (
@@ -138,16 +150,6 @@ export const NotificationDetailSidebar = ({
   );
 };
 
-type SidebarHeaderProps = {
-  isBulkLoading: boolean;
-  notification: AdminNotificationDetail;
-  prevNotificationId: NotificationId | null;
-  nextNotificationId: NotificationId | null;
-  onClose: () => void;
-  onDelete: (notification: AdminNotificationDetail) => void;
-  onEdit: () => void;
-};
-
 const SidebarHeader = ({
   isBulkLoading,
   notification,
@@ -157,7 +159,7 @@ const SidebarHeader = ({
   onDelete,
   onEdit,
 }: SidebarHeaderProps) => {
-  const cardName = notification?.payload?.card?.name ?? t`Untitled question`;
+  const cardName = notification.payload?.card?.name ?? t`Untitled question`;
   const dispatch = useDispatch();
 
   const handleCopyLink = async () => {
@@ -173,8 +175,8 @@ const SidebarHeader = ({
   };
 
   return (
-    <Box px="xl" pt="lg" pb="md">
-      <Flex justify="space-between" align="center" mb="md">
+    <Stack gap="lg">
+      <Flex justify="space-between" align="center">
         <Group gap="sm">
           <ActionIcon
             aria-label={t`Previous alert`}
@@ -247,20 +249,18 @@ const SidebarHeader = ({
         </Group>
       </Flex>
 
-      {notification && (
-        <Flex align="center" gap="sm">
-          <ChannelAvatarStack handlers={notification.handlers} />
-          <Stack gap={2}>
-            <Text size="xs" c="text-secondary">
-              {t`Alert ${notification.id}`}
-            </Text>
-            <Title order={3} lh={1.2} c="text-primary">
-              {cardName}
-            </Title>
-          </Stack>
-        </Flex>
-      )}
-    </Box>
+      <Flex align="center" gap="sm">
+        <ChannelAvatarStack handlers={notification.handlers} />
+        <Stack gap={2}>
+          <Text size="xs" c="text-secondary">
+            {t`Alert ${notification.id}`}
+          </Text>
+          <Title order={3} lh={1.2} c="text-primary">
+            {cardName}
+          </Title>
+        </Stack>
+      </Flex>
+    </Stack>
   );
 };
 
@@ -272,7 +272,7 @@ const ChannelAvatarStack = ({
   const channels = getUniqueChannelTypes(handlers);
 
   return (
-    <Flex align="center" style={{ flexShrink: 0 }}>
+    <Flex align="center" className={S.avatarStack}>
       {channels.map((channel, index) => (
         <Box
           key={channel}
@@ -284,11 +284,6 @@ const ChannelAvatarStack = ({
       ))}
     </Flex>
   );
-};
-
-type ChannelAvatarProps = {
-  channel: NotificationChannelType;
-  bordered: boolean;
 };
 
 const ChannelAvatar = ({ channel, bordered }: ChannelAvatarProps) => {
@@ -311,7 +306,8 @@ const ChannelAvatar = ({ channel, bordered }: ChannelAvatarProps) => {
       h={36}
       bd={bordered ? "2px solid var(--mb-color-background-primary)" : undefined}
       bdrs="50%"
-      style={{ flexShrink: 0, backgroundColor }}
+      className={S.channelAvatar}
+      style={{ backgroundColor }}
     >
       <Icon
         name={channel ? getChannelIconName(channel) : "bell"}
@@ -322,28 +318,7 @@ const ChannelAvatar = ({ channel, bordered }: ChannelAvatarProps) => {
   );
 };
 
-const getUniqueChannelTypes = (
-  handlers: NotificationHandler[] | undefined,
-): NotificationChannelType[] => {
-  if (!handlers) {
-    return [];
-  }
-  const seen = new Set<NotificationChannelType>();
-  const result: NotificationChannelType[] = [];
-  for (const handler of handlers) {
-    if (!seen.has(handler.channel_type)) {
-      seen.add(handler.channel_type);
-      result.push(handler.channel_type);
-    }
-  }
-  return result;
-};
-
-const SidebarBody = ({
-  notification,
-}: {
-  notification: AdminNotificationDetail;
-}) => {
+const SidebarBody = ({ notification }: { notification: AdminNotification }) => {
   const handlers = notification.handlers ?? [];
   const emailHandler = findEmailHandler(handlers);
   const slackHandler = findSlackHandler(handlers);
@@ -352,7 +327,7 @@ const SidebarBody = ({
   const slackChannelCount = slackHandler?.recipients.length ?? 0;
 
   return (
-    <Stack gap="xl" mt="lg">
+    <Stack gap="xl">
       <DetailsSection
         notification={notification}
         emailRecipientCount={emailRecipientCount}
@@ -374,46 +349,6 @@ const SidebarBody = ({
       )}
     </Stack>
   );
-};
-
-const findEmailHandler = (
-  handlers: NotificationHandler[],
-): NotificationHandlerEmail | undefined => {
-  for (const handler of handlers) {
-    if (handler.channel_type === "channel/email") {
-      return handler;
-    }
-  }
-  return undefined;
-};
-
-const findSlackHandler = (
-  handlers: NotificationHandler[],
-): NotificationHandlerSlack | undefined => {
-  for (const handler of handlers) {
-    if (handler.channel_type === "channel/slack") {
-      return handler;
-    }
-  }
-  return undefined;
-};
-
-const findHttpHandler = (
-  handlers: NotificationHandler[],
-): NotificationHandlerHttp | undefined => {
-  for (const handler of handlers) {
-    if (handler.channel_type === "channel/http") {
-      return handler;
-    }
-  }
-  return undefined;
-};
-
-type DetailsSectionProps = {
-  notification: AdminNotificationDetail;
-  emailRecipientCount: number;
-  slackChannelCount: number;
-  httpHandler: NotificationHandlerHttp | undefined;
 };
 
 const DetailsSection = ({
@@ -446,9 +381,8 @@ const DetailsSection = ({
           value={
             cardId !== undefined && cardName ? (
               <MBLink
-                variant="brand"
+                variant="brandBold"
                 to={Urls.card({ id: cardId, name: cardName })}
-                style={{ fontWeight: 700 }}
               >
                 {cardName}
               </MBLink>
@@ -504,41 +438,10 @@ const DetailsSection = ({
   );
 };
 
-const formatChannelSummary = ({
-  emailRecipientCount,
-  slackChannelCount,
-  httpHandler,
-}: {
-  emailRecipientCount: number;
-  slackChannelCount: number;
-  httpHandler: NotificationHandlerHttp | undefined;
-}): string => {
-  const parts: string[] = [];
-  if (emailRecipientCount > 0) {
-    parts.push(
-      emailRecipientCount === 1
-        ? t`1 email recipient`
-        : t`${emailRecipientCount} email recipients`,
-    );
-  }
-  if (slackChannelCount > 0) {
-    parts.push(
-      slackChannelCount === 1
-        ? t`1 Slack channel`
-        : t`${slackChannelCount} Slack channels`,
-    );
-  }
-  if (httpHandler && httpHandler.recipients.length > 0) {
-    const count = httpHandler.recipients.length;
-    parts.push(count === 1 ? t`1 webhook` : t`${count} webhooks`);
-  }
-  return parts.join(", ");
-};
-
 const RunsSections = ({
   notification,
 }: {
-  notification: AdminNotificationDetail;
+  notification: AdminNotification;
 }) => {
   const cardId = notification.payload?.card_id;
   const { data: taskRunsData, isLoading } = useListTaskRunsQuery(
@@ -586,13 +489,6 @@ const RunsSections = ({
       />
     </>
   );
-};
-
-type RunHistorySectionProps = {
-  title: string;
-  viewAllUrl: string;
-  runs: TaskRun[];
-  isLoading: boolean;
 };
 
 const RunHistorySection = ({
@@ -675,11 +571,6 @@ const RunStatusBadge = ({ status }: { status: TaskRunStatus }) => {
   return null;
 };
 
-type EmailRecipientsSectionProps = {
-  handler: NotificationHandlerEmail;
-  count: number;
-};
-
 const EmailRecipientsSection = ({
   handler,
   count,
@@ -714,31 +605,6 @@ const EmailRow = ({ recipient }: { recipient: NotificationRecipient }) => {
   );
 };
 
-const getEmailRowText = (
-  recipient: NotificationRecipient,
-): { name: string; email: string | null } => {
-  if (recipient.type === "notification-recipient/user") {
-    const user = recipient.user;
-    if (!user) {
-      return { name: t`Deactivated user`, email: null };
-    }
-    return {
-      name: user.common_name ?? user.email ?? t`Unknown`,
-      email: user.email ?? null,
-    };
-  }
-  if (recipient.type === "notification-recipient/raw-value") {
-    const value = recipient.details?.value ?? "";
-    return { name: value, email: null };
-  }
-  return { name: t`Group recipient`, email: null };
-};
-
-type SlackChannelsSectionProps = {
-  handler: NotificationHandlerSlack;
-  count: number;
-};
-
 const SlackChannelsSection = ({
   handler,
   count,
@@ -767,12 +633,6 @@ const SlackRow = ({ value }: { value: string }) => (
   </Flex>
 );
 
-type SidebarSectionProps = {
-  title: string;
-  titleAside?: React.ReactNode;
-  children: React.ReactNode;
-};
-
 const SidebarSection = ({
   title,
   titleAside,
@@ -789,13 +649,13 @@ const SidebarSection = ({
   </Stack>
 );
 
-const DetailsTable = ({ children }: { children: React.ReactNode }) => {
+const DetailsTable = ({ children }: { children: ReactNode }) => {
   const items = Children.toArray(children).filter(Boolean);
   return (
     <Box
       bd="1px solid var(--mb-color-border)"
       bdrs="lg"
-      style={{ overflow: "hidden" }}
+      className={S.detailsTable}
     >
       {items.map((item, i) => (
         <Fragment key={i}>
@@ -805,13 +665,6 @@ const DetailsTable = ({ children }: { children: React.ReactNode }) => {
       ))}
     </Box>
   );
-};
-
-type DetailsRowProps = {
-  label: React.ReactNode;
-  value: React.ReactNode;
-  bold?: boolean;
-  spanLabel?: boolean;
 };
 
 const DetailsRow = ({ label, value, bold, spanLabel }: DetailsRowProps) => {
@@ -843,12 +696,6 @@ const DetailsRow = ({ label, value, bold, spanLabel }: DetailsRowProps) => {
       </Flex>
     </Flex>
   );
-};
-
-type NotificationEditModalLoaderProps = {
-  notification: AdminNotificationDetail;
-  onClose: () => void;
-  onUpdated: () => void;
 };
 
 const NotificationEditModalLoader = ({
@@ -925,12 +772,6 @@ const NotificationEditModalLoader = ({
       onClose={onClose}
     />
   );
-};
-
-type OwnerSectionProps = {
-  notification: AdminNotificationDetail;
-  selectedOwnerId: UserId;
-  onChange: (ownerId: UserId) => void;
 };
 
 const OwnerSection = ({

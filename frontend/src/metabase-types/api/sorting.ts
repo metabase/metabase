@@ -7,4 +7,6 @@ export type SortingOptions<SortColumn extends string> = {
 };
 
 export const guardSortDirection = (value: string): value is SortDirection =>
-  SORT_DIRECTIONS.includes(value as SortDirection);
+  (SORT_DIRECTIONS satisfies readonly SortDirection[]).includes(
+    value as SortDirection,
+  );

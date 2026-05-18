@@ -9,12 +9,12 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import type {
-  AdminNotificationDetail,
+  AdminNotification,
   NotificationId,
   TaskRun,
 } from "metabase-types/api";
 import {
-  createMockAdminNotificationListItem,
+  createMockAdminNotification,
   createMockCard,
   createMockNotificationHandlerEmail,
   createMockNotificationHandlerSlack,
@@ -28,9 +28,9 @@ import { NotificationDetailSidebar } from "./NotificationDetailSidebar";
 const NOTIFICATION_ID = 11;
 
 const mockDetail = (
-  overrides: Partial<AdminNotificationDetail> = {},
-): AdminNotificationDetail =>
-  createMockAdminNotificationListItem({
+  overrides: Partial<AdminNotification> = {},
+): AdminNotification =>
+  createMockAdminNotification({
     id: NOTIFICATION_ID,
     payload: {
       id: 1,
@@ -70,12 +70,12 @@ const mockDetail = (
     ...overrides,
   });
 
-type SetupOpts = {
-  detail?: AdminNotificationDetail;
+interface SetupOpts {
+  detail?: AdminNotification;
   taskRuns?: TaskRun[];
   prevNotificationId?: NotificationId | null;
   nextNotificationId?: NotificationId | null;
-};
+}
 
 const setup = ({
   detail = mockDetail(),

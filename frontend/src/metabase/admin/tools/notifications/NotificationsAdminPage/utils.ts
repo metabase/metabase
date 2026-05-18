@@ -2,48 +2,32 @@ import dayjs from "dayjs";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import {
-  type QueryParam,
-  type UrlStateConfig,
-  getFirstParamValue,
+import type {
+  QueryParam,
+  UrlStateConfig,
 } from "metabase/common/hooks/use-url-state";
+import { getFirstParamValue } from "metabase/common/hooks/use-url-state";
 import type { IconName } from "metabase/ui";
-import {
-  type AdminNotificationListParams,
-  type AdminNotificationSortColumn,
-  type NotificationChannelType,
-  type NotificationRunStatus,
-  type SortDirection,
-  guardSortDirection,
+import type {
+  AdminNotificationListParams,
+  AdminNotificationSortColumn,
+  NotificationChannelType,
+  NotificationRunStatus,
 } from "metabase-types/api";
+import { guardSortDirection } from "metabase-types/api";
 
-export type NotificationsTab = "all" | "failing" | "ownerless";
-
-export type NotificationsUrlState = {
-  page: number;
-  active: boolean | null;
-  query: string;
-  channel: NotificationChannelType | null;
-  last_sent_status: NotificationRunStatus | null;
-  owner_active: boolean | null;
-  recipient_email: string;
-  tab: NotificationsTab;
-  sort_column: AdminNotificationSortColumn;
-  sort_direction: SortDirection;
-};
-
-export const DEFAULT_TAB: NotificationsTab = "all";
-
-export const DEFAULT_ACTIVE: boolean | null = true;
-export const DEFAULT_SORT_COLUMN: AdminNotificationSortColumn = "updated_at";
-export const DEFAULT_SORT_DIRECTION: SortDirection = "desc";
-
-export const SORT_COLUMN_VALUES: AdminNotificationSortColumn[] = [
-  "last_sent",
-  "card_name",
-  "owner_name",
-  "updated_at",
-];
+import {
+  CHANNEL_VALUES,
+  DEFAULT_ACTIVE,
+  DEFAULT_SORT_COLUMN,
+  DEFAULT_SORT_DIRECTION,
+  DEFAULT_TAB,
+  LAST_SENT_STATUS_VALUES,
+  SORT_COLUMN_VALUES,
+  TAB_FILTERS,
+  TAB_VALUES,
+} from "./constants";
+import type { NotificationsTab, NotificationsUrlState } from "./types";
 
 const parsePage = (param: QueryParam): number => {
   const value = getFirstParamValue(param);
@@ -90,16 +74,14 @@ const parseGuardedEnum = <T extends string, D extends T | null>(
   guardFn: (value: string) => value is T,
   defaultValue: D,
 ): T | D =>
-  valueToParse && guardFn(valueToParse) ? valueToParse : defaultValue;
+  valueToParse !== null && valueToParse !== undefined && guardFn(valueToParse)
+    ? valueToParse
+    : defaultValue;
 
 const guardChannel = (value: string): value is NotificationChannelType =>
-  (
-    [
-      "channel/email",
-      "channel/slack",
-      "channel/http",
-    ] satisfies NotificationChannelType[]
-  ).includes(value as NotificationChannelType);
+  (CHANNEL_VALUES satisfies NotificationChannelType[]).includes(
+    value as NotificationChannelType,
+  );
 
 const parseChannelEnum = (
   param: QueryParam,
@@ -107,7 +89,7 @@ const parseChannelEnum = (
   parseGuardedEnum(getFirstParamValue(param), guardChannel, null);
 
 const guardLastSentStatus = (value: string): value is NotificationRunStatus =>
-  (["failing", "successful"] satisfies NotificationRunStatus[]).includes(
+  (LAST_SENT_STATUS_VALUES satisfies NotificationRunStatus[]).includes(
     value as NotificationRunStatus,
   );
 
@@ -128,9 +110,7 @@ const parseOwnerActive = (param: QueryParam): boolean | null => {
 };
 
 const guardTab = (value: string): value is NotificationsTab =>
-  (["all", "failing", "ownerless"] satisfies NotificationsTab[]).includes(
-    value as NotificationsTab,
-  );
+  (TAB_VALUES satisfies NotificationsTab[]).includes(value as NotificationsTab);
 
 const parseTabEnum = (param: QueryParam): NotificationsTab =>
   parseGuardedEnum(getFirstParamValue(param), guardTab, DEFAULT_TAB);
@@ -188,17 +168,6 @@ export const urlStateConfig: UrlStateConfig<NotificationsUrlState> = {
         ? undefined
         : state.sort_direction,
   }),
-};
-
-type TabFilters = {
-  last_sent_status: NotificationRunStatus | null;
-  owner_active: boolean | null;
-};
-
-const TAB_FILTERS: Record<NotificationsTab, TabFilters> = {
-  all: { last_sent_status: null, owner_active: null },
-  failing: { last_sent_status: "failing", owner_active: null },
-  ownerless: { last_sent_status: null, owner_active: false },
 };
 
 export const buildListParams = (

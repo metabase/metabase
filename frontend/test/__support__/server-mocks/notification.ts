@@ -2,7 +2,6 @@ import fetchMock from "fetch-mock";
 
 import type {
   AdminNotification,
-  AdminNotificationDetail,
   AdminNotificationListResponse,
   ListNotificationsRequest,
   Notification,
@@ -43,7 +42,7 @@ export const setupAdminListNotificationsEndpoint = (
 };
 
 export const setupAdminNotificationDetailEndpoint = (
-  notification: AdminNotificationDetail,
+  notification: AdminNotification,
 ) => {
   fetchMock.get(`path:/api/ee/notifications/${notification.id}`, notification);
 };

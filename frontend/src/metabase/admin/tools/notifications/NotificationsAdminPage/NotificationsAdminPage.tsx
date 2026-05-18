@@ -24,34 +24,22 @@ import * as Urls from "metabase/urls";
 import type { NotificationId, UserId } from "metabase-types/api";
 
 import { SettingsPageWrapper } from "../../../components/SettingsSection";
+import { ChangeOwnerModal } from "../ChangeOwnerModal";
+import { NotificationDetailSidebar } from "../NotificationDetailSidebar";
+import { SIDEBAR_WIDTH } from "../NotificationDetailSidebar/constants";
+import { NotificationsFilters } from "../NotificationsFilters";
+import { NotificationsSearchInput } from "../NotificationsSearchInput";
+import { NotificationsTable } from "../NotificationsTable";
+import { NotificationsTabs } from "../NotificationsTabs";
 
-import { ChangeOwnerModal } from "./ChangeOwnerModal";
-import {
-  NotificationDetailSidebar,
-  SIDEBAR_WIDTH,
-} from "./NotificationDetailSidebar";
-import { NotificationsFiltersDropdown } from "./NotificationsFiltersDropdown";
-import { NotificationsSearchInput } from "./NotificationsSearchInput";
-import { NotificationsTable } from "./NotificationsTable";
-import { NotificationsTabs } from "./NotificationsTabs";
 import {
   DEFAULT_SORT_COLUMN,
   DEFAULT_SORT_DIRECTION,
+  PAGE_SIZE,
   SORT_COLUMN_VALUES,
-  buildListParams,
-  urlStateConfig,
-} from "./utils";
-
-const PAGE_SIZE = 50;
-
-type RouteParams = {
-  notificationId?: string;
-};
-
-type ChangeOwnerTarget = {
-  ids: NotificationId[];
-  isBulk: boolean;
-};
+} from "./constants";
+import type { ChangeOwnerTarget, RouteParams } from "./types";
+import { buildListParams, urlStateConfig } from "./utils";
 
 export const NotificationsAdminPage = ({
   location,
@@ -127,15 +115,12 @@ export const NotificationsAdminPage = ({
     urlState.sort_direction,
   ]);
 
-  const sorting = useMemo<SortingState>(
-    () => [
-      {
-        id: urlState.sort_column,
-        desc: urlState.sort_direction === "desc",
-      },
-    ],
-    [urlState.sort_column, urlState.sort_direction],
-  );
+  const sorting: SortingState = [
+    {
+      id: urlState.sort_column,
+      desc: urlState.sort_direction === "desc",
+    },
+  ];
 
   const handleSortingChange = useCallback(
     (next: SortingState) => {
@@ -314,10 +299,7 @@ export const NotificationsAdminPage = ({
           isLoading={isFetching}
           onChange={(query) => patchUrlState({ query, page: 0 })}
         />
-        <NotificationsFiltersDropdown
-          state={urlState}
-          onChange={patchUrlState}
-        />
+        <NotificationsFilters state={urlState} onChange={patchUrlState} />
       </Flex>
 
       <NotificationsTable
@@ -344,9 +326,7 @@ export const NotificationsAdminPage = ({
           pageSize={PAGE_SIZE}
           itemsLength={notifications.length}
           total={total}
-          onPreviousPage={() =>
-            patchUrlState({ page: Math.max(0, urlState.page - 1) })
-          }
+          onPreviousPage={() => patchUrlState({ page: urlState.page - 1 })}
           onNextPage={() => patchUrlState({ page: urlState.page + 1 })}
         />
       </Flex>
