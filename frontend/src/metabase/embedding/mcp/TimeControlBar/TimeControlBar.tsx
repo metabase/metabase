@@ -11,38 +11,25 @@ export type {
   TimeRangeConfig,
 } from "./types";
 
-export function TimeControlBar({
+export const TimeControlBar = ({
   timeRange,
   timeGranularity,
-}: TimeControlBarProps) {
-  const hasTimeControl = timeRange || timeGranularity;
-
-  return (
+}: TimeControlBarProps) =>
+  (timeRange || timeGranularity) && (
     <Flex
-      w="100%"
-      direction={{ base: "column", xs: "row" }}
-      align={{ base: "flex-start", xs: "center" }}
-      justify="center"
-      gap={{ base: "sm", xs: "xs" }}
+      h={32}
+      align="stretch"
+      bd="1px solid var(--mb-color-border)"
+      bdrs="md"
+      style={{ overflow: "hidden" }}
       data-testid="query-explorer-bar"
     >
-      {hasTimeControl && (
-        <Flex
-          h={32}
-          align="stretch"
-          bd="1px solid var(--mb-color-border)"
-          bdrs="md"
-          style={{ overflow: "hidden" }}
-        >
-          {timeRange && <TimeRangeControl timeRange={timeRange} />}
+      {timeRange && <TimeRangeControl timeRange={timeRange} />}
 
-          {timeRange && timeGranularity && <Divider orientation="vertical" />}
+      {timeRange && timeGranularity && <Divider orientation="vertical" />}
 
-          {timeGranularity && (
-            <TimeGranularityControl timeGranularity={timeGranularity} />
-          )}
-        </Flex>
+      {timeGranularity && (
+        <TimeGranularityControl timeGranularity={timeGranularity} />
       )}
     </Flex>
   );
-}

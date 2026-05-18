@@ -55,7 +55,7 @@ export function McpQuestionView({
       </Flex>
 
       {isTimeControlsVisible && (
-        <Flex px="lg">
+        <Flex px="lg" justify="center">
           <McpTimeControls
             onVisibilityChange={onTimeControlsVisibilityChange}
           />
