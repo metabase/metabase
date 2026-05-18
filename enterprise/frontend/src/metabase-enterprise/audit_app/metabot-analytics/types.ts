@@ -105,6 +105,7 @@ export type ConversationDetail = {
   feedback: ConversationFeedback[];
 };
 
+export type DataComplexityRating = "low" | "medium" | "high";
 export type DataComplexityCatalogId = "library" | "universe" | "metabot";
 export type DataComplexityGroupId = "size" | "ambiguity";
 
@@ -117,34 +118,66 @@ export type DataComplexityComponentId =
   | DataComplexitySizeComponentId
   | DataComplexityAmbiguityComponentId;
 
-export type DataComplexitySubScore =
-  | { error: string }
-  | { measurement: number; score: number };
-
-export type DataComplexitySizeGroup = {
-  score: number | null;
-  components: Record<DataComplexitySizeComponentId, DataComplexitySubScore>;
+export type DataComplexityFailure = { error: string };
+export type ScoreAndRating = {
+  score: number;
+  rating: DataComplexityRating | null;
+  rating_label: string | null;
 };
 
-export type DataComplexityAmbiguityGroup = {
-  score: number | null;
-  components: Record<
-    DataComplexityAmbiguityComponentId,
-    DataComplexitySubScore
-  >;
+export type ScoreAndRatingError = {
+  [K in keyof ScoreAndRating]: null;
 };
+
+export type DataComplexityLeaf = {
+  measurement: number;
+} & ScoreAndRating;
+
+interface DataComplexitySchemaNode {
+  [key: string]: DataComplexitySchemaNode | true;
+}
+
+type DataComplexityCatalogSchema = {
+  size: {
+    entity_count: true;
+    field_count: true;
+  };
+  ambiguity: {
+    name_collisions: true;
+    synonym_pairs: true;
+    repeated_measures: true;
+  };
+};
+
+export type DataComplexityGrouping<T extends DataComplexitySchemaNode> = (
+  | ScoreAndRating
+  | ScoreAndRatingError
+) & {
+  components: {
+    [K in keyof T]: T[K] extends true
+      ? DataComplexitySubScore
+      : T[K] extends DataComplexitySchemaNode
+        ? DataComplexityGrouping<T[K]>
+        : never;
+  };
+};
+
+export type DataComplexitySubScore = DataComplexityFailure | DataComplexityLeaf;
+
+export type DataComplexitySizeGroup = DataComplexityGrouping<
+  DataComplexityCatalogSchema["size"]
+>;
+
+export type DataComplexityAmbiguityGroup = DataComplexityGrouping<
+  DataComplexityCatalogSchema["ambiguity"]
+>;
 
 export type DataComplexityGroup =
   | DataComplexitySizeGroup
   | DataComplexityAmbiguityGroup;
 
-export type DataComplexityCatalog = {
-  score: number | null;
-  components: {
-    size: DataComplexitySizeGroup;
-    ambiguity: DataComplexityAmbiguityGroup;
-  };
-};
+export type DataComplexityCatalog =
+  DataComplexityGrouping<DataComplexityCatalogSchema>;
 
 export type DataComplexityScoresResponse = {
   meta: {

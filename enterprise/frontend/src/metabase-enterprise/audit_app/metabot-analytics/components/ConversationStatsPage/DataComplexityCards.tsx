@@ -4,20 +4,22 @@ import { msgid, ngettext, t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
 import {
+  Accordion,
   Alert,
   Box,
-  Button,
   Card,
   Flex,
-  Group,
   Icon,
+  type MantineStyleProps,
   Modal,
   SimpleGrid,
   Skeleton,
   Stack,
   Text,
+  Tooltip,
   UnstyledButton,
 } from "metabase/ui";
+import type { MetabaseColorKey } from "metabase/ui/colors/types";
 import { formatNumber } from "metabase/utils/formatting";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
@@ -26,25 +28,13 @@ import type {
   DataComplexityCatalog,
   DataComplexityCatalogId,
   DataComplexityComponentId,
-  DataComplexityGroup,
+  DataComplexityFailure,
   DataComplexityGroupId,
+  DataComplexityRating,
   DataComplexitySubScore,
+  ScoreAndRating,
+  ScoreAndRatingError,
 } from "../../types";
-
-// Each group only carries its own component IDs (size: entity_count/field_count;
-// ambiguity: name_collisions/synonym_pairs/repeated_measures). The data-driven
-// iteration over COMPONENT_GROUPS uses the wide union, so cast to a permissive
-// view for the lookup — missing keys yield undefined.
-function getSubScore(
-  group: DataComplexityGroup,
-  componentId: DataComplexityComponentId,
-): DataComplexitySubScore | undefined {
-  return (
-    group.components as Partial<
-      Record<DataComplexityComponentId, DataComplexitySubScore>
-    >
-  )[componentId];
-}
 
 const CATALOG_IDS: DataComplexityCatalogId[] = [
   "library",
@@ -52,19 +42,10 @@ const CATALOG_IDS: DataComplexityCatalogId[] = [
   "metabot",
 ];
 
-const COMPONENT_GROUPS: {
-  groupId: DataComplexityGroupId;
-  componentIds: DataComplexityComponentId[];
-}[] = [
-  {
-    groupId: "size",
-    componentIds: ["entity_count", "field_count"],
-  },
-  {
-    groupId: "ambiguity",
-    componentIds: ["name_collisions", "synonym_pairs", "repeated_measures"],
-  },
-];
+const GROUP_IDS = [
+  "size",
+  "ambiguity",
+] as const satisfies readonly DataComplexityGroupId[];
 
 function DataComplexityCardSkeleton() {
   return (
@@ -90,10 +71,10 @@ function DataComplexityCard({
   catalog: DataComplexityCatalog;
 }) {
   const [isModalOpen, { close, open }] = useDisclosure();
-  const { title, subtitle } = match(catalogId)
+  const { subtitle, title } = match(catalogId)
     .with("library", () => ({
       title: t`Curated semantic layer`,
-      subtitle: t`Models and metrics from the curated Library subset.`,
+      subtitle: t`Metrics and published tables within your Library.`,
     }))
     .with("universe", () => ({
       title: t`Full semantic layer`,
@@ -110,16 +91,16 @@ function DataComplexityCard({
       <UnstyledButton onClick={open}>
         <Flex align="center" justify="space-between" gap="sm">
           <Text fw={700}>{title}</Text>
-          <Icon name="chevronright" size={12} c="text-tertiary" />
+          <Icon name="expand" c="text-tertiary" />
         </Flex>
         <Text c="text-secondary">{subtitle}</Text>
-        {match(catalog.score)
-          .with(P.number, (score) => (
+        {match(catalog)
+          .with({ score: P.number }, ({ score, rating, rating_label }) => (
             <Stack align="center" gap="sm" my="sm">
-              <Text size="4rem" fw={700}>
+              <Text size="4rem" fw={700} c={ratingToTextColor(rating)}>
                 {formatNumber(score, { maximumFractionDigits: 0 })}
               </Text>
-              <Text c="text-secondary">{t`Lower is better`}</Text>
+              <Text c="text-secondary">{rating_label}</Text>
             </Stack>
           ))
           .otherwise(() => (
@@ -130,16 +111,21 @@ function DataComplexityCard({
           ))}
       </UnstyledButton>
 
-      <Modal opened={isModalOpen} onClose={close} title={title} size="lg">
-        <Stack gap="lg">
-          <Text size="sm" c="text-secondary">
-            {subtitle}
-          </Text>
-          <DataComplexityBreakdown catalog={catalog} />
-          <Group justify="flex-end">
-            <Button variant="default" onClick={close}>{t`Close`}</Button>
-          </Group>
-        </Stack>
+      <Modal
+        opened={isModalOpen}
+        onClose={close}
+        title={
+          <Stack gap={4} align="flex-start">
+            <Text fw={700} size="xl" lh="1.5rem">
+              {title}
+            </Text>
+            <Text size="sm" lh="1rem" c="text-secondary">
+              {subtitle}
+            </Text>
+          </Stack>
+        }
+      >
+        <DataComplexityBreakdown catalog={catalog} />
       </Modal>
     </Card>
   );
@@ -153,53 +139,103 @@ function DataComplexityBreakdown({
   const hasError = catalog.score == null;
 
   return (
-    <Stack gap="lg">
+    <Stack gap="lg" mt="md">
       {hasError && (
         <Alert color="warning" icon={<Icon name="warning" />}>
           {t`Some component scores could not be computed.`}
         </Alert>
       )}
 
-      {COMPONENT_GROUPS.map(({ groupId, componentIds }) => {
-        const { title, description } = match(groupId)
-          .with("size", () => ({
-            title: t`Size`,
-            description: t`How much surface area this layer exposes.`,
-          }))
-          .with("ambiguity", () => ({
-            title: t`Ambiguity`,
-            description: t`Signals that similar or repeated names could make answers harder to trust.`,
-          }))
+      {GROUP_IDS.map((groupId) => {
+        const title = match(groupId)
+          .with("size", () => t`Size of this layer`)
+          .with("ambiguity", () => t`Areas of ambiguity`)
           .exhaustive();
         const group = catalog.components[groupId];
 
         return (
-          <Box key={groupId}>
-            <Text fw={700}>{title}</Text>
-            <Text size="sm" c="text-secondary">
-              {description}
-            </Text>
+          <Stack key={groupId} gap="md" w="100%">
+            <Flex align="center" justify="space-between" gap="lg">
+              <Text fw={700} lh="1rem">
+                {title}
+              </Text>
+              <ScoreDisplayInline score={group} mr="2.75rem" />
+            </Flex>
 
-            <Stack gap="sm" mt="md">
-              {componentIds.map((componentId) => {
-                const component = getSubScore(group, componentId);
-                if (!component) {
-                  return null;
-                }
-                return (
+            <Accordion
+              chevron={<Icon name="chevrondown" size={12} />}
+              styles={{
+                chevron: {
+                  border: 0,
+                  color: "var(--mb-color-text-primary)",
+                  height: "0.75rem",
+                  marginLeft: "1rem",
+                  width: "0.75rem",
+                },
+                content: {
+                  backgroundColor: "var(--mb-color-background-secondary)",
+                  borderTop: "1px solid var(--mb-color-border-subtle)",
+                  padding: "0.5rem 1rem 0.75rem",
+                },
+                control: {
+                  backgroundColor: "var(--mb-color-background-secondary)",
+                  borderRadius: "0.5rem",
+                  padding: "0.625rem 1rem",
+                },
+                item: {
+                  border: 0,
+                  borderRadius: "0.5rem",
+                  overflow: "hidden",
+                },
+                label: {
+                  padding: 0,
+                },
+                root: {
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.25rem",
+                  width: "100%",
+                },
+              }}
+            >
+              {getGroupComponentEntries(catalog, groupId).map(
+                ([componentId, component]) => (
                   <DataComplexityComponentItem
                     key={componentId}
                     componentId={componentId}
                     component={component}
                   />
-                );
-              })}
-            </Stack>
-          </Box>
+                ),
+              )}
+            </Accordion>
+          </Stack>
         );
       })}
     </Stack>
   );
+}
+
+function getGroupComponentEntries(
+  catalog: DataComplexityCatalog,
+  groupId: DataComplexityGroupId,
+): [DataComplexityComponentId, DataComplexitySubScore][] {
+  return match(groupId)
+    .returnType<[DataComplexityComponentId, DataComplexitySubScore][]>()
+    .with("size", () =>
+      (["entity_count", "field_count"] as const).map((componentId) => [
+        componentId,
+        catalog.components.size.components[componentId],
+      ]),
+    )
+    .with("ambiguity", () =>
+      (["name_collisions", "synonym_pairs", "repeated_measures"] as const).map(
+        (componentId) => [
+          componentId,
+          catalog.components.ambiguity.components[componentId],
+        ],
+      ),
+    )
+    .exhaustive();
 }
 
 function DataComplexityComponentItem({
@@ -210,112 +246,95 @@ function DataComplexityComponentItem({
   component: DataComplexitySubScore;
 }) {
   const measurement = "measurement" in component ? component.measurement : null;
-
-  const { title, description, count } = match(componentId)
+  const { count, description } = match(componentId)
     .with("entity_count", () => ({
-      title: t`Entity count`,
-      description: t`How many tables, models, and metrics are included in this layer.`,
       count:
-        measurement !== null &&
-        ngettext(
-          msgid`${measurement} entity`,
-          `${measurement} entities`,
-          measurement,
-        ),
+        measurement === null
+          ? t`Entities`
+          : ngettext(
+              msgid`${measurement} entity`,
+              `${measurement} entities`,
+              measurement,
+            ),
+      description: t`How many tables, models, and metrics are included in this layer.`,
     }))
     .with("name_collisions", () => ({
-      title: t`Name collisions`,
-      description: t`Exact duplicate names after normalization, which can make entities harder to distinguish.`,
       count:
-        measurement !== null &&
-        ngettext(
-          msgid`${measurement} collision`,
-          `${measurement} collisions`,
-          measurement,
-        ),
+        measurement === null
+          ? t`Duplicate names`
+          : ngettext(
+              msgid`${measurement} duplicate name`,
+              `${measurement} duplicate names`,
+              measurement,
+            ),
+      description: t`Exact duplicate names after normalization, which can make entities harder to distinguish.`,
     }))
     .with("synonym_pairs", () => ({
-      title: t`Synonym pairs`,
-      description: t`Pairs of entity names that are semantically similar enough to be treated as possible synonyms.`,
       count:
-        measurement !== null &&
-        ngettext(
-          msgid`${measurement} similar pair`,
-          `${measurement} similar pairs`,
-          measurement,
-        ),
+        measurement === null
+          ? t`Semantically similar pairs`
+          : ngettext(
+              msgid`${measurement} semantically similar pair`,
+              `${measurement} semantically similar pairs`,
+              measurement,
+            ),
+      description: t`Pairs of entity names that are semantically similar enough to be treated as possible synonyms.`,
     }))
     .with("field_count", () => ({
-      title: t`Field count`,
-      description: t`Active physical-table fields exposed through this layer.`,
       count:
-        measurement !== null &&
-        ngettext(
-          msgid`${measurement} field`,
-          `${measurement} fields`,
-          measurement,
-        ),
+        measurement === null
+          ? t`Fields`
+          : ngettext(
+              msgid`${measurement} field`,
+              `${measurement} fields`,
+              measurement,
+            ),
+      description: t`Active physical-table fields exposed through this layer.`,
     }))
     .with("repeated_measures", () => ({
-      title: t`Repeated measures`,
-      description: t`Duplicate measure names across included tables.`,
       count:
-        measurement !== null &&
-        ngettext(
-          msgid`${measurement} repeated name`,
-          `${measurement} repeated names`,
-          measurement,
-        ),
+        measurement === null
+          ? t`Duplicate measure names`
+          : ngettext(
+              msgid`${measurement} duplicate measure name`,
+              `${measurement} duplicate measure names`,
+              measurement,
+            ),
+      description: t`Duplicate measure names across included tables.`,
     }))
     .exhaustive();
 
   return (
-    <Box
-      p="md"
-      bdrs="md"
-      bg="background-secondary"
-      style={{
-        border: "1px solid var(--mb-color-border)",
-      }}
-    >
-      <Flex gap="md" justify="space-between" align="flex-start">
-        <Group gap="sm" align="flex-start" wrap="nowrap" flex={1}>
-          <Box>
-            <Text fw={700}>{title}</Text>
+    <Accordion.Item value={componentId} bg="background-secondary" bd="0" mt={0}>
+      <Accordion.Control>
+        <Flex align="center" gap="sm" w="100%">
+          <Text c="text-primary" fw={500} truncate>
+            {count}
+          </Text>
+          <Tooltip label={description}>
+            <Icon name="info" c="text-tertiary" size={14} />
+          </Tooltip>
+          <ScoreDisplayInline score={component} />
+        </Flex>
+      </Accordion.Control>
+      <Accordion.Panel>
+        <Text size="sm" c="text-secondary">
+          {description}
+        </Text>
+        {match(component)
+          .with({ error: P.nonNullable }, ({ error }) => (
+            <Text c="error" size="sm" role="alert">
+              {error}
+            </Text>
+          ))
+          .with({ rating_label: P.nonNullable }, ({ rating_label }) => (
             <Text size="sm" c="text-secondary">
-              {description}
+              {rating_label}
             </Text>
-            {"error" in component && (
-              <Text mt="sm" size="sm" c="error" role="alert">
-                {component.error}
-              </Text>
-            )}
-          </Box>
-        </Group>
-
-        {count !== false && (
-          <Box
-            px="sm"
-            py={4}
-            bdrs="sm"
-            bg="background-primary"
-            style={{
-              border: "1px solid var(--mb-color-border)",
-              flexShrink: 0,
-            }}
-          >
-            <Text
-              size="sm"
-              fw={700}
-              c="text-secondary"
-              style={{ whiteSpace: "nowrap" }}
-            >
-              {count}
-            </Text>
-          </Box>
-        )}
-      </Flex>
-    </Box>
+          ))
+          .otherwise(() => null)}
+      </Accordion.Panel>
+    </Accordion.Item>
   );
 }
 
@@ -369,4 +388,73 @@ export function DataComplexityCards() {
         .exhaustive()}
     </SimpleGrid>
   );
+}
+
+function ratingToTextColor(
+  rating: DataComplexityRating | null,
+): MetabaseColorKey {
+  return match(rating)
+    .returnType<MetabaseColorKey>()
+    .with("low", () => "success")
+    .with("medium", () => "warning")
+    .with("high", () => "error")
+    .with(null, () => "text-secondary")
+    .exhaustive();
+}
+
+function ScoreDisplayInline({
+  score,
+  ...rest
+}: {
+  score: ScoreAndRating | ScoreAndRatingError | DataComplexityFailure;
+} & MantineStyleProps) {
+  return match(score)
+    .with({ score: P.nullish }, { error: P.nonNullable }, () => (
+      <Text c="error" fw={700} lh="1rem" ml="auto" {...rest}>
+        {t`Unavailable`}
+      </Text>
+    ))
+    .with({ score: P.nonNullable }, ({ score, rating }) => (
+      <Box
+        ml="auto"
+        px={8}
+        py={4}
+        bdrs="sm"
+        bg={getRatingBadgeColors(rating).backgroundColor}
+        {...rest}
+      >
+        <Text fw={700} lh="1rem" c={getRatingBadgeColors(rating).color}>
+          {formatNumber(score, { maximumFractionDigits: 0 })}
+        </Text>
+      </Box>
+    ))
+    .exhaustive();
+}
+
+function getRatingBadgeColors(rating: DataComplexityRating | null): {
+  backgroundColor: MetabaseColorKey;
+  color: MetabaseColorKey;
+} {
+  return match(rating)
+    .returnType<{
+      backgroundColor: MetabaseColorKey;
+      color: MetabaseColorKey;
+    }>()
+    .with("low", () => ({
+      backgroundColor: "background-success-secondary",
+      color: "success-secondary",
+    }))
+    .with("medium", () => ({
+      backgroundColor: "background-warning-secondary",
+      color: "text-primary",
+    }))
+    .with("high", () => ({
+      backgroundColor: "background-error",
+      color: "error",
+    }))
+    .with(null, () => ({
+      backgroundColor: "background-tertiary",
+      color: "text-secondary",
+    }))
+    .exhaustive();
 }
