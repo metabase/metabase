@@ -145,6 +145,19 @@ jobs:
           || (echo "Commit not found in correct release branch" && exit 1)
         git checkout -
 
+  trigger-milestone-check:
+    # Posts a Slack FYI about issues that still need review for this release.
+    # Informational only — nothing depends on it, so it never blocks the release.
+    needs: [check-version, check-commit]
+    permissions:
+      contents: read
+      issues: read
+    uses: ./.github/workflows/release-milestone-check.yml
+    secrets: inherit
+    with:
+      version: ${{ inputs.version }}
+      commit: ${{ inputs.commit }}
+
   manage-milestones:
     # Close the milestone we're about to ship and open the next one BEFORE tagging,
     # so any PRs that merge while the release is in flight are tagged with the next
@@ -161,19 +174,6 @@ jobs:
     uses: ./.github/workflows/release-milestone-manage.yml
     with:
       version: ${{ inputs.version }}
-
-  trigger-milestone-check:
-    # Posts a Slack FYI about issues that still need review for this release.
-    # Informational only — nothing depends on it, so it never blocks the release.
-    needs: [check-version, check-commit]
-    permissions:
-      contents: read
-      issues: read
-    uses: ./.github/workflows/release-milestone-check.yml
-    secrets: inherit
-    with:
-      version: ${{ inputs.version }}
-      commit: ${{ inputs.commit }}
 
   tag-uberjar-for-release:
     needs: [check-version, check-commit]
