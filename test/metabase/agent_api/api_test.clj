@@ -746,3 +746,71 @@
         (mt/user-http-request :rasta :post 403 "agent/v1/collection"
                               {:name                 "Should Fail"
                                :parent_collection_id parent-id})))))
+
+;;; ----------------------------------------------- Update Question Tests ------------------------------------------
+
+(deftest update-question-test
+  (testing "Patches simple fields (name, description, archived)"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Agent Update Q Original"
+                                              :dataset_query (orders-count-query)
+                                              :display       :table}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/question/" card-id)
+                                       {:name        "Renamed by Agent"
+                                        :description "Set by agent"})]
+        (is (=? {:id          card-id
+                 :name        "Renamed by Agent"
+                 :description "Set by agent"
+                 :archived    false}
+                resp)))
+      ;; verify persisted
+      (is (= "Renamed by Agent" (t2/select-one-fn :name :model/Card :id card-id)))
+      (is (= "Set by agent" (t2/select-one-fn :description :model/Card :id card-id)))))
+
+  (testing "Moving a card sets collection_id (subsumes move_card)"
+    (mt/with-temp [:model/Collection {dest-coll-id :id} {:name "Agent Move Dest"}
+                   :model/Card       {card-id :id}      {:name          "Card To Move"
+                                                         :dataset_query (orders-count-query)
+                                                         :display       :table}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/question/" card-id)
+                                       {:collection_id dest-coll-id})]
+        (is (= dest-coll-id (:collection_id resp))))
+      (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id)))))
+
+  (testing "Archiving a card"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Card To Archive"
+                                              :dataset_query (orders-count-query)
+                                              :display       :table}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/question/" card-id)
+                                       {:archived true})]
+        (is (true? (:archived resp))))
+      (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))))
+
+  (testing "Replacing the underlying query via :query (base64)"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Card To Re-query"
+                                              :dataset_query (orders-count-query)
+                                              :display       :table}]
+      (let [new-query    (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:source     {:type "table" :id (mt/id :products)}
+                                                :operations [["limit" 5]]})
+            base64-query (:query new-query)
+            _resp        (mt/user-http-request :rasta :put 200 (str "agent/v1/question/" card-id)
+                                               {:query base64-query})
+            persisted    (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+        ;; Query was replaced - source-table changed from orders to products.
+        (is (some? persisted))
+        (is (not= (orders-count-query) persisted)))))
+
+  (testing "Returns 404 when card does not exist"
+    (mt/user-http-request :rasta :put 404 "agent/v1/question/999999"
+                          {:name "doesn't matter"}))
+
+  (testing "Returns 403 when caller lacks write access on the card"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {locked-coll-id :id} {:name "Locked Coll"}
+                     :model/Card       {card-id :id}        {:name          "Hidden Card"
+                                                             :dataset_query (orders-count-query)
+                                                             :display       :table
+                                                             :collection_id locked-coll-id}]
+        (mt/user-http-request :rasta :put 403 (str "agent/v1/question/" card-id)
+                              {:name "Forbidden Rename"})))))
+

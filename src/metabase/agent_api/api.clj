@@ -759,6 +759,76 @@
      :collection_id (:collection_id card)
      :description   (:description card)}))
 
+;;; ------------------------------------------------- Update Question ------------------------------------------------
+
+(mr/def ::update-question-request
+  [:map
+   [:name                   {:optional true} [:maybe ms/NonBlankString]]
+   [:description            {:optional true} [:maybe :string]]
+   [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
+   [:display                {:optional true} [:maybe :string]]
+   [:visualization_settings {:optional true} [:maybe :map]]
+   [:archived               {:optional true} [:maybe :boolean]]
+   [:query                  {:optional true} [:maybe ms/NonBlankString]]])
+
+(mr/def ::update-question-response
+  [:map
+   [:id            ms/PositiveInt]
+   [:name          ms/NonBlankString]
+   [:display       :string]
+   [:collection_id [:maybe ms/PositiveInt]]
+   [:description   [:maybe :string]]
+   [:archived      :boolean]])
+
+(api.macros/defendpoint :put "/v1/question/:id" :- ::update-question-response
+  "Update a saved question (card). Patch semantics - only fields that you pass are changed.
+
+  Set `collection_id` to move the card to a different collection. Set `archived: true` to archive.
+  Pass `query` (a query_handle from construct_query, or a base64 MBQL string) to replace the underlying query."
+  {:scope metabot/agent-question-update
+   :tool  {:name "update_question"
+           :description (str "Update a saved question (card). Patch semantics - only fields you pass are changed. "
+                             "To move a card to a different collection, set collection_id. "
+                             "To archive, set archived true. To replace the underlying query, pass query "
+                             "(a query_handle from construct_query).")}}
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   body :- ::update-question-request]
+  (let [card-before-update (api/write-check :model/Card id)
+        card-updates       (cond-> {}
+                             (contains? body :name)
+                             (assoc :name (:name body))
+
+                             (contains? body :description)
+                             (assoc :description (:description body))
+
+                             (contains? body :collection_id)
+                             (assoc :collection_id (:collection_id body))
+
+                             (contains? body :display)
+                             (assoc :display (some-> (:display body) keyword))
+
+                             (contains? body :visualization_settings)
+                             (assoc :visualization_settings (:visualization_settings body))
+
+                             (contains? body :archived)
+                             (assoc :archived (boolean (:archived body)))
+
+                             (contains? body :query)
+                             (assoc :dataset_query
+                                    (-> (:query body) u/decode-base64 json/decode+kw)))
+        _                  (queries/update-card! {:card-before-update    card-before-update
+                                                  :card-updates          card-updates
+                                                  :actor                 @api/*current-user*
+                                                  :delete-old-dashcards? false})
+        updated            (t2/select-one :model/Card :id id)]
+    {:id            (:id updated)
+     :name          (:name updated)
+     :display       (clojure.core/name (:display updated))
+     :collection_id (:collection_id updated)
+     :description   (:description updated)
+     :archived      (boolean (:archived updated))}))
+
 ;;; ------------------------------------------------ Create Dashboard -----------------------------------------------
 
 (mr/def ::create-dashboard-request
