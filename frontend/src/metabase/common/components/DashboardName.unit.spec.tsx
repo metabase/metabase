@@ -1,12 +1,10 @@
+import fetchMock from "fetch-mock";
+
 import {
   setupDashboardEndpoints,
   setupDashboardNotFoundEndpoint,
 } from "__support__/server-mocks";
-import {
-  renderWithProviders,
-  screen,
-  waitForLoaderToBeRemoved,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
 import { DashboardName } from "./DashboardName";
@@ -42,7 +40,11 @@ describe("DashboardName", () => {
 
     renderName(TEST_DASHBOARD.id);
 
-    await waitForLoaderToBeRemoved();
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(`path:/api/dashboard/${TEST_DASHBOARD.id}`),
+      ).toHaveLength(1);
+    });
     expect(screen.getByTestId("wrapper")).toBeEmptyDOMElement();
   });
 
