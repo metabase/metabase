@@ -980,4 +980,103 @@ describe("scenarios > explorations > collection placement + archive", () => {
       },
     );
   });
+
+  it("permanently deletes an archived exploration via the Delete permanently action on the /trash page", () => {
+    // `ActionMenu`'s `handleDeletePermanently` previously routed
+    // every non-collection model through the legacy entity factory
+    // (`entityForObject`), which has no `explorations` entry — so
+    // the delete crashed. The fix dispatches the RTKQ
+    // `deleteExploration` mutation, which calls
+    // `DELETE /api/exploration/:id` (a new BE endpoint that cascades
+    // through threads/queries/documents via the FK tree).
+    const explorationName = "Trash-page delete-permanently fixture";
+
+    H.createExplorationViaApi({ name: explorationName }).then(
+      (explorationId) => {
+        cy.request("PUT", `/api/exploration/${explorationId}`, {
+          archived: true,
+        });
+
+        cy.visit("/trash");
+        cy.findByTestId("collection-table")
+          .findByText(explorationName)
+          .should("be.visible");
+
+        cy.intercept("DELETE", `/api/exploration/${explorationId}`).as(
+          "deleteExploration",
+        );
+        H.openCollectionItemMenu(explorationName);
+        cy.findByText("Delete permanently").click();
+        // The confirmation modal owns the final destructive button.
+        H.modal()
+          .findByRole("button", { name: /Delete permanently/i })
+          .click();
+
+        cy.wait("@deleteExploration")
+          .its("response.statusCode")
+          .should("eq", 204);
+
+        // The row is gone from the trash listing…
+        cy.findByText(explorationName).should("not.exist");
+
+        // …and the BE returns 404 for the now-hard-deleted exploration.
+        cy.request({
+          method: "GET",
+          url: `/api/exploration/${explorationId}`,
+          failOnStatusCode: false,
+        })
+          .its("status")
+          .should("eq", 404);
+      },
+    );
+  });
+
+  it("restores an archived exploration via the Restore action on the /trash page", () => {
+    // `useSetArchive`'s undo toast is one path back, but the trash
+    // page exposes a separate `Restore` action that runs through
+    // `ActionMenu.tsx`'s `handleRestore`. Without an explicit
+    // `exploration` branch in that handler it falls through to the
+    // legacy `entityForObject(...)`, which has no `explorations`
+    // entry — so the restore would silently throw. This test
+    // exercises the dedicated branch end-to-end.
+    const explorationName = "Trash-page restore fixture";
+
+    H.createExplorationViaApi({ name: explorationName }).then(
+      (explorationId) => {
+        // Archive directly via the BE so we land on /trash with the
+        // exploration already in it.
+        cy.request("PUT", `/api/exploration/${explorationId}`, {
+          archived: true,
+        });
+
+        cy.visit("/trash");
+        cy.findByTestId("collection-table")
+          .findByText(explorationName)
+          .should("be.visible");
+
+        cy.intercept("PUT", `/api/exploration/${explorationId}`).as(
+          "restoreExploration",
+        );
+        H.openCollectionItemMenu(explorationName);
+        cy.findByText("Restore").click();
+
+        cy.wait("@restoreExploration").then(({ request, response }) => {
+          expect(request.body).to.deep.eq({ archived: false });
+          expect(response?.statusCode).to.eq(200);
+        });
+
+        // The trash listing no longer shows the exploration.
+        cy.findByText(explorationName).should("not.exist");
+
+        // And the BE reports the exploration as un-archived again.
+        cy.request("GET", `/api/exploration/${explorationId}`).then(
+          ({ body }) => {
+            expect(body.archived, "exploration is no longer archived").to.eq(
+              false,
+            );
+          },
+        );
+      },
+    );
+  });
 });

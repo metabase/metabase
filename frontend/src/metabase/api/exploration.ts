@@ -58,6 +58,17 @@ export const explorationApi = Api.injectEndpoints({
           listTag("exploration"),
         ]),
     }),
+    deleteExploration: builder.mutation<void, ExplorationId>({
+      query: (id) => ({
+        method: "DELETE",
+        url: `/api/exploration/${id}`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [
+          idTag("exploration", id),
+          listTag("exploration"),
+        ]),
+    }),
     getExplorationQueryResult: builder.query<Dataset, ExplorationQueryId>({
       query: (id) => ({
         method: "GET",
@@ -109,6 +120,7 @@ export const {
   useGetExplorationQuery,
   useCreateExplorationMutation,
   useUpdateExplorationMutation,
+  useDeleteExplorationMutation,
   useGetExplorationQueryResultQuery,
   useCreateExplorationDocumentMutation,
   useAppendChartToDocumentMutation,

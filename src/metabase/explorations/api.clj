@@ -140,7 +140,7 @@
 
 (defn- hydrate-exploration [exploration]
   (-> exploration
-      (t2/hydrate :creator :can_write
+      (t2/hydrate :creator :can_write :collection
                   [:threads [:metrics :card] :dimensions :timelines :queries :documents])
       (update :threads #(some->> % (mapv attach-thread-groups)))
       (update :threads #(some->> % (mapv attach-query-dimension-labels)))))
@@ -562,6 +562,17 @@
       (when archiving-changing?
         (cascade-archived-to-thread-documents! id (:archived updates'))))
     (hydrate-exploration (t2/select-one :model/Exploration :id id))))
+
+(api.macros/defendpoint :delete "/:id"
+  "Hard-delete an exploration. Soft delete is `PUT /api/exploration/:id {archived: true}`.
+
+  Cascades to every `exploration_thread`, `exploration_query`, and attached `document`
+  via the on-delete-cascade FKs configured in the explorations migration."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (let [existing (get-exploration-or-404 id)]
+    (api/write-check existing)
+    (t2/delete! :model/Exploration :id id))
+  api/generic-204-no-content)
 
 (def ^:private query-summary-columns
   "Column projection for `::ExplorationQuerySummary` rows — excludes `dataset_query` and the

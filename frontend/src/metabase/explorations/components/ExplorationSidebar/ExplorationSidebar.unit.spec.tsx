@@ -90,6 +90,8 @@ function createExploration({ queries, groups }: CreateExplorationOpts): {
     creator_id: 1,
     can_write: true,
     archived: false,
+    collection_id: null,
+    collection: null,
     entity_id: "expl00000000000000001",
     created_at: "2026-04-30T00:00:00Z",
     updated_at: "2026-04-30T00:00:00Z",

@@ -1,5 +1,5 @@
 import type { CardId } from "./card";
-import type { CollectionId } from "./collection";
+import type { Collection, CollectionId } from "./collection";
 import type { DocumentId } from "./document";
 import type { DimensionId, DimensionMapping, MetricDimension } from "./measure";
 import type { Metric } from "./metric";
@@ -222,6 +222,8 @@ export interface Exploration {
   description: string | null;
   creator_id: UserId;
   archived: boolean;
+  collection_id: CollectionId | null;
+  collection?: Collection | null;
   entity_id: string;
   created_at: string;
   updated_at: string;
