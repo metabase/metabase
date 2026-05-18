@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api/api";
 import { useListCollectionsTreeQuery } from "metabase/api/collection";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
+import getExpandedCollectionsById from "metabase/collections/getExpandedCollectionsById";
 import { useSetting } from "metabase/common/hooks/use-setting";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
-import getExpandedCollectionsById from "metabase/entities/collections/getExpandedCollectionsById";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";

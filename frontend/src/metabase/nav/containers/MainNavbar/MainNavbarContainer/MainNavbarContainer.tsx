@@ -12,18 +12,16 @@ import {
   useListCollectionsTreeQuery,
 } from "metabase/api/collection";
 import { logout } from "metabase/auth/actions";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
+import type { CollectionTreeItem } from "metabase/collections/utils";
 import {
+  buildCollectionTree,
   currentUserPersonalCollections,
+  getCollectionIcon,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
 import { Modal } from "metabase/common/components/Modal";
-import type { CollectionTreeItem } from "metabase/entities/collections";
-import {
-  ROOT_COLLECTION,
-  buildCollectionTree,
-  getCollectionIcon,
-} from "metabase/entities/collections";
 import { Databases } from "metabase/entities/databases";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { connect, useDispatch, useSelector } from "metabase/redux";

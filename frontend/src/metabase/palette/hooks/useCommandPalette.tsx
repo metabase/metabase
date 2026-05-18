@@ -6,10 +6,10 @@ import { jt, t } from "ttag";
 
 import { useListRecentsQuery } from "metabase/api/activity";
 import { useSearchQuery } from "metabase/api/search";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
 import { getCollection } from "metabase/collections/utils";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { useSetting } from "metabase/common/hooks";
-import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useSelector } from "metabase/redux";
 import { trackSearchClick } from "metabase/search/analytics";

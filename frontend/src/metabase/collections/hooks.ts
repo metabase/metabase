@@ -3,7 +3,7 @@ import { useMemo } from "react";
 
 import { skipToken } from "metabase/api/api";
 import { useGetCollectionQuery } from "metabase/api/collection";
-import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getUser, getUserPersonalCollectionId } from "metabase/selectors/user";

@@ -5,12 +5,12 @@ import { t } from "ttag";
 import { skipToken } from "metabase/api/api";
 import { useListCollectionItemsQuery } from "metabase/api/collection";
 import { useListDatabasesQuery } from "metabase/api/database";
+import { PERSONAL_COLLECTIONS } from "metabase/collections/constants";
 import {
   useGetPersonalCollection,
   useHasTokenFeature,
   useSetting,
 } from "metabase/common/hooks";
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { PLUGIN_LIBRARY, PLUGIN_TENANTS } from "metabase/plugins";
 import { type DispatchFn, useDispatch, useSelector } from "metabase/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";

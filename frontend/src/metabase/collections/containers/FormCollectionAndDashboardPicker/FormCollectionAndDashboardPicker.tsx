@@ -12,6 +12,7 @@ import {
 import {
   type EntityType,
   canonicalCollectionId,
+  getCollectionIcon,
   isTrashedCollection,
   isValidCollectionId,
 } from "metabase/collections/utils";
@@ -31,7 +32,6 @@ import {
 } from "metabase/common/components/Pickers";
 import { SnippetCollectionName } from "metabase/common/components/SnippetCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import { getCollectionIcon } from "metabase/entities/collections/utils";
 import { Button, Flex, Icon } from "metabase/ui";
 import type { CollectionId, DashboardId } from "metabase-types/api";
 

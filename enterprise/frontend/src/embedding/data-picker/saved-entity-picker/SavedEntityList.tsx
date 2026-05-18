@@ -3,10 +3,10 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api/api";
 import { useListCollectionItemsQuery } from "metabase/api/collection";
+import { PERSONAL_COLLECTIONS } from "metabase/collections/constants";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SelectList } from "metabase/common/components/SelectList";
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box } from "metabase/ui";
