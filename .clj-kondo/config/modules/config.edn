@@ -1738,7 +1738,6 @@
                     :model/NativeQuerySnippet
                     :model/Notification
                     :model/Revision
-                    :model/Table
                     :model/User}}
 
   queries-rest
@@ -2939,6 +2938,7 @@
            audit-app
            collections
            config
+           driver
            metabot
            models
            premium-features

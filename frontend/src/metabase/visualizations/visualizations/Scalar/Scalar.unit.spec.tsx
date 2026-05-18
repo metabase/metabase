@@ -92,6 +92,22 @@ describe("Scalar", () => {
     // as the ScalarValue component handles sizing to fit
     expect(styles.textOverflow).not.toBe("ellipsis");
   });
+
+  it("lets Unicode subscript descenders render past the line box (metabase#72443)", () => {
+    render(
+      <Scalar
+        {...mockedProps}
+        series={series(344)}
+        rawSeries={series(344)}
+        settings={settings}
+        visualizationIsClickable={() => false}
+        width={230}
+      />,
+    );
+    expect(screen.getByTestId("scalar-container")).toHaveStyle({
+      overflowY: "visible",
+    });
+  });
 });
 
 describe("scalar viz settings", () => {
