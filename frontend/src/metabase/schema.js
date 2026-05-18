@@ -40,6 +40,10 @@ export const TableSchema = new schema.Entity(
         };
       }
 
+      if (table.fields != null && table.original_fields == null) {
+        table.original_fields = table.fields;
+      }
+
       return table;
     },
   },

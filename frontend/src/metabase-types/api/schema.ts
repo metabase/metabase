@@ -50,6 +50,7 @@ export interface NormalizedTable extends Omit<
   metrics?: CardId[];
   schema?: SchemaId;
   schema_name?: SchemaName;
+  original_fields?: Field[];
 }
 
 export interface NormalizedForeignKey extends Omit<

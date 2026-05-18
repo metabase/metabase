@@ -1,6 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
+import { normalize } from "normalizr";
 
 import type { State } from "metabase/redux/store";
+import { FieldSchema } from "metabase/schema";
 import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
 import Field from "metabase-lib/v1/metadata/Field";
@@ -345,8 +347,18 @@ function hydrateTableSchema(
 }
 
 function hydrateTableFields(entityTable: Table, metadata: Metadata): Field[] {
-  const fieldIds = entityTable.getPlainObject().fields ?? [];
-  return fieldIds.map((id) => metadata.field(id)).filter(isNotNull);
+  const apiTable = entityTable.getPlainObject();
+
+  if (!apiTable.original_fields) {
+    const fieldIds = apiTable.fields ?? [];
+    return fieldIds.map((id) => metadata.field(id)).filter(isNotNull);
+  }
+
+  return apiTable.original_fields.map((apiField) => {
+    const { entities, result } = normalize(apiField, FieldSchema);
+    const normalizedField = entities.fields?.[result];
+    return createField(normalizedField, metadata);
+  });
 }
 
 function hydrateField(field: Field, metadata: Metadata) {
@@ -424,6 +436,7 @@ function hydrateMeasureTable(
     metrics: _metrics,
     schema: _schema,
     schema_name,
+    original_fields: _original_fields,
     ...rest
   } = normalized;
   return { ...rest, schema: schema_name ?? "" };
