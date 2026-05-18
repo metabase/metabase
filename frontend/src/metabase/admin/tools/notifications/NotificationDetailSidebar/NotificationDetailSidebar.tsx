@@ -11,7 +11,6 @@ import {
   useBulkNotificationActionMutation,
   useGetCardQuery,
   useListTaskRunsQuery,
-  useListUsersQuery,
 } from "metabase/api";
 import { Link as MBLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -35,7 +34,6 @@ import {
   Group,
   Icon,
   Menu,
-  Select,
   Stack,
   Text,
   Title,
@@ -49,13 +47,14 @@ import type {
   NotificationRecipient,
   TaskRun,
   TaskRunStatus,
-  UserId,
 } from "metabase-types/api";
 
 import {
   formatRelativeDate,
   getChannelIconName,
 } from "../NotificationsAdminPage/utils";
+import type { UserOption } from "../UserPicker";
+import { UserPicker } from "../UserPicker";
 
 import S from "./NotificationDetailSidebar.module.css";
 import {
@@ -725,18 +724,24 @@ const NotificationEditModalLoader = ({
   }, [card, isFetching, metadata]);
 
   const initialOwnerId = notification.owner_id ?? notification.owner.id;
-  const [selectedOwnerId, setSelectedOwnerId] =
-    useState<UserId>(initialOwnerId);
+  const [selectedOwner, setSelectedOwner] = useState<UserOption>(() => {
+    const owner = notification.owner;
+    const label = owner.common_name || owner.email || t`Unknown`;
+    return {
+      id: initialOwnerId,
+      label: !owner.is_active ? t`${label} (deactivated)` : label,
+    };
+  });
   const [bulkAction] = useBulkNotificationActionMutation();
 
   const handleOwnerSubmit = async () => {
-    if (selectedOwnerId === initialOwnerId) {
+    if (selectedOwner.id === initialOwnerId) {
       return true;
     }
     const result = await bulkAction({
       notification_ids: [notification.id],
       action: "change-owner",
-      owner_id: selectedOwnerId,
+      owner_id: selectedOwner.id,
     });
     if (result.error) {
       dispatch(
@@ -762,9 +767,8 @@ const NotificationEditModalLoader = ({
       skipUrlUpdate
       extraSection={
         <OwnerSection
-          notification={notification}
-          selectedOwnerId={selectedOwnerId}
-          onChange={setSelectedOwnerId}
+          selectedOwner={selectedOwner}
+          onChange={setSelectedOwner}
         />
       }
       additionalSubmit={handleOwnerSubmit}
@@ -774,57 +778,13 @@ const NotificationEditModalLoader = ({
   );
 };
 
-const OwnerSection = ({
-  notification,
-  selectedOwnerId,
-  onChange,
-}: OwnerSectionProps) => {
-  const currentOwner = notification.owner;
-  const { data, isLoading } = useListUsersQuery({ limit: 500 });
-
-  const options = useMemo(() => {
-    const users = data?.data ?? [];
-    const activeOptions = users
-      .filter((user) => user.is_active)
-      .map((user) => ({
-        value: String(user.id),
-        label: user.common_name || user.email,
-      }));
-    const hasCurrent = activeOptions.some(
-      (option) => option.value === String(currentOwner.id),
-    );
-    if (!hasCurrent) {
-      const label =
-        currentOwner.common_name || currentOwner.email || t`Unknown`;
-      activeOptions.unshift({
-        value: String(currentOwner.id),
-        label:
-          currentOwner.is_active === false ? t`${label} (deactivated)` : label,
-      });
-    }
-    return activeOptions;
-  }, [data, currentOwner]);
-
-  return (
-    <AlertModalSettingsBlock title={t`Who owns this alert?`}>
-      <Flex align="center" gap="md">
-        <Text fw="bold" size="md" c="text-primary" w={56}>
-          {t`Owner`}
-        </Text>
-        <Select
-          flex={1}
-          data={options}
-          value={String(selectedOwnerId)}
-          placeholder={isLoading ? t`Loading…` : t`Select a user`}
-          onChange={(value) => {
-            if (value !== null) {
-              onChange(Number(value));
-            }
-          }}
-          searchable
-          nothingFoundMessage={t`No users found`}
-        />
-      </Flex>
-    </AlertModalSettingsBlock>
-  );
-};
+const OwnerSection = ({ selectedOwner, onChange }: OwnerSectionProps) => (
+  <AlertModalSettingsBlock title={t`Who owns this alert?`}>
+    <Flex align="center" gap="md">
+      <Text fw="bold" size="md" c="text-primary" w={56}>
+        {t`Owner`}
+      </Text>
+      <UserPicker flex={1} value={selectedOwner} onChange={onChange} />
+    </Flex>
+  </AlertModalSettingsBlock>
+);

@@ -8,8 +8,9 @@ import type {
   NotificationHandlerSlack,
   NotificationId,
   TaskRun,
-  UserId,
 } from "metabase-types/api";
+
+import type { UserOption } from "../UserPicker";
 
 export type SidebarProps = {
   notificationId: NotificationId;
@@ -79,7 +80,6 @@ export type NotificationEditModalLoaderProps = {
 };
 
 export type OwnerSectionProps = {
-  notification: AdminNotification;
-  selectedOwnerId: UserId;
-  onChange: (ownerId: UserId) => void;
+  selectedOwner: UserOption;
+  onChange: (next: UserOption) => void;
 };

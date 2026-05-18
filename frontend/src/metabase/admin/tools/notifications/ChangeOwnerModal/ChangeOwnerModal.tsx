@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
-import { useListUsersQuery } from "metabase/api";
-import { Button, Flex, Modal, Select } from "metabase/ui";
+import { Button, Flex, Modal } from "metabase/ui";
 import type { UserId } from "metabase-types/api";
+
+import { type UserOption, UserPicker } from "../UserPicker";
 
 type Props = {
   opened: boolean;
@@ -20,31 +21,16 @@ export const ChangeOwnerModal = ({
   onClose,
   onConfirm,
 }: Props) => {
-  const [selectedOwnerId, setSelectedOwnerId] = useState<UserId | null>(null);
-
-  const { data, isLoading } = useListUsersQuery(
-    { limit: 500 },
-    { skip: !opened },
-  );
-
-  const options = useMemo(() => {
-    const users = data?.data ?? [];
-    return users
-      .filter((user) => user.is_active)
-      .map((user) => ({
-        value: String(user.id),
-        label: user.common_name || user.email,
-      }));
-  }, [data]);
+  const [selectedOwner, setSelectedOwner] = useState<UserOption | null>(null);
 
   const handleClose = () => {
-    setSelectedOwnerId(null);
+    setSelectedOwner(null);
     onClose();
   };
 
   const handleSubmit = () => {
-    if (selectedOwnerId !== null) {
-      onConfirm(selectedOwnerId);
+    if (selectedOwner !== null) {
+      onConfirm(selectedOwner.id);
     }
   };
 
@@ -56,14 +42,10 @@ export const ChangeOwnerModal = ({
   return (
     <Modal opened={opened} onClose={handleClose} title={title} size="md">
       <Flex direction="column" gap="md">
-        <Select
+        <UserPicker
           label={t`New owner`}
-          placeholder={isLoading ? t`Loading…` : t`Select a user`}
-          data={options}
-          value={selectedOwnerId === null ? null : String(selectedOwnerId)}
-          onChange={(next) => setSelectedOwnerId(next ? Number(next) : null)}
-          searchable
-          nothingFoundMessage={t`No users found`}
+          value={selectedOwner}
+          onChange={setSelectedOwner}
         />
 
         <Flex justify="flex-end" gap="sm">
@@ -72,7 +54,7 @@ export const ChangeOwnerModal = ({
           </Button>
           <Button
             variant="filled"
-            disabled={selectedOwnerId === null || isSubmitting}
+            disabled={selectedOwner === null || isSubmitting}
             loading={isSubmitting}
             onClick={handleSubmit}
           >
