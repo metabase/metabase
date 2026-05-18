@@ -3,15 +3,11 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupCardsEndpoints,
-  setupCollectionByIdEndpoint,
-  setupCollectionItemsEndpoint,
-  setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
-  setupSearchEndpoints,
-  setupSettingEndpoint,
-} from "__support__/server-mocks";
+import { setupCardsEndpoints } from "__support__/server-mocks/card";
+import { setupCollectionByIdEndpoint, setupCollectionItemsEndpoint, setupCollectionsEndpoints } from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
+import { setupSettingEndpoint } from "__support__/server-mocks/settings";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import {

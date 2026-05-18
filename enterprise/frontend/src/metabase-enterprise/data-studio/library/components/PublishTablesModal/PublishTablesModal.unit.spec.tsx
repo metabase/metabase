@@ -1,14 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupCollectionByIdEndpoint,
-  setupCollectionItemsEndpoint,
-  setupLibraryEndpoints,
-  setupPublishTablesEndpoint,
-  setupPublishTablesEndpointError,
-  setupTableSelectionInfoEndpoint,
-} from "__support__/server-mocks";
+import { setupCollectionByIdEndpoint, setupCollectionItemsEndpoint } from "__support__/server-mocks/collection";
+import { setupPublishTablesEndpoint, setupPublishTablesEndpointError, setupTableSelectionInfoEndpoint } from "__support__/server-mocks/data-studio";
+import { setupLibraryEndpoints } from "__support__/server-mocks/library";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";

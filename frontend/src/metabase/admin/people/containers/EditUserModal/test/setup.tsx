@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { setupUserEndpoints } from "__support__/server-mocks";
+import { setupUserEndpoints } from "__support__/server-mocks/user";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";

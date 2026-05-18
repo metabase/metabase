@@ -4,13 +4,10 @@ import fetchMock from "fetch-mock";
 import { useState } from "react";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import {
-  setupCollectionByIdEndpoint,
-  setupCollectionItemsEndpoint,
-  setupDatabasesEndpoints,
-  setupRecentViewsEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
+import { setupRecentViewsEndpoints } from "__support__/server-mocks/activity";
+import { setupCollectionByIdEndpoint, setupCollectionItemsEndpoint } from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type { SettingsState } from "metabase/redux/store";

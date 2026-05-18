@@ -1,9 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupCardQueryDownloadEndpoint,
-  setupLastDownloadFormatEndpoints,
-} from "__support__/server-mocks";
+import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks/card";
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks/user-key-value";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { act, renderWithProviders, screen } from "__support__/ui";

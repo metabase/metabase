@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupDashboardCreateEndpoint } from "__support__/server-mocks";
+import { setupDashboardCreateEndpoint } from "__support__/server-mocks/dashboard";
 import { screen } from "__support__/ui";
 import { createDashboard } from "embedding-sdk-bundle/lib/create-dashboard";
 import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";

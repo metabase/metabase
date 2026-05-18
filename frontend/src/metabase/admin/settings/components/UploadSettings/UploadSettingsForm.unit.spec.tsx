@@ -1,13 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  findRequests,
-  setupDatabaseListEndpoint,
-  setupPropertiesEndpoints,
-  setupSchemaEndpoints,
-  setupSettingsEndpoints,
-  setupUpdateSettingEndpoint,
-} from "__support__/server-mocks";
+import { setupDatabaseListEndpoint, setupSchemaEndpoints } from "__support__/server-mocks/database";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupSettingsEndpoints, setupUpdateSettingEndpoint } from "__support__/server-mocks/settings";
+import { findRequests } from "__support__/server-mocks/util";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import {

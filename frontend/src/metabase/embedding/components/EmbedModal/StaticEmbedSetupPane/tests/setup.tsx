@@ -2,10 +2,8 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupParameterValuesEndpoints,
-  setupTokenStatusEndpoint,
-} from "__support__/server-mocks";
+import { setupParameterValuesEndpoints } from "__support__/server-mocks/dataset";
+import { setupTokenStatusEndpoint } from "__support__/server-mocks/premium-features";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type {

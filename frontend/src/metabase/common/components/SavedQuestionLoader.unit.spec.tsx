@@ -1,10 +1,5 @@
-import {
-  setupCardEndpoints,
-  setupCardQueryMetadataEndpoint,
-  setupDatabaseEndpoints,
-  setupUnauthorizedCardEndpoints,
-  setupUnauthorizedSchemaEndpoints,
-} from "__support__/server-mocks";
+import { setupCardEndpoints, setupCardQueryMetadataEndpoint, setupUnauthorizedCardEndpoints } from "__support__/server-mocks/card";
+import { setupDatabaseEndpoints, setupUnauthorizedSchemaEndpoints } from "__support__/server-mocks/database";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { QuestionLoaderChildrenProps } from "metabase/common/components/QuestionLoader";
 import Question from "metabase-lib/v1/Question";

@@ -2,17 +2,12 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
-import {
-  setupBookmarksEndpoints,
-  setupCollectionByIdEndpoint,
-  setupCollectionItemsEndpoint,
-  setupCollectionsEndpoints,
-  setupDashboardQuestionCandidatesEndpoint,
-  setupDatabasesEndpoints,
-  setupNullGetUserKeyValueEndpoints,
-  setupSearchEndpoints,
-  setupUserMetabotPermissionsEndpoint,
-} from "__support__/server-mocks";
+import { setupBookmarksEndpoints } from "__support__/server-mocks/bookmark";
+import { setupCollectionByIdEndpoint, setupCollectionItemsEndpoint, setupCollectionsEndpoints, setupDashboardQuestionCandidatesEndpoint } from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks/metabot";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
+import { setupNullGetUserKeyValueEndpoints } from "__support__/server-mocks/user-key-value";
 import {
   act,
   renderWithProviders,

@@ -1,4 +1,4 @@
-import { setupCardsEndpoints } from "__support__/server-mocks";
+import { setupCardsEndpoints } from "__support__/server-mocks/card";
 import {
   renderWithProviders,
   screen,

@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { setupUserRecipientsEndpoint } from "__support__/server-mocks";
+import { setupUserRecipientsEndpoint } from "__support__/server-mocks/user";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { SearchUserPicker } from "metabase/search/components/SearchUserPicker";
 import type { CreatedByFilterProps } from "metabase/search/types";

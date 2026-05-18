@@ -2,7 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 import _ from "underscore";
 
-import { setupAnalyzeChartEndpoint } from "__support__/server-mocks";
+import { setupAnalyzeChartEndpoint } from "__support__/server-mocks/ai-entity-analysis";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { createMockQueryBuilderState } from "metabase/redux/store/mocks";

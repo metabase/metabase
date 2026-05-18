@@ -1,6 +1,6 @@
 import { Route } from "react-router";
 
-import { setupListBrokenGraphNodesEndpoint } from "__support__/server-mocks";
+import { setupListBrokenGraphNodesEndpoint } from "__support__/server-mocks/dependencies";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { DependencyNode } from "metabase-types/api";
 import {

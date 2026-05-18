@@ -1,12 +1,9 @@
 import fetchMock from "fetch-mock";
 
-import {
-  setupApiKeyEndpoints,
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-  setupTokenStatusEndpoint,
-  setupUpdateSettingEndpoint,
-} from "__support__/server-mocks";
+import { setupApiKeyEndpoints } from "__support__/server-mocks/api-key";
+import { setupTokenStatusEndpoint } from "__support__/server-mocks/premium-features";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupSettingsEndpoints, setupUpdateSettingEndpoint } from "__support__/server-mocks/settings";
 import { renderWithProviders } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import type { AuthSettingsPageTab } from "metabase/plugins";

@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { setupCollectionsEndpoints } from "__support__/server-mocks";
+import { setupCollectionsEndpoints } from "__support__/server-mocks/collection";
 import {
   renderWithProviders,
   screen,

@@ -1,11 +1,7 @@
 import { act } from "react-dom/test-utils";
 
-import {
-  setupPropertiesEndpoints,
-  setupSettingEndpoint,
-  setupSettingsEndpoints,
-  setupUpdateSettingEndpoint,
-} from "__support__/server-mocks";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupSettingEndpoint, setupSettingsEndpoints, setupUpdateSettingEndpoint } from "__support__/server-mocks/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { createMockSettingsState } from "metabase/redux/store/mocks";

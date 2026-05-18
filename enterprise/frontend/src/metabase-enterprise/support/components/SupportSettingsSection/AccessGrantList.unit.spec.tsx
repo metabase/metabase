@@ -1,10 +1,7 @@
 import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
-import {
-  setupRevokeAccessGrantEndpoint,
-  setupRevokeAccessGrantEndpointWithError,
-} from "__support__/server-mocks";
+import { setupRevokeAccessGrantEndpoint, setupRevokeAccessGrantEndpointWithError } from "__support__/server-mocks/support-access-grants";
 import {
   fireEvent,
   renderWithProviders,

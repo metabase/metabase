@@ -2,20 +2,13 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { IndexRedirect, Link, Redirect, Route } from "react-router";
 
-import {
-  setupCardDataset,
-  setupDatabaseIdFieldsEndpoints,
-  setupDatabasesEndpoints,
-  setupFieldsValuesEndpoints,
-  setupLibraryEndpoints,
-  setupTableEndpoints,
-  setupTableSearchEndpoint,
-  setupTablesBulkEndpoints,
-  setupUnauthorizedFieldEndpoint,
-  setupUnauthorizedFieldValuesEndpoints,
-  setupUserAcknowledgementEndpoints,
-  setupUsersEndpoints,
-} from "__support__/server-mocks";
+import { setupDatabaseIdFieldsEndpoints, setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupCardDataset } from "__support__/server-mocks/dataset";
+import { setupFieldsValuesEndpoints, setupUnauthorizedFieldEndpoint, setupUnauthorizedFieldValuesEndpoints } from "__support__/server-mocks/field";
+import { setupLibraryEndpoints } from "__support__/server-mocks/library";
+import { setupTableEndpoints, setupTableSearchEndpoint, setupTablesBulkEndpoints } from "__support__/server-mocks/table";
+import { setupUsersEndpoints } from "__support__/server-mocks/user";
+import { setupUserAcknowledgementEndpoints } from "__support__/server-mocks/user-key-value";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,

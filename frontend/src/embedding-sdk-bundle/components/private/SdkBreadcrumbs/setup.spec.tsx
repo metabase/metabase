@@ -1,21 +1,13 @@
 import { useEffect, useState } from "react";
 import { P, match } from "ts-pattern";
 
-import {
-  setupAlertsEndpoints,
-  setupCardEndpoints,
-  setupCardQueryEndpoints,
-  setupCardQueryMetadataEndpoint,
-  setupCollectionByIdEndpoint,
-  setupCollectionItemsEndpoint,
-  setupCollectionsEndpoints,
-  setupDashboardEndpoints,
-  setupDashboardQueryMetadataEndpoint,
-  setupDatabaseEndpoints,
-  setupDatabaseListEndpoint,
-  setupTableEndpoints,
-} from "__support__/server-mocks";
+import { setupAlertsEndpoints } from "__support__/server-mocks/alert";
+import { setupCardEndpoints, setupCardQueryEndpoints, setupCardQueryMetadataEndpoint } from "__support__/server-mocks/card";
+import { setupCollectionByIdEndpoint, setupCollectionItemsEndpoint, setupCollectionsEndpoints } from "__support__/server-mocks/collection";
+import { setupDashboardEndpoints, setupDashboardQueryMetadataEndpoint } from "__support__/server-mocks/dashboard";
+import { setupDatabaseEndpoints, setupDatabaseListEndpoint } from "__support__/server-mocks/database";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import { setupTableEndpoints } from "__support__/server-mocks/table";
 import { CollectionBrowser } from "embedding-sdk-bundle/components/public/CollectionBrowser";
 import { InteractiveQuestion } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
 import { InteractiveDashboard } from "embedding-sdk-bundle/components/public/dashboard/InteractiveDashboard";

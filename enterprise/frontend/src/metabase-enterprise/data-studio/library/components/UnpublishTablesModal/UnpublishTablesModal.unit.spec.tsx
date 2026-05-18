@@ -1,10 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupTableSelectionInfoEndpoint,
-  setupUnpublishTablesEndpoint,
-  setupUnpublishTablesEndpointError,
-} from "__support__/server-mocks";
+import { setupTableSelectionInfoEndpoint, setupUnpublishTablesEndpoint, setupUnpublishTablesEndpointError } from "__support__/server-mocks/data-studio";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import type {

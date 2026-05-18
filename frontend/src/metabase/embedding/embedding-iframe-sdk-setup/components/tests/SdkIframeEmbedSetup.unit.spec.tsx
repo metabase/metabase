@@ -1,10 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupCardEndpoints,
-  setupCardQueryMetadataEndpoint,
-  setupDatabasesEndpoints,
-} from "__support__/server-mocks";
+import { setupCardEndpoints, setupCardQueryMetadataEndpoint } from "__support__/server-mocks/card";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import { screen, waitFor } from "__support__/ui";
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import {

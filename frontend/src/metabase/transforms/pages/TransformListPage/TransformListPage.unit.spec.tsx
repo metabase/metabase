@@ -1,12 +1,10 @@
 import type { ReactNode } from "react";
 import { Route } from "react-router";
 
-import {
-  setupCollectionTreeEndpoint,
-  setupDatabaseListEndpoint,
-  setupListTransformsEndpoint,
-  setupUserMetabotPermissionsEndpoint,
-} from "__support__/server-mocks";
+import { setupCollectionTreeEndpoint } from "__support__/server-mocks/collection";
+import { setupDatabaseListEndpoint } from "__support__/server-mocks/database";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks/metabot";
+import { setupListTransformsEndpoint } from "__support__/server-mocks/transform";
 import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,

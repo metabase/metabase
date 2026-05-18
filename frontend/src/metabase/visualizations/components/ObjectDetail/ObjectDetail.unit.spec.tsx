@@ -1,10 +1,8 @@
 import fetchMock from "fetch-mock";
 
-import {
-  setupActionsEndpoints,
-  setupDatabasesEndpoints,
-  setupTableEndpoints,
-} from "__support__/server-mocks";
+import { setupActionsEndpoints } from "__support__/server-mocks/action";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupTableEndpoints } from "__support__/server-mocks/table";
 import { createMockEntitiesState } from "__support__/store";
 import { testDataset } from "__support__/testDataset";
 import {

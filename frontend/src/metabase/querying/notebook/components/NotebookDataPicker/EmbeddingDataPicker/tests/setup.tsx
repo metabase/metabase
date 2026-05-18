@@ -1,8 +1,5 @@
-import {
-  setupDatabasesEndpoints,
-  setupEmbeddingDataPickerDecisionEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupEmbeddingDataPickerDecisionEndpoints, setupSearchEndpoints } from "__support__/server-mocks/search";
 import { renderWithProviders } from "__support__/ui";
 import { createMockModelResult } from "metabase/browse/models/test-utils";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";

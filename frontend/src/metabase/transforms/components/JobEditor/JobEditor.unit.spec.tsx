@@ -1,9 +1,6 @@
 import { Route } from "react-router";
 
-import {
-  setupListTransformJobTransformsEndpoint,
-  setupListTransformTagsEndpoint,
-} from "__support__/server-mocks";
+import { setupListTransformJobTransformsEndpoint, setupListTransformTagsEndpoint } from "__support__/server-mocks/transform";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { TransformJob } from "metabase-types/api";
 import { createMockTransformJob } from "metabase-types/api/mocks";

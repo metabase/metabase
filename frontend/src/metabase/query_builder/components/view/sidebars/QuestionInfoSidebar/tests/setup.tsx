@@ -1,15 +1,12 @@
 import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupAuditInfoEndpoint,
-  setupCardEndpoints,
-  setupCardsUsingModelEndpoint,
-  setupRevisionsEndpoints,
-  setupTokenStatusEndpoint,
-  setupUsersEndpoints,
-} from "__support__/server-mocks";
+import { setupAuditInfoEndpoint } from "__support__/server-mocks/audit";
+import { setupCardEndpoints, setupCardsUsingModelEndpoint } from "__support__/server-mocks/card";
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
+import { setupTokenStatusEndpoint } from "__support__/server-mocks/premium-features";
+import { setupRevisionsEndpoints } from "__support__/server-mocks/revision";
+import { setupUsersEndpoints } from "__support__/server-mocks/user";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";

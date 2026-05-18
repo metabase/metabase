@@ -2,12 +2,8 @@ import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
-import {
-  setupDatabaseEndpoints,
-  setupGdriveGetFolderEndpoint,
-  setupGdriveServiceAccountEndpoint,
-  setupGdriveSyncEndpoint,
-} from "__support__/server-mocks";
+import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
+import { setupGdriveGetFolderEndpoint, setupGdriveServiceAccountEndpoint, setupGdriveSyncEndpoint } from "__support__/server-mocks/gdrive";
 import { act, renderWithProviders, screen } from "__support__/ui";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { Settings } from "metabase-types/api";

@@ -4,27 +4,20 @@ import fetchMock from "fetch-mock";
 import type { ComponentPropsWithoutRef } from "react";
 import { IndexRoute, Route } from "react-router";
 
-import {
-  setupAdhocQueryMetadataEndpoint,
-  setupAlertsEndpoints,
-  setupBookmarksEndpoints,
-  setupCardDataset,
-  setupCardQueryEndpoints,
-  setupCardQueryMetadataEndpoint,
-  setupCardsEndpoints,
-  setupCollectionByIdEndpoint,
-  setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
-  setupFieldValuesEndpoint,
-  setupGetUserKeyValueEndpoint,
-  setupModelIndexEndpoints,
-  setupPropertiesEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-  setupRecentViewsEndpoints,
-  setupSearchEndpoints,
-  setupTimelinesEndpoints,
-  setupUserMetabotPermissionsEndpoint,
-} from "__support__/server-mocks";
+import { setupRecentViewsAndSelectionsEndpoints, setupRecentViewsEndpoints } from "__support__/server-mocks/activity";
+import { setupAlertsEndpoints } from "__support__/server-mocks/alert";
+import { setupBookmarksEndpoints } from "__support__/server-mocks/bookmark";
+import { setupCardQueryEndpoints, setupCardQueryMetadataEndpoint, setupCardsEndpoints } from "__support__/server-mocks/card";
+import { setupCollectionByIdEndpoint, setupCollectionsEndpoints } from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupAdhocQueryMetadataEndpoint, setupCardDataset } from "__support__/server-mocks/dataset";
+import { setupFieldValuesEndpoint } from "__support__/server-mocks/field";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks/metabot";
+import { setupModelIndexEndpoints } from "__support__/server-mocks/model-indexes";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupTimelinesEndpoints } from "__support__/server-mocks/timeline";
+import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
 import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,

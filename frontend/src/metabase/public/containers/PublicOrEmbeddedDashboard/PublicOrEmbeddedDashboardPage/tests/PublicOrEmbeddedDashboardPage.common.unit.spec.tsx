@@ -1,4 +1,4 @@
-import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks/user-key-value";
 import { screen, waitForLoaderToBeRemoved } from "__support__/ui";
 
 import { type SetupOpts, setup } from "./setup";

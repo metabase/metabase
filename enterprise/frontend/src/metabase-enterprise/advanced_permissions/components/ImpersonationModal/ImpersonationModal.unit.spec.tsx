@@ -3,12 +3,9 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
-import {
-  setupDatabaseEndpoints,
-  setupExistingImpersonationEndpoint,
-  setupMissingImpersonationEndpoint,
-  setupUserAttributesEndpoint,
-} from "__support__/server-mocks";
+import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
+import { setupExistingImpersonationEndpoint, setupMissingImpersonationEndpoint } from "__support__/server-mocks/impersonation";
+import { setupUserAttributesEndpoint } from "__support__/server-mocks/user";
 import {
   renderWithProviders,
   screen,

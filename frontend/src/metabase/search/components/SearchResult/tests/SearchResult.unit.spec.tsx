@@ -1,11 +1,8 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
-import {
-  setupCollectionByIdEndpoint,
-  setupUserRecipientsEndpoint,
-  setupUsersEndpoints,
-} from "__support__/server-mocks";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
+import { setupUserRecipientsEndpoint, setupUsersEndpoints } from "__support__/server-mocks/user";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
 import { createWrappedSearchResult } from "metabase/search/components/SearchResult/tests/util";

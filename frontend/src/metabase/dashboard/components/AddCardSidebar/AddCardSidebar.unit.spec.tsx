@@ -1,10 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  setupCollectionItemsEndpoint,
-  setupCollectionsEndpoints,
-} from "__support__/server-mocks";
+import { setupCollectionItemsEndpoint, setupCollectionsEndpoints } from "__support__/server-mocks/collection";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";

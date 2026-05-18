@@ -1,10 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
-import {
-  setupDatabaseEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
+import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import {
   renderWithProviders,
   screen,

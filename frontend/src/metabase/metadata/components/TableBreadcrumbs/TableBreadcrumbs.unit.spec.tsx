@@ -1,7 +1,5 @@
-import {
-  setupSchemaEndpoints,
-  setupTablesEndpoints,
-} from "__support__/server-mocks";
+import { setupSchemaEndpoints } from "__support__/server-mocks/database";
+import { setupTablesEndpoints } from "__support__/server-mocks/table";
 import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import type { Table } from "metabase-types/api";

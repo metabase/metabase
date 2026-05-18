@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupForTokenCheckEndpoint } from "__support__/server-mocks";
+import { setupForTokenCheckEndpoint } from "__support__/server-mocks/setup";
 import { screen, waitFor } from "__support__/ui";
 
 import { trackLicenseTokenStepSubmitted } from "../analytics";

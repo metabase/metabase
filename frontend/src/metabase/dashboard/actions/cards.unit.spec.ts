@@ -3,12 +3,8 @@ import fetchMock from "fetch-mock";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
-import {
-  setupCardQueryEndpoints,
-  setupCardQueryMetadataEndpoint,
-  setupCardsEndpoints,
-  setupDatabasesEndpoints,
-} from "__support__/server-mocks";
+import { setupCardQueryEndpoints, setupCardQueryMetadataEndpoint, setupCardsEndpoints } from "__support__/server-mocks/card";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import { Api } from "metabase/api/api";
 import { mainReducers } from "metabase/reducers-main";
 import type { State, StoreDashcard } from "metabase/redux/store";

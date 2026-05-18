@@ -1,14 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  setupAdhocQueryMetadataEndpoint,
-  setupCardQueryMetadataEndpoint,
-  setupCardsEndpoints,
-  setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-} from "__support__/server-mocks";
+import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks/activity";
+import { setupCardQueryMetadataEndpoint, setupCardsEndpoints } from "__support__/server-mocks/card";
+import { setupCollectionsEndpoints } from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupAdhocQueryMetadataEndpoint } from "__support__/server-mocks/dataset";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,

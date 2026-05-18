@@ -1,14 +1,9 @@
 import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupCollectionByIdEndpoint,
-  setupCollectionItemsEndpoint,
-  setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-  setupRootCollectionItemsEndpoint,
-} from "__support__/server-mocks";
+import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks/activity";
+import { setupCollectionByIdEndpoint, setupCollectionItemsEndpoint, setupCollectionsEndpoints, setupRootCollectionItemsEndpoint } from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import { mockSettings } from "__support__/settings";
 import {
   mockGetBoundingClientRect,

@@ -1,13 +1,11 @@
 import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupAuditInfoEndpoint,
-  setupDashboardEndpoints,
-  setupPerformanceEndpoints,
-  setupRevisionsEndpoints,
-  setupUsersEndpoints,
-} from "__support__/server-mocks";
+import { setupAuditInfoEndpoint } from "__support__/server-mocks/audit";
+import { setupDashboardEndpoints } from "__support__/server-mocks/dashboard";
+import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
+import { setupRevisionsEndpoints } from "__support__/server-mocks/revision";
+import { setupUsersEndpoints } from "__support__/server-mocks/user";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";

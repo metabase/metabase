@@ -1,9 +1,7 @@
 import { renderHook } from "@testing-library/react";
 
-import {
-  setupCardDataset,
-  setupFieldEndpoints,
-} from "__support__/server-mocks";
+import { setupCardDataset } from "__support__/server-mocks/dataset";
+import { setupFieldEndpoints } from "__support__/server-mocks/field";
 import { waitFor } from "__support__/ui";
 import { mainReducers as reducers } from "metabase/reducers-main";
 import { MetabaseReduxProvider } from "metabase/redux";

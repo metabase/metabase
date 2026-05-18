@@ -1,6 +1,6 @@
 import { waitFor } from "@testing-library/react";
 
-import { findRequests } from "__support__/server-mocks";
+import { findRequests } from "__support__/server-mocks/util";
 import { screen } from "__support__/ui";
 import type { Dashboard } from "metabase-types/api";
 

@@ -1,9 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupDeleteTransformJobEndpoint,
-  setupDeleteTransformJobEndpointWithError,
-} from "__support__/server-mocks";
+import { setupDeleteTransformJobEndpoint, setupDeleteTransformJobEndpointWithError } from "__support__/server-mocks/transform";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { TransformJob } from "metabase-types/api";
 import { createMockTransformJob } from "metabase-types/api/mocks";

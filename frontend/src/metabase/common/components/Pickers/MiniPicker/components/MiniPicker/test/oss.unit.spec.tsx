@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
-import { findRequests, setupCardEndpoints } from "__support__/server-mocks";
+import { setupCardEndpoints } from "__support__/server-mocks/card";
+import { findRequests } from "__support__/server-mocks/util";
 import { screen, waitFor } from "__support__/ui";
 import type { SearchRequest } from "metabase-types/api";
 import { createMockCard, createMockCollection } from "metabase-types/api/mocks";

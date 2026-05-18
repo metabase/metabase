@@ -1,9 +1,5 @@
-import {
-  findRequests,
-  setupTokenActivationEndpoint,
-  setupTokenStatusEndpoint,
-  setupTokenStatusEndpointEmpty,
-} from "__support__/server-mocks";
+import { setupTokenActivationEndpoint, setupTokenStatusEndpoint, setupTokenStatusEndpointEmpty } from "__support__/server-mocks/premium-features";
+import { findRequests } from "__support__/server-mocks/util";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";

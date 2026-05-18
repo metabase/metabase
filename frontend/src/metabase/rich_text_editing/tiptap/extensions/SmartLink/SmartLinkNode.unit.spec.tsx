@@ -2,14 +2,12 @@ import type { NodeViewProps } from "@tiptap/react";
 import { createMemoryHistory } from "history";
 import { Route, Router, useRouterHistory } from "react-router";
 
-import {
-  setupCardEndpoints,
-  setupCollectionByIdEndpoint,
-  setupDashboardEndpoints,
-  setupDatabaseEndpoints,
-  setupDocumentEndpoints,
-  setupTableEndpoints,
-} from "__support__/server-mocks";
+import { setupCardEndpoints } from "__support__/server-mocks/card";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
+import { setupDashboardEndpoints } from "__support__/server-mocks/dashboard";
+import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
+import { setupDocumentEndpoints } from "__support__/server-mocks/document";
+import { setupTableEndpoints } from "__support__/server-mocks/table";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockCard,

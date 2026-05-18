@@ -2,20 +2,15 @@ import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import {
-  findRequests,
-  setupCollectionByIdEndpoint,
-  setupCollectionsEndpoints,
-  setupPropertiesEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-  setupRootCollectionItemsEndpoint,
-  setupSettingsEndpoints,
-  setupUpdateSettingEndpoint,
-} from "__support__/server-mocks";
+import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks/activity";
+import { setupCollectionByIdEndpoint, setupCollectionsEndpoints, setupRootCollectionItemsEndpoint } from "__support__/server-mocks/collection";
 import {
   setupMetabotPromptSuggestionsEndpoint,
   setupMetabotsEndpoints,
 } from "__support__/server-mocks/metabot";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupSettingsEndpoints, setupUpdateSettingEndpoint } from "__support__/server-mocks/settings";
+import { findRequests } from "__support__/server-mocks/util";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";

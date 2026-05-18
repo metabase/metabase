@@ -1,10 +1,8 @@
 import fetchMock from "fetch-mock";
 import { match } from "ts-pattern";
 
-import {
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupSettingsEndpoints } from "__support__/server-mocks/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockSettingsState,

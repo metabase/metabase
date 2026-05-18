@@ -1,4 +1,4 @@
-import { setupDatabaseEndpoints } from "__support__/server-mocks";
+import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import {

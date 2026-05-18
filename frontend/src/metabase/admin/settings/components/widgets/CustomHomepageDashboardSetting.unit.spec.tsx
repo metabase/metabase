@@ -1,18 +1,13 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  findRequests,
-  setupCollectionByIdEndpoint,
-  setupCollectionItemsEndpoint,
-  setupCollectionsEndpoints,
-  setupCurrentUserEndpoint,
-  setupDashboardEndpoints,
-  setupPropertiesEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-  setupSettingsEndpoints,
-  setupUpdateSettingEndpoint,
-} from "__support__/server-mocks";
+import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks/activity";
+import { setupCollectionByIdEndpoint, setupCollectionItemsEndpoint, setupCollectionsEndpoints } from "__support__/server-mocks/collection";
+import { setupDashboardEndpoints } from "__support__/server-mocks/dashboard";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupSettingsEndpoints, setupUpdateSettingEndpoint } from "__support__/server-mocks/settings";
+import { setupCurrentUserEndpoint } from "__support__/server-mocks/user";
+import { findRequests } from "__support__/server-mocks/util";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,

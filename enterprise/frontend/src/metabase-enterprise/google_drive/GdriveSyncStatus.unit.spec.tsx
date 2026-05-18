@@ -1,12 +1,9 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  setupDatabaseListEndpoint,
-  setupGdriveGetFolderEndpoint,
-  setupGdriveServiceAccountEndpoint,
-  setupTablesEndpoints,
-} from "__support__/server-mocks";
+import { setupDatabaseListEndpoint } from "__support__/server-mocks/database";
+import { setupGdriveGetFolderEndpoint, setupGdriveServiceAccountEndpoint } from "__support__/server-mocks/gdrive";
+import { setupTablesEndpoints } from "__support__/server-mocks/table";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { useListDatabasesQuery } from "metabase/api/database";
 import { useListTablesQuery } from "metabase/api/table";

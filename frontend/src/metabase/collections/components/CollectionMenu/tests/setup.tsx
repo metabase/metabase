@@ -3,11 +3,8 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupDashboardQuestionCandidatesEndpoint,
-  setupStaleItemsEndpoint,
-  setupUserKeyValueEndpoints,
-} from "__support__/server-mocks";
+import { setupDashboardQuestionCandidatesEndpoint, setupStaleItemsEndpoint } from "__support__/server-mocks/collection";
+import { setupUserKeyValueEndpoints } from "__support__/server-mocks/user-key-value";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";

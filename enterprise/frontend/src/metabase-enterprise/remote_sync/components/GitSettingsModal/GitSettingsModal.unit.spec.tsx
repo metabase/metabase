@@ -1,12 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  setupPropertiesEndpoints,
-  setupRootCollectionItemsEndpoint,
-  setupSettingsEndpoints,
-  setupUserKeyValueEndpoints,
-} from "__support__/server-mocks";
+import { setupRootCollectionItemsEndpoint } from "__support__/server-mocks/collection";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupSettingsEndpoints } from "__support__/server-mocks/settings";
+import { setupUserKeyValueEndpoints } from "__support__/server-mocks/user-key-value";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockSettings } from "metabase-types/api/mocks";
 

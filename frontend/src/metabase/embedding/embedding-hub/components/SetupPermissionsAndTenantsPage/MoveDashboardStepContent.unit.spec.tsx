@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupCollectionTreeEndpoint } from "__support__/server-mocks";
+import { setupCollectionTreeEndpoint } from "__support__/server-mocks/collection";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockCollection,

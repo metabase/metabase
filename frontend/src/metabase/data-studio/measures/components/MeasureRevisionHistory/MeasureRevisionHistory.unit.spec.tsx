@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { setupMeasureRevisionsEndpoint } from "__support__/server-mocks";
+import { setupMeasureRevisionsEndpoint } from "__support__/server-mocks/revision";
 import {
   renderWithProviders,
   screen,

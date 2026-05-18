@@ -4,12 +4,10 @@ import { Route, type WithRouterProps, withRouter } from "react-router";
 import _ from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import {
-  setupCollectionByIdEndpoint,
-  setupDatabasesEndpoints,
-  setupRecentViewsEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
+import { setupRecentViewsEndpoints } from "__support__/server-mocks/activity";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { useCommandPalette } from "metabase/palette/hooks/useCommandPalette";

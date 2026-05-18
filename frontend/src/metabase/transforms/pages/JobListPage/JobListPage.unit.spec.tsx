@@ -3,12 +3,8 @@ import fetchMock from "fetch-mock";
 import type { ReactNode } from "react";
 import { Route } from "react-router";
 
-import {
-  setupDeleteTransformJobEndpoint,
-  setupListTransformJobsEndpoint,
-  setupUpdateTransformJobEndpoint,
-  setupUserMetabotPermissionsEndpoint,
-} from "__support__/server-mocks";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks/metabot";
+import { setupDeleteTransformJobEndpoint, setupListTransformJobsEndpoint, setupUpdateTransformJobEndpoint } from "__support__/server-mocks/transform";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks/state";
 import * as Urls from "metabase/urls";

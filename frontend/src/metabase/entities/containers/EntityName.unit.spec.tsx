@@ -1,7 +1,5 @@
-import {
-  setupCardEndpoints,
-  setupDashboardEndpoints,
-} from "__support__/server-mocks";
+import { setupCardEndpoints } from "__support__/server-mocks/card";
+import { setupDashboardEndpoints } from "__support__/server-mocks/dashboard";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockCard, createMockDashboard } from "metabase-types/api/mocks";

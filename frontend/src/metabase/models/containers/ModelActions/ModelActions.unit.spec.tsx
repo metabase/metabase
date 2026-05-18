@@ -3,14 +3,10 @@ import fetchMock from "fetch-mock";
 import { IndexRedirect, Route } from "react-router";
 
 import { createMockMetadata } from "__support__/metadata";
-import {
-  setupCardQueryMetadataEndpoint,
-  setupCardsEndpoints,
-  setupCardsUsingModelEndpoint,
-  setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
-  setupModelActionsEndpoints,
-} from "__support__/server-mocks";
+import { setupModelActionsEndpoints } from "__support__/server-mocks/action";
+import { setupCardQueryMetadataEndpoint, setupCardsEndpoints, setupCardsUsingModelEndpoint } from "__support__/server-mocks/card";
+import { setupCollectionsEndpoints } from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import {
   renderWithProviders,
   screen,

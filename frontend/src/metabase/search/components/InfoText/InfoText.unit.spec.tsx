@@ -1,12 +1,9 @@
 import dayjs from "dayjs";
 
-import {
-  setupCollectionByIdEndpoint,
-  setupDatabaseEndpoints,
-  setupTableEndpoints,
-  setupUserRecipientsEndpoint,
-  setupUsersEndpoints,
-} from "__support__/server-mocks";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
+import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
+import { setupTableEndpoints } from "__support__/server-mocks/table";
+import { setupUserRecipientsEndpoint, setupUsersEndpoints } from "__support__/server-mocks/user";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { SearchModel, SearchResult } from "metabase-types/api";
 import {

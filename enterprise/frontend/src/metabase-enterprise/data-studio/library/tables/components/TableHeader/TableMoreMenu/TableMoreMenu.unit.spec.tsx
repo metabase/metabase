@@ -4,14 +4,9 @@ import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
-import {
-  setupCollectionByIdEndpoint,
-  setupCollectionItemsEndpoint,
-  setupCollectionsEndpoints,
-  setupLibraryEndpoints,
-  setupRootCollectionItemsEndpoint,
-  setupTableEndpoints,
-} from "__support__/server-mocks";
+import { setupCollectionByIdEndpoint, setupCollectionItemsEndpoint, setupCollectionsEndpoints, setupRootCollectionItemsEndpoint } from "__support__/server-mocks/collection";
+import { setupLibraryEndpoints } from "__support__/server-mocks/library";
+import { setupTableEndpoints } from "__support__/server-mocks/table";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { CollectionPickerModalProps } from "metabase/common/components/Pickers/CollectionPicker/CollectionPickerModal";

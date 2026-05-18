@@ -1,13 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  findRequests,
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-  setupSlackAppInfoEndpoint,
-  setupSlackManifestEndpoint,
-  setupSlackSettingsEndpoint,
-} from "__support__/server-mocks";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupSettingsEndpoints } from "__support__/server-mocks/settings";
+import { setupSlackAppInfoEndpoint, setupSlackManifestEndpoint, setupSlackSettingsEndpoint } from "__support__/server-mocks/slack";
+import { findRequests } from "__support__/server-mocks/util";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { createMockSettings } from "metabase-types/api/mocks";

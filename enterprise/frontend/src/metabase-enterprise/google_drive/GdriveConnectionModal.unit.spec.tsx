@@ -1,13 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  findRequests,
-  setupGdriveGetFolderEndpoint,
-  setupGdrivePostFolderEndpoint,
-  setupGdriveServiceAccountEndpoint,
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+import { setupGdriveGetFolderEndpoint, setupGdrivePostFolderEndpoint, setupGdriveServiceAccountEndpoint } from "__support__/server-mocks/gdrive";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupSettingsEndpoints } from "__support__/server-mocks/settings";
+import { findRequests } from "__support__/server-mocks/util";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { GdrivePayload } from "metabase-types/api";

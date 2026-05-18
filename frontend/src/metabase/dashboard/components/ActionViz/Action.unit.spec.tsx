@@ -1,11 +1,9 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  setupActionEndpoints,
-  setupCardsEndpoints,
-  setupDatabasesEndpoints,
-} from "__support__/server-mocks";
+import { setupActionEndpoints } from "__support__/server-mocks/action";
+import { setupCardsEndpoints } from "__support__/server-mocks/card";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import { createMockEntitiesState } from "__support__/store";
 import {
   getIcon,

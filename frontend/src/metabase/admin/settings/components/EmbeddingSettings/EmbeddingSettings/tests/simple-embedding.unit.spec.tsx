@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { findRequests } from "__support__/server-mocks";
+import { findRequests } from "__support__/server-mocks/util";
 import { screen } from "__support__/ui";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";

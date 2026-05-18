@@ -1,14 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  setupCollectionItemsEndpoint,
-  setupCollectionsEndpoints,
-  setupCustomVizPluginListEndpoint,
-  setupDatabasesEndpoints,
-  setupLibraryEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-} from "__support__/server-mocks";
+import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks/activity";
+import { setupCollectionItemsEndpoint, setupCollectionsEndpoints } from "__support__/server-mocks/collection";
+import { setupCustomVizPluginListEndpoint } from "__support__/server-mocks/custom-viz-plugin";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupLibraryEndpoints } from "__support__/server-mocks/library";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import {

@@ -1,10 +1,8 @@
 import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupCardEndpoints,
-  setupDatabaseEndpoints,
-} from "__support__/server-mocks";
+import { setupCardEndpoints } from "__support__/server-mocks/card";
+import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
 import { setupModelPersistenceEndpoints } from "__support__/server-mocks/persist";
 import { mockSettings } from "__support__/settings";

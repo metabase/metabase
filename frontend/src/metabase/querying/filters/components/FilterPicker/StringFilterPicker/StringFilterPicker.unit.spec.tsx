@@ -1,9 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupFieldSearchValuesEndpoint,
-  setupFieldsValuesEndpoints,
-} from "__support__/server-mocks";
+import { setupFieldSearchValuesEndpoint, setupFieldsValuesEndpoints } from "__support__/server-mocks/field";
 import {
   renderWithProviders,
   screen,

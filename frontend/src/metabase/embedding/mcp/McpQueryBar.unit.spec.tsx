@@ -1,10 +1,6 @@
-import {
-  setupAlertsEndpoints,
-  setupCardEndpoints,
-  setupCardQueryEndpoints,
-  setupCardQueryMetadataEndpoint,
-  setupDatabaseEndpoints,
-} from "__support__/server-mocks";
+import { setupAlertsEndpoints } from "__support__/server-mocks/alert";
+import { setupCardEndpoints, setupCardQueryEndpoints, setupCardQueryMetadataEndpoint } from "__support__/server-mocks/card";
+import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
 import { screen } from "__support__/ui";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";

@@ -1,10 +1,8 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  setupApiKeyEndpoints,
-  setupGroupsEndpoint,
-} from "__support__/server-mocks";
+import { setupApiKeyEndpoints } from "__support__/server-mocks/api-key";
+import { setupGroupsEndpoint } from "__support__/server-mocks/group";
 import {
   renderWithProviders,
   screen,

@@ -1,10 +1,8 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import {
-  setupGroupsEndpoint,
-  setupPermissionMembershipEndpoint,
-  setupTenantEntpoints,
-  setupUsersEndpoints,
-} from "__support__/server-mocks";
+import { setupGroupsEndpoint } from "__support__/server-mocks/group";
+import { setupPermissionMembershipEndpoint } from "__support__/server-mocks/permissions";
+import { setupTenantEntpoints } from "__support__/server-mocks/tenant";
+import { setupUsersEndpoints } from "__support__/server-mocks/user";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";

@@ -1,12 +1,9 @@
 import * as formik from "formik";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  defaultAuditInfo,
-  setupAuditInfoEndpoint,
-  setupCollectionByIdEndpoint,
-  setupRecentViewsAndSelectionsEndpoints,
-} from "__support__/server-mocks";
+import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks/activity";
+import { defaultAuditInfo, setupAuditInfoEndpoint } from "__support__/server-mocks/audit";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
 import { mockSettings } from "__support__/settings";
 import { render, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";

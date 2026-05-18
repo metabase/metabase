@@ -4,10 +4,8 @@ import {
   setupEnterpriseOnlyPlugin,
   setupEnterprisePlugins,
 } from "__support__/enterprise";
-import {
-  setupDashboardQuestionCandidatesEndpoint,
-  setupUserKeyValueEndpoints,
-} from "__support__/server-mocks";
+import { setupDashboardQuestionCandidatesEndpoint } from "__support__/server-mocks/collection";
+import { setupUserKeyValueEndpoints } from "__support__/server-mocks/user-key-value";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";

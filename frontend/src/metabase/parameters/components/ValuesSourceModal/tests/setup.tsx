@@ -1,18 +1,11 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupCardsEndpoints,
-  setupCollectionByIdEndpoint,
-  setupCollectionItemsEndpoint,
-  setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
-  setupErrorParameterValuesEndpoints,
-  setupParameterValuesEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-  setupSearchEndpoints,
-  setupTableQueryMetadataEndpoint,
-  setupUnauthorizedCardsEndpoints,
-  setupUnauthorizedCollectionsEndpoints,
-} from "__support__/server-mocks";
+import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks/activity";
+import { setupCardsEndpoints, setupUnauthorizedCardsEndpoints } from "__support__/server-mocks/card";
+import { setupCollectionByIdEndpoint, setupCollectionItemsEndpoint, setupCollectionsEndpoints, setupUnauthorizedCollectionsEndpoints } from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupErrorParameterValuesEndpoints, setupParameterValuesEndpoints } from "__support__/server-mocks/dataset";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
+import { setupTableQueryMetadataEndpoint } from "__support__/server-mocks/table";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";

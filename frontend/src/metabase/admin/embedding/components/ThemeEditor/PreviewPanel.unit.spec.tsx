@@ -1,7 +1,5 @@
-import {
-  setupRecentViewsEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
+import { setupRecentViewsEndpoints } from "__support__/server-mocks/activity";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";

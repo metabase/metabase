@@ -1,8 +1,6 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import {
-  setupDatabaseListEndpoint,
-  setupTokenStatusEndpoint,
-} from "__support__/server-mocks";
+import { setupDatabaseListEndpoint } from "__support__/server-mocks/database";
+import { setupTokenStatusEndpoint } from "__support__/server-mocks/premium-features";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderHookWithProviders, waitFor } from "__support__/ui";

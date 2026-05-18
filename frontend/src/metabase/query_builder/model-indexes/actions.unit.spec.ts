@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { getStore } from "__support__/entities-store";
-import { setupModelIndexEndpoints } from "__support__/server-mocks";
+import { setupModelIndexEndpoints } from "__support__/server-mocks/model-indexes";
 import { Api } from "metabase/api";
 import Question from "metabase-lib/v1/Question";
 import type { Field, FieldReference, ModelIndex } from "metabase-types/api";

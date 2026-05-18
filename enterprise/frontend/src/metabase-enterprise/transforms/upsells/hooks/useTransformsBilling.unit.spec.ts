@@ -1,7 +1,5 @@
-import {
-  setupBillingEndpoints,
-  setupPropertiesEndpoints,
-} from "__support__/server-mocks";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupBillingEndpoints } from "__support__/server-mocks/store";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";

@@ -2,13 +2,10 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
-import {
-  setupCardEndpoints,
-  setupCollectionByIdEndpoint,
-  setupCollectionsEndpoints,
-  setupDashboardEndpoints,
-  setupUserMetabotPermissionsEndpoint,
-} from "__support__/server-mocks";
+import { setupCardEndpoints } from "__support__/server-mocks/card";
+import { setupCollectionByIdEndpoint, setupCollectionsEndpoints } from "__support__/server-mocks/collection";
+import { setupDashboardEndpoints } from "__support__/server-mocks/dashboard";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks/metabot";
 import { renderWithProviders } from "__support__/ui";
 import { DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS } from "metabase/redux/embed";
 import type {

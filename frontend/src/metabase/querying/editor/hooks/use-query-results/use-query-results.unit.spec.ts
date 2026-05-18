@@ -1,4 +1,4 @@
-import { setupCardDataset } from "__support__/server-mocks";
+import { setupCardDataset } from "__support__/server-mocks/dataset";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";

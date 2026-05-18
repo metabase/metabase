@@ -1,16 +1,12 @@
 import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  findRequests,
-  setupDashboardEndpoints,
-  setupDashboardQueryMetadataEndpoint,
-  setupNotificationChannelsEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-  setupSearchEndpoints,
-  setupUpdateSettingEndpoint,
-  setupUpdateSettingsEndpoint,
-} from "__support__/server-mocks";
+import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks/activity";
+import { setupDashboardEndpoints, setupDashboardQueryMetadataEndpoint } from "__support__/server-mocks/dashboard";
+import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
+import { setupUpdateSettingEndpoint, setupUpdateSettingsEndpoint } from "__support__/server-mocks/settings";
+import { findRequests } from "__support__/server-mocks/util";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, waitFor } from "__support__/ui";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";

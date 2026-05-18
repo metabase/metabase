@@ -1,11 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupDatabaseEndpoints,
-  setupTableEndpoints,
-  setupUserRecipientsEndpoint,
-  setupUsersEndpoints,
-} from "__support__/server-mocks";
+import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
+import { setupTableEndpoints } from "__support__/server-mocks/table";
+import { setupUserRecipientsEndpoint, setupUsersEndpoints } from "__support__/server-mocks/user";
 import { renderWithProviders, screen } from "__support__/ui";
 import { SearchResult } from "metabase/search/components/SearchResult";
 import { createWrappedSearchResult } from "metabase/search/components/SearchResult/tests/util";

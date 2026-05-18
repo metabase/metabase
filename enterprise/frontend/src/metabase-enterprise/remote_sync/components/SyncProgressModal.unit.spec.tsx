@@ -1,9 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  findRequests,
-  setupRemoteSyncCancelTaskEndpoint,
-} from "__support__/server-mocks";
+import { setupRemoteSyncCancelTaskEndpoint } from "__support__/server-mocks/remote-sync";
+import { findRequests } from "__support__/server-mocks/util";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockUser } from "metabase-types/api/mocks";

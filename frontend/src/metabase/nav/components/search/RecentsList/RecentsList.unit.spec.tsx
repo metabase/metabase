@@ -1,4 +1,4 @@
-import { setupRecentViewsEndpoints } from "__support__/server-mocks";
+import { setupRecentViewsEndpoints } from "__support__/server-mocks/activity";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockRecentCollectionItem,

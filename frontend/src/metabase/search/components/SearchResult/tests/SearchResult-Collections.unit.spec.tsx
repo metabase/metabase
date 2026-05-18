@@ -1,8 +1,6 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupCollectionByIdEndpoint,
-  setupUserRecipientsEndpoint,
-} from "__support__/server-mocks";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
+import { setupUserRecipientsEndpoint } from "__support__/server-mocks/user";
 import { mockSettings } from "__support__/settings";
 import {
   getIcon,

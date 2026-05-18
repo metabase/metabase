@@ -1,11 +1,9 @@
 import userEvent from "@testing-library/user-event";
 import type { UserRouteConfig } from "fetch-mock";
 
-import {
-  findRequests,
-  setupAuditUnsubscribeEndpoint,
-  setupUserEndpoints,
-} from "__support__/server-mocks";
+import { setupAuditUnsubscribeEndpoint } from "__support__/server-mocks/audit";
+import { setupUserEndpoints } from "__support__/server-mocks/user";
+import { findRequests } from "__support__/server-mocks/util";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
 

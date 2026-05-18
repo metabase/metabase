@@ -1,7 +1,5 @@
-import {
-  setupCurrentUserEndpoint,
-  setupPropertiesEndpoints,
-} from "__support__/server-mocks";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupCurrentUserEndpoint } from "__support__/server-mocks/user";
 import {
   createMockSettingsState,
   createMockState,

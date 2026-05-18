@@ -1,4 +1,4 @@
-import { setupFieldValuesEndpoint } from "__support__/server-mocks";
+import { setupFieldValuesEndpoint } from "__support__/server-mocks/field";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";

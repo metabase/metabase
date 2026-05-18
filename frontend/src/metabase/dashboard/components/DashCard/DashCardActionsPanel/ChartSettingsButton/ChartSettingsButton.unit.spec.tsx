@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupDatabaseEndpoints } from "__support__/server-mocks";
+import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
 import { renderWithProviders, screen } from "__support__/ui";
 import { ChartSettingsButton } from "metabase/dashboard/components/DashCard/DashCardActionsPanel/ChartSettingsButton/ChartSettingsButton";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";

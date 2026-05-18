@@ -1,10 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  setupCollectionByIdEndpoint,
-  setupUpdateCollectionEndpoint,
-} from "__support__/server-mocks";
+import { setupCollectionByIdEndpoint, setupUpdateCollectionEndpoint } from "__support__/server-mocks/collection";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";

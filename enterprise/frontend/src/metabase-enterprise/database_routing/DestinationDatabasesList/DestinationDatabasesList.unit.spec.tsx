@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupDatabaseEndpoints } from "__support__/server-mocks";
+import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { useListDatabasesQuery } from "metabase/api/database";
 import type { State } from "metabase/redux/store";

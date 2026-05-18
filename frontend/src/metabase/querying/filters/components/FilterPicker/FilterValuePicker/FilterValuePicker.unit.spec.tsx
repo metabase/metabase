@@ -1,11 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
-import {
-  setupFieldSearchValuesEndpoint,
-  setupFieldValuesEndpoint,
-  setupRemappedFieldValueEndpoint,
-} from "__support__/server-mocks";
+import { setupFieldSearchValuesEndpoint, setupFieldValuesEndpoint, setupRemappedFieldValueEndpoint } from "__support__/server-mocks/field";
 import {
   createMockClipboardData,
   renderWithProviders,

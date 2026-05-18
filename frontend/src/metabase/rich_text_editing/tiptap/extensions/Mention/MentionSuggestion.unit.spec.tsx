@@ -3,10 +3,8 @@ import userEvent from "@testing-library/user-event";
 import type { Editor } from "@tiptap/core";
 import fetchMock from "fetch-mock";
 
-import {
-  setupRecentViewsEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
+import { setupRecentViewsEndpoints } from "__support__/server-mocks/activity";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";

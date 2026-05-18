@@ -1,9 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupTransformRevisionsEndpoint,
-  setupUsersEndpoints,
-} from "__support__/server-mocks";
+import { setupTransformRevisionsEndpoint } from "__support__/server-mocks/revision";
+import { setupUsersEndpoints } from "__support__/server-mocks/user";
 import {
   renderWithProviders,
   screen,

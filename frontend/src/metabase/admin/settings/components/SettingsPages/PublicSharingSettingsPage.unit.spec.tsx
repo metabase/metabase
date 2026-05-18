@@ -1,16 +1,13 @@
 import userEvent from "@testing-library/user-event";
 import { act } from "react-dom/test-utils";
 
-import {
-  findRequests,
-  setupListPublicActionsEndpoint,
-  setupListPublicCardsEndpoint,
-  setupListPublicDashboardsEndpoint,
-  setupListPublicDocumentsEndpoint,
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-  setupUpdateSettingEndpoint,
-} from "__support__/server-mocks";
+import { setupListPublicActionsEndpoint } from "__support__/server-mocks/action";
+import { setupListPublicCardsEndpoint } from "__support__/server-mocks/card";
+import { setupListPublicDashboardsEndpoint } from "__support__/server-mocks/dashboard";
+import { setupListPublicDocumentsEndpoint } from "__support__/server-mocks/document";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupSettingsEndpoints, setupUpdateSettingEndpoint } from "__support__/server-mocks/settings";
+import { findRequests } from "__support__/server-mocks/util";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { createMockSettingsState } from "metabase/redux/store/mocks";

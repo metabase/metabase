@@ -1,11 +1,8 @@
 /* istanbul ignore file */
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupCollectionItemsEndpoint,
-  setupCollectionsEndpoints,
-  setupNativeQuerySnippetEndpoints,
-} from "__support__/server-mocks";
+import { setupCollectionItemsEndpoint, setupCollectionsEndpoints } from "__support__/server-mocks/collection";
+import { setupNativeQuerySnippetEndpoints } from "__support__/server-mocks/native-query-snippet";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";

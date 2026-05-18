@@ -1,9 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupGetTransformJobEndpoint,
-  setupRunTransformJobEndpoint,
-} from "__support__/server-mocks";
+import { setupGetTransformJobEndpoint, setupRunTransformJobEndpoint } from "__support__/server-mocks/transform";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { TransformJob } from "metabase-types/api";
 import {

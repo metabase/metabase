@@ -3,10 +3,7 @@ import { Route } from "react-router";
 import _ from "underscore";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupPublicCardQueryEndpoints,
-  setupPublicQuestionEndpoints,
-} from "__support__/server-mocks";
+import { setupPublicCardQueryEndpoints, setupPublicQuestionEndpoints } from "__support__/server-mocks/public";
 import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,

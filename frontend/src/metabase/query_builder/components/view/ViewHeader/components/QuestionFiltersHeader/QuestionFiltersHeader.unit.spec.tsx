@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
-import { setupFieldValuesEndpoint } from "__support__/server-mocks";
+import { setupFieldValuesEndpoint } from "__support__/server-mocks/field";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";

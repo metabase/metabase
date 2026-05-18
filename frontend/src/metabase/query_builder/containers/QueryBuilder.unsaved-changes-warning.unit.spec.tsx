@@ -1,13 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { setupJestCanvasMock } from "jest-canvas-mock";
 
-import {
-  setupCardCreateEndpoint,
-  setupCardEndpoints,
-  setupCardQueryEndpoints,
-  setupCardQueryMetadataEndpoint,
-  setupCardsEndpoints,
-} from "__support__/server-mocks";
+import { setupCardCreateEndpoint, setupCardEndpoints, setupCardQueryEndpoints, setupCardQueryMetadataEndpoint, setupCardsEndpoints } from "__support__/server-mocks/card";
 import {
   act,
   screen,

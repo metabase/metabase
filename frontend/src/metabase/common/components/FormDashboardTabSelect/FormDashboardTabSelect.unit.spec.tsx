@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupDashboardEndpoints } from "__support__/server-mocks";
+import { setupDashboardEndpoints } from "__support__/server-mocks/dashboard";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 import type { DashboardId, DashboardTabId } from "metabase-types/api";

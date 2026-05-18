@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";

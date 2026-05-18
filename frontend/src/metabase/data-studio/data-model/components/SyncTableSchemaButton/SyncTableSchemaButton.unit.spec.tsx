@@ -1,10 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  setupTableEndpoints,
-  setupTablesBulkEndpoints,
-} from "__support__/server-mocks";
+import { setupTableEndpoints, setupTablesBulkEndpoints } from "__support__/server-mocks/table";
 import {
   act,
   renderWithProviders,

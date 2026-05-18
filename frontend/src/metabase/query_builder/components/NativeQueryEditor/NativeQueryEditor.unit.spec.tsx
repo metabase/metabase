@@ -1,7 +1,5 @@
-import {
-  setupCollectionsEndpoints,
-  setupNativeQuerySnippetEndpoints,
-} from "__support__/server-mocks";
+import { setupCollectionsEndpoints } from "__support__/server-mocks/collection";
+import { setupNativeQuerySnippetEndpoints } from "__support__/server-mocks/native-query-snippet";
 import { renderWithProviders } from "__support__/ui";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
 import { createMockState } from "metabase/redux/store/mocks";

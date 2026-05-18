@@ -1,11 +1,9 @@
 import _ from "underscore";
 
-import {
-  setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
-  setupNativeQuerySnippetEndpoints,
-  setupUserMetabotPermissionsEndpoint,
-} from "__support__/server-mocks";
+import { setupCollectionsEndpoints } from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks/metabot";
+import { setupNativeQuerySnippetEndpoints } from "__support__/server-mocks/native-query-snippet";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";

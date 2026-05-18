@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
-import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks/metabot";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { createMetadataProvider } from "metabase-lib/test-helpers";

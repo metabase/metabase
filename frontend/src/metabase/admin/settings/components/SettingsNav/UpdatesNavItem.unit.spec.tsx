@@ -1,8 +1,5 @@
-import {
-  setupPropertiesEndpoints,
-  setupSettingEndpoint,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupSettingEndpoint, setupSettingsEndpoints } from "__support__/server-mocks/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { SettingKey } from "metabase-types/api";

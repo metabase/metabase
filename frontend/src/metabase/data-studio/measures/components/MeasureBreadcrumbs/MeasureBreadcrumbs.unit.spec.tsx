@@ -1,10 +1,8 @@
 import { Route } from "react-router";
 
-import {
-  setupCollectionByIdEndpoint,
-  setupSchemaEndpoints,
-  setupTablesEndpoints,
-} from "__support__/server-mocks";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
+import { setupSchemaEndpoints } from "__support__/server-mocks/database";
+import { setupTablesEndpoints } from "__support__/server-mocks/table";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import type { Collection, Measure, Table } from "metabase-types/api";

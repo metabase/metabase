@@ -1,12 +1,9 @@
 import { Route } from "react-router";
 
-import {
-  setupDashboardEndpoints,
-  setupDatabasesEndpoints,
-  setupPopularItemsEndpoints,
-  setupRecentViewsEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
+import { setupPopularItemsEndpoints, setupRecentViewsEndpoints } from "__support__/server-mocks/activity";
+import { setupDashboardEndpoints } from "__support__/server-mocks/dashboard";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { DashboardId } from "metabase-types/api";

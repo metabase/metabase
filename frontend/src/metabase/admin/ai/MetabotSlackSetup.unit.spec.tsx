@@ -1,16 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  findRequests,
-  setupMetabotSlackSettingsEndpoint,
-  setupMetabotSlackSettingsEndpointWithError,
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-  setupSlackAppInfoEndpoint,
-  setupSlackManifestEndpoint,
-  setupUpdateSettingEndpoint,
-} from "__support__/server-mocks";
+import { setupMetabotSlackSettingsEndpoint, setupMetabotSlackSettingsEndpointWithError } from "__support__/server-mocks/metabot";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupSettingsEndpoints, setupUpdateSettingEndpoint } from "__support__/server-mocks/settings";
+import { setupSlackAppInfoEndpoint, setupSlackManifestEndpoint } from "__support__/server-mocks/slack";
+import { findRequests } from "__support__/server-mocks/util";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { SlackAppInfo } from "metabase-types/api";

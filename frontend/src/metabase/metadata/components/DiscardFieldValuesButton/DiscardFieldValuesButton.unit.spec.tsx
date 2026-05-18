@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupFieldEndpoints } from "__support__/server-mocks";
+import { setupFieldEndpoints } from "__support__/server-mocks/field";
 import {
   act,
   renderWithProviders,

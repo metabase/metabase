@@ -1,11 +1,8 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
-import {
-  setupListBreakingGraphNodesEndpoint,
-  setupListUnreferencedGraphNodesEndpoint,
-  setupUserKeyValueEndpoints,
-} from "__support__/server-mocks";
+import { setupListBreakingGraphNodesEndpoint, setupListUnreferencedGraphNodesEndpoint } from "__support__/server-mocks/dependencies";
+import { setupUserKeyValueEndpoints } from "__support__/server-mocks/user-key-value";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,

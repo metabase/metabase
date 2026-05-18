@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupRemoteSyncBranchesEndpoint } from "__support__/server-mocks";
+import { setupRemoteSyncBranchesEndpoint } from "__support__/server-mocks/remote-sync";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Combobox, useCombobox } from "metabase/ui";
 

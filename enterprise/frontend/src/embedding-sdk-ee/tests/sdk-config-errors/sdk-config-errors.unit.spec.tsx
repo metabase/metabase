@@ -1,9 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 
-import {
-  setupCardEndpoints,
-  setupCardQueryEndpoints,
-} from "__support__/server-mocks";
+import { setupCardEndpoints, setupCardQueryEndpoints } from "__support__/server-mocks/card";
 import { waitForLoaderToBeRemoved } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";

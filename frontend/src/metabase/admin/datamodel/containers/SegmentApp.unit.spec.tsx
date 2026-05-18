@@ -2,15 +2,12 @@ import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
 import { callMockEvent } from "__support__/events";
-import {
-  setupCardDataset,
-  setupCollectionByIdEndpoint,
-  setupCollectionItemsEndpoint,
-  setupDatabasesEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-  setupSearchEndpoints,
-  setupSegmentsEndpoints,
-} from "__support__/server-mocks";
+import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks/activity";
+import { setupCollectionByIdEndpoint, setupCollectionItemsEndpoint } from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupCardDataset } from "__support__/server-mocks/dataset";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
+import { setupSegmentsEndpoints } from "__support__/server-mocks/segment";
 import {
   act,
   mockGetBoundingClientRect,

@@ -2,11 +2,9 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
-import {
-  setupActionsEndpoints,
-  setupCardDataset,
-  setupDatabasesEndpoints,
-} from "__support__/server-mocks";
+import { setupActionsEndpoints } from "__support__/server-mocks/action";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupCardDataset } from "__support__/server-mocks/dataset";
 import { testDataset } from "__support__/testDataset";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { getNextId } from "__support__/utils";

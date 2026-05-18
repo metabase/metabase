@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 
-import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
+import { setupFieldsValuesEndpoints } from "__support__/server-mocks/field";
 import {
   renderWithProviders,
   screen,

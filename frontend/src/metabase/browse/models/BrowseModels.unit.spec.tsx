@@ -1,11 +1,9 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
-import {
-  setupRecentViewsEndpoints,
-  setupSearchEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+import { setupRecentViewsEndpoints } from "__support__/server-mocks/activity";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
+import { setupSettingsEndpoints } from "__support__/server-mocks/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { createMockSetupState } from "metabase/redux/store/mocks";
 import {

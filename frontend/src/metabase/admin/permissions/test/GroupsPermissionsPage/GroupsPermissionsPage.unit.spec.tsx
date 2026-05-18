@@ -3,11 +3,9 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import { callMockEvent } from "__support__/events";
-import {
-  setupDatabasesEndpoints,
-  setupGroupsEndpoint,
-  setupPermissionsGraphEndpoints,
-} from "__support__/server-mocks";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupGroupsEndpoint } from "__support__/server-mocks/group";
+import { setupPermissionsGraphEndpoints } from "__support__/server-mocks/permissions";
 import {
   renderWithProviders,
   screen,

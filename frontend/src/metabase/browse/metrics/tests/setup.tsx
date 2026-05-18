@@ -1,13 +1,10 @@
 import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupCardEndpoints,
-  setupCardQueryEndpoints,
-  setupRecentViewsEndpoints,
-  setupSearchEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+import { setupRecentViewsEndpoints } from "__support__/server-mocks/activity";
+import { setupCardEndpoints, setupCardQueryEndpoints } from "__support__/server-mocks/card";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
+import { setupSettingsEndpoints } from "__support__/server-mocks/settings";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import {

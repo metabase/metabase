@@ -1,11 +1,8 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupDatabaseListEndpoint,
-  setupPropertiesEndpoints,
-  setupStoreEEBillingEndpoint,
-  setupStoreEECloudAddOnsEndpoint,
-  setupUserMetabotPermissionsEndpoint,
-} from "__support__/server-mocks";
+import { setupDatabaseListEndpoint } from "__support__/server-mocks/database";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks/metabot";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupStoreEEBillingEndpoint, setupStoreEECloudAddOnsEndpoint } from "__support__/server-mocks/store";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";

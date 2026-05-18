@@ -1,4 +1,4 @@
-import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
+import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks/bug-report";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";

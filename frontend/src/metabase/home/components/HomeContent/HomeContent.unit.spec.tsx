@@ -1,9 +1,6 @@
-import {
-  setupDatabaseCandidatesEndpoint,
-  setupDatabasesEndpoints,
-  setupPopularItemsEndpoints,
-  setupRecentViewsEndpoints,
-} from "__support__/server-mocks";
+import { setupPopularItemsEndpoints, setupRecentViewsEndpoints } from "__support__/server-mocks/activity";
+import { setupDatabaseCandidatesEndpoint } from "__support__/server-mocks/automagic-dashboards";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import {
   renderWithProviders,
   screen,

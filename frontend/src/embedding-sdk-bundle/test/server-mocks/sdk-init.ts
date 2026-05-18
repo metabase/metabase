@@ -1,8 +1,6 @@
-import {
-  setupCurrentUserEndpoint,
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupSettingsEndpoints } from "__support__/server-mocks/settings";
+import { setupCurrentUserEndpoint } from "__support__/server-mocks/user";
 import { mockSettings } from "__support__/settings";
 import type { SdkState, SdkStoreState } from "embedding-sdk-bundle/store/types";
 import {

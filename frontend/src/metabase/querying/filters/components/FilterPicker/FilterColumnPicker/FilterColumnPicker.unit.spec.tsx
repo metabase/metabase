@@ -1,4 +1,4 @@
-import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
+import { setupFieldsValuesEndpoints } from "__support__/server-mocks/field";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";

@@ -2,12 +2,9 @@ import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
-import {
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-  setupTokenStatusEndpoint,
-  setupUpdateSettingEndpoint,
-} from "__support__/server-mocks";
+import { setupTokenStatusEndpoint } from "__support__/server-mocks/premium-features";
+import { setupPropertiesEndpoints } from "__support__/server-mocks/session";
+import { setupSettingsEndpoints, setupUpdateSettingEndpoint } from "__support__/server-mocks/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type {

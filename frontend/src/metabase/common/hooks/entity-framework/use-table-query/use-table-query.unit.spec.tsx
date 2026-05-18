@@ -1,4 +1,4 @@
-import { setupTablesEndpoints } from "__support__/server-mocks";
+import { setupTablesEndpoints } from "__support__/server-mocks/table";
 import {
   renderWithProviders,
   screen,

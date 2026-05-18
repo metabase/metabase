@@ -1,11 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  setupChangePlanPreviewEndpoint,
-  setupGetPlanEndpoint,
-  setupTrialAvailableEndpoint,
-} from "__support__/server-mocks";
+import { setupChangePlanPreviewEndpoint, setupGetPlanEndpoint, setupTrialAvailableEndpoint } from "__support__/server-mocks/cloud-proxy";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockUser } from "metabase-types/api/mocks";

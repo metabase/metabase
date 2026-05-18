@@ -1,9 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupCreateTransformTagEndpoint,
-  setupListTransformTagsEndpoint,
-} from "__support__/server-mocks";
+import { setupCreateTransformTagEndpoint, setupListTransformTagsEndpoint } from "__support__/server-mocks/transform";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { TransformTag, TransformTagId } from "metabase-types/api";
 import { createMockTransformTag } from "metabase-types/api/mocks";

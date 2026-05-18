@@ -3,11 +3,7 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 import { dedent } from "ts-dedent";
 
-import {
-  setupDeleteLoggerAdjustmentEndpoint,
-  setupLoggerPresetsEndpoint,
-  setupPostLoggerAdjustmentEndpoint,
-} from "__support__/server-mocks";
+import { setupDeleteLoggerAdjustmentEndpoint, setupLoggerPresetsEndpoint, setupPostLoggerAdjustmentEndpoint } from "__support__/server-mocks/logger";
 import {
   renderWithProviders,
   screen,

@@ -2,13 +2,8 @@ import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
-import {
-  setupCreateCollectionEndpoint,
-  setupDeleteCollectionEndpoint,
-  setupGetCollectionEndpoint,
-  setupRemoteSyncDirtyEndpoint,
-  setupUpdateCollectionEndpoint,
-} from "__support__/server-mocks";
+import { setupCreateCollectionEndpoint, setupDeleteCollectionEndpoint, setupGetCollectionEndpoint, setupUpdateCollectionEndpoint } from "__support__/server-mocks/collection";
+import { setupRemoteSyncDirtyEndpoint } from "__support__/server-mocks/remote-sync";
 import { Api } from "metabase/api/api";
 import { collectionApi } from "metabase/api/collection";
 import { settings as settingsReducer } from "metabase/redux/settings";

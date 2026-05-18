@@ -2,11 +2,9 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
-import {
-  setupCollectionByIdEndpoint,
-  setupSearchEndpoints,
-  setupUserRecipientsEndpoint,
-} from "__support__/server-mocks";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
+import { setupUserRecipientsEndpoint } from "__support__/server-mocks/user";
 import {
   renderWithProviders,
   screen,

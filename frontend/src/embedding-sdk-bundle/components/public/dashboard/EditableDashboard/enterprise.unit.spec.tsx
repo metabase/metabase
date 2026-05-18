@@ -1,11 +1,8 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  setupCollectionItemsEndpoint,
-  setupEmbeddingDataPickerDecisionEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
+import { setupCollectionItemsEndpoint } from "__support__/server-mocks/collection";
+import { setupEmbeddingDataPickerDecisionEndpoints, setupSearchEndpoints } from "__support__/server-mocks/search";
 import { screen, waitFor, within } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { createMockCollection } from "metabase-types/api/mocks";

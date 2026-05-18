@@ -3,19 +3,15 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import { callMockEvent } from "__support__/events";
-import {
-  setupActionsEndpoints,
-  setupBookmarksEndpoints,
-  setupCardsEndpoints,
-  setupCollectionItemsEndpoint,
-  setupCollectionsEndpoints,
-  setupDashboardEndpoints,
-  setupDashboardQueryMetadataEndpoint,
-  setupDatabasesEndpoints,
-  setupSearchEndpoints,
-  setupTableEndpoints,
-} from "__support__/server-mocks";
+import { setupActionsEndpoints } from "__support__/server-mocks/action";
+import { setupBookmarksEndpoints } from "__support__/server-mocks/bookmark";
+import { setupCardsEndpoints } from "__support__/server-mocks/card";
+import { setupCollectionItemsEndpoint, setupCollectionsEndpoints } from "__support__/server-mocks/collection";
+import { setupDashboardEndpoints, setupDashboardQueryMetadataEndpoint } from "__support__/server-mocks/dashboard";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
+import { setupTableEndpoints } from "__support__/server-mocks/table";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import {

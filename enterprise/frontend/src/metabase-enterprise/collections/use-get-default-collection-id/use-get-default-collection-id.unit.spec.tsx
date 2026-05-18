@@ -1,7 +1,5 @@
-import {
-  setupAuditInfoEndpoint,
-  setupCollectionByIdEndpoint,
-} from "__support__/server-mocks";
+import { setupAuditInfoEndpoint } from "__support__/server-mocks/audit";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";

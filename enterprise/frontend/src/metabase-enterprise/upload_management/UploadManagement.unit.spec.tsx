@@ -2,10 +2,7 @@ import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
-import {
-  setupDeleteUploadManagementDeleteEndpoint,
-  setupUploadManagementEndpoint,
-} from "__support__/server-mocks";
+import { setupDeleteUploadManagementDeleteEndpoint, setupUploadManagementEndpoint } from "__support__/server-mocks/table";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockTable } from "metabase-types/api/mocks";
 

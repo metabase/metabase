@@ -1,8 +1,5 @@
-import {
-  PERMISSION_ERROR,
-  setupDatabasesEndpoints,
-  setupUnauthorizedDatabasesEndpoints,
-} from "__support__/server-mocks";
+import { PERMISSION_ERROR } from "__support__/server-mocks/constants";
+import { setupDatabasesEndpoints, setupUnauthorizedDatabasesEndpoints } from "__support__/server-mocks/database";
 import {
   renderWithProviders,
   screen,

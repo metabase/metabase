@@ -2,13 +2,9 @@ import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
 import { createMockMetadata } from "__support__/metadata";
-import {
-  setupCardQueryMetadataEndpoint,
-  setupCardsEndpoints,
-  setupCardsUsingModelEndpoint,
-  setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
-} from "__support__/server-mocks";
+import { setupCardQueryMetadataEndpoint, setupCardsEndpoints, setupCardsUsingModelEndpoint } from "__support__/server-mocks/card";
+import { setupCollectionsEndpoints } from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import {
   renderWithProviders,
   screen,

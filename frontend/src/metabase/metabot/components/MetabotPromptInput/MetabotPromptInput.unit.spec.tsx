@@ -3,10 +3,8 @@ import userEvent from "@testing-library/user-event";
 import type { EditorState } from "@tiptap/pm/state";
 import { createRef } from "react";
 
-import {
-  setupCollectionByIdEndpoint,
-  setupDatabasesEndpoints,
-} from "__support__/server-mocks";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";

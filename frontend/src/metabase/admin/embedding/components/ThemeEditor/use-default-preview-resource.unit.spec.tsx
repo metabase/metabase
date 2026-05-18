@@ -1,7 +1,5 @@
-import {
-  setupRecentViewsEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
+import { setupRecentViewsEndpoints } from "__support__/server-mocks/activity";
+import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import {
   createMockRecentCollectionItem,

@@ -2,17 +2,12 @@ import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
-import {
-  type CollectionEndpoints,
-  setupCollectionByIdEndpoint,
-  setupCollectionItemsEndpoint,
-  setupCollectionsEndpoints,
-  setupCustomVizPluginListEndpoint,
-  setupDashboardEndpoints,
-  setupDatabasesEndpoints,
-  setupLibraryEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-} from "__support__/server-mocks";
+import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks/activity";
+import { type CollectionEndpoints, setupCollectionByIdEndpoint, setupCollectionItemsEndpoint, setupCollectionsEndpoints } from "__support__/server-mocks/collection";
+import { setupCustomVizPluginListEndpoint } from "__support__/server-mocks/custom-viz-plugin";
+import { setupDashboardEndpoints } from "__support__/server-mocks/dashboard";
+import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
+import { setupLibraryEndpoints } from "__support__/server-mocks/library";
 import { mockSettings } from "__support__/settings";
 import {
   mockGetBoundingClientRect,

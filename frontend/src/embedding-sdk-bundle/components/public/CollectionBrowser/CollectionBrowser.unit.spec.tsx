@@ -1,10 +1,7 @@
 import fetchMock from "fetch-mock";
 import type { ComponentProps } from "react";
 
-import {
-  setupCollectionItemsEndpoint,
-  setupCollectionsEndpoints,
-} from "__support__/server-mocks";
+import { setupCollectionItemsEndpoint, setupCollectionsEndpoints } from "__support__/server-mocks/collection";
 import { screen, waitFor, within } from "__support__/ui";
 import {
   CollectionBrowser,

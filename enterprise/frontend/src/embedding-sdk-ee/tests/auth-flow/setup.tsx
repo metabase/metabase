@@ -1,11 +1,7 @@
 import fetchMock from "fetch-mock";
 
-import {
-  setupCardEndpoints,
-  setupCardQueryEndpoints,
-  setupCardQueryMetadataEndpoint,
-  setupCollectionByIdEndpoint,
-} from "__support__/server-mocks";
+import { setupCardEndpoints, setupCardQueryEndpoints, setupCardQueryMetadataEndpoint } from "__support__/server-mocks/card";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
 import { renderWithProviders } from "__support__/ui";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";

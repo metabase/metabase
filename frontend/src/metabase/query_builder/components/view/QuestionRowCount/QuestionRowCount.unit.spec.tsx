@@ -1,10 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
-import {
-  setupDatabasesEndpoints,
-  setupUnauthorizedDatabasesEndpoints,
-} from "__support__/server-mocks";
+import { setupDatabasesEndpoints, setupUnauthorizedDatabasesEndpoints } from "__support__/server-mocks/database";
 import { createMockEntitiesState } from "__support__/store";
 import {
   fireEvent,

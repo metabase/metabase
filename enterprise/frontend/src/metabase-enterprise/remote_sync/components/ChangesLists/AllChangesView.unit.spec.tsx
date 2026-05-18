@@ -1,5 +1,5 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { setupCollectionTreeEndpoint } from "__support__/server-mocks";
+import { setupCollectionTreeEndpoint } from "__support__/server-mocks/collection";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";

@@ -1,9 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupCreateLibraryEndpoint,
-  setupCreateLibraryEndpointError,
-} from "__support__/server-mocks";
+import { setupCreateLibraryEndpoint, setupCreateLibraryEndpointError } from "__support__/server-mocks/library";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 
 import { CreateLibraryModal } from "./CreateLibraryModal";
