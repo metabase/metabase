@@ -814,3 +814,58 @@
         (mt/user-http-request :rasta :put 403 (str "agent/v1/question/" card-id)
                               {:name "Forbidden Rename"})))))
 
+;;; ---------------------------------------------- Update Dashboard Tests ------------------------------------------
+
+(deftest update-dashboard-test
+  (testing "Patches name and description"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Original Name"}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                       {:name "Renamed by Agent"
+                                        :description "Set by agent"})]
+        (is (=? {:id          dash-id
+                 :name        "Renamed by Agent"
+                 :description "Set by agent"
+                 :archived    false}
+                resp)))
+      (is (= "Renamed by Agent" (t2/select-one-fn :name :model/Dashboard :id dash-id)))
+      (is (= "Set by agent" (t2/select-one-fn :description :model/Dashboard :id dash-id)))))
+
+  (testing "Moving a dashboard sets collection_id and moves its cards"
+    (mt/with-temp [:model/Collection {dest-coll-id :id} {:name "Agent Dash Dest"}
+                   :model/Dashboard  {dash-id :id}      {:name "Dash To Move"}
+                   :model/Card       {card-id :id}      {:name          "Card On Dash"
+                                                         :dataset_query (orders-count-query)
+                                                         :display       :table
+                                                         :dashboard_id  dash-id}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                       {:collection_id dest-coll-id})]
+        (is (= dest-coll-id (:collection_id resp))))
+      (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Dashboard :id dash-id)))
+      ;; cards on the dashboard should follow
+      (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id)))))
+
+  (testing "Archiving a dashboard cascades to its cards"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Dash To Archive"}
+                   :model/Card      {card-id :id} {:name          "Cascading Card"
+                                                   :dataset_query (orders-count-query)
+                                                   :display       :table
+                                                   :dashboard_id  dash-id}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                       {:archived true})]
+        (is (true? (:archived resp))))
+      (is (true? (t2/select-one-fn :archived :model/Dashboard :id dash-id)))
+      (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))))
+
+  (testing "Returns 404 when dashboard does not exist"
+    (mt/user-http-request :rasta :put 404 "agent/v1/dashboard/999999"
+                          {:name "doesn't matter"}))
+
+  (testing "Returns 403 when caller lacks write access on the dashboard"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {locked-coll-id :id} {:name "Locked Coll For Dash"}
+                     :model/Dashboard  {dash-id :id}        {:name          "Hidden Dash"
+                                                             :collection_id locked-coll-id}]
+        (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
+                              {:name "Forbidden Rename"})))))
+
+

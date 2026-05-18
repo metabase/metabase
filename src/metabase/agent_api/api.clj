@@ -891,6 +891,73 @@
      :description  (:description dash)
      :dashcard_ids (mapv :id (t2/select :model/DashboardCard :dashboard_id (:id dash)))}))
 
+;;; ------------------------------------------------- Update Dashboard -----------------------------------------------
+
+(mr/def ::update-dashboard-request
+  "Patch shape for `update_dashboard`. Phase A: metadata fields only — no dashcard mutations."
+  [:map
+   [:name          {:optional true} [:maybe ms/NonBlankString]]
+   [:description   {:optional true} [:maybe :string]]
+   [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+   [:archived      {:optional true} [:maybe :boolean]]])
+
+(mr/def ::update-dashboard-response
+  [:map
+   [:id            ms/PositiveInt]
+   [:name          ms/NonBlankString]
+   [:collection_id [:maybe ms/PositiveInt]]
+   [:description   [:maybe :string]]
+   [:archived      :boolean]])
+
+(api.macros/defendpoint :put "/v1/dashboard/:id" :- ::update-dashboard-response
+  "Update a dashboard's metadata. Patch semantics - only fields you pass are changed.
+
+  Phase A supports metadata fields (name, description, collection_id, archived). Dashcard
+  mutations come in a follow-up phase."
+  {:scope metabot/agent-dashboard-update
+   :tool  {:name "update_dashboard"
+           :description (str "Update a dashboard's metadata. Patch semantics - only fields you pass are changed. "
+                             "Set collection_id to move it. Set archived true to archive.")}}
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   body :- ::update-dashboard-request]
+  (let [current-dash (api/write-check :model/Dashboard id)
+        updates      (cond-> {}
+                       (contains? body :name)          (assoc :name (:name body))
+                       (contains? body :description)   (assoc :description (:description body))
+                       (contains? body :collection_id) (assoc :collection_id (:collection_id body))
+                       (contains? body :archived)      (assoc :archived (boolean (:archived body))))]
+    (when (seq updates)
+      (t2/with-transaction [_conn]
+        ;; Mirror the cascading behavior of dashboards-rest update-dashboard!:
+        ;; archiving the dashboard archives its cards; un-archiving restores them.
+        (when (api/column-will-change? :archived current-dash updates)
+          (if (:archived updates)
+            (t2/update! :model/Card
+                        :dashboard_id id
+                        :archived false
+                        {:archived true :archived_directly false})
+            (t2/update! :model/Card
+                        :dashboard_id id
+                        :archived true
+                        :archived_directly false
+                        {:archived false})))
+        ;; Moving a dashboard moves its cards with it.
+        (when (api/column-will-change? :collection_id current-dash updates)
+          (t2/update! :model/Card :dashboard_id id {:collection_id (:collection_id updates)}))
+        (t2/update! :model/Dashboard id updates)
+        (when (contains? updates :collection_id)
+          (events/publish-event! :event/collection-touch
+                                 {:collection-id id :user-id api/*current-user-id*}))))
+    (let [updated (t2/select-one :model/Dashboard :id id)]
+      (events/publish-event! :event/dashboard-update
+                             {:object updated :user-id api/*current-user-id*})
+      {:id            (:id updated)
+       :name          (:name updated)
+       :collection_id (:collection_id updated)
+       :description   (:description updated)
+       :archived      (boolean (:archived updated))})))
+
 ;;; ------------------------------------------------ Create Collection -----------------------------------------------
 
 (mr/def ::create-collection-request
