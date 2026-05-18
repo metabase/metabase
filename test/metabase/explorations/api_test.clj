@@ -220,7 +220,8 @@
                                   {:dimension_id "s"   :effective_type "type/Text"}]}
             resp    (mt/user-http-request u :post 200 "exploration" body)
             mp      (lib-be/application-database-metadata-provider (mt/id))
-            by-dim  (into {} (for [q (-> resp :threads first :queries)]
+            by-dim  (into {} (for [q       (-> resp :threads first :queries)
+                                   :when   (= "default" (:query_type q))]
                                [(:dimension_id q) (->> (:dataset_query q)
                                                        (lib/query mp)
                                                        lib/breakouts
@@ -380,6 +381,147 @@
         (is (= 2 (count queries))
             "venues metric × 2 dims; the users-table segment doesn't apply, so no fan-out")
         (is (every? #(nil? (:segment_id %)) queries))))))
+
+(defn- products-monthly-metric-card
+  "Metric Card with a default `:month` temporal breakout on `products.created_at`. Used to
+  exercise the time-facet variant, which fires only when the metric carries a temporal breakout."
+  [user-id]
+  {:type          :metric
+   :creator_id    user-id
+   :dataset_query (mt/mbql-query products {:aggregation [[:count]]
+                                           :breakout    [!month.created_at]})})
+
+(defn- query-types
+  [queries]
+  (set (map :query_type queries)))
+
+(deftest exploration-create-temporal-dim-emits-pattern-variants-test
+  (testing "POST / with a datetime dim emits default + day-of-week + month-of-year + hour-of-day"
+    (mt/with-temp [:model/User u {:email "temporal-dt@example.com"}
+                   :model/Card metric (venues-metric-card (:id u))]
+      (let [mapping [{:dimension_id "created"
+                      :table_id     (mt/id :venues)
+                      :target       ["field" {} (mt/id :checkins :date)]}]
+            body    {:name       "dt"
+                     :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
+                     :dimensions [{:dimension_id   "created"
+                                   :display_name   "Created"
+                                   :effective_type "type/DateTime"}]}
+            queries (-> (mt/user-http-request u :post 200 "exploration" body)
+                        :threads first :queries)]
+        (is (= #{"default" "day-of-week" "month-of-year" "hour-of-day"}
+               (query-types queries)))
+        (is (every? #(= "created" (:dimension_id %)) queries))))))
+
+(deftest exploration-create-date-dim-skips-hour-of-day-test
+  (testing "POST / with a pure-date dim emits default + day-of-week + month-of-year (no HoD)"
+    (mt/with-temp [:model/User u {:email "temporal-date@example.com"}
+                   :model/Card metric (venues-metric-card (:id u))]
+      (let [mapping [{:dimension_id "created"
+                      :table_id     (mt/id :venues)
+                      :target       ["field" {} (mt/id :checkins :date)]}]
+            body    {:name       "date"
+                     :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
+                     :dimensions [{:dimension_id   "created"
+                                   :display_name   "Created"
+                                   :effective_type "type/Date"}]}
+            queries (-> (mt/user-http-request u :post 200 "exploration" body)
+                        :threads first :queries)]
+        (is (= #{"default" "day-of-week" "month-of-year"} (query-types queries)))))))
+
+(deftest exploration-create-time-facet-test
+  (testing "POST / with a low-cardinality categorical dim + metric with default temporal breakout emits default + time-facet"
+    (mt/with-temp [:model/User u {:email "time-facet@example.com"}
+                   :model/Card metric (assoc (products-monthly-metric-card (:id u)) :name "Sales")]
+      (let [mapping [{:dimension_id "cat"
+                      :table_id     (mt/id :products)
+                      :target       ["field" {} (mt/id :products :category)]}]
+            body    {:name       "facet"
+                     :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
+                     :dimensions [{:dimension_id "cat" :display_name "Category"}]}
+            queries (-> (mt/user-http-request u :post 200 "exploration" body)
+                        :threads first :queries)
+            facet   (first (filter #(= "time-facet" (:query_type %)) queries))]
+        (is (= #{"default" "time-facet"} (query-types queries)))
+        (is (= "line" (:display facet))
+            "time-facet variant explicitly sets :display \"line\"")
+        (is (= "Sales by Category over time" (:name facet)))))))
+
+(deftest exploration-create-time-facet-skipped-without-default-breakout-test
+  (testing "POST / categorical dim but metric has no default temporal breakout → no time-facet"
+    (mt/with-temp [:model/User u {:email "no-default-breakout@example.com"}
+                   :model/Card metric (venues-metric-card (:id u))]
+      (let [mapping [{:dimension_id "cat"
+                      :table_id     (mt/id :venues)
+                      :target       ["field" {} (mt/id :products :category)]}]
+            body    {:name       "no-facet"
+                     :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
+                     :dimensions [{:dimension_id "cat" :display_name "Category"}]}
+            queries (-> (mt/user-http-request u :post 200 "exploration" body)
+                        :threads first :queries)]
+        (is (= #{"default"} (query-types queries)))))))
+
+(deftest exploration-create-time-facet-skipped-high-cardinality-test
+  (testing "POST / categorical dim with distinct-count > threshold → no time-facet"
+    (mt/with-temp [:model/User u {:email "high-card@example.com"}
+                   :model/Card metric (products-monthly-metric-card (:id u))]
+      (let [mapping [{:dimension_id "email"
+                      :table_id     (mt/id :products)
+                      :target       ["field" {} (mt/id :people :email)]}]
+            body    {:name       "high-card"
+                     :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
+                     :dimensions [{:dimension_id "email" :display_name "Email"}]}
+            queries (-> (mt/user-http-request u :post 200 "exploration" body)
+                        :threads first :queries)]
+        (is (= #{"default"} (query-types queries))
+            "people.email has ~2500 distinct values → exceeds the cardinality gate")))))
+
+(deftest exploration-create-segments-multiply-every-variant-test
+  (testing "Segment fan-out applies uniformly to each candidate variant"
+    (mt/with-temp [:model/User u {:email "seg-multiply@example.com"}
+                   :model/Card metric (assoc (venues-metric-card (:id u)) :name "Revenue")
+                   :model/Segment s {:name       "cheap"
+                                     :table_id   (mt/id :venues)
+                                     :definition (mt/mbql-query venues {:filter [:= $price 1]})}]
+      (let [mapping [{:dimension_id "created"
+                      :table_id     (mt/id :venues)
+                      :target       ["field" {} (mt/id :checkins :date)]}]
+            body    {:name       "seg"
+                     :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
+                     :dimensions [{:dimension_id   "created"
+                                   :display_name   "Created"
+                                   :effective_type "type/DateTime"}]}
+            queries (-> (mt/user-http-request u :post 200 "exploration" body)
+                        :threads first :queries)
+            by-seg  (group-by (comp boolean :segment_id) queries)]
+        (is (= 8 (count queries)) "4 variants × (1 base + 1 segment) = 8")
+        (is (= #{"default" "day-of-week" "month-of-year" "hour-of-day"}
+               (set (map :query_type (get by-seg false)))))
+        (is (= #{"default" "day-of-week" "month-of-year" "hour-of-day"}
+               (set (map :query_type (get by-seg true)))))
+        (is (every? #(= (:id s) (:segment_id %)) (get by-seg true)))))))
+
+(deftest exploration-create-variants-share-one-sidebar-leaf-test
+  (testing "All variants for a (card, dim) collapse into a single 'page' leaf in auto-groups"
+    (mt/with-temp [:model/User u {:email "groups-collapse@example.com"}
+                   :model/Card metric (venues-metric-card (:id u))]
+      (let [mapping [{:dimension_id "created"
+                      :table_id     (mt/id :venues)
+                      :target       ["field" {} (mt/id :checkins :date)]}]
+            body    {:name       "collapse"
+                     :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
+                     :dimensions [{:dimension_id   "created"
+                                   :display_name   "Created"
+                                   :effective_type "type/DateTime"}]}
+            resp    (mt/user-http-request u :post 200 "exploration" body)
+            thread  (first (:threads resp))
+            queries (:queries thread)
+            leaves  (filter #(= "page" (:display_type %)) (:groups thread))
+            page    (first leaves)]
+        (is (= 4 (count queries)))
+        (is (= 1 (count leaves)) "all 4 variants collapse into one page leaf")
+        (is (= 4 (count (:query_ids page))))
+        (is (= (set (map :id queries)) (set (:query_ids page))))))))
 
 (deftest exploration-create-without-selections-test
   (testing "POST / works without metrics/dimensions/timelines (drafty exploration)"

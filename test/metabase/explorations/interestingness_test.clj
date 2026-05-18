@@ -135,3 +135,75 @@
                       {:name "n" :base_type :type/Integer}]
                      [["a" 1]]))]
     (is (every? string? (keys (:series cfg))))))
+
+(deftest three-col-faceted-line-test
+  (testing "categorical + temporal + numeric produces one line series per category, with display=line"
+    (let [cfg (explorations.interestingness/qp-result->chart-config
+               (query "line")
+               (result [{:name "segment" :base_type :type/Text       :display_name "Segment"}
+                        {:name "month"   :base_type :type/DateTime   :display_name "Month"}
+                        {:name "rev"     :base_type :type/Integer    :display_name "Revenue"}]
+                       [["NA" "2026-01-01" 100]
+                        ["NA" "2026-02-01" 110]
+                        ["EU" "2026-01-01" 80]
+                        ["EU" "2026-02-01" 90]]))]
+      (is (= "line" (:display_type cfg)))
+      (is (= #{"NA" "EU"} (set (keys (:series cfg)))))
+      (let [na (get (:series cfg) "NA")
+            eu (get (:series cfg) "EU")]
+        (is (= "datetime" (-> na :x :type)))
+        (is (= "number"   (-> na :y :type)))
+        (is (= "Month"    (-> na :x :name)))
+        (is (= "Revenue"  (-> na :y :name)))
+        (is (= ["2026-01-01" "2026-02-01"] (:x_values na)))
+        (is (= [100 110] (:y_values na)))
+        (is (= ["2026-01-01" "2026-02-01"] (:x_values eu)))
+        (is (= [80 90] (:y_values eu)))
+        (is (= "NA" (:display_name na)))))))
+
+(deftest three-col-nil-category-collapses-test
+  (testing "nil categorical values collapse into a single \"(empty)\" series"
+    (let [cfg (explorations.interestingness/qp-result->chart-config
+               (query "line")
+               (result [{:name "segment" :base_type :type/Text}
+                        {:name "month"   :base_type :type/DateTime}
+                        {:name "n"       :base_type :type/Integer}]
+                       [[nil "2026-01-01" 1]
+                        [nil "2026-02-01" 2]
+                        ["A" "2026-01-01" 3]]))]
+      (is (= #{"(empty)" "A"} (set (keys (:series cfg)))))
+      (is (= [1 2] (:y_values (get (:series cfg) "(empty)"))))
+      (is (= [3]   (:y_values (get (:series cfg) "A")))))))
+
+(deftest three-col-non-temporal-second-col-returns-nil-test
+  (testing "3-col result without a temporal column can't be faceted-over-time → nil"
+    (is (nil? (explorations.interestingness/qp-result->chart-config
+               (query "line")
+               (result [{:name "a" :base_type :type/Text}
+                        {:name "b" :base_type :type/Text}
+                        {:name "n" :base_type :type/Integer}]
+                       [["x" "y" 1]]))))))
+
+(deftest three-col-non-numeric-rows-dropped-test
+  (testing "rows with non-numeric metric values are dropped before grouping"
+    (let [cfg (explorations.interestingness/qp-result->chart-config
+               (query "line")
+               (result [{:name "segment" :base_type :type/Text}
+                        {:name "month"   :base_type :type/DateTime}
+                        {:name "n"       :base_type :type/Integer}]
+                       [["NA" "2026-01-01" 1]
+                        ["NA" "2026-02-01" nil]
+                        ["NA" "2026-03-01" 3]]))
+          na  (get (:series cfg) "NA")]
+      (is (= ["2026-01-01" "2026-03-01"] (:x_values na)))
+      (is (= [1 3] (:y_values na))))))
+
+(deftest four-or-more-cols-returns-nil-test
+  (testing "4+ columns aren't supported"
+    (is (nil? (explorations.interestingness/qp-result->chart-config
+               (query "line")
+               (result [{:name "a" :base_type :type/Text}
+                        {:name "b" :base_type :type/DateTime}
+                        {:name "c" :base_type :type/Text}
+                        {:name "n" :base_type :type/Integer}]
+                       [["x" "2026-01-01" "y" 1]]))))))
