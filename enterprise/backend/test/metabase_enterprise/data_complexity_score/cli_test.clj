@@ -1,6 +1,5 @@
 (ns metabase-enterprise.data-complexity-score.cli-test
   (:require
-   [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.data-complexity-score.cli :as cli]
@@ -13,7 +12,8 @@
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -89,16 +89,21 @@
       (is (= 2 (:field-count events))
           "events Table should have exactly 2 fields — the side-car must not be counted"))))
 
-(deftest ^:sequential run-cli-writes-readable-edn-to-output-file-test
+(deftest ^:sequential run-cli-writes-readable-json-test
   ;; Not ^:parallel: calls `cli/write-result!`, which kondo flags as a destructive function in
   ;; parallel tests. The temp file we hand it is unique-per-call so the write is safe in
   ;; principle, but the lint flag is the right default — drop it instead of whitelisting.
-  (testing "--output path gets a readable EDN dump of the same result"
-    (let [tmp (doto (java.io.File/createTempFile "complexity-cli-output-" ".edn") .deleteOnExit)]
-      ;; Call internals instead of -main, which terminates the JVM via System/exit.
-      (#'cli/write-result! (#'cli/run-cli {:representation-dir representation-fixture-dir})
-                           (.getAbsolutePath tmp))
-      (is (= 215 (-> (slurp tmp) edn/read-string :library :total))))))
+  ;; Call internals instead of -main, which terminates the JVM via System/exit.
+  (let [result (#'cli/run-cli {:representation-dir representation-fixture-dir})]
+    (testing "without --output, stdout gets single-line JSON"
+      (let [stdout (with-out-str (#'cli/write-result! result nil))]
+        (is (= 215 (-> stdout (json/decode true) :library :total)))
+        (is (not (re-find #"\n.+" stdout)) "stdout JSON should be single-line")))
+    (testing "with --output, the file gets pretty JSON and stdout stays silent"
+      (let [tmp    (doto (java.io.File/createTempFile "complexity-cli-output-" ".json") .deleteOnExit)
+            stdout (with-out-str (#'cli/write-result! result (.getAbsolutePath tmp)))]
+        (is (= "" stdout))
+        (is (= 215 (-> (slurp tmp) (json/decode true) :library :total)))))))
 
 ;;; ------------------------------------- pure embedder/scoring tests -------------------------------------
 
@@ -330,38 +335,38 @@
             "representation-derived rows must never advance the cron's last-fingerprint setting")))))
 
 (deftest ^:sequential run-cli-appdb-mode-defaults-to-writing-test
-  (testing "appdb mode with no --write-to-appdb flag defaults to writing (true)"
+  (testing "appdb mode with no --write-to-appdb flag defaults to writing (true) but doesn't advance the cron fingerprint"
+    ;; CLI runs disable Snowplow, so they can't legitimately advance
+    ;; `data-complexity-scoring-last-fingerprint` — that setting is the cron's
+    ;; been-published-already gate and only a confirmed publish should move it. The CLI just
+    ;; persists the score row so operators can see the run.
     (let [calls         (atom [])
-          advance-calls (atom [])]
-      (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!                (fn [])
-                                  complexity/complexity-scores                    (fn [& _] {:meta {}})
-                                  synonym-source/complexity-scores-opts           (constantly {})
-                                  metabot-scope/internal-metabot-scope            (constantly {})
-                                  task.complexity-score/current-fingerprint       (constantly "appdb-fp")
-                                  task.complexity-score/maybe-advance-last-fingerprint! (fn [fp _result]
-                                                                                          (swap! advance-calls conj fp))
-                                  data-complexity-score/record-score!             (fn [fp source _result]
-                                                                                    (swap! calls conj [fp source]))]
-        (#'cli/run-cli {:source "appdb"})
-        (is (= [["appdb-fp" "appdb"]] @calls)
-            "appdb-mode default must write one row stamped source=\"appdb\"")
-        (is (= ["appdb-fp"] @advance-calls)
-            "appdb-mode write path must call maybe-advance-last-fingerprint! the same way the cron does")))))
-
-(deftest ^:sequential run-cli-appdb-mode-respects-explicit-no-write-test
-  (testing "appdb + --write-to-appdb false scores but never persists or advances the fingerprint"
-    (let [persisted?    (atom false)
           advance-calls (atom 0)]
       (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!                (fn [])
                                   complexity/complexity-scores                    (fn [& _] {:meta {}})
                                   synonym-source/complexity-scores-opts           (constantly {})
                                   metabot-scope/internal-metabot-scope            (constantly {})
-                                  data-complexity-score/record-score!             (fn [& _] (reset! persisted? true))
+                                  task.complexity-score/current-fingerprint       (constantly "appdb-fp")
                                   task.complexity-score/maybe-advance-last-fingerprint! (fn [& _]
-                                                                                          (swap! advance-calls inc))]
+                                                                                          (swap! advance-calls inc))
+                                  data-complexity-score/record-score!             (fn [fp source _result]
+                                                                                    (swap! calls conj [fp source]))]
+        (#'cli/run-cli {:source "appdb"})
+        (is (= [["appdb-fp" "appdb"]] @calls)
+            "appdb-mode default must write one row stamped source=\"appdb\"")
+        (is (zero? @advance-calls)
+            "CLI must not advance the cron's last-fingerprint setting")))))
+
+(deftest ^:sequential run-cli-appdb-mode-respects-explicit-no-write-test
+  (testing "appdb + --write-to-appdb false scores but never persists"
+    (let [persisted? (atom false)]
+      (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!                (fn [])
+                                  complexity/complexity-scores                    (fn [& _] {:meta {}})
+                                  synonym-source/complexity-scores-opts           (constantly {})
+                                  metabot-scope/internal-metabot-scope            (constantly {})
+                                  data-complexity-score/record-score!             (fn [& _] (reset! persisted? true))]
         (#'cli/run-cli {:source "appdb" :write-to-appdb false})
-        (is (false? @persisted?))
-        (is (zero? @advance-calls))))))
+        (is (false? @persisted?))))))
 
 (deftest ^:parallel dir-digest-is-stable-and-content-sensitive-test
   (testing "dir-digest produces the same value for the same content"

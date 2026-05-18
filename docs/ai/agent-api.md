@@ -8,6 +8,8 @@ summary: The Agent API is a REST API for building headless, agentic BI applicati
 
 The [Agent API](../api.html#tag/apiagent) is a REST API for building headless, agentic BI applications on top of Metabase's semantic layer, scoped to an authenticated user's permissions.
 
+Admins enable the Agent API under **Admin > AI > MCP**. See [Agent API settings](./settings.md#agent-api-settings).
+
 ## Agent API endpoints and reference
 
 Check out the API endpoint docs: [/api/agent](../api.html#tag/apiagent).
