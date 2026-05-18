@@ -161,9 +161,9 @@
           :let [dataset-id (.. dataset getDatasetId getDataset)]
           :when ((if logging-schema-exclusions?
                    sql-jdbc.describe-database/include-schema-logging-exclusion
-                   driver.s/include-schema? inclusion-patterns
-                   exclusion-patterns
-                   dataset-id))]
+                   driver.s/include-schema?) inclusion-patterns
+                                             exclusion-patterns
+                                             dataset-id)]
       dataset-id)))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
