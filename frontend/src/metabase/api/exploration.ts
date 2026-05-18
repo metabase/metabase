@@ -53,7 +53,10 @@ export const explorationApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [idTag("exploration", id)]),
+        invalidateTags(error, [
+          idTag("exploration", id),
+          listTag("exploration"),
+        ]),
     }),
     getExplorationQueryResult: builder.query<Dataset, ExplorationQueryId>({
       query: (id) => ({

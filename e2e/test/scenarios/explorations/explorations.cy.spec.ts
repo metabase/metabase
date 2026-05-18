@@ -301,7 +301,7 @@ describe("scenarios > explorations > new research > metabot flow", () => {
       expect(interestingGroup, "at least one dimension group is exposed").to
         .exist;
 
-      const agentName = "Why are signups down?";
+      const agentName = "New exploration";
       H.mockExplorationsAgentToolCalls([
         {
           toolCallId: "metrics-1",
@@ -587,7 +587,7 @@ describe("scenarios > explorations > detail page", () => {
     });
   });
 
-  it("auto-creates Findings + Automatic Insights documents under the Findings sidebar heading, with a Move to trash action in each doc's three-dots menu", () => {
+  it("auto-creates Scratchpad + Automatic Insights documents under the Findings sidebar heading, with a Move to trash action in each doc's three-dots menu", () => {
     H.createExplorationViaApi({ name: "Documents fixture" }).then((id) => {
       H.visitExploration(id);
 
@@ -602,15 +602,8 @@ describe("scenarios > explorations > detail page", () => {
           }
         });
 
-      // Both document names appear as visible text nodes inside
-      // the sidebar tree (rendered by `Ellipsified` inside the
-      // listitem). `findAllByText("Findings")` would now match
-      // both the heading and the doc, so scope each assertion
-      // around the doc names.
       cy.findByText("Automatic Insights").should("be.visible");
-      // Use a regex-anchored match so we don't accidentally count
-      // the section heading too.
-      cy.findAllByText("Findings").should("have.length.at.least", 2);
+      cy.findAllByText("Scratchpad").should("be.visible");
 
       // Click each document, open the three-dots `More options`
       // menu in its detail view, and assert `Move to trash` is
@@ -621,12 +614,12 @@ describe("scenarios > explorations > detail page", () => {
           (t: { documents?: Array<{ id: number; name: string }> }) =>
             t.documents ?? [],
         ) as Array<{ id: number; name: string }>;
-        const findingsDoc = docs.find((d) => d.name === "Findings");
+        const scratchpadDoc = docs.find((d) => d.name === "Scratchpad");
         const autoDoc = docs.find((d) => d.name === "Automatic Insights");
-        expect(findingsDoc, "BE created a Findings document").to.exist;
+        expect(scratchpadDoc, "BE created a Scratchpad document").to.exist;
         expect(autoDoc, "BE created an Automatic Insights document").to.exist;
 
-        for (const doc of [findingsDoc!, autoDoc!]) {
+        for (const doc of [scratchpadDoc!, autoDoc!]) {
           cy.visit(`/question/research/${id}/document/${doc.id}`);
           cy.findByLabelText("More options").click();
           // `metabase/documents/components/DocumentMenu.tsx` puts
@@ -643,7 +636,7 @@ describe("scenarios > explorations > detail page", () => {
     });
   });
 
-  it("adds a single chart to the Findings document via the Add to document button and lands on the document", () => {
+  it("adds a single chart to the Scratchpad document via the Add to document button and lands on the document", () => {
     H.createExplorationViaApi({ name: "Single-chart add fixture" }).then(
       (id) => {
         H.visitExploration(id);
@@ -656,22 +649,22 @@ describe("scenarios > explorations > detail page", () => {
 
         // Auto-selection lands on the most-interesting leaf, which
         // is always a single-query group (segments aren't seeded
-        // in this test). Click the doc-menu button → `Findings`.
+        // in this test). Click the doc-menu button → `Scratchpad`.
         cy.intercept("POST", "/api/exploration/thread/*/documents/*/append").as(
           "appendChart",
         );
         cy.findByLabelText("Add to document").click();
         // Mantine renders the leftSection icon's `aria-label` ("document
         // icon") into the menuitem's accessible name (it becomes
-        // "document icon Findings"), so we match by regex on the doc name.
-        cy.findByRole("menuitem", { name: /Findings/ }).click();
+        // "document icon Scratchpad"), so we match by regex on the doc name.
+        cy.findByRole("menuitem", { name: /Scratchpad/ }).click();
         cy.wait("@appendChart").then(({ response }) => {
           expect(response?.statusCode).to.eq(200);
         });
 
         // Toast renders with a link whose text is the doc name.
         cy.findByText("Added to").should("be.visible");
-        cy.findByRole("link", { name: "Findings" }).click();
+        cy.findByRole("link", { name: "Scratchpad" }).click();
 
         // Detail page renders with the embedded chart.
         cy.url().should("include", `/question/research/${id}/document/`);
@@ -886,15 +879,15 @@ describe("scenarios > explorations > detail page", () => {
         cy.findByRole("menuitem", { name: /Back/i }).should("be.visible");
         // Mantine renders the leftSection icon's `aria-label` ("document
         // icon") into the menuitem's accessible name (it becomes
-        // "document icon Findings"), so we match by regex on the doc name.
-        cy.findByRole("menuitem", { name: /Findings/ }).click();
+        // "document icon Scratchpad"), so we match by regex on the doc name.
+        cy.findByRole("menuitem", { name: /Scratchpad/ }).click();
         cy.wait("@appendChart").then(({ response }) => {
           expect(response?.statusCode).to.eq(200);
         });
 
         // Same toast → navigate to doc → chart embed visible.
         cy.findByText("Added to").should("be.visible");
-        cy.findByRole("link", { name: "Findings" }).click();
+        cy.findByRole("link", { name: "Scratchpad" }).click();
         cy.url().should("include", `/question/research/${id}/document/`);
         // The exploration document page renders chart embeds via
         // `StaticCardEmbedNode` (`data-testid="document-static-card-embed"`)
@@ -976,6 +969,13 @@ describe("scenarios > explorations > collection placement + archive", () => {
               expect(body.archived, "exploration is archived").to.eq(true);
             },
           );
+
+          H.undoToast().findByText("Trashed exploration").should("exist");
+          H.undo();
+
+          cy.findByTestId("collection-table")
+            .findByText(explorationName)
+            .should("be.visible");
         });
       },
     );
