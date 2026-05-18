@@ -475,12 +475,20 @@
 ;;; ---------------------------------------- Benchmark 6: Concurrent Consumers (LATERAL/SKIP LOCKED) ----------------------------------------
 
 (defn bench-concurrent-consumers!
-  "Validates the LATERAL/SKIP LOCKED fetch under real consumer contention by spinning up
-  multiple `AppDbQueueBackend` instances *in the same JVM*, each with its own listener
-  atom and poll thread. All instances share one queue and the same DB rows.
+  "Validates the LATERAL/SKIP LOCKED fetch and exactly-once delivery under multi-consumer
+  contention by spinning up multiple `AppDbQueueBackend` instances in the same JVM, each
+  with its own listener atom and poll thread. All instances share the queue and DB.
 
-  Expected: total throughput grows ~linearly with `:consumer-counts` until the DB write
-  ceiling. Every batch-id should be processed exactly once across all consumers.
+  What this actually measures:
+   - **Correctness**: every row is processed exactly once (`Dups` should always be 0; the
+     `Imbalance` shows how the work spread but the total received must equal `n`).
+   - **Per-row contention**: `mq.impl/active-handlers` is a JVM-global atom, so at most ONE
+     consumer can be actively handling the channel at a time within a single JVM. The other
+     consumers see `channel-busy?` and skip the queue. So this test does *not* validate
+     cross-node throughput scaling — for that you need separate JVMs.
+   - **Buffer-vs-row behavior**: `*publish-buffer-ms*` is forced to 0 so each `put` becomes
+     its own row; otherwise the buffer collapses all `n` messages into a single row that
+     only one consumer can grab.
 
   Options:
     :consumer-counts - vector of consumer counts to test (default [1 2 4 8])
@@ -511,16 +519,17 @@
                                        {})
                (q.backend/start! (nth backends i))))
            (let [start (System/nanoTime)]
-             ;; Publish via root listener atom (so the buffer flush sees them); use unique
-             ;; ids so duplicate detection in the listener is meaningful.
+             ;; Publish via root listener atom (so the buffer flush sees them). Bypass the
+             ;; time-windowed publish buffer (set *publish-buffer-ms* to 0) so each `put`
+             ;; becomes its own DB row — otherwise all `n` messages collapse into one row
+             ;; and there's nothing for multiple consumers to fetch in parallel.
              (binding [listener/*listeners* (atom {queue-name {:listener identity
-                                                               :max-batch-messages 100}})]
+                                                               :max-batch-messages 100}})
+                       publish-buffer/*publish-buffer-ms* 0]
                (dotimes [i n]
                  (mq/with-queue queue-name [q]
                    (mq/put q {:id i})))
                (publish-buffer/flush-publish-buffer!))
-             (Thread/sleep 300)
-             (publish-buffer/flush-publish-buffer!)
              (let [total (atom 0)
                    deadline (+ (System/currentTimeMillis) 60000)]
                (while (and (< @total n)

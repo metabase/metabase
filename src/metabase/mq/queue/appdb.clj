@@ -84,8 +84,12 @@
                       rows)))))))))
 
 (defn- recover-stale-processing-batches!
-  "Recovers processing batches whose heartbeat is older than the stale timeout.
-  Returns the number of batches recovered."
+  "Recovers processing batches whose heartbeat is older than the stale timeout. Returns the
+  number of batches THIS call actually transitioned (under concurrent recovery from another
+  node the guarded UPDATE rejects rows already recovered and the count drops).
+
+  Done in two bulk UPDATEs (retryable + permanent) instead of a per-row loop so a node-down
+  event with N stale batches does not cost O(N) round trips."
   []
   (let [max-retries (mq.settings/queue-max-retries)
         threshold   (Timestamp/from (.minusMillis (Instant/now) stale-processing-timeout-ms))
@@ -95,32 +99,36 @@
         {retryable false permanent true}
         (group-by #(>= (inc (:failures %)) max-retries) candidates)
         bulk-update! (fn [rows new-status]
-                       (when (seq rows)
-                         (t2/query {:update :queue_message_batch
-                                    :set    {:status           new-status
-                                             :failures         [:+ :failures 1]
-                                             :status_heartbeat (mi/now)
-                                             :owner            nil}
-                                    :where  [:and
-                                             [:in :id (mapv :id rows)]
-                                             [:= :status "processing"]
-                                             [:< :status_heartbeat threshold]]})))]
-    (bulk-update! retryable "pending")
-    (bulk-update! permanent "failed")
-    (when (seq retryable)
-      (log/warnf "Recovering %d stale processing batch(es)" (count retryable))
+                       (if (seq rows)
+                         (let [result (t2/query {:update :queue_message_batch
+                                                 :set    {:status           new-status
+                                                          :failures         [:+ :failures 1]
+                                                          :status_heartbeat (mi/now)
+                                                          :owner            nil}
+                                                 :where  [:and
+                                                          [:in :id (mapv :id rows)]
+                                                          [:= :status "processing"]
+                                                          [:< :status_heartbeat threshold]]})]
+                           ;; t2/query with :update returns the affected-row count; on some
+                           ;; drivers it comes back as `[n]` rather than `n`.
+                           (if (sequential? result) (first result) result))
+                         0))
+        n-retryable (bulk-update! retryable "pending")
+        n-permanent (bulk-update! permanent "failed")]
+    (when (pos? n-retryable)
+      (log/warnf "Recovered %d stale processing batch(es)" n-retryable)
       (doseq [[queue-name rows] (group-by :queue_name retryable)]
         (analytics/inc! :metabase-mq/batch-stale-recoveries
                         {:transport "queue" :channel queue-name}
                         (count rows))))
-    (when (seq permanent)
-      (log/warnf "Marking %d stale processing batch(es) as failed (reached max-retries %d)"
-                 (count permanent) max-retries)
+    (when (pos? n-permanent)
+      (log/warnf "Marked %d stale processing batch(es) as failed (reached max-retries %d)"
+                 n-permanent max-retries)
       (doseq [[queue-name rows] (group-by :queue_name permanent)]
         (analytics/inc! :metabase-mq/queue-batch-permanent-failures
                         {:channel queue-name}
                         (count rows))))
-    (+ (count retryable) (count permanent))))
+    (+ n-retryable n-permanent)))
 
 (defn- cleanup-failed-batches! []
   (let [threshold (Timestamp/from (.minusMillis (Instant/now) (* 7 24 60 60 1000)))
