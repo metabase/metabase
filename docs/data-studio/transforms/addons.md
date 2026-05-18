@@ -1,5 +1,5 @@
 ---
-title: Transform add-ons
+title: Transform tiers and add-ons
 ---
 
 # Transform tiers and add-ons
@@ -51,7 +51,7 @@ Advanced transforms add-on comes with an additional charge per successful transf
 
 ### Enable Advanced transforms
 
-To enable Advanced transforms functionality, you need to have [Basic transforms](#basic-transforms) already.
+To enable Advanced transforms functionality, you need to have [Basic transforms](#basic-transforms) already, see [Enable basic transforms](#enable-basic-transforms).
 
 There are two ways to enable Advanced transforms:
 
@@ -61,13 +61,27 @@ There are two ways to enable Advanced transforms:
 
 - **From [Metabase Store](https://store.metabase.com)**:
 
-  1. Log into Metabase Store.
+  1. Log into [Metabase Store](https://store.metabase.com) (your Metabase Store account might be different from your Metabase instance account).
   2. Click on **Manage plan** next to the instance where you'd like to add Advanced transforms.
   3. Under **Manage Add-ons**, find **Advanced transforms** and click **Upgrade**.
+
+Once you upgrade to Advanced transforms:
+
+- You get access to Advanced transforms features/
+- All your existing query-based transforms will be charged at Advanced transforms rate.
 
 ### Disable Advanced transforms
 
 You can downgrade from Advanced transforms to [Basic transforms](#basic-transforms).
+
+1. Log into [Metabase Store](https://store.metabase.com) (your Metabase Store account might be different from your Metabase instance account).
+2. Click on **Manage plan** next to the instance with Advanced transforms.
+3. Under **Manage Add-ons**, find **Advanced transforms**, click **three dos** and select **Downgrade to basic**.
+
+Once you downgrade from advanced transforms:
+
+- Your Python transforms will no longer run and will be removed.
+- Transforms and other write features will stop using the writable connection (if you had one configured.)
 
 ## How billing works for transforms
 

@@ -60,9 +60,15 @@ Permission configuration for transform depends on your plan.
 
 Before you can start writing transforms, you'll need to enable transforms in your Metabase instance.
 
-If you are on a Metabase Cloud plan, only Metabase Store admins can enable transforms, because transforms incur a cost per run on Metabase Cloud.
+If you are on a Metabase Cloud plan, only people logged in with an email of a [Metabase Store admins](../../cloud/accounts-and-billing.md#add-people-to-manage-your-metabase-store-account) (not just Metabase _instance_ admins) can enable basic transforms, because transforms incur a cost per run on Metabase Cloud.
 
-To enable
+To enable transforms:
+
+1. Navigate to [**Data Studio**](../overview.md) by click the **grid icon** in top right corner of your Metabase and selecing **Data Studio**.
+2. In Data Studio, click **Transforms** in the right sidebar.
+3. If the transforms have not been enabled on your instance yet, you'll see a prompt to enable them. You can do just that.
+
+Once you enabled transforms, you can [configure permissions](#permissions-for-transforms) and start [creating transforms](#create-a-transform).
 
 ## See all transforms
 
@@ -196,7 +202,7 @@ For Python transforms, you'll also see the transform's execution logs.
 
 _Data Studio > Transforms > [transform name] > Inspect_
 
-> Transform inspector required the Advanced transforms add-on
+> Transform inspector requires the [Advanced transforms add-on](addons.md)
 
 The [transform inspector](./transform-inspector.md) lets you poke at the input and outputs of your transform.
 
@@ -216,7 +222,7 @@ On Metabase Pro or Enterprise plans, you can see the transform dependencies grap
 
 If a job includes a transform that depends on a table created by another transform, then the job will run all the tagged transforms and their dependencies, even if they lack tags, see [Jobs and runs](jobs-and-runs.md) for more information.
 
-### Incremental transforms
+## Incremental transforms
 
 _Data Studio > Transforms > Settings_
 
@@ -259,4 +265,4 @@ Transforms are similar to models with model persistence turned on, but there are
 
 Use models to enable non-admins to create their own datasets within Metabase, and to add context like field descriptions and semantic types. Use transforms to create persisted datasets in your database and reuse them across Metabase. In future versions of Metabase, model persistence will be deprecated in favor of transforms.
 
-You can convert Metabase models to transforms in bulk, see [Convert models to transforms](query-transforms.md#convert-models-to-transforms)
+On Metabase Pro/Enterprise plans, you can convert Metabase models to transforms in bulk, see [Convert models to transforms](query-transforms.md#convert-models-to-transforms)
