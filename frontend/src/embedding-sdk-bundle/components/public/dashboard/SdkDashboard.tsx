@@ -83,6 +83,25 @@ import { SdkDashboardStyledWrapper } from "./SdkDashboardStyleWrapper";
 import { SdkDashboardProvider } from "./context";
 import { useCommonDashboardParams } from "./use-common-dashboard-params";
 
+const MaybeStyledWrapper = ({
+  skip,
+  className,
+  style,
+  children,
+}: {
+  skip: boolean;
+  className?: string;
+  style?: React.CSSProperties;
+  children: React.ReactNode;
+}) =>
+  skip ? (
+    <>{children}</>
+  ) : (
+    <SdkDashboardStyledWrapper className={className} style={style}>
+      {children}
+    </SdkDashboardStyledWrapper>
+  );
+
 /**
  * @interface
  * @inline
@@ -365,6 +384,11 @@ const SdkDashboardInner = ({
   const isDashboardDirty = useSelector(getIsDirty);
 
   const sdkNavigation = useSdkInternalNavigationOptional();
+  // When this SdkDashboard renders below a nav-stack push, the outer
+  // SdkInternalNavigationProvider already wraps with SdkDashboardStyledWrapper
+  // carrying user style/className. Skip our own wrapper to avoid double
+  // wrapping (which drops user height/sticky/scroll behavior).
+  const skipStyledWrapper = !!sdkNavigation?.isInsideNavigationStack;
 
   // Initialize navigation stack with dashboard entry when we have the name
   useEffect(() => {
@@ -416,17 +440,25 @@ const SdkDashboardInner = ({
 
   if (isLocaleLoading) {
     return (
-      <SdkDashboardStyledWrapper className={className} style={style}>
+      <MaybeStyledWrapper
+        skip={skipStyledWrapper}
+        className={className}
+        style={style}
+      >
         <SdkLoader />
-      </SdkDashboardStyledWrapper>
+      </MaybeStyledWrapper>
     );
   }
 
   if (tokenError) {
     return (
-      <SdkDashboardStyledWrapper className={className} style={style}>
+      <MaybeStyledWrapper
+        skip={skipStyledWrapper}
+        className={className}
+        style={style}
+      >
         <SdkError message={tokenError} />;
-      </SdkDashboardStyledWrapper>
+      </MaybeStyledWrapper>
     );
   }
 
@@ -436,9 +468,13 @@ const SdkDashboardInner = ({
 
   if (isStaticEmbeddingEntityLoadingError(errorPage, { isGuestEmbed })) {
     return (
-      <SdkDashboardStyledWrapper className={className} style={style}>
+      <MaybeStyledWrapper
+        skip={skipStyledWrapper}
+        className={className}
+        style={style}
+      >
         <SdkError message={errorPage.data ?? t`Something's gone wrong`} />
-      </SdkDashboardStyledWrapper>
+      </MaybeStyledWrapper>
     );
   }
 
@@ -449,19 +485,27 @@ const SdkDashboardInner = ({
 
   if (!dashboardId || isDashboardNotFound) {
     return (
-      <SdkDashboardStyledWrapper className={className} style={style}>
+      <MaybeStyledWrapper
+        skip={skipStyledWrapper}
+        className={className}
+        style={style}
+      >
         <DashboardNotFoundError id={dashboardId ?? ""} />
-      </SdkDashboardStyledWrapper>
+      </MaybeStyledWrapper>
     );
   }
 
   if (errorPage) {
     return (
-      <SdkDashboardStyledWrapper className={className} style={style}>
+      <MaybeStyledWrapper
+        skip={skipStyledWrapper}
+        className={className}
+        style={style}
+      >
         <SdkError
           message={errorPage.data?.message ?? t`Something's gone wrong`}
         />
-      </SdkDashboardStyledWrapper>
+      </MaybeStyledWrapper>
     );
   }
 
@@ -535,7 +579,11 @@ const SdkDashboardInner = ({
       >
         {match({ finalRenderMode, isGuestEmbed })
           .with({ finalRenderMode: "question" }, () => (
-            <SdkDashboardStyledWrapper className={className} style={style}>
+            <MaybeStyledWrapper
+              skip={skipStyledWrapper}
+              className={className}
+              style={style}
+            >
               <SdkAdHocQuestion
                 // `adhocQuestionUrl` would have value if renderMode is "question"
                 questionPath={adhocQuestionUrl!}
@@ -545,7 +593,7 @@ const SdkDashboardInner = ({
               >
                 {AdHocQuestionView && <AdHocQuestionView />}
               </SdkAdHocQuestion>
-            </SdkDashboardStyledWrapper>
+            </MaybeStyledWrapper>
           ))
           .with({ finalRenderMode: "dashboard" }, () => (
             <SdkDashboardProvider
@@ -553,20 +601,28 @@ const SdkDashboardInner = ({
               onEditQuestion={onEditQuestion}
             >
               {children ?? (
-                <SdkDashboardStyledWrapper className={className} style={style}>
+                <MaybeStyledWrapper
+                  skip={skipStyledWrapper}
+                  className={className}
+                  style={style}
+                >
                   <Dashboard className={EmbedFrameS.EmbedFrame} />
                   <AutoRefreshController refreshPeriod={autoRefreshInterval} />
-                </SdkDashboardStyledWrapper>
+                </MaybeStyledWrapper>
               )}
             </SdkDashboardProvider>
           ))
           .with({ finalRenderMode: "queryBuilder" }, ({ isGuestEmbed }) =>
             isGuestEmbed ? (
-              <SdkDashboardStyledWrapper className={className} style={style}>
+              <MaybeStyledWrapper
+                skip={skipStyledWrapper}
+                className={className}
+                style={style}
+              >
                 <SdkError
                   message={t`You can't save questions in Guest Embed mode`}
                 />
-              </SdkDashboardStyledWrapper>
+              </MaybeStyledWrapper>
             ) : (
               <DashboardQueryBuilder
                 onCreate={(question) => {

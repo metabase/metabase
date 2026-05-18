@@ -23,6 +23,7 @@ export const SdkDashboardStyledWrapper = ({
         CS.overflowAuto,
       )}
       style={style}
+      data-testid="sdk-dashboard-styled-wrapper"
     >
       {children}
     </Flex>

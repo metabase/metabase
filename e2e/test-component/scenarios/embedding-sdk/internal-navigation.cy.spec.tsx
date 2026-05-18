@@ -623,6 +623,67 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         cy.findByText(/Back to/).should("not.exist");
       });
     });
+
+    it("should preserve user style on the navigated dashboard (EMB-1746)", () => {
+      cy.get<number>("@dashboardAId").then((dashboardAId) => {
+        mountSdkContent(
+          <InteractiveDashboard
+            dashboardId={dashboardAId}
+            enableEntityNavigation
+            style={{ height: 400 }}
+          />,
+        );
+      });
+
+      cy.wait("@getDashboard");
+      cy.wait("@dashcardQuery");
+
+      getSdkRoot().within(() => {
+        cy.findByText("Dashboard A").should("be.visible");
+
+        // Initial render: exactly one styled wrapper carrying the user height.
+        cy.findAllByTestId("sdk-dashboard-styled-wrapper").should(
+          "have.length",
+          1,
+        );
+        cy.findByTestId("sdk-dashboard-styled-wrapper").should(
+          "have.css",
+          "height",
+          "400px",
+        );
+
+        // Navigate to Dashboard B via custom click behavior.
+        H.getDashboardCard().findAllByText("Go to Dashboard B").first().click();
+        cy.wait("@getDashboard");
+        cy.findByText("Dashboard B").should("be.visible");
+
+        // After navigation: still exactly one styled wrapper, still carrying
+        // the user height. Pre-fix, the inner SdkDashboard rendered a second
+        // wrapper with no style, dropping height and breaking sticky filters.
+        cy.findAllByTestId("sdk-dashboard-styled-wrapper").should(
+          "have.length",
+          1,
+        );
+        cy.findByTestId("sdk-dashboard-styled-wrapper").should(
+          "have.css",
+          "height",
+          "400px",
+        );
+
+        // Back to Dashboard A: wrapper invariant still holds.
+        cy.findByText("Back to Dashboard A").click();
+        cy.findByText("Dashboard A").should("be.visible");
+        cy.findAllByTestId("sdk-dashboard-styled-wrapper").should(
+          "have.length",
+          1,
+        );
+        cy.findByTestId("sdk-dashboard-styled-wrapper").should(
+          "have.css",
+          "height",
+          "400px",
+        );
+      });
+    });
   });
 
   describe("same-dashboard navigation (EMB-1714)", () => {
