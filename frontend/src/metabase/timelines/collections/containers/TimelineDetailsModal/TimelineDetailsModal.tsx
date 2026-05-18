@@ -5,7 +5,7 @@ import {
   useGetTimelineQuery,
   useListCollectionTimelinesQuery,
 } from "metabase/api/timeline";
-import { useSetArchive } from "metabase/common/hooks";
+import { useSetArchive } from "metabase/archive/hooks";
 import { useDispatch } from "metabase/redux";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";

@@ -2,7 +2,7 @@ import { push } from "react-router-redux";
 
 import { skipToken } from "metabase/api/api";
 import { useGetTimelineQuery } from "metabase/api/timeline";
-import { useSetArchive } from "metabase/common/hooks";
+import { useSetArchive } from "metabase/archive/hooks";
 import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
 import { useDispatch } from "metabase/redux";
 import * as Urls from "metabase/urls";
