@@ -16,19 +16,37 @@ export function getModifiedGroupsPermissionsGraphParts(
   allGroupIds: string[],
   externallyModifiedGroupIds: string[],
 ) {
-  const dataPermissionsModifiedGroupIds = allGroupIds.filter((groupId) => {
-    return !_.isEqual(
-      dataPermissions[groupId],
-      originalDataPermissions[groupId],
-    );
-  });
+  const externallyModifiedGroupIdsSet = new Set(externallyModifiedGroupIds);
+  const dataPermissionsModifiedGroups = Object.fromEntries(
+    allGroupIds
+      .map((groupId) => {
+        const groupPermissions = dataPermissions[groupId];
 
-  const allModifiedGroupIds = _.uniq([
-    ...dataPermissionsModifiedGroupIds,
-    ...externallyModifiedGroupIds,
-  ]);
+        if (externallyModifiedGroupIdsSet.has(groupId)) {
+          return [groupId, groupPermissions];
+        }
 
-  return _.pick(dataPermissions, allModifiedGroupIds);
+        const modifiedDatabasePermissions = Object.fromEntries(
+          Object.entries(groupPermissions ?? {}).filter(
+            ([databaseIdString, value]) => {
+              const databaseId = Number(databaseIdString);
+
+              return !_.isEqual(
+                value,
+                originalDataPermissions[groupId]?.[databaseId],
+              );
+            },
+          ),
+        );
+
+        return [groupId, modifiedDatabasePermissions];
+      })
+      .filter(([_groupId, groupPermissions]) => {
+        return !_.isEmpty(groupPermissions);
+      }),
+  );
+
+  return dataPermissionsModifiedGroups;
 }
 
 export function mergeGroupsPermissionsUpdates(
