@@ -11,9 +11,17 @@ import { submitMcpFeedback } from "../api";
 
 interface UseMcpFeedbackProps {
   instanceUrl: string;
+
+  /** ID for the current MCP session */
   mcpSessionId: string;
+
+  /** User prompt captured from construct_query */
   prompt: string | null;
+
+  /** Ad-hoc query that is being shown, captured from construct_query */
   query: string | null;
+
+  /** Metabase session tokens for authenticating feedback requests */
   sessionToken: string;
 }
 
@@ -26,9 +34,12 @@ export function useMcpFeedback({
 }: UseMcpFeedbackProps) {
   const [selectedFeedback, setSelectedFeedback] =
     useState<McpFeedbackChoice | null>(null);
+
   const [submittedFeedback, setSubmittedFeedback] =
     useState<McpFeedbackChoice | null>(null);
+
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+
   const [sendToast] = useToast();
 
   const feedbackContextRef = useRef({ prompt, query });
