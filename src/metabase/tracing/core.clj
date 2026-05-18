@@ -18,6 +18,7 @@
      MB_TRACING_GROUPS=qp,api  MB_TRACING_SERVICE_NAME=metabase-prod-1"
   (:require
    [clojure.string :as str]
+   [metabase.config.core :as config]
    [metabase.tracing.attributes :as trace-attrs]
    [metabase.tracing.settings :as tracing.settings]
    [metabase.util.log :as log]
@@ -244,31 +245,35 @@
 ;;; ------------------------------------------------ Primary Macro -------------------------------------------------
 
 (def ^:private ^:dynamic *span-attrs*
-  "Atom holding the merged attribute map for the active `with-span`. Used by
-   [[add-span-attrs!]] to detect inconsistent overwrites — writing the same key
-   twice with different values. nil when not inside a `with-span`."
+  "Atom of attrs already written to the active `with-span`. Used by [[add-span-attrs!]] to detect duplicate writes; nil outside a `with-span`."
   nil)
 
-(defn- assert-no-inconsistent-overwrite! [attrs]
-  (when *span-attrs*
-    (let [snapshot @*span-attrs*]
-      (doseq [[k v] attrs
-              :when (and (contains? snapshot k)
-                         (not= (get snapshot k) v))]
-        (throw (ex-info (format "Span attribute conflict: %s was %s, now reassigned to %s"
-                                (pr-str k) (pr-str (get snapshot k)) (pr-str v))
-                        {:key k :existing (get snapshot k) :new v}))))
-    (swap! *span-attrs* merge attrs)))
+(defn- merge-attrs-and-detect-duplicates!
+  "Merge `attrs` into `*span-attrs*` and return the subset that should be written to the active span. Any key already in the atom is a duplicate: throws in dev/test, drops with a `log/warn` in prod. Returns `attrs` unchanged when `*span-attrs*` is unbound (outside `with-span`)."
+  [attrs]
+  (if-let [span-attrs *span-attrs*]
+    (let [snapshot   @span-attrs
+          duplicates (filterv #(contains? snapshot %) (keys attrs))
+          new-attrs  (apply dissoc attrs duplicates)]
+      (when (seq duplicates)
+        (if (or config/is-dev? config/is-test?)
+          (throw (ex-info (format "Span attribute already set: %s" (pr-str duplicates))
+                          {:duplicates duplicates
+                           :existing   (select-keys snapshot duplicates)
+                           :new        (select-keys attrs duplicates)}))
+          (log/warnf "Span attribute already set, dropping duplicate writes: %s"
+                     (pr-str duplicates))))
+      (swap! span-attrs merge new-attrs)
+      new-attrs)
+    attrs))
 
 (defn add-span-attrs!
-  "Add attributes to the currently active OTel span. No-op when tracing is disabled
-   for `group` or when no span is active. Use this from inside a `with-span` body
-   to enrich the surrounding span with values that are only known mid-execution.
-   Throws if `attrs` reassigns a key already on the span to a different value."
+  "Enrich the active OTel span with `attrs` mid-execution. No-op if `group` is disabled or `attrs` is empty. Re-writing a key already on the span is a duplicate: throws in dev/test, dropped (with `log/warn`) in prod."
   [group attrs]
   (when (and (group-enabled? group) (seq attrs))
-    (assert-no-inconsistent-overwrite! attrs)
-    (span/add-span-data! {:attributes attrs})))
+    (let [new-attrs (merge-attrs-and-detect-duplicates! attrs)]
+      (when (seq new-attrs)
+        (span/add-span-data! {:attributes new-attrs})))))
 
 (defmacro with-span
   "Create an OTel span if tracing is enabled for `group`.

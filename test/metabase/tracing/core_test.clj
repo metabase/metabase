@@ -1,6 +1,7 @@
 (ns metabase.tracing.core-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.config.core :as config]
    [metabase.tracing.core :as tracing]
    [metabase.tracing.test-util :as tracing.tu])
   (:import
@@ -96,36 +97,65 @@
     (tracing/shutdown-groups!)
     (is (nil? (tracing/add-span-attrs! :tasks {:transform/incremental true})))))
 
-(deftest add-span-attrs!-detects-inconsistent-overwrite-test
-  (testing "writing the same key with the same value is allowed"
-    (tracing.tu/with-span-exporter [_exporter]
-      (try
-        (tracing/init-enabled-groups! "tasks" "INFO")
-        (tracing/with-span :tasks "test.span" {:foo/k 1}
-          (tracing/add-span-attrs! :tasks {:foo/k 1}))
-        (finally
-          (tracing/shutdown-groups!)))))
-
-  (testing "writing the same key with a different value throws"
+(deftest add-span-attrs!-detects-duplicate-keys-test
+  (testing "duplicate against with-span attrs throws (same value)"
     (tracing.tu/with-span-exporter [_exporter]
       (try
         (tracing/init-enabled-groups! "tasks" "INFO")
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Span attribute conflict"
+                              #"Span attribute already set"
+                              (tracing/with-span :tasks "test.span" {:foo/k 1}
+                                (tracing/add-span-attrs! :tasks {:foo/k 1}))))
+        (finally
+          (tracing/shutdown-groups!)))))
+
+  (testing "duplicate against with-span attrs throws (different value)"
+    (tracing.tu/with-span-exporter [_exporter]
+      (try
+        (tracing/init-enabled-groups! "tasks" "INFO")
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Span attribute already set"
                               (tracing/with-span :tasks "test.span" {:foo/k 1}
                                 (tracing/add-span-attrs! :tasks {:foo/k 2}))))
         (finally
           (tracing/shutdown-groups!)))))
 
-  (testing "two add-span-attrs! calls writing the same key with different values throws"
+  (testing "duplicate across two add-span-attrs! calls throws"
     (tracing.tu/with-span-exporter [_exporter]
       (try
         (tracing/init-enabled-groups! "tasks" "INFO")
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Span attribute conflict"
+                              #"Span attribute already set"
                               (tracing/with-span :tasks "test.span" {}
                                 (tracing/add-span-attrs! :tasks {:foo/k "first"})
                                 (tracing/add-span-attrs! :tasks {:foo/k "second"}))))
+        (finally
+          (tracing/shutdown-groups!)))))
+
+  (testing "distinct keys across with-span and add-span-attrs! are allowed"
+    (tracing.tu/with-span-exporter [exporter]
+      (try
+        (tracing/init-enabled-groups! "tasks" "INFO")
+        (tracing/with-span :tasks "test.span" {:foo/a 1}
+          (tracing/add-span-attrs! :tasks {:foo/b 2}))
+        (let [attrs (-> exporter tracing.tu/finished-spans first :attrs)]
+          (is (= 1 (get attrs "foo.a")))
+          (is (= 2 (get attrs "foo.b"))))
+        (finally
+          (tracing/shutdown-groups!))))))
+
+(deftest add-span-attrs!-prod-mode-drops-duplicates-test
+  (testing "in non-dev/test mode, duplicate keys are dropped (with warn log) and the rest is written"
+    (tracing.tu/with-span-exporter [exporter]
+      (try
+        (tracing/init-enabled-groups! "tasks" "INFO")
+        (with-redefs [config/is-dev?  false
+                      config/is-test? false]
+          (tracing/with-span :tasks "test.span" {:foo/seed 1}
+            (tracing/add-span-attrs! :tasks {:foo/seed 999 :foo/added 2})))
+        (let [attrs (-> exporter tracing.tu/finished-spans first :attrs)]
+          (is (= 1 (get attrs "foo.seed"))  "duplicate seed kept its original value (the second write was dropped)")
+          (is (= 2 (get attrs "foo.added")) "non-duplicate added was written"))
         (finally
           (tracing/shutdown-groups!))))))
 
