@@ -1,8 +1,7 @@
 import { assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
-import { cardApi } from "metabase/api";
-import { dashboardApi } from "metabase/api";
+import { cardApi, dashboardApi } from "metabase/api";
 import { entityCompatibleQuery } from "metabase/entities/utils";
 import { clickBehaviorIsValid } from "metabase/parameters/utils/click-behavior";
 import { createThunkAction } from "metabase/redux";
