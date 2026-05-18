@@ -52,7 +52,7 @@
 
 (defmulti ->honeysql
   "Compile `mbql-5-clause` to Honey SQL, converting to legacy MBQL first if needed."
-  {:added "0.61.0", :arglists '([driver mbql-5-clause])}
+  {:added "0.62.0", :arglists '([driver mbql-5-clause])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
