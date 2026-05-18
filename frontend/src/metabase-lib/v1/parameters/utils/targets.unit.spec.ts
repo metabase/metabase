@@ -420,12 +420,15 @@ describe("parameters/utils/targets", () => {
 
         it("complex 1-stage query", () => {
           const question = createModel(createComplex1StageQuery(), [
-            createMockField({ display_name: "Created At" }),
-            createMockField({ display_name: "User's 18th birthday" }),
-            createMockField({ display_name: "Reviews - Product → Created At" }),
-            createMockField({ display_name: "Product → Created At" }),
-            createMockField({ display_name: "Count" }),
-            createMockField({ display_name: "Sum of Total" }),
+            createMockField({ id: 101, display_name: "Created At" }),
+            createMockField({ id: 102, display_name: "User's 18th birthday" }),
+            createMockField({
+              id: 103,
+              display_name: "Reviews - Product → Created At",
+            }),
+            createMockField({ id: 104, display_name: "Product → Created At" }),
+            createMockField({ id: 105, display_name: "Count" }),
+            createMockField({ id: 106, display_name: "Sum of Total" }),
           ]);
           const { query, columns } = getParameterColumns(question, parameter);
           const columnsInfos = getColumnsInfos(query, columns);
@@ -444,8 +447,8 @@ describe("parameters/utils/targets", () => {
 
         it("complex 2-stage query", () => {
           const question = createModel(createComplex2StageQuery(), [
-            createMockField({ display_name: "User's 18th birthday" }),
-            createMockField({ display_name: "Count" }),
+            createMockField({ id: 101, display_name: "User's 18th birthday" }),
+            createMockField({ id: 102, display_name: "Count" }),
           ]);
           const { query, columns } = getParameterColumns(question, parameter);
           const columnsInfos = getColumnsInfos(query, columns);
