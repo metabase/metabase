@@ -102,23 +102,30 @@ export const updateField = (field) => async (dispatch) => {
   return result;
 };
 
-export const deleteFieldDimension = (fieldId) => (dispatch) => {
+export const deleteFieldDimension = (fieldId) => async (dispatch) => {
   deprecated("metabase/redux/metadata deleteFieldDimension");
-  return entityCompatibleQuery(
+  const result = await entityCompatibleQuery(
     fieldId,
     dispatch,
     fieldApi.endpoints.deleteFieldDimension,
   );
+  dispatch(updateMetadata({ id: fieldId, dimensions: [] }, FieldSchema));
+  return result;
 };
 
-export const updateFieldDimension = (fieldId, dimension) => (dispatch) => {
-  deprecated("metabase/redux/metadata updateFieldDimension");
-  return entityCompatibleQuery(
-    { id: fieldId, ...dimension },
-    dispatch,
-    fieldApi.endpoints.createFieldDimension,
-  );
-};
+export const updateFieldDimension =
+  (fieldId, dimension) => async (dispatch) => {
+    deprecated("metabase/redux/metadata updateFieldDimension");
+    const result = await entityCompatibleQuery(
+      { id: fieldId, ...dimension },
+      dispatch,
+      fieldApi.endpoints.createFieldDimension,
+    );
+    dispatch(
+      updateMetadata({ id: fieldId, dimensions: [result] }, FieldSchema),
+    );
+    return result;
+  };
 
 export const FETCH_REVISIONS = "metabase/metadata/FETCH_REVISIONS";
 export const fetchRevisions = createThunkAction(FETCH_REVISIONS, (type, id) => {
