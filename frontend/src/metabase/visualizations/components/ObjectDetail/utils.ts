@@ -186,7 +186,7 @@ export function getApiTable(
 
   const apiTable: ApiTable = {
     ...table.getPlainObject(),
-    fields: table.original_fields,
+    fields: table.fields?.map((field) => field.getPlainObject()),
   } as ApiTable;
 
   return apiTable;
