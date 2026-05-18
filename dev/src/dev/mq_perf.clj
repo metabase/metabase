@@ -27,6 +27,7 @@
     (bench-multi-queue! {:queue-counts [1 5 10 20] :msgs-per-queue 50})"
   (:require
    [clojure.string :as str]
+   [metabase.app-db.connection :as mdb.conn]
    [metabase.mq.core :as mq]
    [metabase.mq.listener :as listener]
    [metabase.mq.polling :as polling]
@@ -37,9 +38,109 @@
    [metabase.mq.topic.backend :as topic.backend]
    [toucan2.core :as t2])
   (:import
-   (java.util.concurrent CountDownLatch TimeUnit)))
+   (java.lang.reflect InvocationHandler Method Proxy)
+   (java.sql Connection PreparedStatement Statement)
+   (java.util.concurrent CountDownLatch TimeUnit)
+   (javax.sql DataSource)))
 
 (set! *warn-on-reflection* true)
+
+;;; ------------------------------------------------ RTT injection ------------------------------------------------
+;;;
+;;; Wraps the application DB's `DataSource` so every JDBC `execute*` call sleeps a randomized
+;;; interval before hitting Postgres. This lets us see what the perf picture looks like with
+;;; cloud-realistic latency (~1-5 ms RTT) without leaving the JVM. The wrapper preserves the
+;;; pooled DataSource underneath, so connection acquisition is unaffected — only query
+;;; round-trips pay the simulated cost.
+
+(defonce ^:private rtt-ms
+  ;; Use an atom rather than a dynamic var so the injected RTT applies to *every* thread —
+  ;; including the backend poll threads and the worker pool — without needing per-thread
+  ;; bindings to be conveyed.
+  (atom nil))
+
+(defn- sleep-rtt! []
+  (when-let [[mn mx] @rtt-ms]
+    (let [delay (long (if (= mn mx) mn (+ mn (rand-int (inc (- mx mn))))))]
+      (when (pos? delay) (Thread/sleep delay)))))
+
+(defn- proxy-statement
+  "Wrap a Statement / PreparedStatement so every `execute*` call sleeps the injected RTT
+  before delegating. Returns a proxy that implements both `Statement` and
+  `PreparedStatement` (PreparedStatement extends Statement, so a single proxy covers both)."
+  [^Statement stmt]
+  (Proxy/newProxyInstance
+   (.getClassLoader Statement)
+   (into-array Class [Statement PreparedStatement])
+   (reify InvocationHandler
+     (invoke [_ _proxy method args]
+       (when (.startsWith (.getName ^Method method) "execute")
+         (sleep-rtt!))
+       (.invoke method stmt args)))))
+
+(defn- proxy-connection
+  "Wrap a Connection so prepareStatement / createStatement return latency-injecting Statements."
+  [^Connection conn]
+  (Proxy/newProxyInstance
+   (.getClassLoader Connection)
+   (into-array Class [Connection])
+   (reify InvocationHandler
+     (invoke [_ _proxy method args]
+       (let [n (.getName ^Method method)
+             result (.invoke method conn args)]
+         (if (and (or (= n "prepareStatement") (= n "createStatement"))
+                  (instance? Statement result))
+           (proxy-statement result)
+           result))))))
+
+(defn- latent-datasource
+  "Returns a wrapped DataSource whose connections inject RTT before every `execute*`.
+  Delegates to the underlying pooled DataSource for connection acquisition itself."
+  ^DataSource [^DataSource inner]
+  (reify DataSource
+    (getConnection [_]            (proxy-connection (.getConnection inner)))
+    (getConnection [_ user pw]    (proxy-connection (.getConnection inner user pw)))
+    (getLoginTimeout [_]          (.getLoginTimeout inner))
+    (setLoginTimeout [_ s]        (.setLoginTimeout inner s))
+    (getLogWriter [_]             (.getLogWriter inner))
+    (setLogWriter [_ pw]          (.setLogWriter inner pw))
+    (getParentLogger [_]          (.getParentLogger inner))
+    (^boolean isWrapperFor [_ ^Class iface] (.isWrapperFor inner iface))
+    (^Object unwrap [_ ^Class iface]        (.unwrap inner iface))))
+
+(defonce ^:private wrapped-datasource? (atom false))
+
+(defn install-rtt!
+  "Wraps the app DB's DataSource so every JDBC `execute*` call sleeps `[min-ms max-ms]`
+  before delegating. Idempotent — calling this twice keeps a single wrapper. Use
+  `(install-rtt! nil nil)` (or `(uninstall-rtt!)`) to disable injection without unwrapping.
+  Returns the new effective `[min max]`."
+  [min-ms max-ms]
+  (reset! rtt-ms (when (and min-ms max-ms) [min-ms max-ms]))
+  (when-not @wrapped-datasource?
+    (let [orig    mdb.conn/*application-db*
+          wrapped (mdb.conn/application-db (.db-type orig)
+                                           (latent-datasource (.data-source orig))
+                                           :create-pool? false)]
+      (alter-var-root #'mdb.conn/*application-db* (constantly wrapped))
+      (reset! wrapped-datasource? true)))
+  @rtt-ms)
+
+(defn uninstall-rtt!
+  "Disables RTT injection. Leaves the DataSource wrapper in place (no-op when rtt-ms is nil)
+  to avoid surprises if other code captured the wrapped instance."
+  []
+  (reset! rtt-ms nil))
+
+(defmacro with-rtt-ms
+  "Runs `body` with `[min-ms max-ms]` RTT injected on every JDBC execute, then restores the
+  prior setting."
+  [[min-ms max-ms] & body]
+  `(let [prev# @rtt-ms]
+     (install-rtt! ~min-ms ~max-ms)
+     (try ~@body
+          (finally
+            (reset! rtt-ms prev#)))))
 
 ;;; ------------------------------------------------ Startup ------------------------------------------------
 
@@ -618,6 +719,85 @@
              ["Total wall-clock ms" (fmt elapsed-ms)]
              ["Per-row ms (effective)" (fmt (/ elapsed-ms (max 1 n)))]])))
        (finally
+         (t2/delete! :queue_message_batch :queue_name (name queue-name)))))))
+
+;;; ---------------------------------------- Benchmark 8: Concurrent Publish + Consume ----------------------------------------
+
+(defn bench-concurrent-pub-consume!
+  "Runs a publisher thread and a consumer simultaneously against one queue, measuring
+  end-to-end latency under write contention. Unlike `bench-e2e-latency!`, the publisher and
+  the wait-for-receive happen on separate threads, so we exercise the actual
+  publish-while-consume code path (buffer atom contention, fetch contending with INSERT,
+  the per-channel `active-handlers` gate).
+
+  Each published message carries a `publish-ns` timestamp; the listener measures
+  `receive-ns - publish-ns` and records it as the per-message latency.
+
+  Options:
+    :duration-sec - how long to publish for (default 10)
+    :pub-rate-msgs-sec - target publish rate (default 50)
+    :queue-name   - queue to use (default :queue/bench-pub-consume)"
+  ([] (bench-concurrent-pub-consume! {}))
+  ([{:keys [duration-sec pub-rate-msgs-sec queue-name]
+     :or   {duration-sec 10 pub-rate-msgs-sec 50 queue-name :queue/bench-pub-consume}}]
+   (ensure-started!)
+   (let [received    (atom 0)
+         latencies   (atom [])
+         stop?       (atom false)
+         publisher-published (atom 0)]
+     (try
+       (listener/batch-listen! queue-name
+                               (fn [msgs]
+                                 (let [now (System/nanoTime)]
+                                   (doseq [m msgs]
+                                     (when-let [pub-ns (get m "publish-ns")]
+                                       (swap! latencies conj (/ (- now (double pub-ns)) 1e6))))
+                                   (swap! received + (count msgs))))
+                               {})
+       (let [pub-runnable (bound-fn []
+                            (let [interval-ns (long (/ 1e9 pub-rate-msgs-sec))
+                                  stop-at-ns  (+ (System/nanoTime) (* 1e9 duration-sec))]
+                              (loop []
+                                (when (and (not @stop?) (< (System/nanoTime) stop-at-ns))
+                                  (let [next-pub-ns (+ (System/nanoTime) interval-ns)]
+                                    (mq/with-queue queue-name [q]
+                                      (mq/put q {:publish-ns (System/nanoTime)}))
+                                    (swap! publisher-published inc)
+                                    (let [sleep-ns (- next-pub-ns (System/nanoTime))]
+                                      (when (pos? sleep-ns)
+                                        (Thread/sleep (long (/ sleep-ns 1e6))
+                                                      (int (mod sleep-ns 1e6)))))
+                                    (recur))))))
+             pub-thread (Thread. ^Runnable pub-runnable)
+             start (System/nanoTime)]
+         (.start pub-thread)
+         (.join pub-thread (long (* 1000 (+ duration-sec 1))))
+         (reset! stop? true)
+         ;; Drain — wait for the consumer to catch up after publishing stops.
+         (let [drain-deadline (+ (System/currentTimeMillis) 30000)]
+           (while (and (< @received @publisher-published)
+                       (< (System/currentTimeMillis) drain-deadline))
+             (polling/notify-all!)
+             (Thread/sleep 50)))
+         (let [elapsed-ms (/ (- (System/nanoTime) start) 1e6)
+               stats      (collect-stats @latencies)]
+           (print-table!
+            (str "Concurrent Pub+Consume (rate=" pub-rate-msgs-sec "/sec, duration=" duration-sec "s"
+                 (when @rtt-ms (str ", rtt=" (first @rtt-ms) "-" (last @rtt-ms) "ms"))
+                 ")")
+            ["Metric" "Value"]
+            [["Published"        (str @publisher-published)]
+             ["Received"         (str @received)]
+             ["Drain ms"         (fmt (- elapsed-ms (* 1000 duration-sec)))]
+             ["P50 latency ms"   (fmt (:p50 stats))]
+             ["P95 latency ms"   (fmt (:p95 stats))]
+             ["P99 latency ms"   (fmt (:p99 stats))]
+             ["Max latency ms"   (fmt (:max stats))]
+             ["Pub/sec (actual)" (fmt (/ @publisher-published (double duration-sec)))]
+             ["Recv/sec total"   (fmt (/ @received (/ elapsed-ms 1000.0)))]])))
+       (finally
+         (reset! stop? true)
+         (mq/unlisten! queue-name)
          (t2/delete! :queue_message_batch :queue_name (name queue-name)))))))
 
 ;;; ---------------------------------------- Run All ----------------------------------------
