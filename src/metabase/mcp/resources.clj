@@ -14,6 +14,7 @@
    [metabase.mcp.session :as mcp.session]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [stencil.core :as stencil]))
 
@@ -235,30 +236,43 @@
                 :properties {:query        {:type "string" :minLength 1
                                             :description "Base64-encoded MBQL query (use query_handle instead when available)"}
                              :query_handle {:type "string" :format "uuid"
-                                            :description "Handle returned by construct_query; preferred over raw query"}}}
+                                            :description "Handle returned by construct_query; preferred over raw query"}
+                             :widgetSessionId {:type "string"
+                                               :description "Session id returned by construct_query; used when clients rotate MCP sessions between tool calls"}}}
   :response-fn (fn [arguments {:keys [session-id]}]
-                 (let [query   (:query arguments)
-                       handle  (:query_handle arguments)
-                       resolved (some->> handle (mcp.session/resolve-query-handle session-id))
-                       encoded (or query (:encoded_query resolved))
-                       prompt  (:prompt resolved)]
+                 (let [query             (:query arguments)
+                       handle            (:query_handle arguments)
+                       widget-session-id (:widgetSessionId arguments)
+                       lookup-session-id (or widget-session-id session-id)
+                       resolved          (some->> handle (mcp.session/resolve-query-handle lookup-session-id))
+                       encoded           (or query (:encoded_query resolved))
+                       prompt            (:prompt resolved)]
                    (cond
                      (and (nil? query) (nil? handle))
                      {:content [{:type "text" :text "Provide either 'query' or 'query_handle'."}]
                       :isError true}
 
                      encoded
-                     {:content           [{:type "text" :text (str "Visualizing query in the interactive UI. "
-                                                                   "Do not call execute_query after this; "
-                                                                   "the visualization is the final result.")}]
-                      ;; If visualize_query was called with a handle, use the stored prompt so the iframe can
-                      ;; include the user's original request when submitting visualization feedback.
-                      :structuredContent (cond-> {:query encoded}
-                                           prompt (assoc :prompt prompt))}
+                     (let [meta (when session-id
+                                  {"openai/widgetSessionId" session-id
+                                   "widgetSessionId"        session-id})]
+                       (log/warnf "MCP OpenAI widget session diagnostic: tool=visualize_query session_id=%s widget_session_id=%s lookup_session_id=%s query_handle=%s meta=%s"
+                                  session-id widget-session-id lookup-session-id handle (pr-str meta))
+                       (cond-> {:content           [{:type "text" :text (str "Visualizing query in the interactive UI. "
+                                                                             "Do not call execute_query after this; "
+                                                                             "the visualization is the final result.")}]
+                                ;; If visualize_query was called with a handle, use the stored prompt so the iframe can
+                                ;; include the user's original request when submitting visualization feedback.
+                                :structuredContent (cond-> {:query encoded}
+                                                     prompt (assoc :prompt prompt))}
+                         meta (assoc :_meta meta)))
 
                      :else
-                     {:content [{:type "text" :text "Query handle not found. Try running construct_query again."}]
-                      :isError true})))})
+                     (do
+                       (log/warnf "MCP handle diagnostic: tool=visualize_query session_id=%s widgetSessionId=%s lookup_session_id=%s query_handle=%s argument_keys=%s result=not-found"
+                                  session-id widget-session-id lookup-session-id handle (pr-str (sort (keys arguments))))
+                       {:content [{:type "text" :text "Query handle not found. Try running construct_query again."}]
+                        :isError true}))))})
 
 (register-ui-tool!
  :visualize-query

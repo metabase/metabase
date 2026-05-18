@@ -114,14 +114,20 @@
     (:query_handle arguments)
     (if-let [{:keys [encoded_query]} (mcp.session/resolve-query-handle session-id (:query_handle arguments))]
       (-> arguments (dissoc :query_handle) (assoc :query encoded_query))
-      ::handle-not-found)
+      (do
+        (log/warnf "MCP handle diagnostic: tool=%s session_id=%s query_handle=%s widgetSessionId=%s argument_keys=%s result=not-found"
+                   tool-name session-id (:query_handle arguments) (:widgetSessionId arguments) (pr-str (sort (keys arguments))))
+        ::handle-not-found))
 
     (mcp.session/valid-id? (:query arguments))
     (do (log/warnf "MCP tool %s: agent passed a UUID handle in :query; resolving as :query_handle"
                    tool-name)
         (if-let [{:keys [encoded_query]} (mcp.session/resolve-query-handle session-id (:query arguments))]
           (assoc arguments :query encoded_query)
-          ::handle-not-found))
+          (do
+            (log/warnf "MCP handle diagnostic: tool=%s session_id=%s query-as-handle=%s widgetSessionId=%s argument_keys=%s result=not-found"
+                       tool-name session-id (:query arguments) (:widgetSessionId arguments) (pr-str (sort (keys arguments))))
+            ::handle-not-found)))
 
     :else
     arguments))
@@ -134,7 +140,15 @@
   [session-id user-id]
   (fn [body]
     (if-let [encoded (:query body)]
-      {:query_handle (mcp.session/store-handle! session-id user-id encoded (:prompt body))}
+      (let [handle (mcp.session/store-handle! session-id user-id encoded (:prompt body))
+            meta   (when session-id
+                     {"openai/widgetSessionId" session-id
+                      "widgetSessionId"        session-id})]
+        (log/warnf "MCP OpenAI widget session diagnostic: tool=construct_query session_id=%s query_handle=%s meta=%s"
+                   session-id handle (pr-str meta))
+        (cond-> {:body {:query_handle     handle
+                        :widgetSessionId session-id}}
+          meta (assoc :_meta meta)))
       body)))
 
 ;; Tools that accept :query_handle as an alternative to a raw base64 :query string.
@@ -211,8 +225,12 @@
         response
 
         (= 200 (:status response))
-        (text-content (cond-> (:body response)
-                        body-transform-fn (body-transform-fn)))
+        (let [body      (cond-> (:body response)
+                          body-transform-fn (body-transform-fn))
+              mcp-body  (if (and (map? body) (contains? body :body)) (:body body) body)
+              mcp-meta  (when (and (map? body) (contains? body :_meta)) (:_meta body))]
+          (cond-> (text-content mcp-body)
+            mcp-meta (assoc :_meta mcp-meta)))
 
         :else
         (error-content (extract-error-message response))))))

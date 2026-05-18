@@ -665,11 +665,27 @@
   (testing "visualize_query echoes the inline query"
     (let [[session-id _] (initialize!)]
       (is (=? {:status 200
-               :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}}}}
+               :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}
+                                 :_meta             {:openai/widgetSessionId session-id
+                                                     :widgetSessionId        session-id}}}}
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "visualize_query"
                                              :arguments {:query "ZW5jb2RlZA=="}})
                            {"mcp-session-id" session-id})))))
+
+  (testing "construct_query returns an OpenAI widget session hint"
+    (let [[session-id _] (initialize!)
+          response       (mcp-request (jsonrpc-request "tools/call"
+                                                       {:name      "construct_query"
+                                                        :arguments {:source     {:type "table" :id (mt/id :orders)}
+                                                                    :operations [["limit" 5]]
+                                                                    :prompt     "show 5 orders"}})
+                                      {"mcp-session-id" session-id})]
+      (is (=? {:status 200
+               :body   {:result {:_meta {:openai/widgetSessionId session-id
+                                         :widgetSessionId        session-id}}}}
+              response))
+      (is (some? (:query_handle (json/decode+kw (:text (first (get-in response [:body :result :content])))))))))
 
   (testing "visualize_query resolves a stored handle"
     (let [user-id        (mt/user->id :crowberto)
