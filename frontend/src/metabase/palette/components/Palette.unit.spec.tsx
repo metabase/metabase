@@ -4,9 +4,9 @@ import { Route } from "react-router";
 
 import { setupRecentViewsEndpoints } from "__support__/server-mocks/activity";
 import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
-import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import { setupSearchEndpoints } from "__support__/server-mocks/search";
-import { renderWithProviders, screen } from "__support__/ui-with-store";
+import { renderWithProviders, screen, waitFor } from "__support__/ui-with-store";
+
 import { createMockState } from "metabase/redux/store/mocks";
 import type { SearchResult } from "metabase-types/api";
 import {
@@ -19,10 +19,12 @@ import { Palette } from "./Palette";
 
 const setup = ({
   routeProps,
+  initialRoute,
   searchResults = [],
   searchResultsDelay,
 }: {
   routeProps?: { disableCommandPalette?: boolean };
+  initialRoute?: string;
   searchResults?: SearchResult[];
   searchResultsDelay?: number;
 } = {}) => {
@@ -32,15 +34,23 @@ const setup = ({
   setupCollectionByIdEndpoint({
     collections: [createMockCollection({ id: "root", can_write: true })],
   });
-  renderWithProviders(<Route path="/" component={Palette} {...routeProps} />, {
-    withKBar: true,
-    withRouter: true,
-    storeInitialState: createMockState({
-      currentUser: createMockUser({
-        permissions: { can_create_queries: true },
+  renderWithProviders(
+    <Route
+      path={initialRoute ? "*" : "/"}
+      component={Palette}
+      {...routeProps}
+    />,
+    {
+      withKBar: true,
+      withRouter: true,
+      initialRoute,
+      storeInitialState: createMockState({
+        currentUser: createMockUser({
+          permissions: { can_create_queries: true },
+        }),
       }),
-    }),
-  });
+    },
+  );
 };
 
 describe("command palette", () => {
@@ -150,5 +160,22 @@ describe("command palette", () => {
 
     await screen.findByText("Metric search result");
     expect(getSelectedOption()?.textContent).toBe("Browse metrics");
+  });
+
+  it("should initialize the search input from the search URL query (#71248)", async () => {
+    setup({
+      initialRoute: "/search?q=products",
+      searchResults: [createMockSearchResult({ name: "Products" })],
+    });
+
+    await userEvent.keyboard("[ControlLeft>]k");
+    await screen.findByTestId("command-palette");
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/search for anything/i)).toHaveValue(
+        "products",
+      );
+    });
+    expect(await screen.findByText("Products")).toBeInTheDocument();
   });
 });
