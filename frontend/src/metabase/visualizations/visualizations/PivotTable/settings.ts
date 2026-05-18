@@ -78,9 +78,7 @@ export const settings = {
     },
   },
   [COLUMN_SPLIT_SETTING]: {
-    get section() {
-      return t`Columns`;
-    },
+    getSection: () => t`Columns`,
     widget: "fieldsPartition",
     persistDefault: true,
     getHidden: ([{ data }]: [{ data: DatasetData }]) =>
@@ -149,9 +147,7 @@ export const settings = {
     },
   },
   "pivot.show_row_totals": {
-    get section() {
-      return t`Columns`;
-    },
+    getSection: () => t`Columns`,
     get title() {
       return t`Show row totals`;
     },
@@ -160,9 +156,7 @@ export const settings = {
     inline: true,
   },
   "pivot.show_column_totals": {
-    get section() {
-      return t`Columns`;
-    },
+    getSection: () => t`Columns`,
     get title() {
       return t`Show column totals`;
     },
@@ -171,9 +165,7 @@ export const settings = {
     inline: true,
   },
   "pivot.condense_duplicate_totals": {
-    get section() {
-      return t`Columns`;
-    },
+    getSection: () => t`Columns`,
     get title() {
       return t`Condense duplicate totals`;
     },
@@ -196,9 +188,7 @@ export const settings = {
   },
   "pivot_table.column_widths": {},
   [COLUMN_FORMATTING_SETTING]: {
-    get section() {
-      return t`Conditional Formatting`;
-    },
+    getSection: () => t`Conditional Formatting`,
     widget: ChartSettingsTableFormatting,
     getDefault: (
       [{ data }]: [{ data: DatasetData }],

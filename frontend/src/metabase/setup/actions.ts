@@ -233,6 +233,10 @@ export const setEmbeddingHomepageFlags = createAsyncThunk(
       settingsToChange["embedding-homepage"] = "visible";
     }
 
+    if (interestedInEmbedding) {
+      settingsToChange["setup-embedding-autoenabled"] = true;
+    }
+
     settingsToChange["setup-license-active-at-setup"] = isLicenseActive;
 
     dispatch(updateSettings(settingsToChange));

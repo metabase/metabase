@@ -5,7 +5,7 @@ import {
   useGetCollectionQuery,
   useListCollectionTimelinesQuery,
 } from "metabase/api";
-import { useSetArchive } from "metabase/common/hooks";
+import { useSetArchive } from "metabase/archive/hooks";
 import { useDispatch } from "metabase/redux";
 import * as Urls from "metabase/urls";
 import type { Collection, Timeline } from "metabase-types/api";

@@ -2,7 +2,7 @@ import { setupFieldValuesEndpoint } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
+import type { FieldId } from "metabase-types/api";
 import {
   PEOPLE,
   PRODUCTS,
@@ -18,22 +18,18 @@ const state = createMockState({
   }),
 });
 
-function setup({ field }) {
+function setup(fieldId: FieldId) {
   setupFieldValuesEndpoint(PRODUCT_CATEGORY_VALUES);
 
-  renderWithProviders(<GlobalFingerprint fieldId={field.id} />, {
+  renderWithProviders(<GlobalFingerprint fieldId={fieldId} />, {
     storeInitialState: state,
   });
 }
 
 describe("GlobalFingerprint", () => {
-  const metadata = getMetadata(state);
-
   describe("when the field does not have a `has_field_values` value of 'list'", () => {
-    const field = metadata.field(PEOPLE.ADDRESS);
-
     it("should not fetch field values when field values are empty", () => {
-      setup({ field });
+      setup(PEOPLE.ADDRESS);
       expect(
         screen.queryByText("Getting distinct values..."),
       ).not.toBeInTheDocument();
@@ -42,10 +38,8 @@ describe("GlobalFingerprint", () => {
   });
 
   describe("when the field has a `has_field_values` value of 'list'", () => {
-    const field = metadata.field(PRODUCTS.CATEGORY);
-
     it("should fetch field values when field values are empty", async () => {
-      setup({ field });
+      setup(PRODUCTS.CATEGORY);
 
       expect(
         screen.getByText("Getting distinct values..."),
@@ -55,7 +49,7 @@ describe("GlobalFingerprint", () => {
   });
 
   it("should not throw an error when the field cannot be found", () => {
-    setup({ field: { id: 99942 } });
+    setup(99942);
     expect(
       screen.queryByText("Getting distinct values..."),
     ).not.toBeInTheDocument();
