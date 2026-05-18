@@ -144,7 +144,8 @@ export function seriesSetting({
           { icon: "line_style_dotted", value: "dotted" },
         ],
       }),
-      getDefault: (_series, settings) => getSeriesDefaultLineStyle(settings),
+      getDefault: (_single, _settings, extra) =>
+        getSeriesDefaultLineStyle(extra?.settings ?? {}),
       getHidden: (_single, settings) =>
         !LINE_DISPLAY_TYPES.has(settings["display"]),
       readDependencies: ["display"],
@@ -159,7 +160,8 @@ export function seriesSetting({
           { name: "L", value: "L" },
         ],
       }),
-      getDefault: (_series, settings) => getSeriesDefaultLineSize(settings),
+      getDefault: (_single, _settings, extra) =>
+        getSeriesDefaultLineSize(extra?.settings ?? {}),
       getHidden: (_single, settings) =>
         !LINE_DISPLAY_TYPES.has(settings["display"]),
       readDependencies: ["display"],

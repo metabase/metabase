@@ -798,6 +798,14 @@ export const LineReplaceMissingValuesZero = {
   },
 };
 
+export const LineBreakoutReplaceMissingValuesZero = {
+  render: Template,
+  args: {
+    rawSeries: data.lineBreakoutReplaceMissingValuesZero as any,
+    renderingContext,
+  },
+};
+
 export const LineChartBrokenDimensionsMetricsSettings = {
   render: Template,
   args: {
