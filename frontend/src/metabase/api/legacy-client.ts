@@ -224,10 +224,6 @@ export class LegacyApi extends EventEmitter<EventMap> {
             rawData instanceof FormData ||
             rawData instanceof URLSearchParams
           ) {
-            // Pass `FormData` / `URLSearchParams` bodies straight through so
-            // the browser sets the right Content-Type itself (multipart with
-            // boundary, or `application/x-www-form-urlencoded`). Replaces the
-            // legacy `body: { formData }, formData: true` wrapper shape.
             body = rawData;
           } else {
             body = JSON.stringify(data);

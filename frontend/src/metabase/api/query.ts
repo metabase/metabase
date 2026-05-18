@@ -23,6 +23,13 @@ export const apiQuery: BaseQueryFn = async (args, ctx, extraOptions) => {
     return { error: "Invalid HTTP method" };
   }
 
+  if (Array.isArray(args?.body)) {
+    return {
+      error:
+        "API bodies must be plain objects, not arrays — wrap the array in an object",
+    };
+  }
+
   // `FormData` / `URLSearchParams` bodies are forwarded as-is — spreading would
   // yield an empty object (their entries aren't enumerable as keys) and erase
   // the body. Other bodies merge with `params` so a single combined object
