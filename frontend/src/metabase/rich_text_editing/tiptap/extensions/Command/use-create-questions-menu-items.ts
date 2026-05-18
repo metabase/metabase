@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useListDatabasesQuery } from "metabase/api";
+import { useListDatabasesQuery } from "metabase/api/database";
 import { useSelector } from "metabase/redux";
 import { getHasDatabaseWithJsonEngine } from "metabase/selectors/data";
 import {

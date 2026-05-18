@@ -5,16 +5,18 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { skipToken } from "metabase/api/api";
 import {
   databaseApi,
-  skipToken,
-  tableApi,
   useGetDatabaseMetadataQuery,
+  useListDatabaseSchemaTablesQuery,
+} from "metabase/api/database";
+import {
+  tableApi,
   useGetTableQuery,
   useGetTableQueryMetadataQuery,
-  useListDatabaseSchemaTablesQuery,
   useListTablesQuery,
-} from "metabase/api";
+} from "metabase/api/table";
 import { Fields } from "metabase/entities/fields";
 import { Questions } from "metabase/entities/questions";
 import {
@@ -54,7 +56,7 @@ export const UPDATE_TABLE_FIELD_ORDER =
   "metabase/entities/UPDATE_TABLE_FIELD_ORDER";
 
 /**
- * @deprecated use "metabase/api" instead
+ * @deprecated use specific `metabase/api/*` modules instead
  */
 export const Tables = createEntity({
   name: "tables",

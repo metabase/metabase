@@ -6,7 +6,7 @@ import {
   useDeleteGlossaryMutation,
   useListGlossaryQuery,
   useUpdateGlossaryMutation,
-} from "metabase/api";
+} from "metabase/api/glossary";
 import S from "metabase/common/components/Glossary/Glossary.module.css";
 import { GlossaryTable } from "metabase/common/components/Glossary/GlossaryTable";
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";

@@ -1,6 +1,6 @@
 import { msgid, ngettext, t } from "ttag";
 
-import { useUpdateCardMutation } from "metabase/api";
+import { useUpdateCardMutation } from "metabase/api/card";
 import { getTrashUndoMessage } from "metabase/archive/utils";
 import { ArchiveModal } from "metabase/common/components/ArchiveModal";
 import { useToast } from "metabase/common/hooks";

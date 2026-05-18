@@ -1,6 +1,8 @@
 import { useCallback, useMemo } from "react";
 
-import { Api, databaseApi, useListPermissionsGroupsQuery } from "metabase/api";
+import { Api } from "metabase/api/api";
+import { databaseApi } from "metabase/api/database";
+import { useListPermissionsGroupsQuery } from "metabase/api/permission";
 import { tableApi } from "metabase/api/table";
 import { listTag } from "metabase/api/tags";
 import { PLUGIN_TENANTS } from "metabase/plugins";

@@ -2,11 +2,9 @@ import { useDisclosure } from "@mantine/hooks";
 import { useId } from "react";
 import { jt, t } from "ttag";
 
-import {
-  skipToken,
-  useGetFieldQuery,
-  useResetCheckpointMutation,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetFieldQuery } from "metabase/api/field";
+import { useResetCheckpointMutation } from "metabase/api/transform";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { CheckpointValue } from "metabase/transforms/components/CheckpointValue";

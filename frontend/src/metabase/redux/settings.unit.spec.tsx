@@ -7,7 +7,7 @@ import {
   sessionApi,
   useGetSessionPropertiesQuery,
   useGetSettingsQuery,
-} from "metabase/api";
+} from "metabase/api/session";
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";

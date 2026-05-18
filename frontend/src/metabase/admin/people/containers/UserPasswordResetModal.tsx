@@ -2,12 +2,12 @@ import { useState } from "react";
 import { useUnmount } from "react-use";
 import { c, t } from "ttag";
 
+import { useForgotPasswordMutation } from "metabase/api/session";
 import {
-  useForgotPasswordMutation,
   useGetPasswordResetUrlMutation,
   useGetUserQuery,
   useUpdatePasswordMutation,
-} from "metabase/api";
+} from "metabase/api/user";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";

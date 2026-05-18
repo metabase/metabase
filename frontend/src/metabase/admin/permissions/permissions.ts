@@ -18,7 +18,7 @@ import {
   updateTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
-import { permissionApi } from "metabase/api";
+import { permissionApi } from "metabase/api/permission";
 import { type ErrorPayload, getErrorMessage } from "metabase/api/utils/errors";
 import { Tables } from "metabase/entities/tables";
 import {

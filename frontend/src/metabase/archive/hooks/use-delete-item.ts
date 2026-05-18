@@ -2,12 +2,10 @@ import { useCallback } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import {
-  useDeleteCardMutation,
-  useDeleteCollectionMutation,
-  useDeleteDashboardMutation,
-  useDeleteDocumentMutation,
-} from "metabase/api";
+import { useDeleteCardMutation } from "metabase/api/card";
+import { useDeleteCollectionMutation } from "metabase/api/collection";
+import { useDeleteDashboardMutation } from "metabase/api/dashboard";
+import { useDeleteDocumentMutation } from "metabase/api/document";
 import { TRASHABLE_MODELS } from "metabase/archive/utils";
 import { useToast } from "metabase/common/hooks/use-toast";
 import type {

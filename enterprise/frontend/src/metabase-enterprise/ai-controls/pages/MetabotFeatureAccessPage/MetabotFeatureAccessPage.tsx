@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
-import { useListPermissionsGroupsQuery } from "metabase/api";
+import { useListPermissionsGroupsQuery } from "metabase/api/permission";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import { Group, Stack, Title } from "metabase/ui";

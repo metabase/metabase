@@ -1,7 +1,7 @@
 import type { Location } from "history";
 import { useContext } from "react";
 
-import { skipToken } from "metabase/api";
+import { skipToken } from "metabase/api/api";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Stack } from "metabase/ui";

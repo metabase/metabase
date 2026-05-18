@@ -3,10 +3,8 @@ import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
 import { useMetabotSetupContext } from "metabase/admin/ai/MetabotSetup";
-import {
-  useRefreshTokenStatusMutation,
-  useUpdateMetabotSettingsMutation,
-} from "metabase/api";
+import { useUpdateMetabotSettingsMutation } from "metabase/api/metabot";
+import { useRefreshTokenStatusMutation } from "metabase/api/premium-features";
 import { getErrorMessage } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";

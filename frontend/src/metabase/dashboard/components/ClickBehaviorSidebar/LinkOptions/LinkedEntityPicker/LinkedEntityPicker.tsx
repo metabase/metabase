@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { skipToken, useGetCardQuery, useGetDashboardQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetCardQuery } from "metabase/api/card";
+import { useGetDashboardQuery } from "metabase/api/dashboard";
 import { isPublicCollection } from "metabase/collections/utils";
 import { DashboardName } from "metabase/common/components/DashboardName";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";

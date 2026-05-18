@@ -4,7 +4,7 @@ import { replace } from "react-router-redux";
 import { useMount } from "react-use";
 import _ from "underscore";
 
-import { useListActionsQuery } from "metabase/api";
+import { useListActionsQuery } from "metabase/api/action";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { Databases } from "metabase/entities/databases";
 import { Questions } from "metabase/entities/questions";

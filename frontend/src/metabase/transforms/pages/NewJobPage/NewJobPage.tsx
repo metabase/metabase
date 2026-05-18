@@ -7,7 +7,7 @@ import _ from "underscore";
 import {
   useCreateTransformJobMutation,
   useLazyGetTransformJobQuery,
-} from "metabase/api";
+} from "metabase/api/transform-job";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
 import { useMetadataToasts } from "metabase/metadata/hooks";

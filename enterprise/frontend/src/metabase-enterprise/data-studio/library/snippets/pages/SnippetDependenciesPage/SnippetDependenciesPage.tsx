@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
-import { skipToken, useGetSnippetQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetSnippetQuery } from "metabase/api/snippet";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";

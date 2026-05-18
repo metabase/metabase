@@ -1,10 +1,8 @@
 import { push } from "react-router-redux";
 
-import {
-  skipToken,
-  useCreateTimelineMutation,
-  useGetCollectionQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
+import { useCreateTimelineMutation } from "metabase/api/timeline";
 import { useDispatch } from "metabase/redux";
 import NewTimelineModal from "metabase/timelines/common/components/NewTimelineModal";
 import * as Urls from "metabase/urls";

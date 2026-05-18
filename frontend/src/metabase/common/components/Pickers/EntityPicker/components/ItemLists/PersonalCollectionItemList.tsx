@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useListCollectionsQuery } from "metabase/api";
+import { useListCollectionsQuery } from "metabase/api/collection";
 import type { Collection } from "metabase-types/api";
 
 import type { OmniPickerItem } from "../../types";

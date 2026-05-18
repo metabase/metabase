@@ -8,10 +8,8 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import {
-  useListPersistedInfoQuery,
-  useRefreshModelCacheMutation,
-} from "metabase/api";
+import { useRefreshModelCacheMutation } from "metabase/api/card";
+import { useListPersistedInfoQuery } from "metabase/api/persist";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { Link } from "metabase/common/components/Link";

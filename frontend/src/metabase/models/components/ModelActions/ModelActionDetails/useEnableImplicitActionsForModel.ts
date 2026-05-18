@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { useCreateActionMutation } from "metabase/api";
+import { useCreateActionMutation } from "metabase/api/action";
 import { useToast } from "metabase/common/hooks/use-toast";
 import type { CardId } from "metabase-types/api";
 

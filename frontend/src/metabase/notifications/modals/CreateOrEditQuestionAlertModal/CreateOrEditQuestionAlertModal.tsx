@@ -3,13 +3,13 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import { isEqual } from "underscore";
 
+import { useListChannelsQuery } from "metabase/api/channel";
 import {
   useCreateNotificationMutation,
-  useGetChannelInfoQuery,
-  useListChannelsQuery,
   useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
-} from "metabase/api";
+} from "metabase/api/notification";
+import { useGetChannelInfoQuery } from "metabase/api/subscription";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {

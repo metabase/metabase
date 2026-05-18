@@ -2,11 +2,11 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { skipToken } from "metabase/api/api";
 import {
-  skipToken,
   useGetDatabaseQuery,
   useListSyncableDatabaseSchemasQuery,
-} from "metabase/api";
+} from "metabase/api/database";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { hasFeature } from "metabase/common/utils/database";

@@ -1,7 +1,8 @@
 import { memo } from "react";
 import { t } from "ttag";
 
-import { useGetDatabaseQuery, useUpdateFieldMutation } from "metabase/api";
+import { useGetDatabaseQuery } from "metabase/api/database";
+import { useUpdateFieldMutation } from "metabase/api/field";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
 import {

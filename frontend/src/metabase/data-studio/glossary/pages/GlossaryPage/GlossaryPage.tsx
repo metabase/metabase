@@ -5,7 +5,7 @@ import {
   useDeleteGlossaryMutation,
   useListGlossaryQuery,
   useUpdateGlossaryMutation,
-} from "metabase/api";
+} from "metabase/api/glossary";
 import { GlossaryTable } from "metabase/common/components/Glossary/GlossaryTable";
 import {
   trackDataStudioGlossaryTermCreated,

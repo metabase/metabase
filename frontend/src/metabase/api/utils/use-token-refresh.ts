@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useRef } from "react";
 
-import {
-  Api,
-  useGetSettingsQuery,
-  useRefreshTokenStatusMutation,
-} from "metabase/api";
+import { Api } from "metabase/api/api";
+import { useRefreshTokenStatusMutation } from "metabase/api/premium-features";
+import { useGetSettingsQuery } from "metabase/api/session";
 import { useDispatch } from "metabase/redux";
 import type { TokenStatusFeature } from "metabase-types/api";
 

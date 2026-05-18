@@ -2,11 +2,9 @@ import { useEffect, useMemo } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useGetPersistedInfoQuery,
-  useRefreshModelCacheMutation,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useRefreshModelCacheMutation } from "metabase/api/card";
+import { useGetPersistedInfoQuery } from "metabase/api/persist";
 import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
 import { ModalContent } from "metabase/common/components/ModalContent";

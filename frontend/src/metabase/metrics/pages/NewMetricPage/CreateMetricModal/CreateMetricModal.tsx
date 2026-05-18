@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { useCreateCardMutation } from "metabase/api";
+import { useCreateCardMutation } from "metabase/api/card";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { trackMetricCreated } from "metabase/data-studio/analytics";
 import {

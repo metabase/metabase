@@ -3,7 +3,8 @@ import { push } from "react-router-redux";
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import { getDashboard, useUpdateCardMutation } from "metabase/api";
+import { useUpdateCardMutation } from "metabase/api/card";
+import { getDashboard } from "metabase/api/dashboard";
 import { getErrorMessage } from "metabase/api/utils";
 import { QuestionMoveConfirmModal } from "metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal";
 import type { MoveDestination } from "metabase/collections/types";

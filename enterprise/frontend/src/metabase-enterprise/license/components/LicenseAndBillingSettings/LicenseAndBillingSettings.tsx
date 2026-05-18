@@ -9,7 +9,7 @@ import {
 import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { ExplorePlansIllustration } from "metabase/admin/settings/components/SettingsLicense/ExplorePlansIllustration";
-import { useGetAdminSettingsDetailsQuery } from "metabase/api";
+import { useGetAdminSettingsDetailsQuery } from "metabase/api/settings";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting, useToast } from "metabase/common/hooks";

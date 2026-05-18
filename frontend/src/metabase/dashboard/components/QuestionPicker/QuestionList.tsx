@@ -1,12 +1,10 @@
 import { type ComponentProps, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useGetCardQuery,
-  useListCollectionItemsQuery,
-  useSearchQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetCardQuery } from "metabase/api/card";
+import { useListCollectionItemsQuery } from "metabase/api/collection";
+import { useSearchQuery } from "metabase/api/search";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";

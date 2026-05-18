@@ -5,7 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
-import { useListCollectionsTreeQuery } from "metabase/api";
+import { useListCollectionsTreeQuery } from "metabase/api/collection";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { Collection, CollectionId } from "metabase-types/api";

@@ -5,10 +5,10 @@ import _ from "underscore";
 import {
   createCardPublicLink,
   deleteCardPublicLink,
-  timelineEventApi,
   updateCardEmbeddingParams,
   updateCardEnableEmbedding,
-} from "metabase/api";
+} from "metabase/api/card";
+import { timelineEventApi } from "metabase/api/timeline-event";
 import { EDIT_QUESTION, NAVIGATE_TO_NEW_CARD } from "metabase/redux/dashboard";
 import {
   API_UPDATE_QUESTION,

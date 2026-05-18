@@ -7,7 +7,7 @@ import {
   useDeleteSuggestedMetabotPromptMutation,
   useGetSuggestedMetabotPromptsQuery,
   useRegenerateSuggestedMetabotPromptsMutation,
-} from "metabase/api";
+} from "metabase/api/metabot";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { Table } from "metabase/common/components/Table";

@@ -1,11 +1,9 @@
 import { useCallback } from "react";
 import { match } from "ts-pattern";
 
-import {
-  useUpdateCardMutation,
-  useUpdateDashboardMutation,
-  useUpdateDocumentMutation,
-} from "metabase/api";
+import { useUpdateCardMutation } from "metabase/api/card";
+import { useUpdateDashboardMutation } from "metabase/api/dashboard";
+import { useUpdateDocumentMutation } from "metabase/api/document";
 import type {
   Card,
   Collection,

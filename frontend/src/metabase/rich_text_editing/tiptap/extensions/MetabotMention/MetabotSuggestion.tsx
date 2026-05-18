@@ -9,7 +9,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { useListDatabasesQuery } from "metabase/api";
+import { useListDatabasesQuery } from "metabase/api/database";
 import type {
   Item,
   Section,

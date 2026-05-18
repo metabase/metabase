@@ -2,16 +2,17 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { skipToken } from "metabase/api/api";
 import {
-  searchApi,
-  skipToken,
   useGetCollectionQuery,
   useListCollectionItemsQuery,
+} from "metabase/api/collection";
+import {
   useListDatabaseSchemaTablesQuery,
   useListDatabaseSchemasQuery,
   useListDatabasesQuery,
-  useSearchQuery,
-} from "metabase/api";
+} from "metabase/api/database";
+import { searchApi, useSearchQuery } from "metabase/api/search";
 import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/utils";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useSetting } from "metabase/common/hooks";

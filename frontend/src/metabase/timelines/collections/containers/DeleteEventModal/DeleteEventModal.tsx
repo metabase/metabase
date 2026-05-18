@@ -1,11 +1,11 @@
 import { push } from "react-router-redux";
 
+import { skipToken } from "metabase/api/api";
+import { useGetTimelineQuery } from "metabase/api/timeline";
 import {
-  skipToken,
   useDeleteTimelineEventMutation,
   useGetTimelineEventQuery,
-  useGetTimelineQuery,
-} from "metabase/api";
+} from "metabase/api/timeline-event";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
 import { useDispatch } from "metabase/redux";

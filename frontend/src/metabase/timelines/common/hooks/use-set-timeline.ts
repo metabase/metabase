@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { useUpdateTimelineEventMutation } from "metabase/api";
+import { useUpdateTimelineEventMutation } from "metabase/api/timeline-event";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import type { Timeline, TimelineEvent } from "metabase-types/api";

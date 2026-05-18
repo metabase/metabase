@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
-import { useAnalyzeChartMutation } from "metabase/api";
+import { useAnalyzeChartMutation } from "metabase/api/ai-entity-analysis";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { useSetting } from "metabase/common/hooks";

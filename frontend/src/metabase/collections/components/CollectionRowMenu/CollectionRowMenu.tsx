@@ -3,11 +3,11 @@ import { t } from "ttag";
 
 import {
   collectionApi,
-  snippetApi,
-  transformApi,
   useUpdateCollectionMutation,
-} from "metabase/api";
+} from "metabase/api/collection";
+import { snippetApi } from "metabase/api/snippet";
 import { listTag } from "metabase/api/tags";
+import { transformApi } from "metabase/api/transform";
 import { isRootCollection } from "metabase/collections/utils";
 import { useConfirmation } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";

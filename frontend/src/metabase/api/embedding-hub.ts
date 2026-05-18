@@ -1,4 +1,4 @@
-import { Api } from "metabase/api";
+import { Api } from "metabase/api/api";
 import type { DataSegregationStrategy } from "metabase-types/api";
 
 import { listTag } from "./tags";

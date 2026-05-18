@@ -2,7 +2,8 @@ import cx from "classnames";
 import { useState } from "react";
 import { c, t } from "ttag";
 
-import { skipToken, useGetUserQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetUserQuery } from "metabase/api/user";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";

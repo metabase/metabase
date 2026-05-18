@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useGetSlackAppInfoQuery } from "metabase/api";
+import { useGetSlackAppInfoQuery } from "metabase/api/slack";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
 import { Box, Button, Flex, Stack, Text } from "metabase/ui";

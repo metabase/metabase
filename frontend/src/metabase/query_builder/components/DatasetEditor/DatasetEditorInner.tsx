@@ -13,7 +13,7 @@ import {
 import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 
-import { useListModelIndexesQuery } from "metabase/api";
+import { useListModelIndexesQuery } from "metabase/api/model-index";
 import {
   ActionButton,
   type ActionButtonHandle,

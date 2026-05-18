@@ -7,9 +7,9 @@ import { t } from "ttag";
 
 import {
   useListTransformRunsQuery,
-  useListTransformTagsQuery,
   useListTransformsQuery,
-} from "metabase/api";
+} from "metabase/api/transform";
+import { useListTransformTagsQuery } from "metabase/api/transform-tag";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";

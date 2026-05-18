@@ -4,10 +4,8 @@ import { type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  useGetTableQueryMetadataQuery,
-  useListDatabasesQuery,
-} from "metabase/api";
+import { useListDatabasesQuery } from "metabase/api/database";
+import { useGetTableQueryMetadataQuery } from "metabase/api/table";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, rem } from "metabase/ui";

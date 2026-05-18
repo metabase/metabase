@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useListPermissionsGroupsQuery, useListUsersQuery } from "metabase/api";
+import { useListPermissionsGroupsQuery } from "metabase/api/permission";
+import { useListUsersQuery } from "metabase/api/user";
 import type { DateFilterValue } from "metabase/querying/common/types";
 import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { getUserName } from "metabase/utils/user";

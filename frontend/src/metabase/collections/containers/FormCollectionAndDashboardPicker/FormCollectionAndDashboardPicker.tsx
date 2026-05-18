@@ -3,12 +3,12 @@ import type { HTMLAttributes } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
 import {
-  skipToken,
-  useGetCollectionQuery,
   useGetDashboardQuery,
   useLazyGetDashboardQuery,
-} from "metabase/api";
+} from "metabase/api/dashboard";
 import {
   type EntityType,
   canonicalCollectionId,

@@ -5,7 +5,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { useListMetabotsQuery } from "metabase/api";
+import { useListMetabotsQuery } from "metabase/api/metabot";
 import { useAdminSetting } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";

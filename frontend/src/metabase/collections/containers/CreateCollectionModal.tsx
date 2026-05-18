@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useCreateCollectionMutation } from "metabase/api";
+import { useCreateCollectionMutation } from "metabase/api/collection";
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";

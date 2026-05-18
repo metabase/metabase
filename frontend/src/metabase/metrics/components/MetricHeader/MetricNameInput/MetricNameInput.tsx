@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useUpdateCardMutation } from "metabase/api";
+import { useUpdateCardMutation } from "metabase/api/card";
 import { PaneHeaderInput } from "metabase/data-studio/common/components/PaneHeader";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { Card } from "metabase-types/api";

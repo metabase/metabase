@@ -1,10 +1,8 @@
 import { c, t } from "ttag";
 
-import {
-  skipToken,
-  useGetCollectionQuery,
-  useGetDashboardQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
+import { useGetDashboardQuery } from "metabase/api/dashboard";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { MoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";

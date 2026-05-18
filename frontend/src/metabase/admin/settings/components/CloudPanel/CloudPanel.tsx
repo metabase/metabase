@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import {
   useCreateCloudMigrationMutation,
   useGetCloudMigrationQuery,
-} from "metabase/api";
+} from "metabase/api/cloud-migration";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useStoreUrl } from "metabase/common/hooks";
 import { type Plan, getPlan } from "metabase/common/utils/plan";

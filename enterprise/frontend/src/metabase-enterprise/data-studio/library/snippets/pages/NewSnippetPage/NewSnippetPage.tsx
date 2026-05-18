@@ -4,7 +4,7 @@ import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useCreateSnippetMutation } from "metabase/api";
+import { useCreateSnippetMutation } from "metabase/api/snippet";
 import { getErrorMessage } from "metabase/api/utils";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { EditableText } from "metabase/common/components/EditableText";

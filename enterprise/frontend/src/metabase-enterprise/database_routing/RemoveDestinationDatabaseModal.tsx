@@ -2,7 +2,10 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { DeleteDatabaseModal } from "metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal";
-import { useDeleteDatabaseMutation, useGetDatabaseQuery } from "metabase/api";
+import {
+  useDeleteDatabaseMutation,
+  useGetDatabaseQuery,
+} from "metabase/api/database";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/redux";
 import { Modal } from "metabase/ui";

@@ -8,18 +8,16 @@ import { memo, useEffect } from "react";
 import { t } from "ttag";
 import { isObject } from "underscore";
 
-import {
-  useGetActionQuery,
-  useGetCardQuery,
-  useGetCollectionQuery,
-  useGetDashboardQuery,
-  useGetDatabaseQuery,
-  useGetDocumentQuery,
-  useGetSegmentQuery,
-  useGetTableQuery,
-  useGetTransformQuery,
-  useListMentionsQuery,
-} from "metabase/api";
+import { useGetActionQuery } from "metabase/api/action";
+import { useGetCardQuery } from "metabase/api/card";
+import { useGetCollectionQuery } from "metabase/api/collection";
+import { useListMentionsQuery } from "metabase/api/comment";
+import { useGetDashboardQuery } from "metabase/api/dashboard";
+import { useGetDatabaseQuery } from "metabase/api/database";
+import { useGetDocumentQuery } from "metabase/api/document";
+import { useGetSegmentQuery } from "metabase/api/segment";
+import { useGetTableQuery } from "metabase/api/table";
+import { useGetTransformQuery } from "metabase/api/transform";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Link } from "metabase/common/components/Link";
 import type { IconModel, ObjectWithModel } from "metabase/common/utils/icon";

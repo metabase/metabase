@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { skipToken, useSearchQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useSearchQuery } from "metabase/api/search";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { useGetIcon } from "metabase/hooks/use-icon";

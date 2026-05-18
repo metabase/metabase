@@ -7,7 +7,7 @@ import {
   useCreateSegmentMutation,
   useGetSegmentQuery,
   useUpdateSegmentMutation,
-} from "metabase/api";
+} from "metabase/api/segment";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";

@@ -62,7 +62,7 @@ const defaultTransformResponse = (data: unknown, _query: EntityQuery) => data;
  *   Entity        -> Database from metabase-types/api/database.ts
  *   EntityWrapper -> Database from metabase-lib/v1/metadata/Database.ts
  *
- * @deprecated use "metabase/api" instead
+ * @deprecated use specific `metabase/api/*` modules instead
  */
 export function EntityObjectLoader<Entity, EntityWrapper>({
   ComposedComponent,

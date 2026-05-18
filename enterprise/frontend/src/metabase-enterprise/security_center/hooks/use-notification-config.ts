@@ -6,11 +6,9 @@ import {
   useState,
 } from "react";
 
-import {
-  useGetChannelInfoQuery,
-  useListUserRecipientsQuery,
-  useUpdateSettingsMutation,
-} from "metabase/api";
+import { useUpdateSettingsMutation } from "metabase/api/settings";
+import { useGetChannelInfoQuery } from "metabase/api/subscription";
+import { useListUserRecipientsQuery } from "metabase/api/user";
 import { useSetting } from "metabase/common/hooks";
 import type {
   ChannelApiResponse,

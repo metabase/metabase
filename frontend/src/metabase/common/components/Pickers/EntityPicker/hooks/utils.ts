@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { collectionApi } from "metabase/api";
+import { collectionApi } from "metabase/api/collection";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux";

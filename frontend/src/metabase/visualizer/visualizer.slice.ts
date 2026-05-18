@@ -8,7 +8,7 @@ import { shallowEqual } from "react-redux";
 import undoable, { combineFilters, includeAction } from "redux-undo";
 import _ from "underscore";
 
-import { cardApi } from "metabase/api";
+import { cardApi } from "metabase/api/card";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import type {
   DraggedColumn,

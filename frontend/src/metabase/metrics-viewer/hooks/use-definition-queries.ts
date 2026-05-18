@@ -1,7 +1,8 @@
 import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
-import { metricApi, useListSegmentsQuery } from "metabase/api";
+import { metricApi } from "metabase/api/metric";
+import { useListSegmentsQuery } from "metabase/api/segment";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";

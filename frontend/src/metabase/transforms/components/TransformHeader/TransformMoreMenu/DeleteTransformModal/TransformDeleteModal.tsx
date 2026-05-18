@@ -5,7 +5,7 @@ import {
   useDeleteTransformMutation,
   useDeleteTransformTargetMutation,
   useGetTransformQuery,
-} from "metabase/api";
+} from "metabase/api/transform";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,

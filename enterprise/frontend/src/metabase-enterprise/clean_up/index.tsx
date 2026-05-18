@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
-import { skipToken, useListCollectionItemsQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useListCollectionItemsQuery } from "metabase/api/collection";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen";
 import { ModalRoute } from "metabase/hoc/ModalRoute";

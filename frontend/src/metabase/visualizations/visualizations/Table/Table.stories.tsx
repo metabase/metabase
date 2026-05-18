@@ -10,7 +10,7 @@ import {
   VisualizationWrapper,
   createWaitForResizeToStopDecorator,
 } from "__support__/storybook";
-import { Api } from "metabase/api";
+import { Api } from "metabase/api/api";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { commonReducers } from "metabase/reducers-common";
 import { MetabaseReduxProvider } from "metabase/redux";

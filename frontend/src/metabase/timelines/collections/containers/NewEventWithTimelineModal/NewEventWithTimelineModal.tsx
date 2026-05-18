@@ -1,11 +1,9 @@
 import { push } from "react-router-redux";
 
-import {
-  skipToken,
-  useCreateTimelineEventMutation,
-  useCreateTimelineMutation,
-  useGetCollectionQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
+import { useCreateTimelineMutation } from "metabase/api/timeline";
+import { useCreateTimelineEventMutation } from "metabase/api/timeline-event";
 import { getDefaultTimeline } from "metabase/common/utils/timelines";
 import { useDispatch } from "metabase/redux";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";

@@ -1,4 +1,5 @@
-import { skipToken, useGetAdhocQueryMetadataQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetAdhocQueryMetadataQuery } from "metabase/api/dataset";
 import type { DataAttributes, InputDescriptionProps } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { TransformSource } from "metabase-types/api";

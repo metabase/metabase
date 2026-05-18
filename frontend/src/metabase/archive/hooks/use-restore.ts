@@ -4,13 +4,11 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  Api,
-  useUpdateCardMutation,
-  useUpdateCollectionMutation,
-  useUpdateDashboardMutation,
-  useUpdateDocumentMutation,
-} from "metabase/api";
+import { Api } from "metabase/api/api";
+import { useUpdateCardMutation } from "metabase/api/card";
+import { useUpdateCollectionMutation } from "metabase/api/collection";
+import { useUpdateDashboardMutation } from "metabase/api/dashboard";
+import { useUpdateDocumentMutation } from "metabase/api/document";
 import { listTag } from "metabase/api/tags";
 import { TRASHABLE_MODELS, getParentEntityLink } from "metabase/archive/utils";
 import { useToast } from "metabase/common/hooks/use-toast";

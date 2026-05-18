@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { usePrevious } from "react-use";
 
-import { useAnalyzeChartMutation } from "metabase/api";
+import { useAnalyzeChartMutation } from "metabase/api/ai-entity-analysis";
 import {
   getChartImagePngDataUri,
   getChartSelector,

@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import { useListCollectionsQuery } from "metabase/api";
+import { useListCollectionsQuery } from "metabase/api/collection";
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import type { CollectionTreeItem } from "metabase/entities/collections";

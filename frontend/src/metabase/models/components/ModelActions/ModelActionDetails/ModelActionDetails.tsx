@@ -2,7 +2,10 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useDeleteActionMutation, useListActionsQuery } from "metabase/api";
+import {
+  useDeleteActionMutation,
+  useListActionsQuery,
+} from "metabase/api/action";
 import { useSetArchive } from "metabase/archive/hooks";
 import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";

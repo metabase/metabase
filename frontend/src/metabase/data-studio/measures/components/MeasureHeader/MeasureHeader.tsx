@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { useUpdateMeasureMutation } from "metabase/api";
+import { useUpdateMeasureMutation } from "metabase/api/measure";
 import { EntityDetailTabs } from "metabase/data-studio/common/components/EntityDetailTabs/EntityDetailTabs";
 import {
   PaneHeader,

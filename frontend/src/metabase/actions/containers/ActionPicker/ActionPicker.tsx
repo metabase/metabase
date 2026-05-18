@@ -3,7 +3,8 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
-import { useListActionsQuery, useSearchQuery } from "metabase/api";
+import { useListActionsQuery } from "metabase/api/action";
+import { useSearchQuery } from "metabase/api/search";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Modal } from "metabase/common/components/Modal";
 import { useToggle } from "metabase/common/hooks/use-toggle";

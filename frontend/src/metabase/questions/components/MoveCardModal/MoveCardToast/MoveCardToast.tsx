@@ -1,11 +1,9 @@
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import {
-  skipToken,
-  useGetCollectionQuery,
-  useGetDashboardQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
+import { useGetDashboardQuery } from "metabase/api/dashboard";
 import type { MoveDestination } from "metabase/collections/types";
 import { coerceCollectionId } from "metabase/collections/utils";
 import * as Urls from "metabase/urls";

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useListCollectionsTreeQuery } from "metabase/api";
+import { useListCollectionsTreeQuery } from "metabase/api/collection";
 import { isLibraryCollection } from "metabase/collections/utils";
 import { getAllDescendantIds } from "metabase/common/components/tree/utils";
 import { buildCollectionTree } from "metabase/entities/collections";

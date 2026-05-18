@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
-import { useListDatabasesQuery } from "metabase/api";
+import { useListDatabasesQuery } from "metabase/api/database";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";

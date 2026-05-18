@@ -1,10 +1,8 @@
 import { type ReactNode, useMemo } from "react";
 
-import {
-  skipToken,
-  useGetCardQuery,
-  useGetCollectionQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetCardQuery } from "metabase/api/card";
+import { useGetCollectionQuery } from "metabase/api/collection";
 import { Group, type GroupProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";

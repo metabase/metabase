@@ -1,6 +1,6 @@
 import { msgid, ngettext, t } from "ttag";
 
-import { useGetTableQuery } from "metabase/api";
+import { useGetTableQuery } from "metabase/api/table";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Description,

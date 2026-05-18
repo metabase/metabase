@@ -3,7 +3,7 @@ import { t } from "ttag";
 import {
   useGetTimelineEventQuery,
   useUpdateTimelineEventMutation,
-} from "metabase/api";
+} from "metabase/api/timeline-event";
 import { useSetArchive } from "metabase/archive/hooks";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";

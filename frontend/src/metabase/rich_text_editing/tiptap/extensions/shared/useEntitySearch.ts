@@ -1,10 +1,8 @@
 import { useMemo } from "react";
 
-import {
-  useListMentionsQuery,
-  useListRecentsQuery,
-  useSearchQuery,
-} from "metabase/api";
+import { useListRecentsQuery } from "metabase/api/activity";
+import { useListMentionsQuery } from "metabase/api/comment";
+import { useSearchQuery } from "metabase/api/search";
 import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
 import type {
   MentionableUser,

@@ -4,11 +4,11 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
+import { skipToken } from "metabase/api/api";
 import {
-  skipToken,
   useGetDatabaseQuery,
   useUpdateDatabaseMutation,
-} from "metabase/api";
+} from "metabase/api/database";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";

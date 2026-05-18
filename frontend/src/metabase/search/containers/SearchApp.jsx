@@ -4,7 +4,7 @@ import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { useSearchQuery } from "metabase/api";
+import { useSearchQuery } from "metabase/api/search";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";

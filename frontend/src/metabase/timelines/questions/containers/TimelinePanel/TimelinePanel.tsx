@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 
-import { useGetCollectionQuery } from "metabase/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
 import { useSetArchive } from "metabase/archive/hooks";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { ROOT_COLLECTION } from "metabase/entities/collections";

@@ -4,11 +4,9 @@ import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import {
-  skipToken,
-  useGetCollectionQuery,
-  useUpdateMetabotMutation,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
+import { useUpdateMetabotMutation } from "metabase/api/metabot";
 import { useAdminSetting } from "metabase/api/utils/settings";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";

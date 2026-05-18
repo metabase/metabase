@@ -1,4 +1,4 @@
-import { useGetDashboardQuery } from "metabase/api";
+import { useGetDashboardQuery } from "metabase/api/dashboard";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { getName } from "metabase/utils/name";
 import type { DashboardId } from "metabase-types/api";

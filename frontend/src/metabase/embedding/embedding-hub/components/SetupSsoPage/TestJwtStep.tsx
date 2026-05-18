@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { useUpdateSettingsMutation } from "metabase/api";
+import { useUpdateSettingsMutation } from "metabase/api/settings";
 import { useToast } from "metabase/common/hooks";
 import { useHelpUrl } from "metabase/embedding/embedding-hub/hooks";
 import { Button, Group, Stack, Text, Title } from "metabase/ui";

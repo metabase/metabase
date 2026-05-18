@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useDiscardTablesFieldValuesMutation } from "metabase/api";
+import { useDiscardTablesFieldValuesMutation } from "metabase/api/table";
 import { useTemporaryState } from "metabase/common/hooks";
 import { trackDataStudioTableFieldValuesDiscardStarted } from "metabase/data-studio/analytics";
 import { useMetadataToasts } from "metabase/metadata/hooks";

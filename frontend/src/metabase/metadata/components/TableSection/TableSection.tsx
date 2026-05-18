@@ -5,7 +5,7 @@ import { t } from "ttag";
 import {
   useUpdateTableFieldsOrderMutation,
   useUpdateTableMutation,
-} from "metabase/api";
+} from "metabase/api/table";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";

@@ -8,7 +8,7 @@ import type Question from "metabase-lib/v1/Question";
 import type { CardId, GetCardRequest } from "metabase-types/api";
 
 /**
- * @deprecated use "metabase/api" instead
+ * @deprecated use specific `metabase/api/*` modules instead
  */
 export const useQuestionQuery = (
   props: UseEntityQueryProps<CardId, Omit<GetCardRequest, "id">>,

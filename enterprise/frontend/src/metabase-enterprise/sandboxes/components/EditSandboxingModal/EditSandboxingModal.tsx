@@ -4,12 +4,10 @@ import { useAsyncFn } from "react-use";
 import { c, jt, t } from "ttag";
 import _ from "underscore";
 
-import {
-  skipToken,
-  useGetCardQuery,
-  useGetPermissionsGroupQuery,
-  useGetTableQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetCardQuery } from "metabase/api/card";
+import { useGetPermissionsGroupQuery } from "metabase/api/permission";
+import { useGetTableQuery } from "metabase/api/table";
 import { ActionButton } from "metabase/common/components/ActionButton";
 import {
   QuestionPickerModal,

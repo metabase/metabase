@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useGetNativeDatasetQuery } from "metabase/api";
+import { useGetNativeDatasetQuery } from "metabase/api/dataset";
 import { getErrorMessage } from "metabase/api/utils";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { CopyButton } from "metabase/common/components/CopyButton";

@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import { useUpdateCardMutation } from "metabase/api";
+import { useUpdateCardMutation } from "metabase/api/card";
 import type { CardId } from "metabase-types/api";
 
 export function useSetCollectionPreview() {

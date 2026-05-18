@@ -5,7 +5,8 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { skipToken, useListRevisionsQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useListRevisionsQuery } from "metabase/api/revision";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
 import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";

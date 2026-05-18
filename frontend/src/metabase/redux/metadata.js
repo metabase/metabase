@@ -1,7 +1,10 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
-import { cardApi, dashboardApi, datasetApi, segmentApi } from "metabase/api";
+import { cardApi } from "metabase/api/card";
+import { dashboardApi } from "metabase/api/dashboard";
+import { datasetApi } from "metabase/api/dataset";
+import { segmentApi } from "metabase/api/segment";
 import { Databases } from "metabase/entities/databases";
 import { Fields } from "metabase/entities/fields";
 import { Tables } from "metabase/entities/tables";

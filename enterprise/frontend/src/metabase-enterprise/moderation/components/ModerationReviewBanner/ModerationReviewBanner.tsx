@@ -1,4 +1,5 @@
-import { skipToken, useGetUserQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetUserQuery } from "metabase/api/user";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { FixedSizeIcon, Flex, Icon, Text as UIText } from "metabase/ui";

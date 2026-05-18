@@ -4,11 +4,11 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
-  skipToken,
   useCreateActionMutation,
   useGetActionQuery,
   useUpdateActionMutation,
-} from "metabase/api";
+} from "metabase/api/action";
+import { skipToken } from "metabase/api/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { Modal } from "metabase/common/components/Modal";
 import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";

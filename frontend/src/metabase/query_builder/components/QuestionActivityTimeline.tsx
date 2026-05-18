@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useListRevisionsQuery } from "metabase/api";
+import { useListRevisionsQuery } from "metabase/api/revision";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
 import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";

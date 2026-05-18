@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { Route } from "react-router";
 import { t } from "ttag";
 
-import { useUpdateSegmentMutation } from "metabase/api";
+import { useUpdateSegmentMutation } from "metabase/api/segment";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";

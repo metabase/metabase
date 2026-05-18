@@ -11,10 +11,8 @@ import { SettingHeader } from "metabase/admin/settings/components/SettingHeader"
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { GroupMappingsWidget } from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
-import {
-  useGetAdminSettingsDetailsQuery,
-  useGetSettingsQuery,
-} from "metabase/api";
+import { useGetSettingsQuery } from "metabase/api/session";
+import { useGetAdminSettingsDetailsQuery } from "metabase/api/settings";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";

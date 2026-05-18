@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useDeleteTransformJobMutation } from "metabase/api";
+import { useDeleteTransformJobMutation } from "metabase/api/transform-job";
 import {
   Form,
   FormErrorMessage,

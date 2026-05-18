@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellSSO } from "metabase/admin/upsells";
-import { useGetSettingsQuery } from "metabase/api";
+import { useGetSettingsQuery } from "metabase/api/session";
 import { hasAnySsoFeature } from "metabase/common/utils/plan";
 import {
   type AuthSettingsPageTab,

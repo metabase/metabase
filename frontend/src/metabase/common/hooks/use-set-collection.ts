@@ -3,18 +3,17 @@ import { useCallback } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { cardApi, useUpdateCardMutation } from "metabase/api/card";
 import {
-  cardApi,
   collectionApi,
-  dashboardApi,
-  documentApi,
-  timelineApi,
-  useUpdateCardMutation,
   useUpdateCollectionMutation,
+} from "metabase/api/collection";
+import {
+  dashboardApi,
   useUpdateDashboardMutation,
-  useUpdateDocumentMutation,
-  useUpdateTimelineMutation,
-} from "metabase/api";
+} from "metabase/api/dashboard";
+import { documentApi, useUpdateDocumentMutation } from "metabase/api/document";
+import { timelineApi, useUpdateTimelineMutation } from "metabase/api/timeline";
 import {
   canonicalCollectionId,
   isItemCollection,

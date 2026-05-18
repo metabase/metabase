@@ -1,7 +1,8 @@
 import { useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useGetCardQuery, useGetTableQuery } from "metabase/api";
+import { useGetCardQuery } from "metabase/api/card";
+import { useGetTableQuery } from "metabase/api/table";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import type { SourceReplacementModalProps } from "metabase/plugins";
 import { Flex, Modal } from "metabase/ui";

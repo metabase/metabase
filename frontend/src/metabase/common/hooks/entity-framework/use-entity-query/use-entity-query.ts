@@ -42,7 +42,7 @@ export interface UseEntityQueryResult<TItem> {
 }
 
 /**
- * @deprecated use "metabase/api" instead
+ * @deprecated use specific `metabase/api/*` modules instead
  */
 export const useEntityQuery = <TId, TItem, TQuery = never>(
   {

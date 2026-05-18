@@ -7,7 +7,7 @@ import {
   useGetDatabaseMetadataQuery,
   useGetDatabaseQuery,
   useListDatabasesQuery,
-} from "metabase/api";
+} from "metabase/api/database";
 import { createThunkAction } from "metabase/redux";
 import { DatabaseSchema } from "metabase/schema";
 import {
@@ -23,7 +23,7 @@ export const FETCH_DATABASE_METADATA =
   "metabase/entities/database/FETCH_DATABASE_METADATA";
 
 /**
- * @deprecated use "metabase/api" instead
+ * @deprecated use specific `metabase/api/*` modules instead
  */
 export const Databases = createEntity({
   name: "databases",

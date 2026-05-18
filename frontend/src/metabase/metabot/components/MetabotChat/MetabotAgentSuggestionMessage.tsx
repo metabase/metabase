@@ -9,7 +9,7 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useLazyGetTransformQuery } from "metabase/api";
+import { useLazyGetTransformQuery } from "metabase/api/transform";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { MetabotContext } from "metabase/metabot/context";
 import {

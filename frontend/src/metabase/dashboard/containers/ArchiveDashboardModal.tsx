@@ -3,7 +3,8 @@ import { type WithRouterProps, withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { skipToken, useGetDashboardQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetDashboardQuery } from "metabase/api/dashboard";
 import { ArchiveModal } from "metabase/common/components/ArchiveModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { setArchivedDashboard } from "metabase/dashboard/actions";

@@ -2,10 +2,8 @@ import { useCallback, useState } from "react";
 import { Link } from "react-router";
 import { jt, t } from "ttag";
 
-import {
-  useGetChannelInfoQuery,
-  useListSecurityAdvisoriesQuery,
-} from "metabase/api";
+import { useListSecurityAdvisoriesQuery } from "metabase/api/security-center";
+import { useGetChannelInfoQuery } from "metabase/api/subscription";
 import { Banner } from "metabase/common/components/Banner";
 import { useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";

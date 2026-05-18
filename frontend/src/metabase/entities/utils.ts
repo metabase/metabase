@@ -343,7 +343,7 @@ export function handleEntities(
 }
 
 /**
- * @deprecated use "metabase/api" instead
+ * @deprecated use specific `metabase/api/*` modules instead
  */
 export function createEntity(def: EntityDef): Entity {
   // We use a mutable object internally during construction

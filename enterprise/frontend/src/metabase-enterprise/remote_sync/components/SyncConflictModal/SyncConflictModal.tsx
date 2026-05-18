@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useGetSettingsQuery } from "metabase/api";
+import { useGetSettingsQuery } from "metabase/api/session";
 import { useSetting } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useSelector } from "metabase/redux";

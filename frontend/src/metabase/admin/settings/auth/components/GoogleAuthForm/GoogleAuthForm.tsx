@@ -5,11 +5,9 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import {
-  useGetAdminSettingsDetailsQuery,
-  useGetSettingsQuery,
-  useUpdateGoogleAuthMutation,
-} from "metabase/api";
+import { useUpdateGoogleAuthMutation } from "metabase/api/google";
+import { useGetSettingsQuery } from "metabase/api/session";
+import { useGetAdminSettingsDetailsQuery } from "metabase/api/settings";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import {
   useDocsUrl,

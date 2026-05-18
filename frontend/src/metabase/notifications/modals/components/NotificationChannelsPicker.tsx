@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
-import { useListChannelsQuery, useListUserRecipientsQuery } from "metabase/api";
+import { useListChannelsQuery } from "metabase/api/channel";
+import { useListUserRecipientsQuery } from "metabase/api/user";
 import { ChannelSettingsBlock } from "metabase/notifications/channels/ChannelSettingsBlock";
 import { EmailChannelEdit } from "metabase/notifications/channels/EmailChannelEdit";
 import { SlackChannelFieldNew } from "metabase/notifications/channels/SlackChannelFieldNew";

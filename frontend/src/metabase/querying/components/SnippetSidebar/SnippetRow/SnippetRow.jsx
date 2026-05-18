@@ -3,7 +3,7 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { useUpdateSnippetMutation } from "metabase/api";
+import { useUpdateSnippetMutation } from "metabase/api/snippet";
 import { Button } from "metabase/common/components/Button";
 import CS from "metabase/css/core/index.css";
 import { Ellipsified, Flex, Icon } from "metabase/ui";

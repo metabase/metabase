@@ -11,12 +11,10 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import {
-  skipToken,
-  useGetRemappedCardParameterValueQuery,
-  useGetRemappedDashboardParameterValueQuery,
-  useGetRemappedParameterValueQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetRemappedCardParameterValueQuery } from "metabase/api/card";
+import { useGetRemappedDashboardParameterValueQuery } from "metabase/api/dashboard";
+import { useGetRemappedParameterValueQuery } from "metabase/api/dataset";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";

@@ -1,4 +1,5 @@
-import { Api, dashboardApi } from "metabase/api";
+import { Api } from "metabase/api/api";
+import { dashboardApi } from "metabase/api/dashboard";
 import { listTag } from "metabase/api/tags";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner/ArchivedEntityBanner";
 import { entityCompatibleQuery } from "metabase/entities/utils";

@@ -1,6 +1,6 @@
 import { updateIn } from "icepick";
 
-import { cardApi, useGetCardQuery, useListCardsQuery } from "metabase/api";
+import { cardApi, useGetCardQuery, useListCardsQuery } from "metabase/api/card";
 import { getCollectionType } from "metabase/entities/collections";
 import { SOFT_RELOAD_CARD } from "metabase/redux/query-builder";
 import {
@@ -14,7 +14,7 @@ export const INJECT_RTK_QUERY_QUESTION_VALUE =
   "metabase/entities/questions/FETCH_ADHOC_METADATA";
 
 /**
- * @deprecated use "metabase/api" instead
+ * @deprecated use specific `metabase/api/*` modules instead
  */
 export const Questions = createEntity({
   name: "questions",

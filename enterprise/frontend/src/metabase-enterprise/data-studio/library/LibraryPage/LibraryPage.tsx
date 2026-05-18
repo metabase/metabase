@@ -2,7 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useListCollectionsTreeQuery } from "metabase/api";
+import { useListCollectionsTreeQuery } from "metabase/api/collection";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";

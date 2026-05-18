@@ -1,8 +1,8 @@
-import { cardApi } from "metabase/api";
 import type {
   CardParameterValuesRequest,
   SearchCardParameterValuesRequest,
 } from "metabase/api/card";
+import { cardApi } from "metabase/api/card";
 import type { DispatchFn } from "metabase/redux";
 import type { GetState } from "metabase/redux/store";
 import { DashboardApi, ParameterApi } from "metabase/services";

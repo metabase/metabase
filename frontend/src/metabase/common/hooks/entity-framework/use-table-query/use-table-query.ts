@@ -8,7 +8,7 @@ import type Table from "metabase-lib/v1/metadata/Table";
 import type { GetTableRequest, TableId } from "metabase-types/api";
 
 /**
- * @deprecated use "metabase/api" instead
+ * @deprecated use specific `metabase/api/*` modules instead
  */
 export const useTableQuery = (
   props: UseEntityQueryProps<TableId, GetTableRequest>,

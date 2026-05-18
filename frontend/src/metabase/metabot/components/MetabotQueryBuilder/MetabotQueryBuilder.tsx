@@ -7,7 +7,7 @@ import { isMatching } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
+import { useGetSuggestedMetabotPromptsQuery } from "metabase/api/metabot";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useSetting } from "metabase/common/hooks";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";

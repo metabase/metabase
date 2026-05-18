@@ -1,7 +1,8 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { skipToken, useGetCardQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetCardQuery } from "metabase/api/card";
 import {
   executeRowAction,
   reloadDashboardCards,

@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { c, t } from "ttag";
 
-import { useGetCollectionQuery } from "metabase/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
 import { type ArchivableItem, useSetArchive } from "metabase/archive/hooks";
 import { canArchiveItem } from "metabase/collections/utils";
 import { ActionIcon, Icon, Menu } from "metabase/ui";

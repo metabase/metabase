@@ -1,11 +1,11 @@
 import type { Location } from "history";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api/api";
 import {
-  skipToken,
   useGetNotificationQuery,
   useUpdateNotificationMutation,
-} from "metabase/api";
+} from "metabase/api/notification";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { DeleteAlertConfirmModal } from "metabase/notifications/modals/DeleteAlertConfirmModal";

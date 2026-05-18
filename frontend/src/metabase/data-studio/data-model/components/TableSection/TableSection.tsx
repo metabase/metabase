@@ -5,7 +5,7 @@ import { t } from "ttag";
 import {
   useUpdateTableFieldsOrderMutation,
   useUpdateTableMutation,
-} from "metabase/api";
+} from "metabase/api/table";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";

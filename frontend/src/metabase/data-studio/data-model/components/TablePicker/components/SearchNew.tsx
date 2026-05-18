@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
-import { useListDatabasesQuery } from "metabase/api";
+import { useListDatabasesQuery } from "metabase/api/database";
 import { useListTablesQuery } from "metabase/api/table";
 import { trackDataStudioTablePickerSearchPerformed } from "metabase/data-studio/analytics";
 import { parseRouteParams } from "metabase/metadata/pages/shared/utils";

@@ -4,7 +4,7 @@ import { t } from "ttag";
 import {
   useCreateDocumentPublicLinkMutation,
   useDeleteDocumentPublicLinkMutation,
-} from "metabase/api";
+} from "metabase/api/document";
 import {
   trackPublicEmbedCodeCopied,
   trackPublicLinkCopied,

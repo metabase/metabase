@@ -2,7 +2,8 @@ import { useField } from "formik";
 import { type HTMLAttributes, useMemo } from "react";
 import { t } from "ttag";
 
-import { skipToken, useGetUserQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetUserQuery } from "metabase/api/user";
 import { FormField } from "metabase/common/components/FormField";
 import { Accordion, Box, Loader, Text } from "metabase/ui";
 import { useGetTenantQuery } from "metabase-enterprise/api";

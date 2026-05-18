@@ -9,7 +9,7 @@ import {
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useListUsersQuery } from "metabase/api";
+import { useListUsersQuery } from "metabase/api/user";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import type { SelectionState, TreeTableColumnDef } from "metabase/ui";
 import {

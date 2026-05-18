@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { useListCollectionsTreeQuery } from "metabase/api";
+import { useListCollectionsTreeQuery } from "metabase/api/collection";
 import { getErrorMessage } from "metabase/api/utils";
 import { DashboardSelector } from "metabase/common/components/DashboardSelector";
 import { useToast } from "metabase/common/hooks";

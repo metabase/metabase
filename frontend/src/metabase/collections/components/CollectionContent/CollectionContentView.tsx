@@ -7,11 +7,11 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { Api } from "metabase/api/api";
 import {
-  Api,
   useDeleteCollectionMutation,
   useListCollectionItemsQuery,
-} from "metabase/api";
+} from "metabase/api/collection";
 import { listTag } from "metabase/api/tags";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import { useSetArchive } from "metabase/archive/hooks";

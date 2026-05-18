@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import { useInvalidateCacheConfigsMutation } from "metabase/api";
+import { useInvalidateCacheConfigsMutation } from "metabase/api/cache-config";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import type { CacheableModel } from "metabase-types/api";

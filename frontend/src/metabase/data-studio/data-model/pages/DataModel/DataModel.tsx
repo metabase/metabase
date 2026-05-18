@@ -3,10 +3,8 @@ import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  useGetTableQueryMetadataQuery,
-  useListDatabasesQuery,
-} from "metabase/api";
+import { useListDatabasesQuery } from "metabase/api/database";
+import { useGetTableQueryMetadataQuery } from "metabase/api/table";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHasTokenFeature } from "metabase/common/hooks";

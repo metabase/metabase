@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { useGetSegmentQuery } from "metabase/api";
+import { useGetSegmentQuery } from "metabase/api/segment";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useLoadTableWithMetadata } from "metabase/data-studio/common/hooks/use-load-table-with-metadata";
 import { useDispatch, useSelector } from "metabase/redux";

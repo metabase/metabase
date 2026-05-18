@@ -1,15 +1,13 @@
 import { Fragment, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useExtractSourcesQuery,
-  useGetCardQuery,
-  useGetDatabaseQuery,
-  useGetFieldTableIdsQuery,
-  useGetTableQuery,
-  useSubmitMetabotSourceFeedbackMutation,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetCardQuery } from "metabase/api/card";
+import { useGetDatabaseQuery } from "metabase/api/database";
+import { useGetFieldTableIdsQuery } from "metabase/api/field";
+import { useExtractSourcesQuery } from "metabase/api/llm";
+import { useSubmitMetabotSourceFeedbackMutation } from "metabase/api/metabot";
+import { useGetTableQuery } from "metabase/api/table";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { deserializeCardFromQuery } from "metabase/common/utils/card";

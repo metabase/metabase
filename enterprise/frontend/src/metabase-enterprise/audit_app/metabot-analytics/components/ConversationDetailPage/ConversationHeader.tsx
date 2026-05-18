@@ -3,11 +3,11 @@ import { msgid, ngettext, t } from "ttag";
 
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
+import { skipToken } from "metabase/api/api";
 import {
-  skipToken,
   useListPermissionsGroupsQuery,
   useListUserMembershipsQuery,
-} from "metabase/api";
+} from "metabase/api/permission";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";

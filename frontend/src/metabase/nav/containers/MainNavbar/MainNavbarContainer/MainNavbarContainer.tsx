@@ -4,11 +4,13 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
-  useGetCollectionQuery,
   useListBookmarksQuery,
-  useListCollectionsTreeQuery,
   useReorderBookmarksMutation,
-} from "metabase/api";
+} from "metabase/api/bookmark";
+import {
+  useGetCollectionQuery,
+  useListCollectionsTreeQuery,
+} from "metabase/api/collection";
 import { logout } from "metabase/auth/actions";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import {

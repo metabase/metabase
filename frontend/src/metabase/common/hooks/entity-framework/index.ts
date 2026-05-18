@@ -1,6 +1,6 @@
 /*
  * This directory is deprecated.
- * Use "metabase/api" instead.
+ * Use specific `metabase/api/*` modules instead.
  */
 
 export * from "./use-database-list-query";

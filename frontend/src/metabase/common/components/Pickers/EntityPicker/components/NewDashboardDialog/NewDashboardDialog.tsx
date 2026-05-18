@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useCreateDashboardMutation } from "metabase/api";
+import { useCreateDashboardMutation } from "metabase/api/dashboard";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { canPlaceEntityInCollection } from "metabase/data-studio/utils";

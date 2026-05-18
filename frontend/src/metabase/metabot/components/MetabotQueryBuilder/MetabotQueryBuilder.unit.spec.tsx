@@ -4,7 +4,7 @@ import { Route } from "react-router";
 import { setupBookmarksEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
+import { useGetSuggestedMetabotPromptsQuery } from "metabase/api/metabot";
 import {
   useMetabotAgent,
   useUserMetabotPermissions,
@@ -13,8 +13,8 @@ import { createMockState } from "metabase/redux/store/mocks";
 
 import { MetabotQueryBuilder } from "./MetabotQueryBuilder";
 
-jest.mock("metabase/api", () => ({
-  ...jest.requireActual("metabase/api"),
+jest.mock("metabase/api/metabot", () => ({
+  ...jest.requireActual("metabase/api/metabot"),
   useGetSuggestedMetabotPromptsQuery: jest.fn(),
 }));
 

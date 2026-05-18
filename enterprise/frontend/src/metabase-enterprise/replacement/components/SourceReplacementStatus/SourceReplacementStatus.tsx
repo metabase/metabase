@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 
-import { Api, skipToken, useGetCardQuery } from "metabase/api";
+import { Api, skipToken } from "metabase/api/api";
+import { useGetCardQuery } from "metabase/api/card";
 import { useGetTableQuery } from "metabase/api/table";
 import type { TagType } from "metabase/api/tags";
 import { useDispatch } from "metabase/redux";

@@ -2,11 +2,9 @@ import { useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useListCollectionItemsQuery,
-  useListDatabasesQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useListCollectionItemsQuery } from "metabase/api/collection";
+import { useListDatabasesQuery } from "metabase/api/database";
 import {
   useGetPersonalCollection,
   useHasTokenFeature,

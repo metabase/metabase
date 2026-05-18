@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useUpdateSnippetMutation } from "metabase/api";
+import { useUpdateSnippetMutation } from "metabase/api/snippet";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";

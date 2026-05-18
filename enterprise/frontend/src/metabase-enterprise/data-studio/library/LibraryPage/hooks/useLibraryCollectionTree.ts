@@ -1,11 +1,11 @@
 import type { Row } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { skipToken } from "metabase/api/api";
 import {
   collectionApi,
-  skipToken,
   useListCollectionItemsQuery,
-} from "metabase/api";
+} from "metabase/api/collection";
 import type {
   LibrarySectionType,
   TreeItem,

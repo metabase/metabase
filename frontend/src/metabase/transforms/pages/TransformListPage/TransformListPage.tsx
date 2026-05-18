@@ -10,12 +10,12 @@ import {
 import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api/api";
 import {
-  skipToken,
   useGetCollectionQuery,
   useListCollectionsTreeQuery,
-  useListTransformsQuery,
-} from "metabase/api";
+} from "metabase/api/collection";
+import { useListTransformsQuery } from "metabase/api/transform";
 import { DateTime } from "metabase/common/components/DateTime";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";

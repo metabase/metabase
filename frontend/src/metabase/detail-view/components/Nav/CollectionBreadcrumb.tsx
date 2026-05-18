@@ -1,4 +1,4 @@
-import { useGetCollectionQuery } from "metabase/api";
+import { useGetCollectionQuery } from "metabase/api/collection";
 import * as Urls from "metabase/urls";
 import type { CollectionId } from "metabase-types/api";
 

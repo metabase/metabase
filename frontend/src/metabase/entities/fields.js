@@ -3,12 +3,12 @@ import { normalize } from "normalizr";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api/api";
 import {
   fieldApi,
-  skipToken,
   useGetFieldQuery,
   useGetFieldValuesQuery,
-} from "metabase/api";
+} from "metabase/api/field";
 import {
   compose,
   createAction,
@@ -49,7 +49,7 @@ export const ADD_REMAPPINGS = "metabase/entities/fields/ADD_REMAPPINGS";
 export const ADD_FIELDS = "metabase/entities/fields/ADD_FIELDS";
 
 /**
- * @deprecated use "metabase/api" instead
+ * @deprecated use specific `metabase/api/*` modules instead
  */
 export const Fields = createEntity({
   name: "fields",

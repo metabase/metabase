@@ -1,12 +1,10 @@
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import {
-  skipToken,
-  useGetCardQuery,
-  useGetCollectionQuery,
-  useGetTableQueryMetadataQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetCardQuery } from "metabase/api/card";
+import { useGetCollectionQuery } from "metabase/api/collection";
+import { useGetTableQueryMetadataQuery } from "metabase/api/table";
 import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {

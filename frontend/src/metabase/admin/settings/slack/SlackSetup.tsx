@@ -6,7 +6,7 @@ import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
   useGetSlackManifestQuery,
   useUpdateSlackSettingsMutation,
-} from "metabase/api";
+} from "metabase/api/slack";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import {
   ButtonLink,

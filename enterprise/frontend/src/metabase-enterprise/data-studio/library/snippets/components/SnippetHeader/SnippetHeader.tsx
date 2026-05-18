@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { useUpdateSnippetMutation } from "metabase/api";
+import { useUpdateSnippetMutation } from "metabase/api/snippet";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";

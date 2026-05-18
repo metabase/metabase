@@ -2,7 +2,8 @@ import { getIn } from "icepick";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMount, usePrevious } from "react-use";
 
-import { skipToken, useGetDashboardQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetDashboardQuery } from "metabase/api/dashboard";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import {
   type DashboardContextReturned,

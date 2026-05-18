@@ -1,7 +1,8 @@
 import type { FormikHelpers } from "formik";
 import { useCallback } from "react";
 
-import { skipToken, useGetActionQuery } from "metabase/api";
+import { useGetActionQuery } from "metabase/api/action";
+import { skipToken } from "metabase/api/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/redux";
 import { Modal } from "metabase/ui";

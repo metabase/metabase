@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { dashboardApi } from "metabase/api";
+import { dashboardApi } from "metabase/api/dashboard";
 import { getTrashUndoMessage } from "metabase/archive/utils";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { fetchDashboard } from "metabase/dashboard/actions";

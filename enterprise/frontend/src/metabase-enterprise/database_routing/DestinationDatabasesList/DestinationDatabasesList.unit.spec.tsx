@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import { useListDatabasesQuery } from "metabase/api";
+import { useListDatabasesQuery } from "metabase/api/database";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Database } from "metabase-types/api";
@@ -13,8 +13,8 @@ import {
   type DestinationDatabasesListProps,
 } from "./DestinationDatabasesList";
 
-jest.mock("metabase/api", () => ({
-  ...jest.requireActual("metabase/api"),
+jest.mock("metabase/api/database", () => ({
+  ...jest.requireActual("metabase/api/database"),
   useListDatabasesQuery: jest.fn(),
 }));
 

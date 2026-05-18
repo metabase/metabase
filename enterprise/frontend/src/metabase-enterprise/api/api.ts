@@ -1,4 +1,4 @@
-import { Api } from "metabase/api";
+import { Api } from "metabase/api/api";
 
 import { ENTERPRISE_TAG_TYPES } from "./tags";
 

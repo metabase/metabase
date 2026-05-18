@@ -18,16 +18,18 @@ import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { skipToken } from "metabase/api/api";
 import {
-  skipToken,
-  useCopyDocumentMutation,
   useCreateBookmarkMutation,
-  useCreateDocumentMutation,
   useDeleteBookmarkMutation,
-  useGetDocumentQuery,
   useListBookmarksQuery,
+} from "metabase/api/bookmark";
+import {
+  useCopyDocumentMutation,
+  useCreateDocumentMutation,
+  useGetDocumentQuery,
   useUpdateDocumentMutation,
-} from "metabase/api";
+} from "metabase/api/document";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import {

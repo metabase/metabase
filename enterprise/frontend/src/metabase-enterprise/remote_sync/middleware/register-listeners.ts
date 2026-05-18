@@ -7,7 +7,7 @@ import type {
 } from "@reduxjs/toolkit";
 import { isAnyOf } from "@reduxjs/toolkit";
 
-import { Api } from "metabase/api";
+import { Api } from "metabase/api/api";
 import type { State } from "metabase/redux/store";
 import type { Card, Collection, Dashboard, Document } from "metabase-types/api";
 

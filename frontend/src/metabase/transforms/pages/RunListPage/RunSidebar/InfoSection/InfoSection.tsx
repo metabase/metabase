@@ -1,7 +1,8 @@
 import { type ReactNode, useId } from "react";
 import { t } from "ttag";
 
-import { skipToken, useGetFieldQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetFieldQuery } from "metabase/api/field";
 import { DateTime } from "metabase/common/components/DateTime";
 import CS from "metabase/css/core/index.css";
 import { Box, Card, Stack } from "metabase/ui";

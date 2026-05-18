@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
-import { skipToken, useGetDatabaseQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useGetDatabaseQuery } from "metabase/api/database";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting, useStoreUrl } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";

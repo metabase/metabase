@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { SegmentItem } from "metabase/admin/datamodel/components/SegmentItem";
 import { FilteredToUrlTable } from "metabase/admin/datamodel/hoc/FilteredToUrlTable";
-import { useListSegmentsQuery } from "metabase/api";
+import { useListSegmentsQuery } from "metabase/api/segment";
 import { useSetArchive } from "metabase/archive/hooks";
 import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";

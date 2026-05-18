@@ -4,7 +4,7 @@ import { t } from "ttag";
 import {
   useCreateCollectionMutation,
   useListCollectionsQuery,
-} from "metabase/api";
+} from "metabase/api/collection";
 import { CreateCollectionForm } from "metabase/collections/components/CreateCollectionForm";
 import type { CreateCollectionProperties } from "metabase/collections/components/CreateCollectionForm/CreateCollectionForm";
 import { Tree } from "metabase/common/components/tree";

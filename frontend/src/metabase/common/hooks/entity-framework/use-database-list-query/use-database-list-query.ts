@@ -8,7 +8,7 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type { ListDatabasesRequest } from "metabase-types/api";
 
 /**
- * @deprecated use "metabase/api" instead
+ * @deprecated use specific `metabase/api/*` modules instead
  */
 export const useDatabaseListQuery = (
   props: UseEntityListQueryProps<ListDatabasesRequest> = {},

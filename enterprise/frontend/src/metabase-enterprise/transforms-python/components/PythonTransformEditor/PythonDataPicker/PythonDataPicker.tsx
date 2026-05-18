@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { skipToken, useListTablesQuery } from "metabase/api";
+import { skipToken } from "metabase/api/api";
+import { useListTablesQuery } from "metabase/api/table";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Box, Button, Icon, Stack, Text } from "metabase/ui";
 import type {

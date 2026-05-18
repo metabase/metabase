@@ -4,7 +4,7 @@ import { t } from "ttag";
 import {
   useCancelCurrentTransformRunMutation,
   useLazyGetTransformQuery,
-} from "metabase/api";
+} from "metabase/api/transform";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";

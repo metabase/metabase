@@ -1,6 +1,6 @@
 import Bowser from "bowser";
 
-import { cardApi } from "metabase/api";
+import { cardApi } from "metabase/api/card";
 import type { DispatchFn } from "metabase/redux";
 import { CollectionsApi, DashboardApi } from "metabase/services";
 import { b64url_to_utf8 } from "metabase/utils/encoding";
