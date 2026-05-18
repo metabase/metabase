@@ -28,7 +28,7 @@ const row = {
 
 uploadCsvToMb({
   baseUrl: "https://stats.metabase.com",
-  tableId: 76835,
+  tableId: 77008, // "Affected Tests Stats" table on stats.metabase.com
   jsonData: [row],
   mode: "append",
 })
