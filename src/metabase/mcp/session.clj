@@ -20,7 +20,6 @@
    [metabase.mcp.models.mcp-query-handle]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.session.core :as session]
-   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.nio ByteBuffer)
@@ -172,8 +171,6 @@
                           :core_session_id core-session-id
                           :encoded_query   encoded-query}
                    prompt (assoc :prompt prompt)))
-     (log/warnf "MCP handle diagnostic: stored handle_id=%s mcp_session_id=%s user_id=%s core_session_id=%s"
-                handle-id session-id user-id core-session-id)
      handle-id)))
 
 (defn read-handle
@@ -185,14 +182,8 @@
   "Return {:encoded_query ... :prompt ...} for `handle-id`, or nil if not found.
    Used by visualize_query and execute_query to resolve construct_query handles."
   [session-id handle-id]
-  (let [row      (t2/select-one :model/McpQueryHandle :id handle-id, :mcp_session_id session-id)
-        any-row  (when-not row
-                   (t2/select-one [:model/McpQueryHandle :id :mcp_session_id :core_session_id :created_at]
-                                  :id handle-id))]
-    (log/warnf "MCP handle diagnostic: resolve handle_id=%s requested_mcp_session_id=%s found_in_requested_session=%s stored_mcp_session_id=%s stored_core_session_id=%s"
-               handle-id session-id (some? row) (:mcp_session_id any-row) (:core_session_id any-row))
-    (when row
-      (select-keys row [:encoded_query :prompt]))))
+  (when-let [row (t2/select-one :model/McpQueryHandle :id handle-id, :mcp_session_id session-id)]
+    (select-keys row [:encoded_query :prompt])))
 
 (defn delete!
   "Delete the `core_session` backing this MCP session (if one was ever created)
