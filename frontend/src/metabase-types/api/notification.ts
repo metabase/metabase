@@ -13,6 +13,7 @@ export type NotificationCardSendCondition =
   | "goal_below"
   | "has_result";
 
+//#region Payload union type
 type NotificationCardPayload = {
   payload_type: "notification/card";
   payload: {
@@ -30,6 +31,9 @@ type NotificationCardPayload = {
 
 type NotificationPayload = NotificationCardPayload; // will be populated with more variants later on
 
+//#endregion
+
+//#region Handler union type
 export type NotificationRecipientUser = {
   type: "notification-recipient/user";
   user_id: number;
@@ -109,6 +113,9 @@ export type NotificationHandler =
   | NotificationHandlerSlack
   | NotificationHandlerHttp;
 
+//#endregion
+
+//#region Subscription type
 export type NotificationCronSubscription = {
   type: "notification-subscription/cron";
   event_name: null;
@@ -121,6 +128,8 @@ export type NotificationCronSubscription = {
   created_at?: string;
   updated_at?: string;
 };
+
+//#endregion
 
 export interface ListNotificationsRequest extends PaginationRequest {
   include_inactive?: boolean;
@@ -161,6 +170,7 @@ export type Notification = NotificationPayload & {
   created_at?: string;
 };
 
+//#region Admin API types
 export type NotificationRunStatus = "failing" | "successful";
 
 export type NotificationRunSummary = {
@@ -211,3 +221,5 @@ export type BulkNotificationPayload = {
   action: BulkNotificationAction;
   owner_id?: UserId;
 };
+
+//#endregion
