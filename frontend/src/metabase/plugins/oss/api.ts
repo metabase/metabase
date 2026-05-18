@@ -5,7 +5,6 @@ export type OnBeforeRequestHandlerConfig = {
   url: string;
   options: {
     headers?: Record<string, string>;
-    hasBody: boolean;
   } & Record<string, unknown>;
   data: Record<string, unknown>;
 };

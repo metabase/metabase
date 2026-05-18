@@ -26,7 +26,6 @@ const METABASE_VERSION_HEADER = "X-Metabase-Version";
 let ANTI_CSRF_TOKEN: string | null = null;
 
 type RequestOptions = {
-  hasBody: boolean;
   noEvent: boolean;
   /**
    * When `true`, resolve with the raw `Response` instead of the parsed body —
@@ -36,10 +35,14 @@ type RequestOptions = {
   rawResponse?: boolean;
   headers: Record<string, string>;
   signal?: AbortSignal;
+  // Explicit JSON body content. When set, JSON.stringify'd and sent as the
+  // request body. Takes precedence over the legacy single-data-object merge.
+  body?: unknown;
+  // Explicit querystring params. When set, encoded and appended to the URL.
+  params?: Record<string, unknown>;
 };
 
 const DEFAULT_OPTIONS: RequestOptions = {
-  hasBody: false,
   noEvent: false,
   headers: {},
 };
@@ -125,10 +128,10 @@ export class LegacyApi extends EventEmitter<EventMap> {
 
   constructor() {
     super();
-    this.GET = this._makeMethod("GET", {}, true);
-    this.DELETE = this._makeMethod("DELETE", {}, false);
-    this.POST = this._makeMethod("POST", { hasBody: true }, true);
-    this.PUT = this._makeMethod("PUT", { hasBody: true }, false);
+    this.GET = this._makeMethod("GET", true);
+    this.DELETE = this._makeMethod("DELETE", false);
+    this.POST = this._makeMethod("POST", true);
+    this.PUT = this._makeMethod("PUT", false);
   }
 
   getClientHeaders(): Record<string, string> {
@@ -178,15 +181,10 @@ export class LegacyApi extends EventEmitter<EventMap> {
     return headers;
   }
 
-  _makeMethod(
-    methodTemplate: string,
-    creatorOptions: Partial<RequestOptions> = {},
-    retry: boolean = false,
-  ): MethodCreator {
+  _makeMethod(methodTemplate: string, retry: boolean = false): MethodCreator {
     return (urlTemplate, methodOptions = {}) => {
       const defaultOptions: RequestOptions = {
         ...DEFAULT_OPTIONS,
-        ...creatorOptions,
         ...methodOptions,
       };
 
@@ -218,21 +216,49 @@ export class LegacyApi extends EventEmitter<EventMap> {
           }
         }
 
+        // Determine body and querystring.
+        // - `options.body` / `options.params`: explicit RTK Query convention.
+        // - `FormData` / `URLSearchParams` rawData: passed straight through so
+        //   the browser sets the correct Content-Type (multipart with boundary,
+        //   or `application/x-www-form-urlencoded`).
+        // - Otherwise: legacy single-data-object — body for POST/PUT/DELETE,
+        //   querystring for GET. GET requests can't carry a body, so any body
+        //   content (explicit or legacy) is folded into the querystring.
         let body: string | FormData | URLSearchParams | undefined;
-        if (options.hasBody) {
-          if (
-            rawData instanceof FormData ||
-            rawData instanceof URLSearchParams
-          ) {
-            body = rawData;
-          } else {
-            body = JSON.stringify(data);
+        const queryStringRecord: Record<string, unknown> = {};
+
+        if (
+          rawData instanceof FormData ||
+          rawData instanceof URLSearchParams
+        ) {
+          body = rawData;
+          if (options.params) {
+            Object.assign(queryStringRecord, options.params);
           }
-        } else {
-          const qs = querystring.stringify(data as Record<string, string>);
-          if (qs) {
-            url += (url.indexOf("?") >= 0 ? "&" : "?") + qs;
+        } else if (method === "GET") {
+          // GET cannot carry a body: merge everything into the querystring.
+          Object.assign(
+            queryStringRecord,
+            data,
+            options.body as Record<string, unknown> | undefined,
+            options.params,
+          );
+        } else if (options.body !== undefined || options.params !== undefined) {
+          if (options.body !== undefined) {
+            body = JSON.stringify(options.body);
           }
+          if (options.params) {
+            Object.assign(queryStringRecord, options.params);
+          }
+        } else if (Object.keys(data).length > 0) {
+          body = JSON.stringify(data);
+        }
+
+        const qs = querystring.stringify(
+          queryStringRecord as Record<string, string>,
+        );
+        if (qs) {
+          url += (url.indexOf("?") >= 0 ? "&" : "?") + qs;
         }
 
         const headers: Record<string, string> = {

@@ -90,7 +90,6 @@ type RequestData = {
   url: string;
   options: {
     headers?: Record<string, string>;
-    hasBody: boolean;
   } & Record<string, unknown>;
 };
 
@@ -159,10 +158,7 @@ function getRequestTransformation({
 
   return {
     ...transformation,
-    options: {
-      ...options,
-      hasBody: transformation.method === "POST",
-    },
+    options,
   };
 }
 
