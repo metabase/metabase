@@ -1,4 +1,4 @@
-import type { SortingState } from "@tanstack/react-table";
+import type { Row, SortingState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
@@ -19,9 +19,13 @@ import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { Flex, Title } from "metabase/ui";
+import { Flex, type SelectionState, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { NotificationId, UserId } from "metabase-types/api";
+import type {
+  AdminNotification,
+  NotificationId,
+  UserId,
+} from "metabase-types/api";
 
 import { SettingsPageWrapper } from "../../../components/SettingsSection";
 import { ChangeOwnerModal } from "../ChangeOwnerModal";
@@ -48,7 +52,15 @@ export const NotificationsAdminPage = ({
   const notificationId = Urls.extractEntityId(params.notificationId);
   const dispatch = useDispatch();
   const [urlState, { patchUrlState }] = useUrlState(location, urlStateConfig);
-  const [selectedIds, setSelectedIds] = useState<NotificationId[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<NotificationId>>(
+    new Set(),
+  );
+  const clearSelected = useCallback(() => setSelectedIds(new Set()), []);
+  const getSelectionState = useCallback(
+    (row: Row<AdminNotification>): SelectionState =>
+      selectedIds.has(row.original.id) ? "all" : "none",
+    [selectedIds],
+  );
   const [changeOwnerTarget, setChangeOwnerTarget] =
     useState<ChangeOwnerTarget | null>(null);
 
@@ -59,7 +71,7 @@ export const NotificationsAdminPage = ({
   );
   const notifications = useMemo(() => data?.data ?? [], [data?.data]);
   const total = data?.total ?? 0;
-  const selectedCount = selectedIds.length;
+  const selectedCount = selectedIds.size;
 
   const { data: failingData, isLoading: isFailingLoading } =
     useAdminListNotificationsQuery({
@@ -101,8 +113,9 @@ export const NotificationsAdminPage = ({
     useBulkNotificationActionMutation();
 
   useEffect(() => {
-    setSelectedIds([]);
+    clearSelected();
   }, [
+    clearSelected,
     urlState.page,
     urlState.active,
     urlState.tab,
@@ -148,7 +161,9 @@ export const NotificationsAdminPage = ({
 
   const handleToggleRow = useCallback((id: NotificationId) => {
     setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+      prev.has(id)
+        ? new Set([...prev].filter((x) => x !== id))
+        : new Set([...prev, id]),
     );
   }, []);
 
@@ -156,11 +171,11 @@ export const NotificationsAdminPage = ({
     setSelectedIds((prev) => {
       const allIds = notifications.map((n) => n.id);
       const allSelected =
-        allIds.length > 0 && allIds.every((id) => prev.includes(id));
+        allIds.length > 0 && allIds.every((id) => prev.has(id));
       if (allSelected) {
-        return [];
+        return new Set();
       }
-      return Array.from(new Set([...prev, ...allIds]));
+      return new Set([...prev, ...allIds]);
     });
   }, [notifications]);
 
@@ -172,20 +187,21 @@ export const NotificationsAdminPage = ({
     dispatch(push(Urls.adminToolsNotifications()));
   };
 
-  const deleteIds = useCallback(
-    async (ids: NotificationId[], isBulk: boolean) => {
-      const count = ids.length;
+  const deleteNotifications = useCallback(
+    async (notificationIds: NotificationId[]) => {
+      const count = notificationIds.length;
       try {
-        await bulkAction({ notification_ids: ids, action: "archive" }).unwrap();
+        await bulkAction({
+          notification_ids: notificationIds,
+          action: "archive",
+        }).unwrap();
         dispatch(
           addUndo({
             message:
               count === 1 ? t`Deleted 1 alert` : t`Deleted ${count} alerts`,
           }),
         );
-        if (isBulk) {
-          setSelectedIds([]);
-        }
+        clearSelected();
       } catch {
         dispatch(
           addUndo({
@@ -195,19 +211,19 @@ export const NotificationsAdminPage = ({
         );
       }
     },
-    [bulkAction, dispatch],
+    [bulkAction, clearSelected, dispatch],
   );
 
   const handleDeleteBulk = useCallback(() => {
-    const count = selectedIds.length;
+    const count = selectedIds.size;
     showConfirm({
       title: count === 1 ? t`Delete 1 alert?` : t`Delete ${count} alerts?`,
       message: t`Recipients will stop receiving these alerts.`,
       confirmButtonText: t`Delete`,
       confirmButtonProps: { color: "danger" },
-      onConfirm: () => deleteIds(selectedIds, true),
+      onConfirm: () => deleteNotifications(Array.from(selectedIds)),
     });
-  }, [deleteIds, selectedIds, showConfirm]);
+  }, [deleteNotifications, selectedIds, showConfirm]);
 
   const handleSidebarDelete = useCallback(
     (id: NotificationId) => {
@@ -216,10 +232,10 @@ export const NotificationsAdminPage = ({
         message: t`Recipients will stop receiving this alert.`,
         confirmButtonText: t`Delete`,
         confirmButtonProps: { color: "danger" },
-        onConfirm: () => deleteIds([id], false),
+        onConfirm: () => deleteNotifications([id]),
       });
     },
-    [deleteIds, showConfirm],
+    [deleteNotifications, showConfirm],
   );
 
   const handleChangeOwnerConfirm = useCallback(
@@ -244,7 +260,7 @@ export const NotificationsAdminPage = ({
           }),
         );
         if (isBulk) {
-          setSelectedIds([]);
+          clearSelected();
         }
         setChangeOwnerTarget(null);
       } catch {
@@ -256,7 +272,7 @@ export const NotificationsAdminPage = ({
         );
       }
     },
-    [bulkAction, changeOwnerTarget, dispatch],
+    [bulkAction, changeOwnerTarget, clearSelected, dispatch],
   );
 
   const isSidebarOpen = notificationId !== undefined;
@@ -306,7 +322,7 @@ export const NotificationsAdminPage = ({
         notifications={notifications}
         error={error}
         isLoading={isLoading}
-        selectedIds={selectedIds}
+        getSelectionState={getSelectionState}
         selectedDetailId={notificationId}
         sorting={sorting}
         onSortingChange={handleSortingChange}
@@ -358,15 +374,16 @@ export const NotificationsAdminPage = ({
         </BulkActionDangerButton>
         <BulkActionButton
           onClick={() =>
-            setChangeOwnerTarget({ ids: selectedIds, isBulk: true })
+            setChangeOwnerTarget({
+              ids: Array.from(selectedIds),
+              isBulk: true,
+            })
           }
           disabled={isBulkLoading}
         >
           {t`Change owner`}
         </BulkActionButton>
-        <BulkActionButton onClick={() => setSelectedIds([])}>
-          {t`Clear`}
-        </BulkActionButton>
+        <BulkActionButton onClick={clearSelected}>{t`Clear`}</BulkActionButton>
       </BulkActionBar>
 
       <ChangeOwnerModal

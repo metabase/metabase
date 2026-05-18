@@ -179,7 +179,9 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
             <Button variant="default" onClick={handleClear}>
               {t`Clear filters`}
             </Button>
-            <Button onClick={handleApply}>{t`Apply`}</Button>
+            <Button variant="filled" onClick={handleApply}>
+              {t`Apply`}
+            </Button>
           </Group>
         </Stack>
       </Popover.Dropdown>

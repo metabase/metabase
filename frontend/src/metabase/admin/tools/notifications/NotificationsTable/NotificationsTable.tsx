@@ -33,7 +33,7 @@ type Props = {
   notifications: AdminNotification[];
   error: unknown;
   isLoading: boolean;
-  selectedIds: NotificationId[];
+  getSelectionState: (row: Row<AdminNotification>) => SelectionState;
   selectedDetailId: NotificationId | undefined;
   sorting: SortingState;
   onSortingChange: (sorting: SortingState) => void;
@@ -92,7 +92,7 @@ export const NotificationsTable = ({
   notifications,
   error,
   isLoading,
-  selectedIds,
+  getSelectionState,
   selectedDetailId,
   sorting,
   onSortingChange,
@@ -102,7 +102,6 @@ export const NotificationsTable = ({
 }: Props) => {
   const selectedRowId =
     selectedDetailId !== undefined ? String(selectedDetailId) : null;
-  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   const handleSortingChange = useCallback(
     (updater: Updater<SortingState>) => {
@@ -110,12 +109,6 @@ export const NotificationsTable = ({
       onSortingChange(next);
     },
     [sorting, onSortingChange],
-  );
-
-  const getSelectionState = useCallback(
-    (row: Row<AdminNotification>): SelectionState =>
-      selectedSet.has(row.original.id) ? "all" : "none",
-    [selectedSet],
   );
 
   const handleCheckboxClick = useCallback(
