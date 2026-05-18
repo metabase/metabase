@@ -28,6 +28,10 @@ export const HydratedKBarSearch = ({ searchText }: { searchText: string }) => {
     }
   }, [searchQuery, searchText]);
 
+  /**
+   * KBarSearch clears kbar's query in its mount effect.
+   * Re-apply the URL query after it mounts so results hydrate too.
+   */
   useEffect(() => {
     if (isHydrated && searchText) {
       query.setSearch(searchText);
