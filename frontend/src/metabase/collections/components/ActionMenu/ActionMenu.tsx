@@ -2,6 +2,12 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import {
+  isDeletable,
+  isRestorable,
+  useDeleteItem,
+  useRestore,
+} from "metabase/archive/hooks";
 import { trackCollectionItemBookmarked } from "metabase/collections/analytics";
 import type {
   CreateBookmark,
@@ -23,11 +29,7 @@ import {
   type ArchivableItem,
   canMoveItem,
   canPinItem,
-  isDeletable,
   isPinnable,
-  isRestorable,
-  useDeleteItem,
-  useRestore,
   useSetArchive,
   useSetPinned,
 } from "metabase/common/hooks";

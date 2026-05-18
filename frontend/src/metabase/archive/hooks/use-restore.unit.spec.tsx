@@ -31,9 +31,10 @@ const clickRestore = async () => {
   await userEvent.click(screen.getByRole("button", { name: "Restore" }));
 };
 
-const expectPutWithArchivedFalse = async () => {
+const expectPutWithArchivedFalse = async (urlSubstring: string) => {
   const puts = await findRequests("PUT");
   expect(puts).toHaveLength(1);
+  expect(puts[0].url).toContain(urlSubstring);
   expect(puts[0].body).toMatchObject({ archived: false });
 };
 
@@ -49,7 +50,7 @@ describe("useRestore", () => {
       setup({ model, id: 1, name: "My card", can_restore: true });
       await clickRestore();
 
-      await expectPutWithArchivedFalse("path:/api/card/1");
+      await expectPutWithArchivedFalse("/api/card/1");
       expect(
         await screen.findByText("My card has been restored."),
       ).toBeInTheDocument();
@@ -66,7 +67,7 @@ describe("useRestore", () => {
     setup({ model: "dashboard", id: 2, name: "My dash", can_restore: true });
     await clickRestore();
 
-    await expectPutWithArchivedFalse("path:/api/dashboard/2");
+    await expectPutWithArchivedFalse("/api/dashboard/2");
     expect(
       await screen.findByText("My dash has been restored."),
     ).toBeInTheDocument();
@@ -81,7 +82,7 @@ describe("useRestore", () => {
     setup({ model: "collection", id: 3, name: "My folder", can_restore: true });
     await clickRestore();
 
-    await expectPutWithArchivedFalse("path:/api/collection/3");
+    await expectPutWithArchivedFalse("/api/collection/3");
     expect(
       await screen.findByText("My folder has been restored."),
     ).toBeInTheDocument();
@@ -96,7 +97,7 @@ describe("useRestore", () => {
     setup({ model: "document", id: 4, name: "My doc", can_restore: true });
     await clickRestore();
 
-    await expectPutWithArchivedFalse("path:/api/document/4");
+    await expectPutWithArchivedFalse("/api/document/4");
     expect(
       await screen.findByText("My doc has been restored."),
     ).toBeInTheDocument();
