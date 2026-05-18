@@ -8,4 +8,5 @@
    [metabase.explorations.models.exploration-thread-dimension]
    [metabase.explorations.models.exploration-thread-metric]
    [metabase.explorations.models.exploration-thread-timeline]
+   [metabase.explorations.settings]
    [metabase.explorations.task.runner]))

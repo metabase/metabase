@@ -24,6 +24,7 @@
    [metabase.contextual-interestingness.core :as contextual-interestingness]
    [metabase.explorations.auto-insights :as explorations.auto-insights]
    [metabase.explorations.interestingness :as explorations.interestingness]
+   [metabase.explorations.settings :as explorations.settings]
    [metabase.explorations.timeline-interestingness :as explorations.timeline-interestingness]
    [metabase.interestingness.core :as interestingness]
    [metabase.query-processor.core :as qp]
@@ -36,7 +37,6 @@
 
 (set! *warn-on-reflection* true)
 
-;; TODO the below should clearly become settings soon
 (defn- worker-count
   "How many concurrent workers to spin up. H2 has no `FOR UPDATE SKIP LOCKED` so we'd race on
   the claim and double-insert into `exploration_query_result` (1:1 with `exploration_query`);
@@ -44,7 +44,7 @@
   []
   (case (mdb/db-type)
     :h2 1
-    4))
+    (explorations.settings/explorations-worker-count)))
 
 (def ^:private idle-sleep-ms    1000)
 (def ^:private error-backoff-ms 5000)

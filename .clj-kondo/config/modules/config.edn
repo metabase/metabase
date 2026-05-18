@@ -995,6 +995,7 @@
            query-processor
            request
            search
+           settings
            startup
            timeline
            types
