@@ -111,12 +111,12 @@
         (driver.conn/with-write-connection
           (let [target-type (keyword (:type target))]
             (tracing/with-span :tasks "task.transform.python"
-              {:transform/id                    transform-id
-               :transform/target-type           (name target-type)
-               :transform/incremental           (= :table-incremental target-type)
-               :transform/first-incremental-run (transforms-base.u/first-incremental-run? transform)
-               :db/id                           (:id db)
-               :db/engine                       (name driver)}
+              {:transform/id                   transform-id
+               :transform/target-type          (name target-type)
+               :transform/incremental          (= :table-incremental target-type)
+               :transform/full-incremental-run (transforms-base.u/full-incremental-run? transform)
+               :db/id                          (:id db)
+               :db/engine                      (name driver)}
               (let [conn-spec         (driver/connection-spec driver db)
                     transform-details {:db-id (:id db) :conn-spec conn-spec :output-schema (:schema target)}
                     run-fn            (fn [cancel-chan source-range-params]
