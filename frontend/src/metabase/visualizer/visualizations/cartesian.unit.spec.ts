@@ -1012,6 +1012,111 @@ describe("cartesian", () => {
       });
     });
 
+    it("should attach remapped display companions silently without adding them to graph.dimensions (UXW-3359)", () => {
+      const settings = createMockVisualizationSettings({
+        "graph.metrics": ["COLUMN_2"],
+        "graph.dimensions": ["COLUMN_1"],
+      });
+      const state: VisualizerVizDefinitionWithColumns = {
+        display: "bar",
+        columns: [
+          createMockColumn({
+            name: "COLUMN_1",
+            display_name: "Rating",
+            base_type: "type/Integer",
+            effective_type: "type/Integer",
+            semantic_type: "type/Category",
+            remapped_to: "COLUMN_3",
+          }),
+          createMockNumericColumn({ name: "COLUMN_2", display_name: "Count" }),
+          createMockColumn({
+            name: "COLUMN_3",
+            display_name: "Rating",
+            base_type: "type/Text",
+            effective_type: "type/Text",
+            remapped_from: "COLUMN_1",
+          }),
+        ],
+        columnValuesMapping: {
+          COLUMN_1: [
+            { sourceId: "card:1", name: "COLUMN_1", originalName: "rating" },
+          ],
+          COLUMN_2: [
+            { sourceId: "card:1", name: "COLUMN_2", originalName: "count" },
+          ],
+          COLUMN_3: [
+            {
+              sourceId: "card:1",
+              name: "COLUMN_3",
+              originalName: "rating_display",
+            },
+          ],
+        },
+        settings,
+      };
+
+      const newRatingInt = createMockColumn({
+        name: "rating",
+        display_name: "Rating",
+        base_type: "type/Integer",
+        effective_type: "type/Integer",
+        semantic_type: "type/Category",
+        // Group-by dimension — `source: "breakout"` ensures isMetric() returns false
+        // so the integer column is treated as a dimension, mirroring real query output.
+        source: "breakout",
+        remapped_to: "rating_display",
+      });
+      const newRatingDisplay = createMockColumn({
+        name: "rating_display",
+        display_name: "Rating",
+        base_type: "type/Text",
+        effective_type: "type/Text",
+        source: "breakout",
+        remapped_from: "rating",
+      });
+      const newCount = createMockNumericColumn({
+        name: "count",
+        display_name: "Count",
+      });
+
+      const nextState = _.clone(state);
+      combineWithCartesianChart(
+        nextState,
+        settings,
+        createMockDataset({
+          data: { cols: [newRatingInt, newRatingDisplay, newCount] },
+        }),
+        createDataSource("card", 2, "Card 2"),
+      );
+
+      // Card 2's base dimension and metric are added as new slots. Metrics are
+      // processed first, then dimensions, so the new metric gets COLUMN_4 and
+      // the new dimension gets COLUMN_5.
+      expect(nextState.settings["graph.metrics"]).toEqual([
+        "COLUMN_2",
+        "COLUMN_4",
+      ]);
+      expect(nextState.settings["graph.dimensions"]).toEqual([
+        "COLUMN_1",
+        "COLUMN_5",
+      ]);
+
+      // …but the display companion is NOT in graph.dimensions even though it's
+      // a text dimension. It still lives in columnValuesMapping so
+      // extractRemappedColumns can pair it with its base column.
+      expect(nextState.settings["graph.dimensions"]).not.toContain("COLUMN_6");
+      expect(nextState.columnValuesMapping).toMatchObject({
+        COLUMN_6: [
+          {
+            sourceId: "card:2",
+            name: "COLUMN_6",
+            originalName: "rating_display",
+          },
+        ],
+      });
+      expect(nextState.columns.map((col) => col.name)).toContain("COLUMN_6");
+    });
+
     describe("dimension sorting based on x-axis scale", () => {
       it("should prioritize date dimensions when x-axis scale is timeseries", () => {
         const settings = createMockVisualizationSettings({

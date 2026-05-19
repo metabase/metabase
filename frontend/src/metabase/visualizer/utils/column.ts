@@ -85,6 +85,32 @@ export function copyColumn(
   return copy;
 }
 
+// `copyColumn` renames columns to `COLUMN_N` but leaves `remapped_from`/`remapped_to`
+// pointing at the original names. Without this rewrite, `extractRemappedColumns` fails
+// to pair a dimension with its display-value companion and falls back to raw IDs.
+export function rewriteRemappedReferences(
+  column: DatasetColumn,
+  oldToNew: Map<string, string>,
+): DatasetColumn {
+  const remapped_from =
+    column.remapped_from != null
+      ? oldToNew.get(column.remapped_from)
+      : column.remapped_from;
+  const remapped_to =
+    column.remapped_to != null
+      ? oldToNew.get(column.remapped_to)
+      : column.remapped_to;
+
+  if (
+    remapped_from === column.remapped_from &&
+    remapped_to === column.remapped_to
+  ) {
+    return column;
+  }
+
+  return { ...column, remapped_from, remapped_to };
+}
+
 export function addColumnMapping(
   mapping: VisualizerColumnValueSource[] | undefined,
   source: VisualizerColumnValueSource,
