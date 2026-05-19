@@ -1,6 +1,5 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 import EventEmitter from "events";
-import querystring from "querystring";
 
 import { substituteUrlTags } from "metabase/api/utils/substitute-url-tags";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
@@ -193,71 +192,39 @@ export class LegacyApi extends EventEmitter<EventMap> {
           // we shouldn't be using top level-arrays in the API
           data: { ...rawData },
         });
-        let { url, method } = middlewareResult;
-        // Re-merge to preserve all RequestOptions fields after middleware (middleware can only extend options)
+
+        const { method, data } = middlewareResult;
         const options = {
           ...methodOptions,
           ...invocationOptions,
           ...middlewareResult.options,
         };
-        const { data } = middlewareResult;
-        url = substituteUrlTags(url, data, method);
-        // remove undefined
-        for (const name in data) {
-          if (data[name] === undefined) {
-            delete data[name];
-          }
-        }
 
-        // Determine body and querystring.
-        // - `options.body` / `options.params`: explicit RTK Query convention.
-        // - `FormData` / `URLSearchParams` rawData: passed straight through so
-        //   the browser sets the correct Content-Type (multipart with boundary,
-        //   or `application/x-www-form-urlencoded`).
-        // - Otherwise: legacy single-data-object — body for POST/PUT/DELETE,
-        //   querystring for GET. GET requests can't carry a body, so any body
-        //   content (explicit or legacy) is folded into the querystring.
-        let body: string | FormData | URLSearchParams | undefined;
-        const queryStringRecord: Record<string, unknown> = {};
+        // Method-derived placement: POST/PUT/DELETE put data in body, GET
+        // puts it in the querystring. `FormData` / `URLSearchParams` rawData
+        // is passed straight through so the browser sets the correct
+        // Content-Type (multipart with boundary, or `x-www-form-urlencoded`).
+        // Callers wanting RTK-style explicit body/params semantics use
+        // `request()` below instead.
+        let url = substituteUrlTags(middlewareResult.url, data, method);
+        let body: string | FormData | URLSearchParams | undefined = undefined;
+
+        const headers = this.getClientHeaders(options.headers);
+        const queryParams: Record<string, unknown> = {};
 
         if (
           rawData instanceof FormData ||
           rawData instanceof URLSearchParams
         ) {
           body = rawData;
-          if (options.params) {
-            Object.assign(queryStringRecord, options.params);
-          }
+          delete headers["Content-Type"];
         } else if (method === "GET") {
-          // GET cannot carry a body: merge everything into the querystring.
-          Object.assign(
-            queryStringRecord,
-            data,
-            options.body as Record<string, unknown> | undefined,
-            options.params,
-          );
-        } else if (options.body !== undefined || options.params !== undefined) {
-          if (options.body !== undefined) {
-            body = JSON.stringify(options.body);
-          }
-          if (options.params) {
-            Object.assign(queryStringRecord, options.params);
-          }
+          Object.assign(queryParams, data);
         } else if (Object.keys(data).length > 0) {
           body = JSON.stringify(data);
         }
 
-        const qs = querystring.stringify(
-          queryStringRecord as Record<string, string>,
-        );
-        if (qs) {
-          url += (url.indexOf("?") >= 0 ? "&" : "?") + qs;
-        }
-
-        const headers = this.getClientHeaders(options.headers);
-        if (body instanceof FormData || body instanceof URLSearchParams) {
-          delete headers["Content-Type"];
-        }
+        url = appendQueryParameters(url, queryParams);
 
         const send = () =>
           this._makeRequest(method, url, headers, body, data, options);
@@ -283,7 +250,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
    * No method-derived guesswork about whether data is body or querystring.
    */
   async request<T = unknown>({
-    method,
+    method: methodTemplate,
     url: urlTemplate,
     body: requestBody,
     params,
@@ -298,75 +265,56 @@ export class LegacyApi extends EventEmitter<EventMap> {
     params?: Record<string, unknown>;
     signal?: AbortSignal;
     noEvent?: boolean;
-<<<<<<< HEAD
     rawResponse?: boolean;
-=======
-    transformResponse?: ResponseTransformer<T>;
->>>>>>> 513cf1e16 (Use type of transformed response)
     headers?: Record<string, string>;
   }): Promise<T> {
     const invocationOptions = {
       signal,
-      ...(noEvent !== undefined ? { noEvent } : {}),
-      ...(rawResponse !== undefined ? { rawResponse } : {}),
-      ...(headerOverrides ? { headers: headerOverrides } : {}),
+      noEvent,
+      rawResponse,
+      headers: headerOverrides,
     };
 
     const middlewareResult = await this.apiRequestManipulationMiddleware({
       url: urlTemplate,
-      method,
+      method: methodTemplate,
       options: invocationOptions,
       data: { ...params },
     });
 
-    let { url, method: finalMethod } = middlewareResult;
+    const { method, data } = middlewareResult;
     const options = {
       ...invocationOptions,
       ...middlewareResult.options,
     };
-    const { data } = middlewareResult;
 
-    url = substituteUrlTags(url, data, finalMethod);
-    for (const name in data) {
-      if (data[name] === undefined) {
-        delete data[name];
-      }
-    }
+    let url = substituteUrlTags(middlewareResult.url, data, method);
+    let body: string | FormData | URLSearchParams | undefined = undefined;
+    const headers = this.getClientHeaders(options.headers);
 
-    let body: string | FormData | URLSearchParams | undefined;
-    const queryStringRecord: Record<string, unknown> = { ...data };
-    const bodyIsRaw =
-      requestBody instanceof FormData || requestBody instanceof URLSearchParams;
+    const queryParams: Record<string, unknown> = { ...data };
 
-    if (finalMethod === "GET") {
+    if (method === "GET") {
       // GET cannot carry a body: fold any body content into the querystring.
-      Object.assign(
-        queryStringRecord,
-        requestBody as Record<string, unknown> | undefined,
-      );
-    } else if (bodyIsRaw) {
-      body = requestBody as FormData | URLSearchParams;
+      Object.assign(queryParams, requestBody);
+    } else if (
+      requestBody instanceof FormData ||
+      requestBody instanceof URLSearchParams
+    ) {
+      body = requestBody;
+
+      // Let the browser set Content-Type with the multipart boundary
+      // (FormData) or urlencoded charset (URLSearchParams).
+      delete headers["Content-Type"];
     } else if (requestBody !== undefined) {
       body = JSON.stringify(requestBody);
     }
 
-    const qs = querystring.stringify(
-      queryStringRecord as Record<string, string>,
-    );
-    if (qs) {
-      url += (url.indexOf("?") >= 0 ? "&" : "?") + qs;
-    }
-
-    const headers = this.getClientHeaders(options.headers);
-    if (bodyIsRaw) {
-      // Let the browser set Content-Type with the multipart boundary
-      // (FormData) or urlencoded charset (URLSearchParams).
-      delete headers["Content-Type"];
-    }
+    url = appendQueryParameters(url, queryParams);
 
     // RTK callers don't retry; matches the prior behavior where apiQuery never
     // opted into retries.
-    return this._makeRequest<T>(finalMethod, url, headers, body, data, options);
+    return this._makeRequest<T>(method, url, headers, body, data, options);
   }
 
   async _makeRequest<T = unknown>(
@@ -428,18 +376,10 @@ export class LegacyApi extends EventEmitter<EventMap> {
       }
 
       if (status >= 200 && status <= 299) {
-<<<<<<< HEAD
         // `rawResponse` callers (binary downloads, map tiles) want the
         // `Response` object itself rather than the parsed body — return
         // the unread clone so they can `.blob()`/`.arrayBuffer()` it.
         return options.rawResponse ? unreadResponse : body;
-=======
-        // If a transformer is given its return value IS `T`. Otherwise the raw
-        // body is `unknown`; we trust the caller's `T` annotation.
-        return options.transformResponse
-          ? options.transformResponse({ body, data, response: unreadResponse })
-          : (body as T);
->>>>>>> 513cf1e16 (Use type of transformed response)
       } else {
         this.emit("responseError", { body, status, metabaseVersion });
 
@@ -583,4 +523,28 @@ function getResponseStatus(response: Response, body: unknown): number {
   }
 
   return response.status;
+}
+
+// Sentinel base used only to let `new URL` accept relative paths; stripped before returning.
+const RELATIVE_URL_BASE = "http://__relative__";
+
+function appendQueryParameters(url: string, params: Record<string, unknown>) {
+  const parsed = new URL(url, RELATIVE_URL_BASE);
+  for (const key in params) {
+    const value = params[key];
+    if (value === undefined) {
+      continue;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        parsed.searchParams.append(key, String(item));
+      }
+    } else {
+      parsed.searchParams.append(key, String(value));
+    }
+  }
+  const absolute = parsed.toString();
+  return absolute.startsWith(RELATIVE_URL_BASE)
+    ? absolute.slice(RELATIVE_URL_BASE.length)
+    : absolute;
 }
