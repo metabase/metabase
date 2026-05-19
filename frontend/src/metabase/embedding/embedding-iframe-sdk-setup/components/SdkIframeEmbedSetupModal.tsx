@@ -23,6 +23,7 @@ import {
   Image,
   Modal,
   Stack,
+  Text,
 } from "metabase/ui";
 import type { SettingKey } from "metabase-types/api";
 
@@ -146,7 +147,17 @@ export const SdkIframeEmbedSetupContent = () => {
           ) : (
             <Card h="100%">
               <Flex h="100%" align="center" justify="center">
-                <Image w={120} h={120} src={noResultsSource} alt="No results" />
+                <Stack align="center" gap="md">
+                  <Image
+                    w={120}
+                    h={120}
+                    src={noResultsSource}
+                    alt="No results"
+                  />
+                  <Text c="text-secondary">
+                    {t`Preview will appear when you select what to embed`}
+                  </Text>
+                </Stack>
               </Flex>
             </Card>
           )}
