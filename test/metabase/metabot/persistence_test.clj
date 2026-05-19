@@ -125,7 +125,7 @@
     (is (= {:ok true} (json/decode+kw (:result (nth result 2)))))))
 
 (deftest start-turn-persists-slack-conversation-metadata-test
-  (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+  (t2/with-transaction [_conn nil {:rollback-only true}]
     (let [conversation-id (str (random-uuid))
           team-id         "T123"
           channel-id      "C123"
@@ -168,7 +168,7 @@
   (testing "start-turn! lands slack-team-id / channel-id / slack-thread-ts on the conversation row,
             and slack-msg-id / channel-id / user-id on the user message row, plus user-id on the
             assistant placeholder row"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (let [conversation-id (str (random-uuid))
             team-id         "T-NATIVE"
             channel-id      "C-NATIVE"
@@ -209,7 +209,7 @@
 
 (deftest start-turn-does-not-overwrite-slack-metadata-on-subsequent-turns-test
   (testing "conversation-level slack metadata is set once and never overwritten by a later turn"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (let [conversation-id (str (random-uuid))]
         (mt/with-current-user (mt/user->id :rasta)
           (metabot-persistence/start-turn!
@@ -231,7 +231,7 @@
 (deftest start-turn-returns-assistant-pk-and-external-id-test
   (testing "start-turn! returns the assistant placeholder PK and a fresh external_id;
             inserts exactly one user row + one assistant placeholder row"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (let [conversation-id (str (random-uuid))]
         (mt/with-current-user (mt/user->id :rasta)
           (let [{:keys [assistant-msg-id assistant-external-id]}
@@ -252,7 +252,7 @@
 
 (deftest finalize-assistant-turn-updates-placeholder-in-place-test
   (testing "finalize-assistant-turn! UPDATEs the placeholder; row count and created_at unchanged"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (let [conversation-id (str (random-uuid))]
         (mt/with-current-user (mt/user->id :rasta)
           (let [{:keys [assistant-msg-id]} (metabot-persistence/start-turn!
@@ -277,7 +277,7 @@
 
 (deftest finalize-assistant-turn-passes-through-aborted-and-errored-test
   (testing "finalize-assistant-turn! preserves :finished? false and JSON-encodes :error"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (mt/with-current-user (mt/user->id :rasta)
         (testing "aborted: finished false flows through"
           (let [conversation-id (str (random-uuid))
@@ -305,7 +305,7 @@
 
 (deftest start-turn-pins-ordering-under-abort-then-retry-test
   (testing "an aborted turn whose finalize fires after a retry still sorts before the retry's rows"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (let [conversation-id (str (random-uuid))]
         (mt/with-current-user (mt/user->id :rasta)
           ;; Turn A: starts and is left in-flight
@@ -341,7 +341,7 @@
 (deftest start-turn-user-and-placeholder-share-created-at-test
   (testing "user-message and assistant-placeholder rows inserted by start-turn! share an instant;
             readers must tiebreak on :id to preserve user-before-assistant ordering"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (let [conversation-id (str (random-uuid))]
         (mt/with-current-user (mt/user->id :rasta)
           (metabot-persistence/start-turn!
@@ -357,7 +357,7 @@
 
 (deftest conversation-detail-drops-errored-pair-under-created-at-collision-test
   (testing "drop-errored-pairs works correctly when the errored user/asst rows share created_at"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (let [conversation-id (str (random-uuid))]
         (mt/with-current-user (mt/user->id :rasta)
           ;; Errored turn: user-msg and asst-row share created_at via start-turn!'s transaction.
@@ -403,7 +403,7 @@
 
 (deftest conversation-detail-filters-soft-deleted-messages-and-orders-ascending-test
   (testing "conversation-detail returns only non-deleted messages, ordered by :created_at ascending"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (let [conversation-id (str (random-uuid))
             user-id         (mt/user->id :rasta)
             now             (java.time.OffsetDateTime/now)
@@ -580,7 +580,7 @@
               "stringified :data still carries enough info for triage"))))))
 
 (deftest finalize-assistant-turn-persists-finished-and-error-test
-  (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+  (t2/with-transaction [_conn nil {:rollback-only true}]
     (testing "default: finished true, no error"
       (let [[row] (start-and-finalize!)]
         (is (=? {:finished true :error nil} row))))
@@ -651,7 +651,7 @@
 
 (deftest finalize-records-used-tables-test
   (testing "finalize-assistant-turn! inserts metabot_used_table rows for successful query-generating tool calls"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (let [conversation-id (str (random-uuid))]
         (mt/with-current-user (mt/user->id :rasta)
           (let [{:keys [assistant-msg-id]} (metabot-persistence/start-turn!
@@ -718,7 +718,7 @@
             discards the `:transform` key from structured-output. The
             transform's declared `:source_tables` lives in the tool-input
             arguments, which the pre-strip extraction path reads."
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (let [conversation-id (str (random-uuid))]
         (mt/with-current-user (mt/user->id :rasta)
           (let [{:keys [assistant-msg-id]} (metabot-persistence/start-turn!
@@ -737,7 +737,7 @@
             is dropped by `strip-tool-output-bloat`, so the only path to these
             tables is the pre-strip parts vector — this test fails if extraction
             is ever moved to run on the stripped content."
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (let [conversation-id (str (random-uuid))
             orders-id       (mt/id :orders)]
         (mt/with-current-user (mt/user->id :rasta)
@@ -766,7 +766,7 @@
 
 (deftest finalize-records-nothing-without-query-tools-test
   (testing "finalize-assistant-turn! inserts no used-table rows for text-only or non-query tool turns"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (let [conversation-id (str (random-uuid))]
         (mt/with-current-user (mt/user->id :rasta)
           (let [{:keys [assistant-msg-id]} (metabot-persistence/start-turn!
@@ -781,7 +781,7 @@
 
 (deftest insert-failure-does-not-fail-finalize-test
   (testing "a failed used-table INSERT is logged and finalize still completes"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (let [conversation-id (str (random-uuid))]
         (mt/with-current-user (mt/user->id :rasta)
           (let [{:keys [assistant-msg-id]} (metabot-persistence/start-turn!
