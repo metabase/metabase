@@ -7,7 +7,7 @@ import { getEmbedExperiences } from "../../../constants";
 import { useSdkIframeEmbedSetupContext } from "../../../context";
 import { useHandleExperienceChange } from "../../../hooks/use-handle-experience-change";
 import type { SdkIframeEmbedSetupExperience } from "../../../types";
-import { isQuestionOrDashboardExperience } from "../../../utils/is-question-or-dashboard-experience";
+import { hasAuthToSelect } from "../../../utils/has-auth-to-select";
 import { SetupSsoAlert } from "../../Common/SetupSsoAlert";
 
 export const ExperienceCard = () => {
@@ -30,7 +30,7 @@ export const ExperienceCard = () => {
   });
 
   const showSsoNotConfiguredWarning =
-    !isSsoEnabledAndConfigured && !isQuestionOrDashboardExperience(experience);
+    !isSsoEnabledAndConfigured && !hasAuthToSelect(experience);
 
   return (
     <Card p="md">

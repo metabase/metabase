@@ -109,28 +109,37 @@ describe("Embed flow > forward and backward navigation", () => {
     expect(screen.getByText("Appearance")).toBeInTheDocument();
   });
 
-  describe.each(["Exploration", "Browser"])(
-    "when %s is selected",
-    (experienceLabel) => {
-      it("hides the authentication and resource selection cards", async () => {
-        setup({ simpleEmbeddingEnabled: true });
+  it("hides the authentication and resource cards when Exploration is selected", async () => {
+    setup({ simpleEmbeddingEnabled: true });
 
-        expect(screen.getByText("Authentication")).toBeInTheDocument();
-        expect(
-          screen.getByText("Select a dashboard to embed"),
-        ).toBeInTheDocument();
+    expect(screen.getByText("Authentication")).toBeInTheDocument();
+    expect(screen.getByText("Select a dashboard to embed")).toBeInTheDocument();
 
-        await userEvent.click(
-          screen.getByRole("radio", { name: new RegExp(experienceLabel) }),
-        );
+    await userEvent.click(screen.getByRole("radio", { name: /Exploration/ }));
 
-        expect(screen.queryByText("Authentication")).not.toBeInTheDocument();
-        expect(
-          screen.queryByText("Select a dashboard to embed"),
-        ).not.toBeInTheDocument();
-      });
-    },
-  );
+    expect(screen.queryByText("Authentication")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Select a dashboard to embed"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Select initial collection"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides the authentication card but keeps the resource card (as a collection picker) when Browser is selected", async () => {
+    setup({ simpleEmbeddingEnabled: true });
+
+    expect(screen.getByText("Authentication")).toBeInTheDocument();
+    expect(screen.getByText("Select a dashboard to embed")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("radio", { name: /Browser/ }));
+
+    expect(screen.queryByText("Authentication")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Select a dashboard to embed"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Select initial collection")).toBeInTheDocument();
+  });
 
   it("renders the SSO radio above the Guest radio in the authentication card", () => {
     setup({ simpleEmbeddingEnabled: true });
@@ -172,15 +181,20 @@ describe("Embed flow > forward and backward navigation", () => {
       expect(screen.queryByText(warningText)).not.toBeInTheDocument();
     });
 
-    it("shows a warning on the experience card when Exploration is selected and SSO is not configured", async () => {
-      setup({ simpleEmbeddingEnabled: true, jwtReady: false });
+    it.each(["Exploration", "Browser"])(
+      "shows a warning on the experience card when %s is selected and SSO is not configured",
+      async (experienceLabel) => {
+        setup({ simpleEmbeddingEnabled: true, jwtReady: false });
 
-      await userEvent.click(screen.getByRole("radio", { name: /Exploration/ }));
+        await userEvent.click(
+          screen.getByRole("radio", { name: new RegExp(experienceLabel) }),
+        );
 
-      expect(screen.getByText(warningText)).toBeInTheDocument();
-      // Authentication card is hidden so its warning is gone
-      expect(screen.queryByText("Authentication")).not.toBeInTheDocument();
-    });
+        expect(screen.getByText(warningText)).toBeInTheDocument();
+        // Authentication card is hidden so its warning is gone
+        expect(screen.queryByText("Authentication")).not.toBeInTheDocument();
+      },
+    );
 
     it("hides the experience card warning when Exploration is selected and SSO is configured", async () => {
       setup({ simpleEmbeddingEnabled: true, jwtReady: true });

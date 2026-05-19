@@ -1,4 +1,4 @@
-import { isQuestionOrDashboardExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-experience";
+import { hasAuthToSelect } from "metabase/embedding/embedding-iframe-sdk-setup/utils/has-auth-to-select";
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 
 import type {
@@ -17,8 +17,7 @@ const GET_ENABLE_GUEST_EMBED_SETTINGS: (data: {
   isSimpleEmbedFeatureAvailable,
   experience,
 }) => {
-  const isQuestionOrDashboardEmbed =
-    isQuestionOrDashboardExperience(experience);
+  const isQuestionOrDashboardEmbed = hasAuthToSelect(experience);
 
   return {
     ...(isQuestionOrDashboardEmbed
@@ -53,8 +52,7 @@ const GET_DISABLE_GUEST_EMBED_SETTINGS: (data: {
     SdkIframeDashboardEmbedSettings | SdkIframeQuestionEmbedSettings,
     "lockedParameters"
   > = ({ experience, isSsoEnabledAndConfigured, useExistingUserSession }) => {
-  const isQuestionOrDashboardEmbed =
-    isQuestionOrDashboardExperience(experience);
+  const isQuestionOrDashboardEmbed = hasAuthToSelect(experience);
 
   return {
     ...(isQuestionOrDashboardEmbed

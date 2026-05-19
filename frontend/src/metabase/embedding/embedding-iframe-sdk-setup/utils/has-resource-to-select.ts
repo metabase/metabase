@@ -1,6 +1,6 @@
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 
-export const isQuestionOrDashboardExperience = (
+export const hasResourceToSelect = (
   experience: SdkIframeEmbedSetupExperience,
-): experience is "dashboard" | "chart" =>
-  ["dashboard", "chart"].includes(experience);
+): experience is "dashboard" | "chart" | "browser" =>
+  ["dashboard", "chart", "browser"].includes(experience);

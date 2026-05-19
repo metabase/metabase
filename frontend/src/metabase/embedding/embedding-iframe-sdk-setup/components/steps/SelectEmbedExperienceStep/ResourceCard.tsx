@@ -2,7 +2,9 @@ import { useDisclosure } from "@mantine/hooks";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import {
+  CollectionPickerModal,
   DashboardPickerModal,
   QuestionPickerModal,
 } from "metabase/common/components/Pickers";
@@ -33,6 +35,7 @@ export const ResourceCard = () => {
     resource,
     recentDashboards,
     recentQuestions,
+    recentCollections,
     addRecentItem,
   } = useSdkIframeEmbedSetupContext();
 
@@ -41,6 +44,12 @@ export const ResourceCard = () => {
 
   const selectedItemId = getResourceIdFromSettings(settings);
 
+  const { data: selectedCollection } = useGetCollectionQuery(
+    experience === "browser" && selectedItemId != null
+      ? { id: selectedItemId as CollectionId }
+      : skipToken,
+  );
+
   if (!hasResourceSelectionStep(experience)) {
     return null;
   }
@@ -48,9 +57,14 @@ export const ResourceCard = () => {
   const recentItems = match(experience)
     .with("dashboard", () => recentDashboards)
     .with("chart", () => recentQuestions)
+    .with("browser", () => recentCollections)
     .exhaustive();
 
-  const selectedResourceName = resource?.name;
+  const selectedResourceName = match(experience)
+    .with("dashboard", () => resource?.name)
+    .with("chart", () => resource?.name)
+    .with("browser", () => selectedCollection?.name)
+    .exhaustive();
 
   const fallbackResourceName = recentItems.find(
     (item) => item.id === selectedItemId,
@@ -65,7 +79,10 @@ export const ResourceCard = () => {
     // Do not update if the selected item is already selected.
     if (
       (experience === "dashboard" && settings.dashboardId === id) ||
-      (experience === "chart" && settings.questionId === id)
+      (experience === "chart" && settings.questionId === id) ||
+      (experience === "browser" &&
+        settings.componentName === "metabase-browser" &&
+        settings.initialCollection === id)
     ) {
       return;
     }
@@ -88,6 +105,10 @@ export const ResourceCard = () => {
         hiddenParameters: [],
         lockedParameters: [],
       });
+    } else if (experience === "browser") {
+      updateSettings({
+        initialCollection: id as CollectionId,
+      });
     }
   };
 
@@ -107,6 +128,7 @@ export const ResourceCard = () => {
     >(experience)
       .with("chart", () => "question")
       .with("dashboard", () => "dashboard")
+      .with("browser", () => "collection")
       .exhaustive();
 
     addRecentItem(resourceType, {
@@ -141,6 +163,18 @@ export const ResourceCard = () => {
           onChange={handlePickerModalResourceSelect}
           onClose={closePicker}
           options={MODAL_OPTIONS}
+        />
+      );
+    }
+
+    if (experience === "browser") {
+      return (
+        <CollectionPickerModal
+          title={t`Select default collection`}
+          value={PICKER_RECENTS_VALUE}
+          onChange={handlePickerModalResourceSelect}
+          onClose={closePicker}
+          options={COLLECTION_MODAL_OPTIONS}
         />
       );
     }
@@ -200,12 +234,24 @@ const getResourceCopy = (experience: ResourceExperience) =>
       placeholder: t`Select a chart`,
       label: t`Change chart`,
     }))
+    .with("browser", () => ({
+      title: t`Select initial collection`,
+      icon: "collection",
+      placeholder: t`Select initial collection`,
+      label: t`Change initial collection`,
+    }))
     .exhaustive();
 
 const MODAL_OPTIONS = {
   showPersonalCollections: true,
   showRootCollection: true,
   hasConfirmButtons: false,
+} as const;
+
+const COLLECTION_MODAL_OPTIONS = {
+  showPersonalCollections: true,
+  showRootCollection: true,
+  hasConfirmButtons: true,
 } as const;
 
 const hasResourceSelectionStep = (

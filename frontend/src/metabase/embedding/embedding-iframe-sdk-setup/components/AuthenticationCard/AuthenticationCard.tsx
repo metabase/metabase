@@ -9,7 +9,7 @@ import {
 } from "../../hooks/use-handle-experience-change";
 import { getAuthTypeForSettings } from "../../utils/get-auth-type-for-settings";
 import { getResourceTypeFromExperience } from "../../utils/get-resource-type-from-experience";
-import { isQuestionOrDashboardExperience } from "../../utils/is-question-or-dashboard-experience";
+import { hasAuthToSelect } from "../../utils/has-auth-to-select";
 import { isStepWithResource } from "../../utils/is-step-with-resource";
 import { SetupSsoAlert } from "../Common/SetupSsoAlert";
 import { DatabaseRoutingWarning } from "../DatabaseRoutingWarning";
@@ -52,7 +52,7 @@ export const AuthenticationCard = () => {
     const shouldSwitchExperience =
       isGuest &&
       !isStepWithResource(currentStep) &&
-      !isQuestionOrDashboardExperience(experience);
+      !hasAuthToSelect(experience);
 
     if (shouldSwitchExperience) {
       handleEmbedExperienceChange(DEFAULT_EXPERIENCE);
