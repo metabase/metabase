@@ -1,4 +1,5 @@
 (ns metabase.query-processor.middleware.resolve-referenced-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.resolve-referenced-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]

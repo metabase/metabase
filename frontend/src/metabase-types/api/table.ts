@@ -162,6 +162,7 @@ export interface UpdateTableRequest {
   entity_type?: string | null;
   owner_email?: string | null;
   owner_user_id?: UserId | null;
+  collection_id?: CollectionId | null;
 }
 
 export interface UpdateTableListRequest {
@@ -257,10 +258,11 @@ export interface BulkTableInfo {
   is_published: boolean;
 }
 
-export interface BulkTableSelection {
+export interface BulkTableRequest {
   database_ids?: DatabaseId[];
   schema_ids?: SchemaId[];
   table_ids?: TableId[];
+  collection_id?: CollectionId;
 }
 
 export interface BulkTableSelectionInfo {

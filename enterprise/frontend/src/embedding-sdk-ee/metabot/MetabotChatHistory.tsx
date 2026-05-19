@@ -14,7 +14,7 @@ const isQuestionNavigationMessage = (message: MetabotChatMessage) =>
 
 export function MetabotChatHistory() {
   const metabot = useMetabotAgent();
-  const { messages, errorMessages } = metabot;
+  const { messages } = metabot;
   const { setNavigateToPath } = useMetabotReactions();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -23,7 +23,7 @@ export function MetabotChatHistory() {
     [messages],
   );
 
-  const hasMessages = chatMessages.length > 0 || errorMessages.length > 0;
+  const hasMessages = chatMessages.length > 0;
 
   // Auto-scroll to bottom when new messages are received
   useEffect(() => {
@@ -31,7 +31,7 @@ export function MetabotChatHistory() {
       scrollContainerRef.current.scrollTop =
         scrollContainerRef.current.scrollHeight;
     }
-  }, [chatMessages.length, errorMessages.length, metabot.isDoingScience]);
+  }, [chatMessages.length, metabot.isDoingScience]);
 
   return (
     <Stack
@@ -45,7 +45,6 @@ export function MetabotChatHistory() {
       {hasMessages ? (
         <Messages
           messages={chatMessages}
-          errorMessages={errorMessages}
           onRetryMessage={metabot.retryMessage}
           isDoingScience={metabot.isDoingScience}
           debug={metabot.debugMode}

@@ -91,31 +91,33 @@
    _query-params
 
    {:keys [instructions references]} :- generate-content-body-schema]
-  (metabot.config/check-metabot-enabled!)
-  (metabot.usage/check-metabase-managed-free-limit!)
-  (let [context      (assoc
-                      (metabot.context/create-context {:capabilities #{"permission:write_sql_queries"}})
-                      :references references)
-        parts        (into [] (metabot.agent/run-agent-loop
-                               {:messages      [{:role    :user
-                                                 :content instructions}]
-                                :profile-id    :document-generate-content
-                                :state         {}
-                                :context       context
-                                :tracking-opts {:source "document_generate_content"}}))
-        chart-output (latest-chart-structured-output parts)
-        draft-card   (draft-card-from-chart-output chart-output)
-        description  (or (:description chart-output)
-                         (:name chart-output)
-                         (:name draft-card))]
-    (if draft-card
-      {:draft_card  draft-card
-       :description description
-       :error       nil}
-      {:draft_card  nil
-       :description nil
-       :error       (or (last-agent-message parts)
-                        "Unable to generate chart content.")})))
+  (let [metabot-id (metabot.config/resolve-dynamic-metabot-id nil)]
+    (metabot.config/check-metabot-enabled! metabot-id)
+    (metabot.usage/check-metabase-managed-free-limit!)
+    (let [context      (assoc
+                        (metabot.context/create-context {:capabilities #{"permission:write_sql_queries"}})
+                        :references references)
+          parts        (into [] (metabot.agent/run-agent-loop
+                                 {:messages      [{:role    :user
+                                                   :content instructions}]
+                                  :metabot-id    metabot-id
+                                  :profile-id    :document-generate-content
+                                  :state         {}
+                                  :context       context
+                                  :tracking-opts {:source "document_generate_content"}}))
+          chart-output (latest-chart-structured-output parts)
+          draft-card   (draft-card-from-chart-output chart-output)
+          description  (or (:description chart-output)
+                           (:name chart-output)
+                           (:name draft-card))]
+      (if draft-card
+        {:draft_card  draft-card
+         :description description
+         :error       nil}
+        {:draft_card  nil
+         :description nil
+         :error       (or (last-agent-message parts)
+                          "Unable to generate chart content.")}))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot/document` routes."

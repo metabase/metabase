@@ -1,4 +1,5 @@
 (ns metabase.lib-be.metadata.jvm-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.lib-be.metadata.jvm-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [malli.error :as me]

@@ -518,6 +518,7 @@ interface AdminSettings {
   "system-timezone"?: string;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
+  "setup-embedding-autoenabled": boolean;
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
   "embedding-hub-sso-auth-manual-tested": boolean;
@@ -816,6 +817,7 @@ export interface EnterpriseSettings extends Settings {
   "slack-connect-client-secret"?: string | null;
   "mcp-apps-cors-enabled-clients": string[] | null;
   "mcp-apps-cors-custom-origins": string | null;
+  "transforms-meter-locked": boolean | null;
   /**
    * @deprecated
    */

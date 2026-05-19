@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 import _ from "underscore";
 
 import { setupAnalyzeChartEndpoint } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { createMockQueryBuilderState } from "metabase/redux/store/mocks";
 import Question from "metabase-lib/v1/Question";
@@ -11,6 +12,7 @@ import {
   createMockCard,
   createMockTimeline,
   createMockTimelineEvent,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import { AIQuestionAnalysisSidebar } from "./AIQuestionAnalysisSidebar";
@@ -37,6 +39,7 @@ describe("AIQuestionAnalysisSidebar", () => {
       <AIQuestionAnalysisSidebar question={question} onClose={jest.fn()} />,
       {
         storeInitialState: {
+          settings: mockSettings({ "llm-metabot-configured?": true }),
           qb: createMockQueryBuilderState({
             queryStatus: "complete",
           }),
@@ -123,6 +126,7 @@ describe("AIQuestionAnalysisSidebar", () => {
       />,
       {
         storeInitialState: {
+          settings: mockSettings({ "llm-metabot-configured?": true }),
           qb: createMockQueryBuilderState({
             queryStatus: "complete",
           }),
@@ -150,5 +154,36 @@ describe("AIQuestionAnalysisSidebar", () => {
     expect(body.timeline_events[2]).toMatchObject(
       _.pick(visibleTimelineEventFromAnotherCollection, analysisEventsFields),
     );
+  });
+
+  it("should show a configuration notice instead of running analysis when AI is not configured", async () => {
+    const question = new Question(createMockCard());
+
+    renderWithProviders(
+      <AIQuestionAnalysisSidebar question={question} onClose={jest.fn()} />,
+      {
+        storeInitialState: {
+          currentUser: createMockUser({ is_superuser: true }),
+          settings: mockSettings({ "llm-metabot-configured?": false }),
+          qb: createMockQueryBuilderState({
+            queryStatus: "complete",
+          }),
+        },
+      },
+    );
+
+    expect(
+      await screen.findByText("To use chart analysis, please", {
+        exact: false,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "connect to a model" }),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.called(
+        "path:/api/ai-entity-analysis/analyze-chart",
+      ),
+    ).toBe(false);
   });
 });

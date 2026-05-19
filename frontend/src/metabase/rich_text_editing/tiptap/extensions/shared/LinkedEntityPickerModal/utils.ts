@@ -1,8 +1,8 @@
-import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import {
   PERSONAL_COLLECTIONS,
   ROOT_COLLECTION,
-} from "metabase/entities/collections";
+} from "metabase/collections/constants";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
 
 import { DOCUMENT_LINK_MODELS } from "./constants";
 import type { DocumentLinkedEntityPickerItemValue } from "./types";

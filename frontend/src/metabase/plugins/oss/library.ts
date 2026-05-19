@@ -2,11 +2,18 @@ import type { BaseQueryFn, QueryDefinition } from "@reduxjs/toolkit/query";
 import type { ComponentType, ReactNode } from "react";
 
 import type { TagType } from "metabase/api/tags";
+import type {
+  OmniPickerCollectionItem,
+  OmniPickerItem,
+} from "metabase/common/components/Pickers/EntityPicker/types";
+import type { MiniPickerCollectionFolderItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import type { UseQuery } from "metabase/entities/containers/rtk-query/types/rtk";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type {
   Collection,
+  CollectionId,
   CollectionItem,
+  CollectionNamespace,
   CollectionType,
   DatabaseId,
   GetLibraryCollectionResponse,
@@ -40,6 +47,33 @@ export type UnpublishTablesModalProps = {
   onClose: () => void;
 };
 
+export type CollectionPermissionsModalProps = {
+  collectionId: CollectionId;
+  namespace?: CollectionNamespace | null;
+  onClose: () => void;
+};
+
+export type LibraryCollectionType =
+  | "library"
+  | "library-data"
+  | "library-metrics";
+
+export type LibrarySubCollectionType = "library-data" | "library-metrics";
+
+export type GetEntityPickerSyntheticLibraryItemFunction = {
+  (params: {
+    collectionId: CollectionId;
+    type: LibrarySubCollectionType;
+    miniPicker: true;
+  }): MiniPickerCollectionFolderItem | undefined;
+
+  (params: {
+    collectionId: CollectionId;
+    type: LibrarySubCollectionType;
+    miniPicker?: false | undefined;
+  }): OmniPickerCollectionItem | undefined;
+};
+
 type LibraryPlugin = {
   isEnabled: boolean;
   getDataStudioLibraryRoutes: (IsAdmin: ComponentType) => ReactNode;
@@ -58,12 +92,31 @@ type LibraryPlugin = {
     data: undefined | LibraryCollection | CollectionItem;
     isLoading: boolean;
   };
+  getCollectionPickerItems: ({
+    parentItem,
+    items,
+  }: {
+    parentItem: OmniPickerItem;
+    items: CollectionItem[];
+  }) => OmniPickerItem[] | undefined;
+  getEntityPickerSyntheticLibraryItem: GetEntityPickerSyntheticLibraryItemFunction;
   CreateLibraryModal: ComponentType<CreateLibraryModalProps>;
+  CollectionPermissionsModal: ComponentType<CollectionPermissionsModalProps>;
   PublishTablesModal: ComponentType<PublishTablesModalProps>;
   UnpublishTablesModal: ComponentType<UnpublishTablesModalProps>;
   useGetLibraryCollectionQuery: UseQuery<
     QueryDefinition<void, BaseQueryFn, TagType, GetLibraryCollectionResponse>
   >;
+  getLibraryCollectionEmptyStateMessages: (type: LibrarySubCollectionType) => {
+    title: string;
+    description: string;
+  };
+  isLibraryCollectionType: (
+    type?: string | null,
+  ) => type is LibraryCollectionType;
+  isLibrarySubCollectionType: (
+    type?: string | null,
+  ) => type is LibrarySubCollectionType;
 };
 
 const getDefaultPluginLibrary = (): LibraryPlugin => ({
@@ -75,14 +128,28 @@ const getDefaultPluginLibrary = (): LibraryPlugin => ({
     isLoading: false,
     data: undefined,
   }),
+  getCollectionPickerItems: () => undefined,
+  getEntityPickerSyntheticLibraryItem: () => undefined,
   CreateLibraryModal:
     PluginPlaceholder as ComponentType<CreateLibraryModalProps>,
+  CollectionPermissionsModal:
+    PluginPlaceholder as ComponentType<CollectionPermissionsModalProps>,
   PublishTablesModal:
     PluginPlaceholder as ComponentType<PublishTablesModalProps>,
   UnpublishTablesModal:
     PluginPlaceholder as ComponentType<UnpublishTablesModalProps>,
   useGetLibraryCollectionQuery:
     (() => []) as unknown as LibraryPlugin["useGetLibraryCollectionQuery"],
+  getLibraryCollectionEmptyStateMessages: () => ({
+    title: "",
+    description: "",
+  }),
+  isLibraryCollectionType: (
+    _type?: string | null,
+  ): _type is LibraryCollectionType => false,
+  isLibrarySubCollectionType: (
+    _type?: string | null,
+  ): _type is LibrarySubCollectionType => false,
 });
 
 export const PLUGIN_LIBRARY = getDefaultPluginLibrary();

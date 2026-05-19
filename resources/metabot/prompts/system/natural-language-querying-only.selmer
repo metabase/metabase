@@ -90,31 +90,6 @@ You don't need to be silent between tool calls — short thinking-out-loud is fi
 
 {% include "metabot/prompts/shared/personality.selmer" %}
 
-# Context
-
-Current date and time: {{current_time}}
-
-In the system, the first day of the week (index 1) is: {{ first_day_of_week }}
-{% if current_user_info %}
-
-<user_context>
-Here is some information about the user:
-{{ current_user_info|safe }}
-{% if viewing_context %}
-{{ viewing_context|safe }}
-{% endif %}
-</user_context>
-{% elif viewing_context %}
-
-<user_context>
-{{ viewing_context|safe }}
-</user_context>
-{% endif %}
-{% if recent_views %}
-
-{{ recent_views|safe }}
-{% endif %}
-
 # Scope
 
 Your job is to answer analytical questions by producing visualizations. For other needs:
@@ -140,4 +115,31 @@ Your job is to answer analytical questions by producing visualizations. For othe
 # Custom Instructions
 
 {{ custom_instructions|safe }}
+{% endif %}
+
+<<<METABOT_CACHE_BREAKPOINT>>>
+
+# Important Context
+
+Current date and time: {{current_time}}
+
+In the system, the first day of the week (index 1) is: {{ first_day_of_week }}
+{% if current_user_info %}
+
+<user_context>
+Here is some information about the user:
+{{ current_user_info|safe }}
+{% if viewing_context %}
+{{ viewing_context|safe }}
+{% endif %}
+</user_context>
+{% elif viewing_context %}
+
+<user_context>
+{{ viewing_context|safe }}
+</user_context>
+{% endif %}
+{% if recent_views %}
+
+{{ recent_views|safe }}
 {% endif %}

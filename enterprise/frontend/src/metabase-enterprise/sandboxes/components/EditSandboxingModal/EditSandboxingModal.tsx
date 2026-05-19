@@ -21,7 +21,6 @@ import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import { EntityName } from "metabase/entities/containers/EntityName";
 import { GTAPApi } from "metabase/services";
-import type { IconName } from "metabase/ui";
 import { Button, Center, Icon, Loader } from "metabase/ui";
 import type {
   GroupTableAccessPolicyDraft,
@@ -32,6 +31,7 @@ import * as Lib from "metabase-lib";
 import type {
   GroupId,
   GroupTableAccessPolicy,
+  IconName,
   Table,
   UserAttributeKey,
 } from "metabase-types/api";

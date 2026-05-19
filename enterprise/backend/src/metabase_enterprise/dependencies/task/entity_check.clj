@@ -1,5 +1,8 @@
 (ns metabase-enterprise.dependencies.task.entity-check
   (:require
+   [clojurewerkz.quartzite.jobs :as jobs]
+   [clojurewerkz.quartzite.triggers :as triggers]
+   [java-time.api :as t]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.settings :as deps.settings]
@@ -36,7 +39,7 @@
       (when (deps.analysis-finding/has-stale-entities?)
         (recur)))))
 
-(declare schedule-next-run!)
+(declare schedule-run!)
 
 (task/defjob
   ^{:doc "Check all entities for validity"
@@ -47,27 +50,29 @@
   (let [delay-in-seconds (deps.task-util/job-delay
                           (deps.settings/dependency-entity-check-delay-minutes)
                           (deps.settings/dependency-entity-check-variance-minutes))]
-    (schedule-next-run! delay-in-seconds (.getScheduler ctx))))
+    (schedule-run! (.getScheduler ctx) delay-in-seconds)))
 
 (def ^:private job-key     "metabase.dependencies.task.entity-check.job")
 (def ^:private trigger-key "metabase.dependencies.task.entity-check.trigger")
 
-(defn- schedule-next-run!
-  ([delay-in-seconds] (schedule-next-run! delay-in-seconds nil))
-  ([delay-in-seconds scheduler]
-   (deps.task-util/schedule-next-run!
-    {:job-type         DependencyEntityCheck
-     :job-name         "Dependency Entity Check"
-     :job-key          job-key
-     :trigger-key      trigger-key
-     :delay-in-seconds delay-in-seconds
-     :scheduler        scheduler})))
+(defn- schedule-run! [scheduler delay-in-seconds]
+  (let [start-at (-> (t/instant)
+                     (t/+ (t/duration delay-in-seconds :seconds))
+                     java.util.Date/from)
+        trigger  (triggers/build
+                  (triggers/with-identity (triggers/key trigger-key))
+                  (triggers/for-job job-key)
+                  (triggers/start-at start-at))
+        job      (jobs/build (jobs/of-type DependencyEntityCheck) (jobs/with-identity job-key))]
+    (log/info "Scheduling next run of job Dependency Entity Check at" start-at)
+    (task/schedule-task! scheduler job trigger)))
 
 (defmethod task/init! ::DependencyEntityCheck [_]
   (if (pos? (deps.settings/dependency-entity-check-batch-size))
-    (-> (deps.settings/dependency-entity-check-variance-minutes)
-        deps.task-util/job-initial-delay
-        schedule-next-run!)
+    (schedule-run!
+     (task/scheduler)
+     (deps.task-util/job-initial-delay
+      (deps.settings/dependency-entity-check-variance-minutes)))
     (log/info "Not starting dependency entity check job because the batch size is not positive")))
 
 (defn trigger-entity-check-job!
@@ -75,4 +80,4 @@
   The 1-second delay ensures the calling transaction has committed before
   the job checks for stale entities."
   []
-  (schedule-next-run! 1))
+  (schedule-run! (task/scheduler) 1))

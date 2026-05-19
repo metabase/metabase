@@ -59,6 +59,7 @@
               (is (= (:id job) (:id response)))
               (is (= "Test Job" (:name response)))
               (is (= [(:id tag)] (:tag_ids response)))
+              (is (true? (:active response)))
               (is (nil? (:last_run response)))))
 
           (testing "Returns 404 for non-existent job"
@@ -172,6 +173,120 @@
                                                    {:schedule "invalid"})]
                 (is (string? response))
                 (is (re-find #"Invalid cron expression" response))))))))))
+
+(deftest update-job-active-test
+  (testing "PUT /api/transform-job/:id can toggle the active flag"
+    (mt/with-data-analyst-role! (mt/user->id :lucky)
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/with-temp [:model/TransformJob job {:name "Toggle Me" :schedule "0 0 0 * * ?"}]
+          (testing "Defaults to true"
+            (is (true? (:active (mt/user-http-request :lucky :get 200 (str "transform-job/" (:id job)))))))
+          (testing "Can be set to false"
+            (let [response (mt/user-http-request :lucky :put 200 (str "transform-job/" (:id job))
+                                                 {:active false})]
+              (is (false? (:active response))))
+            (is (false? (:active (mt/user-http-request :lucky :get 200 (str "transform-job/" (:id job))))))
+            (is (false? (t2/select-one-fn :active :model/TransformJob :id (:id job)))))
+          (testing "Can be set back to true"
+            (let [response (mt/user-http-request :lucky :put 200 (str "transform-job/" (:id job))
+                                                 {:active true})]
+              (is (true? (:active response))))
+            (is (true? (:active (mt/user-http-request :lucky :get 200 (str "transform-job/" (:id job))))))
+            (is (true? (t2/select-one-fn :active :model/TransformJob :id (:id job))))))))))
+
+(deftest update-all-jobs-active-test
+  (testing "PUT /api/transform-job/active flips every job's active flag"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/TransformJob job-1 {:name "Job 1" :schedule "0 0 0 * * ?"}
+                     :model/TransformJob job-2 {:name "Job 2" :schedule "0 0 0 * * ?" :active false}
+                     :model/TransformJob job-3 {:name "Job 3" :schedule "0 0 0 * * ?"}]
+        (let [job-ids       [(:id job-1) (:id job-2) (:id job-3)]
+              active-by-id  (fn [] (t2/select-fn->fn :id :active :model/TransformJob :id [:in job-ids]))]
+          (testing "Deactivates all jobs"
+            (let [pending (t2/count :model/TransformJob :active true)]
+              (is (=? {:updated pending :failed zero?}
+                      (mt/user-http-request :crowberto :put 200 "transform-job/active" {:active false}))))
+            (is (every? false? (vals (active-by-id)))))
+          (testing "Reactivates all jobs"
+            (let [pending (t2/count :model/TransformJob :active false)]
+              (is (=? {:updated pending :failed zero?}
+                      (mt/user-http-request :crowberto :put 200 "transform-job/active" {:active true}))))
+            (is (every? true? (vals (active-by-id))))))))))
+
+(deftest update-all-jobs-active-counts-test
+  (testing "PUT /api/transform-job/active reports :failed for jobs whose flip raises"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/TransformJob _       {:name "OK" :schedule "0 0 0 * * ?"}
+                     :model/TransformJob job-bad {:name "Boom" :schedule "0 0 0 * * ?"}]
+        (let [orig (mt/original-fn #'transforms.schedule/delete-trigger!)]
+          (mt/with-dynamic-fn-redefs [transforms.schedule/delete-trigger!
+                                      (fn [job-id]
+                                        (if (= job-id (:id job-bad))
+                                          (throw (ex-info "boom" {}))
+                                          (orig job-id)))]
+            (is (=? {:updated #(<= 1 %)
+                     :failed  #(<= 1 %)}
+                    (mt/user-http-request :crowberto :put 200 "transform-job/active" {:active false})))))))))
+
+(deftest update-all-jobs-active-permissions-test
+  (testing "PUT /api/transform-job/active requires superuser"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/user-http-request :rasta :put 403 "transform-job/active" {:active false}))
+    (testing "data analysts are also rejected"
+      (mt/with-data-analyst-role! (mt/user->id :lucky)
+        (mt/with-premium-features #{:transforms-basic}
+          (mt/user-http-request :lucky :put 403 "transform-job/active" {:active false}))))))
+
+(deftest active-trigger-lifecycle-test
+  (testing "PUT /api/transform-job/:id syncs the Quartz trigger with :active"
+    (mt/with-data-analyst-role! (mt/user->id :lucky)
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/with-temp-scheduler!
+          (mt/with-temp [:model/TransformJob job {:name "Triggered" :schedule "0 0 0 * * ?"}]
+            ;; with-temp doesn't run the API's create handler, so seed the trigger ourselves to
+            ;; mirror the post-create state.
+            (transforms.schedule/initialize-job! job)
+            (try
+              (testing "Deactivating removes the trigger"
+                (mt/user-http-request :lucky :put 200 (str "transform-job/" (:id job))
+                                      {:active false})
+                (is (nil? (transforms.schedule/existing-trigger (:id job)))))
+              (testing "Reactivating recreates the trigger from the stored schedule"
+                (mt/user-http-request :lucky :put 200 (str "transform-job/" (:id job))
+                                      {:active true})
+                (is (some? (transforms.schedule/existing-trigger (:id job)))))
+              (testing "Schedule edits on an inactive job do not resurrect the trigger"
+                (mt/user-http-request :lucky :put 200 (str "transform-job/" (:id job))
+                                      {:active false})
+                (mt/user-http-request :lucky :put 200 (str "transform-job/" (:id job))
+                                      {:schedule "0 0 1 * * ?"})
+                (is (nil? (transforms.schedule/existing-trigger (:id job))))
+                (testing "but the new schedule is persisted in the DB"
+                  (is (= "0 0 1 * * ?" (t2/select-one-fn :schedule :model/TransformJob :id (:id job)))))
+                (testing "and reactivating builds a trigger using the updated schedule"
+                  (mt/user-http-request :lucky :put 200 (str "transform-job/" (:id job))
+                                        {:active true})
+                  (is (= "0 0 1 * * ?" (:schedule (transforms.schedule/existing-trigger (:id job)))))))
+              (finally
+                (transforms.schedule/delete-job! (:id job))))))))))
+
+(deftest active-bulk-trigger-lifecycle-test
+  (testing "PUT /api/transform-job/active syncs every job's Quartz trigger"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp-scheduler!
+        (mt/with-temp [:model/TransformJob job-1 {:name "Bulk 1" :schedule "0 0 0 * * ?"}
+                       :model/TransformJob job-2 {:name "Bulk 2" :schedule "0 0 0 * * ?"}]
+          (let [job-ids [(:id job-1) (:id job-2)]]
+            (run! transforms.schedule/initialize-job! [job-1 job-2])
+            (try
+              (testing "Bulk deactivate clears triggers for all flipped jobs"
+                (mt/user-http-request :crowberto :put 200 "transform-job/active" {:active false})
+                (is (every? nil? (map transforms.schedule/existing-trigger job-ids))))
+              (testing "Bulk activate rebuilds triggers"
+                (mt/user-http-request :crowberto :put 200 "transform-job/active" {:active true})
+                (is (every? some? (map transforms.schedule/existing-trigger job-ids))))
+              (finally
+                (run! transforms.schedule/delete-job! job-ids)))))))))
 
 (deftest update-job-remove-tags-test
   (testing "PUT /api/transform-job/:id"

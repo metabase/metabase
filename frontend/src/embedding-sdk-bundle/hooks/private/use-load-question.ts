@@ -149,9 +149,12 @@ export function useLoadQuestion({
       setIsQuestionLoading(false);
       return { ...results, originalQuestion };
     } catch (err) {
-      // Ignore cancelled requests (e.g. when the component unmounts).
-      // React simulates unmounting on strict mode, therefore "Question not found" will be shown without this.
+      // Ignore cancelled requests (e.g. when the component unmounts, or when a
+      // controlled `sqlParameters` push cancels the in-flight load query via the
+      // shared `deferredRef`). React simulates unmounting on strict mode,
+      // therefore "Question not found" will be shown without this.
       if (isCancelledRequestError(err)) {
+        setIsQuestionLoading(false);
         return {};
       }
 

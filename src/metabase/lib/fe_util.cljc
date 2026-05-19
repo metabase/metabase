@@ -26,11 +26,11 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.formatting.date :as fmt.date]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.number :as u.number]
    [metabase.util.performance :refer [every? mapv select-keys some #?(:clj doseq) #?(:clj for)]]
    [metabase.util.time :as u.time]))
@@ -313,7 +313,7 @@
         string-col? #(ref-clause-with-type? % [:type/Text :type/TextLike])
         result (fn [op col-ref args options]
                  {:operator op, :column (ref->col col-ref), :values (vec args), :options options})]
-    (lib.util.match/match-lite filter-clause
+    (match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-empty :not-empty}) _ (col-ref :guard string-col?) & (args :len 0 :guard (every? string? args))]
       (result op col-ref [] {})
@@ -344,7 +344,7 @@
 
 (defn- expression-arg->number
   [arg]
-  (lib.util.match/match-lite arg
+  (match/match-one arg
     (value :guard number?)
     value
 
@@ -376,7 +376,7 @@
   (let [ref->col    #(column-metadata-from-ref query stage-number %)
         number-col? #(ref-clause-with-type? % [:type/Number])
         number-arg? #(some? (expression-arg->number %))]
-    (lib.util.match/match-lite filter-clause
+    (match/match-one filter-clause
       (:or
        ;; no arguments
        [(op :guard #{:is-null :not-null}) _ (col-ref :guard number-col?) & (args :len 0 :guard (every? number-arg? args))]
@@ -433,7 +433,7 @@
                                    :column (ref->col col-ref)
                                    :values (mapv expression-arg->number args)}
                             lon-col-ref (assoc :longitude-column (ref->col lon-col-ref))))]
-    (lib.util.match/match-lite filter-clause
+    (match/match-one filter-clause
       (:or
        ;; multiple arguments, `:=`
        [(op :guard #{:= :in})        _ (col-ref :guard coordinate-col?) & (args        :guard (every? number-arg? args))]
@@ -478,7 +478,7 @@
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col     #(column-metadata-from-ref query stage-number %)
         boolean-col? #(ref-clause-with-type? % [:type/Boolean])]
-    (lib.util.match/match-lite filter-clause
+    (match/match-one filter-clause
       (:or
        ;; no arguments
        [(op :guard #{:is-null :not-null}) _ (col-ref :guard boolean-col?) & (args :len 0 :guard (every? boolean? args))]
@@ -521,7 +521,7 @@
                           values (mapv u.time/coerce-to-timestamp args)]
                       (when (every? u.time/valid? values)
                         {:operator op, :column (ref->col col-ref), :values values, :with-time? (not date?)})))]
-    (lib.util.match/match-lite filter-clause
+    (match/match-one filter-clause
       (:or
        ;; exactly 1 argument
        [(op :guard #{:= :> :<}) _ (col-ref :guard date-col?) & (args :len 1 :guard (every? string? args))]
@@ -564,7 +564,7 @@
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col  #(column-metadata-from-ref query stage-number %)
         date-col? #(ref-clause-with-type? % [:type/Date :type/DateTime])]
-    (lib.util.match/match-lite filter-clause
+    (match/match-one filter-clause
       [:time-interval
        opts
        (col-ref :guard date-col?)
@@ -634,7 +634,7 @@
         op->unit  {:get-hour :hour-of-day
                    :get-month :month-of-year
                    :get-quarter :quarter-of-year}]
-    (lib.util.match/match-lite filter-clause
+    (match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard date-col?) & (args :len 0 :guard (every? int? args))]
       {:operator op, :column (ref->col col-ref), :values []}
@@ -673,7 +673,7 @@
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col  #(column-metadata-from-ref query stage-number %)
         time-col? #(ref-clause-with-type? % [:type/Time])]
-    (lib.util.match/match-lite filter-clause
+    (match/match-one filter-clause
       (:or
        ;; no arguments
        [(op :guard #{:is-null :not-null}) _ (col-ref :guard time-col?) & (args :len 0 :guard (every? string? args))]
@@ -711,7 +711,7 @@
         supported-col? #(and (lib.util/ref-clause? %)
                              (not (lib.util/original-isa? % :type/Text))
                              (not (lib.util/original-isa? % :type/TextLike)))]
-    (lib.util.match/match-lite filter-clause
+    (match/match-one filter-clause
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard supported-col?)]
       {:operator op, :column (ref->col col-ref)}
 
@@ -734,7 +734,7 @@
 (mu/defn join-condition-parts :- [:maybe JoinConditionParts]
   "Destructures a join condition created by [[join-condition-clause]]."
   [join-condition :- ::lib.schema.join/condition]
-  (lib.util.match/match-lite join-condition
+  (match/match-one join-condition
     [(op :guard lib.schema.join/condition-operators) _ lhs rhs]
     {:operator op, :lhs-expression lhs, :rhs-expression rhs}
 
@@ -772,7 +772,7 @@
         ->unit {:get-hour :hour-of-day
                 :get-month :month-of-year
                 :get-quarter :quarter-of-year}]
-    (lib.util.match/match-lite filter-clause
+    (match/match-one filter-clause
       [#{:= :in} _ [:get-day-of-week _ (_ :guard temporal?) :iso] (b :guard int?)]
       (inflections/plural (u.time/format-unit b :day-of-week-iso))
 

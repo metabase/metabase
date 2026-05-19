@@ -289,160 +289,245 @@
         (str/replace (name perm-type) "-" " "))
    {:status-code 402}))
 
-(defn- update-table-level-metadata-permissions!
-  [group-id db-id schema new-table-perms]
-  (let [new-table-perms
-        (-> new-table-perms
-            (update-vals (fn [table-perm]
-                           (case table-perm
-                             :all  :yes
-                             :none :no)))
-            (update-keys (fn [table-id] {:id table-id :db_id db-id :schema schema})))]
-    (perms/set-table-permissions! group-id :perms/manage-table-metadata new-table-perms)))
+;; Bulk update implementation ====================================================================================
+;; Instead of iterating over groups x dbs x perm-types x schemas and making individual DB calls,
+;; this implementation:
+;; 1. Pre-fetches all tables and current permissions in bulk (2 queries)
+;; 2. Uses pure functions to compute the desired state
+;; 3. Diffs desired vs current to produce minimal inserts/deletes
+;; 4. Applies changes in bulk (2 queries)
 
-(defn- update-schema-level-metadata-permissions!
-  [group-id db-id schema new-schema-perms]
-  (if (map? new-schema-perms)
-    (update-table-level-metadata-permissions! group-id db-id schema new-schema-perms)
-    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
-      (when (seq tables)
-        (case new-schema-perms
-          :all
-          (perms/set-table-permissions! group-id :perms/manage-table-metadata (zipmap tables (repeat :yes)))
+(def ^:private api-val->db-val
+  {:view-data      {:unrestricted           :unrestricted
+                    :impersonated           :unrestricted
+                    :sandboxed              :unrestricted
+                    :legacy-no-self-service :legacy-no-self-service
+                    :blocked                :blocked}
+   :create-queries {:query-builder-and-native :query-builder-and-native
+                    :query-builder            :query-builder
+                    :no                       :no}
+   :download       {:full    :one-million-rows
+                    :limited :ten-thousand-rows
+                    :none    :no}
+   :data-model     {:all  :yes
+                    :none :no}
+   :details        {:yes :yes :no :no}
+   :transforms     {:yes :yes :no :no}})
 
-          :none
-          (perms/set-table-permissions! group-id :perms/manage-table-metadata (zipmap tables (repeat :no))))))))
+(def ^:private api-key->perm-type
+  {:view-data      :perms/view-data
+   :create-queries :perms/create-queries
+   :download       :perms/download-results
+   :data-model     :perms/manage-table-metadata
+   :details        :perms/manage-database
+   :transforms     :perms/transforms})
 
-(defn- update-db-level-metadata-permissions!
-  [group-id db-id new-db-perms]
-  (when-let [schemas (:schemas new-db-perms)]
-    (if (map? schemas)
-      (doseq [[schema schema-changes] schemas]
-        (update-schema-level-metadata-permissions! group-id db-id schema schema-changes))
-      (case schemas
-        :all
-        (perms/set-database-permission! group-id db-id :perms/manage-table-metadata :yes)
+(defn- resolve-api-value
+  "Translates an API permission value for a single [group-id db-id api-key] into a map of
+   {table-id-or-nil {:perm_value v :schema_name s}}. A nil key means db-level."
+  [api-key api-value db-id tables-by-db-schema]
+  (let [raw-value (if (#{:download :data-model} api-key)
+                    (:schemas api-value)
+                    api-value)]
+    (if (keyword? raw-value)
+      {nil {:perm_value  (get-in api-val->db-val [api-key raw-value])
+            :schema_name nil}}
+      (into {}
+            (mapcat
+             (fn [[schema-str schema-val]]
+               (let [db-schema (not-empty schema-str)]
+                 (if (keyword? schema-val)
+                   (map (fn [{:keys [id schema]}]
+                          [id {:perm_value  (get-in api-val->db-val [api-key schema-val])
+                               :schema_name schema}])
+                        (get tables-by-db-schema [db-id db-schema]))
+                   (map (fn [[table-id table-val]]
+                          [table-id {:perm_value  (get-in api-val->db-val [api-key table-val])
+                                     :schema_name db-schema}])
+                        schema-val)))))
+            raw-value))))
 
-        :none
-        (perms/set-database-permission! group-id db-id :perms/manage-table-metadata :no)))))
+(defn- add-implications:db-level
+  [desired group-id db-id perm-type db-value]
+  (cond-> desired
+    (and (= perm-type :perms/create-queries) (not= db-value :no))
+    (update [group-id db-id :perms/view-data]
+            #(merge % {nil {:perm_value :unrestricted :schema_name nil}}))
 
-(defn- update-table-level-download-permissions!
-  [group-id db-id schema new-table-perms]
-  (let [new-table-perms
-        (-> new-table-perms
-            (update-vals (fn [table-perm]
-                           (case table-perm
-                             :full    :one-million-rows
-                             :limited :ten-thousand-rows
-                             :none    :no)))
-            (update-keys (fn [table-id] {:id table-id :db_id db-id :schema schema})))]
-    (perms/set-table-permissions! group-id :perms/download-results new-table-perms)))
+    (and (= perm-type :perms/view-data) (= db-value :blocked))
+    (-> (update [group-id db-id :perms/create-queries]
+                #(merge % {nil {:perm_value :no :schema_name nil}}))
+        (update [group-id db-id :perms/download-results]
+                #(merge % {nil {:perm_value :no :schema_name nil}})))
 
-(defn- update-schema-level-download-permissions!
-  [group-id db-id schema new-schema-perms]
-  (if (map? new-schema-perms)
-    (update-table-level-download-permissions! group-id db-id schema new-schema-perms)
-    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
-      (when (seq tables)
-        (case new-schema-perms
-          :full
-          (perms/set-table-permissions! group-id :perms/download-results (zipmap tables (repeat :one-million-rows)))
+    (and (= perm-type :perms/view-data) (not= db-value :unrestricted))
+    (update [group-id db-id :perms/transforms]
+            #(merge % {nil {:perm_value :no :schema_name nil}}))
 
-          :limited
-          (perms/set-table-permissions! group-id :perms/download-results (zipmap tables (repeat :ten-thousand-rows)))
+    (and (= perm-type :perms/create-queries) (not= db-value :query-builder-and-native))
+    (update [group-id db-id :perms/transforms]
+            #(merge % {nil {:perm_value :no :schema_name nil}}))))
 
-          :none
-          (perms/set-table-permissions! group-id :perms/download-results (zipmap tables (repeat :no))))))))
+(defn- add-implications:table-level
+  [desired group-id db-id perm-type table-entries]
+  (cond-> desired
+    (= perm-type :perms/create-queries)
+    (update [group-id db-id :perms/view-data]
+            #(merge %
+                    (into {}
+                          (keep (fn [[tid {:keys [perm_value schema_name]}]]
+                                  (when (not= perm_value :no)
+                                    [tid {:perm_value :unrestricted :schema_name schema_name}])))
+                          table-entries)))
 
-(defn- update-db-level-download-permissions!
-  [group-id db-id new-db-perms]
-  (when-let [schemas (:schemas new-db-perms)]
-    (if (map? schemas)
-      (doseq [[schema schema-changes] schemas]
-        (update-schema-level-download-permissions! group-id db-id schema schema-changes))
-      (case schemas
-        :full
-        (perms/set-database-permission! group-id db-id :perms/download-results :one-million-rows)
+    (= perm-type :perms/view-data)
+    (-> (update [group-id db-id :perms/create-queries]
+                #(merge %
+                        (into {}
+                              (keep (fn [[tid {:keys [perm_value schema_name]}]]
+                                      (when (= perm_value :blocked)
+                                        [tid {:perm_value :no :schema_name schema_name}])))
+                              table-entries)))
+        (update [group-id db-id :perms/download-results]
+                #(merge %
+                        (into {}
+                              (keep (fn [[tid {:keys [perm_value schema_name]}]]
+                                      (when (= perm_value :blocked)
+                                        [tid {:perm_value :no :schema_name schema_name}])))
+                              table-entries))))))
 
-        :limited
-        (perms/set-database-permission! group-id db-id :perms/download-results :ten-thousand-rows)
+(defn- add-implications
+  "Given a desired-state map and entries just added for a perm-type, merges in implied permission changes.
+   Implications from later-processed perm-types override earlier values."
+  [desired group-id db-id perm-type entries]
+  (let [has-db-level? (contains? entries nil)
+        db-value      (get-in entries [nil :perm_value])
+        table-entries (dissoc entries nil)]
+    (cond
+      has-db-level?          (add-implications:db-level desired group-id db-id perm-type db-value)
+      (empty? table-entries) desired
+      :else                  (add-implications:table-level desired group-id db-id perm-type table-entries))))
 
-        :none
-        (perms/set-database-permission! group-id db-id :perms/download-results :no)))))
+(defn- compute-desired-state
+  "Process the API graph changes in dependency order, producing a desired-state map of
+   {[group-id db-id perm-type] {table-id-or-nil {:perm_value v :schema_name s}}}."
+  [graph tables-by-db-schema]
+  (reduce
+   (fn [desired [group-id db-id api-key api-value]]
+     (let [perm-type (api-key->perm-type api-key)
+           entries   (resolve-api-value api-key api-value db-id tables-by-db-schema)]
+       (-> desired
+           (update [group-id db-id perm-type] #(merge % entries))
+           (add-implications group-id db-id perm-type entries))))
+   {}
+   (for [[group-id group-changes] graph
+         [db-id db-changes] group-changes
+         api-key [:details :data-model :download :transforms :create-queries :view-data]
+         :let [api-value (get db-changes api-key)]
+         :when api-value]
+     [group-id db-id api-key api-value])))
 
-(defn- update-details-perms!
-  [group-id db-id value]
-  (perms/set-database-permission! group-id db-id :perms/manage-database value))
+(defn- expand-to-table-level
+  "Expands a db-level permission value to table-level entries for all tables in the db.
+   :query-builder-and-native becomes :query-builder per table since it can only be db-level."
+  [perm-value all-tables]
+  (let [table-value (if (= perm-value :query-builder-and-native) :query-builder perm-value)]
+    (into {}
+          (map (fn [{:keys [id schema]}]
+                 [id {:perm_value table-value :schema_name schema}]))
+          all-tables)))
 
-(defn- update-transforms-perms!
-  [group-id db-id value]
-  (perms/set-database-permission! group-id db-id :perms/transforms value))
+(defn- table-permissions-map [current-rows]
+  (into {}
+        (keep (fn [{:keys [table_id perm_value schema_name] :as _row}]
+                (when table_id
+                  [table_id
+                   {:perm_value  perm_value
+                    :schema_name schema_name}])))
+        current-rows))
 
-(defn- update-table-level-create-queries-permissions!
-  [group-id db-id schema new-table-perms]
-  (let [new-table-perms (update-keys
-                         new-table-perms
-                         (fn [table-id] {:id table-id :db_id db-id :schema schema}))]
-    (perms/set-table-permissions! group-id :perms/create-queries new-table-perms)))
+(defn- perms->base-state [current-rows current-db-row all-tables]
+  (if current-db-row
+    (expand-to-table-level (:perm_value current-db-row) all-tables)
+    (table-permissions-map current-rows)))
 
-(defn- update-schema-level-create-queries-permissions!
-  [group-id db-id schema new-schema-perms]
-  (if (map? new-schema-perms)
-    (update-table-level-create-queries-permissions! group-id db-id schema new-schema-perms)
-    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
-      (when (seq tables)
-        (perms/set-table-permissions! group-id :perms/create-queries (zipmap tables (repeat new-schema-perms)))))))
+(defn- finalize-tuple
+  "For a single [group-id db-id perm-type], compute the final desired DataPermissions rows.
+   Merges desired entries with current state for unmentioned tables, then coalesces if possible.
 
-(defn- update-db-level-create-queries-permissions!
-  [group-id db-id new-db-perms]
-  (if (map? new-db-perms)
-    (doseq [[schema new-schema-perms] new-db-perms]
-      (update-schema-level-create-queries-permissions! group-id db-id schema new-schema-perms))
-    (when new-db-perms
-      (perms/set-database-permission! group-id db-id :perms/create-queries new-db-perms))))
+   Coalescing rules (matching legacy behavior):
+   - Explicit db-level desired (nil key, no table overrides) → always db-level
+   - Mixed (db-level default + table overrides) where all values same → coalesce to db-level
+   - Table-level desired, current was db-level, all values match current → keep db-level (no-op)
+   - Otherwise → table-level rows"
+  [group-id db-id perm-type desired-entries current-rows all-tables]
+  (let [has-db-level?  (contains? desired-entries nil)
+        table-entries  (dissoc desired-entries nil)]
+    (if (and has-db-level? (empty? table-entries))
+      [{:perm_type   perm-type
+        :group_id    group-id
+        :perm_value  (:perm_value (desired-entries nil))
+        :db_id       db-id}]
+      (let [current-db-row (first (filter #(nil? (:table_id %)) current-rows))
+            base-state     (if has-db-level?
+                             (expand-to-table-level (:perm_value (desired-entries nil)) all-tables)
+                             (perms->base-state current-rows current-db-row all-tables))
+            final-state    (merge base-state table-entries)
+            values         (into #{} (map :perm_value) (vals final-state))
+            all-same?      (and (= 1 (count values))
+                                (seq all-tables)
+                                (= (count final-state) (count all-tables)))
+            coalesce?      (and all-same?
+                                (or has-db-level?
+                                    (and current-db-row
+                                         (= (first values) (:perm_value current-db-row)))))]
+        (if coalesce?
+          [{:perm_type   perm-type
+            :group_id    group-id
+            :perm_value  (first values)
+            :db_id       db-id}]
+          (mapv (fn [[table-id {:keys [perm_value schema_name]}]]
+                  {:perm_type   perm-type
+                   :group_id    group-id
+                   :perm_value  perm_value
+                   :db_id       db-id
+                   :table_id    table-id
+                   :schema_name schema_name})
+                final-state))))))
 
-(defn- update-table-level-view-data-permissions!
-  [group-id db-id schema new-table-perms]
-  (let [new-table-perms (->
-                         (update-keys
-                          new-table-perms
-                          (fn [table-id] {:id table-id :db_id db-id :schema schema}))
-                         (update-vals (fn [table-perm]
-                                        (case table-perm
-                                          :unrestricted           :unrestricted
-                                          ;; If the table is sandboxed, we set `view-data` to `unrestricted` since
-                                          ;; sandboxes are stored separately in the `sandboxes` table
-                                          :sandboxed              :unrestricted
-                                          :legacy-no-self-service :legacy-no-self-service
-                                          :blocked                :blocked))))]
-    (perms/set-table-permissions! group-id :perms/view-data new-table-perms)))
+(def ^:private row-signature
+  (juxt :perm_type :perm_value :table_id :schema_name))
 
-(defn- update-schema-level-view-data-permissions!
-  [group-id db-id schema new-schema-perms]
-  (if (map? new-schema-perms)
-    (update-table-level-view-data-permissions! group-id db-id schema new-schema-perms)
-    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
-      (when (seq tables)
-        (perms/set-table-permissions! group-id :perms/view-data (zipmap tables (repeat new-schema-perms)))))))
+(defn- rows-match?
+  "Check if the current rows already represent the desired state (no changes needed)."
+  [current-rows desired-rows]
+  (= (into #{} (map row-signature) current-rows)
+     (into #{} (map row-signature) desired-rows)))
 
-(defn- update-db-level-view-data-permissions!
-  [group-id db-id new-db-perms]
-  (if (map? new-db-perms)
-    (doseq [[schema new-schema-perms] new-db-perms]
-      (update-schema-level-view-data-permissions! group-id db-id schema new-schema-perms))
-    (case new-db-perms
-      (:unrestricted :impersonated)
-      (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+(defn- compute-diff
+  "Given the desired state, current permissions index, and tables-by-db,
+   returns {:to-delete [id ...] :to-insert [row-map ...]}."
+  [desired-state current-perms-index tables-by-db]
+  (reduce-kv
+   (fn [acc [group-id db-id perm-type] desired-entries]
+     (let [current-rows (get current-perms-index [group-id db-id perm-type] [])
+           all-tables   (get tables-by-db db-id [])
+           desired-rows (finalize-tuple group-id db-id perm-type desired-entries current-rows all-tables)]
+       (if (rows-match? current-rows desired-rows)
+         acc
+         (-> acc
+             (update :to-delete into (keep :id) current-rows)
+             (update :to-insert into desired-rows)))))
+   {:to-delete [] :to-insert []}
+   desired-state))
 
-      ;; Support setting legacy-no-self-service for testing purposes, though the UI shouldn't allow it normally
-      :legacy-no-self-service
-      (perms/set-database-permission! group-id db-id :perms/view-data :legacy-no-self-service)
-
-      :blocked
-      (do
-        (when-not (premium-features/has-feature? :advanced-permissions)
-          (throw (ee-permissions-exception :blocked)))
-        (perms/set-database-permission! group-id db-id :perms/view-data :blocked)))))
+(defn- validate-blocked-permissions!
+  [graph]
+  (doseq [[_group-id group-changes] graph
+          [_db-id db-changes] group-changes]
+    (when (= (:view-data db-changes) :blocked)
+      (when-not (premium-features/has-feature? :advanced-permissions)
+        (throw (ee-permissions-exception :blocked))))))
 
 (defn- check-data-analyst-locked-permissions
   "Check that we're not modifying data-model permission for the Data Analysts group.
@@ -470,26 +555,31 @@
                       {:status-code 400})))))
 
 (mu/defn update-data-perms-graph!*
-  "Takes an API-style perms graph and sets the permissions in the database accordingly."
+  "Takes an API-style perms graph and sets the permissions in the database accordingly.
+   Uses bulk operations to minimize database round-trips."
   ([graph]
-   (doseq [[group-id group-changes] graph]
-     (doseq [[db-id db-changes] group-changes
-             ;; instead of iterating the provided cb-changes object we need to go in a specific order
-             ;; so backend consistency rules like setting create-queries and download to no when view-data
-             ;; is blocked can happen in the correct order despite what may come in the API request
-             perm-type [:details :data-model :download :transforms :create-queries :view-data]]
-       (when-let [new-perms (perm-type db-changes)]
-         (case perm-type
-           :view-data      (update-db-level-view-data-permissions! group-id db-id new-perms)
-           :create-queries (update-db-level-create-queries-permissions! group-id db-id new-perms)
-           :download       (update-db-level-download-permissions! group-id db-id new-perms)
-           :data-model     (update-db-level-metadata-permissions! group-id db-id new-perms)
-           :details        (update-details-perms! group-id db-id new-perms)
-           :transforms     (update-transforms-perms! group-id db-id new-perms))))))
+   (let [affected-group-ids  (keys graph)
+         affected-db-ids     (into #{} (mapcat keys) (vals graph))
+         all-tables          (when (seq affected-db-ids)
+                               (t2/select [:model/Table :id :db_id :schema]
+                                          :db_id [:in affected-db-ids]))
+         tables-by-db-schema (group-by (juxt :db_id :schema) all-tables)
+         tables-by-db        (group-by :db_id all-tables)
+         current-perms       (or (perms/index-database-permissions affected-group-ids affected-db-ids) {})
+         desired-state       (compute-desired-state graph tables-by-db-schema)
+         {:keys [to-delete to-insert]} (compute-diff desired-state current-perms tables-by-db)]
+     (validate-blocked-permissions! graph)
+     (when (seq to-delete)
+       (perms/batch-delete-permissions! to-delete))
+     (when (seq to-insert)
+       (perms/batch-insert-permissions! to-insert))))
 
   ;; The following arity is provided solely for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]
-   (update-data-perms-graph!* (assoc-in (-> api-graph :groups) ks new-value))))
+   (-> (api-graph)
+       :groups
+       (assoc-in ks new-value)
+       update-data-perms-graph!*)))
 
 (mu/defn update-data-perms-graph!
   "Takes an API-style perms graph and sets the permissions in the database accordingly. Additionally ensures
@@ -506,4 +596,6 @@
 
   ;; The following arity is provided solely for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]
-   (update-data-perms-graph! (assoc-in (api-graph) (cons :groups ks) new-value))))
+   (-> (api-graph)
+       (assoc-in (cons :groups ks) new-value)
+       update-data-perms-graph!)))

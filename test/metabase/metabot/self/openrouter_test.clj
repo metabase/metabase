@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as metabot.tu]
    [metabase.premium-features.core :as premium-features]
@@ -191,6 +192,7 @@
                                          llm.settings/llm-proxy-base-url    "https://proxy.example"]
         (testing "Prefers BYOK over ai proxy"
           (with-redefs [self.core/sse-reducible identity
+                        debug/capture-stream    (fn [r _] r)
                         http/request            (fn [req] {:body req})]
             (is (=? {:method  :post
                      :url     "https://openrouter.ai/api/v1/chat/completions"
@@ -201,6 +203,7 @@
         (testing "Uses ai proxy when explicitly requested"
           (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil]
             (with-redefs [self.core/sse-reducible identity
+                          debug/capture-stream    (fn [r _] r)
                           http/request            (fn [req] {:body req})]
               (is (=? {:method  :post
                        :url     "https://proxy.example/openrouter/v1/chat/completions"

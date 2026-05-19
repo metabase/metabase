@@ -66,7 +66,7 @@ import {
 import type { State } from "metabase/redux/store";
 import { getTokenFeature } from "metabase/setup";
 
-import { AISettingsPage } from "./ai/AISettingsPage";
+import { AISettingsPage, McpSettingsPage } from "./ai/AISettingsPage";
 import { MetabotAdminLayout } from "./ai/MetabotAdminLayout";
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
@@ -75,6 +75,7 @@ import { getSettingsRoutes } from "./settingsRoutes";
 import { ToolsApp } from "./tools/components/ToolsApp";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
 import { getTasksRoutes } from "./tools/routes";
+import { UpsellTenants } from "./upsells/UpsellTenants";
 import {
   RedirectToAllowedSettings,
   createAdminRouteGuard,
@@ -159,7 +160,13 @@ export const getRoutes = (
 
             {/* Tenants */}
             <Route path="tenants" component={createTenantsRouteGuard()}>
-              {PLUGIN_TENANTS.tenantsRoutes}
+              {PLUGIN_TENANTS.tenantsRoutes ?? (
+                <>
+                  <IndexRoute component={UpsellTenants} />
+                  <Route path="groups" component={UpsellTenants} />
+                  <Route path="people" component={UpsellTenants} />
+                </>
+              )}
             </Route>
 
             <Route path="" component={PeopleListingApp}>
@@ -271,7 +278,7 @@ export const getRoutes = (
           {PLUGIN_AUDIT.getAiAnalyticsRoutes()}
           <Route key="index-layout" component={MetabotAdminLayout}>
             <IndexRoute key="index" component={AISettingsPage} />
-            <Route key="metabot" path=":metabotId" component={AISettingsPage} />
+            <Route key="mcp" path="mcp" component={McpSettingsPage} />
           </Route>
           <Route
             key="layout"

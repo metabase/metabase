@@ -53,8 +53,12 @@ jobs:
 
             core.setOutput('branch', branch);
             core.setOutput('next', String(next));
+            core.setOutput('nextMilestone', String(next + 1));
             core.setOutput('needsRequirementsUpdate', String(needsRequirementsUpdate));
 
+      # Pushing the new branch triggers set-milestone.yml, which does the
+      # full milestone backfill and then dispatches release-notes-preview
+      # to upload the markdown to #writing.
       - name: Cut the branch
         id: cut
         run: |
@@ -76,6 +80,103 @@ jobs:
             --body "${{ steps.preflight.outputs.next }}" \
             --repo "${{ github.repository }}"
 
+      # Pre-create the milestone for the version AFTER this cut, so it's
+      # already open when next time's backfill needs somewhere to assign
+      # issues. The milestone for THIS cut (0.{next}) is expected to exist
+      # from the previous run of this workflow.
+      - name: Create 0.${{ steps.preflight.outputs.nextMilestone }} milestone
+        id: milestone
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: | # js
+            const title = '0.${{ steps.preflight.outputs.nextMilestone }}';
+
+            try {
+              await github.rest.issues.createMilestone({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+              });
+              console.log(`Created milestone ${title}`);
+            } catch (err) {
+              if (err.status === 422) {
+                console.log(`Milestone ${title} already exists — skipping`);
+                return;
+              }
+              throw err;
+            }
+
+      # Same logic as the milestone above: Bug:v{next} should already exist
+      # from the previous run; we pre-create Bug:v{next+1} for next time.
+      - name: Create Bug:v${{ steps.preflight.outputs.nextMilestone }} label
+        id: label
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: | # js
+            const nextMilestone = '${{ steps.preflight.outputs.nextMilestone }}';
+            const name = `Bug:v${nextMilestone}`;
+            const color = Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+
+            try {
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name,
+                color,
+                description: `bugs or regressions introduced in v${nextMilestone}`,
+              });
+              console.log(`Created label ${name} (#${color})`);
+            } catch (err) {
+              if (err.status === 422) {
+                console.log(`Label ${name} already exists — skipping`);
+                return;
+              }
+              throw err;
+            }
+
+      # Log the cut on stats.metabase.com so the release timeline picks it up.
+      # timeline_id 14 = the major releases timeline.
+      - name: Create stats Timeline event
+        id: timeline
+        continue-on-error: true
+        env:
+          STATS_API_KEY: ${{ secrets.STATS_API_KEY }}
+        uses: actions/github-script@v7
+        with:
+          script: | # js
+            const next = '${{ steps.preflight.outputs.next }}';
+            const name = `x.${next}.0`;
+
+            const res = await fetch('https://stats.metabase.com/api/timeline-event', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': process.env.STATS_API_KEY,
+              },
+              body: JSON.stringify({
+                name,
+                description: 'Beta',
+                timestamp: new Date().toISOString(),
+                timeline_id: 14,
+                icon: 'star',
+                timezone: 'US/Pacific',
+                time_matters: false,
+                archived: false,
+                source: 'collections',
+              }),
+            });
+
+            if (!res.ok) {
+              const body = await res.text();
+              throw new Error(`Timeline event creation failed (${res.status}): ${body}`);
+            }
+
+            console.log(`Created timeline event ${name}`);
+
       - name: Notify Slack
         uses: actions/github-script@v7
         env:
@@ -88,6 +189,9 @@ jobs:
             const next = '${{ steps.preflight.outputs.next }}';
             const sha = '${{ steps.cut.outputs.sha }}';
             const bumpFailed = '${{ steps.bump.outcome }}' === 'failure';
+            const milestoneFailed = '${{ steps.milestone.outcome }}' === 'failure';
+            const labelFailed = '${{ steps.label.outcome }}' === 'failure';
+            const timelineFailed = '${{ steps.timeline.outcome }}' === 'failure';
             const needsReqs = '${{ steps.preflight.outputs.needsRequirementsUpdate }}' === 'true';
 
             const owner = context.repo.owner;
@@ -95,19 +199,80 @@ jobs:
 
             const shaLink = `<https://github.com/${owner}/${repo}/commit/${sha}|${sha.slice(0, 7)}>`;
             const team = mentionSlackTeam('releasemanagers');
+            const embedding = mentionSlackTeam('embedding-devs');
+            const embeddingChecklist = 'https://www.notion.so/metabase/Embedding-Checklist-What-to-do-after-cutting-a-new-release-branch-20269354c90180808329eab86e59f20d';
 
             const notes = [
               bumpFailed
                 ? `:warning: Auto-bump of \`CURRENT_VERSION\` to *${next}* failed — please update it manually: <https://github.com/${owner}/${repo}/settings/variables/actions|Actions variables>`
                 : `\`CURRENT_VERSION\` bumped to *${next}*.`,
+              milestoneFailed
+                ? `:warning: Pre-creating milestone \`0.${{ steps.preflight.outputs.nextMilestone }}\` (for the next cut) failed — please create it manually: <https://github.com/${owner}/${repo}/milestones|Repository milestones>`
+                : null,
+              labelFailed
+                ? `:warning: Pre-creating label \`Bug:v${{ steps.preflight.outputs.nextMilestone }}\` (for the next cut) failed — please create it manually: <https://github.com/${owner}/${repo}/labels|Repository labels>`
+                : null,
+              timelineFailed
+                ? `:warning: Logging the cut to the <https://stats.metabase.com|stats> release timeline failed — please add an \`x.${next}.0\` event manually.`
+                : null,
               needsReqs
                 ? `:warning: Please add \`versionRequirements[${next}]\` to \`release/src/version-helpers.ts\` (java + node + platforms).`
                 : null,
             ].filter(Boolean).join('\n');
 
-            const message = `:tree_evergreen: Cut new release branch *${branch}* at ${shaLink} ${team}\n${notes}`;
+            const message = [
+              `:evergreen_tree: A new release branch *${branch}* cut at ${shaLink} ${team}`,
+              notes,
+              `${embedding} please run the <${embeddingChecklist}|Embedding Checklist>.`,
+            ].filter(Boolean).join('\n');
 
             await sendSlackMessage({
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
               message,
+            }).catch(console.error);
+
+      # Heads-up to the broader eng audience about where backports go now.
+      - name: Notify the engineering team
+        uses: actions/github-script@v7
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { sendSlackMessage, mentionSlackTeam } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const next = Number('${{ steps.preflight.outputs.next }}');
+            const current = next - 1;
+            const eng = mentionSlackTeam('engineering');
+
+            const message = [
+              `:announcement-animated: ${eng} The v${next} release branch has been cut.`,
+              `- \`backport\`s will go to v${next} now`,
+              `- If you want to go back to v${current}, you'll need to add the double-backport tag`,
+            ].join('\n');
+
+            await sendSlackMessage({
+              channelName: 'team-engineering',
+              message,
+            }).catch(console.error);
+
+      # `failure()` fires when any previous step without continue-on-error
+      # fails — preflight, the cut itself, or the surrounding setup steps.
+      # The post-cut steps (bump, milestone, label, timeline) set
+      # continue-on-error and surface their own failures as warnings in
+      # the happy-path message above.
+      - name: Notify Slack on cut failure
+        if: failure()
+        uses: actions/github-script@v7
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { sendSlackMessage, mentionSlackTeam } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const team = mentionSlackTeam('releasemanagers');
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            await sendSlackMessage({
+              channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
+              message: `:rotating_light: Cutting next release branch failed — see <${runUrl}|run logs> ${team}`,
             }).catch(console.error);

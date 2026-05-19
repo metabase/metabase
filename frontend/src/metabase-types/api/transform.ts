@@ -200,6 +200,7 @@ export type TransformJob = {
   description: string | null;
   schedule: string;
   ui_display_type: ScheduleDisplayType;
+  active: boolean;
   created_at: string;
   updated_at: string;
 
@@ -246,6 +247,7 @@ export type UpdateTransformJobRequest = {
   description?: string | null;
   schedule?: string;
   ui_display_type?: ScheduleDisplayType;
+  active?: boolean;
   tag_ids?: TransformTagId[];
 };
 

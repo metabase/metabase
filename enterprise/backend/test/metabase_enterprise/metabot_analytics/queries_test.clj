@@ -1,7 +1,8 @@
 (ns metabase-enterprise.metabot-analytics.queries-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [metabase-enterprise.metabot-analytics.queries :as analytics.queries]))
+   [metabase-enterprise.metabot-analytics.queries :as analytics.queries]
+   [metabase.metabot.tools :as metabot.tools]))
 
 (set! *warn-on-reflection* true)
 
@@ -120,11 +121,11 @@
             "database_id should fall back to :query.database for notebook tools")
         (is (= [] (:tables row)))))))
 
-(deftest construct-notebook-query-pmbql-test
-  (testing "pMBQL is passed through to the frontend as-is, without conversion to legacy MBQL"
+(deftest construct-notebook-query-mbql5-test
+  (testing "MBQL 5 is passed through to the frontend as-is, without conversion to legacy MBQL"
     (with-stubbed-tables! []
       (fn []
-        (let [pmbql {:lib/type "mbql/query"
+        (let [mbql5 {:lib/type "mbql/query"
                      :lib/metadata nil
                      :database 1
                      :stages   [{:lib/type     "mbql.stage/mbql"
@@ -139,10 +140,10 @@
                               {:type "tool-output"
                                :id "call-5"
                                :result {:structured-output {:query-id "qid-3"
-                                                            :query    pmbql}}}]}])
+                                                            :query    mbql5}}}]}])
               row   (first rows)]
           (is (= "notebook" (:query_type row)))
-          (is (= pmbql (:mbql row)))
+          (is (= mbql5 (:mbql row)))
           (is (= 1 (:database_id row))))))))
 
 ;;; ------------------------- filtered-out cases -------------------------
@@ -231,7 +232,7 @@
           (is (= [] rows)))))))
 
 (deftest slackbot-native-shape-blocks-are-extracted-test
-  (testing "going-forward slackbot rows are persisted via store-native-parts!, so they carry
+  (testing "going-forward slackbot rows are persisted via finalize-assistant-turn!, so they carry
             the same :type 'tool-input'/'tool-output' block shape as in-app rows and the
             analytics extractor handles them identically"
     (with-stubbed-tables! ["orders"]
@@ -260,7 +261,7 @@
           (testing "count-tool-invocations reaches tool names directly by :function"
             (is (= 1 (analytics.queries/count-tool-invocations [message] "search")))
             (is (= 1 (analytics.queries/count-tool-invocations
-                      [message] analytics.queries/new-query-tool-names))))
+                      [message] metabot.tools/query-generation-tool-names))))
           (testing "messages->generated-queries surfaces the SQL tool call"
             (let [rows (analytics.queries/messages->generated-queries [message])]
               (is (= 1 (count rows)))
@@ -329,13 +330,11 @@
                       :_type "TOOL_CALL"
                       :tool_calls [{:id "slack-1" :name "search"}]}]}]))
   (testing "accepts a set of tool names; a block counts if its :function is in the set"
-    ;; new-query-tool-names matches create_sql_query and construct_notebook_query,
-    ;; but not edit_sql_query / replace_sql_query.
-    (is (= 3 (analytics.queries/count-tool-invocations
+    (is (= 5 (analytics.queries/count-tool-invocations
               [{:id 1 :data [{:type "tool-input" :function "create_sql_query" :id "a"}
-                             {:type "tool-input" :function "edit_sql_query" :id "b"}        ; excluded
+                             {:type "tool-input" :function "edit_sql_query" :id "b"}
                              {:type "tool-input" :function "construct_notebook_query" :id "c"}]}
-               {:id 2 :data [{:type "tool-input" :function "replace_sql_query" :id "d"}     ; excluded
+               {:id 2 :data [{:type "tool-input" :function "replace_sql_query" :id "d"}
                              {:type "tool-input" :function "create_sql_query" :id "e"}
-                             {:type "tool-input" :function "search" :id "f"}]}]             ; excluded
-              analytics.queries/new-query-tool-names)))))
+                             {:type "tool-input" :function "search" :id "f"}]}]             ; non-query tool
+              metabot.tools/query-generation-tool-names)))))

@@ -37,13 +37,15 @@ const generalSettings = {
   "search-engine": "appdb",
 } as const;
 
-const setup = async (
-  { isCloudPlan }: { isCloudPlan: boolean } = { isCloudPlan: false },
-) => {
+const setup = async ({
+  isCloudPlan,
+  hasAuditApp,
+}: { isCloudPlan?: boolean; hasAuditApp?: boolean } = {}) => {
   const settings = createMockSettings({
     ...generalSettings,
     "token-features": createMockTokenFeatures({
-      hosting: isCloudPlan,
+      hosting: isCloudPlan ?? false,
+      audit_app: hasAuditApp ?? true,
     }),
   });
 
@@ -180,5 +182,47 @@ describe("GeneralSettingsPage", () => {
     expect(
       screen.queryByText("Send anonymous tracking data to Metabase"),
     ).not.toBeInTheDocument();
+  });
+
+  it("should show Collect User Data input when the audit_app token feature is enabled", async () => {
+    await setup({ hasAuditApp: true });
+
+    expect(
+      screen.getByText("Collect user data to display in usage analytics"),
+    ).toBeInTheDocument();
+  });
+
+  it("should not show Collect User Data input when the audit_app token feature is disabled", async () => {
+    await setup({ hasAuditApp: false });
+
+    expect(
+      screen.queryByText("Collect user data to display in usage analytics"),
+    ).not.toBeInTheDocument();
+  });
+
+  describe("Usage tracking section visibility", () => {
+    it("should hide the Usage tracking section on Starter Cloud (hosting without audit_app)", async () => {
+      await setup({ isCloudPlan: true, hasAuditApp: false });
+
+      expect(screen.queryByText("Usage tracking")).not.toBeInTheDocument();
+    });
+
+    it("should show the Usage tracking section on Pro Cloud (hosting with audit_app)", async () => {
+      await setup({ isCloudPlan: true, hasAuditApp: true });
+
+      expect(screen.getByText("Usage tracking")).toBeInTheDocument();
+    });
+
+    it("should show the Usage tracking section on self-hosted OSS (no hosting, no audit_app)", async () => {
+      await setup({ isCloudPlan: false, hasAuditApp: false });
+
+      expect(screen.getByText("Usage tracking")).toBeInTheDocument();
+    });
+
+    it("should show the Usage tracking section on self-hosted EE (no hosting, audit_app)", async () => {
+      await setup({ isCloudPlan: false, hasAuditApp: true });
+
+      expect(screen.getByText("Usage tracking")).toBeInTheDocument();
+    });
   });
 });

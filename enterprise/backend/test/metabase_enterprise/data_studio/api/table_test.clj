@@ -23,9 +23,11 @@
          (mt/with-temp [:model/Collection {collection-id :id} {:type collection/library-data-collection-type}]
            (testing "normal users are not allowed to publish"
              (mt/user-http-request :rasta :post 403 "ee/data-studio/table/publish-tables"
-                                   {:table_ids [(mt/id :users) (mt/id :venues)]}))
+                                   {:table_ids     [(mt/id :users) (mt/id :venues)]
+                                    :collection_id collection-id}))
            (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
-                                                {:table_ids [(mt/id :users) (mt/id :venues)]})]
+                                                {:table_ids     [(mt/id :users) (mt/id :venues)]
+                                                 :collection_id collection-id})]
              (is (=? {:id collection-id} (:target_collection response)))
              (testing "collection_id and is_published are set"
                (is (=? [{:display_name "Users"
@@ -61,19 +63,34 @@
      (testing "returns 404 when no library-data collection exists"
        (is (= "Not found."
               (mt/user-http-request :crowberto :post 404 "ee/data-studio/table/publish-tables"
-                                    {:table_ids [(mt/id :users)]}))))
-     (testing "returns 409 when multiple library-data collections exist"
-       (mt/with-temp [:model/Collection _ {:type collection/library-data-collection-type}
-                      :model/Collection _ {:type collection/library-data-collection-type}]
-         (is (= "Multiple library-data collections found."
-                (mt/user-http-request :crowberto :post 409 "ee/data-studio/table/publish-tables"
-                                      {:table_ids [(mt/id :users)]}))))))))
+                                    {:table_ids     [(mt/id :users)]
+                                     :collection_id Integer/MAX_VALUE}))))
+     (testing "returns 400 when collection_id is missing"
+       (mt/user-http-request :crowberto :post 400 "ee/data-studio/table/publish-tables"
+                             {:table_ids [(mt/id :users)]}))
+     (testing "returns 400 when target collection is not a library-data collection"
+       (mt/with-temp [:model/Collection {collection-id :id} {}]
+         (is (= "Tables can only be published to Library/Data collections."
+                (mt/user-http-request :crowberto :post 400 "ee/data-studio/table/publish-tables"
+                                      {:table_ids     [(mt/id :users)]
+                                       :collection_id collection-id})))))
+     (testing "publishes tables into library-data subcollections"
+       (mt/with-temp [:model/Collection {data-id :id} {:type collection/library-data-collection-type}
+                      :model/Collection {subcollection-id :id} {:type     collection/library-data-collection-type
+                                                                :location (str "/" data-id "/")}]
+         (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
+                               {:table_ids     [(mt/id :users)]
+                                :collection_id subcollection-id})
+         (is (=? {:collection_id subcollection-id
+                  :is_published  true}
+                 (t2/select-one :model/Table (mt/id :users)))))))))
 
 (deftest requests-data-studio-feature-flag-test
   (mt/with-premium-features #{}
     (is (= "Library is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
            (:message (mt/user-http-request :crowberto :post 402 "ee/data-studio/table/publish-tables"
-                                           {:table_ids [(mt/id :users)]}))))))
+                                           {:table_ids     [(mt/id :users)]
+                                            :collection_id 1}))))))
 
 (deftest data-analyst-can-access-endpoints-test
   (mt/with-premium-features #{:library :advanced-permissions}
@@ -86,12 +103,13 @@
                        :model/PermissionsGroupMembership _ {:user_id analyst-id :group_id data-analyst-group-id}
                        :model/Database {db-id :id} {}
                        :model/Table {table-id :id} {:db_id db-id}
-                       :model/Collection _ {:type collection/library-data-collection-type}]
+                       :model/Collection {collection-id :id} {:type collection/library-data-collection-type}]
           ;; Grant data analyst group view-data permission on this database
           (data-perms/set-database-permission! data-analyst-group-id db-id :perms/view-data :unrestricted)
           (testing "data analyst can publish tables"
             (is (map? (mt/user-http-request analyst-id :post 200 "ee/data-studio/table/publish-tables"
-                                            {:table_ids [table-id]}))))
+                                            {:table_ids     [table-id]
+                                             :collection_id collection-id}))))
           (testing "data analyst can unpublish tables"
             (is (nil? (mt/user-http-request analyst-id :post 204 "ee/data-studio/table/unpublish-tables"
                                             {:table_ids [table-id]})))))))))
@@ -104,11 +122,12 @@
                                                 :email "regular-user@metabase.com"}
                      :model/Database {db-id :id} {}
                      :model/Table {table-id :id} {:db_id db-id}
-                     :model/Collection _ {:type collection/library-data-collection-type}]
+                     :model/Collection {collection-id :id} {:type collection/library-data-collection-type}]
         (testing "regular user cannot publish tables"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request user-id :post 403 "ee/data-studio/table/publish-tables"
-                                       {:table_ids [table-id]}))))
+                                       {:table_ids     [table-id]
+                                        :collection_id collection-id}))))
         (testing "regular user cannot unpublish tables"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request user-id :post 403 "ee/data-studio/table/unpublish-tables"
@@ -119,7 +138,7 @@
 (deftest publish-tables-with-upstream-dependencies-test
   (mt/with-premium-features #{:library}
     (testing "POST /api/ee/data-studio/table/publish-tables publishes upstream dependencies"
-      (mt/with-temp [:model/Collection _                      {:type collection/library-data-collection-type}
+      (mt/with-temp [:model/Collection {collection-id :id}    {:type collection/library-data-collection-type}
                      :model/Database   {db-id :id}          {}
                      ;; Products table (upstream)
                      :model/Table      {products-id :id}    {:db_id db-id :name "products" :is_published false}
@@ -139,14 +158,15 @@
                                                              :type :external}]
         (testing "publishing orders also publishes products (upstream dependency)"
           (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
-                                {:table_ids [orders-id]})
+                                {:table_ids     [orders-id]
+                                 :collection_id collection-id})
           (are [table-id] (true? (t2/select-one-fn :is_published :model/Table table-id))
             orders-id products-id))))))
 
 (deftest publish-tables-recursive-upstream-test
   (mt/with-premium-features #{:library}
     (testing "POST /api/ee/data-studio/table/publish-tables publishes recursive upstream dependencies"
-      (mt/with-temp [:model/Collection _                      {:type collection/library-data-collection-type}
+      (mt/with-temp [:model/Collection {collection-id :id}    {:type collection/library-data-collection-type}
                      :model/Database   {db-id :id}          {}
                      ;; Customers table (upstream of orders)
                      :model/Table      {customers-id :id}   {:db_id db-id :name "customers" :is_published false}
@@ -177,7 +197,8 @@
                                                              :type :external}]
         (testing "publishing order_items also publishes orders and customers (recursive upstream)"
           (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
-                                {:table_ids [items-id]})
+                                {:table_ids     [items-id]
+                                 :collection_id collection-id})
           (are [table-id] (true? (t2/select-one-fn :is_published :model/Table table-id))
             items-id orders-id customers-id))))))
 
@@ -256,7 +277,7 @@
 (deftest publish-tables-requires-write-and-query-perms-test
   (mt/with-premium-features #{:library :advanced-permissions}
     (testing "POST /api/ee/data-studio/table/publish-tables requires write and query permission on all tables"
-      (mt/with-temp [:model/Collection _              {:type collection/library-data-collection-type}
+      (mt/with-temp [:model/Collection {collection-id :id} {:type collection/library-data-collection-type}
                      :model/Database   {db-id :id}    {}
                      :model/Table      {table-id :id} {:db_id db-id :name "restricted_table"}
                      :model/User       {analyst-id :id} {:first_name "Data"
@@ -271,7 +292,8 @@
           ;; Analyst has data analyst role but no data perms on the table
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request analyst-id :post 403 "ee/data-studio/table/publish-tables"
-                                       {:table_ids [table-id]}))))))))
+                                       {:table_ids     [table-id]
+                                        :collection_id collection-id}))))))))
 
 (deftest unpublish-tables-requires-write-and-query-perms-test
   (mt/with-premium-features #{:library :advanced-permissions}

@@ -67,8 +67,9 @@
   (first (task/existing-triggers (job-key job-id-or-trigger)
                                  (trigger-key job-id-or-trigger))))
 
-(defn- delete-trigger!
-  "Delete the trigger for a transform job."
+(defn delete-trigger!
+  "Delete the trigger for a transform job. Leaves the underlying Quartz job definition intact so it
+  can be re-scheduled later via [[initialize-job!]]."
   ([job-id-or-trigger]
    (if (number? job-id-or-trigger)
      (if-let [trigger (existing-trigger job-id-or-trigger)]
@@ -124,5 +125,5 @@
 
 (defmethod task/init! ::RunTransform [_]
   (log/info "Initializing transform job execution jobs")
-  (->> (t2/select :model/TransformJob)
+  (->> (t2/select :model/TransformJob :active true)
        (run! initialize-job!)))

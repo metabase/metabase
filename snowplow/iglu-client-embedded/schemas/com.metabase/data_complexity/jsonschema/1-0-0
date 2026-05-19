@@ -11,6 +11,7 @@
     "additionalProperties": false,
     "required": [
         "event",
+        "batch_id",
         "catalog",
         "key",
         "formula_version",
@@ -24,6 +25,12 @@
                 "data_complexity_scoring"
             ],
             "maxLength": 64
+        },
+        "batch_id": {
+            "description": "Unique identifier for the scoring run that emitted this event; consumers use it to group events from the same run.",
+            "type": "string",
+            "format": "uuid",
+            "maxLength": 36
         },
         "catalog": {
             "description": "Which catalog of the data layer was scored.",
