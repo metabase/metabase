@@ -21,9 +21,7 @@ type Props = {
  *
  * The container `<div>` carries `data-plugin-sandbox=<pluginId>` so the
  * sandbox's DOM-scoping distortion (see `sandbox/distortions-dom-read.ts`)
- * recognises it as part of the plugin's allowed subtree. Without this,
- * every Node crossing the membrane gets swapped for a detached decoy and
- * the widget's React tree never reaches the page.
+ * recognises it as part of the plugin's allowed subtree.
  *
  * `pluginId` is recovered from the host-trusted mount itself rather than
  * passed as a prop, so that ChartSettingsWidget (which renders this

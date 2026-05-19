@@ -40,13 +40,6 @@ type TrustedMount = WidgetMount & {
  * `WidgetMount`. The wrapper is host-allocated and stamped with the
  * host-realm trust symbol plus the originating plugin id; calling it
  * forwards to the plugin's mount fn across the membrane.
- *
- * If the plugin's value isn't actually a real mount handle (e.g. they
- * smuggled a React component or any other function), invoking it as
- * `(container, initialProps)` will return a non-handle value and
- * subsequent `update`/`unmount` calls will fail plugin-side. Critically,
- * the plugin's React tree never reaches the host React reconciler — the
- * worst-case outcome is a broken widget render, not a host-tree escape.
  */
 export function wrapPluginWidget(
   pluginWidget: WidgetMount,
@@ -54,6 +47,7 @@ export function wrapPluginWidget(
 ): WidgetMount {
   const mount: TrustedMount = (container, initialProps) =>
     pluginWidget(container, initialProps);
+
   Object.defineProperty(mount, HOST_TRUSTED_MOUNT, {
     value: true,
     enumerable: false,
@@ -62,20 +56,15 @@ export function wrapPluginWidget(
     value: pluginId,
     enumerable: false,
   });
+
   return mount;
 }
 
-/**
- * Returns `true` only for `WidgetMount` values that the host itself
- * allocated via `wrapPluginWidget`. Plugin-controlled values (including
- * those that try to spoof a brand by adding own properties) cannot pass
- * this check, because the host-realm symbol used here is unreachable
- * from inside the plugin sandbox.
- */
-export function isWidgetMount(value: unknown): value is WidgetMount {
+export function isWidgetMount(value: unknown): value is TrustedMount {
   return (
     typeof value === "function" &&
-    (value as { [HOST_TRUSTED_MOUNT]?: unknown })[HOST_TRUSTED_MOUNT] === true
+    HOST_TRUSTED_MOUNT in value &&
+    value[HOST_TRUSTED_MOUNT] === true
   );
 }
 
@@ -85,10 +74,11 @@ export function isWidgetMount(value: unknown): value is WidgetMount {
  * plugin-controlled values that may carry plausible-looking brands.
  */
 export function getWidgetMountPluginId(
-  value: WidgetMount,
+  maybeWidgetMount: WidgetMount,
 ): CustomVizPluginId | undefined {
-  if (!isWidgetMount(value)) {
+  if (!isWidgetMount(maybeWidgetMount)) {
     return undefined;
   }
-  return (value as TrustedMount)[HOST_TRUSTED_MOUNT_PLUGIN_ID];
+
+  return maybeWidgetMount[HOST_TRUSTED_MOUNT_PLUGIN_ID];
 }
