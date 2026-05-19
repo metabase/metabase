@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.security-center.fetch :as fetch]
    [metabase-enterprise.security-center.matching :as matching]
+   [metabase-enterprise.security-center.settings :as settings]
    [metabase-enterprise.security-center.task.sync-advisories :as sync-advisories]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
@@ -35,6 +36,38 @@
                                     matching/evaluate-all-advisories!         #(swap! called conj :evaluate)]
           (#'sync-advisories/sync-and-evaluate!)
           (is (= [:evaluate] @called)))))))
+
+(deftest sync-and-evaluate-last-synced-at-test
+  (testing "security-center-last-synced-at is bumped only when fetch/sync-advisories! succeeds"
+    (mt/with-premium-features #{:admin-security-center}
+      (testing "successful fetch updates the setting"
+        (mt/with-temporary-setting-values [security-center-last-synced-at nil]
+          (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
+                                      fetch/sync-advisories!                    (constantly nil)
+                                      matching/evaluate-all-advisories!         (constantly nil)]
+            (#'sync-advisories/sync-and-evaluate!)
+            (is (some? (settings/security-center-last-synced-at))
+                "fetch succeeded, so last-synced-at should be set"))))
+      (testing "failed fetch leaves the setting untouched"
+        ;; If a previous sync succeeded the setting holds that older timestamp;
+        ;; a subsequent failed fetch must not overwrite it (otherwise the
+        ;; freshness gauge tracks 'last attempt' rather than 'last success'
+        ;; and alerts on stale advisories would never fire).
+        (let [previous #t "2026-01-01T00:00:00Z"]
+          (mt/with-temporary-setting-values [security-center-last-synced-at previous]
+            (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
+                                        fetch/sync-advisories!                    #(throw (Exception. "HM unreachable"))
+                                        matching/evaluate-all-advisories!         (constantly nil)]
+              (#'sync-advisories/sync-and-evaluate!)
+              (is (= previous (settings/security-center-last-synced-at))
+                  "fetch failed, so last-synced-at must not be advanced")))))
+      (testing "failed fetch on a never-synced instance keeps the setting nil"
+        (mt/with-temporary-setting-values [security-center-last-synced-at nil]
+          (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
+                                      fetch/sync-advisories!                    #(throw (Exception. "HM unreachable"))
+                                      matching/evaluate-all-advisories!         (constantly nil)]
+            (#'sync-advisories/sync-and-evaluate!)
+            (is (nil? (settings/security-center-last-synced-at)))))))))
 
 (deftest sync-and-evaluate-e2e-test
   (testing "full flow: sync-and-evaluate! runs matching queries and updates match_status"
