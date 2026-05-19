@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { useCreateExplorationMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
+import type { ExplorationSelection } from "metabase/explorations/hooks";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useDispatch } from "metabase/redux";
@@ -40,13 +41,14 @@ import {
 } from "./utils";
 
 export interface NewExplorationDataProps {
-  metrics: ExplorationMetric[];
-  setMetrics: (metrics: ExplorationMetric[]) => void;
-  dimensions: MetricDimension[];
-  setDimensions: (dimensions: MetricDimension[]) => void;
-  timelines: Timeline[];
-  setTimelines: (timelines: Timeline[]) => void;
-  name: string;
+  /**
+   * Single source of truth for the exploration's draft selection.
+   * Lives in `useExplorationSelection()` on the page, and is also
+   * threaded into the Browse tab and the agent chat — so toggles from
+   * any entry point update the same arrays this panel renders pills
+   * from.
+   */
+  selection: ExplorationSelection;
 }
 
 function buildCreateExplorationRequest(
@@ -74,15 +76,16 @@ function buildCreateExplorationRequest(
   };
 }
 
-export function NewExplorationData({
-  metrics,
-  setMetrics,
-  dimensions,
-  setDimensions,
-  timelines,
-  setTimelines,
-  name,
-}: NewExplorationDataProps) {
+export function NewExplorationData({ selection }: NewExplorationDataProps) {
+  const {
+    metrics,
+    setMetrics,
+    dimensions,
+    setDimensions,
+    timelines,
+    name,
+    toggleTimeline,
+  } = selection;
   const dispatch = useDispatch();
   const [sendToast] = useToast();
 
@@ -175,9 +178,12 @@ export function NewExplorationData({
 
   const handleRemoveTimeline = useCallback(
     (id: number | string) => {
-      setTimelines(timelines.filter((timeline) => timeline.id !== id));
+      const timeline = timelines.find((t) => t.id === id);
+      if (timeline) {
+        toggleTimeline(timeline);
+      }
     },
-    [timelines, setTimelines],
+    [timelines, toggleTimeline],
   );
 
   return (
@@ -279,18 +285,12 @@ export function NewExplorationData({
       <AddMetricsModal
         opened={isAddMetricsModalOpen}
         onClose={() => setIsAddMetricsModalOpen(false)}
-        selectedMetrics={metrics}
-        selectedDimensions={dimensions}
-        onSelectedItemsChange={(newMetrics, newDimensions) => {
-          setMetrics(newMetrics);
-          setDimensions(newDimensions);
-        }}
+        selection={selection}
       />
       <AddTimelinesModal
         opened={isAddTimelinesModalOpen}
         onClose={() => setIsAddTimelinesModalOpen(false)}
-        selectedTimelines={timelines}
-        onSelectedItemsChange={setTimelines}
+        selection={selection}
       />
     </>
   );

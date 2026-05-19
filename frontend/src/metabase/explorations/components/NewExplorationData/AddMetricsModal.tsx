@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useGetExplorationDataQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { isInterestingDimension } from "metabase/explorations/constants";
+import type { ExplorationSelection } from "metabase/explorations/hooks";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import {
   Box,
@@ -26,33 +26,43 @@ import type {
 import S from "./AddMetricsModal.module.css";
 import { DimensionList } from "./DimensionList";
 import { MetricList } from "./MetricList";
-import { removeMetricFromSelection } from "./utils";
 
 export interface AddMetricsModalProps {
   opened: boolean;
   onClose: () => void;
-  selectedMetrics: ExplorationMetric[];
-  selectedDimensions: MetricDimension[];
-  onSelectedItemsChange: (
-    newMetrics: ExplorationMetric[],
-    newDimensions: MetricDimension[],
-  ) => void;
+  selection: ExplorationSelection;
 }
 
+/**
+ * Modal entry point for picking metrics + dimensions from the right
+ * panel's "+" button. Each row toggles `selection` immediately — so the
+ * right-panel pills update on every click and the bottom button just
+ * closes. Selection rules (auto-add interesting dimensions, cascade
+ * group-toggles, orphan-metric drop) live in `useExplorationSelection`
+ * so the Browse tab and this modal share the same behaviour.
+ */
 export function AddMetricsModal({
   opened,
   onClose,
-  selectedMetrics: initialMetrics,
-  selectedDimensions: initialDimensions,
-  onSelectedItemsChange,
+  selection,
 }: AddMetricsModalProps) {
+  const {
+    metrics: selectedMetrics,
+    dimensions: selectedDimensions,
+    toggleMetric,
+    toggleDimension,
+  } = selection;
+
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
 
-  const [selectedMetrics, setSelectedMetrics] =
-    useState<ExplorationMetric[]>(initialMetrics);
-  const [selectedDimensions, setSelectedDimensions] =
-    useState<MetricDimension[]>(initialDimensions);
+  // Clear the search input every time the modal re-opens so users land
+  // on the full picker, not a stale filtered view.
+  useEffect(() => {
+    if (opened) {
+      setSearch("");
+    }
+  }, [opened]);
 
   const selectedMetricIds = useMemo(
     () => new Set(selectedMetrics.map((m) => m.id)),
@@ -73,7 +83,10 @@ export function AddMetricsModal({
     { skip: !opened },
   );
 
-  const visibleMetrics = useMemo(() => response?.metrics ?? [], [response]);
+  const visibleMetrics: ExplorationMetric[] = useMemo(
+    () => response?.metrics ?? [],
+    [response],
+  );
 
   const visibleGroups = useMemo<ExplorationDimensionGroup[]>(
     () => response?.dimension_groups ?? [],
@@ -99,32 +112,12 @@ export function AddMetricsModal({
     const dimensionsById = new Map<DimensionId, MetricDimension>();
     visibleGroups.forEach((g, i) => {
       groupByRowId.set(groupRows[i].id, g);
-
       for (const d of g.dimensions) {
         dimensionsById.set(d.id, d);
       }
     });
     return { groupByRowId, dimensionsById };
   }, [groupRows, visibleGroups]);
-
-  const isValid = selectedMetrics.length > 0 && selectedDimensions.length > 0;
-
-  // Reset the draft from props whenever the modal opens.
-  useEffect(() => {
-    if (opened) {
-      setSelectedMetrics(initialMetrics);
-      setSelectedDimensions(initialDimensions);
-      setSearch("");
-    }
-    // We intentionally only re-seed on `opened` transitions, not on every
-    // parent change, so the user's in-flight edits aren't clobbered.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opened]);
-
-  const handleDone = useCallback(() => {
-    onSelectedItemsChange(selectedMetrics, selectedDimensions);
-    onClose();
-  }, [selectedMetrics, selectedDimensions, onSelectedItemsChange, onClose]);
 
   const metricsByDimension = useMemo(() => {
     const map = new Map<DimensionId, ExplorationMetric[]>();
@@ -141,122 +134,22 @@ export function AddMetricsModal({
     return map;
   }, [visibleMetrics]);
 
-  const toggleMetric = useCallback(
-    (metric: ExplorationMetric) => {
-      if (selectedMetricIds.has(metric.id)) {
-        const { metrics: nextMetrics, dimensions: nextDimensions } =
-          removeMetricFromSelection(
-            selectedMetrics,
-            selectedDimensions,
-            metric.id,
-          );
-        setSelectedMetrics(nextMetrics);
-        setSelectedDimensions(nextDimensions);
-      } else {
-        setSelectedMetrics([...selectedMetrics, metric]);
-        const have = new Set(selectedDimensions.map((d) => d.id));
-        const merged = [...selectedDimensions];
+  const handleToggleMetric = (metric: ExplorationMetric) => {
+    toggleMetric(metric, { dimensionsById });
+  };
 
-        const hasInterestingDimensions = metric.dimension_ids.some((id) => {
-          const dimension = dimensionsById.get(id);
-          return dimension && isInterestingDimension(dimension);
-        });
+  const handleToggleDimension = (dimension: MetricDimension) => {
+    const group = groupByRowId.get(dimension.id) ?? null;
+    toggleDimension(dimension, { group, metricsByDimension });
+  };
 
-        for (const id of metric.dimension_ids) {
-          if (!have.has(id)) {
-            const dimension = dimensionsById.get(id);
-            if (
-              dimension &&
-              (hasInterestingDimensions
-                ? isInterestingDimension(dimension)
-                : true)
-            ) {
-              merged.push(dimension);
-            }
-          }
-        }
-
-        setSelectedDimensions(merged);
-      }
-    },
-    [selectedDimensions, selectedMetrics, selectedMetricIds, dimensionsById],
-  );
-
-  const isDimensionSelected = useCallback(
-    (dimensionId: DimensionId) => {
-      const group = groupByRowId.get(dimensionId);
-      if (!group) {
-        return selectedDimensionIds.has(dimensionId);
-      }
-      return group.dimensions.some((d) => selectedDimensionIds.has(d.id));
-    },
-    [groupByRowId, selectedDimensionIds],
-  );
-
-  const toggleDimension = useCallback(
-    (dimension: MetricDimension) => {
-      const group = groupByRowId.get(dimension.id);
-      const groupDims = group ? group.dimensions : [dimension];
-      const groupIds = new Set(groupDims.map((d) => d.id));
-      const groupSelected = groupDims.some((d) =>
-        selectedDimensionIds.has(d.id),
-      );
-      const connected = groupDims.flatMap(
-        (d) => metricsByDimension.get(d.id) ?? [],
-      );
-
-      if (groupSelected) {
-        const nextDimensions = selectedDimensions.filter(
-          (d) => !groupIds.has(d.id),
-        );
-        setSelectedDimensions(nextDimensions);
-        const remainingDimIds = new Set(nextDimensions.map((d) => d.id));
-        const orphanedIds = new Set(
-          connected
-            .filter(
-              (m) => !m.dimension_ids.some((id) => remainingDimIds.has(id)),
-            )
-            .map((m) => m.id),
-        );
-        if (orphanedIds.size > 0) {
-          setSelectedMetrics(
-            selectedMetrics.filter((m) => !orphanedIds.has(m.id)),
-          );
-        }
-      } else {
-        const have = new Set(selectedDimensions.map((d) => d.id));
-        const mergedDims = [...selectedDimensions];
-        for (const d of groupDims) {
-          if (!have.has(d.id)) {
-            mergedDims.push(d);
-          }
-        }
-        if (mergedDims.length !== selectedDimensions.length) {
-          setSelectedDimensions(mergedDims);
-        }
-        if (connected.length > 0) {
-          const haveMetrics = new Set(selectedMetrics.map((m) => m.id));
-          const mergedMetrics = [...selectedMetrics];
-          for (const metric of connected) {
-            if (!haveMetrics.has(metric.id)) {
-              mergedMetrics.push(metric);
-              haveMetrics.add(metric.id);
-            }
-          }
-          if (mergedMetrics.length !== selectedMetrics.length) {
-            setSelectedMetrics(mergedMetrics);
-          }
-        }
-      }
-    },
-    [
-      selectedDimensions,
-      selectedMetrics,
-      groupByRowId,
-      metricsByDimension,
-      selectedDimensionIds,
-    ],
-  );
+  const isDimensionSelected = (dimensionId: DimensionId) => {
+    const group = groupByRowId.get(dimensionId);
+    if (!group) {
+      return selectedDimensionIds.has(dimensionId);
+    }
+    return group.dimensions.some((d) => selectedDimensionIds.has(d.id));
+  };
 
   return (
     <Modal.Root opened={opened} onClose={onClose} size="60rem" padding="xl">
@@ -288,7 +181,7 @@ export function AddMetricsModal({
                 <MetricList
                   metrics={visibleMetrics}
                   selectedIds={selectedMetricIds}
-                  onToggle={toggleMetric}
+                  onToggle={handleToggleMetric}
                 />
               </Stack>
               <Stack w="18rem" gap="sm" mih={0}>
@@ -297,17 +190,13 @@ export function AddMetricsModal({
                   className={S.dimensionsSection}
                   dimensions={groupRows}
                   isSelected={isDimensionSelected}
-                  onToggle={toggleDimension}
+                  onToggle={handleToggleDimension}
                 />
               </Stack>
             </Flex>
           </LoadingAndErrorWrapper>
           <Flex justify="flex-end" mt="lg">
-            <Button
-              variant="filled"
-              disabled={!isValid}
-              onClick={handleDone}
-            >{t`Done`}</Button>
+            <Button variant="filled" onClick={onClose}>{t`Done`}</Button>
           </Flex>
         </Modal.Body>
       </Modal.Content>

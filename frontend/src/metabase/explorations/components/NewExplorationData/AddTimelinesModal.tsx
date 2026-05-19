@@ -1,10 +1,11 @@
 import cx from "classnames";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { useListTimelinesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getEventCount } from "metabase/common/utils/timelines";
+import type { ExplorationSelection } from "metabase/explorations/hooks";
 import {
   Box,
   Button,
@@ -24,16 +25,22 @@ import S from "./AddTimelinesModal.module.css";
 export interface AddTimelinesModalProps {
   opened: boolean;
   onClose: () => void;
-  selectedTimelines: Timeline[];
-  onSelectedItemsChange: (newTimelines: Timeline[]) => void;
+  selection: ExplorationSelection;
 }
 
+/**
+ * Modal entry point for picking timelines from the right panel's "+"
+ * button. Each row commits to `selection.timelines` on click (no Done
+ * required); the bottom button just closes. Selection behaviour mirrors
+ * the Browse tab's Timelines panel.
+ */
 export function AddTimelinesModal({
   opened,
   onClose,
-  selectedTimelines,
-  onSelectedItemsChange,
+  selection,
 }: AddTimelinesModalProps) {
+  const { timelines, toggleTimeline } = selection;
+
   const {
     data: allTimelines = [],
     isLoading,
@@ -42,51 +49,21 @@ export function AddTimelinesModal({
 
   const [search, setSearch] = useState("");
 
-  const [draftTimelines, setDraftTimelines] =
-    useState<Timeline[]>(selectedTimelines);
-
-  // Reset the draft from props whenever the modal opens.
+  // Clear the search input every time the modal re-opens.
   useEffect(() => {
     if (opened) {
-      setDraftTimelines(selectedTimelines);
       setSearch("");
     }
-    // We intentionally only re-seed on `opened` transitions, not on every
-    // parent change, so the user's in-flight edits aren't clobbered.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opened]);
 
-  const handleDone = useCallback(() => {
-    onSelectedItemsChange(draftTimelines);
-    onClose();
-  }, [draftTimelines, onSelectedItemsChange, onClose]);
-
   const selectedIds = useMemo(
-    () => new Set(draftTimelines.map((t) => t.id)),
-    [draftTimelines],
+    () => new Set(timelines.map((t) => t.id)),
+    [timelines],
   );
 
-  const filteredTimelines = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) {
-      return allTimelines;
-    }
-    return allTimelines.filter(
-      (timeline) =>
-        timeline.name.toLowerCase().includes(query) ||
-        (timeline.description?.toLowerCase().includes(query) ?? false),
-    );
-  }, [allTimelines, search]);
-
-  const toggleTimeline = useCallback(
-    (timeline: Timeline) => {
-      if (selectedIds.has(timeline.id)) {
-        setDraftTimelines(draftTimelines.filter((t) => t.id !== timeline.id));
-      } else {
-        setDraftTimelines([...draftTimelines, timeline]);
-      }
-    },
-    [draftTimelines, selectedIds],
+  const filteredTimelines = useMemo(
+    () => filterTimelinesBySearch(allTimelines, search),
+    [allTimelines, search],
   );
 
   return (
@@ -122,11 +99,31 @@ export function AddTimelinesModal({
             </Stack>
           </LoadingAndErrorWrapper>
           <Flex justify="flex-end" mt="lg">
-            <Button variant="filled" onClick={handleDone}>{t`Done`}</Button>
+            <Button variant="filled" onClick={onClose}>{t`Done`}</Button>
           </Flex>
         </Modal.Body>
       </Modal.Content>
     </Modal.Root>
+  );
+}
+
+/**
+ * Client-side case-insensitive filter across timeline name + description.
+ * Extracted as a pure function so the Browse panel can reuse it with the
+ * exact same matching rules as the modal.
+ */
+export function filterTimelinesBySearch(
+  timelines: Timeline[],
+  search: string,
+): Timeline[] {
+  const query = search.trim().toLowerCase();
+  if (!query) {
+    return timelines;
+  }
+  return timelines.filter(
+    (timeline) =>
+      timeline.name.toLowerCase().includes(query) ||
+      (timeline.description?.toLowerCase().includes(query) ?? false),
   );
 }
 
@@ -140,7 +137,18 @@ interface TimelineListProps {
   onToggle: (timeline: Timeline) => void;
 }
 
-function TimelineList({ timelines, selectedIds, onToggle }: TimelineListProps) {
+/**
+ * Vertical list of timeline rows with the same markup the modal has
+ * always used (`role="list" / role="listitem"`, `aria-pressed`,
+ * Checkbox with `aria-label={timeline.name}`). Exported so the Browse
+ * panel renders identical rows, keeping the e2e selectors in
+ * `H.addTimelinesToExploration` valid.
+ */
+export function TimelineList({
+  timelines,
+  selectedIds,
+  onToggle,
+}: TimelineListProps) {
   if (timelines.length === 0) {
     return (
       <Text c="text-secondary" py="md">

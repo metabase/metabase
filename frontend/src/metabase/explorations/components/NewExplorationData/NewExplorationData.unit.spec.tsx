@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import type { ExplorationSelection } from "metabase/explorations/hooks";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import type { MetricDimension, Timeline } from "metabase-types/api";
@@ -57,6 +58,34 @@ const plan = createMockMetricDimension({
   sources: [{ type: "field", "field-id": 2 }],
 });
 
+/**
+ * Build a static mock of `ExplorationSelection`. The component reads
+ * `metrics` / `dimensions` / `timelines` for rendering and calls
+ * `setMetrics`/`setDimensions`/`toggleTimeline` on the remove
+ * handlers — both of which are `jest.fn()` so tests can verify the
+ * exact calls. Toggle helpers + the agent setters aren't used by the
+ * remove paths and stay as no-op stubs.
+ */
+function makeMockSelection(opts: {
+  metrics?: ExplorationMetric[];
+  dimensions?: MetricDimension[];
+  timelines?: Timeline[];
+}): ExplorationSelection {
+  return {
+    metrics: opts.metrics ?? [],
+    dimensions: opts.dimensions ?? [],
+    timelines: opts.timelines ?? [],
+    name: "",
+    setName: jest.fn(),
+    setMetrics: jest.fn(),
+    setDimensions: jest.fn(),
+    setTimelines: jest.fn(),
+    toggleMetric: jest.fn(),
+    toggleDimension: jest.fn(),
+    toggleTimeline: jest.fn(),
+  };
+}
+
 function setup({
   metrics = [],
   dimensions = [],
@@ -70,28 +99,16 @@ function setup({
     messages: [],
   } as any);
 
-  const setMetrics = jest.fn();
-  const setDimensions = jest.fn();
-  const setTimelines = jest.fn();
+  const selection = makeMockSelection({ metrics, dimensions, timelines });
 
-  renderWithProviders(
-    <NewExplorationData
-      metrics={metrics}
-      setMetrics={setMetrics}
-      dimensions={dimensions}
-      setDimensions={setDimensions}
-      timelines={timelines}
-      setTimelines={setTimelines}
-      name=""
-    />,
-  );
+  renderWithProviders(<NewExplorationData selection={selection} />);
 
-  return { setMetrics, setDimensions, setTimelines };
+  return { selection };
 }
 
 describe("NewExplorationData", () => {
   it("removes all dimensions represented by a grouped dimension pill", async () => {
-    const { setDimensions } = setup({
+    const { selection } = setup({
       dimensions: [createdAtMonth, createdAtQuarter, plan],
     });
 
@@ -99,8 +116,8 @@ describe("NewExplorationData", () => {
 
     await userEvent.click(screen.getAllByRole("button", { name: "Remove" })[0]);
 
-    expect(setDimensions).toHaveBeenCalledTimes(1);
-    expect(setDimensions).toHaveBeenCalledWith([plan]);
+    expect(selection.setDimensions).toHaveBeenCalledTimes(1);
+    expect(selection.setDimensions).toHaveBeenCalledWith([plan]);
   });
 
   describe("removing a metric pill", () => {
@@ -129,7 +146,7 @@ describe("NewExplorationData", () => {
     }
 
     it("drops dimensions that no remaining metric uses", async () => {
-      const { setMetrics, setDimensions } = setup({
+      const { selection } = setup({
         metrics: [revenueMetric],
         dimensions: [createdAtMonth, plan],
       });
@@ -138,12 +155,12 @@ describe("NewExplorationData", () => {
       // dimensions.
       await clickMetricRemove(0);
 
-      expect(setMetrics).toHaveBeenCalledWith([]);
-      expect(setDimensions).toHaveBeenCalledWith([]);
+      expect(selection.setMetrics).toHaveBeenCalledWith([]);
+      expect(selection.setDimensions).toHaveBeenCalledWith([]);
     });
 
     it("keeps dimensions still used by another metric", async () => {
-      const { setMetrics, setDimensions } = setup({
+      const { selection } = setup({
         metrics: [revenueMetric, churnMetric],
         dimensions: [createdAtMonth, plan],
       });
@@ -152,8 +169,8 @@ describe("NewExplorationData", () => {
       // Plan stays (Churn still uses it).
       await clickMetricRemove(0);
 
-      expect(setMetrics).toHaveBeenCalledWith([churnMetric]);
-      expect(setDimensions).toHaveBeenCalledWith([plan]);
+      expect(selection.setMetrics).toHaveBeenCalledWith([churnMetric]);
+      expect(selection.setDimensions).toHaveBeenCalledWith([plan]);
     });
 
     it("does not call setDimensions when no dimensions need to be dropped", async () => {
@@ -165,7 +182,7 @@ describe("NewExplorationData", () => {
         display_name: "Region",
         sources: [{ type: "field", "field-id": 3 }],
       });
-      const { setMetrics, setDimensions } = setup({
+      const { selection } = setup({
         metrics: [revenueMetric, churnMetric],
         dimensions: [plan, extraDim],
       });
@@ -174,8 +191,8 @@ describe("NewExplorationData", () => {
       // uses, so no dimensions become orphaned.
       await clickMetricRemove(1);
 
-      expect(setMetrics).toHaveBeenCalledWith([revenueMetric]);
-      expect(setDimensions).not.toHaveBeenCalled();
+      expect(selection.setMetrics).toHaveBeenCalledWith([revenueMetric]);
+      expect(selection.setDimensions).not.toHaveBeenCalled();
     });
   });
 
@@ -310,6 +327,16 @@ describe("NewExplorationData", () => {
       expect(screen.getByTestId("add-timelines-modal")).toBeInTheDocument();
       // Timelines panel still expanded — the pill is visible.
       expect(screen.getByText("Releases")).toBeInTheDocument();
+    });
+
+    it("removing a timeline pill routes through selection.toggleTimeline", async () => {
+      const timeline = createMockTimeline({ id: 99, name: "Releases" });
+      const { selection } = setup({ timelines: [timeline] });
+
+      await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+
+      expect(selection.toggleTimeline).toHaveBeenCalledTimes(1);
+      expect(selection.toggleTimeline).toHaveBeenCalledWith(timeline);
     });
   });
 });

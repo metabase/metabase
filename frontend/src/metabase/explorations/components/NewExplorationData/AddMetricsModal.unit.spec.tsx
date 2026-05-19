@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { useEffect, useImperativeHandle, useRef } from "react";
 
 import { setupMetricsEndpoints } from "__support__/server-mocks/metric";
 import {
@@ -8,6 +9,8 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import type { ExplorationSelection } from "metabase/explorations/hooks";
+import { useExplorationSelection } from "metabase/explorations/hooks";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import type { MetricDimension } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
@@ -81,6 +84,53 @@ interface SetupOpts {
   extraMetrics?: ExplorationMetric[];
 }
 
+interface SelectionRef {
+  current: ExplorationSelection | null;
+}
+
+/**
+ * Test harness that owns the real `useExplorationSelection` hook so the
+ * tests exercise the modal end-to-end against the production toggle
+ * rules (auto-add interesting dimensions, orphan-metric drop on
+ * dimension removal, etc.). Tests read the live selection via the
+ * `selectionRef.current` getter — easier than re-mocking React state.
+ */
+function Harness({
+  initialMetrics,
+  initialDimensions,
+  selectionRef,
+  onClose,
+}: {
+  initialMetrics: ExplorationMetric[];
+  initialDimensions: MetricDimension[];
+  selectionRef: React.MutableRefObject<ExplorationSelection | null>;
+  onClose: () => void;
+}) {
+  const selection = useExplorationSelection();
+  selectionRef.current = selection;
+
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (seededRef.current) {
+      return;
+    }
+    seededRef.current = true;
+    if (initialMetrics.length > 0) {
+      selection.setMetrics(initialMetrics);
+    }
+    if (initialDimensions.length > 0) {
+      selection.setDimensions(initialDimensions);
+    }
+  }, [initialMetrics, initialDimensions, selection]);
+
+  // Re-expose the latest snapshot on every render — toggles produce
+  // new arrays so test assertions can read post-click state via
+  // `selectionRef.current!.metrics`.
+  useImperativeHandle(selectionRef, () => selection, [selection]);
+
+  return <AddMetricsModal opened onClose={onClose} selection={selection} />;
+}
+
 function setup({
   initialMetrics = [],
   initialDimensions = [],
@@ -93,23 +143,33 @@ function setup({
     ...extraMetrics,
   ]);
 
-  const onSelectedItemsChange = jest.fn();
   const onClose = jest.fn();
+  const selectionRef: SelectionRef = { current: null };
 
   renderWithProviders(
-    <AddMetricsModal
-      opened
+    <Harness
+      initialMetrics={initialMetrics}
+      initialDimensions={initialDimensions}
+      selectionRef={
+        selectionRef as React.MutableRefObject<ExplorationSelection | null>
+      }
       onClose={onClose}
-      selectedMetrics={initialMetrics}
-      selectedDimensions={initialDimensions}
-      onSelectedItemsChange={onSelectedItemsChange}
     />,
   );
 
-  return { onSelectedItemsChange, onClose };
+  return {
+    onClose,
+    getSelection: () => {
+      const sel = selectionRef.current;
+      if (!sel) {
+        throw new Error("Selection ref was not populated");
+      }
+      return sel;
+    },
+  };
 }
 
-async function clickDone() {
+async function clickClose() {
   await userEvent.click(screen.getByRole("button", { name: "Done" }));
 }
 
@@ -135,43 +195,24 @@ describe("AddMetricsModal", () => {
     expect(screen.getByText("Country")).toBeInTheDocument();
   });
 
-  it("toggles do not call onSelectedItemsChange until Done is clicked", async () => {
-    const { onSelectedItemsChange } = setup();
+  it("checking a metric commits it + its interesting dimensions immediately", async () => {
+    const { getSelection } = setup();
 
     const checkbox = await screen.findByRole("checkbox", {
       name: "Monthly recurring revenue",
     });
     await userEvent.click(checkbox);
-    await userEvent.click(screen.getByText("Plan"));
 
-    expect(onSelectedItemsChange).not.toHaveBeenCalled();
+    expect(getSelection().metrics.map((m) => m.id)).toEqual([metricRevenue.id]);
+    expect(
+      getSelection()
+        .dimensions.map((d) => d.id)
+        .sort(),
+    ).toEqual([dimRevenue.id, dimShared.id].sort());
   });
 
-  it("Done commits checked metric and its dimensions", async () => {
-    const { onSelectedItemsChange, onClose } = setup();
-
-    const checkbox = await screen.findByRole("checkbox", {
-      name: "Monthly recurring revenue",
-    });
-    await userEvent.click(checkbox);
-    await clickDone();
-
-    expect(onSelectedItemsChange).toHaveBeenCalledTimes(1);
-    const [nextMetrics, nextDimensions] = onSelectedItemsChange.mock.calls[0];
-    expect(nextMetrics).toEqual([
-      expect.objectContaining({ id: metricRevenue.id }),
-    ]);
-    expect(nextDimensions).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: dimRevenue.id }),
-        expect.objectContaining({ id: dimShared.id }),
-      ]),
-    );
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it("Done commits removal of an unchecked metric and dimensions no other selected metric uses", async () => {
-    const { onSelectedItemsChange } = setup({
+  it("unchecking a metric removes it + drops dimensions no other selected metric uses", async () => {
+    const { getSelection } = setup({
       initialMetrics: [revenueAsMetric, churnAsMetric],
       initialDimensions: [dimRevenue, dimChurn, dimShared],
     });
@@ -180,39 +221,31 @@ describe("AddMetricsModal", () => {
       name: "Monthly recurring revenue",
     });
     await userEvent.click(checkbox);
-    await clickDone();
 
-    expect(onSelectedItemsChange).toHaveBeenCalledTimes(1);
-    const [nextMetrics, nextDimensions] = onSelectedItemsChange.mock
-      .calls[0] as [ExplorationMetric[], MetricDimension[]];
-    expect(nextMetrics).toEqual([
-      expect.objectContaining({ id: metricChurn.id }),
-    ]);
-    expect(nextDimensions.map((d) => d.id).sort()).toEqual(
-      [dimChurn.id, dimShared.id].sort(),
-    );
+    expect(getSelection().metrics.map((m) => m.id)).toEqual([metricChurn.id]);
+    expect(
+      getSelection()
+        .dimensions.map((d) => d.id)
+        .sort(),
+    ).toEqual([dimChurn.id, dimShared.id].sort());
   });
 
-  it("Done commits the dimension click and its connected metrics", async () => {
-    const { onSelectedItemsChange } = setup();
+  it("clicking a dimension commits it + every metric connected to it", async () => {
+    const { getSelection } = setup();
 
     await screen.findByText("Country");
     await userEvent.click(screen.getByText("Country"));
-    await clickDone();
 
-    expect(onSelectedItemsChange).toHaveBeenCalledTimes(1);
-    const [nextMetrics, nextDimensions] = onSelectedItemsChange.mock
-      .calls[0] as [ExplorationMetric[], MetricDimension[]];
-    expect(nextDimensions).toEqual([
-      expect.objectContaining({ id: dimShared.id }),
-    ]);
-    expect(nextMetrics.map((m) => m.id).sort()).toEqual(
-      [metricRevenue.id, metricChurn.id].sort(),
-    );
+    expect(getSelection().dimensions.map((d) => d.id)).toEqual([dimShared.id]);
+    expect(
+      getSelection()
+        .metrics.map((m) => m.id)
+        .sort(),
+    ).toEqual([metricRevenue.id, metricChurn.id].sort());
   });
 
-  it("disables Done after deselecting the only shared dimension orphans all metrics", async () => {
-    const { onSelectedItemsChange } = setup({
+  it("deselecting a shared dimension orphans every metric that loses its last matching dimension", async () => {
+    const { getSelection } = setup({
       initialMetrics: [revenueAsMetric, churnAsMetric],
       initialDimensions: [dimShared],
     });
@@ -220,37 +253,25 @@ describe("AddMetricsModal", () => {
     await screen.findByText("Country");
     await userEvent.click(screen.getByText("Country"));
 
-    // Deselecting "Country" orphans both metrics, leaving the draft empty.
-    // Done must be disabled in this invalid state and clicking it must be a
-    // no-op.
-    const doneButton = screen.getByRole("button", { name: "Done" });
-    expect(doneButton).toBeDisabled();
-    await userEvent.click(doneButton);
-    expect(onSelectedItemsChange).not.toHaveBeenCalled();
+    expect(getSelection().metrics).toEqual([]);
+    expect(getSelection().dimensions).toEqual([]);
   });
 
-  it("Done keeps a metric whose other dimension is still selected", async () => {
-    const { onSelectedItemsChange } = setup({
+  it("deselecting a dimension keeps a metric whose other dimension is still selected", async () => {
+    const { getSelection } = setup({
       initialMetrics: [revenueAsMetric, churnAsMetric],
       initialDimensions: [dimRevenue, dimShared],
     });
 
     await screen.findByText("Country");
     await userEvent.click(screen.getByText("Country"));
-    await clickDone();
 
-    expect(onSelectedItemsChange).toHaveBeenCalledTimes(1);
-    const [nextMetrics, nextDimensions] = onSelectedItemsChange.mock.calls[0];
-    expect(nextDimensions).toEqual([
-      expect.objectContaining({ id: dimRevenue.id }),
-    ]);
-    expect(nextMetrics).toEqual([
-      expect.objectContaining({ id: metricRevenue.id }),
-    ]);
+    expect(getSelection().dimensions.map((d) => d.id)).toEqual([dimRevenue.id]);
+    expect(getSelection().metrics.map((m) => m.id)).toEqual([metricRevenue.id]);
   });
 
-  it("closing without Done discards in-flight edits", async () => {
-    const { onSelectedItemsChange, onClose } = setup();
+  it("closing the modal keeps the toggles already applied (no draft to discard)", async () => {
+    const { getSelection, onClose } = setup();
 
     const checkbox = await screen.findByRole("checkbox", {
       name: "Monthly recurring revenue",
@@ -258,7 +279,7 @@ describe("AddMetricsModal", () => {
     await userEvent.click(checkbox);
     await userEvent.click(screen.getByRole("button", { name: "Close" }));
 
-    expect(onSelectedItemsChange).not.toHaveBeenCalled();
+    expect(getSelection().metrics.map((m) => m.id)).toEqual([metricRevenue.id]);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -287,44 +308,16 @@ describe("AddMetricsModal", () => {
     expect(screen.getByText("Country")).toBeInTheDocument();
   });
 
-  it("invokes onClose when Done is clicked", async () => {
+  it("Done button just closes the modal — it doesn't replay any commits", async () => {
     const { onClose } = setup({
       initialMetrics: [revenueAsMetric],
       initialDimensions: [dimRevenue],
     });
 
     await screen.findByText("Monthly recurring revenue");
-    await clickDone();
+    await clickClose();
 
     expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it("disables Done until at least one metric and one dimension are picked", async () => {
-    const { onSelectedItemsChange } = setup();
-
-    await screen.findByText("Monthly recurring revenue");
-    const doneButton = screen.getByRole("button", { name: "Done" });
-
-    // Empty draft → disabled.
-    expect(doneButton).toBeDisabled();
-
-    // Checking a metric auto-adds its interesting dimension(s), so both
-    // lists become non-empty and Done turns enabled.
-    await userEvent.click(
-      screen.getByRole("checkbox", { name: "Active users" }),
-    );
-    expect(doneButton).toBeEnabled();
-
-    // Unchecking the metric drops the auto-added dim too, returning the
-    // draft to the empty state — Done goes back to disabled.
-    await userEvent.click(
-      screen.getByRole("checkbox", { name: "Active users" }),
-    );
-    expect(doneButton).toBeDisabled();
-
-    // Clicking the disabled button must not commit.
-    await userEvent.click(doneButton);
-    expect(onSelectedItemsChange).not.toHaveBeenCalled();
   });
 
   it("renders metric description alongside the name", async () => {
@@ -347,7 +340,7 @@ describe("AddMetricsModal", () => {
       dimensions: [dimRevenue, dimBoring],
     });
 
-    const { onSelectedItemsChange } = setup({
+    const { getSelection } = setup({
       extraMetrics: [metricMixed as ExplorationMetric],
     });
 
@@ -355,18 +348,10 @@ describe("AddMetricsModal", () => {
       name: "Mixed metric",
     });
     await userEvent.click(checkbox);
-    await clickDone();
 
-    expect(onSelectedItemsChange).toHaveBeenCalledTimes(1);
-    const [nextMetrics, nextDimensions] = onSelectedItemsChange.mock.calls[0];
-
-    expect(nextMetrics).toEqual([
-      expect.objectContaining({ id: metricMixed.id }),
-    ]);
+    expect(getSelection().metrics.map((m) => m.id)).toEqual([metricMixed.id]);
     // Only the high-score dim (dimRevenue, 0.9) is auto-picked. The low-score
     // dim (dimBoring, 0.2) is left out.
-    expect(nextDimensions).toEqual([
-      expect.objectContaining({ id: dimRevenue.id }),
-    ]);
+    expect(getSelection().dimensions.map((d) => d.id)).toEqual([dimRevenue.id]);
   });
 });

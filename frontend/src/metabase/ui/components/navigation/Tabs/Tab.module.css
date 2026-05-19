@@ -21,7 +21,7 @@
   max-width: 100%;
   justify-content: start;
 
-  &:hover {
+  &:hover:not([data-active="true"][data-variant="pills"]) {
     border-color: var(--mb-color-background-hover);
     background-color: var(--mb-color-background-hover);
   }
@@ -38,6 +38,10 @@
   &[data-active="true"] {
     color: var(--mb-color-text-brand);
     border-color: var(--mb-color-brand);
+  }
+
+  &[data-active="true"][data-variant="pills"] {
+    color: var(--mb-color-tooltip-text);
   }
 }
 

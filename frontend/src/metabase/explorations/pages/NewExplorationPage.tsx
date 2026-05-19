@@ -1,31 +1,28 @@
 import type { Location } from "history";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import { EditableText } from "metabase/common/components/EditableText";
 import CS from "metabase/css/core/index.css";
 import { QuestionModeSwitcher } from "metabase/metabot/components/QuestionModeSwitcher";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { Box, Center, Group, Paper, Stack } from "metabase/ui";
-import type { MetricDimension, Timeline } from "metabase-types/api";
 
-import { NewExplorationChat } from "../components/NewExplorationChat";
 import { EXPLORATIONS_AGENT_ID } from "../components/NewExplorationChat/NewExplorationChat";
 import { NewExplorationData } from "../components/NewExplorationData";
+import { NewExplorationLeftTabs } from "../components/NewExplorationLeftTabs";
 import {
   EXPLORATION_NAME_MAX_LENGTH,
   getDefaultExplorationName,
 } from "../constants";
-import type { ExplorationMetric } from "../types";
+import { useExplorationSelection } from "../hooks";
 
 export function NewExplorationPage(props: { location?: Location }) {
   return <NewExplorationPageInner key={props.location?.key} />;
 }
 
 function NewExplorationPageInner() {
-  const [metrics, setMetrics] = useState<ExplorationMetric[]>([]);
-  const [dimensions, setDimensions] = useState<MetricDimension[]>([]);
-  const [timelines, setTimelines] = useState<Timeline[]>([]);
-  const [name, setName] = useState<string>(getDefaultExplorationName());
+  const selection = useExplorationSelection();
+  const { metrics, dimensions, timelines, name, setName } = selection;
 
   // Wipe the agent's conversation for this profile every time the page mounts
   const { resetConversation, messages } = useMetabotAgent(
@@ -57,7 +54,7 @@ function NewExplorationPageInner() {
             bd="none"
             fw="bold"
             fz="h2"
-            lh="h2"
+            lh="1.875rem"
             maxLength={EXPLORATION_NAME_MAX_LENGTH}
           />
         </Box>
@@ -79,20 +76,8 @@ function NewExplorationPageInner() {
             bdrs="md"
             gap={0}
           >
-            <NewExplorationChat
-              setMetrics={setMetrics}
-              setDimensions={setDimensions}
-              setName={setName}
-            />
-            <NewExplorationData
-              metrics={metrics}
-              setMetrics={setMetrics}
-              dimensions={dimensions}
-              setDimensions={setDimensions}
-              timelines={timelines}
-              setTimelines={setTimelines}
-              name={name}
-            />
+            <NewExplorationLeftTabs selection={selection} />
+            <NewExplorationData selection={selection} />
           </Group>
         </Paper>
       </Center>
