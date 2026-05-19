@@ -1,11 +1,11 @@
 name: Sample Database
-engine: h2
+engine: postgres
 dbms_version:
-  flavor: H2
-  version: 2.1.214 (2022-06-13)
+  flavor: PostgreSQL
+  version: '14.0'
   semantic-version:
-  - 2
-  - 1
+  - 14
+  - 0
 created_at: '2024-08-28T14:38:42.764234Z'
 timezone: UTC
 metadata_sync_schedule: 0 22 * * * ? *

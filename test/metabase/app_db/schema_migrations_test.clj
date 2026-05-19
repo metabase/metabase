@@ -147,7 +147,7 @@
         ;; Urgh. `collection/is-trash?` will select the Trash collection (cached) based on its `type`. But as of this
         ;; migration, this `type` does not exist yet. Neither does the Trash collection though, so let's just ... make
         ;; that so.
-        (with-redefs [collection/is-trash? (constantly false)]
+        (mt/with-dynamic-fn-redefs [collection/is-trash? (constantly false)]
           (testing "A personal Collection should get created_at set by to the date_joined from its owner"
             (is (= (t/offset-date-time #t "2022-10-20T02:09Z")
                    (t/offset-date-time (t2/select-one-fn :created_at [:model/Collection :created_at] :id personal-collection-id)))))
@@ -530,13 +530,13 @@
 (deftest ^:mb/old-migrations-test remove-collection-color-test
   (testing "Migration v48.00-019"
     (impl/test-migrations ["v48.00-019"] [migrate!]
-      (with-redefs [;; Urgh. `collection/is-trash?` will select the Trash collection (cached) based on its `type`. But as of this
+      (mt/with-dynamic-fn-redefs [;; Urgh. `collection/is-trash?` will select the Trash collection (cached) based on its `type`. But as of this
                     ;; migration, this `type` does not exist yet. Neither does the Trash collection though, so let's just ... make
                     ;; that so.
-                    collection/is-trash? (constantly false)
+                                  collection/is-trash? (constantly false)
                     ;; Also avoid loading sample content, because this test breaks the assumption that only the trash
                     ;; collection exists at the time of the migration
-                    config/load-sample-content? (constantly false)]
+                                  config/load-sample-content? (constantly false)]
         (let [collection-id (first (t2/insert-returning-pks! (t2/table-name :model/Collection) {:name "Amazing collection"
                                                                                                 :slug "amazing_collection"
                                                                                                 :color "#509EE3"}))]
@@ -2537,7 +2537,7 @@
 
 (deftest ^:mb/old-migrations-test trash-migrations-test
   (impl/test-migrations ["v50.2024-05-29T14:04:47" "v50.2024-05-29T18:42:15"] [migrate!]
-    (with-redefs [collection/is-trash? (constantly false)]
+    (mt/with-dynamic-fn-redefs [collection/is-trash? (constantly false)]
       (let [collection-id    (t2/insert-returning-pk! (t2/table-name :model/Collection)
                                                       {:name     "Silly Collection"
                                                        :archived true
@@ -2568,7 +2568,7 @@
 
 (deftest ^:mb/old-migrations-test trash-migrations-make-archive-operation-ids-correctly
   (impl/test-migrations ["v50.2024-05-29T14:04:47" "v50.2024-05-29T18:42:15"] [migrate!]
-    (with-redefs [collection/is-trash? (constantly false)]
+    (mt/with-dynamic-fn-redefs [collection/is-trash? (constantly false)]
       (let [relevant-collection-ids (atom #{})
             parent-id (fn [id]
                         (:parent_id (t2/hydrate (t2/select-one :model/Collection :id id) :parent_id)))

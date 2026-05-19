@@ -135,15 +135,15 @@
     (mt/with-log-level :warn
       (mt/with-user-in-groups [user [(perms-group/admin)]]
         (let [log-warn-count (atom #{})]
-          (with-redefs [t2/delete!
-                        (fn [model & _args]
-                          (when (= model :model/PermissionsGroupMembership)
-                            (throw (ex-info (str perms/fail-to-remove-last-admin-msg)
-                                            {:status-code 400}))))
-                        clojure.tools.logging/log*
-                        (fn [_logger level _throwable msg]
-                          (when (:= level :warn)
-                            (swap! log-warn-count conj msg)))]
+          (mt/with-dynamic-fn-redefs [t2/delete!
+                                      (fn [model & _args]
+                                        (when (= model :model/PermissionsGroupMembership)
+                                          (throw (ex-info (str perms/fail-to-remove-last-admin-msg)
+                                                          {:status-code 400}))))
+                                      clojure.tools.logging/log*
+                                      (fn [_logger level _throwable msg]
+                                        (when (:= level :warn)
+                                          (swap! log-warn-count conj msg)))]
             ;; make sure sync run without throwing exception
             (integrations.common/sync-group-memberships! user #{} #{(perms-group/admin)})
             ;; make sure we log a msg for that
@@ -231,11 +231,11 @@
   (testing "2-arity version: Make sure the delete last admin exception is caught"
     (mt/with-log-messages-for-level [messages :warn]
       (mt/with-user-in-groups [user [(perms-group/admin)]]
-        (with-redefs [t2/delete!
-                      (fn [model & _args]
-                        (when (= model :model/PermissionsGroupMembership)
-                          (throw (ex-info (str perms/fail-to-remove-last-admin-msg)
-                                          {:status-code 400}))))]
+        (mt/with-dynamic-fn-redefs [t2/delete!
+                                    (fn [model & _args]
+                                      (when (= model :model/PermissionsGroupMembership)
+                                        (throw (ex-info (str perms/fail-to-remove-last-admin-msg)
+                                                        {:status-code 400}))))]
           ;; make sure sync runs without throwing exception
           (integrations.common/sync-group-memberships! user #{})
           ;; make sure we log a msg for that

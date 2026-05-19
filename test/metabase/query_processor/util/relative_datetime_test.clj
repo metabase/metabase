@@ -26,7 +26,7 @@
     ;; server side generated timestamp (ie. new code path) results are equal to old code path results, that were not
     ;; cacheable.
     (let [rel-dt-clause (sql.qp/mbql-clause driver/*driver* :relative-datetime value unit)
-          honey {:select [[(with-redefs [qp.relative-datetime/use-server-side-relative-datetime? (constantly false)]
+          honey {:select [[(mt/with-dynamic-fn-redefs [qp.relative-datetime/use-server-side-relative-datetime? (constantly false)]
                              (sql.qp/->honeysql driver/*driver* rel-dt-clause))]
                           [(sql.qp/->honeysql driver/*driver* rel-dt-clause)]]}
           sql (sql/format honey)
