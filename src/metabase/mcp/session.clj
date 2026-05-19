@@ -186,11 +186,10 @@
     (select-keys row [:encoded_query :prompt])))
 
 (defn verified-widget-session-id
-  "Return `widget-session-id` only if it has a backing `core_session` row owned by
-  `user-id`, otherwise nil. Used to gate the LLM-supplied widgetSessionId override
-  before it's accepted as a handle-lookup key."
+  "Return `widget-session-id` only if it looks like a UUID AND has a backing
+  `core_session` row owned by `user-id`, otherwise nil."
   [widget-session-id user-id]
-  (when (and widget-session-id user-id)
+  (when (and user-id (valid-id? widget-session-id))
     (let [key-hashed (session/hash-session-key (derive-embedding-session-key widget-session-id))
           owner      (t2/select-one-fn :user_id :core_session :key_hashed key-hashed)]
       (when (= owner user-id)

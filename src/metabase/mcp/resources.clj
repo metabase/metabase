@@ -241,14 +241,14 @@
                                                 :description "Base64-encoded MBQL query (use query_handle instead when available)"}
                               :query_handle    {:type "string" :format "uuid"
                                                 :description "Handle returned by construct_query; preferred over raw query"}
-                              :widgetSessionId {:type "string"
+                              :widgetSessionId {:type "string" :format "uuid"
                                                 :description "Session id returned by construct_query. In the case of ChatGPT, pass it so the handle resolves across rotating MCP sessions; other clients can omit it."}}}
   :outputSchema {:type       "object"
                  :properties {:query           {:type        "string"
                                                 :description "Base64-encoded MBQL query that the visualization is rendering."}
                               :prompt          {:type        "string"
                                                 :description "User's original request, when stored alongside the handle."}
-                              :widgetSessionId {:type        "string"
+                              :widgetSessionId {:type        "string" :format "uuid"
                                                 :description "Session id under which the handle resolved — re-emitted so ChatGPT can thread it to subsequent calls."}}
                  :required   ["query"]}
   :response-fn (fn [arguments {:keys [session-id]}]
@@ -296,13 +296,13 @@
   :inputSchema  {:type       "object"
                  :properties {:handle          {:type "string" :format "uuid"
                                                 :description "Handle UUID from the user's drill-through message."}
-                              :widgetSessionId {:type "string"
+                              :widgetSessionId {:type "string" :format "uuid"
                                                 :description "Session id from a prior tool response. In the case of ChatGPT, pass it so the handle resolves across rotating MCP sessions; other clients can omit it."}}
                  :required   ["handle"]}
   :outputSchema {:type       "object"
                  :properties {:query           {:type        "string"
                                                 :description "Base64-encoded MBQL query bound to the drill-through handle."}
-                              :widgetSessionId {:type        "string"
+                              :widgetSessionId {:type        "string" :format "uuid"
                                                 :description "Session id under which the handle resolved — re-emitted so ChatGPT can thread it to subsequent calls."}}
                  :required   ["query"]}
   :response-fn (fn [arguments {:keys [session-id]}]
