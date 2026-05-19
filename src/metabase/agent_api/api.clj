@@ -14,6 +14,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards.autoplace :as autoplace]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.metabot.config :as metabot.config]
@@ -915,24 +916,7 @@
         mutations    (:dashcards body)
         result       (t2/with-transaction [_conn]
                        (when (seq updates)
-                         ;; TODO (GHY-3627): switch to dashboards.core/update-dashboard! when it gets promoted.
-                         ;; Until then, mirror the cascading behavior of dashboards-rest update-dashboard!:
-                         ;; archiving the dashboard archives its cards; un-archiving restores them.
-                         (when (api/column-will-change? :archived current-dash updates)
-                           (if (:archived updates)
-                             (t2/update! :model/Card
-                                         :dashboard_id id
-                                         :archived false
-                                         {:archived true :archived_directly false})
-                             (t2/update! :model/Card
-                                         :dashboard_id id
-                                         :archived true
-                                         :archived_directly false
-                                         {:archived false})))
-                         ;; Moving a dashboard moves its cards with it.
-                         (when (api/column-will-change? :collection_id current-dash updates)
-                           (t2/update! :model/Card :dashboard_id id
-                                       {:collection_id (:collection_id updates)}))
+                         (dashboard/cascade-card-state-from-dashboard-update! current-dash updates)
                          (t2/update! :model/Dashboard id updates)
                          ;; Fire :event/collection-touch with the *target* collection id so the
                          ;; activity feed records the right collection. Note: the REST endpoint
