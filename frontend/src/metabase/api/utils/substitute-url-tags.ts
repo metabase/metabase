@@ -12,7 +12,6 @@ const URL_TAG_REGEX = /:\w+\*?/g;
 export function substituteUrlTags(
   url: string,
   data: Record<string, unknown>,
-  method: string,
 ): string {
   return url.replace(URL_TAG_REGEX, (tag) => {
     const isRaw = tag.endsWith("*");
@@ -20,7 +19,7 @@ export function substituteUrlTags(
     const value = data[paramName];
     delete data[paramName];
     if (value === undefined) {
-      console.warn("Warning: calling", method, "without", tag);
+      console.warn("Warning: calling", url, "without", tag);
       return "";
     }
     return isRaw ? String(value) : encodeURIComponent(String(value));
