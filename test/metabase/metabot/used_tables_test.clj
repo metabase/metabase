@@ -16,20 +16,20 @@
 (defn- table-query
   "Query whose first stage's source is `table-id`."
   [table-id]
-  (let [provider (mt/metadata-provider)]
-    (lib/query provider (lib.metadata/table provider table-id))))
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp table-id))))
 
 (defn- card-query
   "Query whose first stage's source is the given Card. The Card must exist in the appdb."
   [card-id]
-  (let [provider (mt/metadata-provider)]
-    (lib/query provider (lib.metadata/card provider card-id))))
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/card mp card-id))))
 
 (defn- query-on-absent-card-id
   "Query whose first stage's `:source-card` points at a card id that
   may not exist in the appdb — used to simulate a deleted card. We construct
   the query map directly rather than going through
-  `(lib/query provider (lib.metadata/card provider card-id))` because that
+  `(lib/query mp (lib.metadata/card mp card-id))` because that
   path requires the card to actually exist."
   [card-id]
   {:lib/type :mbql/query
@@ -227,11 +227,11 @@
 
 (deftest notebook-explicit-join-against-table-test
   (testing "an explicit join against another table surfaces both the source and joined tables"
-    (let [provider (mt/metadata-provider)
-          query    (-> (lib/query provider (lib.metadata/table provider (mt/id :orders)))
-                       (lib/join (lib.metadata/table provider (mt/id :people))))
-          parts    [(notebook-input "c1") (notebook-output "c1" query)]
-          rows     (used-tables/extract-used-tables 99 parts)]
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/join (lib.metadata/table mp (mt/id :people))))
+          parts [(notebook-input "c1") (notebook-output "c1" query)]
+          rows  (used-tables/extract-used-tables 99 parts)]
       (is (= #{(mt/id :orders) (mt/id :people)} (table-ids rows))))))
 
 (deftest notebook-explicit-join-against-card-test
@@ -239,11 +239,11 @@
     (mt/with-temp [:model/Card {card-id :id} {:type          :question
                                               :database_id   (mt/id)
                                               :dataset_query (table-query (mt/id :people))}]
-      (let [provider (mt/metadata-provider)
-            query    (-> (lib/query provider (lib.metadata/table provider (mt/id :orders)))
-                         (lib/join (lib.metadata/card provider card-id)))
-            parts    [(notebook-input "c1") (notebook-output "c1" query)]
-            rows     (used-tables/extract-used-tables 99 parts)]
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/join (lib.metadata/card mp card-id)))
+            parts [(notebook-input "c1") (notebook-output "c1" query)]
+            rows  (used-tables/extract-used-tables 99 parts)]
         (is (= #{(mt/id :orders) (mt/id :people)} (table-ids rows)))))))
 
 (deftest notebook-explicit-join-against-model-test
@@ -251,18 +251,18 @@
     (mt/with-temp [:model/Card {model-id :id} {:type          :model
                                                :database_id   (mt/id)
                                                :dataset_query (table-query (mt/id :people))}]
-      (let [provider (mt/metadata-provider)
-            query    (-> (lib/query provider (lib.metadata/table provider (mt/id :orders)))
-                         (lib/join (lib.metadata/card provider model-id)))
-            parts    [(notebook-input "c1") (notebook-output "c1" query)]
-            rows     (used-tables/extract-used-tables 99 parts)]
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/join (lib.metadata/card mp model-id)))
+            parts [(notebook-input "c1") (notebook-output "c1" query)]
+            rows  (used-tables/extract-used-tables 99 parts)]
         (is (= #{(mt/id :orders) (mt/id :people)} (table-ids rows)))))))
 
 (deftest notebook-recurses-into-card-with-joins-test
   (testing "recursing into a Card whose own query has joins picks up all of the card's tables"
-    (let [provider   (mt/metadata-provider)
-          card-query-with-join (-> (lib/query provider (lib.metadata/table provider (mt/id :orders)))
-                                   (lib/join (lib.metadata/table provider (mt/id :people))))]
+    (let [mp                   (mt/metadata-provider)
+          card-query-with-join (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                   (lib/join (lib.metadata/table mp (mt/id :people))))]
       (mt/with-temp [:model/Card {card-id :id} {:type          :question
                                                 :database_id   (mt/id)
                                                 :dataset_query card-query-with-join}]
@@ -278,11 +278,11 @@
                    :model/Card {mid  :id} {:type          :question
                                            :database_id   (mt/id)
                                            :dataset_query (card-query leaf)}]
-      (let [provider (mt/metadata-provider)
-            query    (-> (lib/query provider (lib.metadata/table provider (mt/id :orders)))
-                         (lib/join (lib.metadata/card provider mid)))
-            parts    [(notebook-input "c1") (notebook-output "c1" query)]
-            rows     (used-tables/extract-used-tables 99 parts)]
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/join (lib.metadata/card mp mid)))
+            parts [(notebook-input "c1") (notebook-output "c1" query)]
+            rows  (used-tables/extract-used-tables 99 parts)]
         (is (= #{(mt/id :orders) (mt/id :people)} (table-ids rows)))))))
 
 (deftest notebook-implicit-join-via-source-field-breakout-test
