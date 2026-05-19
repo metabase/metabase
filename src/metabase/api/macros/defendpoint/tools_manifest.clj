@@ -8,7 +8,7 @@
   - `endpoint` — HTTP method + path
   - `inputSchema` — merged route + query + body parameters
   - `outputSchema` — from the endpoint's response schema, or an explicit
-    `:output-schema` (Malli vector / JSON Schema map) on the tool metadata
+    `:output-schema` on the tool metadata
   - `annotations` — MCP ToolAnnotations (readOnlyHint, destructiveHint, etc.)"
   (:require
    [clojure.string :as str]
