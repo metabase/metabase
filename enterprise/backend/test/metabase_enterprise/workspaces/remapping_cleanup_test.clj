@@ -6,9 +6,22 @@
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.remapping-cleanup :as ws.remapping-cleanup]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
+   [metabase.driver :as driver]
+   [metabase.driver.sql :as driver.sql]
    [metabase.test :as mt]
    [metabase.test.util.thread-local :as tu.thread-local]
    [toucan2.core :as t2]))
+
+;;; Register a fake `db-schema-table`-shape engine so this test can exercise the
+;;; 3-slot iso-db-slot path without depending on the sqlserver driver module
+;;; being on the test classpath.
+(driver/register! ::fake-3-slot, :abstract? true)
+
+(defmethod driver.sql/table-qualification-style ::fake-3-slot [_]
+  :table-qualification-style/db-schema-table)
+
+(defmethod driver.sql/db-slot-value ::fake-3-slot [_ database]
+  (:db (:details database)))
 
 (defn- clean-db-fixture!
   "Run `f` with mappings cleared before and after so tests don't leak state."
@@ -82,7 +95,7 @@
         {:db "AnalyticsDB" :schema "ws_b" :table "products_copy"})
 
        (let [n (ws.remapping-cleanup/clear-mappings-for-iso!
-                {:engine :sqlserver :details {:db "AnalyticsDB"}}
+                {:engine ::fake-3-slot :details {:db "AnalyticsDB"}}
                 (mt/id)
                 "ws_a")]
          (is (= 1 n) "only ws_a's row deleted"))

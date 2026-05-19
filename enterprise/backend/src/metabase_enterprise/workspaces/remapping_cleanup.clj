@@ -5,31 +5,24 @@
    Lives as a leaf to break a `provisioning` -> `table-remapping` -> `core` ->
    `provisioning` require cycle: the deprovision path needs to delete remapping
    rows scoped to the workspace's iso namespace, but `table-remapping` reaches
-   back through `workspaces.core` which loads `provisioning`. The per-engine
-   `:db`-slot derivation is duplicated here (kept narrow — only the engines
-   that emit a 3-slot identifier need it) so this ns has no workspace deps
-   beyond the model registration.
-
-   See [[metabase-enterprise.workspaces.table-remapping/engine-namespace-positions]]
-   for the canonical version of the case table. Keep these two in sync if a new
-   3-slot engine is added."
+   back through `workspaces.core` which loads `provisioning`. The `:db`-slot
+   derivation goes through [[metabase.driver.sql/db-slot-value]] so this ns
+   has no workspace deps beyond the model registration."
   (:require
    [metabase-enterprise.workspaces.models.table-remapping]
+   [metabase.driver.sql :as driver.sql]
    [toucan2.core :as t2]))
 
 (comment metabase-enterprise.workspaces.models.table-remapping/keep-me)
 
 (defn- iso-db-slot
   "Value of the `:db` AST slot a `TableRemapping.to_db` carries for `database`'s
-   engine. Empty string for engines whose `qualified-name-components` does NOT
-   include `:db` (Postgres, Redshift, H2, ClickHouse) — the storage sentinel.
-   For 3-slot engines, pulls from `Database.details`."
+   engine. Empty string for drivers that don't populate the `:db` slot
+   (Postgres, Redshift, H2, ClickHouse) — the storage sentinel. For drivers
+   that do (MySQL, SQL Server, BigQuery), consults
+   [[metabase.driver.sql/db-slot-value]]."
   [database]
-  (or (case (:engine database)
-        (:mysql :sqlserver)  (:db (:details database))
-        :bigquery-cloud-sdk  (:project-id (:details database))
-        nil)
-      ""))
+  (or (driver.sql/db-slot-value (:engine database) database) ""))
 
 (defn clear-mappings-for-iso!
   "Delete every `TableRemapping` row on `database`'s id whose `to_*` slots match

@@ -978,37 +978,20 @@
                "canonical Table row with an active remap stays active across syncs")))))))
 
 ;;; -------------------------- engine-namespace-positions: unknown-engine handling --------------------------
+;;;
+;;; Third-party drivers participate via `metabase.driver.sql/table-qualification-style`
+;;; (+ `db-slot-value` for the `:db-table` and `:db-schema-table` shapes).
+;;; The default for drivers that don't override is `:schema-table`, so unknown
+;;; engines silently get `{:db nil :schema (:schema table)}` -- the most common
+;;; SQL identifier shape, and a safe degrade.
 
-(deftest engine-namespace-positions-unknown-2-slot-degrades-test
-  (testing "Unknown engine whose qualified-name-components is [:schema] degrades to table's :schema column"
-    (with-redefs [driver/qualified-name-components (fn [d]
-                                                     (case d
-                                                       :ws-test-2-slot [:schema]
-                                                       [:schema]))]
-      (is (= {:db nil :schema "public"}
-             (ws/engine-namespace-positions {:engine :ws-test-2-slot :name "x"}
-                                            {:schema "public" :name "orders"}))))))
+(driver/register! ::ws-test-unknown-driver, :abstract? true)
 
-(deftest engine-namespace-positions-unknown-3-slot-throws-test
-  (testing "Unknown engine whose qualified-name-components includes :db throws (programmer error)"
-    (with-redefs [driver/qualified-name-components (fn [d]
-                                                     (case d
-                                                       :ws-test-3-slot [:db :schema]
-                                                       [:schema]))]
-      (let [database {:engine  :ws-test-3-slot
-                      :name    "x"
-                      :details {:db "warehouse"}}
-            table    {:schema "public" :name "orders"}]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"engine-namespace-positions has no case for engine :ws-test-3-slot"
-             (ws/engine-namespace-positions database table)))
-        (try
-          (ws/engine-namespace-positions database table)
-          (catch clojure.lang.ExceptionInfo e
-            (let [data (ex-data e)]
-              (is (= :ws-test-3-slot (:engine data)))
-              (is (= #{:db :schema} (:components data))))))))))
+(deftest engine-namespace-positions-unknown-driver-defaults-to-schema-table-test
+  (testing "Unknown engine gets the default :schema-table shape -- no throw, no surprise"
+    (is (= {:db nil :schema "public"}
+           (ws/engine-namespace-positions {:engine ::ws-test-unknown-driver :name "x"}
+                                          {:schema "public" :name "orders"})))))
 
 ;;; -------------------------- GHY-3553: MySQL-shape sentinel-leak regressions --------------------------
 ;;;

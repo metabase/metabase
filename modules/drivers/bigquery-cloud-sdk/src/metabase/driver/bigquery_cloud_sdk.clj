@@ -864,6 +864,14 @@
   ;; so we model it as `:db`. Dataset sits at SQLGlot's `Table.db` position, our `:schema`.
   [:db :schema])
 
+(defmethod driver.sql/table-qualification-style :bigquery-cloud-sdk
+  [_driver]
+  :table-qualification-style/db-schema-table)
+
+(defmethod driver.sql/db-slot-value :bigquery-cloud-sdk
+  [_driver database]
+  (:project-id (:details database)))
+
 ;; BigQuery is always in UTC
 (defmethod driver/db-default-timezone :bigquery-cloud-sdk [_ _]
   "UTC")

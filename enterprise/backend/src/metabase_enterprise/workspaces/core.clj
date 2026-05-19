@@ -32,7 +32,7 @@
   (:require
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
-   [metabase.driver :as driver]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.util :as driver.u]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.workspaces.core :as ws]
@@ -45,54 +45,30 @@
    column (the normal `spec-for-table` case). Pass nil for `table` when you only
    need the `:db` slot (workspace `output_namespace` expansion, GRANT emission).
 
-   Each engine is spelled out explicitly. Verbose, but obvious at a glance —
-   no more cross-referencing two `case` fns to figure out where each driver
-   reads from.
-
    `nil` for either slot means \"this driver doesn't emit this AST level.\"
-   Empty-string sentinel coercion happens at the storage boundary, not here."
+   Empty-string sentinel coercion happens at the storage boundary, not here.
+
+   Driven by [[metabase.driver.sql/table-qualification-style]] +
+   [[metabase.driver.sql/db-slot-value]] -- third-party drivers participate by
+   implementing those rather than getting a new case branch here."
   ([database]       (engine-namespace-positions database nil))
   ([database table]
-   (case (:engine database)
-     ;; 2-slot, schema-from-table
-     :postgres   {:db nil
-                  :schema (:schema table)}
-     :redshift   {:db nil
-                  :schema (:schema table)}
-     :h2         {:db nil
-                  :schema (:schema table)}
-     :clickhouse {:db nil
-                  :schema (:schema table)}
+   (case (driver.sql/table-qualification-style (:engine database))
+     :table-qualification-style/table
+     {:db nil
+      :schema nil}
 
-     ;; 1-slot (db only); MySQL has no schema layer.
-     :mysql      {:db (:db (:details database))
-                  :schema nil}
-
-     ;; 3-slot
-     :sqlserver  {:db (:db (:details database))
-                  :schema (:schema table)}
-     :bigquery-cloud-sdk
-     {:db (:project-id (:details database))
+     :table-qualification-style/schema-table
+     {:db nil
       :schema (:schema table)}
 
-     ;; Unknown engine. Two outcomes:
-     ;;   - If the driver declares `:db` in `qualified-name-components`, we're
-     ;;     missing a case for a 3-slot (or 1-slot-with-db, like MySQL) driver.
-     ;;     Silently degrading would store remap rows with `:db nil` and break
-     ;;     cross-DB routing at query time. Throw to surface the gap.
-     ;;   - Otherwise the driver is at most 2-slot; degrade to the table's
-     ;;     `:schema` column, which is the conventional shape for any
-     ;;     `[:schema]` driver we haven't enumerated.
-     (let [components (set (driver/qualified-name-components (:engine database)))]
-       (if (contains? components :db)
-         (throw (ex-info (str "engine-namespace-positions has no case for engine "
-                              (pr-str (:engine database))
-                              " but its qualified-name-components includes :db; "
-                              "add an explicit branch.")
-                         {:engine     (:engine database)
-                          :components components}))
-         {:db nil
-          :schema (:schema table)})))))
+     :table-qualification-style/db-table
+     {:db (driver.sql/db-slot-value (:engine database) database)
+      :schema nil}
+
+     :table-qualification-style/db-schema-table
+     {:db (driver.sql/db-slot-value (:engine database) database)
+      :schema (:schema table)})))
 
 (defonce ^{:dynamic true
            :doc "The single workspace loaded into this instance from `config.yml`, or nil

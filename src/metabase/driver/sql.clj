@@ -124,6 +124,44 @@
   nil)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                       Table identifier qualification                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;;
+;;; Drives [[metabase-enterprise.workspaces.core/engine-namespace-positions]] and the
+;;; QP rewriter's AST position matching for `:model/TableRemapping`. Splits per-driver
+;;; identifier shape from per-driver `:details` lookup so the common case (a plain
+;;; `schema.table` driver) needs zero overrides.
+
+(defmulti table-qualification-style
+  "Identifier shape this driver emits for tables in compiled SQL. Returns one of:
+   - `:table-qualification-style/table`           — bare `table` (no driver currently)
+   - `:table-qualification-style/schema-table`    — `schema.table` (Postgres, Redshift, H2, ClickHouse) — default
+   - `:table-qualification-style/db-table`        — `db.table` (MySQL: no schema layer, db rides on the connection)
+   - `:table-qualification-style/db-schema-table` — `db.schema.table` (SQL Server, BigQuery)
+
+   Drives [[metabase-enterprise.workspaces.core/engine-namespace-positions]]
+   and the QP rewriter's AST position matching for `:model/TableRemapping`."
+  {:added "0.62.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod table-qualification-style :default
+  [_]
+  :table-qualification-style/schema-table)
+
+(defmulti db-slot-value
+  "For a `:table-qualification-style/db-table` or `:table-qualification-style/db-schema-table`
+   driver, the project-id / catalog string that goes in the `:db` AST slot for `database`.
+   Returns nil for drivers that don't populate the `:db` slot."
+  {:added "0.62.0" :arglists '([driver database])}
+  (fn [driver _] driver)
+  :hierarchy #'driver/hierarchy)
+
+(defmethod db-slot-value :default
+  [_ _database]
+  nil)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Transforms                                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 

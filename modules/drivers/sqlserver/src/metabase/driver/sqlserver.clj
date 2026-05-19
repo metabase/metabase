@@ -78,6 +78,14 @@
   ;; on the more general 3-part shape.
   [:db :schema])
 
+(defmethod driver.sql/table-qualification-style :sqlserver
+  [_driver]
+  :table-qualification-style/db-schema-table)
+
+(defmethod driver.sql/db-slot-value :sqlserver
+  [_driver database]
+  (:db (:details database)))
+
 (mu/defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
   [_ _ db :- ::lib.schema.metadata/database]
   (let [major-version (get-in db [:dbms-version :semantic-version 0] 0)]

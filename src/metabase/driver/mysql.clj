@@ -110,6 +110,18 @@
   ;; the per-driver `quote-name` rules, not this multimethod.
   [:db])
 
+;;; MySQL has no schema layer. Workspace remap stores `:db.table` -- the `:db`
+;;; slot carries the connection's bound DB so cross-DB routing works. Production
+;;; SELECTs emit unqualified `t` because the SQL compiler reads `quote-name`
+;;; rules, not this multimethod.
+(defmethod driver.sql/table-qualification-style :mysql
+  [_driver]
+  :table-qualification-style/db-table)
+
+(defmethod driver.sql/db-slot-value :mysql
+  [_driver database]
+  (:db (:details database)))
+
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
 ;; And MariaDB doesn't have the JSON type at all, though `JSON` was introduced as an alias for LONGTEXT in 10.2.7.
 ;; But since JSON unfolding will only apply columns with JSON types, this won't cause any problems during sync.
