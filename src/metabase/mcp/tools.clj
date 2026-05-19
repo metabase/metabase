@@ -108,33 +108,50 @@
    If :query_handle is present, look it up and replace with :query.
    If :query is itself a UUID (the LLM passed the handle in the wrong field), resolve
    it too — but log a warning so we can track how often this antipattern fires.
+   When the caller provides :widgetSessionId (in the case of ChatGPT, the
+   thread-stable id used to correlate tool calls across rotating MCP sessions),
+   it takes precedence over the current request's MCP session id for handle
+   lookup. Other MCP clients (Claude Desktop, Cursor, …) have stable per-thread
+   sessions and don't need to pass it — the fallback uses the current session id.
    Returns updated arguments, or ::handle-not-found if the handle doesn't exist."
   [session-id tool-name arguments]
-  (cond
-    (:query_handle arguments)
-    (if-let [{:keys [encoded_query]} (mcp.session/resolve-query-handle session-id (:query_handle arguments))]
-      (-> arguments (dissoc :query_handle) (assoc :query encoded_query))
-      ::handle-not-found)
+  (let [lookup-session-id (or (:widgetSessionId arguments) session-id)]
+    (cond
+      (:query_handle arguments)
+      (if-let [{:keys [encoded_query]} (mcp.session/resolve-query-handle lookup-session-id (:query_handle arguments))]
+        (-> arguments (dissoc :query_handle :widgetSessionId) (assoc :query encoded_query))
+        ::handle-not-found)
 
-    (mcp.session/valid-id? (:query arguments))
-    (do (log/warnf "MCP tool %s: agent passed a UUID handle in :query; resolving as :query_handle"
-                   tool-name)
-        (if-let [{:keys [encoded_query]} (mcp.session/resolve-query-handle session-id (:query arguments))]
-          (assoc arguments :query encoded_query)
-          ::handle-not-found))
+      (mcp.session/valid-id? (:query arguments))
+      (do (log/warnf "MCP tool %s: agent passed a UUID handle in :query; resolving as :query_handle"
+                     tool-name)
+          (if-let [{:keys [encoded_query]} (mcp.session/resolve-query-handle lookup-session-id (:query arguments))]
+            (-> arguments (dissoc :widgetSessionId) (assoc :query encoded_query))
+            ::handle-not-found))
 
-    :else
-    arguments))
+      :else
+      (dissoc arguments :widgetSessionId))))
 
 (defn- make-store-construct-query-result
   "Build a body-transform fn for construct_query. Stores the base64 payload server-side
    under the calling MCP session and returns {:query_handle uuid} instead of {:query base64},
    so the LLM carries a short opaque UUID rather than the full base64 string.
-   Also stores the optional prompt with the handle, used for submitting feedback on visualizations."
+   Also stores the optional prompt with the handle, used for submitting feedback on visualizations.
+
+   Returns a wrapped shape `{:body … :_meta …}` so the caller can lift `:_meta`
+   onto the MCP tool-call response. The MCP `_meta.openai/widgetSessionId` is
+   the runtime channel ChatGPT uses to correlate tool calls within one chat
+   thread (other MCP clients ignore it); the `:widgetSessionId` field in the
+   structured content is the LLM-visible fallback the model is instructed to
+   pass forward when ChatGPT rotates sessions between tool calls."
   [session-id user-id]
   (fn [body]
     (if-let [encoded (:query body)]
-      {:query_handle (mcp.session/store-handle! session-id user-id encoded (:prompt body))}
+      (let [handle (mcp.session/store-handle! session-id user-id encoded (:prompt body))]
+        {:body  (cond-> {:query_handle handle}
+                  session-id (assoc :widgetSessionId session-id))
+         :_meta (when session-id
+                  {"openai/widgetSessionId" session-id})})
       body)))
 
 ;; Tools that accept :query_handle as an alternative to a raw base64 :query string.
@@ -211,8 +228,19 @@
         response
 
         (= 200 (:status response))
-        (text-content (cond-> (:body response)
-                        body-transform-fn (body-transform-fn)))
+        (let [body     (cond-> (:body response)
+                         body-transform-fn (body-transform-fn))
+              ;; body-transform-fns can return a wrapped shape
+              ;; `{:body … :_meta …}` to attach an `_meta` block to the MCP
+              ;; tool-call response (used by construct_query for
+              ;; `openai/widgetSessionId`). Detected by *both* keys being
+              ;; present so legitimate bodies that happen to have a `:body`
+              ;; field aren't mis-unwrapped.
+              wrapped? (and (map? body) (contains? body :body) (contains? body :_meta))
+              mcp-body (if wrapped? (:body body) body)
+              mcp-meta (when wrapped? (not-empty (:_meta body)))]
+          (cond-> (text-content mcp-body)
+            mcp-meta (assoc :_meta mcp-meta)))
 
         :else
         (error-content (extract-error-message response))))))
