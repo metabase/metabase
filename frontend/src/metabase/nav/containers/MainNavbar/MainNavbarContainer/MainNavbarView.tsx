@@ -24,7 +24,6 @@ import {
 import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TENANTS } from "metabase/plugins";
 import {
   getIsTenantUser,
@@ -328,9 +327,6 @@ export function MainNavbarView({
               </ErrorBoundary>
             </TrashSidebarSection>
           )}
-          <div>
-            <WhatsNewNotification />
-          </div>
         </div>
       </SidebarContentRoot>
 

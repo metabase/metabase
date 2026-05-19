@@ -11,6 +11,7 @@ import {
 import { getDashboard } from "metabase/dashboard/selectors";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { NavbarPromoSlot } from "metabase/nav/components/NavbarPromoSlot";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
 import Question from "metabase-lib/v1/Question";
 import type { CollectionId, Dashboard } from "metabase-types/api";
@@ -139,6 +140,7 @@ function MainNavbar({
           onChangeLocation={onChangeLocation}
           {...props}
         />
+        <NavbarPromoSlot />
       </NavRoot>
     </Sidebar>
   );
