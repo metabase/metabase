@@ -108,13 +108,13 @@
 
 (deftest process-databases-validation-failure-throws-with-attribution-test
   (testing "a malformed row (missing required key) throws ex-info carrying
-            :kind :invalid_input, the file line number, and the row's wire :id
+            :kind :invalid-input, the file line number, and the row's wire :id
             as the :source-id (for attribution in the boot-time error message)."
     (let [e    (is (thrown? clojure.lang.ExceptionInfo
                             (into [] (processors/process-databases!
                                       [[42 {:id 400 :name "missing-engine"}]]))))   ;; no :engine
           data (ex-data e)]
-      (is (= :invalid_input (:kind data)))
+      (is (= :invalid-input (:kind data)))
       (is (= 42 (:line data)))
       (is (= 400 (:source-id data))))))
 

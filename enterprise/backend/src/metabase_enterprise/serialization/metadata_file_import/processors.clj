@@ -2,7 +2,7 @@
   "SQL building blocks for the metadata file importer's drain-then-merge flow.
 
   Errors propagate as `ex-info` with `:kind` for typed failure handling
-  (`:invalid_input`, `:file_incomplete`, `:cycle_in_field_graph`, `:depth_tagging_cap_exceeded`)."
+  (`:invalid-input`, `:file-incomplete`, `:cycle-in-field-graph`, `:depth-tagging-cap-exceeded`)."
   (:require
    [malli.error :as me]
    [metabase-enterprise.serialization.metadata-file-import.schemas :as schemas]
@@ -27,16 +27,15 @@
 
 (defn- validate-line!
   "Validate `line` against the registered Malli `schema-ref`.
-  On failure throws `ex-info` with `:kind :invalid_input`, `:line`, a humanized `:detail`,
+  On failure throws `ex-info` with `:kind :invalid-input`, `:line`, a humanized `:detail`,
   and `extras` merged into the ex-data."
   [schema-ref line-num line extras]
-  (when-not (mr/validate schema-ref line)
-    (let [humanized (me/humanize (mr/explain schema-ref line))]
-      (throw (ex-info (format "Invalid %s row on line %d" (name schema-ref) line-num)
-                      (merge extras
-                             {:kind   :invalid_input
-                              :line   line-num
-                              :detail (pr-str humanized)}))))))
+  (when-let [humanized (me/humanize (mr/explain schema-ref line))]
+    (throw (ex-info (format "Invalid %s row on line %d" (name schema-ref) line-num)
+                    (merge extras
+                           {:kind   :invalid-input
+                            :line   line-num
+                            :detail (pr-str humanized)})))))
 
 ;;; ============================== Staging tables ==============================
 
@@ -468,7 +467,7 @@
 (defn assert-no-orphan-refs!
   "Pre-flight check after drain: every staging field row's `source_parent_id`
   must reference another staging row's `source_id`. Throws `ex-info` with
-  `:kind :file_incomplete` and a sample of orphan rows in the error data
+  `:kind :file-incomplete` and a sample of orphan rows in the error data
   when any orphan parent ref exists.
 
   Parent refs are structural — a field claiming to be a child of a missing
@@ -480,7 +479,7 @@
     (when (pos? parent-count)
       (throw (ex-info (format "metadata-file-import: file is incomplete — %d orphan parent ref(s)"
                               parent-count)
-                      {:kind                   :file_incomplete
+                      {:kind                   :file-incomplete
                        :orphan-parent-count    parent-count
                        :orphan-parent-sample   (orphan-sample :source_parent_id)})))))
 
@@ -511,7 +510,7 @@
 
 (def depth-iteration-cap
   "Iteration cap on the depth-tagging fixpoint loop; exceeding it throws
-  `:cycle_in_field_graph` with the un-tagged sample."
+  `:cycle-in-field-graph` with the un-tagged sample."
   ;; Field parent chains are shallow in practice (a few levels at most), so 50
   ;; is a comfortable safety belt — exceeding it means the algorithm is the
   ;; bug, not the data.
@@ -587,8 +586,8 @@
 
   Pre-condition: [[assert-no-orphan-refs!]] must have run successfully.
 
-  Throws `:cycle_in_field_graph` if rows can't be tagged (a reference cycle)
-  or `:depth_tagging_cap_exceeded` if the loop runs past [[depth-iteration-cap]]."
+  Throws `:cycle-in-field-graph` if rows can't be tagged (a reference cycle)
+  or `:depth-tagging-cap-exceeded` if the loop runs past [[depth-iteration-cap]]."
   []
   (mark-roots-at-depth-zero!)
   (loop [d 1]
@@ -599,7 +598,7 @@
 
         (>= d depth-iteration-cap)
         (throw (ex-info (format "metadata-file-import: depth-tagging exceeded cap of %d iterations" depth-iteration-cap)
-                        {:kind                  :depth_tagging_cap_exceeded
+                        {:kind                  :depth-tagging-cap-exceeded
                          :iterations            d
                          :remaining-rows-count  before
                          :remaining-rows-sample (untagged-staging-row-sample)}))
@@ -611,7 +610,7 @@
             (if (= before after)
               (throw (ex-info (format "metadata-file-import: %d staging row(s) could not be tagged with depth — cycle in file's parent/fk_target reference graph"
                                       after)
-                              {:kind                  :cycle_in_field_graph
+                              {:kind                  :cycle-in-field-graph
                                :remaining-rows-count  after
                                :iterations            d
                                :remaining-rows-sample (untagged-staging-row-sample)}))

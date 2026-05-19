@@ -212,8 +212,8 @@
 (deftest drain-tables-rejects-rows-missing-required-keys-test
   (try
     (p/clear-staging-tables!)
-    (testing "missing :id throws with :kind :invalid_input"
-      (is (= :invalid_input
+    (testing "missing :id throws with :kind :invalid-input"
+      (is (= :invalid-input
              (try
                (drain-tables! {} (batch [{:db_id 7 :name "no-id" :schema "public"}]))
                nil
@@ -225,8 +225,8 @@
 (deftest drain-fields-rejects-rows-missing-required-keys-test
   (try
     (p/clear-staging-tables!)
-    (testing "missing :base_type throws with :kind :invalid_input"
-      (is (= :invalid_input
+    (testing "missing :base_type throws with :kind :invalid-input"
+      (is (= :invalid-input
              (try
                (drain-fields! (batch [{:id 1 :table_id 100 :name "x" :database_type "text"}]))
                nil
