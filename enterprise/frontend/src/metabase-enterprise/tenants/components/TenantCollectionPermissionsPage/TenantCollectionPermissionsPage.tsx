@@ -27,7 +27,7 @@ import type {
   PermissionEditorType,
 } from "metabase/admin/permissions/types";
 import { assertNumericId } from "metabase/admin/permissions/types";
-import { Collections } from "metabase/entities/collections";
+import { useListCollectionsTreeQuery } from "metabase/api";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { Collection, CollectionId } from "metabase-types/api";
@@ -62,18 +62,15 @@ type TenantCollectionPermissionsPageProps = {
   params: CollectionIdProps["params"];
   sidebar: CollectionSidebarType;
   permissionEditor: PermissionEditorType | null;
-  collection: Collection;
-  navigateToItem: (item: { id: CollectionId }) => void;
-  updateCollectionPermission: ({
-    groupId,
-    collection,
-    value,
-    shouldPropagateToChildren,
-  }: UpdateTenantCollectionPermissionParams) => void;
+  collection: Collection | null;
+  navigateToItem: (item: { id: CollectionId }) => any;
+  updateCollectionPermission: (
+    params: UpdateTenantCollectionPermissionParams,
+  ) => any;
   isDirty: boolean;
-  savePermissions: () => void;
-  loadPermissions: () => void;
-  initialize: () => void;
+  savePermissions: (...args: any[]) => any;
+  loadPermissions: (...args: any[]) => any;
+  initialize: (...args: any[]) => any;
   route: Route;
 };
 
@@ -89,6 +86,8 @@ function TenantCollectionPermissionsPageView({
   initialize,
   route,
 }: TenantCollectionPermissionsPageProps) {
+  useListCollectionsTreeQuery(tenantCollectionsQuery);
+
   useEffect(() => {
     initialize();
   }, [initialize]);
@@ -100,6 +99,9 @@ function TenantCollectionPermissionsPageView({
       value: unknown,
       toggleState: boolean | null,
     ) => {
+      if (!collection) {
+        return;
+      }
       updateCollectionPermission({
         groupId: assertNumericId(item.id),
         collection,
@@ -141,8 +143,5 @@ function TenantCollectionPermissionsPageView({
 }
 
 export const TenantCollectionPermissionsPage = _.compose(
-  Collections.loadList({
-    entityQuery: tenantCollectionsQuery,
-  }),
   connect(mapStateToProps, mapDispatchToProps),
 )(TenantCollectionPermissionsPageView);

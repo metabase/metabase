@@ -1,4 +1,4 @@
-import type { EmbedResourceDownloadOptions } from "metabase/embedding/types";
+import type { EmbedResourceDownloadOptions } from "metabase-types/api";
 
 const getDefaultPluginResourceDownloads = () => ({
   areDownloadsEnabled: (_args: {

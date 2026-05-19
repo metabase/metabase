@@ -9,6 +9,7 @@
    [metabase-enterprise.metabot-analytics.queries :as analytics.queries]
    [metabase.api.common :as api]
    [metabase.metabot.persistence :as metabot-persistence]
+   [metabase.metabot.tools :as metabot.tools]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.parameters.dates :as qp.parameters.dates]
    [metabase.slackbot.api :as slackbot.api]
@@ -95,7 +96,7 @@
                             [:= :mm.conversation_id :c.id]
                             [:= :mm.role "assistant"]
                             [:= :mm.deleted_at nil]]
-                 :order-by [[:mm.created_at :asc]]
+                 :order-by [[:mm.created_at :asc] [:mm.id :asc]]
                  :limit    1}
                 :profile_id]]
    :from      [[:metabot_conversation :c]]
@@ -144,7 +145,7 @@
              (assoc row
                     :search_count (analytics.queries/count-tool-invocations msgs "search")
                     :query_count  (analytics.queries/count-tool-invocations
-                                   msgs analytics.queries/new-query-tool-names))))
+                                   msgs metabot.tools/query-generation-tool-names))))
          rows)))
 
 (defn list-conversations
@@ -217,7 +218,7 @@
     (let [messages (t2/select :model/MetabotMessage
                               :conversation_id conversation-id
                               {:where    [:= :deleted_at nil]
-                               :order-by [[:created_at :asc]]})
+                               :order-by [[:created_at :asc] [:id :asc]]})
           hydrated (t2/hydrate conversation :user)]
       {:conversation_id (:id conversation)
        :created_at      (:created_at conversation)
@@ -227,11 +228,12 @@
        :total_tokens    (transduce (keep :total_tokens) + 0 messages)
        :profile_id      (some #(when (= :assistant (:role %)) (:profile_id %)) messages)
        :slack_permalink (slack-permalink conversation)
-       :chat_messages   (metabot-persistence/messages->chat-messages messages)
+       :chat_messages   (metabot-persistence/messages->chat-messages
+                         messages {:include-errored? true})
        :queries         (analytics.queries/messages->generated-queries messages)
        :search_count    (analytics.queries/count-tool-invocations messages "search")
        :query_count     (analytics.queries/count-tool-invocations
-                         messages analytics.queries/new-query-tool-names)
+                         messages metabot.tools/query-generation-tool-names)
        :ip_address           (:ip_address conversation)
        :embedding_hostname   (:embedding_hostname conversation)
        :embedding_path       (:embedding_path conversation)

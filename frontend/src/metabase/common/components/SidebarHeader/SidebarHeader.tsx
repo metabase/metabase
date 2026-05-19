@@ -2,8 +2,8 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import type { IconName } from "metabase/ui";
 import { Box, Flex, Icon } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import SidebarHeaderS from "./SidebarHeader.module.css";
 

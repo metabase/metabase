@@ -38,6 +38,11 @@ async function setup({
     response: TOP_SNIPPETS_FOLDER,
   });
 
+  fetchMock.get(
+    "path:/api/collection/root",
+    createMockCollection({ id: "root", name: "Our analytics" }),
+  );
+
   if (withDefaultFoldersList) {
     fetchMock.get({
       url: "path:/api/collection",

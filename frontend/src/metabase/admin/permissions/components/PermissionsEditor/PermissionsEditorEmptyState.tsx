@@ -1,5 +1,5 @@
 import { EmptyState } from "metabase/common/components/EmptyState";
-import type { IconName } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./PermissionsEditorEmptyState.module.css";
 

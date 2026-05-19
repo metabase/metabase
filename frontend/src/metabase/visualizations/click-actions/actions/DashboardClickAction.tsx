@@ -1,3 +1,5 @@
+import { selectTab } from "metabase/redux/dashboard";
+import type { Dispatch } from "metabase/redux/store";
 import {
   getDashboardDrillLinkUrl,
   getDashboardDrillParameters,
@@ -5,9 +7,7 @@ import {
   getDashboardDrillTab,
   getDashboardDrillType,
   getDashboardDrillUrl,
-} from "metabase/dashboard/utils/dashboard-click-drill";
-import { selectTab } from "metabase/redux/dashboard";
-import type { Dispatch } from "metabase/redux/store";
+} from "metabase/visualizations/click-actions/lib/dashboard-click-drill";
 import type {
   AlwaysDefaultClickAction,
   AlwaysDefaultClickActionSubAction,

@@ -70,6 +70,7 @@ config:
     admin-email: null
     aggregated-query-row-limit: null
     ai-features-enabled: true
+    ai-usage-max-retention-days: null
     allowed-iframe-hosts: |-
       youtube.com,
       youtu.be,
@@ -117,6 +118,7 @@ config:
     custom-geojson-enabled: true
     custom-homepage: false
     custom-homepage-dashboard: null
+    custom-viz-enabled: false
     dashboards-save-last-used-parameters: true
     db-connection-timeout-ms: 10000
     db-query-timeout-minutes: 20

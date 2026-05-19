@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests ^:mb/transforms-python-test metabase-enterprise.transforms.incremental-test
   "Tests for incremental transforms functionality."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.transforms.incremental-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

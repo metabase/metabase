@@ -6,10 +6,12 @@ import { getFormattingOptionsWithoutScaling } from "metabase/visualizations/echa
 import { formatValue } from "metabase/visualizations/lib/formatting";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
+import type { BarData } from "metabase/visualizations/shared/components/RowChart/types";
 import type {
-  ChartTicksFormatters,
-  ValueFormatter,
-} from "metabase/visualizations/shared/types/format";
+  GroupedDatum,
+  SeriesInfo,
+} from "metabase/visualizations/shared/types/data";
+import type { ChartTicksFormatters } from "metabase/visualizations/shared/types/format";
 import { getLabelsMetricColumn } from "metabase/visualizations/shared/utils/series";
 import type {
   DatasetColumn,
@@ -67,15 +69,22 @@ export const getFormatters = (
 export const getLabelsFormatter = (
   chartColumns: CartesianChartColumns,
   settings: VisualizationSettings,
-): ValueFormatter => {
-  const column = getLabelsMetricColumn(chartColumns).column;
-  const options = getFormattingOptionsWithoutScaling({
-    ...settings.column(column),
-    jsx: false,
-    compact: settings["graph.label_value_formatting"] === "compact",
-  });
+): ((value: any, bar?: BarData<GroupedDatum, SeriesInfo>) => string) => {
+  const fallbackColumn = getLabelsMetricColumn(chartColumns).column;
 
-  const labelsFormatter = (value: any) => String(formatValue(value, options));
+  const labelsFormatter = (
+    value: any,
+    bar?: BarData<GroupedDatum, SeriesInfo>,
+  ) => {
+    const column = bar?.series.seriesInfo?.metricColumn ?? fallbackColumn;
+    const options = getFormattingOptionsWithoutScaling({
+      ...settings.column(column),
+      jsx: false,
+      compact: settings["graph.label_value_formatting"] === "compact",
+    });
+
+    return String(formatValue(value, options));
+  };
 
   return labelsFormatter;
 };

@@ -9,7 +9,7 @@ import {
   PaneHeader,
   PaneHeaderInput,
 } from "metabase/data-studio/common/components/PaneHeader";
-import { Stack } from "metabase/ui";
+import { Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
@@ -50,7 +50,7 @@ export function JobEditor({
     <PageContainer data-testid="transforms-job-editor" gap="2.5rem">
       <PaneHeader
         title={
-          <>
+          <Group align="center" gap="sm" wrap="nowrap">
             <PaneHeaderInput
               initialValue={job.name}
               maxLength={NAME_MAX_LENGTH}
@@ -62,7 +62,12 @@ export function JobEditor({
                 <TransformBadge bg="background-warning-secondary">{t`Disabled`}</TransformBadge>
               </LockedTransformsHoverCard>
             )}
-          </>
+            {!isMeterLocked && !job.active && (
+              <TransformBadge bg="background-warning-secondary">
+                {t`Disabled`}
+              </TransformBadge>
+            )}
+          </Group>
         }
         py={0}
         breadcrumbs={

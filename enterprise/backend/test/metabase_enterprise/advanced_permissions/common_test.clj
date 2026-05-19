@@ -67,7 +67,7 @@
                 (-> (mt/user-http-request user :get 200 "user/current")
                     :permissions))]
         (testing "user with collection permission on published table should have can_create_queries true"
-          (mt/with-temp [:model/Collection collection {}
+          (mt/with-temp [:model/Collection collection {:type          "library-data"}
                          :model/Table      _table     {:db_id         (mt/id)
                                                        :is_published  true
                                                        :collection_id (:id collection)}]

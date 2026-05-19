@@ -1,9 +1,5 @@
-import type {
-  EmbeddingParameters,
-  EmbeddingType,
-} from "metabase/embedding/types";
-import type { IconName } from "metabase/ui";
 import type { CurrencyStyle } from "metabase/utils/formatting";
+import type { IconName } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import type { ClickBehavior } from "./click-behavior";
@@ -18,6 +14,7 @@ import type {
 import type { Database, DatabaseId } from "./database";
 import type { RowValue } from "./dataset";
 import type { Document, DocumentId } from "./document";
+import type { EmbeddingParameters, EmbeddingType } from "./embed";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
 import type { ModerationReview } from "./moderation";

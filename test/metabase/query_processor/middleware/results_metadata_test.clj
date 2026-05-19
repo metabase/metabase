@@ -2,7 +2,10 @@
   {:clj-kondo/config '{:linters
                        ;; allowing with-temp in this namespace since it's checking whether we actually save stuff to the
                        ;; app DB
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}
+                        :deprecated-var  {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.query-processor.middleware.results-metadata-test]}
+                                                    metabase.test.data/query          {:namespaces [metabase.query-processor.middleware.results-metadata-test]}
+                                                    metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.middleware.results-metadata-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

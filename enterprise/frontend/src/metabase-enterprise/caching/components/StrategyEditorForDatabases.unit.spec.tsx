@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { act, screen, within } from "__support__/ui";
+import { act, screen, waitFor, within } from "__support__/ui";
 import type { SetupOpts } from "metabase/admin/performance/components/test-utils";
 import {
   setupStrategyEditorForDatabases as baseSetup,
@@ -120,9 +120,11 @@ describe("StrategyEditorForDatabases", () => {
       await screen.findByTestId("strategy-form-submit-button"),
     );
 
-    expect(
-      await screen.findByTestId("strategy-form-submit-button"),
-    ).toHaveTextContent(/Saved/i);
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("strategy-form-submit-button"),
+      ).toHaveTextContent(/Saved/i),
+    );
 
     expect(await screen.findByLabelText(/Edit default policy/)).toHaveAttribute(
       "aria-label",
@@ -189,9 +191,11 @@ describe("StrategyEditorForDatabases", () => {
     await userEvent.click(
       await screen.findByTestId("strategy-form-submit-button"),
     );
-    expect(
-      await screen.findByTestId("strategy-form-submit-button"),
-    ).toHaveTextContent(/Saved/i);
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("strategy-form-submit-button"),
+      ).toHaveTextContent(/Saved/i),
+    );
 
     expect(
       await screen.findByLabelText(/Edit policy for database 'Database 1'/),

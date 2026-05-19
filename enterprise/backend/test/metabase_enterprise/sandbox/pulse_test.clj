@@ -1,4 +1,5 @@
 (ns metabase-enterprise.sandbox.pulse-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.sandbox.pulse-test]}}}}}}
   #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.data.csv :as csv]

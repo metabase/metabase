@@ -48,7 +48,10 @@ export interface RowChartProps<TDatum> {
   hasYAxis?: boolean;
 
   tickFormatters?: ChartTicksFormatters;
-  labelsFormatter?: (value: NumberValue) => string;
+  labelsFormatter?: (
+    value: NumberValue,
+    bar?: BarData<TDatum, SeriesInfo>,
+  ) => string;
   measureTextWidth: TextWidthMeasurer;
 
   xScaleType?: ContinuousScaleType;

@@ -1,4 +1,5 @@
 (ns metabase-enterprise.stale.impl-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.stale.impl-test]}}}}}}
   (:require
    [clojure.test :refer [deftest is are testing]]
    [metabase-enterprise.stale.impl :as stale]

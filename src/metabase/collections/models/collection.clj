@@ -192,6 +192,12 @@
 (def ^:private library-metrics-entity-id
   "librarylibrarymetrics")
 
+(def ^:private library-entity-id?
+  "Returns true if the given entity ID is one of the hard-coded Library keys."
+  #{library-entity-id
+    library-data-entity-id
+    library-metrics-entity-id})
+
 (defn create-library-collection!
   "Create the Library collection. Returns Created collection. Throws if it already exists."
   []
@@ -226,16 +232,30 @@
   {:namespace       mi/transform-keyword
    :authority_level mi/transform-keyword})
 
+(defn library-root-collection?
+  "Is this one of the immutable system-created Library collections (root, data, or metrics)?
+  Returns false for user-created subcollections that inherit a library type."
+  [collection]
+  (library-entity-id? (:entity_id collection)))
+
 (defn maybe-localize-system-collection-name
   "If the collection is a system-defined collection (Trash, Library, Data, or Metrics), translate the `name`.
+  Only overrides names for the system-created library collections, not user-created subcollections.
   This is a public function because we can't rely on `define-after-select` in all circumstances, e.g. when searching
   or listing collection items (where we do a direct DB query without `:model/Collection`)."
   [collection]
   (cond-> collection
-    (is-trash? collection) (assoc :name (tru "Trash"))
-    (is-library? collection) (assoc :name (tru "Library"))
-    (is-library-data-collection? collection) (assoc :name (tru "Data"))
-    (is-library-metrics-collection? collection) (assoc :name (tru "Metrics"))))
+    (is-trash? collection)
+    (assoc :name (tru "Trash"))
+
+    (and (is-library? collection) (library-root-collection? collection))
+    (assoc :name (tru "Library"))
+
+    (and (is-library-data-collection? collection) (library-root-collection? collection))
+    (assoc :name (tru "Data"))
+
+    (and (is-library-metrics-collection? collection) (library-root-collection? collection))
+    (assoc :name (tru "Metrics"))))
 
 (t2/define-after-select :model/Collection [collection]
   (maybe-localize-system-collection-name collection))
@@ -518,6 +538,16 @@
                (assoc collection
                       :name collection-name
                       :slug (u/slugify collection-name))))) collections)))
+
+(defn maybe-mark-collection-as-library-root
+  "Given a collection, adds `:is_library_root true` to exactly those collections which have hard-coded Library
+  `:entity_id`s - the Library itself, and it's magic top-level collections.
+
+  This uses the `:entity_id`s rather than `:type`s because it only applies to those root collections at the top level,
+  not to all of them."
+  [{:keys [entity_id] :as collection}]
+  (cond-> collection
+    (library-entity-id? entity_id) (assoc :is_library_root true)))
 
 (defn personal-collection-with-ui-details
   "For Personal collection, we make sure the collection's name and slug is translated to user's locale
@@ -1151,13 +1181,13 @@
   [collection :- CollectionWithLocationAndIDOrRoot
    visibility-config :- CollectionVisibilityConfig
    & additional-honeysql-where-clauses]
-  {:select [:id :name :description]
+  {:select [:id :name :description :type]
    :from   [[:collection :col]]
    :where  (apply effective-children-where-clause collection :col visibility-config additional-honeysql-where-clauses)})
 
 (mu/defn- effective-children* :- [:set (ms/InstanceOf :model/Collection)]
   [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
-  (set (t2/select [:model/Collection :id :name :description]
+  (set (t2/select [:model/Collection :id :name :description :type]
                   {:where (apply effective-children-where-clause
                                  collection
                                  (t2/table-name :model/Collection)
@@ -1555,7 +1585,14 @@
       (doseq [model (archived-directly-models)]
         (t2/update! model {:collection_id    [:in affected-collection-ids]
                            :archived_directly false}
-                    {:archived true})))
+                    {:archived true}))
+      (let [library-data-ids (t2/select-pks-set :model/Collection
+                                                :id   [:in affected-collection-ids]
+                                                :type library-data-collection-type)]
+        (when (seq library-data-ids)
+          (t2/update! :model/Table {:collection_id [:in library-data-ids]}
+                      {:collection_id nil
+                       :is_published  false}))))
     (let [updated-collection (t2/select-one :model/Collection :id (:id collection))]
       (when (:is_remote_synced updated-collection)
         (check-remote-synced-dependents updated-collection)))))
