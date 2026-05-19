@@ -9,9 +9,7 @@
 
     `compose-score` — sum the contributions, soft-saturate to `[0, 1)`, and
     negate. Returns the score plus the intermediate values so callers can
-    persist a fully audit-friendly breakdown.
-
-  Cross-reference: notes/bot-1515-conversation-score/strategy-v3-signals-ref-v2.md §4."
+    persist a fully audit-friendly breakdown."
   (:require
    [metabase.metabot.quality.constants :as constants]))
 
@@ -60,8 +58,11 @@
                                        k (get signal-magnitudes k 0))]))
                             constants/signal-keys)
         raw           (reduce + 0.0 (vals contributions))
-        concern       (/ raw (+ raw (double constants/saturation-C)))]
-    {:quality_score (- concern)
+        concern       (/ raw (+ raw (double constants/saturation-C)))
+        ;; Coerce a zero-signal score to positive 0.0 so consumers that JSON-
+        ;; encode the score never see "-0.0". (- 0.0) is -0.0 in JVM doubles.
+        score         (if (zero? concern) 0.0 (- concern))]
+    {:quality_score score
      :concern       concern
      :raw           raw
      :contributions contributions}))

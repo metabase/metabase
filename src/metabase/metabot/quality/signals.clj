@@ -8,12 +8,12 @@
   for `:excess` signals happens later in `quality.compose/signal-contribution`,
   not here.
 
-  Phase 1E covers Family 1 (retrieval discipline) and Family 2 (iteration).
-  Phase 1F adds Family 3 (per-turn efficiency) and Family 4 (failure outcomes).
-
-  Cross-reference:
-    - signal panel: notes/bot-1515-conversation-score/strategy-v3-signals-ref-v2.md §3
-    - design: notes/bot-1515-conversation-score/impl-phase-1-conversation-composites.md §4.5"
+  Four signal families:
+    1. Retrieval discipline — canonical-bypass, canonical-ignored,
+       search-ignored, author-without-inspect.
+    2. Iteration — iter-cap-burned.
+    3. Per-turn efficiency — turn-thrash, n-expensive-turn, query-thrash.
+    4. Failure outcomes — tool-error-magnitude, turn-broken."
   (:require
    [metabase.metabot.quality.constants :as constants]))
 
@@ -32,13 +32,12 @@
   "Search hits and inspect/author/navigate refs all live in the same id space,
   but `{{#N}}` template refs surface as `:card` while the matching search/inspect
   entity may carry the resolved subtype (`:question`/`:model`/`:metric`). The
-  card-bridge rule (signals-ref §3.2) treats those as equivalent for entity
-  matching."
+  card-bridge rule treats those as equivalent for entity matching."
   #{:question :model :metric})
 
 (defn- card-bridge-match?
-  "Card-bridge entity-match rule (signals-ref §3.2). Same id AND either
-  (a) ref-types are identical or (b) one side is `:card` and the other is in
+  "Card-bridge entity-match rule. Same id AND either (a) ref-types are
+  identical or (b) one side is `:card` and the other is in
   `bridgeable-card-types`. Symmetric — either direction satisfies the bridge."
   [a b]
   (and (= (:ref-id a) (:ref-id b))
@@ -49,9 +48,9 @@
 
 (defn- after?
   "Strict `:order-key` ordering — `:order-key` is `[created-at id part-index]`
-  (extract.clj) so the default `compare` does lex order and matches the
-  signals-ref temporal predicate `(later.created_at, later.part_index) >
-  (earlier.created_at, earlier.part_index)`."
+  (extract.clj) so the default `compare` does lex order, equivalent to
+  `(later.created_at, later.part_index) > (earlier.created_at,
+  earlier.part_index)`."
   [later earlier]
   (pos? (compare (:order-key later) (:order-key earlier))))
 
@@ -74,11 +73,10 @@
 ;; ---------------------------------------------------------------------------
 
 (defn canonical-bypass-magnitude
-  "Signals-ref §3.1. Count of authoring tool calls whose target entity is
-  `:non-canonical` *and* whose order-key strictly follows the earliest
-  canonical search hit in the conversation. Dashboards / databases / transforms
-  resolve to `:unknown` upstream and so are excluded from the count by
-  construction."
+  "Count of authoring tool calls whose target entity is `:non-canonical` *and*
+  whose order-key strictly follows the earliest canonical search hit in the
+  conversation. Dashboards / databases / transforms resolve to `:unknown`
+  upstream and so are excluded from the count by construction."
   [normalized canonical-map]
   (let [search-hits     (get-in normalized [:entity-refs :search-hits])
         author-refs     (get-in normalized [:entity-refs :author-refs])
@@ -93,10 +91,9 @@
                author-refs)))))
 
 (defn canonical-ignored-magnitude
-  "Signals-ref §3.2. Distinct count of `(entity-type, entity-id)` pairs that
-  appear as canonical search hits but have no engagement (inspect/author/
-  navigate) strictly after the earliest hit for that entity. Engagement uses
-  the card-bridge rule."
+  "Distinct count of `(entity-type, entity-id)` pairs that appear as canonical
+  search hits but have no engagement (inspect/author/navigate) strictly after
+  the earliest hit for that entity. Engagement uses the card-bridge rule."
   [normalized canonical-map]
   (let [search-hits    (get-in normalized [:entity-refs :search-hits])
         engagements    (engagement-refs normalized)
@@ -112,12 +109,12 @@
          count)))
 
 (defn search-ignored-magnitude
-  "Signals-ref §3.3. Count of search calls whose returned entities all had zero
-  subsequent engagement. Rolled up per search call (by `:order-key`), not per
-  entity. Calls with no `:search-hits` (e.g. zero-entity results) are not
-  counted — `extract` only surfaces hits when `:structured-output.data` is
-  non-empty, which is the natural reading of 'a wasted search returned things
-  the agent failed to use'."
+  "Count of search calls whose returned entities all had zero subsequent
+  engagement. Rolled up per search call (by `:order-key`), not per entity.
+  Calls with no `:search-hits` (e.g. zero-entity results) are not counted —
+  `extract` only surfaces hits when `:structured-output.data` is non-empty,
+  which is the natural reading of 'a wasted search returned things the agent
+  failed to use'."
   [normalized _canonical-map]
   (let [search-hits (get-in normalized [:entity-refs :search-hits])
         engagements (engagement-refs normalized)]
@@ -132,14 +129,13 @@
          count)))
 
 (def ^:private author-without-inspect-types
-  "Restriction from signals-ref §3.4. Database / dashboard / transform refs
-  don't have a meaningful 'inspect' counterpart in the tool registry and are
-  excluded from this signal."
+  "Database / dashboard / transform refs don't have a meaningful 'inspect'
+  counterpart in the tool registry and are excluded from this signal."
   #{:table :model :metric :question :card})
 
 (defn author-without-inspect-magnitude
-  "Signals-ref §3.4. Count of authoring refs (of a classifiable ref-type) that
-  have no card-bridge-matching inspect ref earlier in the conversation."
+  "Count of authoring refs (of a classifiable ref-type) that have no
+  card-bridge-matching inspect ref earlier in the conversation."
   [normalized _canonical-map]
   (let [author-refs  (get-in normalized [:entity-refs :author-refs])
         inspect-refs (get-in normalized [:entity-refs :inspect-refs])]
@@ -157,18 +153,16 @@
 ;; ---------------------------------------------------------------------------
 
 (defn iter-cap-burned-magnitude
-  "Signals-ref §3.5. Count of assistant messages whose `:iter-count` is at or
-  above the per-row profile's max-iterations cap.
+  "Count of assistant messages whose `:iter-count` is at or above the per-row
+  profile's max-iterations cap.
 
-  **Per-message profile lookup**, deviating from strategy-v3's modal-profile
-  rule per impl plan §9.7: each row is judged against the cap it was actually
-  permitted (e.g. transforms_codegen at 30, internal at 10) so a mixed-profile
-  conversation isn't mis-flagged.
+  Per-message profile lookup: each row is judged against the cap it was
+  actually permitted (e.g. transforms_codegen at 30, internal at 10) so a
+  mixed-profile conversation isn't mis-flagged by a modal profile choice.
 
-  The `pos? iter` guard implements the strategy-v3 `recovery_quality = 'clean'`
-  filter, excluding turns with no LLM parts (signals-ref §3.5).
-  A row whose `profile_id` is missing from `profile-max-iterations` contributes
-  0 (permissive fallback per signals-ref §2.5)."
+  The `pos? iter` guard excludes turns with no LLM parts. A row whose
+  `profile_id` is missing from `profile-max-iterations` contributes 0
+  (permissive fallback)."
   [normalized]
   (->> (:messages normalized)
        (filter #(= :assistant (:role %)))
@@ -189,8 +183,7 @@
   (filter #(= :assistant (:role %)) (:messages normalized)))
 
 (defn turn-thrash-magnitude
-  "Signals-ref §3.6. Σ over assistant turns of
-  `max(0, n_data_retrieval(T) - turn-thrash-baseline)`.
+  "Σ over assistant turns of `max(0, n_data_retrieval(T) - turn-thrash-baseline)`.
 
   Pre-aggregated excess: per-turn baseline subtraction happens here rather than
   in `quality.compose/signal-contribution`. The signal is registered as
@@ -208,17 +201,14 @@
    (assistant-messages normalized)))
 
 (defn n-expensive-turn-magnitude
-  "Corpus-relative outlier count (1.0.1). Counts assistant turns whose
-  `:total-tokens` exceeds the per-deployment outlier `threshold` produced by
+  "Corpus-relative outlier count. Counts assistant turns whose `:total-tokens`
+  exceeds the per-deployment outlier `threshold` produced by
   `quality.corpus-stats/outlier-threshold` (median + (Z / scale) × MAD).
 
-  `threshold` is **nil-safe**: when nil — the corpus is below
+  `threshold` is nil-safe: when nil — the corpus is below
   `constants/min-corpus-size` or callers omit the value — the signal
   contributes 0. This keeps the signal silent on fresh deployments instead
-  of flagging every turn as 'above zero.'
-
-  Replaces v1.0.0's `expensive-search-turn` / `expensive-tool-turn` pair.
-  See notes/bot-1515-conversation-score/impl-phase-1-testing-notes.md."
+  of flagging every turn as 'above zero.'"
   [normalized threshold]
   (if (nil? threshold)
     0
@@ -228,7 +218,7 @@
            count))))
 
 (defn- query-id-for-event
-  "Per signals-ref §3.9 query-id resolution:
+  "Query-id resolution for an authoring tool call:
     edit_sql_query / replace_sql_query → `arguments.query_id`
     create_sql_query / construct_notebook_query / write_transform_* /
       document_construct_* → `result.structured-output.query-id`
@@ -265,16 +255,15 @@
 
   Since events come from assistant messages and boundaries come from user
   messages, the `[ts id]` prefixes never collide (a placeholder assistant row
-  shares `:created_at` with its user prompt per PR 74056, but the row ids
-  always differ)."
+  shares `:created_at` with its user prompt, but the row ids always differ)."
   [{:keys [start end]} order-key]
   (let [prefix (subvec order-key 0 2)]
     (and (not (neg? (compare prefix start)))
          (or (nil? end) (neg? (compare prefix end))))))
 
 (defn query-thrash-magnitude
-  "Signals-ref §3.9. Raw max count of authoring tool calls within a single
-  `(user-turn, query-id)` bucket. Baseline (2) subtraction happens in
+  "Raw max count of authoring tool calls within a single `(user-turn,
+  query-id)` bucket. Baseline (2) subtraction happens in
   `quality.compose/signal-contribution`, so this returns the underlying count
   — `2` for a healthy create+fix, `3+` for the inflection into thrash.
 
@@ -299,10 +288,10 @@
 ;; ---------------------------------------------------------------------------
 
 (defn- error-present?
-  "Mirrors signals-ref's `COALESCE(elem ->> 'error', '') <> ''` over the
-  *decoded* shape extract.clj produces: nil, empty strings, and empty
-  collections (`{}`, `[]`) read as 'no error'; anything else is a real
-  payload."
+  "True iff `e` represents a real error payload. Mirrors the SQL `COALESCE(elem
+  ->> 'error', '') <> ''` discriminator over the *decoded* shape extract.clj
+  produces: nil, empty strings, and empty collections (`{}`, `[]`) read as
+  'no error'; anything else is a real payload."
   [e]
   (cond
     (nil? e)    false
@@ -311,10 +300,10 @@
     :else       true))
 
 (defn tool-error-magnitude
-  "Signals-ref §3.10. Count of tool-output parts whose sibling `error` field
-  *or* nested `result.error` field carries a real payload. The two branches are
-  ORed per tool call, so a result with both populated contributes 1, not 2 —
-  this is one call that failed in two redundant ways, not two calls."
+  "Count of tool-output parts whose sibling `error` field *or* nested
+  `result.error` field carries a real payload. The two branches are ORed per
+  tool call, so a result with both populated contributes 1, not 2 — this is
+  one call that failed in two redundant ways, not two calls."
   [normalized]
   (->> (:tool-events normalized)
        (filter (fn [{:keys [result output-error]}]
@@ -323,12 +312,11 @@
        count))
 
 (defn turn-broken-magnitude
-  "Signals-ref §3.11. Count of message rows where `finished = false` OR
-  `error IS NOT NULL`.
+  "Count of message rows where `finished = false` OR `error IS NOT NULL`.
 
   `finished IS NULL` (in-flight placeholder or crashed-and-never-finalized
-  row) contributes 0 per impl plan §9.3 — we deliberately do not couple the
-  score to any wall-clock-relative interpretation of stale NULLs."
+  row) contributes 0 — we deliberately do not couple the score to any
+  wall-clock-relative interpretation of stale NULLs."
   [normalized]
   (->> (:messages normalized)
        (filter (fn [m]

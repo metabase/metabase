@@ -11,13 +11,9 @@
 
   Two batched HoneySQL queries cover the classifiable cases: one against
   `report_card` (with the moderation_review / collection join) and one against
-  `metabase_table`. Refs whose type is not classified in v1.0.0 (dashboards,
-  databases, transforms) always resolve to `:unknown`, as do ids missing from
-  the appdb (deleted or never-existed).
-
-  Cross-reference:
-    - signal panel: notes/bot-1515-conversation-score/strategy-v3-signals-ref-v2.md §2.4, §3.1–§3.3
-    - design: notes/bot-1515-conversation-score/impl-phase-1-conversation-composites.md §4.4"
+  `metabase_table`. Refs whose type is unclassified (dashboards, databases,
+  transforms) always resolve to `:unknown`, as do ids missing from the appdb
+  (deleted or never-existed)."
   (:require
    [toucan2.core :as t2]))
 
@@ -38,9 +34,9 @@
   "Ref types resolved via `metabase_table`."
   #{:table})
 
-;; Dashboards, databases, and transforms are intentionally absent. v1.0.0 does
-;; not classify them — see strategy-v3 §3.1 footnote. They resolve to :unknown
-;; without a DB lookup.
+;; Dashboards, databases, and transforms are intentionally absent — the
+;; current panel does not classify them. They resolve to :unknown without a
+;; DB lookup.
 
 ;; ---------------------------------------------------------------------------
 ;; Batched lookups
@@ -133,9 +129,9 @@
                        final/authoritative for tables).
     `:non-canonical` — the entity exists in the appdb but lacks a marker.
     `:unknown`       — the entity could not be classified: it is missing from
-                       the appdb, the ref-type is not classified in v1.0.0
-                       (`:dashboard`, `:database`, `:transform`), or the ref
-                       shape was malformed.
+                       the appdb, the ref-type is unclassified (`:dashboard`,
+                       `:database`, `:transform`), or the ref shape was
+                       malformed.
 
   Issues at most one SELECT per ref-type kind that has at least one ref."
   [refs]

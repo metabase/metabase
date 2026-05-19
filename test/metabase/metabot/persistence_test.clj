@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.metabot.persistence :as metabot-persistence]
+   [metabase.metabot.quality.core :as quality.core]
+   [metabase.metabot.quality.corpus-stats :as quality.corpus-stats]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
@@ -620,3 +622,63 @@
                  (mapv :message (metabot-persistence/messages->chat-messages
                                  [user-msg errored] {:include-errored? true})))
               "audit read keeps both rows; the empty-data stub renders so the FE has somewhere to hang the error alert"))))))
+
+(deftest finalize-assistant-turn-populates-quality-columns-test
+  (testing "end-to-end: start-turn! + finalize-assistant-turn! lands quality_score
+            and quality_breakdown on the conversation row, plus query_modified and
+            query_count on the message row"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (with-redefs [quality.corpus-stats/outlier-threshold (constantly nil)]
+        (let [conversation-id (str (random-uuid))]
+          (mt/with-current-user (mt/user->id :rasta)
+            (let [{:keys [assistant-msg-id]}
+                  (metabot-persistence/start-turn!
+                   conversation-id "internal"
+                   {:role "user" :content "make a query"})]
+              (metabot-persistence/finalize-assistant-turn!
+               conversation-id assistant-msg-id
+               [{:type :tool-input :id "c1" :function "create_sql_query"
+                 :arguments {:database_id 1 :sql_query "SELECT 1"}}
+                {:type :tool-output :id "c1"
+                 :result {:output "ok" :structured-output {:query-id "q1"}}}])))
+          (let [conv         (t2/select-one :model/MetabotConversation :id conversation-id)
+                [_user asst] (t2/select :model/MetabotMessage
+                                        :conversation_id conversation-id
+                                        {:order-by [[:created_at :asc] [:id :asc]]})]
+            (testing "conversation row carries the score + breakdown"
+              (is (= 0.0 (:quality_score conv))
+                  "a clean single-authoring turn fires no signals → score 0.0")
+              (is (some? (:quality_breakdown conv)))
+              (is (= quality.core/composite-version
+                     (get-in conv [:quality_breakdown :composite_version]))))
+            (testing "assistant message row carries query_modified / query_count"
+              (is (true? (:query_modified asst)))
+              (is (= 1 (:query_count asst))))))))))
+
+(deftest finalize-assistant-turn-scoring-throw-does-not-roll-back-test
+  (testing "a throw inside the scoring path increments the Prometheus counter and
+            does NOT roll back the assistant-row UPDATE"
+    (mt/with-prometheus-system! [_ system]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [conversation-id (str (random-uuid))]
+          (mt/with-current-user (mt/user->id :rasta)
+            (let [{:keys [assistant-msg-id]}
+                  (metabot-persistence/start-turn!
+                   conversation-id "internal"
+                   {:role "user" :content "hi"})]
+              (mt/with-log-level [metabase.metabot.quality.core :fatal]
+                (with-redefs [quality.core/compute-conversation-score
+                              (fn [_] (throw (ex-info "simulated compute failure" {})))]
+                  (metabot-persistence/finalize-assistant-turn!
+                   conversation-id assistant-msg-id
+                   [{:type :text :text "answer"}])))
+              (let [asst (t2/select-one :model/MetabotMessage assistant-msg-id)
+                    conv (t2/select-one :model/MetabotConversation :id conversation-id)]
+                (testing "assistant row's UPDATE survived"
+                  (is (= [{:type "text" :text "answer"}] (:data asst)))
+                  (is (true? (:finished asst))))
+                (testing "conversation row has no score — the score UPDATE never ran"
+                  (is (nil? (:quality_score conv)))
+                  (is (nil? (:quality_breakdown conv))))))))
+        (is (== 1 (mt/metric-value system :metabase-metabot/quality-score-errors))
+            "Prometheus counter is incremented on the catch path")))))

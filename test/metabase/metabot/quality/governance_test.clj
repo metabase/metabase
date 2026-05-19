@@ -39,7 +39,7 @@
 ;; ---------------------------------------------------------------------------
 
 (deftest dashboards-databases-transforms-are-unknown-test
-  (testing "dashboard/database/transform ref-types are excluded from classification (strategy-v3 §3.1)"
+  (testing "dashboard/database/transform ref-types are excluded from classification"
     (is (= {[:dashboard 1]  :unknown
             [:database  2]  :unknown
             [:transform 3]  :unknown}

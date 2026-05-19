@@ -1,4 +1,4 @@
-## BOT-1515 Phase 1: persist a v1 conversation quality composite.
+## BOT-1515: persist a conversation quality composite.
 ##
 ## Adds quality_score (double in (-1, 0]) and quality_breakdown (JSON) to
 ## metabot_conversation so newly finalized assistant turns can write a
@@ -7,8 +7,7 @@
 ## without unpacking the data jsonb.
 ##
 ## All columns nullable or default-bearing so the migration is safe on a live
-## DB. The scoring shape is documented in
-## notes/bot-1515-conversation-score/strategy-v3-signals-ref-v2.md §5.
+## DB.
 
 databaseChangeLog:
   - logicalFilePath: migrations/062_update_migrations.yaml
@@ -16,7 +15,7 @@ databaseChangeLog:
   - changeSet:
       id: v62.2026-05-16T00:00:00
       author: tylerplude
-      comment: Add metabot_conversation.quality_score for BOT-1515 v1 composite
+      comment: Add metabot_conversation.quality_score
       changes:
         - addColumn:
             tableName: metabot_conversation
@@ -25,9 +24,9 @@ databaseChangeLog:
                   name: quality_score
                   type: double
                   remarks: >
-                    v1 conversation composite in (-1, 0]. NULL = not computed
-                    (or out of scope, e.g. old-format conversation). 0.0
-                    means scored, no signal fired.
+                    Conversation quality composite in (-1, 0]. NULL = not
+                    computed (or out of scope, e.g. old-format conversation).
+                    0.0 means scored, no signal fired.
                   constraints:
                     nullable: true
       rollback:
@@ -49,8 +48,7 @@ databaseChangeLog:
                   remarks: >
                     JSON-encoded breakdown of the composite — composite_version,
                     raw, concern, per-signal magnitudes, per-signal
-                    contributions, and a small context block. Shape defined in
-                    notes/bot-1515-conversation-score/strategy-v3-signals-ref-v2.md §5.
+                    contributions, and a small context block.
                   constraints:
                     nullable: true
       rollback:
@@ -61,7 +59,7 @@ databaseChangeLog:
   - changeSet:
       id: v62.2026-05-16T00:00:02
       author: tylerplude
-      comment: Add metabot_message.query_modified flag for BOT-1515
+      comment: Add metabot_message.query_modified flag
       changes:
         - addColumn:
             tableName: metabot_message
@@ -86,7 +84,7 @@ databaseChangeLog:
   - changeSet:
       id: v62.2026-05-16T00:00:03
       author: tylerplude
-      comment: Add metabot_message.query_count for BOT-1515
+      comment: Add metabot_message.query_count
       changes:
         - addColumn:
             tableName: metabot_message

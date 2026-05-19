@@ -7,8 +7,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- close-to?
-  "True if `a` and `b` agree to three decimals (the precision used in
-  strategy-v3's worked-examples table)."
+  "True if `a` and `b` agree to three decimals."
   [a b]
   (< (Math/abs (- (double a) (double b))) 5e-4))
 
@@ -40,7 +39,7 @@
       (is (= 8.0 (compose/signal-contribution :query-thrash 10))))))
 
 (deftest signal-contribution-n-expensive-turn-test
-  (testing "n-expensive-turn is event-count with k=3 (1.0.1)"
+  (testing "n-expensive-turn is event-count with k=3"
     (is (= 0.0 (compose/signal-contribution :n-expensive-turn 0)))
     (is (= 3.0 (compose/signal-contribution :n-expensive-turn 1)))
     (is (= 6.0 (compose/signal-contribution :n-expensive-turn 2)))
@@ -54,11 +53,9 @@
 ;; ---------------------------------------------------------------------------
 ;; compose-score — single-signal worked examples
 ;;
-;; These rows are drawn from strategy-v3 §"Worked examples" and
-;; signals-ref §4.5. Only the rows whose math is internally consistent with
-;; `signal-params` are tested here. Combined-row worked examples in the docs
-;; (e.g. "1 of each Tier-H/M signal = 16.5") are off by a small constant
-;; from the published k values; see the Phase 1B summary in the progress doc.
+;; Each row's `expected-raw` is the contribution of one signal firing at the
+;; given magnitude (k × m for event-count, k × max(0, m − baseline) for
+;; excess); `expected-concern` is `raw / (raw + saturation-C)`.
 ;; ---------------------------------------------------------------------------
 
 (deftest compose-score-clean-conversation-test
@@ -69,7 +66,7 @@
       (is (= 0.0 raw)))))
 
 (deftest compose-score-worked-examples-test
-  (testing "single-signal rows from strategy-v3 worked-examples (3-decimal agreement)"
+  (testing "single-signal contribution and concern math (3-decimal agreement)"
     (doseq [[label magnitudes expected-raw expected-concern]
             [["1 tool error"                {:tool-error-magnitude 1}     3.0 0.231]
              ["2 tool errors"               {:tool-error-magnitude 2}     6.0 0.375]

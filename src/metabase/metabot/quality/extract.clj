@@ -23,11 +23,7 @@
      :entity-refs      {:search-hits   [ref]
                         :author-refs   [ref]
                         :inspect-refs  [ref]
-                        :navigate-refs [ref]}}
-
-  Cross-reference:
-    - signal panel: notes/bot-1515-conversation-score/strategy-v3-signals-ref-v2.md §3
-    - normalization design: notes/bot-1515-conversation-score/impl-phase-1-conversation-composites.md §4.3"
+                        :navigate-refs [ref]}}"
   (:require
    [metabase.metabot.quality.constants :as constants]
    [metabase.util.json :as json]))
@@ -54,8 +50,8 @@
 
 (defn- llm-emission-part?
   "True for parts that count as an LLM emission for iter-count grouping.
-  Per signals-ref §3.5: `:text` and `:tool-input` are LLM-emitted;
-  `:tool-output`, `:data`, `:error` are non-LLM."
+  `:text` and `:tool-input` are LLM-emitted; `:tool-output`, `:data`, `:error`
+  are non-LLM."
   [part]
   (#{:text :tool-input} (part-type part)))
 
@@ -67,8 +63,7 @@
   "Count of LLM-emission groups in a parts vector.
 
   An LLM-emission group is a maximal run of consecutive LLM parts (`:text` or
-  `:tool-input`). The count is the number of *transitions into* such a run
-  (signals-ref §3.5: `prev_kind IS NULL OR prev_kind != 'llm'`).
+  `:tool-input`). The count is the number of *transitions into* such a run.
 
   Examples:
     []                                            → 0
@@ -113,7 +108,7 @@
 
 (defn- finished-flag
   "Tri-state `:finished`. Nil means in-flight (the schema-level placeholder
-  marker); true means completed; false means client abort. PR 74056."
+  marker); true means completed; false means client abort."
   [v]
   (cond (true? v) true (false? v) false :else nil))
 

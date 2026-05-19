@@ -11,11 +11,7 @@
     `score-conversation!` — I/O wrapper. Reads the conversation's messages
     from the appdb, runs `compute-conversation-score`, and persists the
     result back onto `metabot_conversation`. Catches and logs any throw so a
-    scoring failure cannot break the user-visible persistence path.
-
-  Cross-reference:
-    - signal panel: notes/bot-1515-conversation-score/strategy-v3-signals-ref-v2.md
-    - design: notes/bot-1515-conversation-score/impl-phase-1-conversation-composites.md §3, §4, §5"
+    scoring failure cannot break the user-visible persistence path."
   (:require
    [metabase.analytics-interface.core :as analytics]
    [metabase.metabot.quality.compose :as compose]
@@ -49,8 +45,7 @@
   whose every part carries a `:type` discriminator.
 
   Old-format assistant rows are historical and rare; they lack the per-part
-  `:type` field and disqualify the whole conversation from scoring per
-  signals-ref §1.3."
+  `:type` field and disqualify the whole conversation from scoring."
   [msg]
   (or (not= :assistant (:role msg))
       (empty? (:data msg))
@@ -63,9 +58,9 @@
 (defn- safe-message
   "Pre-sanitize a message before normalization. Coerces `:data` to a vector if
   it isn't already, so per-message walks downstream (`pair-tool-calls`,
-  `iter-count`) never crash on an unexpected shape. Per impl-plan §5.4 — a
-  single malformed row should degrade to 'no parts contributed' rather than
-  failing the whole conversation score."
+  `iter-count`) never crash on an unexpected shape. A single malformed row
+  degrades to 'no parts contributed' rather than failing the whole
+  conversation score."
   [msg]
   (cond-> msg
     (not (sequential? (:data msg))) (assoc :data [])))
@@ -96,7 +91,7 @@
   "True iff any assistant row in `messages` has `query_count > 0`. Relies on
   `query_count` having been UPDATEd by `finalize-assistant-turn!` on the
   just-finalized assistant row before `score-conversation!` reads — which
-  holds because both writes share a transaction (§3.3)."
+  holds because both writes share a transaction."
   [messages]
   (boolean
    (some (fn [m]
@@ -111,43 +106,44 @@
     {:quality_score    <double in (-1, 0] or nil>
      :quality_breakdown <map ready to JSON-encode, or nil>}
 
-  Returns the pair of nils when any assistant row is old-format (signals-ref
-  §1.3). This is distinct from 'scored, no signal fired' — that path produces
+  Returns the pair of nils when any assistant row is old-format. This is
+  distinct from 'scored, no signal fired' — that path produces
   `:quality_score 0.0` with a populated breakdown.
 
-  Calls `corpus-stats/outlier-threshold` once per invocation to fetch (or
-  reuse the cached) corpus-relative outlier threshold for `n-expensive-turn`.
-  Tests inject a deterministic value via `with-redefs`. The function is the
-  entry point a future backfill job will call against historical rows; no
-  other database access happens here beyond the cached threshold lookup."
-  [messages]
-  (let [safe-messages  (mapv safe-message messages)
-        assistant-rows (filter #(= :assistant (:role %)) safe-messages)]
-    (if (some (complement new-format-message?) assistant-rows)
-      {:quality_score nil :quality_breakdown nil}
-      (let [normalized    (extract/normalize safe-messages)
-            er            (:entity-refs normalized)
-            canonical-map (governance/resolve-canonical-rank
-                           (concat (:search-hits er) (:author-refs er)))
-            threshold-info (corpus-stats/outlier-threshold)
-            outlier-threshold (:threshold threshold-info)
-            magnitudes    (collect-signal-magnitudes normalized canonical-map outlier-threshold)
-            composed      (compose/compose-score magnitudes)
-            breakdown     {:composite_version          composite-version
-                           :computed_at                (str (Instant/now))
-                           :turn_broken_available_from constants/turn-broken-available-from
-                           :raw                        (:raw composed)
-                           :concern                    (:concern composed)
-                           :signals                    magnitudes
-                           :contributions              (:contributions composed)
-                           :context                    {:profile_id                       (:profile-id normalized)
-                                                        :had_artifact                     (had-artifact? safe-messages)
-                                                        :n_messages                       (count safe-messages)
-                                                        :n_tool_calls                     (count (:tool-events normalized))
-                                                        :outlier_threshold                outlier-threshold
-                                                        :outlier_threshold_corpus_size    (:corpus-size threshold-info)}}]
-        {:quality_score     (:quality_score composed)
-         :quality_breakdown breakdown}))))
+  The 1-arity fetches the corpus-relative outlier threshold for
+  `n-expensive-turn` via `corpus-stats/outlier-threshold` (memoized in prod,
+  pass-through in dev). Batch callers (e.g. the backfill job) should use the
+  2-arity and amortize the fetch across the run: dev mode bypasses the cache,
+  so the per-row cost of consulting the corpus dominates a large run."
+  ([messages]
+   (compute-conversation-score messages (corpus-stats/outlier-threshold)))
+  ([messages threshold-info]
+   (let [safe-messages  (mapv safe-message messages)
+         assistant-rows (filter #(= :assistant (:role %)) safe-messages)]
+     (if (some (complement new-format-message?) assistant-rows)
+       {:quality_score nil :quality_breakdown nil}
+       (let [normalized        (extract/normalize safe-messages)
+             er                (:entity-refs normalized)
+             canonical-map     (governance/resolve-canonical-rank
+                                (concat (:search-hits er) (:author-refs er)))
+             outlier-threshold (:threshold threshold-info)
+             magnitudes        (collect-signal-magnitudes normalized canonical-map outlier-threshold)
+             composed          (compose/compose-score magnitudes)
+             breakdown         {:composite_version          composite-version
+                                :computed_at                (str (Instant/now))
+                                :turn_broken_available_from constants/turn-broken-available-from
+                                :raw                        (:raw composed)
+                                :concern                    (:concern composed)
+                                :signals                    magnitudes
+                                :contributions              (:contributions composed)
+                                :context                    {:profile_id                    (:profile-id normalized)
+                                                             :had_artifact                  (had-artifact? safe-messages)
+                                                             :n_messages                    (count safe-messages)
+                                                             :n_tool_calls                  (count (:tool-events normalized))
+                                                             :outlier_threshold             outlier-threshold
+                                                             :outlier_threshold_corpus_size (:corpus-size threshold-info)}}]
+         {:quality_score     (:quality_score composed)
+          :quality_breakdown breakdown})))))
 
 ;; ---------------------------------------------------------------------------
 ;; Persist (I/O)
@@ -155,15 +151,26 @@
 
 (defn- conversation-messages
   "Read non-deleted messages for `conversation-id`, ordered by `(:created_at,
-  :id)` per PR 74056's tiebreak convention — the placeholder assistant row
-  pinned at turn start shares `:created_at` with the paired user row, so a
-  pure-`created_at` sort is non-deterministic."
+  :id)` — the placeholder assistant row pinned at turn start shares
+  `:created_at` with the paired user row, so a pure-`created_at` sort is
+  non-deterministic."
   [conversation-id]
   (t2/select :model/MetabotMessage
              {:where    [:and
                          [:= :conversation_id conversation-id]
                          [:= :deleted_at nil]]
               :order-by [[:created_at :asc] [:id :asc]]}))
+
+(defn- old-format-sentinel
+  "Persisted to `quality_breakdown` when the format-era guard fired so the row
+  is no longer indistinguishable from a never-attempted one. The backfill's
+  discovery query keys on `quality_breakdown IS NULL`; without this sentinel,
+  format-era conversations would be re-discovered (and re-attempted) on every
+  run forever."
+  []
+  {:unscored_reason   "old-format"
+   :composite_version composite-version
+   :computed_at       (str (Instant/now))})
 
 (defn score-conversation!
   "Compute and persist the v1 conversation quality score.
@@ -172,42 +179,67 @@
   `compute-conversation-score`, and UPDATEs `:quality_score` /
   `:quality_breakdown` on `metabot_conversation`.
 
+  The 1-arity fetches `corpus-stats/outlier-threshold` per call (the
+  request-path entry point used by `finalize-assistant-turn!`). The 2-arity
+  accepts a pre-fetched threshold-info so batch consumers like the backfill
+  job can amortize the fetch across many rows.
+
+  When `compute-conversation-score` declines (format-era conversation,
+  returns nil/nil), `:quality_breakdown` still receives a small sentinel map
+  so the row can be distinguished from a never-attempted one — required to
+  keep the backfill's `quality_breakdown IS NULL` discovery from looping on
+  the same rows forever.
+
   Belt-and-suspenders: any throw inside is caught, logged at `warn`, and
   counted on `:metabase-metabot/quality-score-errors`. A scoring failure must
   never roll back the assistant-row UPDATE that the user-visible response
-  depends on (impl plan §5.4, §9.1).
+  depends on; on the catch path no UPDATE fires, leaving the row eligible
+  for retry on the next backfill pass (transient errors recover; permanent
+  errors are caught locally within a run by the backfill's attempted-set).
 
   Idempotent: safe to call repeatedly. Each call overwrites the existing
   `quality_score` / `quality_breakdown` based on the current message state,
   so subsequent turns of a conversation cleanly replace earlier turns'
-  scores."
-  [conversation-id]
-  (try
-    (let [messages (conversation-messages conversation-id)
-          {:keys [quality_score quality_breakdown]}
-          (compute-conversation-score messages)]
-      (t2/update! :model/MetabotConversation conversation-id
-                  {:quality_score     quality_score
-                   :quality_breakdown quality_breakdown}))
-    (catch Throwable t
-      (analytics/inc! :metabase-metabot/quality-score-errors)
-      (log/warnf t "Failed to score metabot conversation %s" conversation-id)
-      nil)))
+  scores.
+
+  Returns:
+    - the score (a double in `(-1, 0]`) on a successful new-format compute,
+    - `:sentinel` on the format-era guard path (sentinel breakdown written),
+    - `nil` after a caught throw (no UPDATE fired, row stays eligible).
+
+  Three distinct return shapes let the backfill drain loop log truthful
+  per-iteration counts of scored / unscoreable / errored rows."
+  ([conversation-id]
+   (score-conversation! conversation-id (corpus-stats/outlier-threshold)))
+  ([conversation-id threshold-info]
+   (try
+     (let [messages (conversation-messages conversation-id)
+           {:keys [quality_score quality_breakdown]}
+           (compute-conversation-score messages threshold-info)
+           sentinel?          (nil? quality_breakdown)
+           breakdown-to-write (or quality_breakdown (old-format-sentinel))]
+       (t2/update! :model/MetabotConversation conversation-id
+                   {:quality_score     quality_score
+                    :quality_breakdown breakdown-to-write})
+       (if sentinel? :sentinel quality_score))
+     (catch Throwable t
+       (analytics/inc! :metabase-metabot/quality-score-errors)
+       (log/warnf t "Failed to score metabot conversation %s" conversation-id)
+       nil))))
 
 ;; ---------------------------------------------------------------------------
-;; REPL dev helpers — strip before final submission
+;; REPL dev helpers
 ;; ---------------------------------------------------------------------------
 
 (comment
-  ;; Requires for ad-hoc evaluation from any ns. If you `(in-ns
-  ;; 'metabase.metabot.quality.core)` first the aliases below collapse to
-  ;; bare symbols.
-  (require '[metabase.metabot.quality.core :as quality]
-           '[metabase.metabot.quality.compose :as compose]
-           '[metabase.metabot.quality.extract :as extract]
-           '[metabase.metabot.quality.governance :as governance]
-           '[metabase.metabot.quality.signals :as signals]
-           '[toucan2.core :as t2])
+  ;; Evaluate forms below after `(in-ns 'metabase.metabot.quality.core)` to
+  ;; reuse the file's ns requires. From another ns, require:
+  ;;   [metabase.metabot.quality.core :as quality]
+  ;;   [metabase.metabot.quality.compose :as compose]
+  ;;   [metabase.metabot.quality.extract :as extract]
+  ;;   [metabase.metabot.quality.governance :as governance]
+  ;;   [metabase.metabot.quality.signals :as signals]
+  ;;   [toucan2.core :as t2]
 
   ;; ---- Pick a conversation to inspect -------------------------------------
 
@@ -231,7 +263,7 @@
                            [:= :deleted_at nil]]
                 :order-by [[:created_at :asc] [:id :asc]]}))
 
-  (def result (quality/compute-conversation-score messages))
+  (def result (compute-conversation-score messages))
 
   ;; Full return shape:
   (:quality_score     result)  ; double in (-1, 0], or nil for old-format
@@ -249,7 +281,7 @@
   ;; Same compute, but the I/O wrapper: catches throws, increments the
   ;; Prometheus counter on failure, and UPDATEs metabot_conversation.
   ;; Idempotent — safe to call repeatedly.
-  (quality/score-conversation! conv-id)
+  (score-conversation! conv-id)
 
   ;; Confirm what landed:
   (t2/select-one [:model/MetabotConversation :quality_score :quality_breakdown]
@@ -298,10 +330,8 @@
   ;; ---- Gotchas ------------------------------------------------------------
 
   ;; - Old-format conversations return {:quality_score nil :quality_breakdown nil}
-  ;;   from compute-conversation-score. That's the format-era guard from §4.2,
-  ;;   not a bug. Distinct from "scored, nothing fired" → 0.0 with a breakdown.
-  ;; - Zero-signal conversations display as -0.0 (because compose does
-  ;;   `(- concern)` and concern = 0.0). Functionally equivalent to 0.0.
+  ;;   from compute-conversation-score. That's the format-era guard, not a bug.
+  ;;   Distinct from "scored, nothing fired" → 0.0 with a breakdown.
   ;; - score-conversation! is idempotent — two back-to-back calls produce
   ;;   bit-identical results modulo :computed_at.
   )

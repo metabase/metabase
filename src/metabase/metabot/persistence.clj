@@ -64,10 +64,10 @@
   small whitelisted subset of `:structured-output` (see
   `persisted-structured-output-keys`).
 
-  Search tool results bypass the trim entirely — the BOT-1515 quality scorer
-  needs the full entity payload (id, model, name, collection, verified flag,
-  data-layer, …) to compute the retrieval-discipline signals, and the live
-  in-loop and DB-scored paths must see the same shape."
+  Search tool results bypass the trim entirely — the conversation quality
+  scorer needs the full entity payload (id, model, name, collection, verified
+  flag, data-layer, …) to compute the retrieval-discipline signals, and the
+  live in-loop and DB-scored paths must see the same shape."
   [{:keys [type result] :as part}]
   (cond
     (not= :tool-output type)     part

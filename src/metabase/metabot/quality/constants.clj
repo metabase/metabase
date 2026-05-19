@@ -1,29 +1,18 @@
 (ns metabase.metabot.quality.constants
   "Static constants for the BOT-1515 conversation quality composite.
 
-  Single source of truth for the v1 panel's per-signal `k` values, baselines,
-  the composite soft-saturation constant, profile iteration caps, and tool-set
-  partitions. A re-tune of the composite (e.g. `1.0.0` → `1.0.1`) is one PR:
-  bump `composite-version`, tweak the values below, and queue a backfill.
-
-  Cross-reference:
-    - signal panel: notes/bot-1515-conversation-score/strategy-v3-signals-ref-v2.md §4.1
-    - tool partitions: same doc §1.4
-    - baselines: same doc §2.5")
+  Single source of truth for the per-signal `k` values, baselines, the composite
+  soft-saturation constant, profile iteration caps, and tool-set partitions. A
+  retune of the composite is one PR: bump `composite-version`, tweak the values
+  below, and queue a backfill.")
 
 (def composite-version
   "Version string embedded in every `quality_breakdown` JSON payload. Bump when
-  any of the values in this namespace change in a way that affects the score.
-
-  1.0.1 — replaced the fixed-baseline `expensive-search-turn` /
-  `expensive-tool-turn` pair with the corpus-relative `n-expensive-turn`
-  outlier signal. See notes/bot-1515-conversation-score/impl-phase-1-testing-notes.md."
+  any of the values in this namespace change in a way that affects the score."
   "1.0.1")
 
 (def saturation-C
-  "Composite soft-saturation constant. `concern = raw / (raw + C)`.
-  v1.0.0 starting value; expected to retune in 1.0.1 after the first
-  distribution check (strategy-v3 §\"Open decisions\")."
+  "Composite soft-saturation constant. `concern = raw / (raw + C)`."
   10)
 
 (def turn-broken-available-from
@@ -99,7 +88,7 @@
   2)
 
 ;; ---------------------------------------------------------------------------
-;; Corpus-relative outlier threshold (n-expensive-turn) — 1.0.1
+;; Corpus-relative outlier threshold (n-expensive-turn)
 ;; ---------------------------------------------------------------------------
 ;;
 ;; The `n-expensive-turn` signal counts assistant turns whose `total_tokens`
@@ -142,7 +131,7 @@
   3600000)
 
 ;; ---------------------------------------------------------------------------
-;; Per-profile iteration caps (signals-ref §2.5)
+;; Per-profile iteration caps
 ;; ---------------------------------------------------------------------------
 
 (def profile-max-iterations
@@ -159,23 +148,20 @@
    "document-generate-content" 10})
 
 ;; ---------------------------------------------------------------------------
-;; Tool-set partitions (signals-ref §1.4)
+;; Tool-set partitions
 ;; ---------------------------------------------------------------------------
 ;;
 ;; The string values are exact `:tool-name` strings as registered by tool vars
 ;; in `metabase.metabot.tools`. They are duplicated here as a static snapshot
-;; (v1.0.0) rather than derived from the tool registry: keeping the constants
-;; namespace pure avoids loading the full tool tree (and its tool-namespace
-;; tree) just to score a conversation, and makes the v1.0.0 panel auditable
-;; against this file alone.
+;; rather than derived from the tool registry: keeping the constants namespace
+;; pure avoids loading the full tool tree (and its tool-namespace tree) just to
+;; score a conversation, and makes the panel auditable against this file alone.
 
 (def search-tools
-  "Search-family tool names. A turn is 'search-dominant' iff ≥ 50% of its tool
-  calls fall in this set."
-  #{"search"
-    "sql_search"
-    "nlq_search"
-    "transform_search"})
+  "Search-family tool names. All four search vars (`search-tool`,
+  `sql-search-tool`, `nlq-search-tool`, `transform-search-tool`) register under
+  the single `:tool-name \"search\"`, so this set contains the one value."
+  #{"search"})
 
 (def data-retrieval-tools
   "Tool names counted toward `turn-thrash`. Includes every search tool plus

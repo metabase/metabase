@@ -551,7 +551,7 @@
       (is (= 0 (signals/turn-thrash-magnitude normalized))))))
 
 ;; ---------------------------------------------------------------------------
-;; Family 3, Signal 7 — n-expensive-turn (corpus-relative outlier count, 1.0.1)
+;; n-expensive-turn (corpus-relative outlier count)
 ;; ---------------------------------------------------------------------------
 
 (defn- assistant-tokens
@@ -807,7 +807,7 @@
       (is (= 1 (signals/turn-broken-magnitude normalized))))))
 
 (deftest turn-broken-finished-null-does-not-count-test
-  (testing "finished IS NULL (in-flight / placeholder) does NOT contribute (impl plan §9.3)"
+  (testing "finished IS NULL (in-flight / placeholder) does NOT contribute"
     (let [msg-inflight (-> (assistant-msg 2 (ts 2) [])
                            (assoc :finished nil :error nil))
           normalized   (normalize [(user-msg 1 (ts 1)) msg-inflight])]

@@ -13,10 +13,7 @@
       (mirrors `metabase.search.appdb.scoring/view-count-percentiles`).
 
     `threshold-stats` — pure compute. Same return shape, computed over an
-      injected seq of token values. The unit-testable entry point.
-
-  Cross-reference:
-    notes/bot-1515-conversation-score/impl-phase-1-testing-notes.md"
+      injected seq of token values. The unit-testable entry point."
   (:require
    [clojure.core.memoize :as memoize]
    [metabase.config.core :as config]
