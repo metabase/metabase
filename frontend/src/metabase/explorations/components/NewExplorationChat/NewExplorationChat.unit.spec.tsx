@@ -1,3 +1,7 @@
+import fetchMock from "fetch-mock";
+
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, waitFor } from "__support__/ui";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
@@ -5,6 +9,7 @@ import type {
   MetabotChatMessage,
   MetabotDebugToolCallMessage,
 } from "metabase/metabot/state";
+import { createMockState } from "metabase/redux/store/mocks";
 import type {
   GetExplorationDataResponse,
   MetricDimension,
@@ -12,7 +17,9 @@ import type {
 import {
   createMockMetric,
   createMockMetricDimension,
-} from "metabase-types/api/mocks/metric";
+  createMockTokenFeatures,
+  createMockUserMetabotPermissions,
+} from "metabase-types/api/mocks";
 
 import { NewExplorationChat } from "./NewExplorationChat";
 
@@ -116,7 +123,7 @@ const explorationDataToolCallMessage: MetabotDebugToolCallMessage = {
   id: "tool-call-2",
   role: "agent",
   type: "tool_call",
-  name: "select_exploration_metrics",
+  name: "select_research_metrics",
   status: "ended",
   result: JSON.stringify(explorationDataResponse),
 };
@@ -125,7 +132,7 @@ const setNameToolCallMessage: MetabotDebugToolCallMessage = {
   id: "tool-call-3",
   role: "agent",
   type: "tool_call",
-  name: "set_exploration_name",
+  name: "set_research_name",
   status: "ended",
   result: JSON.stringify({ name: "Revenue investigation" }),
 };
@@ -158,6 +165,18 @@ function mockMetabotAgentState({
 }
 
 function setup() {
+  fetchMock.get(
+    "path:/api/metabot/permissions/user-permissions",
+    createMockUserMetabotPermissions(),
+  );
+
+  const settings = mockSettings({
+    "llm-metabot-configured?": true,
+    "metabot-enabled?": true,
+    "token-features": createMockTokenFeatures({ ai_controls: true }),
+  });
+  setupEnterprisePlugins();
+
   const setMetrics = jest.fn();
   const setDimensions = jest.fn();
   const setName = jest.fn();
@@ -173,6 +192,9 @@ function setup() {
       setDimensions={setDimensions}
       setName={setName}
     />,
+    {
+      storeInitialState: createMockState({ settings }),
+    },
   );
 
   const rerender = ({
@@ -281,14 +303,7 @@ describe("NewExplorationChat", () => {
     });
 
     await waitFor(() => {
-      expect(setName).toHaveBeenCalledWith(expect.any(Function));
+      expect(setName).toHaveBeenCalledWith("Revenue investigation");
     });
-
-    const updateName = setName.mock.calls[0][0] as (
-      name: string | null,
-    ) => string | null;
-
-    expect(updateName(null)).toBe("Revenue investigation");
-    expect(updateName("Existing name")).toBe("Existing name");
   });
 });

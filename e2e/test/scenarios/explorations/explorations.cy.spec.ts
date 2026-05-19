@@ -305,7 +305,7 @@ describe("scenarios > explorations > new research > metabot flow", () => {
       H.mockExplorationsAgentToolCalls([
         {
           toolCallId: "metrics-1",
-          toolName: "select_exploration_metrics",
+          toolName: "select_research_metrics",
           result: {
             metrics: [firstMetric],
             dimension_groups: [interestingGroup],
@@ -313,7 +313,7 @@ describe("scenarios > explorations > new research > metabot flow", () => {
         },
         {
           toolCallId: "name-1",
-          toolName: "set_exploration_name",
+          toolName: "set_research_name",
           result: { name: agentName },
         },
       ]);

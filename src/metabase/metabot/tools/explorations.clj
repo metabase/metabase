@@ -10,11 +10,9 @@
   [:map {:closed true}
    [:metric_ids [:sequential :int]]])
 
-(mu/defn ^{:tool-name "select_exploration_metrics"}
+(mu/defn ^{:tool-name "select_research_metrics"}
   select-exploration-metrics-tool
-  "Select the metrics to include in the Exploration. Returns the same hydrated
-   `{:metrics ... :dimension_groups ...}` shape as `GET /api/exploration/dimensions`,
-   so the frontend can populate the modal directly without a follow-up request."
+  "Select the metrics to include in the research. Populates the research artifact with the chosen metrics."
   [{:keys [metric_ids]} :- select-exploration-metrics-schema]
   (explorations/exploration-data {:metric-ids metric_ids}))
 
@@ -22,8 +20,8 @@
   [:map {:closed true}
    [:name :string]])
 
-(mu/defn ^{:tool-name "set_exploration_name"}
+(mu/defn ^{:tool-name "set_research_name"}
   set-exploration-name-tool
-  "Set the name of the Exploration."
+  "Set the name of the research artifact."
   [{:keys [name]} :- set-exploration-name-schema]
   {:name  name})

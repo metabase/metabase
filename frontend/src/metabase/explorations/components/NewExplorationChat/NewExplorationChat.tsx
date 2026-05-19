@@ -37,8 +37,8 @@ import { ResearchModeIntro } from "./ResearchModeIntro";
 
 export const EXPLORATIONS_AGENT_ID = "explorations";
 
-const SELECT_EXPLORATION_METRICS_TOOL = "select_exploration_metrics";
-const SET_EXPLORATION_NAME_TOOL = "set_exploration_name";
+const SELECT_RESEARCH_METRICS_TOOL = "select_research_metrics";
+const SET_RESEARCH_NAME_TOOL = "set_research_name";
 
 type MetabotToolCallMessageWithResult = MetabotDebugToolCallMessage & {
   result: string;
@@ -271,7 +271,7 @@ function isSelectExplorationMetricsToolCallMessage(
   return (
     message.role === "agent" &&
     message.type === "tool_call" &&
-    message.name === SELECT_EXPLORATION_METRICS_TOOL &&
+    message.name === SELECT_RESEARCH_METRICS_TOOL &&
     !message.is_error &&
     !!message.result
   );
@@ -283,7 +283,7 @@ function isSetExplorationNameToolCallMessage(
   return (
     message.role === "agent" &&
     message.type === "tool_call" &&
-    message.name === SET_EXPLORATION_NAME_TOOL &&
+    message.name === SET_RESEARCH_NAME_TOOL &&
     !message.is_error &&
     !!message.result
   );
