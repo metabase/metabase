@@ -53,7 +53,6 @@ describe("TenantCollectionPermissionsPage selectors", () => {
   describe("tenantCollectionsQuery", () => {
     it("should have correct query parameters", () => {
       expect(tenantCollectionsQuery).toEqual({
-        tree: true,
         "exclude-other-user-collections": true,
         "exclude-archived": true,
         namespace: "shared-tenant-collection",

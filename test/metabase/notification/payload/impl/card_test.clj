@@ -1,4 +1,5 @@
 (ns metabase.notification.payload.impl.card-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.notification.payload.impl.card-test]}}}}}}
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -534,7 +535,7 @@
         [notification {:handlers [@notification.tu/default-email-handler
                                   notification.tu/default-slack-handler]}]
 
-        (let [original-render-noti (var-get #'channel/render-notification)]
+        (let [original-render-noti (mt/original-fn #'channel/render-notification)]
           (with-redefs [channel/render-notification (fn [& args]
                                                       (if (= :channel/slack (first args))
                                                         (throw (ex-info "Slack failed" {}))

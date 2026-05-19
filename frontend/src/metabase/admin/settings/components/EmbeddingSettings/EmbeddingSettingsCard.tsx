@@ -1,16 +1,8 @@
 import type { PropsWithChildren } from "react";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import {
-  Alert,
-  Box,
-  Flex,
-  Group,
-  Icon,
-  type IconName,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Alert, Box, Flex, Group, Icon, Stack, Text } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./EmbeddingSettings.module.css";
 import { type EmbeddingSettingKey, EmbeddingToggle } from "./EmbeddingToggle";

@@ -1,5 +1,6 @@
 (ns metabase.notification.test-util
   "Define the `metabase-test` channel and notification test utilities."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.notification.test-util]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]

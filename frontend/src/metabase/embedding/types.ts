@@ -2,6 +2,8 @@ import type { CodeLanguage } from "metabase/common/components/CodeEditor";
 import type {
   Card,
   Dashboard,
+  EmbedResourceDownloadOptions,
+  EmbeddingParameters,
   ParameterValueOrArray,
 } from "metabase-types/api";
 
@@ -22,17 +24,6 @@ export type EmbedResourceParameter = {
   required?: boolean;
   default?: ParameterValueOrArray | null;
 };
-
-export type EmbedResourceDownloadOptions = {
-  pdf?: boolean;
-  results?: boolean;
-};
-
-export type EmbeddingType = "static-legacy" | "guest-embed";
-
-export type EmbeddingParameterVisibility = "disabled" | "enabled" | "locked";
-
-export type EmbeddingParameters = Record<string, EmbeddingParameterVisibility>;
 
 export type EmbeddingParametersValues = Record<
   string,

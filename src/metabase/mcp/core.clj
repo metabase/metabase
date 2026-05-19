@@ -3,7 +3,11 @@
    rather than reaching into internal namespaces like [[metabase.mcp.settings]]."
   (:require
    [clojure.string :as str]
+   [metabase.api.macros :as api.macros]
+   [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.settings :as mcp.settings]))
+
+(set! *warn-on-reflection* true)
 
 (defn cors-origins
   "Returns space-separated CORS origins from both common and custom MCP client settings."
@@ -23,3 +27,12 @@
     (condp #(str/starts-with? %2 %1) raw-origin
       "vscode-webview://" (vscode-webview-enabled?)
       false)))
+
+(defn all-scopes
+  "All supported OAuth scopes: those declared on agent-api endpoints via
+   defendpoint metadata, plus scopes from MCP UI resources (e.g. visualize_query)."
+  []
+  (into (mcp.resources/resource-scopes)
+        (comp (keep #(get-in % [:form :metadata :scope]))
+              (filter string?))
+        (vals (api.macros/ns-routes 'metabase.agent-api.api))))

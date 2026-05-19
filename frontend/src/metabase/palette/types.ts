@@ -2,9 +2,8 @@ import type { LocationDescriptor } from "history";
 import type { Action, ActionImpl } from "kbar";
 import type React from "react";
 
-import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
-import type { ModerationReviewStatus } from "metabase-types/api";
+import type { IconName, ModerationReviewStatus } from "metabase-types/api";
 
 import type { GROUP_LABELS } from "./constants";
 

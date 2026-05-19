@@ -1,0 +1,93 @@
+## Stores encoded query payloads handed off from the MCP iframe to MCP tool calls.
+## Used by both render_drill_through (drill-through payloads) and visualize_query
+## (construct_query results). Each row carries a fresh UUID handle that the iframe
+## passes through to the agent so the LLM never carries the encoded query.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/062_update_migrations.yaml
+  - changeSet:
+      id: v62.2026-04-24T00:00:00
+      author: crisptrutski
+      comment: Create mcp_query_handle table for MCP query payloads
+      changes:
+        - createTable:
+            tableName: mcp_query_handle
+            remarks: Server-side store for encoded MBQL query payloads referenced by MCP tool calls
+            columns:
+              - column:
+                  name: id
+                  type: varchar(36)
+                  remarks: Handle UUID; returned to the iframe and threaded through to the MCP tool call
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: mcp_session_id
+                  type: varchar(36)
+                  remarks: MCP session that owns this handle; used for explicit DELETE /api/mcp cleanup
+                  constraints:
+                    nullable: false
+              - column:
+                  name: core_session_id
+                  type: varchar(254)
+                  remarks: core_session.id when one has been materialized; cascade-deletes with the session
+              - column:
+                  name: encoded_query
+                  type: ${text.type}
+                  remarks: Base64-encoded MBQL query payload
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When this handle was stored; useful for debugging and future TTL cleanup
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: mcp_query_handle
+
+  - changeSet:
+      id: v62.2026-04-24T00:00:01
+      author: crisptrutski
+      comment: Index mcp_query_handle.mcp_session_id for delete-by-session cleanup
+      changes:
+        - createIndex:
+            tableName: mcp_query_handle
+            indexName: idx_mcp_query_handle_mcp_session_id
+            columns:
+              - column:
+                  name: mcp_session_id
+      rollback:
+        - dropIndex:
+            tableName: mcp_query_handle
+            indexName: idx_mcp_query_handle_mcp_session_id
+
+  - changeSet:
+      id: v62.2026-04-24T00:00:02
+      author: crisptrutski
+      comment: Index mcp_query_handle.core_session_id for the FK
+      changes:
+        - createIndex:
+            tableName: mcp_query_handle
+            indexName: idx_mcp_query_handle_core_session_id
+            columns:
+              - column:
+                  name: core_session_id
+      rollback:
+        - dropIndex:
+            tableName: mcp_query_handle
+            indexName: idx_mcp_query_handle_core_session_id
+
+  - changeSet:
+      id: v62.2026-04-24T00:00:03
+      author: crisptrutski
+      comment: FK from mcp_query_handle.core_session_id to core_session, cascade on delete
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: mcp_query_handle
+            baseColumnNames: core_session_id
+            referencedTableName: core_session
+            referencedColumnNames: id
+            constraintName: fk_mcp_query_handle_ref_core_session
+            onDelete: CASCADE

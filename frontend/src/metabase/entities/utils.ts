@@ -103,7 +103,6 @@ export type EntitySelectors = {
   getFetched: EntitySelector;
   getError: EntitySelector;
   getListMetadata: EntitySelector;
-  getExpandedCollectionsById: EntitySelector;
 };
 
 /** Shape returned by createEntity */
@@ -974,6 +973,9 @@ type CombinedEntities = {
  * `query_metadata` response).
  */
 const RETIRED_ENTITY_NAMES = [
+  "collections",
+  "dashboards",
+  "fields",
   "measures",
   "metrics",
   "schemas",

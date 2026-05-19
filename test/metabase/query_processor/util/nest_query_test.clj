@@ -1,4 +1,5 @@
 (ns metabase.query-processor.util.nest-query-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.util.nest-query-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]

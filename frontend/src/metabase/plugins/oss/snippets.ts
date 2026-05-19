@@ -1,7 +1,10 @@
 import type { Component, ComponentType } from "react";
 
-import type { IconName } from "metabase/ui";
-import type { CollectionId, NativeQuerySnippet } from "metabase-types/api";
+import type {
+  CollectionId,
+  IconName,
+  NativeQuerySnippet,
+} from "metabase-types/api";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
 

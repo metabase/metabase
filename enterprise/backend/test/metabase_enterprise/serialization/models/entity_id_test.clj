@@ -60,6 +60,7 @@
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
+    :model/McpQueryHandle
     :model/FieldValues
     :model/MetabotConversation
     :model/MetabotFeedback

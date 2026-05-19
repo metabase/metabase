@@ -11,6 +11,7 @@
   - Alert attachments
 
   TODO (Cam 9/17/25) -- these tests need to get moved into appropriate module(s)."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.api.downloads-exports-test]}}}}}}
   (:require
    [clojure.data :as data]
    [clojure.data.csv :as csv]
@@ -1093,7 +1094,7 @@
 
 (deftest clean-errors-test
   (testing "Queries that error should not include visualization settings (metabase-private #233)"
-    (with-redefs [formatter/number-formatter (fn [& _args] (fn [_] (throw (Exception. "Test Exception"))))]
+    (mt/with-dynamic-fn-redefs [formatter/number-formatter (fn [& _args] (fn [_] (throw (Exception. "Test Exception"))))]
       (mt/with-temp [:model/Card {card-id :id} {:display                :table
                                                 :type                   :model
                                                 :dataset_query          {:database (mt/id)

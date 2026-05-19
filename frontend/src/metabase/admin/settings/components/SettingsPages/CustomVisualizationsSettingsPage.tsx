@@ -11,14 +11,13 @@ import {
   Card,
   Group,
   Icon,
-  type IconName,
   Paper,
   SimpleGrid,
   Stack,
   Text,
   Title,
 } from "metabase/ui";
-
+import type { IconName } from "metabase-types/api";
 export function CustomVisualizationsManagePage() {
   const customVizLoaded = useHasTokenFeature("custom-viz");
   const customVizAvailable = useHasTokenFeature("custom-viz-available");
