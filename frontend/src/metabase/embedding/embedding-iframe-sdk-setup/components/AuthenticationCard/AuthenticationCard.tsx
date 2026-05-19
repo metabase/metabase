@@ -3,14 +3,8 @@ import { t } from "ttag";
 import { Card, Radio, Stack, Text } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../../context";
-import {
-  DEFAULT_EXPERIENCE,
-  useHandleExperienceChange,
-} from "../../hooks/use-handle-experience-change";
 import { getAuthTypeForSettings } from "../../utils/get-auth-type-for-settings";
 import { getResourceTypeFromExperience } from "../../utils/get-resource-type-from-experience";
-import { hasAuthToSelect } from "../../utils/has-auth-to-select";
-import { isStepWithResource } from "../../utils/is-step-with-resource";
 import { SetupSsoAlert } from "../Common/SetupSsoAlert";
 import { DatabaseRoutingWarning } from "../DatabaseRoutingWarning";
 
@@ -36,7 +30,6 @@ export const AuthenticationCard = () => {
     isGuestEmbedsEnabled,
     isGuestEmbedsTermsAccepted,
   } = useSdkIframeEmbedSetupContext();
-  const handleEmbedExperienceChange = useHandleExperienceChange();
 
   const resourceType = getResourceTypeFromExperience(experience);
   const authType = getAuthTypeForSettings(settings);
@@ -45,22 +38,9 @@ export const AuthenticationCard = () => {
     !isSsoEnabledAndConfigured && authType === "sso";
 
   const handleAuthTypeChange = (value: string) => {
-    const isGuest = value === "guest-embed";
-    const isSso = value === "sso";
-
-    // Reset experience to default when switching to guest embeds from non-supported experience
-    const shouldSwitchExperience =
-      isGuest &&
-      !isStepWithResource(currentStep) &&
-      !hasAuthToSelect(experience);
-
-    if (shouldSwitchExperience) {
-      handleEmbedExperienceChange(DEFAULT_EXPERIENCE);
-    }
-
     updateSettings({
-      isGuest,
-      isSso,
+      isGuest: value === "guest-embed",
+      isSso: value === "sso",
     });
   };
 
