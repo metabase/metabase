@@ -11,7 +11,6 @@ _Admin > Settings > General_
 This section contains settings for your whole instance, like its URL, the reporting timezone, and toggles for disabling or enabling some of Metabase's optional features.
 You can configure these settings by clicking the **grid icon** in the upper right, then going to **Admin** > **Settings** > **General**.
 
-
 ## Site name
 
 How you’d like to refer to this instance of Metabase.
@@ -40,9 +39,19 @@ To revert to the default Metabase homepage, simply toggle off Custom homepage.
 
 This email address will be displayed in various messages throughout Metabase when users encounter a scenario where they need assistance from an admin, such as a password reset request.
 
-## Anonymous tracking
+## Usage tracking
+
+### Send anonymous tracking data to Metabase
 
 On self-hosted Metabases, this option determines whether or not you allow [anonymous data about your usage of Metabase](../installation-and-operation/information-collection.md) to be sent back to us to help us improve the product. [Your database’s data is never tracked or sent](https://www.metabase.com/security).
+
+### Collect user data to display in usage analytics
+
+{% include plans-blockquote.html feature="Collecting user data" %}
+
+You can switch on logging of IP addresses, user agents, embed path, query parameters, and Metabot conversation metadata for people using your Metabase, both for people directly by logging into Metabase, or for people who view an embedded Metabase component in your app. If enabled, you can find this information in your [usage analytics](../usage-and-performance-tools/usage-analytics.md).
+
+By default, collection of user data is turned **off**.
 
 ## Friendly table and field names
 
