@@ -85,9 +85,7 @@ export function copyColumn(
   return copy;
 }
 
-// `copyColumn` renames columns to `COLUMN_N` but leaves `remapped_from`/`remapped_to`
-// pointing at the original names. Without this rewrite, `extractRemappedColumns` fails
-// to pair a dimension with its display-value companion and falls back to raw IDs.
+// Point remapped_from/to at the renamed COLUMN_N so extractRemappedColumns can pair them.
 export function rewriteRemappedReferences(
   column: DatasetColumn,
   oldToNew: Map<string, string>,

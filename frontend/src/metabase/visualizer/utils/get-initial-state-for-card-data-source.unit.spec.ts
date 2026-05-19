@@ -336,7 +336,6 @@ describe("getInitialStateForCardDataSource", () => {
 
     const state = getInitialStateForCardDataSource(card, dataset);
 
-    // Companion display column is included in the mapping.
     expect(state.columnValuesMapping).toEqual({
       COLUMN_1: [
         { name: "COLUMN_1", originalName: "buyingstatus", sourceId: "card:1" },
@@ -353,13 +352,11 @@ describe("getInitialStateForCardDataSource", () => {
       ],
     });
 
-    // Remap references now point at the renamed COLUMN_N rather than original names.
     const baseCol = state.columns.find((c) => c.name === "COLUMN_1");
     const displayCol = state.columns.find((c) => c.name === "COLUMN_2");
     expect(baseCol?.remapped_to).toBe("COLUMN_2");
     expect(displayCol?.remapped_from).toBe("COLUMN_1");
 
-    // Settings only mention the user-selected dimension/metric (not the companion).
     expect(state.settings).toEqual({
       "graph.dimensions": ["COLUMN_1"],
       "graph.metrics": ["COLUMN_3"],

@@ -16,6 +16,7 @@ import {
   createVisualizerColumnReference,
   extractReferencedColumns,
   isDraggedColumnItem,
+  rewriteRemappedReferences,
   shouldSplitVisualizerSeries,
   updateVizSettingsWithRefs,
 } from "metabase/visualizer/utils";
@@ -83,6 +84,10 @@ export const cartesianDropHandler = (
         columnRef,
         dataSource,
       );
+      const dataset = datasetMap[dataSource.id];
+      if (dataset) {
+        attachRemappedCompanion(state, columnRef, column, dataset, dataSource);
+      }
       maybeImportDimensionsFromOtherDataSources(
         state,
         settings,
@@ -399,9 +404,10 @@ function removeDimensionFromMultiSeriesChart(
     state.settings["graph.dimensions"] = originalDimensions.filter(
       (name) => !isDate(dimensionColumnMap[name]),
     );
-  } else if (isString(column)) {
-    state.settings["graph.dimensions"] = originalDimensions.filter(
-      (name) => !isString(dimensionColumnMap[name]),
+  } else {
+    // Non-date dim: clear all non-date dims (string, integer-Category, binned numeric, etc.).
+    state.settings["graph.dimensions"] = originalDimensions.filter((name) =>
+      isDate(dimensionColumnMap[name]),
     );
   }
 
@@ -409,10 +415,58 @@ function removeDimensionFromMultiSeriesChart(
     (name) => !state.settings["graph.dimensions"]?.includes(name),
   );
 
-  removedColumns.forEach((name) => {
+  // Strip orphan companions too, or stale remapped_from refs misalign render-time rows.
+  const removedNameSet = new Set(removedColumns);
+  const orphanedCompanions = state.columns
+    .filter(
+      (col) =>
+        col.remapped_from != null && removedNameSet.has(col.remapped_from),
+    )
+    .map((col) => col.name);
+
+  [...removedColumns, ...orphanedCompanions].forEach((name) => {
     state.columns = state.columns.filter((col) => col.name !== name);
     delete state.columnValuesMapping[name];
   });
+}
+
+// Silently attach a base dim's display-value companion (in state.columns/columnValuesMapping
+// but not graph.dimensions) and point both cols' remapped refs at the new COLUMN_N names.
+export function attachRemappedCompanion(
+  state:
+    | Draft<VisualizerVizDefinitionWithColumns>
+    | VisualizerVizDefinitionWithColumns,
+  baseColRef: VisualizerColumnReference,
+  originalBaseCol: DatasetColumn,
+  dataset: Dataset,
+  dataSource: VisualizerDataSource,
+) {
+  const companionCol = dataset.data.cols.find(
+    (col) => col.remapped_from === originalBaseCol.name,
+  );
+  if (!companionCol) {
+    return;
+  }
+
+  const companionRef = createVisualizerColumnReference(
+    dataSource,
+    companionCol,
+    extractReferencedColumns(state.columnValuesMapping),
+  );
+  state.columns.push(
+    copyColumn(companionRef.name, companionCol, dataSource.name, state.columns),
+  );
+  state.columnValuesMapping[companionRef.name] = [companionRef];
+
+  const renames = new Map([
+    [originalBaseCol.name, baseColRef.name],
+    [companionCol.name, companionRef.name],
+  ]);
+  state.columns = state.columns.map((col) =>
+    col.name === baseColRef.name || col.name === companionRef.name
+      ? rewriteRemappedReferences(col, renames)
+      : col,
+  );
 }
 
 export function maybeImportDimensionsFromOtherDataSources(
@@ -450,6 +504,13 @@ export function maybeImportDimensionsFromOtherDataSources(
         settings,
         matchingDimension,
         columnRef,
+        dataSource,
+      );
+      attachRemappedCompanion(
+        state,
+        columnRef,
+        matchingDimension,
+        dataset,
         dataSource,
       );
     }
@@ -504,14 +565,13 @@ export function combineWithCartesianChart(
   const { data } = dataset;
 
   const metrics = data.cols.filter((col) => isMetric(col));
-  // Display-value companion columns (server-injected from internal dimension
-  // remapping) are dimension-typed but should never appear in graph.dimensions —
-  // they're paired with their base column by `extractRemappedColumns` instead.
+  // Display-value companions are attached separately below, not as graph.dimensions slots.
   const dimensions = data.cols.filter(
     (col) => isDimension(col) && !isMetric(col) && col.remapped_from == null,
   );
 
   const columnsToRefs: Record<string, string> = {};
+  const firstNewIndex = state.columns.length;
 
   metrics.forEach((column) => {
     const isCompatible = !!findColumnSlotForCartesianChart({
@@ -564,11 +624,8 @@ export function combineWithCartesianChart(
     }
   });
 
-  // Attach display-value companion columns silently — they need to live in
-  // `columnValuesMapping`/`state.columns` so `extractRemappedColumns` can pair
-  // them with their base dimension, but they must NOT be added to
-  // graph.dimensions (which would otherwise give this card an extra x-axis slot
-  // and prevent merging with cards from other data sources).
+  // Silent companion attach: in columnValuesMapping/state.columns, NOT graph.dimensions
+  // (extra dim slots break cross-source axis merging).
   data.cols
     .filter(
       (col) =>
@@ -586,6 +643,12 @@ export function combineWithCartesianChart(
       state.columnValuesMapping[columnRef.name] = [columnRef];
       columnsToRefs[column.name] = columnRef.name;
     });
+
+  // Point remapped_from/to at the new COLUMN_N names so extractRemappedColumns can pair them.
+  const renames = new Map(Object.entries(columnsToRefs));
+  for (let i = firstNewIndex; i < state.columns.length; i++) {
+    state.columns[i] = rewriteRemappedReferences(state.columns[i], renames);
+  }
 
   if (vizSettings && vizSettings.column_settings) {
     const remappedSettings = updateVizSettingsWithRefs(

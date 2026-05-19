@@ -287,8 +287,7 @@ describe("getVisualizationColumns", () => {
         dataSource2,
       ]);
 
-      // card:1's column has remapped_to pointing at a name not in card:1's renames →
-      // gets cleared (undefined), not silently mapped via card:2's COLUMN_2.
+      // remapped_to gets cleared, not silently mapped to card:2's COLUMN_2.
       const fromCard1 = columns.find((c) => c.name === "COLUMN_1");
       expect(fromCard1?.remapped_to).toBeUndefined();
     });

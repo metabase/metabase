@@ -94,9 +94,7 @@ function pickColumns(
         settings["graph.dimensions"]?.includes(name) ||
         tooltipColumns.includes(name));
 
-    // Keep a column whose `remapped_from` points at a selected dimension so the
-    // server-injected display-value companion (e.g. integer-Category remapping) is
-    // not silently dropped.
+    // Keep the display-value companion of any selected dim.
     return originalColumns.filter(
       (col) => isSelected(col.name) || isSelected(col.remapped_from),
     );

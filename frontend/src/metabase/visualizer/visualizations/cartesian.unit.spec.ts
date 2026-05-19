@@ -1061,8 +1061,7 @@ describe("cartesian", () => {
         base_type: "type/Integer",
         effective_type: "type/Integer",
         semantic_type: "type/Category",
-        // Group-by dimension — `source: "breakout"` ensures isMetric() returns false
-        // so the integer column is treated as a dimension, mirroring real query output.
+        // source: "breakout" makes isMetric() false so the int col is a dimension.
         source: "breakout",
         remapped_to: "rating_display",
       });
@@ -1089,9 +1088,7 @@ describe("cartesian", () => {
         createDataSource("card", 2, "Card 2"),
       );
 
-      // Card 2's base dimension and metric are added as new slots. Metrics are
-      // processed first, then dimensions, so the new metric gets COLUMN_4 and
-      // the new dimension gets COLUMN_5.
+      // Metrics processed before dims → new metric is COLUMN_4, new dim is COLUMN_5.
       expect(nextState.settings["graph.metrics"]).toEqual([
         "COLUMN_2",
         "COLUMN_4",
@@ -1101,9 +1098,7 @@ describe("cartesian", () => {
         "COLUMN_5",
       ]);
 
-      // …but the display companion is NOT in graph.dimensions even though it's
-      // a text dimension. It still lives in columnValuesMapping so
-      // extractRemappedColumns can pair it with its base column.
+      // Text companion lives in columnValuesMapping but NOT graph.dimensions.
       expect(nextState.settings["graph.dimensions"]).not.toContain("COLUMN_6");
       expect(nextState.columnValuesMapping).toMatchObject({
         COLUMN_6: [

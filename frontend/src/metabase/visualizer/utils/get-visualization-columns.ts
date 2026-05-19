@@ -45,9 +45,7 @@ export const getVisualizationColumns = (
     ];
   }
 
-  // Build per-source rename maps so we can rewrite `remapped_from`/`remapped_to`
-  // (which `copyColumn` leaves pointing at original names) without leaking
-  // names across data sources.
+  // Per-source rename maps so remapped_from/to rewrites don't leak across sources.
   const renamesBySource = new Map<
     VisualizerDataSourceId,
     Map<string, string>
