@@ -29,7 +29,7 @@
   []
   (pr-str (into (sorted-map)
                 (merge {:formula-version   complexity/formula-version
-                        :format-version     complexity/format-version
+                        :format-version    complexity/format-version
                         :synonym-threshold complexity/synonym-similarity-threshold
                         :weights           complexity/weights}
                        (synonym-source/fingerprint-fragment)))))

@@ -114,9 +114,7 @@ export type DataComplexitySubScore =
 
 export type DataComplexityGroup = {
   score: number | null;
-  components: Partial<
-    Record<DataComplexityComponentId, DataComplexitySubScore>
-  >;
+  components: Record<DataComplexityComponentId, DataComplexitySubScore>;
 };
 
 export type DataComplexityCatalog = {

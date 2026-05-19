@@ -70,8 +70,10 @@
                                                       :repeated-measures {:measurement 2.0  :score 4}}}}}
                (:universe result))))
       (testing "meta has formula-version + format-version + threshold + weights but no :embedding-model (offline mode)"
-        (is (= {:formula-version   complexity/formula-version
-                :format-version     complexity/format-version
+        ;; Literal 1/1 here is intentional — flags accidental version bumps that would invalidate the
+        ;; emitted fingerprint without an explicit code-change reviewer call.
+        (is (= {:formula-version   1
+                :format-version    1
                 :synonym-threshold 0.8
                 :weights           complexity/weights
                 :metabot-source    :universe-fallback}

@@ -512,7 +512,7 @@
                  universe-score
                  (score-catalog metabot-entities embedder))
      :meta     (cond-> {:formula-version   formula-version
-                        :format-version     format-version
+                        :format-version    format-version
                         :synonym-threshold synonym-similarity-threshold
                         :weights           weights}
                  embedding-model-meta (assoc :embedding-model embedding-model-meta)
@@ -580,7 +580,7 @@
                             :universe universe-score
                             :metabot  metabot-score
                             :meta     (cond-> {:formula-version   formula-version
-                                               :format-version     format-version
+                                               :format-version    format-version
                                                :synonym-threshold synonym-similarity-threshold}
                                         embedding-model-meta (assoc :embedding-model embedding-model-meta)
                                         text-variant         (assoc :text-variant    text-variant))}

@@ -64,7 +64,7 @@
    [:meta
     [:map
      [:formula_version   pos-int?]
-     [:format_version     pos-int?]
+     [:format_version    pos-int?]
      [:synonym_threshold number?]
      [:calculated_at {:optional true} some?]
      [:embedding_model {:optional true} EmbeddingModelMeta]]]])
