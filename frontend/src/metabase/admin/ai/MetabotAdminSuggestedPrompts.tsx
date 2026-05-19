@@ -1,5 +1,6 @@
 import { useClipboard } from "@mantine/hooks";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { isMatching } from "ts-pattern";
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
@@ -42,14 +43,22 @@ export const MetabotPromptSuggestionPane = ({
   const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
   const offset = page * pageSize;
 
-  const { data, isLoading, error } = useGetSuggestedMetabotPromptsQuery({
-    metabot_id: metabot.id,
-    limit: pageSize,
-    offset,
-  });
+  const { data, isLoading, error, requestId, isFetching } =
+    useGetSuggestedMetabotPromptsQuery({
+      metabot_id: metabot.id,
+      limit: pageSize,
+      offset,
+    });
   const [deletePrompt] = useDeleteSuggestedMetabotPromptMutation();
   const [regeneratePrompts, { isLoading: isRegenerating }] =
     useRegenerateSuggestedMetabotPromptsMutation();
+
+  const [initRequestId, setInitRequestId] = useState("");
+  useEffect(() => {
+    if (requestId && !initRequestId) {
+      setInitRequestId(requestId);
+    }
+  }, [requestId, initRequestId]);
 
   const handleDeletePrompt = async (promptId: SuggestedMetabotPrompt["id"]) => {
     const { error } = await deletePrompt({
@@ -76,13 +85,28 @@ export const MetabotPromptSuggestionPane = ({
     const { error } = await regeneratePrompts(metabot.id);
     if (error) {
       sendToast({
-        message: t`Error regenerate prompts`,
+        message: t`Error regenerating prompts`,
         icon: "warning",
       });
     } else {
       setPage(0);
     }
   };
+
+  useEffect(
+    function warnNoPrompts() {
+      const isRefetch = requestId !== initRequestId;
+      const isSettled = !isFetching;
+      const hasNoPrompts = isMatching({ total: 0 }, data);
+      if (isRefetch && isSettled && hasNoPrompts) {
+        sendToast({
+          message: t`Collection contains no models or metrics to create prompts from.`,
+          icon: "warning",
+        });
+      }
+    },
+    [data, requestId, initRequestId, isFetching, sendToast],
+  );
 
   const prompts = useMemo(() => data?.prompts ?? [], [data?.prompts]);
   const total = data?.total ?? 0;

@@ -8,6 +8,9 @@ import {
   setupRemoveMetabotPromptSuggestionEndpoint,
 } from "__support__/server-mocks/metabot";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Api } from "metabase/api";
+import { idTag } from "metabase/api/tags";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import type { SuggestedMetabotPrompt } from "metabase-types/api";
 
@@ -59,17 +62,23 @@ const setup = async (opts?: SetupOpts) => {
     : paginationContext;
 
   const TestComponent = () => (
-    <MetabotPromptSuggestionPane
-      metabot={{ id: metabotId, collection_id: null }}
-      pageSize={pageSize}
-    />
+    <>
+      <MetabotPromptSuggestionPane
+        metabot={{ id: metabotId, collection_id: null }}
+        pageSize={pageSize}
+      />
+      <UndoListing />
+    </>
   );
 
-  renderWithProviders(<Route path="/" component={TestComponent} />, {
-    withRouter: true,
-  });
+  const { store } = renderWithProviders(
+    <Route path="/" component={TestComponent} />,
+    {
+      withRouter: true,
+    },
+  );
 
-  return { metabotId, nextPaginationContext };
+  return { metabotId, nextPaginationContext, store };
 };
 
 describe("suggested prompts", () => {
@@ -206,6 +215,48 @@ describe("suggested prompts", () => {
 
     expect(await screen.findByText(secondPrompt.prompt)).toBeInTheDocument();
     expect(screen.queryByText(firstPrompt.prompt)).not.toBeInTheDocument();
+  });
+
+  it("should show a warning toast when regeneration produces no prompts", async () => {
+    const { metabotId } = await setup({ pageSize: 1, mockInitialPage: false });
+    setupMetabotPromptSuggestionsEndpoint({
+      metabotId,
+      prompts: [],
+      paginationContext: { offset: 0, limit: 1, total: 0 },
+    });
+    setupRegenerateMetabotPromptSuggestionsEndpoint(metabotId);
+
+    const regenerateButton = await screen.findByRole("button", {
+      name: /Regenerate suggested prompts/,
+    });
+    await userEvent.click(regenerateButton);
+
+    expect(
+      await screen.findByText(
+        /Collection contains no models or metrics to create prompts from/,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("should show a warning toast when the metabot's collection changes to one with no eligible content", async () => {
+    const { metabotId, store } = await setup({ pageSize: 1 });
+
+    await expectVisiblePrompts(defaultMetabotMockedPrompts.slice(0, 1));
+
+    setupMetabotPromptSuggestionsEndpoint({
+      metabotId,
+      prompts: [],
+      paginationContext: { offset: 0, limit: 1, total: 0 },
+    });
+    store.dispatch(
+      Api.util.invalidateTags([idTag("metabot-prompt-suggestions", metabotId)]),
+    );
+
+    expect(
+      await screen.findByText(
+        /Collection contains no models or metrics to create prompts from/,
+      ),
+    ).toBeInTheDocument();
   });
 
   it("should allow the user to regenerate the prompts", async () => {
