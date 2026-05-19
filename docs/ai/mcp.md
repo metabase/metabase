@@ -31,7 +31,7 @@ Some clients run outside the browser (like Claude Code on your own machine) and 
 
 ### Custom MCP client domains
 
-If you run a self-hosted MCP client or one that isn't in the supported list, add its domain to the **Custom MCP client domains** field. Separate values with a space, for example:
+If you run a self-hosted MCP client, or a client that isn't in the supported list, add the client's domain to the **Custom MCP client domains** field. Separate values with a space, for example:
 
 ```
 https://mcp.internal.example.com https://*.staging.example.com

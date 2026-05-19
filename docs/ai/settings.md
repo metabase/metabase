@@ -30,17 +30,19 @@ _Admin > AI_
 You can choose which AI provider and model is used to power Metabase's built-in agent.
 
 - If you're **self-hosting Metabase** and want to use Metabot, you need to [bring your own AI API key](#bring-your-own-api-key).
-- On **Metabase Cloud**, you can either [bring your own AI API key](#bring-your-own-api-key) or [use Metabase AI provider](#metabase-ai-provider) (comes with an additional charge).
+- On **Metabase Cloud**, you can either [bring your own AI API key](#bring-your-own-api-key) or [use the Metabase AI Service](#metabase-ai-provider).
 
-The AI provider that you specify in AI setting is used only for the Metabase's built-in AI functionality, not the MCP server. See [With the MCP server, your client provides the AI](mcp.md#with-the-mcp-server-your-client-provides-the-ai).
+The AI provider that you specify in AI settings powers Metabase's built-in AI functionality, not the MCP server. [With the MCP server, your client provides the AI](mcp.md#with-the-mcp-server-your-client-provides-the-ai).
 
-### Metabase AI provider
+### Metabase AI Service
 
-On Metabase Cloud, you can choose to use a Metabase-provided model to power Metabot. This is a good option if you don't have a preferred AI provider, or if you want to manage all AI costs through Metabase only. Metabase selects models automatically. We use internal benchmarks to determine which AI models work best for different tasks, and we're constantly iterating to improve performance.
+On Metabase Cloud, you can have us manage the AI for you with our AI Service.
 
-If you use Metabase AI provider, you'll get charge based on token usage (in addition to your regular Metabase Cloud subscription fee). See [Pricing](https://www.metabase.com/pricing).
+Metabase's AI Service is a good option if you don't have a preferred AI provider, or if you want to manage all your Metabase AI costs through Metabase. We (Metabase the company) select the models for you. We use internal benchmarks to determine which AI models work best for different tasks, and we're constantly iterating to improve performance.
 
-To enable Metabase AI provider on Metabase Cloud, you must me logged in to your Metabase instance with an email that matches the email for the admin of your [Metabase Store account](https://store.metabase.com).
+If you use Metabase's AI Service, you'll get charge based on token usage (in addition to your regular Metabase Cloud subscription fee). See [Pricing](https://www.metabase.com/pricing).
+
+To enable Metabase's AI Service on Metabase Cloud, you must me logged in to your Metabase instance with the email that matches the email for the admin of your [Metabase Store account](https://store.metabase.com).
 
 To use Metabase AI provider for your Metabot:
 
@@ -54,13 +56,13 @@ To disable Metabase AI provider and stop charges:
 1. Go to **Admin > AI > AI settings**.
 2. Under **Connected to Metabase**, click **Disconnect**.
 
-Any instance admin - not just people with emails matching a Metabase Store admins - can disconnect Metabase AI provider.
+Any Metabase instance admin can disconnect the Metabase AI Service, even if they lack an admin account in the Metabase store.
 
 ### Bring your own API key
 
 You can specify your own API key and model for Metabot from one of the supported providers. Currently, Metabase only supports models from Anthropic.
 
-> Want more AI providers? Submit a [feature request](../troubleshooting-guide/requesting-new-features.md).
+If you're interested in Metabase supporting more AI providers, let us know by submitting a [feature request](../troubleshooting-guide/requesting-new-features.md).
 
 To enable AI features with your own API key:
 
