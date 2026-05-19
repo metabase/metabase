@@ -28,6 +28,7 @@ type DatePickerProps = {
   availableUnits?: DatePickerUnit[];
   availableDirections?: RelativeIntervalDirection[];
   minDate?: Date;
+  maxDate?: Date;
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   renderBackButton?: () => ReactNode;
   onChange: (value: DatePickerValue) => void;
@@ -41,6 +42,7 @@ export function DatePicker({
   availableUnits = DATE_PICKER_UNITS,
   availableDirections = DATE_PICKER_DIRECTIONS,
   minDate,
+  maxDate,
   renderSubmitButton = renderDefaultSubmitButton,
   renderBackButton,
   onChange,
@@ -60,6 +62,7 @@ export function DatePicker({
           availableOperators={availableOperators}
           availableUnits={availableUnits}
           minDate={minDate}
+          maxDate={maxDate}
           renderSubmitButton={renderSubmitButton}
           onChange={onChange}
           onBack={handleBack}
@@ -73,6 +76,7 @@ export function DatePicker({
           availableUnits={availableUnits}
           availableDirections={availableDirections}
           minDate={minDate}
+          maxDate={maxDate}
           renderSubmitButton={renderSubmitButton}
           onChange={onChange}
           onBack={handleBack}

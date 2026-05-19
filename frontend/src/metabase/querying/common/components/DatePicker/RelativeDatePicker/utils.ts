@@ -155,6 +155,24 @@ export function getRelativeStartDate({
   return base.startOf(unit).toDate();
 }
 
+export function getRelativeEndDate({
+  value,
+  unit,
+  offsetValue,
+  offsetUnit,
+}: RelativeDatePickerValue): Date {
+  let base = dayjs();
+  if (offsetValue != null && offsetUnit != null) {
+    base = base.add(offsetValue, offsetUnit);
+  }
+  // For a "future" interval (positive value) this lands on the end of the
+  // latest covered period; for a "past" interval the end is today.
+  if (value > 0) {
+    return base.add(value, unit).endOf(unit).toDate();
+  }
+  return base.endOf(unit).toDate();
+}
+
 export function getDefaultValue(
   availableDirections: RelativeIntervalDirection[],
 ) {

@@ -22,6 +22,7 @@ type DateAllOptionsWidgetProps = {
   availableShortcuts?: DatePickerShortcut[];
   availableDirections?: RelativeIntervalDirection[];
   minDate?: Date;
+  maxDate?: Date;
   submitButtonLabel?: string;
   onChange: (value: string) => void;
 };
@@ -31,6 +32,7 @@ export function DateAllOptionsWidget({
   availableOperators,
   availableDirections,
   minDate,
+  maxDate,
   submitButtonLabel = t`Apply`,
   onChange,
   availableShortcuts,
@@ -48,6 +50,7 @@ export function DateAllOptionsWidget({
       availableShortcuts={availableShortcuts}
       availableDirections={availableDirections}
       minDate={minDate}
+      maxDate={maxDate}
       renderSubmitButton={({ isDisabled }) => (
         <Button type="submit" variant="filled" disabled={isDisabled}>
           {submitButtonLabel}

@@ -8,6 +8,7 @@ import { getOperatorDefaultValue } from "metabase/querying/common/components/Dat
 import type {
   DateFilterValue,
   DatePickerOperator,
+  RelativeIntervalDirection,
 } from "metabase/querying/common/types";
 import { getDateFilterDisplayName } from "metabase/querying/common/utils/dates";
 import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
@@ -21,6 +22,7 @@ import { Flex, Icon, Popover, Select } from "metabase/ui";
 const FILTER_WIDTH = 205;
 
 const DATE_OPERATORS: DatePickerOperator[] = ["=", ">", "<", "between"];
+const RELATIVE_DIRECTIONS: RelativeIntervalDirection[] = ["past", "current"];
 const FIXED_TYPE_VALUE = "__date_filter_fixed__" as const;
 const RELATIVE_TYPE_VALUE = "__date_filter_relative__" as const;
 
@@ -66,6 +68,7 @@ function ConversationDateFilter({
         : dayjs().subtract(retentionDays, "day").startOf("day"),
     [retentionDays],
   );
+  const todayCutoff = useMemo(() => dayjs().endOf("day"), []);
 
   // `~` includes the current period by incrementing the day count, so `pastNdays~` spans N+1 days.
   // To get an N-day window ending today, use `past(N-1)days~`.
@@ -210,7 +213,9 @@ function ConversationDateFilter({
           key={activeDropdown}
           value={customRangeSeed}
           availableOperators={DATE_OPERATORS}
+          availableDirections={RELATIVE_DIRECTIONS}
           minDate={retentionCutoff?.toDate()}
+          maxDate={todayCutoff.toDate()}
           onChange={(val) => {
             onChange(val);
             setActiveDropdown("default");

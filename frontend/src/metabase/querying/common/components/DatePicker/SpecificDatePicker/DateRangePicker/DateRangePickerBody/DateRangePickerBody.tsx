@@ -20,6 +20,7 @@ interface DateRangePickerBodyProps {
   value: [Date, Date];
   hasTime: boolean;
   minDate?: Date;
+  maxDate?: Date;
   onChange: (value: [Date, Date]) => void;
   valueFormat?: string;
 }
@@ -28,6 +29,7 @@ export function DateRangePickerBody({
   value,
   hasTime,
   minDate,
+  maxDate,
   onChange,
   valueFormat = "LL",
 }: DateRangePickerBodyProps) {
@@ -91,6 +93,7 @@ export function DateRangePickerBody({
           value={startDate}
           valueFormat={valueFormat}
           minDate={minDate}
+          maxDate={maxDate}
           popoverProps={{ opened: false }}
           aria-label={t`Start date`}
           onChange={(val) => val && handleStartDateChange(dayjs(val).toDate())}
@@ -101,6 +104,7 @@ export function DateRangePickerBody({
           value={endDate}
           valueFormat={valueFormat}
           minDate={minDate}
+          maxDate={maxDate}
           popoverProps={{ opened: false }}
           aria-label={t`End date`}
           onChange={(val) => val && handleEndDateChange(dayjs(val).toDate())}
@@ -128,6 +132,7 @@ export function DateRangePickerBody({
         value={inProgressDateRange ?? value}
         date={displayedDate}
         minDate={minDate}
+        maxDate={maxDate}
         numberOfColumns={2}
         allowSingleDateInRange
         onChange={handleRangeChange}

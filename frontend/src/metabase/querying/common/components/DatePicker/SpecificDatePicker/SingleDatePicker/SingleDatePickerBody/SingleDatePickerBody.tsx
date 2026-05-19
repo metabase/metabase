@@ -11,6 +11,7 @@ interface SingleDatePickerBodyProps {
   value: Date;
   hasTime: boolean;
   minDate?: Date;
+  maxDate?: Date;
   onChange: (value: Date) => void;
 }
 
@@ -18,6 +19,7 @@ export function SingleDatePickerBody({
   value,
   hasTime,
   minDate,
+  maxDate,
   onChange,
 }: SingleDatePickerBodyProps) {
   const [date, setDate] = useState<Date>(value);
@@ -40,6 +42,7 @@ export function SingleDatePickerBody({
         value={value}
         date={date}
         minDate={minDate}
+        maxDate={maxDate}
         popoverProps={{ opened: false }}
         aria-label={t`Date`}
         onChange={handleDateChange}
@@ -56,6 +59,7 @@ export function SingleDatePickerBody({
         value={value}
         date={date}
         minDate={minDate}
+        maxDate={maxDate}
         onChange={handleDateChange}
         onDateChange={(val) => val && setDate(dayjs(val).toDate())}
       />
