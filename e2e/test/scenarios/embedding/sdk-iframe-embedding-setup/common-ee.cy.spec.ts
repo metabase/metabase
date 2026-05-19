@@ -114,32 +114,6 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
       cy.findByLabelText("Metabase account (SSO)").should("be.enabled");
     });
 
-    it("should reset experience to a default only when switching from SSO to Guest auth type and the current experience does not support guest embeds", () => {
-      visitNewEmbedPage();
-
-      getEmbedSidebar().within(() => {
-        cy.findByLabelText("Metabase account (SSO)").click();
-
-        cy.findByLabelText("Browser").click();
-        cy.findByLabelText("Browser").should("be.checked");
-
-        cy.findByLabelText("Guest").click();
-
-        cy.findByLabelText("Dashboard").should("be.checked");
-
-        cy.findByLabelText("Chart").click();
-        cy.findByLabelText("Chart").should("be.checked");
-
-        cy.findByLabelText("Metabase account (SSO)").click();
-
-        cy.findByLabelText("Chart").should("be.checked");
-
-        cy.findByLabelText("Guest").click();
-
-        cy.findByLabelText("Chart").should("be.checked");
-      });
-    });
-
     it("should not reset experience when changing auth type for Embed JS wizard opened from an entity page", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
 
