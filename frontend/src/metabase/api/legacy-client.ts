@@ -88,6 +88,19 @@ type ResponseErrorInfo = {
   metabaseVersion: string | null;
 };
 
+/**
+ * Thrown when the transport itself fails before a response is received —
+ * e.g. the server dropped the connection, DNS lookup failed, or the user is
+ * offline. Callers can `instanceof`-check this to render a connectivity
+ * error message instead of treating it as a generic JS exception.
+ */
+export class NetworkError extends Error {
+  constructor(message = "Network error") {
+    super(message);
+    this.name = "NetworkError";
+  }
+}
+
 export class LegacyApi extends EventEmitter {
   basename = "";
   apiKey = "";
@@ -488,9 +501,16 @@ export class LegacyApi extends EventEmitter {
       .catch((error: unknown) => {
         if (signal.aborted) {
           throw { isCancelled: true };
-        } else {
-          throw error;
         }
+        // A raw `fetch` rejection (e.g. the server dropped the connection)
+        // surfaces as a plain Error here, indistinguishable from JS
+        // exceptions thrown elsewhere. Wrap it so downstream renderers can
+        // `instanceof NetworkError`-check and route it to the connectivity
+        // error message.
+        if (error instanceof Error) {
+          throw new NetworkError(error.message);
+        }
+        throw error;
       });
   }
 
