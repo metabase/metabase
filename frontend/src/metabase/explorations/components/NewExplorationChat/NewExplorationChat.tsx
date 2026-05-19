@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import {
   type Dispatch,
   type SetStateAction,
@@ -10,17 +11,22 @@ import { t } from "ttag";
 import { useToast } from "metabase/common/hooks";
 import { isInterestingDimension } from "metabase/explorations/constants";
 import type { ExplorationMetric } from "metabase/explorations/types";
+import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
+import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotChatEditor } from "metabase/metabot/components/MetabotChat/MetabotChatEditor";
 import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { MetabotThinking } from "metabase/metabot/components/MetabotChat/MetabotThinking";
 import type { MetabotPromptInputRef } from "metabase/metabot/context";
-import { useMetabotAgent } from "metabase/metabot/hooks";
+import {
+  useMetabotAgent,
+  useUserMetabotPermissions,
+} from "metabase/metabot/hooks";
 import type {
   MetabotChatMessage,
   MetabotDebugToolCallMessage,
 } from "metabase/metabot/state";
 import { useDispatch } from "metabase/redux";
-import { Center, Flex, Stack } from "metabase/ui";
+import { Center, Flex, Stack, Text } from "metabase/ui";
 import type {
   GetExplorationDataResponse,
   MetricDimension,
@@ -50,6 +56,14 @@ export function NewExplorationChat({
   setName,
 }: NewExplorationChatProps) {
   const dispatch = useDispatch();
+  const { canUseNlq, hasNlqAccess } = useUserMetabotPermissions();
+  const [
+    isAiProviderConfigurationModalOpen,
+    {
+      close: closeAiProviderConfigurationModal,
+      open: openAiProviderConfigurationModal,
+    },
+  ] = useDisclosure(false);
   const nextUnprocessedMessageIndexRef = useRef(0);
   const {
     prompt,
@@ -188,52 +202,72 @@ export function NewExplorationChat({
   const hasMessages = messages.length > 0;
 
   return (
-    <Stack flex={1} mih={0} gap="md">
-      {hasMessages ? (
-        <Stack
-          flex={1}
-          mih={0}
-          gap={0}
-          px="lg"
-          pt="lg"
-          className={S.messagesContainer}
+    <>
+      <Stack flex={1} mih={0} gap="md">
+        {hasMessages ? (
+          <Stack
+            flex={1}
+            mih={0}
+            gap={0}
+            px="lg"
+            pt="lg"
+            className={S.messagesContainer}
+          >
+            <Messages
+              messages={messages}
+              onRetryMessage={(id) =>
+                retryMessage(id, { profile: "explorations" })
+              }
+              isDoingScience={isDoingScience}
+              debug={false}
+            />
+            {isDoingScience && <MetabotThinking toolCalls={activeToolCalls} />}
+          </Stack>
+        ) : (
+          <Center flex={1} mih={0}>
+            <ResearchModeIntro />
+          </Center>
+        )}
+        <Flex
+          bg="background-primary"
+          bd="1px solid border"
+          bdrs="md"
+          mx="lg"
+          mb="lg"
+          mih="8rem"
+          flex="none"
+          onClick={handleClick}
         >
-          <Messages
-            messages={messages}
-            onRetryMessage={(id) =>
-              retryMessage(id, { profile: "explorations" })
-            }
-            isDoingScience={isDoingScience}
-            debug={false}
-          />
-          {isDoingScience && <MetabotThinking toolCalls={activeToolCalls} />}
-        </Stack>
-      ) : (
-        <Center flex={1} mih={0}>
-          <ResearchModeIntro />
-        </Center>
-      )}
-      <Flex
-        bg="background-primary"
-        bd="1px solid border"
-        bdrs="md"
-        mx="lg"
-        mb="lg"
-        mih="8rem"
-        flex="none"
-        onClick={handleClick}
-      >
-        <MetabotChatEditor
-          value={prompt}
-          onChange={setPrompt}
-          onSubmit={handleSubmit}
-          onStop={() => {}}
-          placeholder={t`Ex. What recent events might be impacting our signups?`}
-          suggestionConfig={{ suggestionModels: ["metric"] }}
-          ref={metabotPromptInputRef}
-        />
-      </Flex>
-    </Stack>
+          {canUseNlq ? (
+            <MetabotChatEditor
+              value={prompt}
+              onChange={setPrompt}
+              onSubmit={handleSubmit}
+              onStop={() => {}}
+              placeholder={t`Ex. What recent events might be impacting our signups?`}
+              suggestionConfig={{ suggestionModels: ["metric"] }}
+              ref={metabotPromptInputRef}
+            />
+          ) : hasNlqAccess ? (
+            <AIProviderConfigurationNotice
+              p="0.75rem"
+              featureName={t`the AI agent`}
+              inline
+              onConfigureAi={openAiProviderConfigurationModal}
+            />
+          ) : (
+            <Text
+              p="0.75rem"
+              c="text-tertiary"
+            >{t`You don't have access to the AI agent. Please contact your admin for access.`}</Text>
+          )}
+        </Flex>
+      </Stack>
+      <AIProviderConfigurationModal
+        opened={isAiProviderConfigurationModalOpen}
+        onClose={closeAiProviderConfigurationModal}
+      />
+    </>
   );
 }
 

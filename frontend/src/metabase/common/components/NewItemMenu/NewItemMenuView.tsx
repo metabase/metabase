@@ -119,19 +119,6 @@ export const NewItemMenuView = ({
       </Menu.Item>,
     );
 
-    if (hasDataAccess) {
-      items.push(
-        <Menu.Item
-          key="research"
-          component={ForwardRefLink}
-          to={Urls.newExploration()}
-          leftSection={<Icon name="zoom_in" />}
-        >
-          {t`Research`}
-        </Menu.Item>,
-      );
-    }
-
     return items;
   }, [
     hasDataAccess,

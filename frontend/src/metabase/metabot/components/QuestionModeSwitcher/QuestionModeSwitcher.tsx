@@ -1,7 +1,6 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useDispatch } from "metabase/redux";
 import { SegmentedControl } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -13,12 +12,7 @@ export interface QuestionModeSwitcherProps {
 }
 
 export function QuestionModeSwitcher({ value }: QuestionModeSwitcherProps) {
-  const { canUseNlq } = useUserMetabotPermissions();
   const dispatch = useDispatch();
-
-  if (!canUseNlq) {
-    return null;
-  }
 
   return (
     <SegmentedControl<QuestionMode>
