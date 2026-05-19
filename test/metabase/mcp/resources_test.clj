@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
-   [metabase.mcp.resources :as mcp.resources]))
+   [metabase.mcp.resources :as mcp.resources]
+   [metabase.system.core :as system]))
 
 (set! *warn-on-reflection* true)
 
@@ -87,3 +88,19 @@
               (mcp.resources/read-resource "ui://metabase/visualize-query.html"
                                            #{"agent:visualize"}
                                            {}))))))
+
+(deftest builtin-visualize-query-ui-resource-metadata-test
+  (testing "the visualize_query UI resource includes ChatGPT Apps metadata"
+    (let [site-url "https://metabase.example.com"
+          uri      "ui://metabase/visualize-query.html"]
+      (with-redefs [system/site-url (constantly site-url)]
+        (mcp.resources/with-fallback-template
+          (is (=? {:status   :ok
+                   :contents [{:uri      uri
+                               :mimeType "text/html;profile=mcp-app"
+                               :_meta    {:ui {:prefersBorder true
+                                               :domain        site-url
+                                               :csp           {:connectDomains  [site-url]
+                                                               :resourceDomains [site-url]
+                                                               :frameDomains    [site-url]}}}}]}
+                  (mcp.resources/read-resource uri #{"agent:visualize"} {}))))))))
