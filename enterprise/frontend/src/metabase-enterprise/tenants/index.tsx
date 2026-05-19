@@ -12,12 +12,12 @@ import {
   useGetCollectionQuery,
   useListCollectionsTreeQuery,
 } from "metabase/api";
-import { useSetting } from "metabase/common/hooks/use-setting";
 import {
   type CollectionTreeItem,
   buildCollectionTree,
   getCollectionIcon,
-} from "metabase/entities/collections";
+} from "metabase/collections/utils";
+import { useSetting } from "metabase/common/hooks/use-setting";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABS,
