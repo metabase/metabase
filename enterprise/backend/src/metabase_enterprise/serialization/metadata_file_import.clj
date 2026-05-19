@@ -5,8 +5,7 @@
   Composes three building blocks:
 
     - [[metabase-enterprise.serialization.metadata-file-import.parsers]] streams
-      batches of `[line-num row]` tuples from the file (JSON or YAML, dispatched
-      by extension).
+      batches of `[line-num row]` tuples from a JSON file.
     - [[metabase-enterprise.serialization.metadata-file-import.processors]] provides
       the per-batch and per-depth SQL building blocks.
     - [[metabase-enterprise.serialization.metadata-file-import.schemas]] defines

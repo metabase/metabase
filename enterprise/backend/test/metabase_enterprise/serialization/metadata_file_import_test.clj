@@ -1,12 +1,11 @@
 (ns metabase-enterprise.serialization.metadata-file-import-test
   "End-to-end orchestrator tests for [[metabase-enterprise.serialization.metadata-file-import/import-metadata-file!]].
-  Each test writes a temp JSON or YAML file in the wire format, sets up
-  matching `mt/with-temp` Database/Table/Field rows where needed, runs the
-  loader, and asserts on the appdb state. See
+  Each test writes a temp JSON file in the wire format, sets up matching
+  `mt/with-temp` Database/Table/Field rows where needed, runs the loader, and
+  asserts on the appdb state. See
   [[metabase-enterprise.serialization.metadata-file-import.schemas]] for the
   wire-format primer."
   (:require
-   [clj-yaml.core :as yaml]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.metadata-file-import :as loader]
    [metabase-enterprise.serialization.metadata-file-import.processors :as processors]
@@ -39,9 +38,6 @@
 
 (defn- json-file ^File [data]
   (temp-file ".json" (json/encode data)))
-
-(defn- yaml-file ^File [data]
-  (temp-file ".yaml" (yaml/generate-string data)))
 
 ;;; ============================== Happy paths ==============================
 
@@ -81,19 +77,6 @@
             (is (= (:id addr) (:parent_id zip))
                 "the nested field's parent_id is the address field's target id")
             (is (= ["address"] (:nfc_path zip)))))))))
-
-(deftest end-to-end-happy-path-with-yaml-file-test
-  (testing "the same flow works for YAML files via the format dispatcher"
-    (mt/with-temp [:model/Database {tgt-db :id} {:name "happy-path-yaml-db" :engine :postgres}]
-      (let [meta-file (yaml-file
-                       {:databases [{:id 7 :name "happy-path-yaml-db" :engine "postgres"}]
-                        :tables    [{:id 100 :db_id 7 :schema "public" :name "orders"}]
-                        :fields    [{:id 1000 :table_id 100 :name "id"
-                                     :base_type "type/Integer" :database_type "integer"}]})]
-        (loader/import-metadata-file! meta-file)
-        (let [tbl (t2/select-one :model/Table :db_id tgt-db :name "orders")]
-          (is (some? tbl))
-          (is (= "id" (:name (t2/select-one :model/Field :table_id (:id tbl) :name "id")))))))))
 
 ;;; ============================== No-match skipping ==============================
 

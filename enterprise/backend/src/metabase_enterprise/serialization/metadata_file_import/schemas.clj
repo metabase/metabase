@@ -16,8 +16,7 @@
   Optional columns (everything outside the always-present set per row type) are
   *omitted from the row* by the export's `remove-nils` step rather than emitted
   as `null`. Schemas mark these as `{:optional true} [:maybe T]` — absent and
-  `null` are accepted equivalently, so a hand-edited YAML with `parent_id: ~`
-  still validates.
+  `null` are accepted equivalently.
 
   `:effective_type` is special-cased: emitted only when `≠ :base_type`. Importer
   treats absent as `≡ :base_type`."
