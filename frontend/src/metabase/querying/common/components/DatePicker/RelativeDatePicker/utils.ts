@@ -137,40 +137,17 @@ export function formatDateRange({
   });
 }
 
-export function getRelativeStartDate({
-  value,
-  unit,
-  offsetValue,
-  offsetUnit,
-}: RelativeDatePickerValue): Date {
-  let base = dayjs();
-  if (offsetValue != null && offsetUnit != null) {
-    base = base.add(offsetValue, offsetUnit);
-  }
-  // For a "past" interval (negative value) this lands on the start of the
-  // earliest covered period; for a "future" interval the start is today.
-  if (value < 0) {
-    return base.add(value, unit).startOf(unit).toDate();
-  }
-  return base.startOf(unit).toDate();
-}
-
-export function getRelativeEndDate({
-  value,
-  unit,
-  offsetValue,
-  offsetUnit,
-}: RelativeDatePickerValue): Date {
-  let base = dayjs();
-  if (offsetValue != null && offsetUnit != null) {
-    base = base.add(offsetValue, offsetUnit);
-  }
-  // For a "future" interval (positive value) this lands on the end of the
-  // latest covered period; for a "past" interval the end is today.
-  if (value > 0) {
-    return base.add(value, unit).endOf(unit).toDate();
-  }
-  return base.endOf(unit).toDate();
+export function isOutOfBounds(
+  { value, unit, offsetValue, offsetUnit }: RelativeDatePickerValue,
+  minDate?: Date,
+  maxDate?: Date,
+): boolean {
+  const base = dayjs().add(offsetValue ?? 0, offsetUnit ?? "day");
+  const start = base.add(Math.min(value, 0), unit).startOf(unit).toDate();
+  const end = base.add(Math.max(value, 0), unit).endOf(unit).toDate();
+  return (
+    (minDate != null && start < minDate) || (maxDate != null && end > maxDate)
+  );
 }
 
 export function getDefaultValue(

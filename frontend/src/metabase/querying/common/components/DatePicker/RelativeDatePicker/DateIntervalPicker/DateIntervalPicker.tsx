@@ -23,9 +23,8 @@ import { IncludeCurrentSwitch } from "../IncludeCurrentSwitch";
 import {
   formatDateRange,
   getInterval,
-  getRelativeEndDate,
-  getRelativeStartDate,
   getUnitOptions,
+  isOutOfBounds,
   setInterval,
 } from "../utils";
 
@@ -53,9 +52,7 @@ export function DateIntervalPicker({
   const interval = getInterval(value);
   const unitOptions = getUnitOptions(value, availableUnits);
   const dateRangeText = formatDateRange(value);
-  const isOutOfBounds =
-    (minDate != null && getRelativeStartDate(value) < minDate) ||
-    (maxDate != null && getRelativeEndDate(value) > maxDate);
+  const outOfBounds = isOutOfBounds(value, minDate, maxDate);
 
   const handleIntervalChange = (inputValue: number | string) => {
     if (typeof inputValue === "number") {
@@ -76,7 +73,7 @@ export function DateIntervalPicker({
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (isOutOfBounds) {
+    if (outOfBounds) {
       return;
     }
     onSubmit();
@@ -122,7 +119,7 @@ export function DateIntervalPicker({
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>
-        {renderSubmitButton({ value, isDisabled: isOutOfBounds })}
+        {renderSubmitButton({ value, isDisabled: outOfBounds })}
       </Group>
     </form>
   );
