@@ -5,6 +5,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { flushSync } from "react-dom";
 import { useMedia } from "react-use";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
@@ -40,6 +41,7 @@ export function AppColorSchemeProvider({
   const [colorScheme, setColorScheme] = useState<ColorScheme>(
     defaultColorScheme || "auto",
   );
+  const [isPrinting, setIsPrinting] = useState(false);
 
   useEffect(() => {
     // NOTE: The `defaultColorScheme` prop may change in cases where the
@@ -52,7 +54,28 @@ export function AppColorSchemeProvider({
     setColorScheme(defaultColorScheme);
   }, [defaultColorScheme]);
 
+  useEffect(() => {
+    // Flip to light synchronously so the print snapshot is readable;
+    // browsers strip dark backgrounds via `print-color-adjust: economy`.
+    const onBeforePrint = () => {
+      flushSync(() => setIsPrinting(true));
+    };
+    const onAfterPrint = () => {
+      setIsPrinting(false);
+    };
+    window.addEventListener("beforeprint", onBeforePrint);
+    window.addEventListener("afterprint", onAfterPrint);
+    return () => {
+      window.removeEventListener("beforeprint", onBeforePrint);
+      window.removeEventListener("afterprint", onAfterPrint);
+    };
+  }, []);
+
   const resolvedColorScheme = useMemo(() => {
+    // Print wins over every other preference — paper is light.
+    if (isPrinting) {
+      return "light";
+    }
     if (forceColorScheme) {
       return forceColorScheme;
     }
@@ -60,7 +83,7 @@ export function AppColorSchemeProvider({
       return "light";
     }
     return colorScheme === "auto" ? systemColorScheme : colorScheme;
-  }, [colorScheme, forceColorScheme, systemColorScheme]);
+  }, [colorScheme, forceColorScheme, isPrinting, systemColorScheme]);
 
   const handleColorSchemeUpdate = useCallback(
     (value: ColorScheme) => {

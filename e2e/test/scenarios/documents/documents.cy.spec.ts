@@ -550,6 +550,37 @@ describe("documents", () => {
         });
       });
 
+      it("should flip the page to light mode while printing in dark mode (metabase#68323)", () => {
+        cy.request("PUT", "/api/setting/color-scheme", { value: "dark" });
+        H.visitDocument("@documentId");
+
+        cy.get('html[data-mantine-color-scheme="dark"]').should("exist");
+
+        const editorSelector = '[data-testid="document-content"] .ProseMirror';
+        cy.get(editorSelector).should(
+          "have.css",
+          "color",
+          "rgba(255, 255, 255, 0.95)",
+        );
+
+        cy.window().then((win) => {
+          win.dispatchEvent(new Event("beforeprint"));
+        });
+
+        cy.get('html[data-mantine-color-scheme="light"]').should("exist");
+        cy.get(editorSelector).should(
+          "have.css",
+          "color",
+          "rgba(7, 23, 34, 0.84)",
+        );
+
+        cy.window().then((win) => {
+          win.dispatchEvent(new Event("afterprint"));
+        });
+
+        cy.get('html[data-mantine-color-scheme="dark"]').should("exist");
+      });
+
       it("should handle undo/redo properly, resetting the history whenever a different document is viewed", () => {
         H.visitDocument("@documentId");
         H.getDocumentCard("Orders").should("exist");
