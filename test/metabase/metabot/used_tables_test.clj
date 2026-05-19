@@ -327,9 +327,7 @@
              (table-ids rows))))))
 
 (deftest ^:parallel notebook-implicit-join-via-source-field-breakout-test
-  (testing (str "a breakout with :source-field (implicit join) surfaces the joined table — "
-                "the field reaches into products via the orders.product_id FK without "
-                "any explicit :source-table for products")
+  (testing "a breakout with :source-field (implicit join) surfaces the joined table"
     (let [base    (-> (table-query (meta/id :orders))
                       (lib/aggregate (lib/count)))
           ;; pick the implicitly-joinable products.category column reachable
@@ -371,15 +369,13 @@
              (table-ids rows))))))
 
 ;;; ---------------------------------------- native (SQL) ----------------------------------------
-;;;
-;;; These tests stub `nqa/tables-for-native` via `with-redefs`, so they cannot be `^:parallel`.
 
-(deftest sql-extracts-macaw-tables-test
+(deftest ^:parallel sql-extracts-macaw-tables-test
   (testing "native SQL is parsed by macaw and the underlying tables come through"
     (let [order-id (meta/id :orders)
           sql      "SELECT * FROM orders"]
-      (with-redefs [nqa/tables-for-native (fn [_ & _]
-                                            {:tables [{:table-id order-id}]})]
+      (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _]
+                                                          {:tables [{:table-id order-id}]})]
         (let [parts [(sql-input "s1" "create_sql_query" {:database_id (meta/id) :sql_query sql})
                      (sql-output "s1" sql (meta/id) (native-query sql))]
               rows  (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
@@ -387,11 +383,11 @@
                    :table_id   order-id}]
                  rows)))))))
 
-(deftest sql-template-tag-card-expanded-test
+(deftest ^:parallel sql-template-tag-card-expanded-test
   (testing "card-type template tag in native SQL recursively expands to its underlying table"
     (let [card-id 1
           mp      (mp+cards [(mock-card card-id (table-query (meta/id :orders)))])]
-      (with-redefs [nqa/tables-for-native (fn [_ & _] {:tables []})]
+      (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _] {:tables []})]
         (let [;; `{{#N}}` syntax produces a card-type template tag with :card-id N
               sql   (format "SELECT * FROM {{#%s}}" card-id)
               parts [(sql-input "s1" "create_sql_query" {:database_id (meta/id) :sql_query sql})
@@ -401,7 +397,7 @@
                            :table_id   (meta/id :orders)})
                     rows)))))))
 
-(deftest sql-template-tag-native-card-recurses-macaw-test
+(deftest ^:parallel sql-template-tag-native-card-recurses-macaw-test
   (testing "template tag pointing at a native-query Card recurses and macaw parses the inner SQL"
     (let [orders-id    (meta/id :orders)
           people-id    (meta/id :people)
@@ -414,14 +410,14 @@
           ;; outer SQL must contain the `{{#N}}` template tag for the card so that
           ;; `lib/native-query` auto-extracts a card-type tag pointing at the card
           outer-sql    (format "SELECT * FROM {{#%s}}" card-id)]
-      (with-redefs [nqa/tables-for-native (fn [query & _]
-                                            ;; production extractor passes a query, not raw SQL
-                                            (let [sql (lib/raw-native-query query)]
-                                              (cond
-                                                (= sql outer-sql) {:tables [{:table-id orders-id}]}
-                                                (= sql inner-sql) (do (reset! inner-tables true)
-                                                                      {:tables [{:table-id people-id}]})
-                                                :else             {:tables []})))]
+      (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [query & _]
+                                                         ;; production extractor passes a query, not raw SQL
+                                                          (let [sql (lib/raw-native-query query)]
+                                                            (cond
+                                                              (= sql outer-sql) {:tables [{:table-id orders-id}]}
+                                                              (= sql inner-sql) (do (reset! inner-tables true)
+                                                                                    {:tables [{:table-id people-id}]})
+                                                              :else             {:tables []})))]
         (let [parts [(sql-input "s1" "create_sql_query"
                                 {:database_id (meta/id) :sql_query outer-sql})
                      (sql-output "s1" outer-sql (meta/id) (native-query mp outer-sql))]
@@ -431,10 +427,10 @@
                  (table-ids rows))
               "outer and inner native tables both make it into the result"))))))
 
-(deftest sql-parse-error-logged-test
+(deftest ^:parallel sql-parse-error-logged-test
   (testing "tables-for-native error yields no rows and logs a warn"
-    (with-redefs [nqa/tables-for-native (fn [_ & _]
-                                          {:error :query-analysis.error/parse-failed})]
+    (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _]
+                                                        {:error :query-analysis.error/parse-failed})]
       (let [sql   "SELEKT bad"
             parts [(sql-input "s1" "create_sql_query" {:database_id (meta/id) :sql_query sql})
                    (sql-output "s1" sql (meta/id) (native-query sql))]]
@@ -529,24 +525,24 @@
                                 :thinking  "x"
                                 :message   "Transform Python updated successfully."}}})
 
-(deftest transform-sql-extracts-macaw-tables-from-structured-output-test
+(deftest ^:parallel transform-sql-extracts-macaw-tables-from-structured-output-test
   (testing "write_transform_sql walks the suggested transform's native query through macaw"
     (let [orders-id (meta/id :orders)
           sql       "SELECT * FROM orders"]
-      (with-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id orders-id}]})]
+      (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id orders-id}]})]
         (let [parts [(transform-sql-input "t1")
                      (transform-sql-output "t1" (meta/id) (native-query sql))]
               rows  (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
           (is (= [{:message_id 99 :table_id orders-id}]
                  rows)))))))
 
-(deftest transform-sql-defensively-reads-source-tables-arg-test
+(deftest ^:parallel transform-sql-defensively-reads-source-tables-arg-test
   (testing "write_transform_sql also picks up `:source_tables` from arguments when present,
             and dedupes against macaw-derived ids — guards against a future schema relaxation"
     (let [orders-id (meta/id :orders)
           people-id (meta/id :people)
           sql       "SELECT * FROM orders"]
-      (with-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id orders-id}]})]
+      (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id orders-id}]})]
         (let [parts [(transform-sql-input "t1"
                                           {:source_tables [{:alias "o" :table_id orders-id
                                                             :schema "PUBLIC" :database_id (meta/id)}
@@ -559,9 +555,9 @@
               "macaw-derived `orders` and arg-declared `people` both surface, deduped")
           (is (= 2 (count rows))))))))
 
-(deftest transform-sql-errored-output-skipped-test
+(deftest ^:parallel transform-sql-errored-output-skipped-test
   (testing "an errored write_transform_sql output yields no rows"
-    (with-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id (meta/id :orders)}]})]
+    (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id (meta/id :orders)}]})]
       (let [parts [(transform-sql-input "t1")
                    (-> (transform-sql-output "t1" (meta/id) (native-query "SELECT 1"))
                        (assoc :error "boom"))]]
