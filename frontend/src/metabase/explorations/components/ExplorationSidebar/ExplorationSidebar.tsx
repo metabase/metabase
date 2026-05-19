@@ -69,7 +69,7 @@ export function ExplorationSidebar({
       const { error } = await updateExploration({ id: exploration.id, name });
       if (error) {
         sendToast({
-          message: t`Failed to update exploration name`,
+          message: t`Failed to update name`,
           icon: "warning_triangle_filled",
           iconColor: "warning",
         });
@@ -189,7 +189,6 @@ export function ExplorationSidebar({
       <EditableText
         initialValue={exploration.name}
         onChange={handleNameChange}
-        placeholder="New Exploration"
         fw="bold"
         fz="h3"
         lh="h3"

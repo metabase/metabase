@@ -126,7 +126,7 @@ export function NewExplorationChat({
         sendToast({
           icon: "warning_triangle_filled",
           iconColor: "warning",
-          message: t`Failed to add metrics to the Exploration`,
+          message: t`Failed to add metrics`,
         });
       }
     },
@@ -140,8 +140,7 @@ export function NewExplorationChat({
       }
       try {
         const parsed = JSON.parse(messages[0].result) as { name: string };
-        // ignore repeated calls to this tool
-        setName((prev) => prev ?? parsed.name);
+        setName(parsed.name);
       } catch (error) {
         console.error(error);
         // don't bother with toast for this one, it's not critical

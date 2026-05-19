@@ -58,7 +58,7 @@ function buildCreateExplorationRequest(
 ): CreateExplorationRequest {
   const trimmedPrompt = prompt.trim();
   return {
-    name: name ? name : t`New exploration`,
+    name,
     prompt: trimmedPrompt.length > 0 ? trimmedPrompt : null,
     metrics: metrics.map((m) => ({
       card_id: m.id,
@@ -114,7 +114,7 @@ export function NewExplorationData({
       sendToast({
         icon: "warning_triangle_filled",
         iconColor: "warning",
-        message: t`Failed to create exploration`,
+        message: t`Failed to begin research`,
       });
     }
   }, [

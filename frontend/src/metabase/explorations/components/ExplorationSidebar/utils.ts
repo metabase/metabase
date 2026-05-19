@@ -187,7 +187,7 @@ function getExplorationThreadName(thread: ExplorationThread, index: number) {
   if (index === 0) {
     return t`Initial investigation`;
   }
-  return t`New exploration`;
+  return t`New research`;
 }
 
 export function flattenTree(
