@@ -783,11 +783,7 @@
                                                 :dataset_query   (mt/native-query {:query "SELECT 1 AS id"})
                                                 :result_metadata [{:name      "id"
                                                                    :base_type :type/Integer}]}]
-                (try
-                  (persist-models!)
-                  (catch Exception e
-                    (tap> e)
-                    (throw e)))
+                (persist-models!)
                 (is (=? {:state  "persisted"
                          :active true
                          :error  nil}
