@@ -726,6 +726,29 @@
             (str "Expected handle-resolved query's :source-table = products id " products-id
                  ", got " persisted-table))))))
 
+(deftest tools-call-update-dashboard-move-without-position-test
+  (testing "Missing required field on a discriminated mutation surfaces as a tool error, not a JSON-RPC error"
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "MCP move validation"}
+                   :model/Card          {card-id :id} {:name "x" :dataset_query (-> (lib/query (mt/metadata-provider)
+                                                                                               (lib.metadata/table (mt/metadata-provider)
+                                                                                                                   (mt/id :orders)))
+                                                                                    (lib/aggregate (lib/count)))
+                                                       :display :table}
+                   :model/DashboardCard {dc-id :id}   {:dashboard_id dash-id :card_id card-id
+                                                       :row 0 :col 0 :size_x 6 :size_y 4}]
+      (let [[session-id _] (initialize!)
+            response       (mcp-request (jsonrpc-request "tools/call"
+                                                         {:name      "update_dashboard"
+                                                          :arguments {:id        dash-id
+                                                                      :dashcards [{:action "move" :dashcard_id dc-id}]}})
+                                        {"mcp-session-id" session-id})
+            result         (get-in response [:body :result])]
+        ;; JSON-RPC layer: HTTP 200, response in `result` not `error`. Bad-input is a tool-level error.
+        (is (= 200 (:status response)))
+        (is (nil? (get-in response [:body :error])))
+        (is (true? (:isError result))
+            "missing :position on move should surface as a tool error")))))
+
 (deftest tools-call-read-resource-test
   (testing "read_resource returns the shared dispatcher's response shape"
     (let [[session-id _] (initialize!)

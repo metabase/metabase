@@ -771,21 +771,21 @@
 
 (mr/def ::dashcard-mutation
   "One dashcard mutation. Discriminated on `:action`:
-   - `add`    : requires `card_id`. Auto-positioned. Optional `display_size`.
+   - `add`    : requires `card_id`. Auto-positioned. Optional `display_size`(\"wide\", \"tall\", or \"full\").
    - `remove` : requires `dashcard_id`.
-   - `move`   : requires `dashcard_id`. Optional `position` (\"top\" or \"bottom\")."
+   - `move`   : requires `dashcard_id` and `position` (\"top\" or \"bottom\")."
   [:multi {:dispatch :action}
    ["add"    [:map
               [:action       [:= "add"]]
               [:card_id      ms/PositiveInt]
-              [:display_size {:optional true} [:enum "default" "wide" "tall" "full"]]]]
+              [:display_size {:optional true} [:enum "wide" "tall" "full"]]]]
    ["remove" [:map
               [:action      [:= "remove"]]
               [:dashcard_id ms/PositiveInt]]]
    ["move"   [:map
               [:action      [:= "move"]]
               [:dashcard_id ms/PositiveInt]
-              [:position    {:optional true} [:enum "top" "bottom"]]]]])
+              [:position    [:enum "top" "bottom"]]]]])
 
 (mr/def ::update-dashboard-request
   "Patch shape for `update_dashboard`. Metadata fields and an optional `dashcards` list of
@@ -872,11 +872,7 @@
                          "bottom" (autoplace/get-position-for-new-dashcard
                                    other-placed
                                    (:size_x existing) (:size_y existing)
-                                   autoplace/default-grid-width)
-                         (autoplace/get-position-for-new-dashcard
-                          other-placed
-                          (:size_x existing) (:size_y existing)
-                          autoplace/default-grid-width))]
+                                   autoplace/default-grid-width))]
           (t2/update! :model/DashboardCard dashcard_id
                       (select-keys new-pos [:row :col]))
           (swap! state #(-> %

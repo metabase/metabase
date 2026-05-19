@@ -788,7 +788,15 @@
   (testing "Returns 404 when remove references a dashcard not on this dashboard"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Phase B Wrong Dashcard"}]
       (mt/user-http-request :rasta :put 404 (str "agent/v1/dashboard/" dash-id)
-                            {:dashcards [{:action "remove" :dashcard_id 999999}]}))))
+                            {:dashcards [{:action "remove" :dashcard_id 999999}]})))
+
+  (testing "Move requires :position - omitting it returns 400"
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Phase B Move Validation"}
+                   :model/Card          {card-id :id} {:name "x" :dataset_query (orders-count-query) :display :table}
+                   :model/DashboardCard {dc-id :id}   {:dashboard_id dash-id :card_id card-id
+                                                       :row 0 :col 0 :size_x 6 :size_y 4}]
+      (mt/user-http-request :rasta :put 400 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "move" :dashcard_id dc-id}]}))))
 
 ;;; ------------------------------------------------- Execute SQL Tests --------------------------------------------
 
