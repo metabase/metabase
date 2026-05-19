@@ -699,7 +699,6 @@
   [action owner-id]
   (case (keyword action)
     :archive      {:active false}
-    :unarchive    {:active true}
     :change-owner (do (api/check (integer? owner-id) [400 "owner_id required for change-owner"])
                       {:creator_id owner-id})))
 
@@ -721,16 +720,16 @@
       before)))
 
 (api.macros/defendpoint :post "/bulk" :- ::bulk-response
-  "Bulk-archive, -unarchive, or -change-owner a set of notifications. The per-notification
-  `:active` flip goes through `:model/Notification`'s `before-update` hook, which creates / tears
-  down the Quartz triggers. Recipient emails and `:event/notification-update` audit events are
+  "Bulk-archive or -change-owner a set of notifications. The per-notification `:active` flip goes
+  through `:model/Notification`'s `before-update` hook, which creates / tears down the Quartz
+  triggers. Recipient emails and `:event/notification-update` audit events are
   published via the shared [[notification-api/publish-notification-update!]] helper so this
   endpoint's side-effect contract can't drift from `PUT /api/notification/:id`."
   [_route _query
    {:keys [notification_ids action owner_id]} :-
    [:map
     [:notification_ids [:sequential {:min 1} ms/PositiveInt]]
-    [:action           [:enum "archive" "unarchive" "change-owner"]]
+    [:action           [:enum "archive" "change-owner"]]
     [:owner_id         {:optional true} ms/PositiveInt]]]
   (api/check-superuser)
   (let [update-map (action->update-map action owner_id)

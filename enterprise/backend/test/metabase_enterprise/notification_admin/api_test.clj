@@ -799,26 +799,6 @@
                                  :new      {:active false}}}
                      (mt/latest-audit-log-entry :notification-update (:id n)))))))))))
 
-(deftest bulk-unarchive-test
-  (testing "POST /bulk with action=unarchive flips :active to true for each id"
-    (mt/with-premium-features #{:audit-app}
-      (mt/with-temp [:model/Card             {card-id :id} {}
-                     :model/NotificationCard {nc1 :id}     {:card_id card-id}
-                     :model/NotificationCard {nc2 :id}     {:card_id card-id}
-                     :model/Notification     n1            {:payload_type :notification/card
-                                                            :payload_id   nc1
-                                                            :active       false
-                                                            :creator_id   (mt/user->id :crowberto)}
-                     :model/Notification     n2            {:payload_type :notification/card
-                                                            :payload_id   nc2
-                                                            :active       false
-                                                            :creator_id   (mt/user->id :crowberto)}]
-        (mt/user-http-request :crowberto :post 200 "ee/notifications/bulk"
-                              {:notification_ids [(:id n1) (:id n2)]
-                               :action           "unarchive"})
-        (is (true? (t2/select-one-fn :active :model/Notification (:id n1))))
-        (is (true? (t2/select-one-fn :active :model/Notification (:id n2))))))))
-
 (deftest bulk-change-owner-test
   (testing "POST /bulk with action=change-owner sets :creator_id to owner_id for each id"
     (mt/with-premium-features #{:audit-app}
