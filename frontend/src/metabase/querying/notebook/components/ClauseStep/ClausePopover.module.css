@@ -13,8 +13,8 @@
    */
   overflow: visible;
   /* Reset box-sizing to content-box so when .dropdownContent inherits max-height, it
-    won't include border. Othherwise, it will make .dropdownContent overflow .dropdown
-    by 2px pixel.
+    won't include border. Otherwise, it will make .dropdownContent overflow .dropdown
+    by 2px.
   */
   box-sizing: content-box;
 }
