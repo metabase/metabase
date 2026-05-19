@@ -98,7 +98,7 @@ If you're using an AI agent to help you embed Metabase in your app, check out [A
 
 {% include plans-blockquote.html feature="Tracking embed usage" %}
 
-You can use [Usage Analytics](../usage-and-performance-tools/usage-analytics.md) to monitor embed usage - like embedding context, authentication methods, hostname etc. See [Embedding usage dashboard](../usage-and-performance-tools/usage-analytics-reference.md#embedding-usage).
+[Usage Analytics](../usage-and-performance-tools/usage-analytics.md) tracks embed usage, including embedding context, authentication methods, hostname, and other metadata. Check out the [Embedding usage dashboard](../usage-and-performance-tools/usage-analytics-reference.md#embedding-usage).
 
 ## Further reading
 
