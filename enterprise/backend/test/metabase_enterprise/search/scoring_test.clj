@@ -1,4 +1,5 @@
 (ns metabase-enterprise.search.scoring-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.search.scoring-test]}}}}}}
   (:require
    [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]

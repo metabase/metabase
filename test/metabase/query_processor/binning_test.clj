@@ -1,4 +1,5 @@
 (ns metabase.query-processor.binning-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.binning-test]}}}}}}
   (:require
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]

@@ -2,8 +2,12 @@ import { renderHook } from "@testing-library/react";
 
 import { useEmbeddingParameters } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-parameters";
 import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
-import type { EmbeddingParameters } from "metabase/embedding/types";
-import type { Card, Dashboard, Parameter } from "metabase-types/api";
+import type {
+  Card,
+  Dashboard,
+  EmbeddingParameters,
+  Parameter,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,

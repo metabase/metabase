@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useId } from "react";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import {
   skipToken,
@@ -11,7 +11,7 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { CheckpointValue } from "metabase/transforms/components/CheckpointValue";
 import { isTransformRunning } from "metabase/transforms/utils";
-import { Box, Button, Group, Icon, Text } from "metabase/ui";
+import { Box, Button, Code, Group, Icon, Text } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 
 export function ResetCheckpointSection({
@@ -47,10 +47,19 @@ export function ResetCheckpointSection({
     return null;
   }
 
+  const checkpointFieldName = checkpointField?.display_name;
+  const label = checkpointFieldName
+    ? jt`Last processed ${(
+        <Code key="field" bg="background-tertiary">
+          {checkpointFieldName}
+        </Code>
+      )}`
+    : t`Last processed record`;
+
   return (
     <Group gap="md" align="center">
       <Box c="text-secondary" role="group" aria-labelledby={labelId}>
-        <span id={labelId}>{t`Current checkpoint`}: </span>
+        <span id={labelId}>{label}: </span>
         <Text component="span" fw="bold" c="text-primary">
           <CheckpointValue
             value={transform.last_checkpoint_value}
@@ -63,15 +72,15 @@ export function ResetCheckpointSection({
         disabled={isTransformRunning(transform) || isLoading}
         onClick={openModal}
       >
-        {t`Reset checkpoint`}
+        {t`Reprocess all data`}
       </Button>
       <ConfirmModal
-        title={t`Reset checkpoint?`}
+        title={t`Reprocess all data?`}
         message={t`This will cause the next run to reprocess all data from scratch instead of only new rows.`}
         opened={isModalOpen}
         onClose={closeModal}
         onConfirm={handleConfirm}
-        confirmButtonText={t`Reset`}
+        confirmButtonText={t`Reprocess on next run`}
       />
     </Group>
   );

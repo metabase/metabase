@@ -53,5 +53,5 @@
      :headers {"Content-Type" "application/json"}
      :body    {:resource                  (str site-url "/api/mcp")
                :authorization_servers     [site-url]
-               :scopes_supported          (oauth-server/all-agent-scopes)
+               :scopes_supported          (vec (oauth-server/all-agent-scopes))
                :bearer_methods_supported  ["header"]}}))

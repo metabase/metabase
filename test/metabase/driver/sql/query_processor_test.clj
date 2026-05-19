@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.sql.query-processor-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sql.query-processor-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.sql.query-processor-test]}}}}}}
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]

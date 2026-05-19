@@ -26,13 +26,13 @@ import {
   Divider,
   Group,
   Icon,
-  type IconName,
   Menu,
   Stack,
   Text,
 } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import * as Urls from "metabase/urls";
+import type { IconName } from "metabase-types/api";
 
 import { AboutModal } from "../AboutModal/AboutModal";
 

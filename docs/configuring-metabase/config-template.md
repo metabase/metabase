@@ -70,6 +70,7 @@ config:
     admin-email: null
     aggregated-query-row-limit: null
     ai-features-enabled: true
+    ai-usage-max-retention-days: null
     allowed-iframe-hosts: |-
       youtube.com,
       youtu.be,

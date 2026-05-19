@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import _ from "underscore";
 
 import { skipToken, useListSubscriptionsQuery } from "metabase/api";
+import { useSetArchive } from "metabase/archive/hooks";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ScheduleChangeProp } from "metabase/common/components/SchedulePicker";
 import { Sidebar } from "metabase/common/components/Sidebar";
-import { useSetArchive } from "metabase/common/hooks";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   cancelEditingPulse,

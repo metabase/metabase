@@ -121,7 +121,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
   isSensible,
   hasEmptyState: true,
   settings: {
-    ...columnSettings({ hidden: true }),
+    ...columnSettings({ getHidden: () => true }),
     "map.type": {
       get title() {
         return t`Map type`;

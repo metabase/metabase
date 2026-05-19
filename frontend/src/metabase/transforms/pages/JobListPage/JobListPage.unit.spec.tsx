@@ -7,9 +7,11 @@ import {
   setupDeleteTransformJobEndpoint,
   setupListTransformJobsEndpoint,
   setupUpdateTransformJobEndpoint,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks/state";
+import * as Urls from "metabase/urls";
 import type { TransformJob } from "metabase-types/api";
 import {
   createMockTransformJob,
@@ -77,11 +79,12 @@ async function setup({
   jobs: TransformJob[];
   isAdmin?: boolean;
 }) {
+  setupUserMetabotPermissionsEndpoint();
   setupListTransformJobsEndpoint(jobs);
   jobs.forEach(setupUpdateTransformJobEndpoint);
   jobs.forEach((job) => setupDeleteTransformJobEndpoint(job.id));
 
-  const path = "/transforms/jobs";
+  const path = Urls.transformJobList();
   const { history } = renderWithProviders(
     <Route path={path} component={JobListPage} />,
     {
@@ -134,7 +137,9 @@ describe("JobListPage", () => {
     expect(
       await screen.findByRole("menuitem", { name: /Disable/ }),
     ).toBeInTheDocument();
-    expect(history?.getCurrentLocation().pathname).toBe("/transforms/jobs");
+    expect(history?.getCurrentLocation().pathname).toBe(
+      Urls.transformJobList(),
+    );
   });
 
   it("disables a job from the row action menu without navigating", async () => {
@@ -160,7 +165,9 @@ describe("JobListPage", () => {
       method: "PUT",
     });
     expect(await call?.request?.json()).toEqual({ active: false });
-    expect(history?.getCurrentLocation().pathname).toBe("/transforms/jobs");
+    expect(history?.getCurrentLocation().pathname).toBe(
+      Urls.transformJobList(),
+    );
   });
 
   it("deletes a job from the row action menu without visiting the detail page", async () => {

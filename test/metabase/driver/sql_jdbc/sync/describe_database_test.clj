@@ -1,7 +1,8 @@
 (ns ^:mb/driver-tests metabase.driver.sql-jdbc.sync.describe-database-test
   {:clj-kondo/config '{:linters
                        ;; allowing this for now since sync doesn't work with Metadata Providers
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}
+                        :deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sql-jdbc.sync.describe-database-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]

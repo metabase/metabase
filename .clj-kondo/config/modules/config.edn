@@ -806,8 +806,6 @@
   {:team "Querying Platform"
    :api  #{metabase.driver
            metabase.driver.common
-           metabase.driver.common.parameters
-           metabase.driver.common.parameters.parse
            metabase.driver.connection
            metabase.driver.ddl.interface
            metabase.driver.h2
@@ -1180,16 +1178,18 @@
   mcp
   {:team "Metabot"
    :api  #{metabase.mcp.api
+           metabase.mcp.callback-api
            metabase.mcp.core
            metabase.mcp.init}
    :uses #{agent-api
            api
-           api-scope
+           app-db
            config
            llm
            oauth-server
            request
            server
+           session
            settings
            system
            util}}
@@ -1255,6 +1255,7 @@
               settings
               slackbot
               sql-tools
+              store-api
               sync
               system
               task
@@ -1419,6 +1420,7 @@
            metabase.oauth-server.init}
    :uses #{api
            appearance
+           mcp
            models
            request
            settings
@@ -1681,7 +1683,6 @@
                     :model/NativeQuerySnippet
                     :model/Notification
                     :model/Revision
-                    :model/Table
                     :model/User}}
 
   queries-rest
@@ -2245,7 +2246,8 @@
   {:team "DevEx"
    :api  #{metabase.tracing.core
            metabase.tracing.init}
-   :uses #{events
+   :uses #{config
+           events
            settings
            task
            util}}
@@ -2662,6 +2664,7 @@
            api-keys
            app-db
            driver
+           lib
            permissions
            premium-features
            settings
@@ -2880,6 +2883,7 @@
            audit-app
            collections
            config
+           driver
            metabot
            models
            premium-features
@@ -3442,6 +3446,7 @@
            permissions
            query-processor
            settings
+           tracing
            transforms
            transforms-base
            util}

@@ -1,13 +1,15 @@
 import { trackSchemaEvent } from "metabase/analytics";
 import type { ExportFormat } from "metabase/common/types/export";
+import type {
+  EmbedResourceDownloadOptions,
+  EmbeddingParameterVisibility,
+} from "metabase-types/api";
 
 import type {
   DisplayTheme,
   EmbedResource,
-  EmbedResourceDownloadOptions,
   EmbedResourceType,
   EmbeddingDisplayOptions,
-  EmbeddingParameterVisibility,
 } from "../types";
 
 const SCHEMA_NAME = "embed_flow";
