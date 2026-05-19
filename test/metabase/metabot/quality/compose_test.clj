@@ -146,3 +146,67 @@
           b (compose/compose-score (zipmap constants/signal-keys (repeat 0)))]
       (is (= (:quality_score a) (:quality_score b)))
       (is (= (:raw a) (:raw b))))))
+
+;; ---------------------------------------------------------------------------
+;; Regression anchor — derived from `signal-params` and `saturation-C`
+;;
+;; Intentionally fragile: any retune of an event-count signal's `k`, any
+;; change to `saturation-C`, or any addition/removal of an event-count signal
+;; from `signal-params` flips one of these assertions. Read "this test is
+;; failing" as "you changed the composite — bump `composite-version`, queue a
+;; backfill, and update the test to reflect the new tuning."
+;; ---------------------------------------------------------------------------
+
+(defn- event-count-signal-keys
+  "Subset of `constants/signal-keys` whose `:kind` is `:event-count` per
+  `signal-params`. Derived rather than hard-coded so the test follows the
+  panel."
+  []
+  (filterv #(= :event-count (get-in constants/signal-params [% :kind]))
+           constants/signal-keys))
+
+(defn- expected-concern-from-raw
+  "Forward saturation formula. Mirrors `compose-score` but is intentionally
+  re-stated here so a refactor of `compose-score`'s shape can't silently
+  alter the regression target."
+  [raw]
+  (let [r (double raw)]
+    (/ r (+ r (double constants/saturation-C)))))
+
+(deftest worked-example-regression-anchor-per-event-count-signal-test
+  (testing "each event-count signal at magnitude 1 → raw = k, concern = k / (k + saturation-C)"
+    (doseq [sig (event-count-signal-keys)]
+      (testing sig
+        (let [k                                    (double (get-in constants/signal-params [sig :k]))
+              expected-c                           (expected-concern-from-raw k)
+              {:keys [raw concern quality_score]}  (compose/compose-score {sig 1})]
+          (is (= k raw)
+              (str sig ": raw must equal that signal's k"))
+          (is (close-to? expected-c concern)
+              (str sig ": concern must equal k / (k + saturation-C)"))
+          (is (close-to? (- expected-c) quality_score)
+              (str sig ": quality_score must equal -concern")))))))
+
+(deftest worked-example-regression-anchor-full-event-count-panel-test
+  (testing "one event of every event-count signal → raw = Σ k_i over the event-count panel"
+    (let [event-count-keys                    (event-count-signal-keys)
+          k-for                                #(double (get-in constants/signal-params [% :k]))
+          magnitudes                           (zipmap event-count-keys (repeat 1))
+          expected-raw                         (reduce + 0.0 (map k-for event-count-keys))
+          expected-c                           (expected-concern-from-raw expected-raw)
+          {:keys [raw concern quality_score]}  (compose/compose-score magnitudes)]
+      (is (close-to? expected-raw raw)
+          "raw must equal Σ k_i across the event-count panel")
+      (is (close-to? expected-c concern)
+          "concern must equal (Σ k_i) / (Σ k_i + saturation-C)")
+      (is (close-to? (- expected-c) quality_score)
+          "quality_score must equal -concern"))))
+
+(deftest worked-example-regression-anchor-zero-signal-is-positive-zero-test
+  (testing "zero-signal score is +0.0, not -0.0. `=` treats both as equal, so the assertion goes through the IEEE-754 raw bit pattern."
+    (let [{:keys [quality_score]}  (compose/compose-score {})
+          pos-zero-bits             (Double/doubleToRawLongBits 0.0)
+          score-bits                (Double/doubleToRawLongBits (double quality_score))]
+      (is (= 0.0 quality_score))
+      (is (= pos-zero-bits score-bits)
+          "score must be +0.0 — a -0.0 here would serialize as \"-0.0\" downstream"))))
