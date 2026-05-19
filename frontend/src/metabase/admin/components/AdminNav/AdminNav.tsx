@@ -5,13 +5,12 @@ import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
 import {
   Icon,
-  type IconName,
   NavLink,
   type NavLinkProps,
   Stack,
   type StackProps,
 } from "metabase/ui";
-
+import type { IconName } from "metabase-types/api";
 export const AdminNavWrapper = ({
   children,
   ...stackProps

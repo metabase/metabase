@@ -160,6 +160,12 @@
     (let [effective-type (or remote-sync-type (settings/remote-sync-type))]
       (api/check-400 (not (and (seq collections) (= :read-only effective-type)))
                      "Cannot change synced collections when remote-sync-type is read-only."))
+    (try
+      (settings/check-and-update-remote-settings! (dissoc settings :collections))
+      (catch Exception e
+        (throw (ex-info (or (ex-message e) "Invalid settings")
+                        {:error       (ex-message e)
+                         :status-code 400} e))))
     (when (seq collections)
       (try
         (remote-sync.core/bulk-set-remote-sync collections)
@@ -167,12 +173,6 @@
           (throw (ex-info (or (ex-message e) "Invalid collection settings")
                           {:error       (ex-message e)
                            :status-code 400} e)))))
-    (try
-      (settings/check-and-update-remote-settings! (dissoc settings :collections))
-      (catch Exception e
-        (throw (ex-info (or (ex-message e) "Invalid settings")
-                        {:error       (ex-message e)
-                         :status-code 400} e))))
     (events/publish-event! :event/remote-sync-settings-update
                            {:details {:remote-sync-type remote-sync-type}
                             :user-id api/*current-user-id*})
@@ -207,13 +207,11 @@
    _query
    {:keys [name]} :- [:map [:name ms/NonBlankString]]]
   (api/check-superuser)
-  (let [base-branch (or (remote-sync.task/last-version) (settings/remote-sync-branch))
-        source (source/source-from-settings)]
-    (api/check-400 source "Source not configured")
+  (let [base-branch (or (remote-sync.task/last-version) (settings/remote-sync-branch))]
+    (api/check-400 (source/source-from-settings) "Source not configured")
     (api/check-400 base-branch "Base commit not found")
     (try
-      (source.p/create-branch source name base-branch)
-      (settings/remote-sync-branch! name)
+      (impl/create-branch! name base-branch)
       (events/publish-event! :event/remote-sync-create-branch
                              {:details {:branch_name name
                                         :base_branch base-branch}
@@ -234,21 +232,19 @@
                                                  [:message ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (= (settings/remote-sync-type) :read-write) "Stash is only allowed when remote-sync-type is set to 'read-write'")
-  (let [source (source/source-from-settings)]
-    (api/check-400 source  "Source not configured")
-    (try
-      (source.p/create-branch source new-branch (settings/remote-sync-branch))
-      (let [{task-id :id :as task} (impl/async-export! new-branch false message)]
-        (events/publish-event! :event/remote-sync-stash
-                               {:object task
-                                :details {:branch new-branch}
-                                :user-id api/*current-user-id*})
-        {:status "success"
-         :message (str "Stashing to " new-branch)
-         :task_id task-id})
-      (catch Exception e
-        (throw (ex-info (format "Failed to stash changes to branch: %s" (ex-message e))
-                        {:status-code 400}))))))
+  (api/check-400 (source/source-from-settings) "Source not configured")
+  (try
+    (let [{task-id :id :as task} (impl/stash! new-branch message)]
+      (events/publish-event! :event/remote-sync-stash
+                             {:object task
+                              :details {:branch new-branch}
+                              :user-id api/*current-user-id*})
+      {:status "success"
+       :message (str "Stashing to " new-branch)
+       :task_id task-id})
+    (catch Exception e
+      (throw (ex-info (format "Failed to stash changes to branch: %s" (ex-message e))
+                      {:status-code 400})))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/remote-sync` routes."

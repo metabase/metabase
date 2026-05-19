@@ -61,7 +61,8 @@ const AppBarLarge = ({
   const { isVisible: isGitSyncVisible } =
     PLUGIN_REMOTE_SYNC.useGitSyncVisible();
 
-  const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
+  const { hasMetabotAccess: isMetabotVisibleToUser } =
+    useUserMetabotPermissions();
 
   return (
     <AppBarRoot
@@ -104,7 +105,7 @@ const AppBarLarge = ({
       {(isSearchVisible ||
         isNewButtonVisible ||
         isAppSwitcherVisible ||
-        isMetabotEnabled) && (
+        isMetabotVisibleToUser) && (
         <Flex
           align="center"
           gap="sm"

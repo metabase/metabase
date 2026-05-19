@@ -2,19 +2,31 @@
  * Shared component for Scalar and SmartScalar to make sure our number presentation stays in sync
  */
 import cx from "classnames";
-import { type PropsWithChildren, useMemo } from "react";
+import { type CSSProperties, type PropsWithChildren, useMemo } from "react";
 import { t } from "ttag";
 
 import DashboardS from "metabase/css/dashboard.module.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { useMantineTheme } from "metabase/ui";
+import { Box, Flex, useMantineTheme } from "metabase/ui";
 import type { VisualizationGridSize } from "metabase/visualizations/types";
 
-import { ScalarRoot, ScalarValueWrapper } from "./ScalarValue.styled";
+import S from "./ScalarValue.module.css";
 import { findSize, getMaxFontSize } from "./utils";
 
 export const ScalarWrapper = ({ children }: PropsWithChildren) => (
-  <ScalarRoot data-testid="scalar-root">{children}</ScalarRoot>
+  <Flex
+    pos="relative"
+    direction="column"
+    wrap="wrap"
+    justify="center"
+    align="center"
+    flex={1}
+    w="100%"
+    h="100%"
+    data-testid="scalar-root"
+  >
+    {children}
+  </Flex>
 );
 
 interface ScalarValueProps {
@@ -71,15 +83,21 @@ export const ScalarValue = ({
   ]);
 
   return (
-    <ScalarValueWrapper
-      className={cx(DashboardS.ScalarValue, QueryBuilderS.ScalarValue)}
-      fontSize={fontSize}
-      lineHeight={numberTheme?.value?.lineHeight}
+    <Box
+      component="h1"
+      className={cx(
+        DashboardS.ScalarValue,
+        QueryBuilderS.ScalarValue,
+        S.value,
+        !disableHover && S.hoverable,
+      )}
+      fz={fontSize}
+      lh={numberTheme?.value?.lineHeight}
       data-testid="scalar-value"
-      color={color}
-      disableHover={disableHover}
+      // Route color through a CSS variable so `S.hoverable:hover` can override (inline `style` would beat the class on specificity).
+      style={{ "--scalar-value-color": color } as CSSProperties}
     >
       {value ?? t`null`}
-    </ScalarValueWrapper>
+    </Box>
   );
 };

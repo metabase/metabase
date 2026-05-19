@@ -8,7 +8,8 @@ import type {
 } from "embedding-sdk-bundle/types/breadcrumb";
 import { Badge } from "metabase/common/components/Badge";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { Flex, type IconName } from "metabase/ui";
+import { Flex } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import { PublicComponentStylesWrapper } from "../PublicComponentStylesWrapper";
 

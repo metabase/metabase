@@ -24,7 +24,6 @@ import {
   Divider,
   Flex,
   Icon,
-  type IconName,
   Image,
   Menu,
   SimpleGrid,
@@ -35,7 +34,12 @@ import {
 import type { ColorName } from "metabase/ui/colors/types";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type * as Lib from "metabase-lib";
-import type { DatasetColumn, DatasetData, RowValues } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  DatasetData,
+  IconName,
+  RowValues,
+} from "metabase-types/api";
 
 import { useListColumns } from "./ListView";
 import S from "./ListView.module.css";

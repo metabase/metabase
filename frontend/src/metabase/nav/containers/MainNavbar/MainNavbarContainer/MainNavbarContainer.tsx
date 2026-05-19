@@ -10,19 +10,16 @@ import {
   useReorderBookmarksMutation,
 } from "metabase/api";
 import { logout } from "metabase/auth/actions";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
+import type { CollectionTreeItem } from "metabase/collections/utils";
 import {
+  buildCollectionTree,
   currentUserPersonalCollections,
+  getCollectionIcon,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
 import { Modal } from "metabase/common/components/Modal";
-import type { CollectionTreeItem } from "metabase/entities/collections";
-import {
-  Collections,
-  ROOT_COLLECTION,
-  buildCollectionTree,
-  getCollectionIcon,
-} from "metabase/entities/collections";
 import { Databases } from "metabase/entities/databases";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { connect, useDispatch, useSelector } from "metabase/redux";
@@ -60,7 +57,6 @@ interface Props extends MainNavbarProps {
   currentUser: User;
   databases: Database[];
   selectedItems: SelectedItem[];
-  rootCollection: Collection;
   hasDataAccess: boolean;
   allError: boolean;
   allFetched: boolean;
@@ -76,7 +72,6 @@ function MainNavbarContainer({
   selectedItems,
   isOpen,
   currentUser,
-  rootCollection,
   hasDataAccess,
   location,
   params,
@@ -93,6 +88,10 @@ function MainNavbarContainer({
 
   const { data: bookmarks = [] } = useListBookmarksQuery();
   const [reorderBookmarksMutation] = useReorderBookmarksMutation();
+
+  const { data: rootCollection } = useGetCollectionQuery({
+    id: ROOT_COLLECTION.id,
+  });
 
   const {
     data: trashCollection,
@@ -239,11 +238,6 @@ function MainNavbarContainer({
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
-  Collections.load({
-    id: ROOT_COLLECTION.id,
-    entityAlias: "rootCollection",
-    loadingAndErrorWrapper: false,
-  }),
   Databases.loadList({
     loadingAndErrorWrapper: false,
   }),

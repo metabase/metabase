@@ -147,7 +147,7 @@
         ;; Urgh. `collection/is-trash?` will select the Trash collection (cached) based on its `type`. But as of this
         ;; migration, this `type` does not exist yet. Neither does the Trash collection though, so let's just ... make
         ;; that so.
-        (with-redefs [collection/is-trash? (constantly false)]
+        (mt/with-dynamic-fn-redefs [collection/is-trash? (constantly false)]
           (testing "A personal Collection should get created_at set by to the date_joined from its owner"
             (is (= (t/offset-date-time #t "2022-10-20T02:09Z")
                    (t/offset-date-time (t2/select-one-fn :created_at [:model/Collection :created_at] :id personal-collection-id)))))
@@ -530,13 +530,13 @@
 (deftest ^:mb/old-migrations-test remove-collection-color-test
   (testing "Migration v48.00-019"
     (impl/test-migrations ["v48.00-019"] [migrate!]
-      (with-redefs [;; Urgh. `collection/is-trash?` will select the Trash collection (cached) based on its `type`. But as of this
+      (mt/with-dynamic-fn-redefs [;; Urgh. `collection/is-trash?` will select the Trash collection (cached) based on its `type`. But as of this
                     ;; migration, this `type` does not exist yet. Neither does the Trash collection though, so let's just ... make
                     ;; that so.
-                    collection/is-trash? (constantly false)
+                                  collection/is-trash? (constantly false)
                     ;; Also avoid loading sample content, because this test breaks the assumption that only the trash
                     ;; collection exists at the time of the migration
-                    config/load-sample-content? (constantly false)]
+                                  config/load-sample-content? (constantly false)]
         (let [collection-id (first (t2/insert-returning-pks! (t2/table-name :model/Collection) {:name "Amazing collection"
                                                                                                 :slug "amazing_collection"
                                                                                                 :color "#509EE3"}))]
@@ -2537,7 +2537,7 @@
 
 (deftest ^:mb/old-migrations-test trash-migrations-test
   (impl/test-migrations ["v50.2024-05-29T14:04:47" "v50.2024-05-29T18:42:15"] [migrate!]
-    (with-redefs [collection/is-trash? (constantly false)]
+    (mt/with-dynamic-fn-redefs [collection/is-trash? (constantly false)]
       (let [collection-id    (t2/insert-returning-pk! (t2/table-name :model/Collection)
                                                       {:name     "Silly Collection"
                                                        :archived true
@@ -2568,7 +2568,7 @@
 
 (deftest ^:mb/old-migrations-test trash-migrations-make-archive-operation-ids-correctly
   (impl/test-migrations ["v50.2024-05-29T14:04:47" "v50.2024-05-29T18:42:15"] [migrate!]
-    (with-redefs [collection/is-trash? (constantly false)]
+    (mt/with-dynamic-fn-redefs [collection/is-trash? (constantly false)]
       (let [relevant-collection-ids (atom #{})
             parent-id (fn [id]
                         (:parent_id (t2/hydrate (t2/select-one :model/Collection :id id) :parent_id)))
@@ -2930,3 +2930,95 @@
                                                   :access_granted false
                                                   :created_at     :%now
                                                   :updated_at     :%now}))))))))
+
+(deftest heal-effective-type-drift-without-coercion-test
+  (testing "GHY-3388: heal metabase_field rows where coercion_strategy is NULL and effective_type
+           drifted away from base_type. The migration must repair such rows in both metabase_field
+           and metabase_field_user_settings, leaving legitimate states (real coercion, already
+           consistent, null effective_type, inactive rows) alone."
+    (impl/test-migrations ["v62.ghy3388-field-heal" "v62.ghy3388-user-settings-heal"] [migrate!]
+      (let [db-id    (first (t2/insert-returning-pks!
+                             (t2/table-name :model/Database)
+                             {:name       "test-db"
+                              :engine     "h2"
+                              :details    "{}"
+                              :created_at :%now
+                              :updated_at :%now}))
+            table-id (first (t2/insert-returning-pks!
+                             (t2/table-name :model/Table)
+                             {:name        "test_table"
+                              :db_id       db-id
+                              :active      true
+                              :created_at  :%now
+                              :updated_at  :%now}))
+            insert-field! (fn [m]
+                            (first (t2/insert-returning-pks!
+                                    (t2/table-name :model/Field)
+                                    (merge {:table_id          table-id
+                                            :name              "f"
+                                            :display_name      "f"
+                                            :position          0
+                                            :database_position 0
+                                            :active            true
+                                            :preview_display   true
+                                            :database_type     "x"
+                                            :created_at        :%now
+                                            :updated_at        :%now}
+                                           m))))
+            broken-id           (insert-field! {:name              "broken"
+                                                :base_type         "type/Number"
+                                                :effective_type    "type/Text"
+                                                :coercion_strategy nil})
+            already-ok-id       (insert-field! {:name              "already_ok"
+                                                :base_type         "type/Number"
+                                                :effective_type    "type/Number"
+                                                :coercion_strategy nil})
+            with-coercion-id    (insert-field! {:name              "with_coercion"
+                                                :base_type         "type/Text"
+                                                :effective_type    "type/Number"
+                                                :coercion_strategy "Coercion/String->Number"})
+            null-effective-id   (insert-field! {:name              "null_effective"
+                                                :base_type         "type/Number"
+                                                :effective_type    nil
+                                                :coercion_strategy nil})
+            inactive-broken-id  (insert-field! {:name              "inactive_broken"
+                                                :base_type         "type/Number"
+                                                :effective_type    "type/Text"
+                                                :coercion_strategy nil
+                                                :active            false})]
+        ;; mirror the broken row in metabase_field_user_settings
+        (t2/insert! :metabase_field_user_settings
+                    {:field_id          broken-id
+                     :effective_type    "type/Text"
+                     :coercion_strategy nil
+                     :created_at        :%now
+                     :updated_at        :%now})
+        (t2/insert! :metabase_field_user_settings
+                    {:field_id          with-coercion-id
+                     :effective_type    "type/Number"
+                     :coercion_strategy "Coercion/String->Number"
+                     :created_at        :%now
+                     :updated_at        :%now})
+        (migrate!)
+        (testing "broken active row is healed"
+          (is (= "type/Number"
+                 (t2/select-one-fn :effective_type (t2/table-name :model/Field) :id broken-id))))
+        (testing "row that was already consistent is untouched"
+          (is (= "type/Number"
+                 (t2/select-one-fn :effective_type (t2/table-name :model/Field) :id already-ok-id))))
+        (testing "row with a real coercion is untouched"
+          (is (= "type/Number"
+                 (t2/select-one-fn :effective_type (t2/table-name :model/Field) :id with-coercion-id)))
+          (is (= "Coercion/String->Number"
+                 (t2/select-one-fn :coercion_strategy (t2/table-name :model/Field) :id with-coercion-id))))
+        (testing "row with NULL effective_type is left alone (separate concern, GHY-3367 territory)"
+          (is (nil? (t2/select-one-fn :effective_type (t2/table-name :model/Field) :id null-effective-id))))
+        (testing "inactive rows are skipped (avoid resurrecting dead state)"
+          (is (= "type/Text"
+                 (t2/select-one-fn :effective_type (t2/table-name :model/Field) :id inactive-broken-id))))
+        (testing "user-settings overlay is healed in lockstep"
+          (is (= "type/Number"
+                 (t2/select-one-fn :effective_type :metabase_field_user_settings :field_id broken-id))))
+        (testing "user-settings with a real coercion is untouched"
+          (is (= "type/Number"
+                 (t2/select-one-fn :effective_type :metabase_field_user_settings :field_id with-coercion-id))))))))

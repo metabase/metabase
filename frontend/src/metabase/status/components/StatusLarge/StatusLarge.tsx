@@ -2,8 +2,8 @@ import type { PropsWithChildren } from "react";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import type { IconName } from "metabase/ui";
 import { Ellipsified, Icon } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import useStatusVisibility from "../../hooks/use-status-visibility";
 

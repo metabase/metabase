@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
@@ -5,6 +6,8 @@ import { t } from "ttag";
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
+import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
+import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
 import { useSelector } from "metabase/redux";
 import { getIsHosted } from "metabase/setup/selectors";
@@ -20,7 +23,11 @@ import {
   Tooltip,
 } from "metabase/ui";
 
-import { useMetabotAgent, useMetabotName } from "../../hooks";
+import {
+  useMetabotAgent,
+  useMetabotName,
+  useUserMetabotPermissions,
+} from "../../hooks";
 import type { MetabotConfig } from "../Metabot";
 
 import Styles from "./MetabotChat.module.css";
@@ -47,8 +54,16 @@ export const MetabotChat = ({
   config?: MetabotConfig;
 }) => {
   const isHosted = useSelector(getIsHosted);
+  const [
+    isAiProviderConfigurationModalOpen,
+    {
+      close: closeAiProviderConfigurationModal,
+      open: openAiProviderConfigurationModal,
+    },
+  ] = useDisclosure(false);
   const metabot = useMetabotAgent(config.agentId);
   const metabotName = useMetabotName();
+  const { isConfigured } = useUserMetabotPermissions();
   const showIllustrations = useSetting("metabot-show-illustrations");
 
   const hasMessages = metabot.messages.length > 0;
@@ -56,11 +71,14 @@ export const MetabotChat = ({
   const { scrollContainerRef, headerRef, fillerRef } =
     useScrollManager(hasMessages);
 
-  const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery({
-    metabot_id: metabot.metabotId,
-    limit: 3,
-    sample: true,
-  });
+  const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery(
+    {
+      metabot_id: metabot.metabotId,
+      limit: 3,
+      sample: true,
+    },
+    { skip: !isConfigured },
+  );
   const suggestedPrompts = useMemo(() => {
     return suggestedPromptsReq.currentData?.prompts ?? [];
   }, [suggestedPromptsReq.currentData?.prompts]);
@@ -88,14 +106,16 @@ export const MetabotChat = ({
         </Flex>
 
         <Flex gap="sm">
-          <Tooltip label={t`Clear conversation`} position="bottom">
-            <ActionIcon
-              onClick={handleResetChat}
-              data-testid="metabot-reset-chat"
-            >
-              <Icon c="text-primary" name="revert" />
-            </ActionIcon>
-          </Tooltip>
+          {isConfigured && (
+            <Tooltip label={t`Clear conversation`} position="bottom">
+              <ActionIcon
+                onClick={handleResetChat}
+                data-testid="metabot-reset-chat"
+              >
+                <Icon c="text-primary" name="revert" />
+              </ActionIcon>
+            </Tooltip>
+          )}
           {!config.preventClose && (
             <ActionIcon onClick={handleClose} data-testid="metabot-close-chat">
               <Icon c="text-primary" name="close" />
@@ -124,14 +144,21 @@ export const MetabotChat = ({
               {showIllustrations && (
                 <Box component={EmptyDashboardBot} w="6rem" />
               )}
-              <Text c="text-tertiary" maw="12rem" ta="center" lh="lg">
-                {config.emptyText ??
-                  (showIllustrations
-                    ? t`I can help you explore your metrics and models.`
-                    : t`Explore your metrics and models with AI.`)}
-              </Text>
+              {!isConfigured ? (
+                <AIProviderConfigurationNotice
+                  featureName={metabotName}
+                  onConfigureAi={openAiProviderConfigurationModal}
+                />
+              ) : (
+                <Text c="text-tertiary" maw="12rem" ta="center" lh="lg">
+                  {config.emptyText ??
+                    (showIllustrations
+                      ? t`I can help you explore your metrics and models.`
+                      : t`Explore your metrics and models with AI.`)}
+                </Text>
+              )}
             </Flex>
-            {!config.hideSuggestedPrompts && (
+            {isConfigured && !config.hideSuggestedPrompts && (
               <Stack
                 gap="sm"
                 className={Styles.promptSuggestionsContainer}
@@ -187,26 +214,32 @@ export const MetabotChat = ({
         )}
       </Box>
 
-      <Box className={Styles.textInputContainer}>
-        <Paper
-          className={cx(
-            Styles.inputContainer,
-            metabot.isDoingScience && Styles.inputContainerLoading,
-          )}
-        >
-          <MetabotChatEditor
-            ref={metabot.promptInputRef}
-            value={metabot.prompt}
-            autoFocus
-            isResponding={metabot.isDoingScience}
-            placeholder={t`How can I help? Type @ to mention items.`}
-            onChange={metabot.setPrompt}
-            onSubmit={handleEditorSubmit}
-            onStop={metabot.cancelRequest}
-            suggestionConfig={{ suggestionModels: config.suggestionModels }}
-          />
-        </Paper>
-      </Box>
+      {isConfigured && (
+        <Box className={Styles.textInputContainer}>
+          <Paper
+            className={cx(
+              Styles.inputContainer,
+              metabot.isDoingScience && Styles.inputContainerLoading,
+            )}
+          >
+            <MetabotChatEditor
+              ref={metabot.promptInputRef}
+              value={metabot.prompt}
+              autoFocus
+              isResponding={metabot.isDoingScience}
+              placeholder={t`How can I help? Type @ to mention items.`}
+              onChange={metabot.setPrompt}
+              onSubmit={handleEditorSubmit}
+              onStop={metabot.cancelRequest}
+              suggestionConfig={{ suggestionModels: config.suggestionModels }}
+            />
+          </Paper>
+        </Box>
+      )}
+      <AIProviderConfigurationModal
+        opened={isAiProviderConfigurationModalOpen}
+        onClose={closeAiProviderConfigurationModal}
+      />
     </Box>
   );
 };

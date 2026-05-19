@@ -106,7 +106,7 @@
 
 (deftest chat-completion-not-configured-test
   (testing "throws when API key not configured"
-    (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+    (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"not configured"
@@ -125,7 +125,7 @@
                                           :output_tokens 250}}}]
       (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test-key"
                                          llm-anthropic-model "claude-sonnet-4-5-20250929"]
-        (with-redefs [http/post (constantly mock-response)]
+        (mt/with-dynamic-fn-redefs [http/post (constantly mock-response)]
           (let [result (anthropic/chat-completion {:system   "You are a SQL expert"
                                                    :messages [{:role "user" :content "get all users"}]})]
             (is (=? {:result      {:sql         "SELECT * FROM users"

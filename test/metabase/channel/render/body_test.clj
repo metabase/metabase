@@ -1,4 +1,5 @@
 (ns metabase.channel.render.body-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.channel.render.body-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

@@ -1,8 +1,8 @@
 import type { DimensionOption } from "metabase/common/components/DimensionPill";
 import { DimensionPill } from "metabase/common/components/DimensionPill";
-import type { IconName } from "metabase/ui";
 import { Flex } from "metabase/ui";
 import type { DimensionMetadata } from "metabase-lib/metric";
+import type { IconName } from "metabase-types/api";
 
 import type { MetricSourceId } from "../../types/viewer-state";
 
