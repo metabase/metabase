@@ -635,18 +635,17 @@
 ;;; ---------------------------------------- used-table recording ----------------------------------------
 
 (defn- ->notebook-parts
-  "Build a minimal `construct_notebook_query` tool-input/output pair whose query
-  references the given table id."
+  "Build a minimal `construct_notebook_query` tool-input/output pair whose query references the given table id."
   [call-id source-table-id]
-  (let [provider (mt/metadata-provider)
-        query    (lib/query provider (lib.metadata/table provider source-table-id))]
-    [{:type     :tool-input
-      :id       call-id
-      :function "construct_notebook_query"
+  (let [mp    (mt/metadata-provider)
+        query (lib/query mp (lib.metadata/table mp source-table-id))]
+    [{:type      :tool-input
+      :id        call-id
+      :function  "construct_notebook_query"
       :arguments {:reasoning "x"}}
      {:type   :tool-output
       :id     call-id
-      :result {:output "<result>...</result>"
+      :result {:output            "<result>...</result>"
                :structured-output {:query-id "qid"
                                    :query    query}}}]))
 
