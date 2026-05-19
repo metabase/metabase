@@ -128,6 +128,12 @@ describe("settings framework", () => {
       expect(widgets[0].section).toBeUndefined();
     });
 
+    it("should ignore provided `value`", () => {
+      const defs = { foo: { widget: "input", value: "hardcoded" } };
+      const widgets = getSettingsWidgets(defs, {}, {}, mockObject, () => {});
+      expect(widgets[0].value).toBeUndefined();
+    });
+
     it("should resolve section via `getSection`", () => {
       const getSection = jest.fn().mockReturnValue("Display");
       const defs = { foo: { widget: "input", getSection } };

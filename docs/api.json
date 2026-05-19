@@ -26810,7 +26810,7 @@
       "post" : {
         "operationId" : "post-api-ee-database-routing-destination-database",
         "summary" : "POST /api/ee/database-routing/destination-database",
-        "description" : "Create new Destination Databases.\n\n  Note that unlike the normal `POST /api/database` endpoint, does NOT check the details before adding the Database.\n\n  This is OK, it's not an invariant that all database details are always valid, but it's something to note.",
+        "description" : "Create new Destination Databases.\n\n  Note that unlike the normal `POST /api/database` endpoint, this endpoint does not test that the database is actually\n  reachable before adding it — destination details are not required to be valid at creation time, and an\n  unreachable destination is fine.",
         "parameters" : [ {
           "in" : "query",
           "name" : "check_connection_details",

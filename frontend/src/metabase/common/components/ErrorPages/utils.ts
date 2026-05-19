@@ -1,6 +1,8 @@
 import Bowser from "bowser";
 
-import { CardApi, CollectionsApi, DashboardApi } from "metabase/services";
+import { cardApi } from "metabase/api";
+import type { DispatchFn } from "metabase/redux";
+import { CollectionsApi, DashboardApi } from "metabase/services";
 import { b64url_to_utf8 } from "metabase/utils/encoding";
 
 import type { ReportableEntityName } from "./types";
@@ -9,10 +11,12 @@ export const getEntityDetails = ({
   entity,
   id,
   isAdHoc,
+  dispatch,
 }: {
   entity?: ReportableEntityName;
   id?: string;
   isAdHoc?: boolean;
+  dispatch: DispatchFn;
 }) => {
   if (!id || !entity) {
     return Promise.resolve(null);
@@ -30,7 +34,9 @@ export const getEntityDetails = ({
           return Promise.resolve("unable to decode ad-hoc question");
         }
       }
-      return CardApi.get({ cardId: id }).catch(nullOnCatch);
+      return dispatch(cardApi.endpoints.getCard.initiate({ id }))
+        .unwrap()
+        .catch(nullOnCatch);
     case "dashboard":
       return DashboardApi.get({ id }).catch(nullOnCatch);
     case "collection":

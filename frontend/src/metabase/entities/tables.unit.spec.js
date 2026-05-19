@@ -78,4 +78,116 @@ describe("table entity", () => {
       });
     });
   });
+
+  describe("metabase/entities/UPDATE original_fields sync", () => {
+    function getEntitiesUpdateAction(fields) {
+      return {
+        type: "metabase/entities/UPDATE",
+        payload: {
+          entities: { fields },
+          result: Object.keys(fields)[0],
+        },
+      };
+    }
+
+    it("syncs matching original_fields entries when a field is updated", () => {
+      const state = {
+        1: {
+          id: 1,
+          original_fields: [
+            { id: 10, display_name: "Old" },
+            { id: 11, display_name: "Other" },
+          ],
+        },
+      };
+
+      const nextState = Tables.reducer(
+        state,
+        getEntitiesUpdateAction({
+          10: { id: 10, table_id: 1, display_name: "New" },
+        }),
+      );
+
+      expect(nextState[1].original_fields).toEqual([
+        { id: 10, table_id: 1, display_name: "New" },
+        { id: 11, display_name: "Other" },
+      ]);
+    });
+
+    it("leaves state untouched when the table has no original_fields", () => {
+      const state = { 1: { id: 1, name: "Orders" } };
+
+      const nextState = Tables.reducer(
+        state,
+        getEntitiesUpdateAction({
+          10: { id: 10, table_id: 1, display_name: "New" },
+        }),
+      );
+
+      expect(nextState).toBe(state);
+    });
+
+    it("leaves state untouched when no original_fields entry matches the updated id", () => {
+      const state = {
+        1: {
+          id: 1,
+          original_fields: [{ id: 99, display_name: "Untouched" }],
+        },
+      };
+
+      const nextState = Tables.reducer(
+        state,
+        getEntitiesUpdateAction({
+          10: { id: 10, table_id: 1, display_name: "New" },
+        }),
+      );
+
+      expect(nextState).toBe(state);
+    });
+
+    it("leaves state untouched when multiple original_fields entries share the updated id", () => {
+      // Virtual card tables can map several columns to the same source field —
+      // normalization collapses those entries, so we can't tell which one the
+      // update belongs to.
+      const state = {
+        card__1: {
+          id: "card__1",
+          original_fields: [
+            { id: 10, display_name: "First Product ID" },
+            { id: 10, display_name: "Second Product ID" },
+          ],
+        },
+      };
+
+      const nextState = Tables.reducer(
+        state,
+        getEntitiesUpdateAction({
+          "card__1:10": { id: 10, table_id: "card__1", display_name: "Both" },
+        }),
+      );
+
+      expect(nextState).toBe(state);
+    });
+
+    it("ignores UPDATE actions flagged with error", () => {
+      const state = {
+        1: {
+          id: 1,
+          original_fields: [{ id: 10, display_name: "Old" }],
+        },
+      };
+
+      const nextState = Tables.reducer(state, {
+        type: "metabase/entities/UPDATE",
+        error: true,
+        payload: {
+          entities: {
+            fields: { 10: { id: 10, table_id: 1, display_name: "x" } },
+          },
+        },
+      });
+
+      expect(nextState).toBe(state);
+    });
+  });
 });

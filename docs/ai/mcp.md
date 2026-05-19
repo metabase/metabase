@@ -9,9 +9,39 @@ summary: Connect MCP-compatible AI clients to Metabase to search, explore, and q
 
 Metabase includes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server (using Streamable HTTP transport) that lets AI clients connect directly to your Metabase, all scoped to the connecting person's permissions.
 
+# Enable MCP server
+
+_Admin > AI > MCP_
+
+MCP server and Agent API settings live on their own subpage. From **Admin > AI**, open the **MCP** tab in the left sidebar.
+
+Use the **MCP server** toggle to turn external access to the [MCP server](./mcp.md) on or off.
+
+### Supported MCP clients
+
+Under **Supported MCP clients**, switch on any clients you want to allow:
+
+- **Claude** (Claude Desktop and Claude on the web)
+- **Cursor and VS Code**
+- **ChatGPT**
+
+Toggling on a client automatically adds that client's sandbox domains to Metabase's CORS allowlist, which is what lets browser-based MCP clients make cross-origin requests to your Metabase.
+
+Some clients run outside the browser (like Claude Code on your own machine) and don't need a CORS allowlist entry. You can connect those clients without toggling anything on (assuming you've turned on the main MCP server setting).
+
+### Custom MCP client domains
+
+If you run a self-hosted MCP client, or a client that isn't in the supported list, add the client's domain to the **Custom MCP client domains** field. Separate values with a space, for example:
+
+```
+https://mcp.internal.example.com https://*.staging.example.com
+```
+
+The field accepts wildcards (`*`) for subdomains. Changes take effect in about a minute. Might be a good time to get up and pour yourself a glass of water.
+
 ## Connect an MCP client
 
-If your admin has turned on [your Metabase's MCP server](./settings.md#enable-mcp-server), all you need to do is point your MCP client at Metabase's MCP endpoint, `/api/mcp`. For example:
+If your admin has turned on [your Metabase's MCP server](#enable-mcp-server), all you need to do is point your MCP client at Metabase's MCP endpoint, `/api/mcp`. For example:
 
 ```
 https://{your-metabase.example.com}/api/mcp
@@ -60,7 +90,7 @@ MCP server requests are handled by whatever AI client you're using (like a deskt
 
 For example, if you ask your AI client to use your Metabase's MCP server "what's our q3 revenue," your client will interact with the MCP server to figure out which tools it needs to field your request. Your AI can decide that it needs to use the tool **construct_query** and **execute_query**, and what those queries might be. Then your client will call those tools for Metabase to run.
 
-You don't need to have an [AI provider](settings.md#supported-providers) configured in Metabase to use your Metabase's MCP server. If you _do_ have an AI provider configured in Metabase to power Metabot, that provider will _not_ be used for MCP server requests. MCP calls by your local client have no effect on token usage for your Metabase's AI connection.
+You don't need to have an [AI provider](settings.md#choose-ai-provider) configured in Metabase to use your Metabase's MCP server. If you _do_ have an AI provider configured in Metabase to power Metabot, that provider will _not_ be used for MCP server requests. MCP calls by your local client have no effect on token usage for your Metabase's AI connection.
 
 ## Available tools
 

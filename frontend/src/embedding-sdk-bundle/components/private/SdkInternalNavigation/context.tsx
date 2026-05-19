@@ -67,6 +67,12 @@ export type SdkInternalNavigationContextValue = {
   canGoBack: boolean;
   previousEntry: SdkInternalNavigationEntry | undefined;
   initWithDashboard: (dashboard: { id: SdkDashboardId; name: string }) => void;
+  /**
+   * True when nav stack has pushed beyond the original entity. SdkDashboard reads
+   * this to skip its own styled wrapper so the outer wrapper from the provider
+   * stays the sole styled container (height/sticky/scroll behavior preserved).
+   */
+  hasNavigatedToEntity: boolean;
 };
 
 export const SdkInternalNavigationContext =
