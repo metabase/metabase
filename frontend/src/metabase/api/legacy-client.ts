@@ -27,20 +27,15 @@ let ANTI_CSRF_TOKEN: string | null = null;
 let LOCALE: string | null = null;
 
 type RequestOptions = {
-  noEvent: boolean;
+  noEvent?: boolean;
   /**
    * When `true`, resolve with the raw `Response` instead of the parsed body —
    * for callers that read it themselves (binary downloads, map tiles as a
-   * blob). Implies the fetch path (XHR has no `Response` object).
+   * blob).
    */
   rawResponse?: boolean;
-  headers: Record<string, string>;
+  headers?: Record<string, string>;
   signal?: AbortSignal;
-};
-
-const DEFAULT_OPTIONS: RequestOptions = {
-  noEvent: false,
-  headers: {},
 };
 
 type RequestClientInfo = string | { name: string; version: string | null };
@@ -52,12 +47,12 @@ type RequestClientInfo = string | { name: string; version: string | null };
  */
 type ApiMethod = (
   rawData?: any,
-  invocationOptions?: Partial<RequestOptions>,
+  invocationOptions?: RequestOptions,
 ) => Promise<any>;
 
 type MethodCreator = (
   urlTemplate: string,
-  methodOptions?: Partial<RequestOptions>,
+  methodOptions?: RequestOptions,
 ) => ApiMethod;
 
 /**
@@ -181,30 +176,25 @@ export class LegacyApi extends EventEmitter<EventMap> {
 
   _makeMethod(methodTemplate: string, retry: boolean = false): MethodCreator {
     return (urlTemplate, methodOptions = {}) => {
-      const defaultOptions: RequestOptions = {
-        ...DEFAULT_OPTIONS,
-        ...methodOptions,
-      };
-
       return async (rawData = {}, invocationOptions = {}) => {
         const middlewareResult = await this.apiRequestManipulationMiddleware({
           url: urlTemplate,
           method: methodTemplate as "GET" | "POST",
           options: {
-            ...defaultOptions,
+            ...methodOptions,
             ...invocationOptions,
-          } as OnBeforeRequestHandlerConfig["options"],
+          },
           // this will transform arrays to objects with numeric keys
           // we shouldn't be using top level-arrays in the API
           data: { ...rawData },
         });
         let { url, method } = middlewareResult;
         // Re-merge to preserve all RequestOptions fields after middleware (middleware can only extend options)
-        const options: RequestOptions = {
-          ...defaultOptions,
+        const options = {
+          ...methodOptions,
           ...invocationOptions,
           ...middlewareResult.options,
-        } as RequestOptions;
+        };
         const { data } = middlewareResult;
         url = substituteUrlTags(url, data, method);
         // remove undefined
@@ -305,7 +295,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
     rawResponse?: boolean;
     headers?: Record<string, string>;
   }): Promise<unknown> {
-    const invocationOptions: Partial<RequestOptions> = {
+    const invocationOptions = {
       signal,
       ...(noEvent !== undefined ? { noEvent } : {}),
       ...(rawResponse !== undefined ? { rawResponse } : {}),
@@ -316,18 +306,16 @@ export class LegacyApi extends EventEmitter<EventMap> {
       url: urlTemplate,
       method: method as "GET" | "POST",
       options: {
-        ...DEFAULT_OPTIONS,
         ...invocationOptions,
       } as OnBeforeRequestHandlerConfig["options"],
       data: { ...params },
     });
 
     let { url, method: finalMethod } = middlewareResult;
-    const options: RequestOptions = {
-      ...DEFAULT_OPTIONS,
+    const options = {
       ...invocationOptions,
       ...middlewareResult.options,
-    } as RequestOptions;
+    };
     const { data } = middlewareResult;
 
     url = substituteUrlTags(url, data, finalMethod);
