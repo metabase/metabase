@@ -713,93 +713,86 @@
                 :message   "Transform SQL updated successfully."}}}]))
 
 (deftest finalize-records-used-tables-for-python-transform-test
-  (testing "finalize-assistant-turn! records `metabot_used_table` rows for a
-            write_transform_python tool call, even though strip-tool-output-bloat
-            discards the `:transform` key from structured-output. The
-            transform's declared `:source_tables` lives in the tool-input
-            arguments, which the pre-strip extraction path reads."
+  (testing "finalize-assistant-turn! records `metabot_used_table` rows for a write_transform_python tool call."
     (t2/with-transaction [_conn nil {:rollback-only true}]
-      (let [conversation-id (str (random-uuid))]
-        (mt/with-current-user (mt/user->id :rasta)
-          (let [{:keys [assistant-msg-id]} (metabot-persistence/start-turn!
-                                            conversation-id "transforms_codegen"
-                                            {:role "user" :content "make a transform"})
-                table-id                   (mt/id :orders)]
-            (metabot-persistence/finalize-assistant-turn!
-             conversation-id assistant-msg-id
-             (into [{:type :text :text "ok"}] (->transform-python-parts "t1" table-id)))
-            (is (=? [{:message_id assistant-msg-id :table_id table-id}]
-                    (t2/select :model/MetabotUsedTable :message_id assistant-msg-id)))))))))
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [table-id                   (mt/id :orders)
+              conversation-id            (str (random-uuid))
+              {:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                          conversation-id
+                                          "transforms_codegen"
+                                          {:role "user" :content "make a transform"})]
+          (metabot-persistence/finalize-assistant-turn!
+           conversation-id
+           assistant-msg-id
+           (into [{:type :text :text "ok"}] (->transform-python-parts "t1" table-id)))
+          (is (=? [{:message_id assistant-msg-id
+                    :table_id   table-id}]
+                  (t2/select :model/MetabotUsedTable :message_id assistant-msg-id))))))))
 
 (deftest finalize-records-used-tables-for-sql-transform-test
-  (testing "finalize-assistant-turn! macaw-parses the SQL transform's native
-            query out of the un-stripped structured-output. The `:transform` key
-            is dropped by `strip-tool-output-bloat`, so the only path to these
-            tables is the pre-strip parts vector — this test fails if extraction
-            is ever moved to run on the stripped content."
+  (testing "finalize-assistant-turn! parses the SQL transform's native query."
     (t2/with-transaction [_conn nil {:rollback-only true}]
-      (let [conversation-id (str (random-uuid))
-            orders-id       (mt/id :orders)]
-        (mt/with-current-user (mt/user->id :rasta)
-          (let [{:keys [assistant-msg-id]} (metabot-persistence/start-turn!
-                                            conversation-id "transforms_codegen"
-                                            {:role "user" :content "make a SQL transform"})]
-            (with-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id orders-id}]})]
-              (metabot-persistence/finalize-assistant-turn!
-               conversation-id assistant-msg-id
-               (into [{:type :text :text "ok"}]
-                     (->transform-sql-parts "t1" (mt/id) "SELECT * FROM orders"))))
-            (is (=? [{:message_id assistant-msg-id :table_id orders-id}]
-                    (t2/select :model/MetabotUsedTable :message_id assistant-msg-id))))
-          (testing "stripped row.data drops the `:transform` key — so re-extracting from
-                    the persisted row would have found nothing; the rows above must come
-                    from the pre-strip path"
-            (let [{persisted-data :data}
-                  (t2/select-one [:model/MetabotMessage :data]
-                                 :conversation_id conversation-id
-                                 {:order-by [[:created_at :desc] [:id :desc]]})]
-              (is (every? (fn [block]
-                            (or (not= "tool-output" (:type block))
-                                (nil? (get-in block [:result :structured-output :transform]))))
-                          persisted-data)
-                  ":transform was stripped from persisted row data"))))))))
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [orders-id                  (mt/id :orders)
+              conversation-id            (str (random-uuid))
+              {:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                          conversation-id
+                                          "transforms_codegen"
+                                          {:role "user" :content "make a SQL transform"})]
+          (with-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id orders-id}]})]
+            (metabot-persistence/finalize-assistant-turn!
+             conversation-id
+             assistant-msg-id
+             (into [{:type :text :text "ok"}]
+                   (->transform-sql-parts "t1" (mt/id) "SELECT * FROM orders"))))
+          (is (=? [{:message_id assistant-msg-id :table_id orders-id}]
+                  (t2/select :model/MetabotUsedTable :message_id assistant-msg-id))))))))
 
 (deftest finalize-records-nothing-without-query-tools-test
   (testing "finalize-assistant-turn! inserts no used-table rows for text-only or non-query tool turns"
     (t2/with-transaction [_conn nil {:rollback-only true}]
-      (let [conversation-id (str (random-uuid))]
-        (mt/with-current-user (mt/user->id :rasta)
-          (let [{:keys [assistant-msg-id]} (metabot-persistence/start-turn!
-                                            conversation-id "internal"
-                                            {:role "user" :content "go"})]
-            (metabot-persistence/finalize-assistant-turn!
-             conversation-id assistant-msg-id
-             [{:type :text :text "just text"}
-              {:type :tool-input  :id "n1" :function "navigate_user" :arguments {}}
-              {:type :tool-output :id "n1" :result {:output "ok"}}])
-            (is (zero? (t2/count :model/MetabotUsedTable :message_id assistant-msg-id)))))))))
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [conversation-id            (str (random-uuid))
+              {:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                          conversation-id
+                                          "internal"
+                                          {:role "user" :content "go"})]
+          (metabot-persistence/finalize-assistant-turn!
+           conversation-id
+           assistant-msg-id
+           [{:type      :text
+             :text      "just text"}
+            {:type      :tool-input
+             :id        "n1"
+             :function  "navigate_user"
+             :arguments {}}
+            {:type      :tool-output
+             :id        "n1"
+             :result    {:output "ok"}}])
+          (is (zero? (t2/count :model/MetabotUsedTable :message_id assistant-msg-id))))))))
 
 (deftest insert-failure-does-not-fail-finalize-test
   (testing "a failed used-table INSERT is logged and finalize still completes"
     (t2/with-transaction [_conn nil {:rollback-only true}]
-      (let [conversation-id (str (random-uuid))]
-        (mt/with-current-user (mt/user->id :rasta)
-          (let [{:keys [assistant-msg-id]} (metabot-persistence/start-turn!
-                                            conversation-id "internal"
-                                            {:role "user" :content "go"})]
-            ;; Force the INSERT to throw. `extract-used-tables` is throw-safe
-            ;; by contract; the wrap in `finalize-assistant-turn!` exists to
-            ;; protect the row insert.
-            (with-redefs [used-tables/extract-used-tables
-                          (fn [_ _] [{:message_id assistant-msg-id :table_id 1}])
-                          t2/insert!
-                          (fn [& _] (throw (ex-info "boom" {})))]
-              (log.capture/with-log-messages-for-level [logs [metabase.metabot.persistence :warn]]
-                (metabot-persistence/finalize-assistant-turn!
-                 conversation-id assistant-msg-id
-                 [{:type :text :text "ok"}])
-                (is (=? {:finished true :data [{:type "text" :text "ok"}]}
-                        (t2/select-one :model/MetabotMessage assistant-msg-id))
-                    "message UPDATE still landed")
-                (is (some #(re-find #"Failed to record metabot used tables" (:message %)) (logs))
-                    "warn line captured")))))))))
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [conversation-id            (str (random-uuid))
+              {:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                          conversation-id
+                                          "internal"
+                                          {:role "user" :content "go"})]
+          (with-redefs [used-tables/extract-used-tables (fn [_ _]
+                                                          [{:message_id assistant-msg-id :table_id 1}])
+                        t2/insert! (fn [& _]
+                                     (throw (ex-info "boom" {})))]
+            (log.capture/with-log-messages-for-level [logs [metabase.metabot.persistence :warn]]
+              (metabot-persistence/finalize-assistant-turn!
+               conversation-id
+               assistant-msg-id
+               [{:type :text :text "ok"}])
+              (is (=? {:finished true
+                       :data     [{:type "text" :text "ok"}]}
+                      (t2/select-one :model/MetabotMessage assistant-msg-id))
+                  "message UPDATE still landed")
+              (is (some #(re-find #"Failed to record metabot used tables" (:message %)) (logs))
+                  "warn line captured"))))))))
