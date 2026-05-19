@@ -11,14 +11,9 @@ import type {
 } from "metabase/plugins/oss/api";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 import { getTraceparentHeader } from "metabase/utils/otel";
-import { delay } from "metabase/utils/promise";
+import { retry } from "metabase/utils/retry";
 
-const ONE_SECOND = 1000;
 const MAX_RETRIES = 10;
-// Exponential backoff in millis: [1000, 2000, 4000, 8000...]
-const RETRY_DELAY_INTERVALS = new Array(MAX_RETRIES)
-  .fill(1)
-  .map((_, i) => ONE_SECOND * Math.pow(2, i));
 
 const ANTI_CSRF_HEADER = "X-Metabase-Anti-CSRF-Token";
 const METABASE_VERSION_HEADER = "X-Metabase-Version";
@@ -414,31 +409,15 @@ export class LegacyApi extends EventEmitter<EventMap> {
     data: Record<string, unknown>,
     options: RequestOptions,
   ): Promise<unknown> {
-    // Attempt the request; on 503 retry up to MAX_RETRIES times, waiting for
-    // each successive backoff interval before the next attempt.
-    for (let attempt = 0; ; attempt++) {
-      try {
-        return await this._makeRequest(
-          method,
-          url,
-          headers,
-          body,
-          data,
-          options,
-        );
-      } catch (error) {
-        if (getErrorStatus(error) !== 503 || attempt >= MAX_RETRIES) {
-          throw error;
-        }
-        // Honor a mid-backoff abort: stop sleeping and surface the standard
-        // AbortError. Without this, an aborted request still waits for the
-        // remaining backoff before bailing.
-        await delay(RETRY_DELAY_INTERVALS[attempt], options.signal);
-        if (options.signal?.aborted) {
-          throw new DOMException("Aborted", "AbortError");
-        }
-      }
-    }
+    // Attempt the request; on 503 retry up to MAX_RETRIES times with
+    // exponential backoff (1s, 2s, 4s, 8s, ...).
+    return retry(
+      () => this._makeRequest(method, url, headers, body, data, options),
+      {
+        maxRetries: MAX_RETRIES,
+        shouldRetry: (error) => getErrorStatus(error) === 503,
+      },
+    );
   }
 
   async _makeRequest(
