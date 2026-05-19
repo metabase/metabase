@@ -22,7 +22,10 @@ describe("useHandleMcpDrillThrough", () => {
       mcpSessionId: "mcp-session-id",
     };
 
-    fetchMock.post("path:/api/embed-mcp/drills", { handle: "drill-handle" });
+    fetchMock.post("path:/api/embed-mcp/drills", {
+      handle: "drill-handle",
+      widgetSessionId: "mcp-session-id",
+    });
   });
 
   afterEach(() => {
@@ -81,7 +84,7 @@ describe("useHandleMcpDrillThrough", () => {
       content: [
         {
           type: "text",
-          text: "Show me the result. Use handle drill-handle.",
+          text: "Show me the result. Use handle drill-handle and widgetSessionId mcp-session-id.",
         },
       ],
     });

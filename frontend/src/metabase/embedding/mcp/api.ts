@@ -11,6 +11,7 @@ type StoreDrillQueryRequest = {
 
 type StoreDrillQueryResponse = {
   handle: string;
+  widgetSessionId: string;
 };
 
 type SubmitMcpFeedbackPayload = SubmitMcpAppsFeedbackRequest & {

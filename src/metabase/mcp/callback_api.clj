@@ -66,7 +66,8 @@
    request]
   (let [session-id (mcp-session-id-from-headers request)]
     (check-session-header! session-id api/*current-user-id*)
-    {:handle (mcp.session/store-handle! session-id api/*current-user-id* encodedQuery)}))
+    {:handle          (mcp.session/store-handle! session-id api/*current-user-id* encodedQuery)
+     :widgetSessionId session-id}))
 
 (api.macros/defendpoint :post "/feedback" :- [:map
                                               [:status [:= 204]]

@@ -283,15 +283,22 @@
                     "phrase `Show me the result`. Do not execute the query yourself; pass the "
                     "`handle` UUID as the `handle` argument.")
   :inputSchema {:type       "object"
-                :properties {:handle {:type "string" :format "uuid"
-                                      :description "Handle UUID from the user's drill-through message."}}
+                :properties {:handle          {:type "string" :format "uuid"
+                                               :description "Handle UUID from the user's drill-through message."}
+                             :widgetSessionId {:type "string"
+                                               :description "Session id from the drill-through message; used when clients rotate MCP sessions between tool calls"}}
                 :required   ["handle"]}
   :response-fn (fn [arguments {:keys [session-id]}]
                  (if-let [handle (:handle arguments)]
-                   (if-let [encoded (mcp.session/read-handle session-id handle)]
-                     {:content          [{:type "text" :text "Rendering drill-through visualization..."}]
-                      :structuredContent {:query encoded}}
-                     {:content [{:type "text" :text "No drill-through found for that handle."}]
-                      :isError true})
+                   (let [widget-session-id (:widgetSessionId arguments)
+                         lookup-session-id (or widget-session-id session-id)]
+                     (if-let [encoded (mcp.session/read-handle lookup-session-id handle)]
+                       {:content          [{:type "text" :text "Rendering drill-through visualization..."}]
+                        :structuredContent {:query encoded}}
+                       (do
+                         (log/warnf "MCP handle diagnostic: tool=render_drill_through session_id=%s widgetSessionId=%s lookup_session_id=%s handle=%s argument_keys=%s result=not-found"
+                                    session-id widget-session-id lookup-session-id handle (pr-str (sort (keys arguments))))
+                         {:content [{:type "text" :text "No drill-through found for that handle."}]
+                          :isError true})))
                    {:content [{:type "text" :text "No drill-through found for that handle."}]
                     :isError true}))})

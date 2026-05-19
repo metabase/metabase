@@ -77,12 +77,13 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
       const encodedQuery = utf8_to_b64(JSON.stringify(nextCard.dataset_query));
 
       let handle: string;
+      let widgetSessionId: string;
       try {
         // Store the card server-side in the MCP session. This is universal —
         // works in all MCP clients (Claude Desktop, Cursor, VS Code).
         // The handle UUID is threaded into the agent message so render_drill_through
         // can fetch the payload without the LLM ever seeing it.
-        ({ handle } = await storeDrillQuery({
+        ({ handle, widgetSessionId } = await storeDrillQuery({
           instanceUrl,
           sessionToken,
           mcpSessionId,
@@ -101,7 +102,7 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
         content: [
           {
             type: "text",
-            text: `Show me the result. Use handle ${handle}.`,
+            text: `Show me the result. Use handle ${handle} and widgetSessionId ${widgetSessionId}.`,
           },
         ],
       });
