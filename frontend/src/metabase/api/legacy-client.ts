@@ -446,18 +446,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
         } catch (e) {}
       }
 
-      let status = response.status;
-      if (
-        status === 202 &&
-        body &&
-        typeof body === "object" &&
-        "_status" in body &&
-        body._status &&
-        (body._status as number) > 0
-      ) {
-        status = (body as Record<string, number>)._status;
-      }
-
+      const status = getResponseStatus(response, body);
       const token = response.headers.get(ANTI_CSRF_HEADER);
       const metabaseVersion = response.headers.get(METABASE_VERSION_HEADER);
 
@@ -602,4 +591,22 @@ function getErrorStatus(error: unknown): number | undefined {
 
 function canRetryRequest(error: unknown): boolean {
   return getErrorStatus(error) === 503;
+}
+
+function getResponseStatus(
+  response: Response,
+  body: string | Response | undefined,
+): number {
+  if (
+    response.status === 202 &&
+    body &&
+    typeof body === "object" &&
+    "_status" in body &&
+    typeof body._status === "number" &&
+    body._status > 0
+  ) {
+    return body._status;
+  }
+
+  return response.status;
 }
