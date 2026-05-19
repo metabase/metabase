@@ -11,24 +11,22 @@
 (set! *warn-on-reflection* true)
 
 (defn normalize-name
-  "Canonical form used for name-based lookups and comparisons. nil-safe."
-  [s]
-  (some-> s str/trim u/lower-case-en))
-
-(defn split-for-embedding
-  "Rewrite a raw name into space-separated natural-language tokens before embedding.
+  "Canonical form used for name-based lookups, comparisons, *and* embedding input. nil-safe.
 
   `_`, `-`, `.`, and camelCase boundaries become spaces; adjacent whitespace is collapsed and
   the result is lowercased.
 
   Embedding models are trained on English: `\"monthly_active_users\"` is an out-of-distribution
-  token while `\"monthly active users\"` hits three well-understood ones.
+  token while `\"monthly active users\"` hits three well-understood ones. We use the same
+  transform for the dedup key so `\"monthlyActiveUsers\"` and `\"monthly_active_users\"` collapse
+  to one entry — without it, equivalent names would each be embedded separately and then show
+  up as a 1.0-cosine synonym pair instead of a name collision.
 
   See https://linear.app/metabase/document/synonym-analysis-21-april-2026-31c8ce76eddb for
   calibration data."
-  [^String s]
+  [s]
   (when s
-    (-> s
+    (-> ^String s
         (str/replace #"([a-z])([A-Z])" "$1 $2")
         (str/replace #"[_\-.]" " ")
         (str/replace #"\s+" " ")
@@ -76,10 +74,11 @@
   "Which text form of each entity name gets embedded by the default synonym embedder.
 
   `:names-split` rewrites snake/kebab/dotted/camelCase names into space-separated English
-  tokens before sending them to the provider — see [[split-for-embedding]].
+  tokens before sending them to the provider — see [[normalize-name]], which is now also the
+  dedup key (so equivalent names embed once).
 
   Alternatives worth considering (not implemented):
-  - `:names` (raw lowercased name)
+  - `:names` (raw lowercased name without splitting)
   - `:search-text` (type + name + description + schema, as the semantic-search indexer does)
   - `:typed-split` ([source|value] prefix + split name).
 
@@ -98,13 +97,10 @@
   "Build an embedder that embeds names via [[embeddings.client/get-embeddings-batch]] using
   `model-descriptor` (`{:provider :model-name :model-dimensions}`).
 
-  For each distinct normalized name the raw form is sent through [[split-for-embedding]].
-  Splitting *before* lowercasing preserves the camelCase boundary (`\"pageViews\"` →
-  `\"page views\"`); the normalized key is what scoring looks up.
-
-  Texts are chunked into `provider-batch-size` pieces so a large catalog doesn't land as a
-  single oversized HTTP request — `get-embeddings-batch` does no chunking of its own for the
-  ai-service / openai providers.
+  Distinct normalized names — already in split form thanks to [[normalize-name]] — are sent
+  directly to the provider. Texts are chunked into `provider-batch-size` pieces so a large
+  catalog doesn't land as a single oversized HTTP request; `get-embeddings-batch` does no
+  chunking of its own for the ai-service / openai providers.
 
   Passes `:record-tokens? false` so complexity-score runs don't write to
   `semantic_search_token_tracking` — the score is its own analytics signal and the embedding
@@ -115,19 +111,12 @@
   measurements + an `:error` field so a broken run is visible downstream."
   [model-descriptor]
   (fn embed [entities]
-    (let [name->raw (reduce (fn [acc {nm :name}]
-                              (if-let [n (normalize-name nm)]
-                                (if (contains? acc n) acc (assoc acc n nm))
-                                acc))
-                            (array-map)
-                            entities)
-          names     (vec (keys name->raw))]
+    (let [names (->> entities (keep (comp normalize-name :name)) distinct vec)]
       (when (seq names)
-        (let [texts   (mapv #(split-for-embedding (get name->raw %)) names)
-              vectors (into []
+        (let [vectors (into []
                             (mapcat #(embeddings/get-embeddings-batch
                                       model-descriptor % :record-tokens? false))
-                            (partition-all provider-batch-size texts))]
+                            (partition-all provider-batch-size names))]
           (into {}
                 (keep (fn [[n v]] (when v [n (ensure-floats v)])))
                 (map vector names vectors)))))))
