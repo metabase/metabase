@@ -424,12 +424,14 @@
 (def ^:private UpdateExploration
   "Body schema for `PUT /api/exploration/:id`. All fields are optional; only the keys the client
   actually includes are forwarded to the underlying `t2/update!`. `collection_id` may be `nil`
-  to move the exploration to the root collection (\"Our Analytics\")."
+  to move the exploration to the root collection (\"Our Analytics\"). `collection_position` may
+  be `nil` to unpin the exploration."
   [:map
-   [:name          {:optional true} expl.model/ExplorationName]
-   [:description   {:optional true} [:maybe :string]]
-   [:archived      {:optional true} :boolean]
-   [:collection_id {:optional true} [:maybe ms/PositiveInt]]])
+   [:name                {:optional true} expl.model/ExplorationName]
+   [:description         {:optional true} [:maybe :string]]
+   [:archived            {:optional true} :boolean]
+   [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_position {:optional true} [:maybe ms/PositiveInt]]])
 
 ;;; ----------------------------------------- /dimensions schemas + helpers -----------------------------------------
 

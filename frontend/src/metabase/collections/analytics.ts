@@ -24,8 +24,7 @@ export const trackCollectionItemBookmarked = (
     item.model === "indexed-entity" ||
     item.model === "snippet" ||
     item.model === "transform" ||
-    item.model === "measure" ||
-    item.model === "exploration"
+    item.model === "measure"
   ) {
     // can't bookmark these
     return;
@@ -41,7 +40,8 @@ export const trackCollectionItemBookmarked = (
       | "dataset"
       | "document"
       | "card"
-      | "table",
+      | "table"
+      | "exploration",
   ) => {
     switch (analyticsModel) {
       case "card":

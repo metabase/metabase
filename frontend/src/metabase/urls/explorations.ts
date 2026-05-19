@@ -1,18 +1,20 @@
 import type { DocumentId, ExplorationId } from "metabase-types/api";
 
+export const EXPLORATION_BASE_PATH = "question/research";
+
 export function newExploration(): string {
-  return "/question/research";
+  return `/${EXPLORATION_BASE_PATH}`;
 }
 
 export function exploration(explorationId: ExplorationId): string {
-  return `/question/research/${explorationId}`;
+  return `/${EXPLORATION_BASE_PATH}/${explorationId}`;
 }
 
 export function explorationDocument(
   explorationId: ExplorationId,
   documentId: DocumentId,
 ): string {
-  return `/question/research/${explorationId}/document/${documentId}`;
+  return `/${EXPLORATION_BASE_PATH}/${explorationId}/document/${documentId}`;
 }
 
 export function explorationDocumentComments(

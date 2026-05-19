@@ -58,6 +58,7 @@ export interface UpdateExplorationRequest {
   description?: string | null;
   archived?: boolean;
   collection_id?: CollectionId | null;
+  collection_position?: number | null;
 }
 
 export interface ExplorationThreadMetric {
@@ -223,6 +224,7 @@ export interface Exploration {
   creator_id: UserId;
   archived: boolean;
   collection_id: CollectionId | null;
+  collection_position: number | null;
   collection?: Collection | null;
   entity_id: string;
   created_at: string;

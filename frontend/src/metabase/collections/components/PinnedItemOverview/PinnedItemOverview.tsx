@@ -51,6 +51,7 @@ function PinnedItemOverview({
     dataset: modelItems = [],
     metric: metricItems = [],
     document: documentItems = [],
+    exploration: explorationItems = [],
   } = _.groupBy(sortedItems, "model");
   const cardGroups = _.partition(cardItems, isPreviewShown);
   const metricGroups = _.partition(metricItems, isPreviewShown);
@@ -217,6 +218,44 @@ function PinnedItemOverview({
                   <PinnedItemSortDropTarget
                     isBackTarget
                     itemModel="document"
+                    pinIndex={item.collection_position}
+                    enableDropTargetBackground={false}
+                  />
+                </div>
+              ))}
+            </Grid>
+          </div>
+        )}
+
+        {explorationItems.length > 0 && (
+          <div>
+            <SectionTitle title={t`Explorations`} icon="telescope" />
+            <Grid>
+              {explorationItems.map((item) => (
+                <div key={item.id} className={CS.relative}>
+                  <PinnedItemSortDropTarget
+                    isFrontTarget
+                    itemModel="exploration"
+                    pinIndex={item.collection_position}
+                    enableDropTargetBackground={false}
+                  />
+                  <ItemDragSource item={item} collection={collection}>
+                    <div>
+                      <PinnedItemCard
+                        databases={databases}
+                        bookmarks={bookmarks}
+                        createBookmark={createBookmark}
+                        deleteBookmark={deleteBookmark}
+                        item={item}
+                        collection={collection}
+                        onCopy={onCopy}
+                        onMove={onMove}
+                      />
+                    </div>
+                  </ItemDragSource>
+                  <PinnedItemSortDropTarget
+                    isBackTarget
+                    itemModel="exploration"
                     pinIndex={item.collection_position}
                     enableDropTargetBackground={false}
                   />

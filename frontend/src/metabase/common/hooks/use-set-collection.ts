@@ -8,11 +8,13 @@ import {
   collectionApi,
   dashboardApi,
   documentApi,
+  explorationApi,
   timelineApi,
   useUpdateCardMutation,
   useUpdateCollectionMutation,
   useUpdateDashboardMutation,
   useUpdateDocumentMutation,
+  useUpdateExplorationMutation,
   useUpdateTimelineMutation,
 } from "metabase/api";
 import {
@@ -32,6 +34,7 @@ import type {
   Dashboard,
   DashboardId,
   Document,
+  Exploration,
   Timeline,
 } from "metabase-types/api";
 
@@ -52,6 +55,7 @@ export type MovableItem =
   | Movable<"collection", Collection>
   | Movable<"snippet-collection", Collection>
   | Movable<"document", Document>
+  | Movable<"exploration", Exploration>
   | Movable<"timeline", Timeline, "name">;
 
 export type MovableModel = MovableItem["model"];
@@ -64,6 +68,7 @@ const MOVABLE_MODELS = new Set<MovableModel>([
   "collection",
   "snippet-collection",
   "document",
+  "exploration",
   "timeline",
 ]);
 
@@ -86,6 +91,7 @@ const LABELS = {
   collection: () => t`collection`,
   "snippet-collection": () => t`folder`,
   document: () => t`document`,
+  exploration: () => t`exploration`,
   timeline: () => t`timeline`,
 } as const satisfies Record<MovableModel, () => string>;
 
@@ -107,6 +113,7 @@ export function useSetCollection() {
   const [updateDashboard] = useUpdateDashboardMutation();
   const [updateCollection] = useUpdateCollectionMutation();
   const [updateDocument] = useUpdateDocumentMutation();
+  const [updateExploration] = useUpdateExplorationMutation();
   const [updateTimeline] = useUpdateTimelineMutation();
 
   const setCollection = useCallback(
@@ -155,6 +162,16 @@ export function useSetCollection() {
             archived,
           }).unwrap();
         })
+        .with({ model: "exploration" }, ({ id }) => {
+          if (!isCollectionDestination(destination)) {
+            throw new Error("Cannot move an exploration into a dashboard");
+          }
+          return updateExploration({
+            id,
+            collection_id: canonicalCollectionId(destination.id),
+            archived,
+          }).unwrap();
+        })
         .with({ model: "collection" }, ({ id }) => {
           if (!isCollectionDestination(destination)) {
             throw new Error("Cannot move a collection into a dashboard");
@@ -192,6 +209,7 @@ export function useSetCollection() {
       updateDashboard,
       updateCollection,
       updateDocument,
+      updateExploration,
       updateTimeline,
     ],
   );
@@ -238,6 +256,17 @@ export function useSetCollection() {
               archived: document.archived,
             });
         })
+        .with({ model: "exploration" }, async ({ id }) => {
+          const exploration = await dispatch(
+            explorationApi.endpoints.getExploration.initiate(id),
+          ).unwrap();
+          return () =>
+            updateExploration({
+              id,
+              collection_id: exploration.collection_id,
+              archived: exploration.archived,
+            });
+        })
         .with(
           { model: "collection" },
           { model: "snippet-collection" },
@@ -272,6 +301,7 @@ export function useSetCollection() {
       updateDashboard,
       updateCollection,
       updateDocument,
+      updateExploration,
       updateTimeline,
     ],
   );
