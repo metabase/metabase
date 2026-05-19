@@ -47,11 +47,24 @@
     result))
 
 (defn generate-sample-prompts
-  "Generate suggested prompts for instance of Metabot."
+  "Generate suggested prompts for the Metabot instance with `metabot-id`.
+
+   Returns a map describing the outcome so callers can distinguish success from
+   the various 'no error, but nothing produced' cases:
+
+     {:status :generated :prompt-count N}            ; happy path
+     {:status :empty :reason :no-library-content}    ; metabot has no models/metrics to summarise
+     {:status :empty :reason :ai-produced-no-prompts} ; LLM returned 0 questions for the inputs
+     {:status :empty :reason :managed-free-limit-reached}  ; managed AI usage cap hit
+
+   Skips the LLM call entirely on the `:no-library-content` and `:managed-free-limit-reached`
+   branches so we don't burn tokens (or AI-service round-trips) generating nothing."
   [metabot-id & {:as opts}]
   (if (metabot.usage/managed-free-limit-reached?)
-    (log/info "Skipping suggested prompt generation because the managed AI free limit has been reached."
-              {:metabot-id metabot-id})
+    (do
+      (log/info "Skipping suggested prompt generation because the managed AI free limit has been reached."
+                {:metabot-id metabot-id})
+      {:status :empty :reason :managed-free-limit-reached})
     (let [opts (merge default-opts opts)]
       (lib-be/with-metadata-provider-cache
         (let [{metrics :metric models :model} (->> (metabot.tools.u/get-metrics-and-models metabot-id opts)
@@ -67,20 +80,29 @@
                      detail)
                    (group-by :type))
               metric-inputs (map metric-input metrics)
-              model-inputs (map model-input models)
-              {:keys [table_questions metric_questions]}
-              (generate-questions-with-fallback {:metrics metric-inputs, :tables model-inputs})
-              ->prompt (fn [{:keys [questions]} {::keys [origin]}]
-                         (let [base {:metabot_id metabot-id
-                                     :model      (:type origin)
-                                     :card_id    (:id origin)}]
-                           (map #(assoc base :prompt %) questions)))
-              metric-prompts (mapcat ->prompt metric_questions metrics)
-              model-prompts (mapcat ->prompt table_questions models)]
-          (when (seq metric-prompts)
-            (t2/insert! :model/MetabotPrompt metric-prompts))
-          (when (seq model-prompts)
-            (t2/insert! :model/MetabotPrompt model-prompts)))))))
+              model-inputs  (map model-input models)]
+          (if (and (empty? metric-inputs) (empty? model-inputs))
+            (do
+              (log/info "Skipping suggested prompt generation: metabot has no models or metrics to summarise."
+                        {:metabot-id metabot-id})
+              {:status :empty :reason :no-library-content})
+            (let [{:keys [table_questions metric_questions]}
+                  (generate-questions-with-fallback {:metrics metric-inputs, :tables model-inputs})
+                  ->prompt (fn [{:keys [questions]} {::keys [origin]}]
+                             (let [base {:metabot_id metabot-id
+                                         :model      (:type origin)
+                                         :card_id    (:id origin)}]
+                               (map #(assoc base :prompt %) questions)))
+                  metric-prompts (mapcat ->prompt metric_questions metrics)
+                  model-prompts  (mapcat ->prompt table_questions models)
+                  total          (+ (count metric-prompts) (count model-prompts))]
+              (when (seq metric-prompts)
+                (t2/insert! :model/MetabotPrompt metric-prompts))
+              (when (seq model-prompts)
+                (t2/insert! :model/MetabotPrompt model-prompts))
+              (if (zero? total)
+                {:status :empty :reason :ai-produced-no-prompts}
+                {:status :generated :prompt-count total}))))))))
 
 (defn delete-all-metabot-prompts
   "Drop suggested prompts for instance of Metabot."

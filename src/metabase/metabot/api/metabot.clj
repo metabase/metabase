@@ -61,20 +61,25 @@
           (metabot.suggested-prompts/generate-sample-prompts id)))
       (t2/select-one :model/Metabot :id id))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/prompt-suggestions/regenerate"
-  "Remove any existing prompt suggestions for the Metabot instance with `id` and generate new ones."
+  :- [:map
+      [:status :keyword]
+      [:reason       {:optional true} :keyword]
+      [:prompt-count {:optional true} nat-int?]]
+  "Remove any existing prompt suggestions for the Metabot instance with `id` and generate new ones.
+
+   Returns a map describing the outcome so the UI can distinguish a successful regeneration
+   from the various 'no error, but nothing produced' cases — e.g. the metabot has no models or
+   metrics in its library yet, or the LLM returned no questions for the inputs we supplied.
+
+   Response shape: see [[metabase.metabot.suggested-prompts/generate-sample-prompts]]."
   [{:keys [id]} :- [:map [:id pos-int?]]]
   (api/check-superuser)
   (t2/with-transaction [_conn]
     (api/check-404 (t2/exists? :model/Metabot :id id))
     (metabot.usage/check-metabase-managed-free-limit!)
     (metabot.suggested-prompts/delete-all-metabot-prompts id)
-    (metabot.suggested-prompts/generate-sample-prompts id))
-  api/generic-204-no-content)
+    (metabot.suggested-prompts/generate-sample-prompts id)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API

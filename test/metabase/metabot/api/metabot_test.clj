@@ -69,8 +69,10 @@
           (testing "should generate prompt suggestions for metabot"
             (with-redefs [metabot.example-question-generator/generate-example-questions prompt-generator]
               ;; Trigger prompt generation by calling the regenerate endpoint
-              (mt/user-http-request :crowberto :post 204
-                                    (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))
+              (is (=? {:status       "generated"
+                       :prompt-count (reduce + (map count (vals prompts)))}
+                      (mt/user-http-request :crowberto :post 200
+                                            (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))))
             (let [added-prompts (t2/select [:model/MetabotPrompt [:card.name :model_name] :prompt]
                                            :metabot_id metabot-id
                                            {:join     [[:report_card :card] [:= :card.id :card_id]]
@@ -143,7 +145,9 @@
                     (is (= remaining-prompt-ids (current-prompt-ids))))
                   (testing "admin users are allowed"
                     (with-redefs [metabot.example-question-generator/generate-example-questions prompt-generator]
-                      (mt/user-http-request :crowberto :post 204 url)))))
+                      (is (=? {:status "generated" :prompt-count pos-int?}
+                              (mt/user-http-request :crowberto :post 200 url)))))))
+
               (let [new-prompt-ids (current-prompt-ids)]
                 (is (= (count all-prompt-ids) (count new-prompt-ids)))
                 (is (empty? (set/intersection all-prompt-ids new-prompt-ids)))
@@ -318,6 +322,39 @@
                      (:message response))))
             (is (= #{prompt-id}
                    (t2/select-pks-set :model/MetabotPrompt :metabot_id metabot-id)))))))))
+
+(deftest metabot-prompt-regenerate-empty-states-test
+  (testing "POST /prompt-suggestions/regenerate returns a structured outcome so the UI can"
+    (testing "distinguish a metabot whose library has no models or metrics from a real error"
+      (mt/with-temp [:model/Collection {collection-id :id} {:name "Empty Library"}
+                     :model/Metabot    {metabot-id :id}    {:name          "Empty metabot"
+                                                            :collection_id collection-id}]
+        ;; No cards in the collection — the LLM should never be called.
+        (with-redefs [metabot.example-question-generator/generate-example-questions
+                      (fn [& _] (throw (ex-info "LLM should not be called for an empty library" {})))]
+          (is (= {:status "empty" :reason "no-library-content"}
+                 (mt/user-http-request :crowberto :post 200
+                                       (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))))))
+    (testing "distinguish 'LLM produced nothing' from 'LLM errored'"
+      (mt/dataset test-data
+        (let [model-query {:type :query :database (mt/id) :query {:source-table (mt/id :products)}}]
+          (mt/with-temp [:model/Collection {collection-id :id} {:name "Library with a model"}
+                         :model/Card       {card-id :id}       {:name          "Products model"
+                                                                :type          :model
+                                                                :dataset_query model-query
+                                                                :collection_id collection-id}
+                         :model/Metabot    {metabot-id :id}    {:name          "Productive metabot"
+                                                                :collection_id collection-id}]
+            (with-redefs [metabot.example-question-generator/generate-example-questions
+                          (constantly {:table_questions  [{:questions []}]
+                                       :metric_questions []})]
+              (is (= {:status "empty" :reason "ai-produced-no-prompts"}
+                     (mt/user-http-request :crowberto :post 200
+                                           (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id))))
+              (is (empty? (t2/select :model/MetabotPrompt :metabot_id metabot-id))
+                  "no prompts should be persisted when the LLM returned none")
+              ;; Reference the bound card so kondo doesn't flag it as unused.
+              (is (pos-int? card-id)))))))))
 
 (deftest metabot-prompt-regeneration-on-config-change-test
   (mt/dataset test-data
