@@ -1,12 +1,11 @@
 import type { FormEvent, MouseEventHandler } from "react";
 import { useEffect, useRef, useState } from "react";
 import { push } from "react-router-redux";
-import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
+import { useGetDatabaseUsageInfoQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/redux";
-import { MetabaseApi } from "metabase/services";
 import {
   Alert,
   Box,
@@ -68,8 +67,8 @@ export const DeleteDatabaseModal = ({
 }: DeleteDatabaseModalProps) => {
   const dispatch = useDispatch();
 
-  const { value: usageInfo, loading } = useAsync(
-    async () => await MetabaseApi.db_usage_info({ dbId: database.id }),
+  const { data: usageInfo, isLoading: loading } = useGetDatabaseUsageInfoQuery(
+    database.id,
   );
 
   const [isContentRemovalConfirmed, setIsContentRemovalConfirmed] =

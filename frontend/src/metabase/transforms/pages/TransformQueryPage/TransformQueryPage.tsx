@@ -22,6 +22,7 @@ import {
 } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useDispatch, useSelector } from "metabase/redux";
+import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center, Group, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -37,7 +38,6 @@ import {
   type TransformEditorProps,
 } from "../../components/TransformEditor";
 import { TransformHeader } from "../../components/TransformHeader";
-import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
 import { isCompleteSource } from "../../utils";
 
@@ -127,8 +127,12 @@ function TransformQueryPageBody({
       ? (transform.last_run.message ?? undefined)
       : undefined;
   }, [transform.last_run]);
-
-  useRegisterMetabotTransformContext(transform, source, lastRunError);
+  const [dryRunError, setDryRunError] = useState<string | undefined>(undefined);
+  useRegisterMetabotTransformContext(
+    transform,
+    source,
+    dryRunError ?? lastRunError,
+  );
 
   const {
     checkData,
@@ -244,6 +248,7 @@ function TransformQueryPageBody({
               onChangeSource={setSourceAndRejectProposed}
               onAcceptProposed={acceptProposed}
               onRejectProposed={rejectProposed}
+              onDryRunErrorChange={setDryRunError}
             />
           ) : (
             <TransformEditor
@@ -298,6 +303,7 @@ export type TransformQueryPageEditorProps = {
   acceptProposed: () => void;
   rejectProposed: () => void;
   uiOptions?: TransformEditorProps["uiOptions"];
+  onDryRunErrorChange?: (error: string | undefined) => void;
   onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   onRunTransform?: (result: any) => void;
   onRun?: () => void;
@@ -315,6 +321,7 @@ export function TransformQueryPageEditor({
   isEditMode = false,
   acceptProposed,
   rejectProposed,
+  onDryRunErrorChange,
   onRunQueryStart,
   onRunTransform,
   onRun,
@@ -330,6 +337,7 @@ export function TransformQueryPageEditor({
       onChangeSource={setSourceAndRejectProposed}
       onAcceptProposed={acceptProposed}
       onRejectProposed={rejectProposed}
+      onDryRunErrorChange={onDryRunErrorChange}
       onRunTransform={onRunTransform}
       onRun={onRun}
     />

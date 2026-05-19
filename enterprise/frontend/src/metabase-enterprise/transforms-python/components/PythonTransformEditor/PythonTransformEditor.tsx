@@ -3,7 +3,6 @@ import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import type { PythonTransformEditorProps } from "metabase/plugins";
-import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { Flex, Stack } from "metabase/ui";
 import type {
   DatabaseId,
@@ -30,17 +29,20 @@ export function PythonTransformEditor({
   onChangeSource,
   onAcceptProposed,
   onRejectProposed,
+  onDryRunErrorChange,
   onRunTransform,
   onRun,
 }: PythonTransformEditorProps) {
   const { isRunning, cancel, run, executionResult, isDirty } =
     useTestPythonTransform(source);
 
-  useRegisterMetabotTransformContext(
-    transform,
-    source,
-    executionResult?.error?.message,
-  );
+  useEffect(() => {
+    const errMsg = [executionResult?.error?.message, executionResult?.logs]
+      .filter((x) => !!x)
+      .join("\n\n");
+    onDryRunErrorChange?.(errMsg);
+    return () => onDryRunErrorChange?.(undefined);
+  }, [executionResult, onDryRunErrorChange]);
 
   const wasRunning = usePrevious(isRunning);
 
