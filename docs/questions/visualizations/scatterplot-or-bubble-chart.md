@@ -6,37 +6,98 @@ redirect_from:
 
 # Scatterplots and bubble charts
 
-Scatterplots and bubble charts visualize the relationship between numeric values. 
+Scatterplots and bubble charts visualize the relationship between values. 
 
-Scatterplots show two numeric values per data point, while bubble charts show three by using the size of each dot to represent a third value.
+Scatterplots show two numeric values per data point, while bubble charts show three by using the size of each dot to represent a third value. In Metabase, both chart types use the same **Scatter** visualization type. Adding a bubble size column turns a scatterplot into a bubble chart.
 
 ![Scatter](../images/scatter.png)
 
-## Data shape for a scatterplot or bubble chart
+## How to create a scatterplot or bubble chart
 
-To create a scatterplot, create a question that returns two numeric columns. For example, `Count of Orders` and `Average of Total` grouped by `Product ID`:
+You can create a scatterplot or bubble chart from a few different data shapes, depending on whether you want to add bubble sizing or colored series.
 
-| Product ID | Count of orders | Average of total |
-| ---------- | --------------- | ---------------- |
-| 1          | 487             | 92.40            |
-| 2          | 612             | 78.15            |
-| 3          | 893             | 105.30           |
-| 4          | 245             | 134.50           |
-| 5          | 1,420           | 65.80            |
+### Create a scatterplot
 
-Each row in the result becomes a single dot on the chart, with the first numeric column on the x-axis and the second on the y-axis.
+1. Create a question that returns two numeric columns. For example, summarize `Count of orders` and `Average of total` grouped by `Product ID`:
 
-To create a bubble chart, include a third numeric column. In chart settings, select that column from the **Bubble size** menu. The third column value determines the size of each dot:
+    | Product ID | Count of orders | Average of total |
+    | ---------- | --------------- | ---------------- |
+    | 1          | 93              | 42.48            |
+    | 2          | 98              | 104.48           |
+    | 3          | 77              | 52.68            |
+    | 4          | 89              | 108.95           |
+    | 5          | 97              | 117.08           |
 
-| Product ID | Count of orders | Average of total | Total revenue |
-| ---------- | --------------- | ---------------- | ------------- |
-| 1          | 487             | 92.40            | 45,000        |
-| 2          | 612             | 78.15            | 47,800        |
-| 3          | 893             | 105.30           | 94,000        |
-| 4          | 245             | 134.50           | 33,000        |
-| 5          | 1,420           | 65.80            | 93,400        |
+    You can also use one numeric column grouped by a category or time dimension. For example, summarize `Average of total` grouped by `Product Category`:
 
-You can also break out by a category to create a separate colored series for each value. For example, grouping by Product Category creates a series for each category (Gizmo, Doohickey, Gadget, and Widget in the example chart above).
+    | Product Category | Average of total |
+    | ---------------- | ---------------- |
+    | Gizmo            | 84.12            |
+    | Doohickey        | 76.95            |
+    | Gadget           | 92.40            |
+    | Widget           | 88.27            |
+
+2. In the visualization picker, select **Scatter**.
+
+Each row in the result becomes a single dot on the chart. One column maps to the x-axis and the other to the y-axis.
+
+![Scatterplot example](../images/scatterplot-example.png)
+
+### Create a bubble chart
+
+1. Create a question that returns three numeric columns. For example, summarize `Count of orders`, `Average of total`, and `Sum of total` grouped by `Product ID`:
+
+    | Product ID | Count of orders | Average of total | Sum of total |
+    | ---------- | --------------- | ---------------- | ------------ |
+    | 1          | 93              | 42.48            | 3,950.53     |
+    | 2          | 98              | 104.48           | 10,238.92    |
+    | 3          | 77              | 52.68            | 4,056.36     |
+    | 4          | 89              | 108.95           | 9,696.46     |
+    | 5          | 97              | 117.08           | 11,356.66    |
+
+    You can also use two numeric columns grouped by a category or time dimension. For example, summarize `Average of total` and `Sum of total` grouped by `Product Category`:
+
+    | Product Category | Average of total | Sum of total |
+    | ---------------- | ---------------- | ------------ |
+    | Gizmo            | 84.12            | 425,000      |
+    | Doohickey        | 76.95            | 312,400      |
+    | Gadget           | 92.40            | 587,200      |
+    | Widget           | 88.27            | 401,800      |
+
+    You can also use one numeric column grouped by two category or time dimensions. For example, summarize `Average of total` grouped by `Product ID` and `Product Category`:
+
+    | Product ID | Product Category | Average of total |
+    | ---------- | ---------------- | ---------------- |
+    | 1          | Gizmo            | 42.48            |
+    | 2          | Doohickey        | 104.48           |
+    | 3          | Doohickey        | 52.68            |
+    | 4          | Doohickey        | 108.95           |
+    | 5          | Gadget           | 117.08           |
+
+2. In the visualization picker, select **Scatter**.
+3. In chart settings, select a numeric column from the **Bubble size** menu.
+
+Each row in the result becomes a single dot on the chart. One column maps to the x-axis, one to the y-axis, and the bubble size column determines the size of the dot.
+
+![Bubble chart example](../images/bubble-chart-example.png)
+
+### Add a category for colored series
+
+1. Create a question with the data shape for a scatterplot or bubble chart. Include a category column for the colored series. For example, summarize `Count of orders` and `Average of total` grouped by `Product ID` and `Product Category`:
+
+    | Product ID | Product Category | Count of orders | Average of total |
+    | ---------- | ---------------- | --------------- | ---------------- |
+    | 1          | Gizmo            | 93              | 42.48            |
+    | 2          | Doohickey        | 98              | 104.48           |
+    | 3          | Doohickey        | 77              | 52.68            |
+    | 4          | Doohickey        | 89              | 108.95           |
+    | 5          | Gadget           | 97              | 117.08           |
+
+2. In the visualization picker, select **Scatter**.
+
+Each category becomes its own colored series. The example chart shows the Gizmo, Doohickey, Gadget, and Widget series.
+
+![Bubble chart colored series example](../images/bubble-chart-colored-series-example.png)
 
 ## Scatterplot and bubble chart settings
 
@@ -93,4 +154,3 @@ Use the following options for the y-axis:
 - If you only have one numeric value to plot, or if you want to show how a value changes over time, consider a [bar chart, histogram, or line chart](./line-bar-and-area-charts.md) instead.
 - Scatterplots can become hard to read with very large datasets because of overlapping dots. For large datasets, consider aggregating your data or using a [heat map](./pivot-table.md#using-pivot-tables-as-heatmaps) instead.
 - You can't set [alerts](../alerts.md) on goal lines in scatterplots or bubble charts.
-
