@@ -8,7 +8,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: metabot_used_table
-            remarks: Machine-derived record of which database tables Metabot referenced when generating a query. Source cards, models, and metrics are recursively expanded to their underlying tables before insertion.
+            remarks: Record of which database tables Metabot referenced in generated a queries. Source cards, models, and metrics are recursively expanded to their underlying tables before insertion.
             columns:
               - column:
                   name: id
