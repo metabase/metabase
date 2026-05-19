@@ -45,10 +45,21 @@ describe("getReferencedColumns", () => {
   it("returns dimensions before metrics", () => {
     expect(
       getReferencedColumns(cols, {
+        "graph.dimensions": ["created_at"],
+        "graph.metrics": ["count", "sum"],
+      }),
+    ).toEqual([dimension, metric, metric2]);
+  });
+
+  it("only includes the first metric in breakout shape (2 dimensions)", () => {
+    // With 2 dimensions only metrics[0] is rendered; the rest stay available
+    // as additional columns.
+    expect(
+      getReferencedColumns(cols, {
         "graph.dimensions": ["created_at", "category"],
         "graph.metrics": ["count", "sum"],
       }),
-    ).toEqual([dimension, breakout, metric, metric2]);
+    ).toEqual([dimension, breakout, metric]);
   });
 
   it("filters out names that don't resolve against the dataset", () => {
