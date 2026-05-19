@@ -106,38 +106,38 @@ for (const key of Object.keys(moduleNamesUnsorted).sort((a, b) => b.length - a.l
  * Any shared module not listed here falls into the last sub-tier.
  */
 const sharedSubtiers = [
-  {
-    id: "shared_core",
-    modules: ["common", "querying", "api", "visualizations", "embedding", "palette", "metadata"],
-  },
-  {
-    id: "shared_data",
-    modules: [
-      "data-grid", "data-studio", "databases", "detail-view", "documents",
-      "metrics", "metrics-viewer",
-    ],
-  },
-  {
-    id: "shared_browse",
-    modules: [
-      "account", "archive", "auth", "browse", "collections", "comments",
-      "history", "home",
-    ],
-  },
-  {
-    id: "shared_actions",
-    modules: [
-      "new", "pulse", "questions", "search", "setup", "status", "timelines",
-      "transforms",
-    ],
-  },
-  {
-    id: "shared_infra",
-    modules: ["forms", "hoc", "hooks", "i18n", "router", "styled-components", "types", "urls"],
-  },
+  // Top: embedding-SDK packaging
   {
     id: "shared_embedding",
     modules: ["custom-viz", "embedding-ee", "embedding-sdk-package", "embedding-sdk-shared", "metabase-shared"],
+  },
+  // Shared modules slated to become features (closest to feature tier).
+  // Split into two rows, ordered roughly by import-popularity.
+  {
+    id: "shared_pages",
+    modules: ["collections", "data-studio", "documents", "setup", "search", "metrics"],
+  },
+  {
+    id: "shared_apps",
+    modules: ["detail-view", "browse", "auth", "home", "metrics-viewer", "account"],
+  },
+  // Domain shared concepts — the core data/visualization primitives
+  {
+    id: "shared_domain",
+    modules: ["common", "querying", "api", "visualizations", "embedding", "palette", "metadata"],
+  },
+  // Content / lifecycle pieces shared across features
+  {
+    id: "shared_content",
+    modules: [
+      "archive", "comments", "data-grid", "databases", "history", "new",
+      "pulse", "questions", "status", "timelines", "transforms",
+    ],
+  },
+  // Bottom: pure utilities (closest to lib tier)
+  {
+    id: "shared_utils",
+    modules: ["forms", "hoc", "hooks", "i18n", "router", "styled-components", "types", "urls"],
   },
 ];
 const SHARED_FALLBACK_SUBTIER = sharedSubtiers[sharedSubtiers.length - 1].id;
@@ -152,8 +152,10 @@ for (const st of sharedSubtiers) {
 function tierForElement(el) {
   if (el.type === "feature/enterprise") return "meta_feature";
   const baseTier = getTier(el.type);
-  if (baseTier !== "shared") return baseTier;
-  return moduleToSubtier[moduleNameForElement(el)] ?? SHARED_FALLBACK_SUBTIER;
+  if (baseTier === "shared") {
+    return moduleToSubtier[moduleNameForElement(el)] ?? SHARED_FALLBACK_SUBTIER;
+  }
+  return baseTier;
 }
 
 /** Tier ordering for the graph layout (feature at top, lib at bottom) */
@@ -177,7 +179,10 @@ for (const el of graphElements) {
   const tier = tierForElement(el);
   if (!tiers[tier]) {
     tiers[tier] = {
-      label: tier === "meta_feature" ? "feature" : tier.startsWith("shared") ? "shared" : tier,
+      label:
+        tier === "meta_feature" ? "feature"
+        : tier.startsWith("shared") ? "shared"
+        : tier,
       color: tierColors[getTier(el.type)] || "#ffffff",
       modules: [],
     };
@@ -199,13 +204,24 @@ for (const el of elements) {
  * the same tier in one spine — Graphviz's chain semantics would force them
  * onto different ranks, breaking the tier's rank=same row.
  */
-// Spines act as invisible vertical column anchors. The first spine is the
-// leftmost column — it must include the top-tier nodes (misc, enterprise),
-// otherwise those nodes float left of the column and drag whatever spine
-// they're in along with them, flipping the column order.
+// Spines act as invisible vertical column anchors. spine[0] is the central
+// column — pick one anchor module from each tier so every row has a node on
+// the central spine. Other modules in each row split half-and-half around it.
 const spines = [
-  ["misc", "enterprise", "dashboard", "common", "metabase-types"],
-  ["querying", "ui", "utils"],
+  [
+    "misc",            // app
+    "enterprise",      // meta_feature
+    "dashboard",       // feature
+    "custom-viz",      // shared_embedding
+    "collections",     // shared_pages
+    "home",            // shared_apps
+    "common",          // shared_domain
+    "archive",         // shared_content
+    "urls",            // shared_utils
+    "ui",              // basic
+    "metabase-types",  // lib
+  ],
+  ["querying", "utils"],
   ["admin", "visualizations"],
   ["reference"],
 ];
@@ -228,24 +244,33 @@ function buildCollapsePattern() {
   const topLevel = [];
   const extraPrefixes = [];
   for (const el of graphElements) {
-    const m = el.pattern.match(/^frontend\/src\/([\w-]+)\/?\*\/?\*\*$/);
+    const m = el.pattern.match(/^frontend\/src\/([\w-]+)\/(?:\*\/)?\*\*$/);
     if (m) {
       topLevel.push(m[1]);
       continue;
     }
-    // Handle paths outside frontend/src/ (e.g. enterprise/frontend/src/metabase-enterprise/**)
     const rawMatch = el.pattern.match(/^([^*]+)\/\*\*$/);
     if (rawMatch && !rawMatch[1].startsWith("frontend/src/")) {
       extraPrefixes.push(`^${rawMatch[1]}/`);
     }
   }
-  let pattern = topLevel.length > 0
-    ? `^frontend/src/(${topLevel.join("|")})/|^frontend/src/metabase/([^/]+)/`
-    : `^frontend/src/metabase/([^/]+)/`;
-  if (extraPrefixes.length > 0) {
-    pattern += "|" + extraPrefixes.join("|");
+  // Two-level patterns like `frontend/src/metabase-lib/v1/**` need a more
+  // specific alternation BEFORE the matching top-level entry, so sub-dir files
+  // don't get vacuumed into the parent bucket (e.g. mlv1 → mlv2).
+  const subPrefixes = [];
+  for (const el of graphElements) {
+    const sub = el.pattern.match(/^frontend\/src\/([\w-]+)\/([\w-]+)\/\*\*$/);
+    if (sub && topLevel.includes(sub[1])) {
+      subPrefixes.push(`^frontend/src/${sub[1]}/${sub[2]}/`);
+    }
   }
-  return pattern;
+  // Order: most specific first so they win in regex alternation.
+  const parts = [];
+  parts.push(...subPrefixes);
+  if (topLevel.length > 0) parts.push(`^frontend/src/(${topLevel.join("|")})/`);
+  parts.push(`^frontend/src/metabase/([^/]+)/`);
+  parts.push(...extraPrefixes);
+  return parts.join("|");
 }
 
 const collapsePattern = buildCollapsePattern();
@@ -291,6 +316,7 @@ tierOrder.forEach((t, i) => {
 // ---------------------------------------------------------------------------
 
 const edges = new Map();
+const inDegree = {};
 
 for (const mod of collapsed.modules) {
   const fromName = moduleNames[mod.source] ?? (mod.source.startsWith("frontend/src/") ? "other" : null);
@@ -308,6 +334,7 @@ for (const mod of collapsed.modules) {
         violations: [],
         violationCount: 0,
       });
+      inDegree[toName] = (inDegree[toName] ?? 0) + 1;
     }
 
     const boundaryRules = (dep.rules ?? []).filter(
@@ -368,39 +395,21 @@ function buildDot() {
   emit('  edge [fontname="Helvetica" fontsize="9" arrowsize="0.7"]');
   emit("");
 
-  // Legend
-  emit("  subgraph cluster_legend {");
-  emit('    label="Legend"');
-  emit('    fontsize="12"');
-  emit('    fontcolor="#666666"');
-  emit('    style="rounded"');
-  emit('    color="#cccccc"');
-  emit("    subgraph cluster_legend_tiers {");
-  emit('      label="Tiers"');
-  emit('      fontsize="10"');
-  emit('      fontcolor="#999999"');
-  emit('      style="rounded"');
-  emit('      color="#dddddd"');
-  // Collapse adjacent tiers with the same legend label (e.g. shared sub-tiers)
-  const legendTiers = [];
+  // Legend swatches — declared as regular nodes so they integrate into each
+  // tier row (one swatch per tier means the swatches line up vertically with
+  // their corresponding row). To avoid showing "shared" five times across the
+  // sub-tier rows, only the first sub-tier in each label-group gets a label;
+  // the rest get a colored swatch with no text. The shared `group="legend"`
+  // attribute keeps the swatches in a tidy vertical column.
+  let prevLegendLabel = null;
   for (const tierId of tierOrder) {
     const { label, color } = tiers[tierId];
-    const prev = legendTiers[legendTiers.length - 1];
-    if (prev && prev.label === label) continue;
-    legendTiers.push({ tierId, label, color });
-  }
-  for (const { tierId, label, color } of legendTiers) {
+    const displayLabel = label === prevLegendLabel ? "" : label;
+    prevLegendLabel = label;
     emit(
-      `  "legend_${tierId}" [label="${label}" fillcolor="${color}" width="1.0"]`,
+      `  "legend_${tierId}" [label="${displayLabel}" fillcolor="${color}" width="1.0" group="legend"]`,
     );
   }
-  const legendChain = legendTiers.map((t) => `"legend_${t.tierId}"`).join(" -> ");
-  emit(`      ${legendChain} [style="invis"]`);
-  emit("    }");
-  emit("  }");
-  // Anchor the legend column horizontally next to the main graph — without
-  // this anchor Graphviz leaves a huge gap between them.
-  emit(`  "legend_${legendTiers[0].tierId}" -> "misc" [style="invis" weight="1000"]`);
   emit("");
 
   // Modules whose outgoing boundary rules are NOT enforced by the linter
@@ -422,18 +431,47 @@ function buildDot() {
   emit("");
 
   // rank=same subgraphs — one row per tier. Each shared sub-tier is its own
-  // tier, the same way meta_feature is.
+  // tier, the same way meta_feature is. The legend swatch is the leftmost
+  // node, then non-spine modules are distributed around spine[0] alternating
+  // left and right, ordered by in-degree (most-imported closest to the spine).
   function emitTierSubgraph(tierId, indent) {
     const { modules } = tiers[tierId];
-    const ordered = [...modules].sort(spineSort);
+    const centralMods = modules
+      .filter((m) => spineColumn[m] === 0)
+      .sort(spineSort);
+    // Non-spine[0] spine modules get pulled by their own spine chain — usually
+    // to the right of spine[0]. Place them on the right side of the row chain
+    // so Graphviz doesn't have to swap them past spine[0] to satisfy both.
+    const spineOthers = modules
+      .filter((m) => spineColumn[m] !== undefined && spineColumn[m] !== 0)
+      .sort((a, b) => spineColumn[a] - spineColumn[b]);
+    const unspined = modules
+      .filter((m) => spineColumn[m] === undefined)
+      .sort((a, b) => (inDegree[b] ?? 0) - (inDegree[a] ?? 0));
+    // Alternate unspined: most-imported adjacent to spine, alternating outward.
+    // Start on the side opposite to where spineOthers are stacked so the row
+    // ends up balanced.
+    const leftInnerToOuter = [];
+    const rightInnerToOuter = [...spineOthers];
+    unspined.forEach((m, i) => {
+      (i % 2 === 0 ? leftInnerToOuter : rightInnerToOuter).push(m);
+    });
+    const leftHalf = leftInnerToOuter.reverse(); // outermost first for chain order
+    const rightHalf = rightInnerToOuter;
+    const rowNodes = [
+      `legend_${tierId}`,
+      ...leftHalf,
+      ...centralMods,
+      ...rightHalf,
+    ];
     emit(`${indent}subgraph cluster_tier_${tierId} {`);
     emit(`${indent}  style="invis"`);
     emit(`${indent}  rank="same"`);
-    for (const mod of ordered) {
+    for (const mod of rowNodes) {
       emit(`${indent}  "${mod}"`);
     }
-    if (ordered.length >= 2) {
-      const chain = ordered.map((m) => `"${m}"`).join(" -> ");
+    if (rowNodes.length >= 2) {
+      const chain = rowNodes.map((m) => `"${m}"`).join(" -> ");
       emit(`${indent}  ${chain} [style="invis" weight="1"]`);
     }
     emit(`${indent}}`);
@@ -443,6 +481,14 @@ function buildDot() {
     emitTierSubgraph(tierId, "  ");
     emit("");
   }
+
+  // Vertical chain through the legend column so swatches stack top-to-bottom
+  for (let i = 0; i < tierOrder.length - 1; i++) {
+    emit(
+      `  "legend_${tierOrder[i]}" -> "legend_${tierOrder[i + 1]}" [style="invis" weight="100"]`,
+    );
+  }
+  emit("");
 
   // Invisible spines for horizontal column anchoring
   for (const spine of spines) {
@@ -508,6 +554,21 @@ function postProcessSvg(svg) {
 
   const injected = [];
 
+  // Graph polygon bounds (graphviz coords) — needed for legend overflow check
+  // and "Other modules" sidebar placement.
+  const polyMatch = svg.match(
+    /id="graph0"[^>]*>[\s\S]*?<polygon[^>]*points="([\d.,-\s]+)"/,
+  );
+  let graphRight = 520;
+  let graphTop = -420;
+  let graphBottom = 20;
+  if (polyMatch) {
+    const pts = polyMatch[1].split(/\s+/).map((p) => p.split(",").map(Number));
+    graphRight = Math.max(...pts.map(([x]) => x));
+    graphTop = Math.min(...pts.map(([, y]) => y));
+    graphBottom = Math.max(...pts.map(([, y]) => y));
+  }
+
   // --- Violation arrow in legend ---
   // Find the last tier legend node to position below it
   const lastLegendTier = (() => {
@@ -523,48 +584,77 @@ function postProcessSvg(svg) {
     }
     return order[order.length - 1];
   })();
-  const legendMatch = svg.match(
-    new RegExp(
-      `<title>legend_${lastLegendTier}<\\/title>\\s*<path[^>]*d="M([\\d.]+),([\\d.-]+)C`,
-    ),
-  );
-  if (legendMatch) {
-    const nodeBottom = parseFloat(legendMatch[2]) + 29;
-    const arrowX1 = 32;
-    const arrowX2 = 72;
-    const arrowY = nodeBottom + 30;
-    // Second indicator row: bold-bordered sample rect = "enforced"
+  // --- Legend rounded box outline + indicators ---
+  // The legend swatches are emitted in the dot graph (one per tier row) so they
+  // line up vertically with their tier. Here we add the rounded outline around
+  // the whole legend column, plus the violation/unenforced indicators beneath
+  // the swatches.
+  function nodeBBox(title) {
+    const m = svg.match(
+      new RegExp(`<title>${title}</title>\\s*<path[^>]*d="([^"]+)"`),
+    );
+    if (!m) return null;
+    const coords = [...m[1].matchAll(/(-?[\d.]+),(-?[\d.]+)/g)].map((c) => [
+      parseFloat(c[1]),
+      parseFloat(c[2]),
+    ]);
+    if (!coords.length) return null;
+    return {
+      minX: Math.min(...coords.map(([x]) => x)),
+      maxX: Math.max(...coords.map(([x]) => x)),
+      minY: Math.min(...coords.map(([, y]) => y)),
+      maxY: Math.max(...coords.map(([, y]) => y)),
+    };
+  }
+  const lastBounds = nodeBBox(`legend_${lastLegendTier}`);
+  const firstBounds = nodeBBox(`legend_${tierOrder[0]}`);
+  let bottomExtra = 0;
+  if (lastBounds && firstBounds) {
+    const swatchCenterX = (lastBounds.minX + lastBounds.maxX) / 2;
+    const swatchHalfH = (lastBounds.maxY - lastBounds.minY) / 2;
+    const firstY = (firstBounds.minY + firstBounds.maxY) / 2;
+    const legendLibY = (lastBounds.minY + lastBounds.maxY) / 2;
+
+    // Violation arrow indicator
+    const arrowX1 = swatchCenterX - 20;
+    const arrowX2 = swatchCenterX + 20;
+    const arrowY = legendLibY + swatchHalfH + 28;
+    const violationLabelY = arrowY + 14;
+    // Bold-bordered sample rect = "unenforced"
     const sampleW = 40;
     const sampleH = 14;
-    const sampleMidX = (arrowX1 + arrowX2) / 2;
-    const sampleX = sampleMidX - sampleW / 2;
-    const enforcedY = arrowY + 22;
-    const sampleY = enforcedY - sampleH / 2;
+    const sampleX = swatchCenterX - sampleW / 2;
+    const sampleY = violationLabelY + 14;
+    const unenforcedLabelY = sampleY + sampleH + 12;
+    // Rounded box around the whole legend column
+    const boxPad = 14;
+    const titleH = 22;
+    const boxX = swatchCenterX - 50;
+    const boxW = 100;
+    const boxY = firstY - swatchHalfH - titleH - 6;
+    const boxBottom = unenforcedLabelY + 8;
+    const boxH = boxBottom - boxY;
+
+    bottomExtra = Math.max(0, boxBottom - graphTop - height + minY + 4);
+
     injected.push(
+      `<g id="legend-box">`,
+      `  <rect x="${boxX}" y="${boxY}" width="${boxW}" height="${boxH}" rx="8" ry="8" fill="none" stroke="#cccccc" stroke-width="1"/>`,
+      `  <text x="${swatchCenterX}" y="${boxY + 16}" text-anchor="middle" font-family="Helvetica,sans-Serif" font-size="12" fill="#666666">Legend</text>`,
+      `</g>`,
       `<g id="legend-violation">`,
       `  <defs><marker id="arrowhead-red" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="red"/></marker></defs>`,
       `  <line x1="${arrowX1}" y1="${arrowY}" x2="${arrowX2}" y2="${arrowY}" stroke="red" stroke-width="2" marker-end="url(#arrowhead-red)"/>`,
-      `  <text x="${arrowX2 + 6}" y="${arrowY + 4}" font-family="Helvetica,sans-Serif" font-size="10" fill="#888888">violation</text>`,
+      `  <text x="${swatchCenterX}" y="${violationLabelY}" text-anchor="middle" font-family="Helvetica,sans-Serif" font-size="10" fill="#888888">violation</text>`,
       `</g>`,
       `<g id="legend-unenforced">`,
       `  <rect x="${sampleX}" y="${sampleY}" width="${sampleW}" height="${sampleH}" rx="4" ry="4" fill="none" stroke="#333333" stroke-width="2"/>`,
-      `  <text x="${sampleX + sampleW + 6}" y="${enforcedY + 4}" font-family="Helvetica,sans-Serif" font-size="10" fill="#888888">unenforced</text>`,
+      `  <text x="${swatchCenterX}" y="${unenforcedLabelY}" text-anchor="middle" font-family="Helvetica,sans-Serif" font-size="10" fill="#888888">unenforced</text>`,
       `</g>`,
     );
   }
 
   // --- "Other modules" sidebar ---
-  const polyMatch = svg.match(
-    /id="graph0"[^>]*>[\s\S]*?<polygon[^>]*points="([\d.,-\s]+)"/,
-  );
-  let graphRight = 520;
-  let graphTop = -420;
-  if (polyMatch) {
-    const pts = polyMatch[1].split(/\s+/).map((p) => p.split(",").map(Number));
-    graphRight = Math.max(...pts.map(([x]) => x));
-    graphTop = Math.min(...pts.map(([, y]) => y));
-  }
-
   const otherDirs = readdirSync("frontend/src/metabase", {
     withFileTypes: true,
   })
@@ -598,13 +688,19 @@ function postProcessSvg(svg) {
     `</g>`,
   );
 
-  // Expand viewBox for the sidebar
-  const newWidth = width + boxWidth + 60;
-  const newHeight = Math.max(height, boxHeight + 40);
+  // Crop empty space on the left so the legend sits near the canvas edge,
+  // and expand viewBox for the right-side sidebar + any legend indicator
+  // overflow at the bottom.
+  const legendBoxLeft = lastBounds
+    ? (lastBounds.minX + lastBounds.maxX) / 2 - 50
+    : minX;
+  const newMinX = Math.max(minX, legendBoxLeft - 10);
+  const newWidth = width - (newMinX - minX) + boxWidth + 60;
+  const newHeight = Math.max(height, boxHeight + 40) + bottomExtra;
 
   svg = svg.replace(
     /viewBox="[^"]+"/,
-    `viewBox="${minX} ${minY} ${newWidth} ${newHeight}"`,
+    `viewBox="${newMinX} ${minY} ${newWidth} ${newHeight}"`,
   );
   svg = svg.replace(/\bwidth="[\d.]+pt"/, `width="${newWidth}pt"`);
   svg = svg.replace(/\bheight="[\d.]+pt"/, `height="${newHeight}pt"`);

@@ -72,7 +72,7 @@ function typesToRegex(types) {
       continue;
     }
 
-    const topMatch = el.pattern.match(/^frontend\/src\/([\w-]+)\/?\*\/?\*\*$/);
+    const topMatch = el.pattern.match(/^frontend\/src\/([\w-]+)\/(?:\*\/)?\*\*$/);
     if (topMatch) {
       topLevelDirs.push(topMatch[1]);
       continue;
@@ -296,7 +296,7 @@ function generateForbiddenRules() {
         const el = typeToElement.get(type);
         const sub = el.pattern.match(/^frontend\/src\/metabase\/(\w+)\/\*\*$/);
         if (sub) { namedMetabaseDirs.push(sub[1]); continue; }
-        const top = el.pattern.match(/^frontend\/src\/([\w-]+)\/?\*\/?\*\*$/);
+        const top = el.pattern.match(/^frontend\/src\/([\w-]+)\/(?:\*\/)?\*\*$/);
         if (top) namedTopLevel.push(top[1]);
       }
       const namedPath = [
@@ -342,7 +342,7 @@ function generateIncludeOnly() {
       hasOtherCatchAll = true;
       continue;
     }
-    const topMatch = el.pattern.match(/^frontend\/src\/([\w-]+)\/?\*\/?\*\*$/);
+    const topMatch = el.pattern.match(/^frontend\/src\/([\w-]+)\/(?:\*\/)?\*\*$/);
     if (topMatch) {
       topLevelDirs.push(topMatch[1]);
       continue;
@@ -400,7 +400,7 @@ function generateModuleThemes() {
       sourceRegex = `^frontend/src/metabase/${subMatch[1]}/`;
     } else {
       const topMatch = el.pattern.match(
-        /^frontend\/src\/([\w-]+)\/?\*\/?\*\*$/,
+        /^frontend\/src\/([\w-]+)\/(?:\*\/)?\*\*$/,
       );
       if (topMatch) {
         sourceRegex = `^frontend/src/${topMatch[1]}/`;
@@ -437,7 +437,7 @@ function generateCollapsePattern() {
 
   for (const type of analysisTypes) {
     const el = typeToElement.get(type);
-    const topMatch = el.pattern.match(/^frontend\/src\/([\w-]+)\/?\*\/?\*\*$/);
+    const topMatch = el.pattern.match(/^frontend\/src\/([\w-]+)\/(?:\*\/)?\*\*$/);
     if (topMatch) {
       topLevel.push(topMatch[1]);
     }
