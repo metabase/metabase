@@ -56,8 +56,8 @@ export const ResourceCard = () => {
 
   const recentItems = match(experience)
     .with("dashboard", () => recentDashboards)
-    .with("chart", () => recentQuestions)
     .with("browser", () => recentCollections)
+    .with("chart", () => recentQuestions)
     .exhaustive();
 
   const selectedResourceName = match(experience)
@@ -73,15 +73,14 @@ export const ResourceCard = () => {
   const { title, icon, placeholder, label } = getResourceCopy(experience);
 
   const updateEmbedSettings = (
-    experience: ResourceExperience,
+    experience: SdkIframeEmbedSetupExperience,
     id: string | number,
   ) => {
     // Do not update if the selected item is already selected.
     if (
       (experience === "dashboard" && settings.dashboardId === id) ||
       (experience === "chart" && settings.questionId === id) ||
-      (experience === "browser" &&
-        settings.componentName === "metabase-browser" &&
+      (settings.componentName === "metabase-browser" &&
         settings.initialCollection === id)
     ) {
       return;
@@ -127,8 +126,8 @@ export const ResourceCard = () => {
       SdkIframeEmbedSetupRecentItemType
     >(experience)
       .with("chart", () => "question")
-      .with("dashboard", () => "dashboard")
       .with("browser", () => "collection")
+      .with("dashboard", () => "dashboard")
       .exhaustive();
 
     addRecentItem(resourceType, {
@@ -256,7 +255,10 @@ const COLLECTION_MODAL_OPTIONS = {
 
 const hasResourceSelectionStep = (
   experience: SdkIframeEmbedSetupExperience,
-): experience is ResourceExperience =>
+): experience is Exclude<
+  SdkIframeEmbedSetupExperience,
+  (typeof EXPERIENCES_WITHOUT_RESOURCE_SELECTION)[number]
+> =>
   !(
     EXPERIENCES_WITHOUT_RESOURCE_SELECTION as SdkIframeEmbedSetupExperience[]
   ).includes(experience);
