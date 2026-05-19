@@ -378,7 +378,7 @@ export const fetchCardDataAction = createAsyncThunk<
           card,
           metadata,
           { ...datasetQuery, ignore_cache: ignoreCache },
-          deferred,
+          controller.signal,
         ),
       )) as Dataset | { error: unknown };
     } else {
