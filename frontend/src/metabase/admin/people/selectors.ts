@@ -23,3 +23,17 @@ export const shouldNudgeToPro = createSelector(
     );
   },
 );
+
+export const shouldShowTenantsUpsell = createSelector(
+  (state) => getSetting(state, "setup-embedding-autoenabled"),
+  (state) => getSetting(state, "embedding-homepage"),
+  (state) => getSetting(state, "token-features"),
+  (wasEmbeddingAutoenabled, embeddingHomepage, tokenFeatures) => {
+    // Older web setup flows only persisted this broader embedding interest
+    // signal, while the SDK CLI already persisted setup-embedding-autoenabled.
+    const hasEmbeddingSetupSignal =
+      Boolean(wasEmbeddingAutoenabled) || embeddingHomepage === "visible";
+
+    return hasEmbeddingSetupSignal && !tokenFeatures?.tenants;
+  },
+);

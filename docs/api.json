@@ -1167,6 +1167,39 @@
           "$ref" : "#/components/schemas/metabase-enterprise.action-v2.api.api-action-expression"
         } ]
       },
+      "metabase-enterprise.data-studio.api.table.publish-table-selectors" : {
+        "type" : "object",
+        "properties" : {
+          "collection_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "database_ids" : {
+            "type" : "array",
+            "items" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }
+          },
+          "schema_ids" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "table_ids" : {
+            "type" : "array",
+            "items" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }
+          }
+        },
+        "required" : [ "collection_id" ]
+      },
       "metabase-enterprise.data-studio.api.table.publish-tables-response" : {
         "description" : "Schema for /publish-tables endpoint response. Matches frontend PublishTablesResponse type.",
         "type" : "object",
@@ -3335,10 +3368,39 @@
         },
         "required" : [ "name", "base_type", "display_name" ]
       },
-      "metabase.agent-api.api.construct-query-response" : {
-        "description" : "Response containing a base64-encoded MBQL query for use with /v1/execute.",
+      "metabase.agent-api.api.construct-query-request" : {
+        "description" : "Request body for /v2/construct-query. Same as program-request, with an optional prompt\n  capturing the user's original intent when a caller has one.",
         "type" : "object",
         "properties" : {
+          "operations" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.agent-lib.schema.top-level-op"
+            }
+          },
+          "prompt" : {
+            "type" : "string",
+            "minLength" : 1,
+            "maxLength" : 10000,
+            "description" : "The user's exact original message, when available. Pass it as-is without summarizing or rewriting."
+          },
+          "source" : {
+            "$ref" : "#/components/schemas/metabase.agent-lib.schema.source"
+          }
+        },
+        "required" : [ "source", "operations" ],
+        "additionalProperties" : false
+      },
+      "metabase.agent-api.api.construct-query-response" : {
+        "description" : "Response containing a base64-encoded MBQL query and, when supplied, the original prompt for use with /v1/execute.",
+        "type" : "object",
+        "properties" : {
+          "prompt" : {
+            "type" : "string",
+            "minLength" : 1,
+            "maxLength" : 10000,
+            "description" : "The user's exact original message, when available. Pass it as-is without summarizing or rewriting."
+          },
           "query" : {
             "type" : "string",
             "minLength" : 1
@@ -3786,7 +3848,7 @@
         "required" : [ "id", "type", "name" ]
       },
       "metabase.agent-api.api.program-request" : {
-        "description" : "Request body for /v2/construct-query and /v2/query.\n  An agent-lib structured program with `:source` and `:operations`. The top-level\n  `:source` must reference a database entity (`table`, `card`, `dataset`, or\n  `metric`); `context` and nested `program` sources are rejected at the HTTP\n  boundary by [[evaluate-program-for-execution]] because they require an\n  in-process evaluation context.",
+        "description" : "Request body for /v2/query.\n  An agent-lib structured program with `:source` and `:operations`. The top-level\n  `:source` must reference a database entity (`table`, `card`, `dataset`, or\n  `metric`); `context` and nested `program` sources are rejected at the HTTP\n  boundary by [[evaluate-program-for-execution]] because they require an\n  in-process evaluation context.",
         "$ref" : "#/components/schemas/metabase.agent-lib.schema.program"
       },
       "metabase.agent-api.api.query-request" : {
@@ -15197,7 +15259,7 @@
       "post" : {
         "operationId" : "post-api-agent-v2-construct-query",
         "summary" : "POST /api/agent/v2/construct-query",
-        "description" : "Construct an MBQL query from a structured agent-lib program.\n\n  The body is the program itself: a JSON object with `source` (identifying the\n  table/card/dataset/metric to query) and `operations` (an array of operator\n  tuples). Returns a base64-encoded MBQL query that can be executed via\n  /v1/execute. See the agent_api reference for the full program syntax.",
+        "description" : "Construct an MBQL query from a structured agent-lib program.\n\n  The body is the program itself: a JSON object with `source` (identifying the\n  table/card/dataset/metric to query), `operations` (an array of operator\n  tuples), and `prompt` (the user's original request). Returns a base64-encoded\n  MBQL query that can be executed via /v1/execute. See the agent_api reference\n  for the full program syntax.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -15221,7 +15283,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase.agent-api.api.program-request"
+                "$ref" : "#/components/schemas/metabase.agent-api.api.construct-query-request"
               }
             }
           }
@@ -26567,7 +26629,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.table-selectors"
+                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.publish-table-selectors"
               }
             }
           }
@@ -30896,9 +30958,9 @@
       }
     },
     "/api/ee/serialization/metadata/export" : {
-      "get" : {
-        "operationId" : "get-api-ee-serialization-metadata-export",
-        "summary" : "GET /api/ee/serialization/metadata/export",
+      "post" : {
+        "operationId" : "post-api-ee-serialization-metadata-export",
+        "summary" : "POST /api/ee/serialization/metadata/export",
         "description" : "Get warehouse metadata (databases, tables, and fields) for all databases visible to the\n  current user. References between rows are emitted as raw numeric ids (`db_id`,\n  `table_id`, `parent_id`, `fk_target_field_id`).\n\n  Sections must be opted into with the `with-databases`, `with-tables`, and `with-fields`\n  query parameters — they all default to `false`. The response is streamed for efficiency\n  with large schemas.\n\n  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or\n  `Query builder and native`) permissions on each database and table.",
         "parameters" : [ {
           "in" : "query",
@@ -32086,6 +32148,143 @@
           }
         },
         "tags" : [ "/api/email" ]
+      }
+    },
+    "/api/embed-mcp/drills" : {
+      "post" : {
+        "operationId" : "post-api-embed-mcp-drills",
+        "summary" : "POST /api/embed-mcp/drills",
+        "description" : "Stash a base64-encoded MBQL query for the iframe's pending drill-through and\n   return a handle UUID the iframe will thread into the agent message so the\n   `render_drill_through` tool can fetch it.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "encodedQuery" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "encodedQuery" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/embed-mcp" ]
+      }
+    },
+    "/api/embed-mcp/feedback" : {
+      "post" : {
+        "operationId" : "post-api-embed-mcp-feedback",
+        "summary" : "POST /api/embed-mcp/feedback",
+        "description" : "Proxy MCP Apps visualization feedback to Harbormaster.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "body" : {
+                      "type" : "null"
+                    },
+                    "status" : {
+                      "const" : 204
+                    }
+                  },
+                  "required" : [ "status", "body" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "conversation_data" : {
+                    "type" : "object",
+                    "properties" : {
+                      "prompt" : {
+                        "oneOf" : [ {
+                          "type" : "string",
+                          "maxLength" : 10000
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "query" : {
+                        "oneOf" : [ {
+                          "type" : "string",
+                          "maxLength" : 10000
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "source" : {
+                        "const" : "mcp"
+                      }
+                    },
+                    "required" : [ "source" ]
+                  },
+                  "feedback" : {
+                    "type" : "object",
+                    "properties" : {
+                      "freeform_feedback" : {
+                        "oneOf" : [ {
+                          "type" : "string",
+                          "maxLength" : 10000
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "issue_type" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "message_id" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "positive" : {
+                        "type" : "boolean"
+                      }
+                    },
+                    "required" : [ "message_id", "positive" ]
+                  }
+                },
+                "required" : [ "feedback", "conversation_data" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/embed-mcp" ]
       }
     },
     "/api/embed-theme" : {
@@ -42761,6 +42960,15 @@
                       "type" : "null"
                     } ]
                   },
+                  "collection_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "data_source" : {
                     "oneOf" : [ {
                       "type" : "string"
@@ -45179,6 +45387,9 @@
                       }
                     },
                     "created_at" : { },
+                    "active" : {
+                      "type" : "boolean"
+                    },
                     "description" : {
                       "oneOf" : [ {
                         "anyOf" : [ {
@@ -45191,7 +45402,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "id", "name", "description", "schedule", "ui_display_type", "entity_id", "created_at", "updated_at" ],
+                  "required" : [ "id", "name", "description", "schedule", "ui_display_type", "active", "entity_id", "created_at", "updated_at" ],
                   "additionalProperties" : false
                 }
               }
@@ -45418,6 +45629,9 @@
                         }
                       },
                       "created_at" : { },
+                      "active" : {
+                        "type" : "boolean"
+                      },
                       "description" : {
                         "oneOf" : [ {
                           "anyOf" : [ {
@@ -45430,7 +45644,7 @@
                         } ]
                       }
                     },
-                    "required" : [ "id", "name", "description", "schedule", "ui_display_type", "entity_id", "created_at", "updated_at" ],
+                    "required" : [ "id", "name", "description", "schedule", "ui_display_type", "active", "entity_id", "created_at", "updated_at" ],
                     "additionalProperties" : false
                   }
                 }
@@ -45442,6 +45656,58 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/transform-job" ]
+      }
+    },
+    "/api/transform-job/active" : {
+      "put" : {
+        "operationId" : "put-api-transform-job-active",
+        "summary" : "PUT /api/transform-job/active",
+        "description" : "Activate or deactivate every transform job. Inactive jobs do not run on schedule. Manual runs\n  via `POST /api/transform-job/:job-id/run` ignore this flag.\n\n  Reports per-job outcome counts: `:updated` (successfully flipped) and `:failed` (raised an\n  error during the flip — the row update or Quartz write failed and was logged).",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "failed" : {
+                      "type" : "integer"
+                    },
+                    "updated" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "updated", "failed" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "active" : {
+                    "type" : "boolean"
+                  }
+                },
+                "required" : [ "active" ]
+              }
+            }
           }
         },
         "tags" : [ "/api/transform-job" ]
@@ -45571,6 +45837,9 @@
                       }
                     },
                     "created_at" : { },
+                    "active" : {
+                      "type" : "boolean"
+                    },
                     "description" : {
                       "oneOf" : [ {
                         "anyOf" : [ {
@@ -45583,7 +45852,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "id", "name", "description", "schedule", "ui_display_type", "entity_id", "created_at", "updated_at" ],
+                  "required" : [ "id", "name", "description", "schedule", "ui_display_type", "active", "entity_id", "created_at", "updated_at" ],
                   "additionalProperties" : false
                 }
               }
@@ -45602,6 +45871,9 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
+                  "active" : {
+                    "type" : "boolean"
+                  },
                   "description" : {
                     "oneOf" : [ {
                       "type" : "string",
@@ -45787,6 +46059,9 @@
                       }
                     },
                     "created_at" : { },
+                    "active" : {
+                      "type" : "boolean"
+                    },
                     "description" : {
                       "oneOf" : [ {
                         "anyOf" : [ {
@@ -45799,7 +46074,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "id", "name", "description", "schedule", "ui_display_type", "entity_id", "created_at", "updated_at" ],
+                  "required" : [ "id", "name", "description", "schedule", "ui_display_type", "active", "entity_id", "created_at", "updated_at" ],
                   "additionalProperties" : false
                 }
               }

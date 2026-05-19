@@ -22,23 +22,23 @@ done
 shift $((OPTIND-1))
 [ "${1:-}" = "--" ] && shift
 
-if [ "${ssl}" == "" ]
-then
+if [ "${ssl}" == "" ]; then
     ssl="tls"
 fi
 
 params=()
-if [ "${ssl}" == "tls" ]
-then
+if [ "${ssl}" == "tls" ]; then
     params=(--tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt)
 fi
 
 echo "Running mongod version ${version} in SSL mode ${ssl}"
 
-docker run -d -it --rm -p 27017:27017 --name metamongo metabase/qa-databases:mongo-sample-${version} \
+docker run -d -it --rm -p 27017:27017 --name metamongo \
+       -e MONGO_INITDB_ROOT_USERNAME=metabase \
+       -e MONGO_INITDB_ROOT_PASSWORD=metasample123 \
+       metabase/qa-databases:mongo-sample-${version} \
        mongod --dbpath /data/db2/ "${params[@]}"
 
-for f in metabase.crt metabase.key metaca.crt
-do
+for f in metabase.crt metabase.key metaca.crt; do
     docker cp metamongo:/etc/mongo/$f .
 done

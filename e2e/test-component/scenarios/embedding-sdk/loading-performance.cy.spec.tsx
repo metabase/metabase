@@ -334,7 +334,7 @@ describe(
         cy.intercept("GET", /\/auth\/sso(\?preferred_method=\w+)?$/).as(
           "authSsoDiscovery",
         );
-        cy.intercept("GET", /\/auth\/sso\?.*jwt=/).as("authSsoTokenExchange");
+        cy.intercept("POST", "**/auth/sso").as("authSsoTokenExchange");
         cy.intercept("GET", "/api/user/current").as("getCurrentUser");
         cy.intercept("GET", "/api/session/properties").as(
           "getSessionProperties",

@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.aggregation-test
   "Tests for MBQL aggregations."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.aggregation-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.aggregation-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [mb.hawk.assert-exprs.approximately-equal :as =?]

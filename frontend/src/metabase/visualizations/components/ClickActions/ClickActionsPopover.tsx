@@ -126,7 +126,9 @@ export class ClickActionsPopover extends Component<
           onResize={() => {
             this.instance?.popperInstance?.update();
           }}
-          onChangeCardAndRun={onChangeCardAndRun}
+          onChangeCardAndRun={(options) =>
+            onChangeCardAndRun({ drillName: popoverAction.name, ...options })
+          }
           onClose={this.close}
           series={series}
           onUpdateVisualizationSettings={onUpdateVisualizationSettings}

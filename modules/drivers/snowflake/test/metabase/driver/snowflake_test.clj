@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.snowflake-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.snowflake-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.snowflake-test]}}}}}}
   (:require
    [clojure.data :as data]
    [clojure.java.jdbc :as jdbc]
@@ -46,6 +48,7 @@
    [metabase.util.log :as log]
    [metabase.util.log.capture :as log.capture]
    [metabase.util.random :as u.random]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouses.models.database :as database]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
@@ -477,6 +480,185 @@
                (jdbc/execute! {:connection conn}
                               [(format "DROP TABLE IF EXISTS \"%s\".\"PUBLIC\".\"%s\";" db-name table-name)]
                               {:transaction? false})))))))))
+
+;; Five related repro phases (v1-v5) share Snowflake connection setup and table-name lifecycle.
+;; Splitting would multiply CI Snowflake setup cost. Kondo's warning is acknowledged.
+^{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
+(deftest ^:sequential ^:synchronized create-or-replace-table-updates-effective-type-test
+  (mt/test-driver :snowflake
+    (testing "GHY-3388: when a column's database type changes via CREATE OR REPLACE TABLE
+             (e.g. TEXT -> NUMBER via TRY_TO_NUMBER), sync should update effective_type to match
+             the new base_type and clear stale coercion_strategy/semantic_type. Reproduces the
+             in-place update path (repro v1 from the Linear issue) where Metabase's Field row is
+             preserved across the schema change."
+      (let [db-name    (#'driver.snowflake/db-name (mt/db))
+            table-name (str "ghy_3388_" (u.random/random-name))
+            run-sql!   (fn [stmts]
+                         (sql-jdbc.execute/do-with-connection-with-options
+                          :snowflake
+                          (mt/db)
+                          nil
+                          (fn [^java.sql.Connection conn]
+                            (doseq [stmt stmts]
+                              (jdbc/execute! {:connection conn} [stmt] {:transaction? false})))))
+            qualified  (format "\"%s\".\"PUBLIC\".\"%s\"" db-name table-name)]
+        (try
+          ;; step 1: create the table with a TEXT column and insert rows. Quote identifiers so they
+          ;; are preserved lowercase (Snowflake upper-cases unquoted identifiers).
+          (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
+                     (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
+          ;; step 2: sync — Metabase creates Table + Field rows for our new table
+          (sync/sync-database! (mt/db))
+          (let [original-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
+                _              (is (some? original-table) "table should be synced")
+                original-field (t2/select-one :model/Field :table_id (:id original-table) :name "text_column")]
+            (testing "sanity check: text_column is text"
+              (is (=? {:base_type      :type/Text
+                       :effective_type :type/Text}
+                      original-field)))
+            ;; step 3: CREATE OR REPLACE the table, converting text_column to a number via TRY_TO_NUMBER
+            (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
+                                    "SELECT \"id\", TRY_TO_NUMBER(\"text_column\") AS \"text_column\" FROM %s;")
+                               qualified qualified)])
+            ;; step 4: sync again
+            (sync/sync-database! (mt/db))
+            (let [new-field (t2/select-one :model/Field :id (:id original-field))]
+              (testing "after sync, base_type and effective_type both reflect the new numeric column,
+                       and stale coercion/semantic type are cleared"
+                ;; TRY_TO_NUMBER with no precision returns NUMBER(38,0) -> :type/BigInteger
+                (is (=? {:base_type         :type/BigInteger
+                         :effective_type    :type/BigInteger
+                         :coercion_strategy nil
+                         :semantic_type     nil}
+                        new-field))))
+            ;; ----- repro v2 (clean state baseline): drop the table, wipe Metabase metadata for it,
+            ;; recreate fresh as TEXT, sync, then CREATE OR REPLACE to numeric and sync again. The
+            ;; field should end up with effective_type matching base_type. (In the Linear repro the
+            ;; user observes the cast feature does not appear here — i.e. effective_type vs base_type
+            ;; should be consistent and not stuck as text.)
+            (run-sql! [(format "DROP TABLE IF EXISTS %s;" qualified)])
+            (t2/delete! :model/Field :table_id (:id original-table))
+            (t2/delete! :model/Table :id (:id original-table)))
+          (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
+                     (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
+          (sync/sync-database! (mt/db))
+          (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
+                                  "SELECT \"id\", TRY_TO_NUMBER(\"text_column\", 38, 2) AS \"text_column\" FROM %s;")
+                             qualified qualified)])
+          (sync/sync-database! (mt/db))
+          (let [fresh-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
+                fresh-field (t2/select-one :model/Field :table_id (:id fresh-table) :name "text_column")]
+            (testing "after fresh-state CREATE OR REPLACE to numeric, base_type and effective_type
+                     both reflect the new numeric column"
+              ;; TRY_TO_NUMBER(x, 38, 2) returns NUMBER(38,2) -> :type/Number on Snowflake
+              (is (=? {:base_type         :type/Number
+                       :effective_type    :type/Number
+                       :coercion_strategy nil
+                       :semantic_type     nil}
+                      fresh-field)))
+            ;; ----- repro v3: simulate the user setting a coercion strategy on the TEXT column
+            ;; (via the UI cast-toggle) before the underlying type changes. When the DB column
+            ;; becomes numeric natively, sync should clear the now-meaningless coercion strategy
+            ;; and reset effective_type to match the new base_type. If sync leaves the coercion
+            ;; sticky, effective_type will diverge from base_type — the observable GHY-3388 symptom.
+            (run-sql! [(format "DROP TABLE IF EXISTS %s;" qualified)])
+            (t2/delete! :model/Field :table_id (:id fresh-table))
+            (t2/delete! :model/Table :id (:id fresh-table)))
+          (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
+                     (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
+          (sync/sync-database! (mt/db))
+          (let [pre-coerce-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
+                pre-coerce-field (t2/select-one :model/Field :table_id (:id pre-coerce-table) :name "text_column")]
+            ;; user enables coercion: this TEXT column is really an integer
+            (t2/update! :model/Field (:id pre-coerce-field)
+                        {:coercion_strategy :Coercion/String->Integer
+                         :effective_type    :type/Integer})
+            (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
+                                    "SELECT \"id\", TRY_TO_NUMBER(\"text_column\") AS \"text_column\" FROM %s;")
+                               qualified qualified)])
+            (sync/sync-database! (mt/db))
+            (let [after-field (t2/select-one :model/Field :id (:id pre-coerce-field))]
+              (testing "after the underlying TEXT column becomes a native number, the previously
+                       user-set coercion strategy should be cleared and effective_type should
+                       match the new base_type"
+                (is (=? {:base_type         :type/BigInteger
+                         :effective_type    :type/BigInteger
+                         :coercion_strategy nil
+                         :semantic_type     nil}
+                        after-field)))))
+          ;; ----- repro v4: set coercion the way the PUT /api/field/:id endpoint does:
+          ;; via upsert-user-settings, which writes to metabase_field_user_settings. That
+          ;; row is overlaid back onto the field on every t2/update! via the
+          ;; sync-user-settings before-update hook (merge non-nil user-settings over
+          ;; field changes). v3 wrote only to metabase_field and so bypassed this
+          ;; overlay; v4 exercises the real UI cast-toggle path.
+          (run-sql! [(format "DROP TABLE IF EXISTS %s;" qualified)])
+          (when-let [stale-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)]
+            (t2/delete! :model/Field :table_id (:id stale-table))
+            (t2/delete! :model/Table :id (:id stale-table)))
+          (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
+                     (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
+          (sync/sync-database! (mt/db))
+          (let [v4-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
+                v4-field (t2/select-one :model/Field :table_id (:id v4-table) :name "text_column")]
+            (field-user-settings/upsert-user-settings v4-field
+                                                      {:coercion_strategy :Coercion/String->Integer
+                                                       :effective_type    :type/Integer})
+            (t2/update! :model/Field (:id v4-field)
+                        {:coercion_strategy :Coercion/String->Integer
+                         :effective_type    :type/Integer})
+            (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
+                                    "SELECT \"id\", TRY_TO_NUMBER(\"text_column\") AS \"text_column\" FROM %s;")
+                               qualified qualified)])
+            (sync/sync-database! (mt/db))
+            (let [after-field         (t2/select-one :model/Field :id (:id v4-field))
+                  after-user-settings (t2/select-one :model/FieldUserSettings :field_id (:id v4-field))]
+              (testing "after CREATE OR REPLACE to numeric, the user-set coercion stored in
+                       metabase_field_user_settings (via upsert-user-settings) should be
+                       cleared so it doesn't overlay back on top of the synced field"
+                (is (=? {:base_type         :type/BigInteger
+                         :effective_type    :type/BigInteger
+                         :coercion_strategy nil
+                         :semantic_type     nil}
+                        after-field))
+                (is (=? {:effective_type    :type/BigInteger
+                         :coercion_strategy nil
+                         :semantic_type     nil}
+                        after-user-settings)))))
+          ;; ----- repro v5: same as v1 (in-place CREATE OR REPLACE TEXT -> NUMBER) but trigger
+          ;; sync via sync/sync-table! — the function the per-table "Sync table now" UI button
+          ;; calls. Goes through sync-table-metadata! -> sync-fields-for-table! instead of
+          ;; sync-db-metadata! -> sync-fields!. Both reach the same sync-and-update! core, but
+          ;; the OP's repro instructions said "Now sync the table" (singular), so this rules
+          ;; out a code-path-specific bug at the entry point.
+          (run-sql! [(format "DROP TABLE IF EXISTS %s;" qualified)])
+          (when-let [stale-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)]
+            (t2/delete! :model/Field :table_id (:id stale-table))
+            (t2/delete! :model/Table :id (:id stale-table)))
+          (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
+                     (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
+          (sync/sync-database! (mt/db))
+          (let [v5-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
+                v5-field (t2/select-one :model/Field :table_id (:id v5-table) :name "text_column")]
+            (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
+                                    "SELECT \"id\", TRY_TO_NUMBER(\"text_column\") AS \"text_column\" FROM %s;")
+                               qualified qualified)])
+            (sync/sync-table! v5-table)
+            (let [after-field (t2/select-one :model/Field :id (:id v5-field))]
+              (testing "sync-table! (the per-table UI button) should also reset effective_type
+                       when the underlying column type changes"
+                (is (=? {:base_type         :type/BigInteger
+                         :effective_type    :type/BigInteger
+                         :coercion_strategy nil
+                         :semantic_type     nil}
+                        after-field)))))
+          (finally
+            (let [t (t2/select-one :model/Table :db_id (mt/id) :name table-name)]
+              (when t
+                (u/ignore-exceptions (t2/delete! :model/Field :table_id (:id t)))
+                (u/ignore-exceptions (t2/delete! :model/Table :id (:id t)))))
+            (u/ignore-exceptions
+              (run-sql! [(format "DROP TABLE IF EXISTS %s;" qualified)]))))))))
 
 (deftest ^:sequential describe-table-test
   (mt/test-driver :snowflake

@@ -1,6 +1,5 @@
 import { c, msgid, ngettext, t } from "ttag";
 
-import type { IconName } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { NamedUser } from "metabase/utils/user";
 import visualizations from "metabase/visualizations";
@@ -14,6 +13,7 @@ import type {
   DependencyNode,
   DependencyType,
   Field,
+  IconName,
   SourceReplacementEntry,
   Transform,
   VisualizationDisplay,

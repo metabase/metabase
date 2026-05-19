@@ -193,6 +193,8 @@ Columns:
 - IP Address
 - Tenant ID
 - Request ID
+- Cache Creation Tokens
+- Cache Read Tokens
 
 ### Alerts
 

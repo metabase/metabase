@@ -1,5 +1,5 @@
-import type { IconName } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+import type { IconName } from "metabase-types/api";
 
 const JOIN_ICONS: Record<string, IconName> = {
   "left-join": "join_left_outer",

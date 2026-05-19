@@ -1,4 +1,7 @@
 (ns metabase-enterprise.serialization.v2.extract-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase-enterprise.serialization.v2.extract-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase-enterprise.serialization.v2.extract-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase-enterprise.serialization.v2.extract-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]

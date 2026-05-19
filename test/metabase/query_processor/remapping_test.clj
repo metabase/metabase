@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.remapping-test
   "Tests for the remapping results"
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.remapping-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.remapping-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]

@@ -3,9 +3,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useDeleteActionMutation, useListActionsQuery } from "metabase/api";
+import { useSetArchive } from "metabase/archive/hooks";
 import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
-import { useSetArchive } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { Databases } from "metabase/entities/databases";
 import * as Urls from "metabase/urls";

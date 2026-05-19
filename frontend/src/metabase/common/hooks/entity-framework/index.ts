@@ -3,8 +3,6 @@
  * Use "metabase/api" instead.
  */
 
-export * from "./use-bookmark-list-query";
-export * from "./use-dashboard-query";
 export * from "./use-database-list-query";
 export * from "./use-database-query";
 export * from "./use-question-list-query";

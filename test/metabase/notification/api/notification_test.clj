@@ -1,4 +1,5 @@
 (ns metabase.notification.api.notification-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.notification.api.notification-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
