@@ -7,7 +7,8 @@
   - `name`, `description` — tool identity
   - `endpoint` — HTTP method + path
   - `inputSchema` — merged route + query + body parameters
-  - `responseSchema` — from the endpoint's response schema
+  - `outputSchema` — from the endpoint's response schema, or an explicit
+    `:output-schema` (Malli vector / JSON Schema map) on the tool metadata
   - `annotations` — MCP ToolAnnotations (readOnlyHint, destructiveHint, etc.)"
   (:require
    [clojure.string :as str]
@@ -328,6 +329,22 @@
                        response-schema)]
       (malli->json-schema content))))
 
+(defn- tool-output-schema
+  "Resolve a tool's MCP `outputSchema`. Three sources, in priority order:
+
+  1. `:output-schema` on the tool metadata as a Malli vector — passed through
+     the standard `malli->json-schema` pipeline (no strict transform — server
+     emits exact shapes; we don't want all-required/nullable rewriting on
+     outputs).
+  2. `:output-schema` as a JSON Schema map — used verbatim (escape hatch).
+  3. Implicit — derived from the endpoint's response schema."
+  [form]
+  (let [explicit (get-in form [:metadata :tool :output-schema])]
+    (cond
+      (vector? explicit) (malli->json-schema explicit)
+      (map? explicit)    explicit
+      :else              (response-schema->json-schema (:response-schema form)))))
+
 (defn- route-path->endpoint-path
   "Convert Clout-style route path (`:id`) to curly-brace path (`{id}`)."
   [path]
@@ -371,7 +388,7 @@
                            (:docstr form))
         full-path      (str prefix (route-path->endpoint-path route-path))
         input-schema   (tool-input-schema form)
-        resp-schema    (response-schema->json-schema (:response-schema form))
+        output-schema  (tool-output-schema form)
         inferred       (infer-annotations method (:annotations tool-md))
         annotations    (:annotations inferred)
         _              (when (:contradictory? inferred)
@@ -392,7 +409,7 @@
              :endpoint    {:method (u/upper-case-en (name method))
                            :path   full-path}}
       input-schema      (assoc :inputSchema input-schema)
-      resp-schema       (assoc :responseSchema resp-schema)
+      output-schema     (assoc :outputSchema output-schema)
       (seq annotations) (assoc :annotations annotations)
       task-support      (assoc :execution {:taskSupport (name task-support)})
       (string? scope)   (assoc :scope scope))))

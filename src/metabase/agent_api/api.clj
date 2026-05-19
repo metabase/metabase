@@ -567,6 +567,19 @@
    [:prompt {:optional true}
     [:maybe ConstructQueryPrompt]]])
 
+(def ^:private construct-query-tool-output-malli
+  "LLM-facing Malli schema for the construct_query *tool* output. Differs from
+  `::construct-query-response` because `make-store-construct-query-result`
+  body-transforms the endpoint's `{:query, :prompt?}` response into
+  `{:query_handle, :widgetSessionId?}` before the MCP client sees it."
+  [:map
+   [:query_handle
+    {:tool/description "Opaque UUID handle for the stored query. Pass as `query_handle` to `execute_query` or `visualize_query`."}
+    ms/NonBlankString]
+   [:widgetSessionId {:optional true
+                      :tool/description "Session id under which the handle is stored. In the case of ChatGPT, pass it to the follow-up tool as `widgetSessionId`; other clients can ignore it."}
+    [:maybe ms/NonBlankString]]])
+
 (defn- evaluate-program-to-live-query
   "Resolve a program's source entity, evaluate the program via agent-lib, and return
   the live lib query (with lib metadata attached)."
@@ -597,6 +610,7 @@
    :tool  {:name "construct_query"
            :description construct-query-tool-description
            :input-schema construct-query-tool-input-malli
+           :output-schema construct-query-tool-output-malli
            :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
