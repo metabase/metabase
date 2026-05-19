@@ -1,6 +1,7 @@
 (ns metabase-enterprise.advanced-config.file.workspace-test
   (:require
    [clojure.java.io :as io]
+   [clojure.spec.alpha :as s]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
@@ -54,6 +55,17 @@
           (let [[_db-name wsd] (first dbs)]
             (is (= ["public"] (:input_schemas wsd)))
             (is (= "mb__isolation_44490_1933" (:output_namespace wsd)))))))))
+
+(deftest non-blank-string-spec-test
+  (testing "::non-blank-string rejects nil, non-strings, and whitespace-only strings,
+            and accepts any string with at least one non-whitespace character."
+    (let [spec :metabase-enterprise.advanced-config.file.workspace/non-blank-string]
+      (doseq [v ["" " " "  " "\t" "\n" "\t \n" nil 42 :foo]]
+        (is (not (s/valid? spec v))
+            (str "must reject " (pr-str v))))
+      (doseq [v ["a" "abc" " a" "a " " a " "non-blank with spaces"]]
+        (is (s/valid? spec v)
+            (str "must accept " (pr-str v)))))))
 
 (deftest apply-workspace-section-populates-atom-test
   (testing "applying the :workspace section stores parsed config in the in-process atom keyed by db-id"

@@ -34,7 +34,7 @@
 ;;; canonical `Database.details` at boot, not duplicated on each row.
 
 (s/def ::non-blank-string
-  (s/and string? seq))
+  (s/and string? (complement str/blank?)))
 
 (s/def ::input_schemas
   (s/coll-of ::non-blank-string :min-count 1))
