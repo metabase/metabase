@@ -13,7 +13,6 @@ interface RunQuestionQueryParams {
   token: EntityToken | null | undefined;
   originalQuestion?: Question;
   parameterValues?: ParameterValuesMap;
-  cancelDeferred?: Deferred;
   signal?: AbortSignal;
   dispatch: Dispatch;
 }
