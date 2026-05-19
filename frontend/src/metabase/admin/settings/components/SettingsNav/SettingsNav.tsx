@@ -27,7 +27,8 @@ export function SettingsNav() {
   const tokenFeatures = useSetting("token-features");
   const isAdmin = useSelector(getUserIsAdmin);
   const isPro = isProPlan(getPlan(tokenFeatures));
-  const { SecurityCenterPromoCard } = PLUGIN_SECURITY_CENTER;
+  const { isEnabled: isSecurityCenterEnabled, SecurityCenterPromoCard } =
+    PLUGIN_SECURITY_CENTER;
 
   return (
     <AdminNavWrapper>
@@ -131,15 +132,17 @@ export function SettingsNav() {
         }
         icon="cloud"
       />
-      <Box
-        pos="sticky"
-        bottom={0}
-        pt="md"
-        bg="background-primary"
-        style={{ marginTop: "auto", zIndex: 1 }}
-      >
-        <SecurityCenterPromoCard />
-      </Box>
+      {isSecurityCenterEnabled && (
+        <Box
+          pos="sticky"
+          bottom={0}
+          pt="md"
+          bg="background-primary"
+          style={{ marginTop: "auto", zIndex: 1 }}
+        >
+          <SecurityCenterPromoCard />
+        </Box>
+      )}
     </AdminNavWrapper>
   );
 }
