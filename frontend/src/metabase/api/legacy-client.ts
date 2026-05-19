@@ -21,6 +21,8 @@ const METABASE_VERSION_HEADER = "X-Metabase-Version";
 let ANTI_CSRF_TOKEN: string | null = null;
 let LOCALE: string | null = null;
 
+export type RequestMethod = "GET" | "POST" | "PUT" | "DELETE";
+
 type RequestOptions = {
   noEvent?: boolean;
   /**
@@ -175,14 +177,14 @@ export class LegacyApi extends EventEmitter<EventMap> {
   }
 
   _makeMethod(
-    methodTemplate: string,
+    methodTemplate: RequestMethod,
     withRetries: boolean = false,
   ): MethodCreator {
     return (urlTemplate, methodOptions = {}) => {
       return async (rawData = {}, invocationOptions = {}) => {
         const middlewareResult = await this.apiRequestManipulationMiddleware({
           url: urlTemplate,
-          method: methodTemplate as "GET" | "POST",
+          method: methodTemplate,
           options: {
             ...methodOptions,
             ...invocationOptions,
@@ -290,7 +292,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
     rawResponse,
     headers: headerOverrides,
   }: {
-    method: "GET" | "POST" | "PUT" | "DELETE";
+    method: RequestMethod;
     url: string;
     body?: unknown;
     params?: Record<string, unknown>;
@@ -312,7 +314,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
 
     const middlewareResult = await this.apiRequestManipulationMiddleware({
       url: urlTemplate,
-      method: method as "GET" | "POST",
+      method,
       options: invocationOptions,
       data: { ...params },
     });

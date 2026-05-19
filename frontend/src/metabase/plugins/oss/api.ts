@@ -1,7 +1,8 @@
+import type { RequestMethod } from "metabase/api/legacy-client";
 import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
 
 export type OnBeforeRequestHandlerConfig = {
-  method: "GET" | "POST";
+  method: RequestMethod;
   url: string;
   options: {
     headers?: Record<string, string>;
