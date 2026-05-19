@@ -610,6 +610,17 @@ describe("api", () => {
       expect(listener).toHaveBeenCalledWith("/api/session");
     });
 
+    it("strips the subpath when basename is a full URL with a subpath", async () => {
+      apiInstance.basename = "http://localhost/mb";
+      fetchMock.get("http://localhost/mb/api/session", { ok: true });
+      const listener = jest.fn();
+      apiInstance.on("200", listener);
+
+      await apiInstance.request({ method: "GET", url: "/api/session" });
+
+      expect(listener).toHaveBeenCalledWith("/api/session");
+    });
+
     it("includes the querystring in the emitted path", async () => {
       fetchMock.get("path:/api/search", { items: [] });
       const listener = jest.fn();
