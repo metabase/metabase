@@ -138,7 +138,9 @@ describe("Embed flow > forward and backward navigation", () => {
     expect(
       screen.queryByText("Select a dashboard to embed"),
     ).not.toBeInTheDocument();
-    expect(screen.getByText("Select initial collection")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Change initial collection" }),
+    ).toBeInTheDocument();
   });
 
   it("renders the SSO radio above the Guest radio in the authentication card", () => {

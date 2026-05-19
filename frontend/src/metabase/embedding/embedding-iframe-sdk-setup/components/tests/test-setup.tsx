@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   findRequests,
+  setupCollectionByIdEndpoint,
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
@@ -17,6 +18,7 @@ import { renderWithProviders, waitFor } from "__support__/ui";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
 import {
+  createMockCollection,
   createMockDashboard,
   createMockDashboardQueryMetadata,
   createMockDatabase,
@@ -62,6 +64,9 @@ export const setup = (options?: {
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
   setupSearchEndpoints([]);
   setupDatabasesEndpoints([mockDatabase]);
+  setupCollectionByIdEndpoint({
+    collections: [createMockCollection({ id: "root", name: "Our analytics" })],
+  });
   setupDashboardEndpoints(mockDashboard);
   setupDashboardQueryMetadataEndpoint(
     mockDashboard,
