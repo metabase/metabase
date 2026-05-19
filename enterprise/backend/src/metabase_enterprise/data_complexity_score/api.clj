@@ -19,19 +19,32 @@
   "A rating band label drawn from `complexity-bands`."
   [:maybe [:enum "low" "medium" "high"]])
 
-(def ^:private Catalog
-  "Recursive score node.
-  Regular nodes carry `:score` + `:rating` plus optional `:measurement` (leaf) or `:components` (keyword→Catalog).
-  Error leaves carry only `:error`."
+(def ^:private Failure
+  "Sub-score that couldn't be computed; carries only the failure message.
+  (Named `Failure` rather than `Error` to avoid shadowing `java.lang.Error`.)"
+  [:map {:closed true}
+   [:error string?]])
+
+(def ^:private Leaf
+  "Computed leaf sub-score with a raw `:measurement` and its weighted `:score`."
+  [:map {:closed true}
+   [:measurement  number?]
+   [:score        nat-int?]
+   [:rating       Rating]
+   [:rating_label [:maybe string?]]])
+
+(def ^:private Grouping
+  "Internal node whose `:score` is the rolled-up sum of its `:components` children."
+  [:map {:closed true}
+   [:score        [:maybe nat-int?]]
+   [:rating       Rating]
+   [:rating_label [:maybe string?]]
+   [:components   [:map-of :keyword [:ref ::node]]]])
+
+(def ^:private Node
+  "Recursive score node: a [[Failure]], a [[Leaf]], or a [[Grouping]] whose children are themselves Nodes."
   [:schema
-   {:registry {::node [:or
-                       [:map {:closed true} [:error string?]]
-                       [:map {:closed true}
-                        [:score                       [:maybe nat-int?]]
-                        [:rating                      Rating]
-                        [:rating_label                [:maybe string?]]
-                        [:measurement {:optional true} number?]
-                        [:components  {:optional true} [:map-of :keyword [:ref ::node]]]]]}}
+   {:registry {::node [:or Failure Leaf Grouping]}}
    [:ref ::node]])
 
 (def ^:private EmbeddingModelMeta
@@ -45,9 +58,9 @@
 (def ^:private ComplexityScoresResponse
   "Full response body for `GET /api/ee/data-complexity-score/complexity`."
   [:map
-   [:library  Catalog]
-   [:universe Catalog]
-   [:metabot  Catalog]
+   [:library  Node]
+   [:universe Node]
+   [:metabot  Node]
    [:meta
     [:map
      [:formula_version   pos-int?]
