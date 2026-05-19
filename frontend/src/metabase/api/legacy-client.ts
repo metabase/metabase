@@ -280,7 +280,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
    *
    * No method-derived guesswork about whether data is body or querystring.
    */
-  async request({
+  async request<T = unknown>({
     method,
     url: urlTemplate,
     body: requestBody,
@@ -296,9 +296,13 @@ export class LegacyApi extends EventEmitter<EventMap> {
     params?: Record<string, unknown>;
     signal?: AbortSignal;
     noEvent?: boolean;
+<<<<<<< HEAD
     rawResponse?: boolean;
+=======
+    transformResponse?: ResponseTransformer<T>;
+>>>>>>> 513cf1e16 (Use type of transformed response)
     headers?: Record<string, string>;
-  }): Promise<unknown> {
+  }): Promise<T> {
     const invocationOptions = {
       signal,
       ...(noEvent !== undefined ? { noEvent } : {}),
@@ -360,17 +364,17 @@ export class LegacyApi extends EventEmitter<EventMap> {
 
     // RTK callers don't retry; matches the prior behavior where apiQuery never
     // opted into retries.
-    return this._makeRequest(finalMethod, url, headers, body, data, options);
+    return this._makeRequest<T>(finalMethod, url, headers, body, data, options);
   }
 
-  async _makeRequest(
+  async _makeRequest<T = unknown>(
     method: string,
     url: string,
     headers: Record<string, string>,
     requestBody: string | FormData | URLSearchParams | undefined,
     data: Record<string, unknown>,
-    options: RequestOptions,
-  ): Promise<unknown> {
+    options: RequestOptions<T>,
+  ): Promise<T> {
     // We bridge `options.signal` through a local controller (rather than
     // handing it to `fetch` directly) so an already-aborted signal still gets
     // its request dispatched: the request is sent this microtask, then the
@@ -422,10 +426,18 @@ export class LegacyApi extends EventEmitter<EventMap> {
       }
 
       if (status >= 200 && status <= 299) {
+<<<<<<< HEAD
         // `rawResponse` callers (binary downloads, map tiles) want the
         // `Response` object itself rather than the parsed body — return
         // the unread clone so they can `.blob()`/`.arrayBuffer()` it.
         return options.rawResponse ? unreadResponse : body;
+=======
+        // If a transformer is given its return value IS `T`. Otherwise the raw
+        // body is `unknown`; we trust the caller's `T` annotation.
+        return options.transformResponse
+          ? options.transformResponse({ body, data, response: unreadResponse })
+          : (body as T);
+>>>>>>> 513cf1e16 (Use type of transformed response)
       } else {
         this.emit("responseError", { body, status, metabaseVersion });
 
