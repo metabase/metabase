@@ -1,11 +1,11 @@
 import {
   getWidgetMountPluginId,
-  isWidgetMount,
+  isTrustedWidgetMount,
   wrapPluginWidget,
 } from "./widget-mount";
 
 describe("widget-mount host trust boundary", () => {
-  it("isWidgetMount only accepts host-allocated mounts", () => {
+  it("isTrustedWidgetMount only accepts host-allocated mounts", () => {
     const wrapped = wrapPluginWidget(
       (() => ({
         update() {},
@@ -13,39 +13,39 @@ describe("widget-mount host trust boundary", () => {
       })) as never,
       1,
     );
-    expect(isWidgetMount(wrapped)).toBe(true);
+    expect(isTrustedWidgetMount(wrapped)).toBe(true);
   });
 
-  it("isWidgetMount rejects plain functions", () => {
-    expect(isWidgetMount(() => null)).toBe(false);
-    expect(isWidgetMount(function noop() {})).toBe(false);
+  it("isTrustedWidgetMount rejects plain functions", () => {
+    expect(isTrustedWidgetMount(() => null)).toBe(false);
+    expect(isTrustedWidgetMount(function noop() {})).toBe(false);
     const arrow = (_a: unknown, _b: unknown) => ({
       update() {},
       unmount() {},
     });
-    expect(isWidgetMount(arrow)).toBe(false);
+    expect(isTrustedWidgetMount(arrow)).toBe(false);
   });
 
-  it("isWidgetMount rejects forged string-keyed brands from a plugin", () => {
+  it("isTrustedWidgetMount rejects forged string-keyed brands from a plugin", () => {
     // A malicious plugin might stamp any property name on a value before
     // returning it across the membrane. The host's check is keyed by a
     // host-realm Symbol the plugin can't reach, so string-keyed markers —
     // even ones that look plausible — must not pass.
     const forged = Object.assign(() => null, {
       __metabaseWidgetMount__: true,
-      "metabase.host.trusted-widget-mount": true,
+      "metabase.host.trusted-widget-mount-plugin-id": true,
     });
-    expect(isWidgetMount(forged)).toBe(false);
+    expect(isTrustedWidgetMount(forged)).toBe(false);
   });
 
-  it("isWidgetMount rejects forged Symbol.for brands from a plugin", () => {
+  it("isTrustedWidgetMount rejects forged Symbol.for brands from a plugin", () => {
     // `Symbol.for(name)` returns the same symbol across realms via the
     // global registry — but we deliberately use a fresh `Symbol(...)`
     // host-side, so a registry lookup with the same description does not
     // produce the host's symbol.
-    const fakeSym = Symbol.for("metabase.host.trusted-widget-mount");
+    const fakeSym = Symbol.for("metabase.host.trusted-widget-mount-plugin-id");
     const forged = Object.assign(() => null, { [fakeSym]: true });
-    expect(isWidgetMount(forged)).toBe(false);
+    expect(isTrustedWidgetMount(forged)).toBe(false);
   });
 
   it("wrapped mount forwards to the plugin function", () => {
@@ -76,11 +76,11 @@ describe("widget-mount host trust boundary", () => {
     expect(getWidgetMountPluginId(plain)).toBeUndefined();
   });
 
-  it("isWidgetMount returns false for non-function values", () => {
-    expect(isWidgetMount("number")).toBe(false);
-    expect(isWidgetMount(undefined)).toBe(false);
-    expect(isWidgetMount(null)).toBe(false);
-    expect(isWidgetMount({})).toBe(false);
-    expect(isWidgetMount(42)).toBe(false);
+  it("isTrustedWidgetMount returns false for non-function values", () => {
+    expect(isTrustedWidgetMount("number")).toBe(false);
+    expect(isTrustedWidgetMount(undefined)).toBe(false);
+    expect(isTrustedWidgetMount(null)).toBe(false);
+    expect(isTrustedWidgetMount({})).toBe(false);
+    expect(isTrustedWidgetMount(42)).toBe(false);
   });
 });

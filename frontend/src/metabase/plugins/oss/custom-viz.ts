@@ -50,15 +50,15 @@ const getDefaultPluginCustomViz = () => ({
    * plain React component (render directly). Always false in OSS — there
    * is no plugin to produce a mount handle.
    */
-  isWidgetMount: ((_value: unknown) => false) as (
+  isTrustedWidgetMount: ((_value: unknown) => false) as (
     value: unknown,
   ) => value is WidgetMount,
 
   /**
    * Host driver that renders a custom-viz setting widget by calling the
    * plugin's mount/update/unmount handle through the near-membrane
-   * boundary. Placeholder in OSS — never invoked because `isWidgetMount`
-   * always returns false there.
+   * boundary. Placeholder in OSS — never invoked because
+   * `isTrustedWidgetMount` always returns false there.
    */
   SettingWidget: PluginPlaceholder as ComponentType<{
     mount: WidgetMount;

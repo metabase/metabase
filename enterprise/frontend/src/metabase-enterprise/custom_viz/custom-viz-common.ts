@@ -47,7 +47,7 @@ export function applyDefaultVisualizationProps(
  *   - `string`  (built-in `WidgetName`) — pass through unchanged.
  *   - `function` — wrap in a host-allocated trusted mount via
  *     `wrapPluginWidget`. After this point, only host-trusted mount
- *     handles can pass `isWidgetMount`, so a plugin cannot smuggle a
+ *     handles can pass `isTrustedWidgetMount`, so a plugin cannot smuggle a
  *     React component through and have it rendered by the host
  *     reconciler.
  *   - anything else — drop (set to `undefined`). The setting renders

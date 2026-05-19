@@ -455,7 +455,7 @@ function assertValidSettingWidgets(
  * Walk a plugin's `vizDef.settings` and replace every function-shaped
  * widget with a host-trusted `WidgetMount` allocated by the host. Built-in
  * `WidgetName` strings pass through unchanged. After this step, the host
- * can rely on `isWidgetMount` (host-realm symbol) to distinguish mount
+ * can rely on `isTrustedWidgetMount` (host-realm symbol) to distinguish mount
  * handles from React components without trusting any plugin-controlled
  * brand.
  *
