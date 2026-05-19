@@ -184,6 +184,16 @@
   [_user-id]
   all-yes-permissions)
 
+(defn missing-permission
+  "Validate a resolved metabot `perms` map against required permissions. Always
+  checks the base `:permission/metabot`. When `required-perm` is non-nil, also
+  checks that permission. Returns the first permission keyword that's not `:yes`,
+  or nil when all required perms are granted."
+  [perms required-perm]
+  (cond
+    (not= :yes (:permission/metabot perms))                   :permission/metabot
+    (and required-perm (not= :yes (get perms required-perm))) required-perm))
+
 (defn user-metabot-perms->scopes
   "Convert a resolved metabot permissions map into a set of scope strings.
   Maps `:yes` permissions to the corresponding wildcard scope sets and always

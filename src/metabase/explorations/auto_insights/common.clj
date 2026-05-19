@@ -316,9 +316,10 @@
   repair path entirely."
   [llm-config messages schema tag]
   (let [{:keys [model temperature max-tokens thinking-config]} llm-config
-        opts (cond-> {:request-id (str (random-uuid))
-                      :source     "exploration"
-                      :tag        tag}
+        opts (cond-> {:request-id          (str (random-uuid))
+                      :source              "exploration"
+                      :tag                 tag
+                      :required-permission :permission/metabot-other-tools}
                thinking-config (assoc :thinking thinking-config))]
     (try
       (let [{:keys [result parts]}
@@ -326,10 +327,15 @@
              model messages schema temperature max-tokens opts)]
         {:response result :parts parts})
       (catch ExceptionInfo e
-        (if-let [parts (:parts (ex-data e))]
-          (do (log/warnf "Auto-insights LLM call did not produce a tool call (tag=%s); falling back to repair loop" tag)
-              {:response nil :parts parts})
-          (throw e))))))
+        ;; Fall back to the repair loop when the model returned no tool call
+        ;; (legitimate with extended thinking + tool_choice auto). For permission
+        ;; denial / usage-limit hits, and anything else, let generate-auto-insights!
+        ;; see the throw and route to a skip outcome.
+        (let [{ex-type :type parts :parts} (ex-data e)]
+          (if (and parts (not (#{:metabot/permission-denied :metabot/usage-limit-reached} ex-type)))
+            (do (log/warnf "Auto-insights LLM call did not produce a tool call (tag=%s); falling back to repair loop" tag)
+                {:response nil :parts parts})
+            (throw e)))))))
 
 (defn- summarize-parts
   "Pull the human-relevant pieces out of an AISDK parts trace so the persisted

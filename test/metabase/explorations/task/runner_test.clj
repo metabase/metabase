@@ -6,6 +6,9 @@
    [metabase.explorations.models.exploration-query-result :as eqr]
    [metabase.explorations.task.runner :as runner]
    [metabase.explorations.timeline-interestingness :as explorations.timeline-interestingness]
+   [metabase.metabot.scope]
+   [metabase.metabot.self.claude]
+   [metabase.metabot.usage]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.test :as mt]
    [toucan2.core :as t2])
@@ -55,7 +58,7 @@
   "Fetch the stored_result row linked from the EQR for `eq-id`. Returns nil when nothing
   exists yet."
   [eq-id]
-  (eqr/stored-result-for-exploration-query eq-id))
+  (eqr/stored-results eq-id))
 
 (deftest run-one-iteration-happy-path-test
   (testing "A pending row gets executed, the linked stored_result holds result_data, and status flips to done"
@@ -189,6 +192,88 @@
             (is (nil? (:contextual_interestingness_score result)))
             (is (double? (:interestingness_score result))
                 "heuristic score still computed when contextual fails")))))))
+
+(deftest run-one-iteration-skips-contextual-without-other-tools-permission-test
+  (testing "When the exploration creator lacks :permission/metabot-other-tools, the
+            permission check inside metabot.self/call-llm-structured-with-trace throws,
+            score-and-describe-chart catches and returns nil, and the EQR row's
+            contextual fields land nil (UXW-4126)"
+    (mt/with-temp [:model/User u {:email "ctx-noperm@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (mt/mbql-query venues
+                                                      {:aggregation [[:count]]})}]
+      (let [thread (temp-thread! (:id u) "Some prompt about venues")
+            row    (pending-query! (:id thread) (:id card)
+                                   (mt/mbql-query venues
+                                     {:aggregation [[:count]]
+                                      :breakout    [$category_id]}))
+            llm-calls (atom 0)]
+        (with-redefs [metabase.metabot.scope/resolve-user-permissions
+                      (fn [_uid] {:permission/metabot                :yes
+                                  :permission/metabot-sql-generation :yes
+                                  :permission/metabot-nlq            :yes
+                                  :permission/metabot-other-tools    :no})
+                      metabase.metabot.self.claude/claude
+                      (fn [& _] (swap! llm-calls inc) [])]
+          (drain-until-terminal! (:id row) 10)
+          (let [result (t2/select-one :model/ExplorationQueryResult
+                                      :exploration_query_id (:id row))]
+            (is (zero? @llm-calls)
+                "LLM must not be invoked when creator lacks :permission/metabot-other-tools")
+            (is (nil? (:contextual_interestingness_score result)))
+            (is (nil? (:metric_description result)))
+            (is (nil? (:chart_description result)))))))))
+
+(deftest run-one-iteration-skips-contextual-without-base-metabot-permission-test
+  (testing "When the creator has metabot-other-tools but lacks the base :permission/metabot, scoring is still skipped"
+    (mt/with-temp [:model/User u {:email "ctx-nobase@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (mt/mbql-query venues
+                                                      {:aggregation [[:count]]})}]
+      (let [thread (temp-thread! (:id u) "Some prompt")
+            row    (pending-query! (:id thread) (:id card)
+                                   (mt/mbql-query venues
+                                     {:aggregation [[:count]]
+                                      :breakout    [$category_id]}))
+            llm-calls (atom 0)]
+        (with-redefs [metabase.metabot.scope/resolve-user-permissions
+                      (fn [_uid] {:permission/metabot                :no
+                                  :permission/metabot-sql-generation :yes
+                                  :permission/metabot-nlq            :yes
+                                  :permission/metabot-other-tools    :yes})
+                      metabase.metabot.self.claude/claude
+                      (fn [& _] (swap! llm-calls inc) [])]
+          (drain-until-terminal! (:id row) 10)
+          (is (zero? @llm-calls)
+              "LLM must not be invoked when creator lacks base :permission/metabot"))))))
+
+(deftest run-one-iteration-skips-contextual-when-usage-limit-reached-test
+  (testing "When check-usage-limits! returns a limit message, the usage check inside
+            metabot.self/call-llm-structured-with-trace throws and the contextual fields
+            land nil (UXW-4126)"
+    (mt/with-temp [:model/User u {:email "ctx-limit@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (mt/mbql-query venues
+                                                      {:aggregation [[:count]]})}]
+      (let [thread (temp-thread! (:id u) "Some prompt about venues")
+            row    (pending-query! (:id thread) (:id card)
+                                   (mt/mbql-query venues
+                                     {:aggregation [[:count]]
+                                      :breakout    [$category_id]}))
+            llm-calls (atom 0)]
+        (with-redefs [metabase.metabot.usage/check-usage-limits!
+                      (fn [] "you've hit your AI usage limit")
+                      metabase.metabot.self.claude/claude
+                      (fn [& _] (swap! llm-calls inc) [])]
+          (drain-until-terminal! (:id row) 10)
+          (let [result (t2/select-one :model/ExplorationQueryResult
+                                      :exploration_query_id (:id row))]
+            (is (zero? @llm-calls)
+                "LLM must not be invoked when usage limit is reached")
+            (is (nil? (:contextual_interestingness_score result)))))))))
 
 (deftest run-one-iteration-error-path-test
   (testing "A row whose query blows up is marked error, no result row is written"

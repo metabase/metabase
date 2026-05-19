@@ -148,7 +148,8 @@ Always return a single object matching the supplied schema. Do not respond with 
 
 (defn- llm-call!
   "Single seam for tests to `with-redefs`. Returns the parsed response map, or nil on any
-  failure (transport error, malformed response, missing score)."
+  failure (transport error, malformed response, missing score, permission denied,
+  usage limit reached)."
   [{:keys [card-description] :as inputs}]
   (try
     (let [response (metabot.self/call-llm-structured
@@ -157,9 +158,10 @@ Always return a single object matching the supplied schema. Do not respond with 
                     (response-schema (str/blank? card-description))
                     temperature
                     max-tokens
-                    {:request-id (str (random-uuid))
-                     :source     "contextual_interestingness"
-                     :tag        "contextual-interestingness"})]
+                    {:request-id          (str (random-uuid))
+                     :source              "contextual_interestingness"
+                     :tag                 "contextual-interestingness"
+                     :required-permission :permission/metabot-other-tools})]
       (or (parse-response response)
           (do (log/warnf "Contextual interestingness: malformed LLM response %s"
                          (pr-str response))

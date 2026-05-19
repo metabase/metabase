@@ -115,9 +115,10 @@ Always return a single object matching the supplied schema. Do not respond with 
                     response-schema
                     temperature
                     max-tokens
-                    {:request-id (str (random-uuid))
-                     :source     "timeline_interestingness"
-                     :tag        "timeline-interestingness"})
+                    {:request-id          (str (random-uuid))
+                     :source              "timeline_interestingness"
+                     :tag                 "timeline-interestingness"
+                     :required-permission :permission/metabot-other-tools})
           score    (:score response)]
       (if (number? score)
         (clamp01 score)

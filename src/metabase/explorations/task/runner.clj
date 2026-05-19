@@ -29,6 +29,7 @@
    [metabase.interestingness.core :as interestingness]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
+   [metabase.request.core :as request]
    [metabase.startup.core :as startup]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -239,10 +240,19 @@
   the LLM-generated one. Downstream consumers can read this directly without caring about
   the source.
 
+  Runs inside a `request/with-current-user creator-id` binding so the LLM call
+  (`metabase.metabot.self/call-llm-structured-with-trace`, reached via
+  `score-and-describe-chart`) sees the right user context and gets billed/limited
+  per-creator. The permission gate (`:permission/metabot-other-tools`) and the
+  AI usage-limit check both live in `metabot.self`; on either failure
+  `score-and-describe-chart`'s internal try/catch swallows the thrown ex-info
+  and returns nil, leaving the EQR row's contextual fields nil — same fail-soft
+  contract as `safe-score`.
+
   Returns nil-map (all three nil) whenever scoring isn't applicable (no prompt, no
   chart-config) or anything throws — so a scoring failure can never break the query
-  lifecycle. Same fail-soft contract as `safe-score`."
-  [exploration-query chart-config]
+  lifecycle."
+  [exploration-query chart-config creator-id]
   (try
     (when-let [thread-id (:exploration_thread_id exploration-query)]
       (let [prompt           (:prompt (t2/select-one [:model/ExplorationThread :prompt] :id thread-id))
@@ -252,12 +262,16 @@
                                        not-empty))
             sql              (contextual-interestingness/dataset-query->sql (:dataset_query exploration-query))]
         (when (and chart-config (not (str/blank? prompt)))
-          (some-> (contextual-interestingness/score-and-describe-chart
-                   {:chart-config     chart-config
-                    :card-description card-description
-                    :sql              sql
-                    :context-string   prompt})
-                  (update :metric-description #(or card-description %))))))
+          (if (nil? creator-id)
+            (log/warnf "Skipping contextual interestingness for ExplorationQuery %d: no creator-id on exploration"
+                       (:id exploration-query))
+            (request/with-current-user creator-id
+              (some-> (contextual-interestingness/score-and-describe-chart
+                       {:chart-config     chart-config
+                        :card-description card-description
+                        :sql              sql
+                        :context-string   prompt})
+                      (update :metric-description #(or card-description %))))))))
     (catch Throwable e
       (log/warnf e "Failed to compute contextual interestingness for ExplorationQuery %d"
                  (:id exploration-query))
@@ -286,7 +300,8 @@
                   chart-config (safe-chart-config row qp-result)
                   stats        (safe-deep-stats row chart-config)
                   score        (safe-score row chart-config stats)
-                  ctx          (safe-score+describe row chart-config)
+                  creator-id   (exploration-creator-id row)
+                  ctx          (safe-score+describe row chart-config creator-id)
                   viz          (pick-display+viz-settings row chart-config qp-result)
                   sr-id        (first
                                 (t2/insert-returning-pks!
@@ -294,7 +309,7 @@
                                  {:result_data            bytes
                                   :display                (:display viz)
                                   :visualization_settings (:visualization_settings viz)
-                                  :creator_id             (exploration-creator-id row)
+                                  :creator_id             creator-id
                                   :database_id            (-> row :dataset_query :database)
                                   :dataset_query          (:dataset_query row)}))]
               (t2/insert! :model/ExplorationQueryResult

@@ -10,8 +10,11 @@
    [metabase.explorations.auto-insights :as auto-insights]
    [metabase.explorations.interestingness :as explorations.interestingness]
    [metabase.interestingness.core :as interestingness]
+   [metabase.metabot.scope]
    [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.self.claude]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.usage]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -249,6 +252,109 @@
 (defn- serialize-result [qp-result]
   (cache.impl/do-with-serialization
    (fn [in result-fn] (in qp-result) (result-fn))))
+
+;; ----- skip-no-permission / skip-usage-limit (UXW-4126) -----
+;;
+;; The permission and usage-limit gates live in
+;; `metabase.metabot.self/call-llm-structured-with-trace`. To exercise them
+;; we need at least one prepped chart on the thread (otherwise the orchestrator
+;; short-circuits with :skip-no-charts before any LLM call would happen).
+
+(defn- seed-one-prepped-chart!
+  "Insert a Card + ExplorationQuery + StoredResult + ExplorationQueryResult so
+  `generate-auto-insights!` finds exactly one chart in the pool. Returns the
+  ids as `{:card-id :query-id}`."
+  [user-id thread-id]
+  (let [card  (first (t2/insert-returning-instances!
+                      :model/Card
+                      {:name          "rev"
+                       :type          :metric
+                       :display       :line
+                       :visualization_settings {}
+                       :creator_id    user-id
+                       :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}))
+        eq    (first (t2/insert-returning-instances!
+                      :model/ExplorationQuery
+                      {:exploration_thread_id thread-id
+                       :card_id               (:id card)
+                       :dimension_id          "d1"
+                       :dataset_query         (mt/mbql-query orders {:aggregation [[:count]]})
+                       :status                "done"
+                       :position              0}))
+        bytes (serialize-result (fixture-qp-result))
+        sr    (first (t2/insert-returning-instances!
+                      :model/StoredResult
+                      {:result_data            bytes
+                       :display                :line
+                       :visualization_settings {}
+                       :creator_id             user-id
+                       :database_id            (mt/id)
+                       :dataset_query          (mt/mbql-query orders {:aggregation [[:count]]})}))
+        cfg   (explorations.interestingness/qp-result->chart-config eq (fixture-qp-result))
+        stats (when cfg (interestingness/compute-chart-stats cfg {:deep? true}))]
+    (t2/insert! :model/ExplorationQueryResult
+                {:exploration_query_id  (:id eq)
+                 :stored_result_id      (:id sr)
+                 :chart_stats           stats
+                 :interestingness_score 0.5
+                 :contextual_interestingness_score 0.5
+                 :metric_description    "revenue"
+                 :chart_description     "revenue over time"})
+    {:card-id (:id card) :query-id (:id eq)}))
+
+(deftest ^:integration generate-auto-insights-skips-without-other-tools-permission-test
+  (testing "Creator lacking :permission/metabot-other-tools → metabot.self throws
+            :metabot/permission-denied, orchestrator catches → :skip-no-permission (UXW-4126)"
+    (mt/with-temp [:model/User u {:email "ai-noperm@example.com"}
+                   :model/Exploration e {:name "x" :creator_id (:id u)}
+                   :model/ExplorationThread t {:exploration_id (:id e)
+                                               :prompt         "Does revenue grow?"
+                                               :position       0}]
+      (seed-one-prepped-chart! (:id u) (:id t))
+      (let [adapter-calls (atom 0)]
+        (with-redefs [metabot.settings/llm-metabot-configured? (constantly true)
+                      metabase.metabot.scope/resolve-user-permissions
+                      (fn [_uid] {:permission/metabot                :yes
+                                  :permission/metabot-sql-generation :yes
+                                  :permission/metabot-nlq            :yes
+                                  :permission/metabot-other-tools    :no})
+                      ;; If the real provider adapter were reached, this would
+                      ;; bump — the permission check fires before that.
+                      metabase.metabot.self.claude/claude
+                      (fn [& _] (swap! adapter-calls inc) [])]
+          (let [outcome (auto-insights/generate-auto-insights! (:id t))]
+            (is (= :skip-no-permission outcome))
+            (is (zero? @adapter-calls)
+                "LLM provider adapter must not be reached when creator lacks :permission/metabot-other-tools")
+            (let [transcript (:auto_insights_transcript
+                              (t2/select-one [:model/ExplorationThread :auto_insights_transcript]
+                                             :id (:id t)))]
+              (is (= :skip-no-permission (:outcome transcript))
+                  "transcript records the skip outcome"))))))))
+
+(deftest ^:integration generate-auto-insights-skips-when-usage-limit-reached-test
+  (testing "check-usage-limits! returning a message → metabot.self throws
+            :metabot/usage-limit-reached, orchestrator catches → :skip-usage-limit (UXW-4126)"
+    (mt/with-temp [:model/User u {:email "ai-limit@example.com"}
+                   :model/Exploration e {:name "x" :creator_id (:id u)}
+                   :model/ExplorationThread t {:exploration_id (:id e)
+                                               :prompt         "Does revenue grow?"
+                                               :position       0}]
+      (seed-one-prepped-chart! (:id u) (:id t))
+      (let [adapter-calls (atom 0)]
+        (with-redefs [metabot.settings/llm-metabot-configured? (constantly true)
+                      metabase.metabot.usage/check-usage-limits!
+                      (fn [] "you have used all of your AI tokens")
+                      metabase.metabot.self.claude/claude
+                      (fn [& _] (swap! adapter-calls inc) [])]
+          (let [outcome (auto-insights/generate-auto-insights! (:id t))]
+            (is (= :skip-usage-limit outcome))
+            (is (zero? @adapter-calls)
+                "LLM provider adapter must not be reached when usage limit is hit")
+            (let [transcript (:auto_insights_transcript
+                              (t2/select-one [:model/ExplorationThread :auto_insights_transcript]
+                                             :id (:id t)))]
+              (is (= :skip-usage-limit (:outcome transcript))))))))))
 
 (deftest ^:integration generate-auto-insights-end-to-end-test
   (testing "Happy path: stubbed LLM produces a curation and analysis; a Document is created with a materialized chart embed"

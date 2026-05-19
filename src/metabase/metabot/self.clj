@@ -14,6 +14,7 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.metabot.provider-util :as provider-util]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.openai :as openai]
@@ -251,6 +252,45 @@
               (recur (inc attempt)))
           (:ok result))))))
 
+(defn- missing-required-permission
+  "Returns the metabot permission keyword that the current user is missing
+  (the base `:permission/metabot` or `required-perm`), or nil when granted.
+  The base `:permission/metabot` is always checked even when `required-perm`
+  is nil — every LLM call must at minimum require metabot to be turned on.
+  Shared by the throwing structured path and the error-part-emitting
+  streaming path."
+  [required-perm]
+  (let [perms (or scope/*current-user-metabot-permissions*
+                  (scope/resolve-user-permissions api/*current-user-id*))]
+    (scope/missing-permission perms required-perm)))
+
+(defn- check-permission!
+  "Structured-path permission gate: throws `:metabot/permission-denied` ex-info
+  on denial. Streaming path uses an error part instead — see [[call-llm]]."
+  [required-perm]
+  (when-let [missing (missing-required-permission required-perm)]
+    (throw (ex-info "Permission denied"
+                    {:type                :metabot/permission-denied
+                     :required-permission missing}))))
+
+(defn- error-reducible
+  "Returns a reducible that emits a single `{:type :error ...}` part and stops.
+  Used by [[call-llm]] for pre-flight failures (usage limit, permission denial)
+  that the streaming consumer should surface inline rather than as throws."
+  [message error-code]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (unreduced (rf init {:type :error :error {:message message :error-code error-code}})))))
+
+(defn- warn-when-missing-required-permission
+  "Every LLM call should declare which metabot permission gates it. Logs a warn
+  pointing at the source/tag when the caller forgets, so we can find and fix
+  them. Shared by [[call-llm]] and [[call-llm-structured-with-trace]]."
+  [fn-name opts]
+  (when-not (:required-permission opts)
+    (log/warnf "%s invoked without :required-permission (source=%s tag=%s) — every LLM call should declare which metabot permission gates it."
+               fn-name (pr-str (:source opts)) (pr-str (:tag opts)))))
+
 (defn call-llm
   "Call an LLM and stream processed parts.
 
@@ -262,8 +302,17 @@
   and user messages (`{:role :user, :content ...}`).  Each adapter converts
   these into its own wire format.
 
-  `tracking-opts` is a map with analytics context for prometheus and snowplow events. See [[report-token-usage-xf]]
-  above for details.
+  `tracking-opts` is a map with analytics + gating context. Tracking fields:
+  see [[report-token-usage-xf]]. Gating field:
+    :required-permission - A `:permission/metabot-*` keyword the current user
+                           must hold (as `:yes`) in addition to the base
+                           `:permission/metabot` (which is always checked).
+                           When the base perm or this perm is not granted,
+                           the reducible emits a single `:error` part with
+                           `:error-code \"permission_denied\"` instead of
+                           opening the provider stream. Callers that omit
+                           this field still get the base check, plus a
+                           log/warn pointing at their source/tag.
 
   `llm-opts` is an optional map of provider-facing call options. Currently this
   supports `:tool-choice`, used by profiles like `:sql` that must end in a tool
@@ -272,39 +321,45 @@
   Returns a reducible that, when consumed, traces the full LLM round-trip
   (HTTP call + streaming response) as an OTel span. Retries transient errors
   (429 rate limit, 529 overloaded, connection errors) up to 3 attempts with
-  exponential backoff, matching the Python ai-service retry behavior."
+  exponential backoff, matching the Python ai-service retry behavior.
+
+  Before opening the stream, enforces global usage limits (via
+  [[metabase.metabot.usage/check-usage-limits!]]); on a hit, returns a
+  reducible that yields a single `:error` part with `:error-code
+  \"ai_usage_limit_reached\"`."
   ([provider-and-model system-msg parts tools tracking-opts]
    (call-llm provider-and-model system-msg parts tools tracking-opts nil))
   ([provider-and-model system-msg parts tools tracking-opts {:keys [tool-choice]}]
-   (if-let [limit-msg (usage/check-usage-limits!)]
-     (reify clojure.lang.IReduceInit
-       (reduce [_ rf init]
-         (rf init {:type :error :error {:message limit-msg :error-code "ai_usage_limit_reached"}})))
-     (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)]
-       (log/info "Calling LLM" {:provider    provider :model model :parts (count parts) :tools (count tools)
-                                :tool-choice tool-choice :ai-proxy? ai-proxy?})
-       (let [tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
-             streaming-opts (cond-> {:model model :input parts :tools (vals tools) :ai-proxy? ai-proxy?}
-                              system-msg        (assoc :system system-msg)
-                              (and (seq tools)
-                                   tool-choice) (assoc :tool_choice tool-choice))
-             make-source    (fn []
-                              (eduction (comp (core/tool-executor-xf tools)
-                                              (core/lite-aisdk-xf)
-                                              (report-aisdk-errors-xf tracking-opts)
-                                              (report-token-usage-xf tracking-opts)
-                                              (report-tool-usage-xf tracking-opts))
-                                        (stream-fn streaming-opts)))]
-         (reify clojure.lang.IReduceInit
-           (reduce [_ rf init]
-             (with-span :info {:name       :metabot.agent/call-llm
-                               :provider   provider
-                               :model      model
-                               :part-count (count parts)
-                               :tool-count (count tools)}
-               (with-retries
-                 tracking-opts
-                 #(reduce rf init (make-source)))))))))))
+   (warn-when-missing-required-permission "call-llm" tracking-opts)
+   (or (when-let [limit-msg (usage/check-usage-limits!)]
+         (error-reducible limit-msg "ai_usage_limit_reached"))
+       (when-let [missing (missing-required-permission (:required-permission tracking-opts))]
+         (error-reducible (format "Permission denied: %s required" missing) "permission_denied"))
+       (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)]
+         (log/info "Calling LLM" {:provider    provider :model model :parts (count parts) :tools (count tools)
+                                  :tool-choice tool-choice :ai-proxy? ai-proxy?})
+         (let [tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
+               streaming-opts (cond-> {:model model :input parts :tools (vals tools) :ai-proxy? ai-proxy?}
+                                system-msg        (assoc :system system-msg)
+                                (and (seq tools)
+                                     tool-choice) (assoc :tool_choice tool-choice))
+               make-source    (fn []
+                                (eduction (comp (core/tool-executor-xf tools)
+                                                (core/lite-aisdk-xf)
+                                                (report-aisdk-errors-xf tracking-opts)
+                                                (report-token-usage-xf tracking-opts)
+                                                (report-tool-usage-xf tracking-opts))
+                                          (stream-fn streaming-opts)))]
+           (reify clojure.lang.IReduceInit
+             (reduce [_ rf init]
+               (with-span :info {:name       :metabot.agent/call-llm
+                                 :provider   provider
+                                 :model      model
+                                 :part-count (count parts)
+                                 :tool-count (count tools)}
+                 (with-retries
+                   tracking-opts
+                   #(reduce rf init (make-source)))))))))))
 
 (defn call-llm-structured-with-trace
   "Like [[call-llm-structured]], but returns `{:result <map> :parts [<part>...]}`
@@ -312,11 +367,32 @@
   reasoning blocks, any non-tool text, the structured tool call itself, and
   usage. Useful for debugging *why* the model produced what it did.
 
+  Before calling the provider, enforces global usage limits (via
+  [[metabase.metabot.usage/check-usage-limits!]]) and the caller's metabot
+  permissions (the base `:permission/metabot` is always checked; the optional
+  `:required-permission` adds a second perm). On a usage-limit hit, throws
+  an `ex-info` with `:type :metabot/usage-limit-reached`. On a permission
+  denial, throws an `ex-info` with `:type :metabot/permission-denied`.
+  Callers that want to fall back silently are expected to catch these
+  explicitly.
+
   `opts` extends `tracking-opts` and may include:
-    :thinking - Provider-specific extended-thinking config. For Anthropic:
-                `{:type \"enabled\" :budget_tokens <int>}`. Only the Claude
-                adapter consumes this currently."
+    :thinking             - Provider-specific extended-thinking config. For
+                            Anthropic: `{:type \"enabled\" :budget_tokens <int>}`.
+                            Only the Claude adapter consumes this currently.
+    :required-permission  - A `:permission/metabot-*` keyword that the current
+                            user must hold (as `:yes`) in addition to the base
+                            `:permission/metabot` (which is always checked).
+                            When nil, only the base check runs and a log/warn
+                            fires pointing at the caller's source/tag."
   [provider-and-model messages json-schema temperature max-tokens opts]
+  (warn-when-missing-required-permission "call-llm-structured-with-trace" opts)
+  (when-let [limit-msg (usage/check-usage-limits!)]
+    (throw (ex-info limit-msg
+                    {:type       :metabot/usage-limit-reached
+                     :error-code "ai_usage_limit_reached"
+                     :message    limit-msg})))
+  (check-permission! (:required-permission opts))
   (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)
         _ (log/info "Calling LLM (structured-with-trace)" {:provider provider
                                                            :model     model
@@ -324,7 +400,7 @@
                                                            :ai-proxy? ai-proxy?
                                                            :thinking? (some? (:thinking opts))})
         tracking-opts  (-> opts
-                           (dissoc :thinking)
+                           (dissoc :thinking :required-permission)
                            (assoc :model provider-and-model :ai-proxy? ai-proxy?))
         streaming-opts (cond-> {:model       model
                                 :input       messages
@@ -360,6 +436,11 @@
   then collects the streamed response and extracts the parsed tool arguments.
   Includes the same retry logic as [[call-llm]] for transient errors.
 
+  Inherits the usage-limit and permission gating from
+  [[call-llm-structured-with-trace]]: throws `:metabot/usage-limit-reached` /
+  `:metabot/permission-denied` ex-infos before the provider is called, and warns
+  when `:required-permission` is missing from `opts`.
+
   Args:
     model         - Model identifier (e.g. \"openrouter/anthropic/claude-haiku-4-5\")
     messages      - Sequence of Chat Completions message maps
@@ -367,11 +448,13 @@
     json-schema   - JSON Schema map for the expected response shape
     temperature   - Sampling temperature
     max-tokens    - Maximum tokens in the response
-    tracking-opts - See [[report-token-usage-xf]] for fields
+    opts          - Tracking + gating options. See [[report-token-usage-xf]] for
+                    tracking fields and [[call-llm-structured-with-trace]] for
+                    `:required-permission` and `:thinking`.
 
   Returns the parsed JSON map from the forced tool call. For access to the
   full streamed trace (reasoning blocks, non-tool text), see
   [[call-llm-structured-with-trace]]."
-  [provider-and-model messages json-schema temperature max-tokens tracking-opts]
+  [provider-and-model messages json-schema temperature max-tokens opts]
   (:result (call-llm-structured-with-trace
-            provider-and-model messages json-schema temperature max-tokens tracking-opts)))
+            provider-and-model messages json-schema temperature max-tokens opts)))

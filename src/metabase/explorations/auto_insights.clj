@@ -45,6 +45,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
+   (clojure.lang ExceptionInfo)
    (java.time Instant)))
 
 (set! *warn-on-reflection* true)
@@ -524,6 +525,151 @@
                    :content_type prose-mirror/prose-mirror-content-type})
       {:document-id (:id doc) :rendered-pm-doc pm-doc})))
 
+(defn- run-phases!
+  "Inner body of [[generate-auto-insights!]]: runs Phase 1 + Phase 2 inside a
+  `with-current-user creator-id` binding so the LLM calls see the creator's
+  metabot permissions / usage limits.
+
+  Catches `ex-info`s thrown by `metabase.metabot.self/call-llm-structured-with-trace`
+  for the `:metabot/permission-denied` and `:metabot/usage-limit-reached` cases
+  and returns matching skip outcomes; any other exception bubbles to the outer
+  `try` in [[generate-auto-insights!]]."
+  [{:keys [thread-id thread creator-id coll-id done-queries prepped prepped-by-id
+           pool-ids selections timelines preamble]}]
+  (request/with-current-user creator-id
+    (try
+      (let [placeholder-doc (or (find-placeholder-doc thread-id)
+                                (create-placeholder-doc! thread-id creator-id coll-id))
+            curation-prompt (phase1/build-curation-prompt
+                             {:thread-prompt     (:prompt thread)
+                              :selections        selections
+                              :timelines         timelines
+                              :index-entries     prepped
+                              :pool-size         (count prepped)
+                              :total-chart-count (count done-queries)})
+            p1 (phase1/run-curation! thread-id curation-prompt pool-ids)
+            p1-transcript {:prompt       curation-prompt
+                           :attempts     (:attempts p1)
+                           :outcome      (:outcome p1)
+                           :curation     (:value p1)
+                           :final-errors (:final-errors p1)}
+            p1-reasonings (attempt-reasonings (:attempts p1))]
+        (if (= :failed (:outcome p1))
+          (let [err-pm  (error-doc {:phase        :phase-1
+                                    :thread-id    thread-id
+                                    :final-errors (:final-errors p1)
+                                    :detail       "Phase 1 (chart curation) failed validation after a repair retry. No Phase 2 was attempted."})
+                err-pm+ (append-reasoning-section
+                         err-pm
+                         {:phase-1   {:reasonings p1-reasonings
+                                      :rationale  (get-in p1 [:value :rationale])
+                                      :prompt     curation-prompt}
+                          :phase-2   {:reasonings []}
+                          :thread-id thread-id})
+                {:keys [document-id rendered-pm-doc]}
+                (write-document! {:doc        placeholder-doc
+                                  :pm-doc     err-pm+
+                                  :creator-id creator-id})]
+            (save-transcript! thread-id
+                              (assoc preamble
+                                     :outcome         :phase-1-failed
+                                     :phase-1         p1-transcript
+                                     :document-id     document-id
+                                     :rendered-pm-doc rendered-pm-doc))
+            (log/warnf "Automatic Insights for thread %d: Phase 1 failed; wrote error doc %d"
+                       thread-id document-id)
+            :phase-1-failed)
+          (let [{:keys [top_tier awareness_tier rationale]} (:value p1)
+                top-prepped       (vec (keep prepped-by-id top_tier))
+                awareness-prepped (vec (keep prepped-by-id awareness_tier))
+                categorical-top-ids (->> top-prepped
+                                         (filter (fn [p]
+                                                   (= :categorical (phase2/x-axis-kind (:cfg p)))))
+                                         (keep :stored-result-id)
+                                         set)
+                analysis-prompt   (phase2/build-analysis-prompt
+                                   {:thread-prompt      (:prompt thread)
+                                    :selections         selections
+                                    :curation-rationale rationale
+                                    :timelines          timelines
+                                    :top-blocks         top-prepped
+                                    :awareness-blocks   awareness-prepped
+                                    :total-chart-count  (count done-queries)
+                                    :pool-size          (count prepped)})
+                p2 (phase2/run-analysis! thread-id analysis-prompt categorical-top-ids)
+                p2-transcript {:prompt       analysis-prompt
+                               :attempts     (:attempts p2)
+                               :outcome      (:outcome p2)
+                               :final-pm-doc (:value p2)
+                               :final-errors (:final-errors p2)}
+                p2-reasonings (attempt-reasonings (:attempts p2))]
+            (if (= :failed (:outcome p2))
+              (let [err-pm  (error-doc {:phase        :phase-2
+                                        :thread-id    thread-id
+                                        :final-errors (:final-errors p2)
+                                        :detail       "Phase 2 (analysis) failed validation after a repair retry. Phase 1's curation is in the transcript for reference."})
+                    err-pm+ (append-reasoning-section
+                             err-pm
+                             {:phase-1   {:reasonings p1-reasonings
+                                          :rationale  rationale
+                                          :prompt     curation-prompt}
+                              :phase-2   {:reasonings p2-reasonings
+                                          :prompt     analysis-prompt}
+                              :thread-id thread-id})
+                    {:keys [document-id rendered-pm-doc]}
+                    (write-document! {:doc        placeholder-doc
+                                      :pm-doc     err-pm+
+                                      :creator-id creator-id})]
+                (save-transcript! thread-id
+                                  (assoc preamble
+                                         :outcome         :phase-2-failed
+                                         :phase-1         p1-transcript
+                                         :phase-2         p2-transcript
+                                         :document-id     document-id
+                                         :rendered-pm-doc rendered-pm-doc))
+                (log/warnf "Automatic Insights for thread %d: Phase 2 failed; wrote error doc %d"
+                           thread-id document-id)
+                :phase-2-failed)
+              (let [pm-doc  (:value p2)
+                    pm-doc+ (-> pm-doc
+                                prepend-disclaimer
+                                (append-reasoning-section
+                                 {:phase-1   {:reasonings p1-reasonings
+                                              :rationale  rationale
+                                              :prompt     curation-prompt}
+                                  :phase-2   {:reasonings p2-reasonings
+                                              :prompt     analysis-prompt}
+                                  :thread-id thread-id}))
+                    {:keys [document-id rendered-pm-doc]}
+                    (write-document! {:doc        placeholder-doc
+                                      :pm-doc     pm-doc+
+                                      :creator-id creator-id})]
+                (save-transcript! thread-id
+                                  (assoc preamble
+                                         :outcome         :ok
+                                         :phase-1         p1-transcript
+                                         :phase-2         p2-transcript
+                                         :document-id     document-id
+                                         :rendered-pm-doc rendered-pm-doc))
+                (log/infof "Wrote Automatic Insights for thread %d to document %d"
+                           thread-id document-id)
+                :ok)))))
+      (catch ExceptionInfo e
+        (case (:type (ex-data e))
+          :metabot/permission-denied
+          (do (log/infof "Skipping Automatic Insights for thread %d: creator %s lacks required metabot permissions"
+                         thread-id creator-id)
+              (save-transcript! thread-id (assoc preamble :outcome :skip-no-permission))
+              :skip-no-permission)
+
+          :metabot/usage-limit-reached
+          (do (log/infof "Skipping Automatic Insights for thread %d: AI usage limit reached (%s)"
+                         thread-id (ex-message e))
+              (save-transcript! thread-id (assoc preamble :outcome :skip-usage-limit))
+              :skip-usage-limit)
+
+          (throw e))))))
+
 (defn generate-auto-insights!
   "Two-phase generation of the `Automatic Insights` document for `thread-id`.
   Always inserts a new document — the manually-created `Findings` doc is the
@@ -594,144 +740,23 @@
               :else
               ;; -------- The placeholder doc was created up-front by the
               ;; exploration POST endpoint so the FE sidebar shows it the
-              ;; moment the exploration is created. Every branch below
-              ;; (phase-1-failed, phase-2-failed, ok) swaps this doc's body
-              ;; in place — we never insert a second doc. For threads created
-              ;; before the endpoint started pre-creating it, fall back to
-              ;; creating one here so old data still works.
-              (let [creator-id (:creator_id exploration)
-                    coll-id    (:collection_id exploration)
-                    placeholder-doc (or (find-placeholder-doc thread-id)
-                                        (request/with-current-user creator-id
-                                          (create-placeholder-doc! thread-id creator-id coll-id)))
-                    curation-prompt (phase1/build-curation-prompt
-                                     {:thread-prompt     (:prompt thread)
-                                      :selections        selections
-                                      :timelines         timelines
-                                      :index-entries     prepped
-                                      :pool-size         (count prepped)
-                                      :total-chart-count (count done-queries)})
-                    p1 (phase1/run-curation! thread-id curation-prompt pool-ids)
-                    p1-transcript {:prompt     curation-prompt
-                                   :attempts   (:attempts p1)
-                                   :outcome    (:outcome p1)
-                                   :curation   (:value p1)
-                                   :final-errors (:final-errors p1)}
-                    p1-reasonings (attempt-reasonings (:attempts p1))]
-                (if (= :failed (:outcome p1))
-                  ;; Phase-1 fatal — write error doc + transcript, do NOT fall back.
-                  (let [err-pm  (error-doc {:phase        :phase-1
-                                            :thread-id    thread-id
-                                            :final-errors (:final-errors p1)
-                                            :detail       "Phase 1 (chart curation) failed validation after a repair retry. No Phase 2 was attempted."})
-                        err-pm+ (append-reasoning-section
-                                 err-pm
-                                 {:phase-1   {:reasonings p1-reasonings
-                                              :rationale  (get-in p1 [:value :rationale])
-                                              :prompt     curation-prompt}
-                                  :phase-2   {:reasonings []}
-                                  :thread-id thread-id})
-                        {:keys [document-id rendered-pm-doc]}
-                        (write-document! {:doc        placeholder-doc
-                                          :pm-doc     err-pm+
-                                          :creator-id creator-id})]
-                    (save-transcript! thread-id
-                                      (assoc preamble
-                                             :outcome         :phase-1-failed
-                                             :phase-1         p1-transcript
-                                             :document-id     document-id
-                                             :rendered-pm-doc rendered-pm-doc))
-                    (log/warnf "Automatic Insights for thread %d: Phase 1 failed; wrote error doc %d"
-                               thread-id document-id)
-                    :phase-1-failed)
-
-                  ;; -------- Phase 1 OK — run Phase 2 --------
-                  (let [{:keys [top_tier awareness_tier rationale]} (:value p1)
-                        top-prepped       (vec (keep prepped-by-id top_tier))
-                        awareness-prepped (vec (keep prepped-by-id awareness_tier))
-                        ;; Top-tier charts whose x-axis is neither time nor
-                        ;; numeric. Passed into Phase 2 validation so the
-                        ;; repair loop catches embeds that forgot the `sort`
-                        ;; attribute on a categorical chart (see the prompt's
-                        ;; sort decision tree). Awareness-tier ids aren't
-                        ;; included since the analyst is told not to embed
-                        ;; them; if one slips in, the per-node validator
-                        ;; catches the malformed reference separately.
-                        categorical-top-ids (->> top-prepped
-                                                 (filter (fn [p]
-                                                           (= :categorical (phase2/x-axis-kind (:cfg p)))))
-                                                 (keep :stored-result-id)
-                                                 set)
-                        analysis-prompt   (phase2/build-analysis-prompt
-                                           {:thread-prompt      (:prompt thread)
-                                            :selections         selections
-                                            :curation-rationale rationale
-                                            :timelines          timelines
-                                            :top-blocks         top-prepped
-                                            :awareness-blocks   awareness-prepped
-                                            :total-chart-count  (count done-queries)
-                                            :pool-size          (count prepped)})
-                        p2 (phase2/run-analysis! thread-id analysis-prompt categorical-top-ids)
-                        p2-transcript {:prompt       analysis-prompt
-                                       :attempts     (:attempts p2)
-                                       :outcome      (:outcome p2)
-                                       :final-pm-doc (:value p2)
-                                       :final-errors (:final-errors p2)}
-                        p2-reasonings (attempt-reasonings (:attempts p2))]
-                    (if (= :failed (:outcome p2))
-                      ;; Phase 2 fatal — error doc with phase 1 context preserved.
-                      (let [err-pm  (error-doc {:phase        :phase-2
-                                                :thread-id    thread-id
-                                                :final-errors (:final-errors p2)
-                                                :detail       "Phase 2 (analysis) failed validation after a repair retry. Phase 1's curation is in the transcript for reference."})
-                            err-pm+ (append-reasoning-section
-                                     err-pm
-                                     {:phase-1   {:reasonings p1-reasonings
-                                                  :rationale  rationale
-                                                  :prompt     curation-prompt}
-                                      :phase-2   {:reasonings p2-reasonings
-                                                  :prompt     analysis-prompt}
-                                      :thread-id thread-id})
-                            {:keys [document-id rendered-pm-doc]}
-                            (write-document! {:doc        placeholder-doc
-                                              :pm-doc     err-pm+
-                                              :creator-id creator-id})]
-                        (save-transcript! thread-id
-                                          (assoc preamble
-                                                 :outcome         :phase-2-failed
-                                                 :phase-1         p1-transcript
-                                                 :phase-2         p2-transcript
-                                                 :document-id     document-id
-                                                 :rendered-pm-doc rendered-pm-doc))
-                        (log/warnf "Automatic Insights for thread %d: Phase 2 failed; wrote error doc %d"
-                                   thread-id document-id)
-                        :phase-2-failed)
-
-                      ;; -------- Both phases OK — write the real analysis --------
-                      (let [pm-doc  (:value p2)
-                            pm-doc+ (-> pm-doc
-                                        prepend-disclaimer
-                                        (append-reasoning-section
-                                         {:phase-1   {:reasonings p1-reasonings
-                                                      :rationale  rationale
-                                                      :prompt     curation-prompt}
-                                          :phase-2   {:reasonings p2-reasonings
-                                                      :prompt     analysis-prompt}
-                                          :thread-id thread-id}))
-                            {:keys [document-id rendered-pm-doc]}
-                            (write-document! {:doc        placeholder-doc
-                                              :pm-doc     pm-doc+
-                                              :creator-id creator-id})]
-                        (save-transcript! thread-id
-                                          (assoc preamble
-                                                 :outcome         :ok
-                                                 :phase-1         p1-transcript
-                                                 :phase-2         p2-transcript
-                                                 :document-id     document-id
-                                                 :rendered-pm-doc rendered-pm-doc))
-                        (log/infof "Wrote Automatic Insights for thread %d to document %d"
-                                   thread-id document-id)
-                        :ok))))))))))
+              ;; moment the exploration is created. Every branch in
+              ;; [[run-phases!]] (phase-1-failed, phase-2-failed, ok, skip)
+              ;; swaps this doc's body in place — we never insert a second
+              ;; doc. For threads created before the endpoint started
+              ;; pre-creating it, [[run-phases!]] falls back to creating one
+              ;; so old data still works.
+              (run-phases! {:thread-id     thread-id
+                            :thread        thread
+                            :creator-id    (:creator_id exploration)
+                            :coll-id       (:collection_id exploration)
+                            :done-queries  done-queries
+                            :prepped       prepped
+                            :prepped-by-id prepped-by-id
+                            :pool-ids      pool-ids
+                            :selections    selections
+                            :timelines     timelines
+                            :preamble      preamble}))))))
     (catch Throwable e
       (log/errorf e "generate-auto-insights! failed for thread %d" thread-id)
       (save-transcript! thread-id (assoc (base-transcript thread-id)
