@@ -502,14 +502,11 @@
          (rf result chunk))))))
 
 (def ^:private max-body-preview-chars
-  "Cap on the size of the response-body snippet we splice into provider error messages.
-   The full body is still logged in full and survives into `ex-data` via the decoded `res`."
+  "Cap on the body snippet spliced into provider error messages."
   500)
 
 (defn- extract-error-message
-  "Pull a human-readable error string out of a structured JSON envelope map. Prefers
-   `[:error :message]`, then `:error`/`:detail`/`:message`. Returns `nil` if the map
-   has none of those — callers fall back to the full logged body for debugging."
+  "Human-readable error string from a JSON envelope map, or nil."
   [m]
   (some-> (or (get-in m [:error :message])
               (:error m)
@@ -519,12 +516,9 @@
           not-empty))
 
 (defn- body-preview
-  "Build a short, human-readable snippet of an upstream provider's response body for the
-   exception message. Prefers structured JSON envelopes (`[:error :message]`, `:error`,
-   `:detail`, `:message`); slurps `InputStream` bodies; probes the first element of
-   JSON arrays. Returns `nil` for anything that doesn't carry a recognised human-readable
-   field — the full body is still logged and stashed in `ex-data`, so users don't see
-   raw `{:request-id ...}` blobs or diagnostic-object arrays in toasts."
+  "Short snippet of an upstream response body for the user-facing exception message.
+  Returns nil for bodies with no recognised human-readable field — those still survive
+  in ex-data and logs for debugging."
   [body]
   (let [s (cond
             (nil? body)                  nil
@@ -545,22 +539,11 @@
 (defn rethrow-api-error!
   "Rethrow a provider HTTP exception with a translated, user-facing message.
 
-  `res->message` receives the decoded response map and must return the canonical,
-  provider-specific message (e.g. `\"Anthropic API key expired or invalid\"`). When
-  the response carries a body, this function appends a truncated preview of that
-  body to the message so engineers and admins can see what the upstream actually
-  said, and emits a `log/warnf` line with the *full* body at the failure boundary
-  so the response body never gets silently swallowed.
-
-  `ex-data` is an explicit allow-list of `:status`, `:reason-phrase`, and `:body`
-  (plus provider tagging) rather than a passthrough of the raw clj-http response —
-  the raw response carries `:http-client` (a `Closeable`), `:trace-redirects`,
-  `:orig-content-encoding`, and other internals we don't want in ex-data or Sentry
-  payloads.
-
-  If the exception already carries `:api-error true` in its ex-data (e.g. a
-  missing-API-key error from [[resolve-auth]]) it is rethrown as-is so the
-  original message is preserved."
+  `res->message` returns the provider-specific message; a body preview is appended when
+  one is available, and the full body is logged.
+  ex-data is an explicit allow-list (`:status`, `:reason-phrase`, `:body`, plus provider tags) —
+  raw clj-http responses carry a Closeable `:http-client` and other internals.
+  Exceptions already tagged `:api-error true` are rethrown unchanged."
   [provider res->message e]
   (let [data (ex-data e)]
     (cond
@@ -573,8 +556,7 @@
             preview (body-preview (:body res))
             msg     (cond-> base
                       preview (str " — " preview))]
-        ;; `log/warn` would `pr-str` a trailing map into the message, not record it as
-        ;; structured MDC. Use `log/warnf` so we knowingly emit one greppable blob.
+        ;; warnf (not warn) so the body renders into the message string, not as MDC.
         (log/warnf "Provider API request failed: provider=%s status=%s body=%s"
                    provider (:status res) (pr-str (:body res)))
         (throw (ex-info msg

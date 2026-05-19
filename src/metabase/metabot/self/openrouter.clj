@@ -92,9 +92,8 @@
                 :description doc
                 :parameters  (mjs/transform params {:additionalProperties false})}}))
 
-(defn- openrouter-errors
-  "Return the canonical, status-specific OpenRouter error message.
-   [[core/rethrow-api-error!]] appends an upstream body preview when one is available."
+(defn- openrouter-error-msg
+  "Canonical, status-specific OpenRouter error message; [[core/rethrow-api-error!]] appends the body preview."
   [res]
   (let [status (long (:status res 0))]
     (case status
@@ -132,7 +131,7 @@
                          :display_name (or (:name model) (:id model))})
                       (reverse (sort-by :created (get-in res [:body :data]))))})
      (catch Exception e
-       (core/rethrow-api-error! "openrouter" openrouter-errors e)))))
+       (core/rethrow-api-error! "openrouter" openrouter-error-msg e)))))
 
 ;;; Streaming response → AISDK v5 chunks
 
@@ -305,7 +304,7 @@
                                      :url      "/v1/chat/completions"
                                      :request  req})))
         (catch Exception e
-          (core/rethrow-api-error! "openrouter" openrouter-errors e))))))
+          (core/rethrow-api-error! "openrouter" openrouter-error-msg e))))))
 
 (defn openrouter
   "Call OpenRouter Chat Completions API, return AISDK stream."

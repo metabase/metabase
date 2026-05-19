@@ -160,9 +160,8 @@
      :description doc
      :parameters  (mjs/transform params {:additionalProperties false})}))
 
-(defn- openai-errors
-  "Return the canonical, status-specific OpenAI error message.
-   [[core/rethrow-api-error!]] appends an upstream body preview when one is available."
+(defn- openai-error-msg
+  "Canonical, status-specific OpenAI error message; [[core/rethrow-api-error!]] appends the body preview."
   [res]
   (let [status (long (:status res 0))]
     (case status
@@ -195,7 +194,7 @@
                          :display_name (:id model)})
                       (reverse (sort-by :created (get-in res [:body :data]))))})
      (catch Exception e
-       (core/rethrow-api-error! "openai" openai-errors e)))))
+       (core/rethrow-api-error! "openai" openai-error-msg e)))))
 
 (mu/defn openai-raw
   "Perform a streaming request to OpenAI Responses API."
@@ -239,7 +238,7 @@
                                    :url      "/v1/responses"
                                    :request  req})))
       (catch Exception e
-        (core/rethrow-api-error! "openai" openai-errors e)))))
+        (core/rethrow-api-error! "openai" openai-error-msg e)))))
 
 (defn openai
   "Call OpenAI API, return AISDK stream."

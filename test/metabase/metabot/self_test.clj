@@ -53,10 +53,11 @@
   (testing "passes required tool choice to LLM providers"
     (let [captured (atom nil)]
       (mt/with-premium-features #{:metabase-ai-managed}
+        ;; `:api-error true` makes `rethrow-api-error!` rethrow as-is, so `::skip` survives on the outer ex-data.
         (mt/with-dynamic-fn-redefs [http/request (fn [opts]
                                                    (when (:body opts)
                                                      (reset! captured (json/decode+kw (:body opts))))
-                                                   (throw (ex-info "stop" {::skip true :status 401 :body "skip parsing"})))]
+                                                   (throw (ex-info "stop" {::skip true :api-error true})))]
           (mt/with-temporary-setting-values [llm-anthropic-api-key  "sk-ant-test-key"
                                              llm-proxy-base-url     "http://proxy.example"
                                              llm-openrouter-api-key "sk-or-v1-test-key"
@@ -881,67 +882,40 @@
 
 (deftest ^:parallel body-preview-test
   (let [body-preview #'self.core/body-preview]
-    (testing "nil and blank → nil"
-      (is (nil? (body-preview nil)))
-      (is (nil? (body-preview "")))
-      (is (nil? (body-preview "   "))))
+    (testing "nil, blank, and non-string scalars → nil"
+      (is (every? nil? (map body-preview [nil "" "   " 500 :error true]))))
     (testing "plain strings pass through trimmed"
       (is (= "Internal Server Error" (body-preview "  Internal Server Error  "))))
     (testing "JSON envelopes prefer [:error :message] over :error/:detail/:message"
-      (is (= "model decommissioned"
-             (body-preview {:error {:message "model decommissioned" :type "deprecated"}})))
-      (is (= "invalid metric"  (body-preview {:error "invalid metric"})))
-      (is (= "missing prompt"  (body-preview {:detail "missing prompt"})))
-      (is (= "bad request"     (body-preview {:message "bad request"}))))
-    (testing "maps without a recognised error field return nil — no internal blobs leak to users"
-      (is (nil? (body-preview {:request-id "abc" :trace ["frame1" "frame2"]})))
-      (is (nil? (body-preview {}))))
-    (testing "JSON arrays probe their first element symmetrically with maps"
-      (is (= "rate limited"
-             (body-preview [{:error {:message "rate limited"}} {:type "diagnostic"}])))
-      (is (= "first message"
-             (body-preview ["first message" "ignored"])))
-      (is (nil? (body-preview [{:request-id "abc"} {:trace ["frame1"]}]))
-          "arrays of internal diagnostic objects do not leak to users")
-      (is (nil? (body-preview [])))
-      (is (nil? (body-preview [42 :keyword]))))
-    (testing "other non-string scalars return nil rather than pr-str'ing into the toast"
-      (is (nil? (body-preview 500)))
-      (is (nil? (body-preview :error)))
-      (is (nil? (body-preview true))))
+      (is (= "model decommissioned" (body-preview {:error {:message "model decommissioned" :type "x"}})))
+      (is (= "invalid metric"       (body-preview {:error  "invalid metric"})))
+      (is (= "missing prompt"       (body-preview {:detail "missing prompt"})))
+      (is (= "bad request"          (body-preview {:message "bad request"}))))
+    (testing "maps and arrays without a recognised error field → nil (no leak to users)"
+      (is (every? nil? (map body-preview [{} {:request-id "abc" :trace ["frame1"]}
+                                          [] [42 :kw] [{:request-id "abc"}]]))))
+    (testing "JSON arrays probe their first element"
+      (is (= "rate limited"  (body-preview [{:error {:message "rate limited"}} {:type "x"}])))
+      (is (= "first message" (body-preview ["first message" "ignored"]))))
     (testing "InputStream bodies get slurped"
-      (let [stream (java.io.ByteArrayInputStream. (.getBytes "boom from upstream" "UTF-8"))]
-        (is (= "boom from upstream" (body-preview stream)))))
+      (is (= "boom"
+             (body-preview (java.io.ByteArrayInputStream. (.getBytes "boom"))))))
     (testing "long bodies are truncated to 500 chars with an ellipsis"
-      (let [long-body (apply str (repeat 2000 \x))
-            preview   (body-preview long-body)]
+      (let [preview (body-preview (apply str (repeat 2000 \x)))]
         (is (str/ends-with? preview "…"))
         (is (= 501 (count preview)))))))
 
-(defn- assert-rethrow-no-internals!
-  "`=?` is a subset match — it silently passes if a key is present in `ex-data` but
-   absent from the expectation. Raw clj-http responses carry `:headers`, `:http-client`
-   (a `Closeable`), `:trace-redirects`, etc., none of which should land in `ex-data`."
-  [data]
-  (is (= #{:status :reason-phrase :body :api-error :provider :error-code}
-         (set (keys data)))
-      "ex-data is an explicit allow-list, not a passthrough of the raw clj-http response"))
-
-(defn- assert-rethrow-no-internals-no-body!
-  "Sibling of [[assert-rethrow-no-internals!]] for the no-`:body` branch (network
-   errors, timeouts). Pins the exact key set so an accidental extra `ex-data` key
-   gets caught here too."
-  [data]
-  (is (= #{:api-error :provider :error-code :exception-class}
-         (set (keys data)))
-      "ex-data is an explicit allow-list, not a passthrough of the raw exception"))
+(defn- caught
+  "Run `thunk` and return the thrown exception, or nil if it didn't throw."
+  [thunk]
+  (try (thunk) nil (catch Exception e e)))
 
 (deftest rethrow-api-error!-test
   (testing ":api-error exceptions are rethrown unchanged"
     (let [original (ex-info "boom" {:api-error true :error-code :proxy-not-configured})]
       (is (identical? original
-                      (try (self.core/rethrow-api-error! "anthropic" (constantly "X") original)
-                           (catch Exception e e))))))
+                      (caught #(self.core/rethrow-api-error! "anthropic" (constantly "X") original))))))
+
   (testing "HTTP responses with a body get the upstream body appended and surfaced in ex-data"
     (let [upstream (ex-info "clj-http error"
                             {:status                500
@@ -951,67 +925,51 @@
                              :http-client           (reify java.io.Closeable (close [_]))
                              :trace-redirects       ["http://elsewhere"]
                              :orig-content-encoding "gzip"})
-          ex       (try
-                     (self.core/rethrow-api-error!
-                      "anthropic"
-                      (fn [res] (str "Anthropic API error (HTTP " (:status res) ")"))
-                      upstream)
-                     nil
-                     (catch Exception e e))]
-      (is (= "Anthropic API error (HTTP 500) — model decommissioned"
-             (ex-message ex)))
-      (is (=? {:api-error  true
-               :provider   "anthropic"
-               :error-code :provider-api-error
-               :status     500
-               :body       {:error {:message "model decommissioned"}}}
-              (ex-data ex)))
-      (assert-rethrow-no-internals! (ex-data ex))))
+          ex       (caught #(self.core/rethrow-api-error!
+                             "anthropic"
+                             (fn [res] (str "Anthropic API error (HTTP " (:status res) ")"))
+                             upstream))]
+      (is (= "Anthropic API error (HTTP 500) — model decommissioned" (ex-message ex)))
+      ;; pin exact ex-data keys — clj-http internals (:http-client, :trace-redirects, …) must not leak.
+      (is (= #{:status :reason-phrase :body :api-error :provider :error-code}
+             (set (keys (ex-data ex)))))
+      (is (=? {:api-error true :provider "anthropic" :error-code :provider-api-error
+               :status 500 :body {:error {:message "model decommissioned"}}}
+              (ex-data ex)))))
+
   (testing "non-JSON bodies still get a preview appended"
     (let [upstream (ex-info "clj-http error"
-                            {:status        502
-                             :reason-phrase "Bad Gateway"
-                             :headers       {"content-type" "text/plain"}
-                             :body          "upstream gateway timeout"})
-          ex       (try
-                     (self.core/rethrow-api-error!
-                      "openrouter"
-                      (fn [_] "OpenRouter upstream provider returned an error")
-                      upstream)
-                     nil
-                     (catch Exception e e))]
+                            {:status 502 :reason-phrase "Bad Gateway"
+                             :headers {"content-type" "text/plain"}
+                             :body "upstream gateway timeout"})
+          ex       (caught #(self.core/rethrow-api-error!
+                             "openrouter"
+                             (constantly "OpenRouter upstream provider returned an error")
+                             upstream))]
       (is (str/includes? (ex-message ex) "OpenRouter upstream provider returned an error"))
-      (is (str/includes? (ex-message ex) "upstream gateway timeout"))
-      (assert-rethrow-no-internals! (ex-data ex))))
+      (is (str/includes? (ex-message ex) "upstream gateway timeout"))))
+
   (testing "structured maps without :error/:detail/:message keep the user-facing message clean"
     (let [upstream (ex-info "clj-http error"
-                            {:status        500
-                             :reason-phrase "Internal Server Error"
-                             :headers       {"content-type" "application/json"}
-                             :body          (json/encode {:request-id "abc" :trace ["frame1"]})})
-          ex       (try
-                     (self.core/rethrow-api-error!
-                      "anthropic"
-                      (constantly "Anthropic API is not working but not saying why")
-                      upstream)
-                     nil
-                     (catch Exception e e))]
-      (is (= "Anthropic API is not working but not saying why" (ex-message ex))
-          "no internal body fields leak into the exception message")
-      (is (= {:request-id "abc" :trace ["frame1"]} (get (ex-data ex) :body))
-          "the full body is still preserved in ex-data for debugging")
-      (assert-rethrow-no-internals! (ex-data ex))))
+                            {:status 500 :reason-phrase "Internal Server Error"
+                             :headers {"content-type" "application/json"}
+                             :body (json/encode {:request-id "abc" :trace ["frame1"]})})
+          ex       (caught #(self.core/rethrow-api-error!
+                             "anthropic"
+                             (constantly "Anthropic API is not working but not saying why")
+                             upstream))]
+      (is (= "Anthropic API is not working but not saying why" (ex-message ex)))
+      (is (= {:request-id "abc" :trace ["frame1"]} (:body (ex-data ex)))
+          "the full body is still preserved in ex-data for debugging")))
+
   (testing "non-HTTP errors (no :body) fall through to the request-failed branch"
-    (let [upstream (java.net.SocketTimeoutException. "Read timed out")
-          ex       (try
-                     (self.core/rethrow-api-error! "openai" (constantly "unused") upstream)
-                     nil
-                     (catch Exception e e))]
+    (let [ex (caught #(self.core/rethrow-api-error!
+                       "openai" (constantly "unused") (java.net.SocketTimeoutException. "Read timed out")))]
       (is (str/includes? (ex-message ex) "API request failed"))
       (is (str/includes? (ex-message ex) "Read timed out"))
-      (is (=? {:api-error       true
-               :provider        "openai"
-               :error-code      :provider-request-failed
+      ;; pin exact ex-data keys for the no-body branch too.
+      (is (= #{:api-error :provider :error-code :exception-class}
+             (set (keys (ex-data ex)))))
+      (is (=? {:api-error true :provider "openai" :error-code :provider-request-failed
                :exception-class "java.net.SocketTimeoutException"}
-              (ex-data ex)))
-      (assert-rethrow-no-internals-no-body! (ex-data ex)))))
+              (ex-data ex))))))

@@ -260,9 +260,8 @@
          {:type "text"
           :text suffix}]))))
 
-(defn- anthropic-errors
-  "Return the canonical, status-specific Anthropic error message.
-   [[core/rethrow-api-error!]] appends an upstream body preview when one is available."
+(defn- anthropic-error-msg
+  "Canonical, status-specific Anthropic error message; [[core/rethrow-api-error!]] appends the body preview."
   [res]
   (let [status (long (:status res 0))]
     (case status
@@ -295,7 +294,7 @@
            models (reverse (sort-by :created_at (:data body)))]
        {:models (map #(select-keys % [:id :display_name]) models)})
      (catch Exception e
-       (core/rethrow-api-error! "anthropic" anthropic-errors e)))))
+       (core/rethrow-api-error! "anthropic" anthropic-error-msg e)))))
 
 (mu/defn claude-raw
   "Perform a streaming request to Claude API."
@@ -347,7 +346,7 @@
                                      :url      "/v1/messages"
                                      :request  req})))
         (catch Exception e
-          (core/rethrow-api-error! "anthropic" anthropic-errors e))))))
+          (core/rethrow-api-error! "anthropic" anthropic-error-msg e))))))
 
 (defn claude
   "Call Claude API, return AISDK stream"
