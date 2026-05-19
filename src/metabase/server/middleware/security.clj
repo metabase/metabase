@@ -143,7 +143,7 @@
       (let [uri    (URI. src)
             scheme (.getScheme uri)
             host   (.getHost uri)
-        ;; URI#getHost strips IPv6 brackets, but CSP origins require bracketed IPv6 literals.
+            ;; URI#getHost strips IPv6 brackets, but CSP origins require bracketed IPv6 literals.
             host   (if (and host
                             (str/includes? host ":")
                             (not (str/starts-with? host "[")))
