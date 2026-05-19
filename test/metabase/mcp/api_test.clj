@@ -45,6 +45,14 @@
                                 {:request-options {:headers extra-headers}}
                                 body)))
 
+(defn- mcp-request-as
+  "Like `mcp-request` but authenticates as the given test username."
+  [username body extra-headers]
+  (client/client-full-response (test.users/username->token username)
+                               :post "mcp"
+                               {:request-options {:headers extra-headers}}
+                               body))
+
 (defn- mcp-request-unauthenticated
   "Make an unauthenticated POST request to /api/mcp."
   ([body]
@@ -95,6 +103,16 @@
     ;; Complete the handshake so the session is marked initialized
     (mcp-request (jsonrpc-notification "notifications/initialized")
                  {"mcp-session-id" session-id})
+    [session-id response]))
+
+(defn- initialize-as!
+  "Like `initialize!` but authenticates as the given test username."
+  [username]
+  (let [response   (mcp-request-as username (jsonrpc-request "initialize") {})
+        session-id (get-in response [:headers "Mcp-Session-Id"])]
+    (mcp-request-as username
+                    (jsonrpc-notification "notifications/initialized")
+                    {"mcp-session-id" session-id})
     [session-id response]))
 
 (defn- call-tool
@@ -857,6 +875,31 @@
                                              :arguments {:handle          handle
                                                          :widgetSessionId owner-session}})
                            {"mcp-session-id" rotated-session}))))))
+
+(deftest visualize-query-rejects-cross-user-widget-session-id-test
+  (testing "visualize_query refuses to resolve another user's handle even when widgetSessionId points at the owner's session"
+    (let [owner-id              (mt/user->id :crowberto)
+          [owner-session _]     (initialize!)                     ;; crowberto
+          ;; Fresh UUID-shaped sentinel for the stored payload so the leak
+          ;; assertion below can't accidentally match against any other test fixture.
+          encoded-payload       (str (random-uuid))
+          handle                (mt/with-current-user owner-id
+                                  (mcp.session/store-handle! owner-session owner-id encoded-payload))
+          [attacker-session _]  (initialize-as! :rasta)
+          response              (mcp-request-as :rasta
+                                                (jsonrpc-request "tools/call"
+                                                                 {:name      "visualize_query"
+                                                                  :arguments {:query_handle    handle
+                                                                              :widgetSessionId owner-session}})
+                                                {"mcp-session-id" attacker-session})]
+      (testing "the response is an error, NOT crowberto's encoded query"
+        (is (=? {:status 200
+                 :body   {:result {:isError true
+                                   :content [{:text #(str/includes? % "Query handle not found")}]}}}
+                response))
+        (is (not= encoded-payload
+                  (get-in response [:body :result :structuredContent :query]))
+            "widgetSessionId must not bypass user scoping")))))
 
 ;;; --------------------------------------------- OAuth Bearer Auth -------------------------------------------------
 
