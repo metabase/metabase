@@ -69,6 +69,16 @@ async function handleQueryApiError(apiPromise) {
 // To fetch that extra data we rely on specific APIs for pivot tables that mirrow the normal endpoints.
 // Those endpoints take the query along with `pivot_rows` and `pivot_cols` to return the subtotal data.
 // If we add breakout/grouping sets to MBQL in the future we can remove this API switching.
+export function shouldUsePivotEndpoint(card, metadata) {
+  const question = new Question(card, metadata);
+  return (
+    question.display() === "pivot" &&
+    !isNative(card) &&
+    // if we have metadata for the db, check if it supports pivots
+    (!question.database() || question.database().supportsPivots())
+  );
+}
+
 export function maybeUsePivotEndpoint(api, card, metadata) {
   const question = new Question(card, metadata);
 
@@ -91,12 +101,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
     };
   }
 
-  if (
-    question.display() !== "pivot" ||
-    isNative(card) ||
-    // if we have metadata for the db, check if it supports pivots
-    (question.database() && !question.database().supportsPivots())
-  ) {
+  if (!shouldUsePivotEndpoint(card, metadata)) {
     return api;
   }
 
@@ -189,14 +194,8 @@ export async function runQuestionQuery(
 }
 
 export const CardApi = {
-  get: GET("/api/card/:cardId"),
-  update: PUT("/api/card/:id"),
   query: POST("/api/card/:cardId/query"),
   query_pivot: POST("/api/card/pivot/:cardId/query"),
-  // related
-  compatibleCards: GET("/api/card/:cardId/series"),
-  parameterValues: GET("/api/card/:cardId/params/:paramId/values"),
-  parameterSearch: GET("/api/card/:cardId/params/:paramId/search/:query"),
 };
 
 export const DashboardApi = {

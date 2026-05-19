@@ -75,6 +75,8 @@ import { getSettingsRoutes } from "./settingsRoutes";
 import { ToolsApp } from "./tools/components/ToolsApp";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
 import { getNotificationsRoutes, getTasksRoutes } from "./tools/routes";
+import { getTasksRoutes } from "./tools/routes";
+import { UpsellTenants } from "./upsells/UpsellTenants";
 import {
   RedirectToAllowedSettings,
   createAdminRouteGuard,
@@ -159,7 +161,13 @@ export const getRoutes = (
 
             {/* Tenants */}
             <Route path="tenants" component={createTenantsRouteGuard()}>
-              {PLUGIN_TENANTS.tenantsRoutes}
+              {PLUGIN_TENANTS.tenantsRoutes ?? (
+                <>
+                  <IndexRoute component={UpsellTenants} />
+                  <Route path="groups" component={UpsellTenants} />
+                  <Route path="people" component={UpsellTenants} />
+                </>
+              )}
             </Route>
 
             <Route path="" component={PeopleListingApp}>

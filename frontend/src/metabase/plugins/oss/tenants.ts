@@ -1,11 +1,11 @@
 import type React from "react";
 import type { SetStateAction } from "react";
 
+import type { CollectionTreeItem } from "metabase/collections/utils";
 import type {
   OmniPickerCollectionItem,
   OmniPickerItem,
 } from "metabase/common/components/Pickers";
-import type { CollectionTreeItem } from "metabase/entities/collections/utils";
 import type {
   Collection,
   CollectionId,

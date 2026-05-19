@@ -16,8 +16,6 @@ export * from "./use-validate-password";
 export { useStoreUrl } from "./use-store-url/use-store-url";
 export * from "./use-capture-event";
 export * from "./use-progressive-loader";
-export * from "./use-delete-item";
-export * from "./use-set-archive";
 export * from "./use-set-collection";
 export * from "./use-set-pinned";
 export * from "./use-snapshot-selector";
