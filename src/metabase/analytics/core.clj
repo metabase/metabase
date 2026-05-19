@@ -1,22 +1,22 @@
 (ns metabase.analytics.core
   (:require
+   [metabase.analytics.event]
    [metabase.analytics.llm-token-usage]
    [metabase.analytics.prometheus]
    [metabase.analytics.quartz]
    [metabase.analytics.sdk]
    [metabase.analytics.settings]
-   [metabase.analytics.snowplow]
    [metabase.analytics.stats]
    [metabase.analytics.util]
    [potemkin :as p]))
 
 (comment
+  metabase.analytics.event/keep-me
   metabase.analytics.llm-token-usage/keep-me
   metabase.analytics.prometheus/keep-me
   metabase.analytics.quartz/keep-me
   metabase.analytics.sdk/keep-me
   metabase.analytics.settings/keep-me
-  metabase.analytics.snowplow/keep-me
   metabase.analytics.stats/keep-me
   metabase.analytics.util/keep-me)
 
@@ -63,7 +63,7 @@
   anon-tracking-enabled!
   instance-creation]
 
- [metabase.analytics.snowplow
+ [metabase.analytics.event
 
   track-event!]
 

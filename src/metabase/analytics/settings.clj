@@ -99,7 +99,7 @@
     ;; is first read.
     (let [value (or (first-user-creation) (t/offset-date-time))]
       (setting/set-value-of-type! :timestamp :instance-creation value)
-      ((requiring-resolve 'metabase.analytics.snowplow/track-event!) :snowplow/account {:event :new_instance_created} nil)))
+      ((requiring-resolve 'metabase.analytics.event/track-event!) :snowplow/account {:event :new_instance_created} nil)))
   (u.date/format-rfc3339 (setting/get-value-of-type :timestamp :instance-creation)))
 
 (defsetting instance-creation
