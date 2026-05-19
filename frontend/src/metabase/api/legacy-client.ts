@@ -430,74 +430,72 @@ export class LegacyApi extends EventEmitter<EventMap> {
       }
     }
 
-    return fetch(request)
-      .then((response) => {
-        const unreadResponse = response.clone();
-        return response.text().then((bodyText) => {
-          // An empty body (e.g. 204 No Content) surfaces as `null`, not `""`,
-          // so callers don't have to handle "the response was empty" via
-          // per-endpoint `transformResponse` workarounds.
-          let body: string | Response | null | undefined =
-            response.status === 204 ? null : bodyText;
+    try {
+      const response = await fetch(request);
+      const unreadResponse = response.clone();
+      const bodyText = await response.text();
+      // An empty body (e.g. 204 No Content) surfaces as `null`, not `""`,
+      // so callers don't have to handle "the response was empty" via
+      // per-endpoint `transformResponse` workarounds.
+      let body: string | Response | null | undefined =
+        response.status === 204 ? null : bodyText;
 
-          if (bodyText !== "") {
-            try {
-              body = JSON.parse(bodyText);
-            } catch (e) {}
-          }
+      if (bodyText !== "") {
+        try {
+          body = JSON.parse(bodyText);
+        } catch (e) {}
+      }
 
-          let status = response.status;
-          if (
-            status === 202 &&
-            body &&
-            typeof body === "object" &&
-            "_status" in body &&
-            body._status &&
-            (body._status as number) > 0
-          ) {
-            status = (body as Record<string, number>)._status;
-          }
+      let status = response.status;
+      if (
+        status === 202 &&
+        body &&
+        typeof body === "object" &&
+        "_status" in body &&
+        body._status &&
+        (body._status as number) > 0
+      ) {
+        status = (body as Record<string, number>)._status;
+      }
 
-          const token = response.headers.get(ANTI_CSRF_HEADER);
-          const metabaseVersion = response.headers.get(METABASE_VERSION_HEADER);
+      const token = response.headers.get(ANTI_CSRF_HEADER);
+      const metabaseVersion = response.headers.get(METABASE_VERSION_HEADER);
 
-          if (token) {
-            ANTI_CSRF_TOKEN = token;
-          }
+      if (token) {
+        ANTI_CSRF_TOKEN = token;
+      }
 
-          if (!options.noEvent) {
-            this.emit(status, url);
-          }
+      if (!options.noEvent) {
+        this.emit(status, url);
+      }
 
-          if (status >= 200 && status <= 299) {
-            // `rawResponse` callers (binary downloads, map tiles) want the
-            // `Response` object itself rather than the parsed body — return
-            // the unread clone so they can `.blob()`/`.arrayBuffer()` it.
-            return options.rawResponse ? unreadResponse : body;
-          } else {
-            this.emit("responseError", { body, status, metabaseVersion });
+      if (status >= 200 && status <= 299) {
+        // `rawResponse` callers (binary downloads, map tiles) want the
+        // `Response` object itself rather than the parsed body — return
+        // the unread clone so they can `.blob()`/`.arrayBuffer()` it.
+        return options.rawResponse ? unreadResponse : body;
+      } else {
+        this.emit("responseError", { body, status, metabaseVersion });
 
-            throw { status: status, data: body };
-          }
-        });
-      })
-      .catch((error: unknown) => {
-        // When the request is aborted, `fetch` rejects with the standard
-        // `DOMException` AbortError. Let it propagate untouched so callers
-        // can `isAbortError`-check the standard web shape.
-        if (options.signal?.aborted) {
-          throw error;
-        }
-        // A raw `fetch` rejection (e.g. the server dropped the connection)
-        // surfaces as a plain Error here, indistinguishable from JS
-        // exceptions thrown elsewhere. Wrap it so downstream renderers can
-        // `instanceof NetworkError`-check and route it to the connectivity
-        // error message.
-        if (error instanceof Error) {
-          throw new NetworkError(error.message);
-        }
+        throw { status: status, data: body };
+      }
+    } catch (error: unknown) {
+      // When the request is aborted, `fetch` rejects with the standard
+      // `DOMException` AbortError. Let it propagate untouched so callers
+      // can `isAbortError`-check the standard web shape.
+      if (options.signal?.aborted) {
         throw error;
-      });
+      }
+      // A raw `fetch` rejection (e.g. the server dropped the connection)
+      // surfaces as a plain Error here, indistinguishable from JS
+      // exceptions thrown elsewhere. Wrap it so downstream renderers can
+      // `instanceof NetworkError`-check and route it to the connectivity
+      // error message.
+      if (error instanceof Error) {
+        throw new NetworkError(error.message);
+      }
+      throw error;
+    }
   }
 
   async apiRequestManipulationMiddleware(
