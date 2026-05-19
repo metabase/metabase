@@ -82,7 +82,20 @@
           (is (= ::fallback
                  (appdb-source/with-missing-relation-fallback
                    ::probe ::fallback
-                   #(throw wrapped)))))))))
+                   #(throw wrapped))))))
+      (testing "*degraded-signals*, when bound to an atom, records each signal whose fallback fired"
+        (let [degraded (atom #{})]
+          (binding [appdb-source/*degraded-signals* degraded]
+            (appdb-source/with-missing-relation-fallback ::a ::fallback #(throw (sql-error-with-state "42P01")))
+            (appdb-source/with-missing-relation-fallback ::b ::fallback #(throw (sql-error-with-state "42703")))
+            ;; A happy-path call does NOT pollute the set.
+            (appdb-source/with-missing-relation-fallback ::c ::fallback (constantly ::ok)))
+          (is (= #{::a ::b} @degraded))))
+      (testing "*degraded-signals* nil (the default) is safe — fallback still works, no NPE"
+        (is (= ::fallback
+               (appdb-source/with-missing-relation-fallback
+                 ::probe ::fallback
+                 #(throw (sql-error-with-state "42P01")))))))))
 
 (deftest ^:sequential verify-write-target-shape-passes-on-current-schema-test
   (testing "verify-write-target-shape! is a no-op when the appdb has the columns record-score! writes"

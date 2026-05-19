@@ -37,6 +37,11 @@
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.app-db.core :as mdb]
+   ;; Required for side-effects so setting `:on-change` watchers (e.g. `report-timezone`) have
+   ;; their event topics derived from `:metabase/event` before the settings cache is restored
+   ;; from the appdb. Both `run-appdb-mode!` and `run-representation-mode! --write-to-appdb`
+   ;; call `setup-db-without-migrations!`, so the load must precede both — not just appdb-mode.
+   [metabase.driver.init]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
@@ -124,6 +129,14 @@
                         {:cli-validation true})))
       (validate-dir! representation-dir))))
 
+(defn- stamp-degraded-signals
+  "Add `[:meta :degraded-signals]` to `result` when any read fell back during scoring. Lets
+  operators distinguish a real `0` score from a `\"schema too old to score this signal\"` result.
+  No-op when nothing degraded."
+  [result degraded]
+  (cond-> result
+    (seq @degraded) (assoc-in [:meta :degraded-signals] (vec (sort (map name @degraded))))))
+
 (defn- run-appdb-mode!
   "Score against the live appdb. The read path uses the same Toucan models as the cron, wrapped
   by [[appdb-source/*tolerate-missing-relations?*]] so tables or columns introduced after the
@@ -131,20 +144,21 @@
   the run. The write step is `appdb-source/record-score!` — a single raw `INSERT INTO
   data_complexity_score`, no transforms, no fingerprint setting advance, no Snowplow event."
   [write?]
-  ;; Load driver init so setting :on-change watchers (e.g. report-timezone) have their event topics
-  ;; derived from :metabase/event before the settings cache is restored from the appdb.
-  (require 'metabase.driver.init)
   (mdb/setup-db-without-migrations!)
   (when write?
     (appdb-source/verify-write-target-shape!))
-  (binding [appdb-source/*tolerate-missing-relations?* true]
-    (let [result (complexity/complexity-scores
-                  (assoc (synonym-source/complexity-scores-opts)
-                         :metabot-scope (metabot-scope/internal-metabot-scope)
-                         :emit-snowplow? false))]
-      (when write?
-        (appdb-source/record-score! (task.complexity-score/current-fingerprint) "appdb" result))
-      result)))
+  (let [degraded (atom #{})]
+    (binding [appdb-source/*tolerate-missing-relations?* true
+              appdb-source/*degraded-signals*            degraded]
+      (let [result (stamp-degraded-signals
+                    (complexity/complexity-scores
+                     (assoc (synonym-source/complexity-scores-opts)
+                            :metabot-scope (metabot-scope/internal-metabot-scope)
+                            :emit-snowplow? false))
+                    degraded)]
+        (when write?
+          (appdb-source/record-score! (task.complexity-score/current-fingerprint) "appdb" result))
+        result))))
 
 (defn- run-representation-mode!
   "Score an on-disk serdes export; optionally persist via the same raw-JDBC writer the appdb path
