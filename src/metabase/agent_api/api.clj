@@ -770,16 +770,22 @@
 ;;; ------------------------------------------------- Update Dashboard -----------------------------------------------
 
 (mr/def ::dashcard-mutation
-  "One dashcard mutation. `action` selects the kind of change; the required fields vary:
+  "One dashcard mutation. Discriminated on `:action`:
    - `add`    : requires `card_id`. Auto-positioned. Optional `display_size`.
    - `remove` : requires `dashcard_id`.
-   - `move`   : requires `dashcard_id`. `position` is \"top\" or \"bottom\"."
-  [:map
-   [:action       [:enum "add" "remove" "move"]]
-   [:card_id      {:optional true} [:maybe ms/PositiveInt]]
-   [:dashcard_id  {:optional true} [:maybe ms/PositiveInt]]
-   [:display_size {:optional true} [:maybe [:enum "default" "wide" "tall" "full"]]]
-   [:position     {:optional true} [:maybe [:enum "top" "bottom"]]]])
+   - `move`   : requires `dashcard_id`. Optional `position` (\"top\" or \"bottom\")."
+  [:multi {:dispatch :action}
+   ["add"    [:map
+              [:action       [:= "add"]]
+              [:card_id      ms/PositiveInt]
+              [:display_size {:optional true} [:enum "default" "wide" "tall" "full"]]]]
+   ["remove" [:map
+              [:action      [:= "remove"]]
+              [:dashcard_id ms/PositiveInt]]]
+   ["move"   [:map
+              [:action      [:= "move"]]
+              [:dashcard_id ms/PositiveInt]
+              [:position    {:optional true} [:enum "top" "bottom"]]]]])
 
 (mr/def ::update-dashboard-request
   "Patch shape for `update_dashboard`. Metadata fields and an optional `dashcards` list of
