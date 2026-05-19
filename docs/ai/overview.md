@@ -1,9 +1,9 @@
 ---
-title: AI in Metabase
+title: AI in Metabase overview
 summary: Overview of all the ways you can use AI with Metabase.
 ---
 
-# AI in Metabase
+# AI in Metabase overview
 
 AI in Metabase is optional. You can use Metabase without AI at all. But if you do want to use AI to interact with Metabase, we have you covered.
 
