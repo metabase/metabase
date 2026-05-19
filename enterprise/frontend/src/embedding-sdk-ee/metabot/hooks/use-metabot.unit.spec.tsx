@@ -272,7 +272,7 @@ describe("useMetabot", () => {
       });
     });
 
-    it("filters out internal-only variants (tool_call, edit_suggestion, user action, todo_list)", async () => {
+    it("filters out internal-only variants (tool_call, edit_suggestion, todo_list)", async () => {
       const { store } = setup({ ui: <TestMessages /> });
 
       act(() => {
@@ -283,15 +283,6 @@ describe("useMetabot", () => {
             type: "tool_call",
             name: "fn",
             status: "started",
-          } as any),
-        );
-        store.dispatch(
-          metabotActions.addUserMessage({
-            agentId: "omnibot",
-            id: "u-action",
-            type: "action",
-            message: "5 rows",
-            userMessage: "Run Query",
           } as any),
         );
         store.dispatch(

@@ -808,8 +808,6 @@
   {:team "Querying Platform"
    :api  #{metabase.driver
            metabase.driver.common
-           metabase.driver.common.parameters
-           metabase.driver.common.parameters.parse
            metabase.driver.connection
            metabase.driver.ddl.interface
            metabase.driver.h2
@@ -1687,7 +1685,6 @@
                     :model/NativeQuerySnippet
                     :model/Notification
                     :model/Revision
-                    :model/Table
                     :model/User}}
 
   queries-rest
@@ -2257,7 +2254,8 @@
   {:team "DevEx"
    :api  #{metabase.tracing.core
            metabase.tracing.init}
-   :uses #{events
+   :uses #{config
+           events
            settings
            task
            util}}
@@ -2674,6 +2672,7 @@
            api-keys
            app-db
            driver
+           lib
            permissions
            premium-features
            settings
@@ -2892,6 +2891,7 @@
            audit-app
            collections
            config
+           driver
            metabot
            models
            premium-features
@@ -3269,6 +3269,7 @@
    :api  #{metabase-enterprise.security-center.api
            metabase-enterprise.security-center.init}
    :uses #{analytics
+           analytics-interface
            api
            app-db
            channel
@@ -3454,6 +3455,7 @@
            permissions
            query-processor
            settings
+           tracing
            transforms
            transforms-base
            util}

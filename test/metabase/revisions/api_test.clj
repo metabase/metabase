@@ -1,4 +1,5 @@
 (ns metabase.revisions.api-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.revisions.api-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.config.core :as config]

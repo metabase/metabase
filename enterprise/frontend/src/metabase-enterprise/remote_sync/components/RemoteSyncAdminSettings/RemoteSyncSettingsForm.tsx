@@ -70,6 +70,7 @@ import { SharedTenantCollectionsList } from "../SharedTenantCollectionsList";
 import { SyncConflictModal } from "../SyncConflictModal";
 import { TopLevelCollectionsList } from "../TopLevelCollectionsList";
 
+import { DevInstanceUpsell } from "./DevInstanceUpsell";
 import { PullChangesButton } from "./PullChangesButton";
 
 export type RemoteSyncSettingsFormProps = {
@@ -101,6 +102,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
 
   const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
   const useTenants = useSetting("use-tenants");
+  const isDevInstance = useSetting("development-mode?");
   const applicationName = useSelector(getApplicationName);
 
   // Fetch top-level collections to build initial sync state
@@ -463,6 +465,12 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                     />
                   </Stack>
                 </FormRadioGroup>
+                {!isDevInstance && (
+                  <DevInstanceUpsell
+                    campaign="remote-sync-dev-instance"
+                    dismissible
+                  />
+                )}
               </RemoteSyncSettingsSection>
 
               {/* Section 3: Branch to sync with (read-only only) */}

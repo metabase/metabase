@@ -2,7 +2,7 @@ import type { Location } from "history";
 import { useMemo } from "react";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getUser, getUserPersonalCollectionId } from "metabase/selectors/user";

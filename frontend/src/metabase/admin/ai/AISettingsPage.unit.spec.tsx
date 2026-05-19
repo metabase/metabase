@@ -218,7 +218,7 @@ describe("AISettingsPage", () => {
   it("keeps the embedded deep link working by selecting the embedded tab", async () => {
     await setup({
       enableEmbedding: true,
-      initialRoute: `/admin/metabot/${FIXED_METABOT_IDS.EMBEDDED}#metabot`,
+      initialRoute: `/admin/metabot?metabot_id=${FIXED_METABOT_IDS.EMBEDDED}`,
     });
 
     expect(
@@ -261,6 +261,21 @@ describe("AISettingsPage", () => {
         name: "Pick a different collection",
       }),
     ).toBeInTheDocument();
+  });
+
+  it("switches tabs using a query param without changing the pathname", async () => {
+    const { history } = await setup({
+      enableEmbedding: true,
+      initialRoute: "/admin/metabot",
+    });
+
+    await userEvent.click(screen.getByRole("tab", { name: "Embedded" }));
+
+    expect(history?.getCurrentLocation()).toMatchObject({
+      pathname: "/admin/metabot",
+      query: { metabot_id: String(FIXED_METABOT_IDS.EMBEDDED) },
+      hash: "",
+    });
   });
 
   it("persists disable ai features", async () => {

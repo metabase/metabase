@@ -66,7 +66,7 @@
                           h2-file-enc         (format "out-%s.db" (mt/random-name))
                           h2-file-default-enc (format "out-%s.db" (mt/random-name))]
         (mt/test-drivers #{:h2 :postgres :mysql}
-          (with-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
+          (mt/with-dynamic-fn-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
             (binding [config/*disable-setting-cache*  true]
               (mc/binding (mdb/application-db-handle)
                 (mdb.connection/application-db
@@ -116,7 +116,7 @@
           db-name            (str "test_" (mt/random-name))]
       (mt/with-temp-file [h2-file (format "out-%s.db" (mt/random-name))]
         (mt/test-drivers #{:h2 :postgres :mysql}
-          (with-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
+          (mt/with-dynamic-fn-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
             (binding [config/*disable-setting-cache*  true]
               (mc/binding (mdb/application-db-handle)
                 (mdb.connection/application-db

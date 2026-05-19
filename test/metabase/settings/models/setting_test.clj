@@ -332,15 +332,15 @@
   (testing "if one change fails, the entire set of changes should be reverted"
     (mt/with-temporary-setting-values [test-setting-1 "123"
                                        test-setting-2 "123"]
-      (let [orig  setting/set!
+      (let [orig  (mt/original-fn #'setting/set!)
             calls (atom 0)]
         ;; allow the first Setting change to succeed, then throw an Exception after that
-        (with-redefs [setting/set! (fn [& args]
-                                     (if (zero? @calls)
-                                       (do
-                                         (swap! calls inc)
-                                         (apply orig args))
-                                       (throw (ex-info "Oops!" {}))))]
+        (mt/with-dynamic-fn-redefs [setting/set! (fn [& args]
+                                                   (if (zero? @calls)
+                                                     (do
+                                                       (swap! calls inc)
+                                                       (apply orig args))
+                                                     (throw (ex-info "Oops!" {}))))]
           (is (thrown-with-msg?
                Throwable
                #"Oops"
@@ -581,13 +581,13 @@
 (deftest db-stored-value-test
   (testing "should expose the raw DB/cache value through the public API"
     (is (= "raw-value"
-           (with-redefs [setting/db-or-cache-value (constantly "raw-value")]
+           (mt/with-dynamic-fn-redefs [setting/db-or-cache-value (constantly "raw-value")]
              (setting/db-stored-value :test-setting-1))))))
 
 ;;; -------------------------------------------------- CSV Settings --------------------------------------------------
 
 (defn- fetch-csv-setting-value! [v]
-  (with-redefs [setting/db-or-cache-value (constantly v)]
+  (mt/with-dynamic-fn-redefs [setting/db-or-cache-value (constantly v)]
     (test-csv-setting)))
 
 (deftest get-csv-setting-test
@@ -829,7 +829,7 @@
         (testing setting
           (is (= expected (setting/can-read-setting? setting (setting/current-user-readable-visibilities))))))))
   (testing "non-admin user with advanced setting access"
-    (with-redefs [setting/has-advanced-setting-access? (constantly true)]
+    (mt/with-dynamic-fn-redefs [setting/has-advanced-setting-access? (constantly true)]
       (mt/with-current-user (mt/user->id :rasta)
         (doseq [[setting expected] {:test-public-setting           true
                                     :test-authenticated-setting    true
@@ -1442,7 +1442,7 @@
                  (validate tag value)))))))))
 
 (deftest validate-description-translation-test
-  (with-redefs [setting/ns-in-test? (constantly false)]
+  (mt/with-dynamic-fn-redefs [setting/ns-in-test? (constantly false)]
     (testing "When not in a test, defsetting descriptions must be i18n'ed"
       (try
         (walk/macroexpand-all
