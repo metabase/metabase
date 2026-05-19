@@ -769,13 +769,27 @@
 
 ;;; ------------------------------------------------- Update Dashboard -----------------------------------------------
 
+(mr/def ::dashcard-mutation
+  "One dashcard mutation. `action` selects the kind of change; the required fields vary:
+   - `add`    : requires `card_id`. Auto-positioned. Optional `display_size`.
+   - `remove` : requires `dashcard_id`.
+   - `move`   : requires `dashcard_id`. `position` is \"top\" or \"bottom\"."
+  [:map
+   [:action       [:enum "add" "remove" "move"]]
+   [:card_id      {:optional true} [:maybe ms/PositiveInt]]
+   [:dashcard_id  {:optional true} [:maybe ms/PositiveInt]]
+   [:display_size {:optional true} [:maybe [:enum "default" "wide" "tall" "full"]]]
+   [:position     {:optional true} [:maybe [:enum "top" "bottom"]]]])
+
 (mr/def ::update-dashboard-request
-  "Patch shape for `update_dashboard`. Phase A: metadata fields only — no dashcard mutations."
+  "Patch shape for `update_dashboard`. Metadata fields and an optional `dashcards` list of
+   add/remove/move mutations applied in order."
   [:map
    [:name          {:optional true} [:maybe ms/NonBlankString]]
    [:description   {:optional true} [:maybe :string]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-   [:archived      {:optional true} [:maybe :boolean]]])
+   [:archived      {:optional true} [:maybe :boolean]]
+   [:dashcards     {:optional true} [:maybe [:sequential ::dashcard-mutation]]]])
 
 (mr/def ::update-dashboard-response
   [:map
@@ -783,17 +797,102 @@
    [:name          ms/NonBlankString]
    [:collection_id [:maybe ms/PositiveInt]]
    [:description   [:maybe :string]]
-   [:archived      :boolean]])
+   [:archived      :boolean]
+   [:dashcard_ids  [:sequential ms/PositiveInt]]])
+
+(defn- size-override
+  "Optional explicit size from the LLM. Returns {:width :height} or nil to fall back to defaults."
+  [display-size]
+  (case display-size
+    "wide"    {:width 18 :height 6}
+    "tall"    {:width 9  :height 12}
+    "full"    {:width 24 :height 9}
+    nil))
+
+(defn- apply-dashcard-mutations!
+  "Apply a sequence of LLM-friendly dashcard mutations. Returns {:added [...] :removed [...] :moved [...]}.
+
+  Errors:
+  - `card_id` that doesn't exist or the user can't read -> 404 / 403 via `api/read-check`.
+  - `dashcard_id` that isn't on this dashboard -> 404 via `api/check-404`.
+
+  Autoplace state walks the current dashcards list as we add, so each new card gets a unique slot."
+  [dashboard-id mutations]
+  (let [current (t2/select :model/DashboardCard :dashboard_id dashboard-id)
+        state   (atom {:placed  (vec current)
+                       :added   []
+                       :removed []
+                       :moved   []})]
+    (doseq [{:keys [action card_id dashcard_id display_size position]} mutations]
+      (case action
+        "add"
+        (let [card     (api/read-check :model/Card card_id)
+              display  (or (:display card) :table)
+              override (size-override display_size)
+              position-fields (if override
+                                (autoplace/get-position-for-new-dashcard
+                                 (:placed @state) (:width override) (:height override)
+                                 autoplace/default-grid-width)
+                                (autoplace/get-position-for-new-dashcard
+                                 (:placed @state) display))
+              new-dashcard (first (t2/insert-returning-instances!
+                                   :model/DashboardCard
+                                   (merge position-fields
+                                          {:dashboard_id dashboard-id
+                                           :card_id      card_id})))]
+          (swap! state #(-> %
+                            (update :placed conj position-fields)
+                            (update :added conj new-dashcard))))
+
+        "remove"
+        (let [existing (api/check-404
+                        (t2/select-one :model/DashboardCard
+                                       :id dashcard_id :dashboard_id dashboard-id))]
+          (t2/delete! :model/DashboardCard :id dashcard_id)
+          (swap! state #(-> %
+                            (update :placed (fn [cards] (vec (remove (comp #{dashcard_id} :id) cards))))
+                            (update :removed conj existing))))
+
+        "move"
+        (let [existing (api/check-404
+                        (t2/select-one :model/DashboardCard
+                                       :id dashcard_id :dashboard_id dashboard-id))
+              ;; Strip the moved card from the placed list while we recompute its position,
+              ;; otherwise autoplace will treat it as still occupying its old slot.
+              other-placed (vec (remove (comp #{dashcard_id} :id) (:placed @state)))
+              new-pos  (case position
+                         "top"    {:row 0 :col 0
+                                   :size_x (:size_x existing) :size_y (:size_y existing)}
+                         "bottom" (autoplace/get-position-for-new-dashcard
+                                   other-placed
+                                   (:size_x existing) (:size_y existing)
+                                   autoplace/default-grid-width)
+                         (autoplace/get-position-for-new-dashcard
+                          other-placed
+                          (:size_x existing) (:size_y existing)
+                          autoplace/default-grid-width))]
+          (t2/update! :model/DashboardCard dashcard_id
+                      (select-keys new-pos [:row :col]))
+          (swap! state #(-> %
+                            (assoc :placed (conj other-placed
+                                                 (merge existing (select-keys new-pos [:row :col]))))
+                            (update :moved conj (merge existing new-pos)))))))
+    (select-keys @state [:added :removed :moved])))
 
 (api.macros/defendpoint :put "/v1/dashboard/:id" :- ::update-dashboard-response
-  "Update a dashboard's metadata. Patch semantics - only fields you pass are changed.
+  "Update a dashboard. Patch semantics - only fields you pass are changed.
 
-  Phase A supports metadata fields (name, description, collection_id, archived). Dashcard
-  mutations come in a follow-up phase."
+  Metadata: `name`, `description`, `collection_id`, `archived`. Dashcard mutations
+  are submitted under `dashcards` as a list of `{action: add|remove|move, ...}`
+  entries applied in order. `add` requires `card_id`; `remove` and `move` require
+  `dashcard_id`."
   {:scope metabot/agent-dashboard-update
    :tool  {:name "update_dashboard"
-           :description (str "Update a dashboard's metadata. Patch semantics - only fields you pass are changed. "
-                             "Set collection_id to move it. Set archived true to archive.")}}
+           :description (str "Update a dashboard. Patch semantics - only fields you pass are changed. "
+                             "Set collection_id to move it. Set archived true to archive. "
+                             "Use dashcards to add, remove, or move cards: "
+                             "[{\"action\":\"add\",\"card_id\":42},{\"action\":\"remove\",\"dashcard_id\":101}]. "
+                             "Get dashcard_ids by reading metabase://dashboard/{id}/items via read_resource.")}}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    body :- ::update-dashboard-request]
@@ -802,29 +901,44 @@
                        (contains? body :name)          (assoc :name (:name body))
                        (contains? body :description)   (assoc :description (:description body))
                        (contains? body :collection_id) (assoc :collection_id (:collection_id body))
-                       (contains? body :archived)      (assoc :archived (boolean (:archived body))))]
-    (when (seq updates)
-      (t2/with-transaction [_conn]
-        ;; Mirror the cascading behavior of dashboards-rest update-dashboard!:
-        ;; archiving the dashboard archives its cards; un-archiving restores them.
-        (when (api/column-will-change? :archived current-dash updates)
-          (if (:archived updates)
-            (t2/update! :model/Card
-                        :dashboard_id id
-                        :archived false
-                        {:archived true :archived_directly false})
-            (t2/update! :model/Card
-                        :dashboard_id id
-                        :archived true
-                        :archived_directly false
-                        {:archived false})))
-        ;; Moving a dashboard moves its cards with it.
-        (when (api/column-will-change? :collection_id current-dash updates)
-          (t2/update! :model/Card :dashboard_id id {:collection_id (:collection_id updates)}))
-        (t2/update! :model/Dashboard id updates)
-        (when (contains? updates :collection_id)
-          (events/publish-event! :event/collection-touch
-                                 {:collection-id id :user-id api/*current-user-id*}))))
+                       (contains? body :archived)      (assoc :archived (boolean (:archived body))))
+        mutations    (:dashcards body)
+        result       (t2/with-transaction [_conn]
+                       (when (seq updates)
+                         ;; Mirror the cascading behavior of dashboards-rest update-dashboard!:
+                         ;; archiving the dashboard archives its cards; un-archiving restores them.
+                         (when (api/column-will-change? :archived current-dash updates)
+                           (if (:archived updates)
+                             (t2/update! :model/Card
+                                         :dashboard_id id
+                                         :archived false
+                                         {:archived true :archived_directly false})
+                             (t2/update! :model/Card
+                                         :dashboard_id id
+                                         :archived true
+                                         :archived_directly false
+                                         {:archived false})))
+                         ;; Moving a dashboard moves its cards with it.
+                         (when (api/column-will-change? :collection_id current-dash updates)
+                           (t2/update! :model/Card :dashboard_id id
+                                       {:collection_id (:collection_id updates)}))
+                         (t2/update! :model/Dashboard id updates)
+                         (when (contains? updates :collection_id)
+                           (events/publish-event! :event/collection-touch
+                                                  {:collection-id id :user-id api/*current-user-id*})))
+                       (when (seq mutations)
+                         (apply-dashcard-mutations! id mutations)))]
+    ;; Publish dashcard events outside the transaction, matching the REST endpoint's ordering.
+    (when (seq (:added result))
+      (events/publish-event! :event/dashboard-add-cards
+                             {:object current-dash
+                              :user-id api/*current-user-id*
+                              :dashcards (:added result)}))
+    (when (seq (:removed result))
+      (events/publish-event! :event/dashboard-remove-cards
+                             {:object current-dash
+                              :user-id api/*current-user-id*
+                              :dashcards (:removed result)}))
     (let [updated (t2/select-one :model/Dashboard :id id)]
       (events/publish-event! :event/dashboard-update
                              {:object updated :user-id api/*current-user-id*})
@@ -832,7 +946,8 @@
        :name          (:name updated)
        :collection_id (:collection_id updated)
        :description   (:description updated)
-       :archived      (boolean (:archived updated))})))
+       :archived      (boolean (:archived updated))
+       :dashcard_ids  (mapv :id (t2/select :model/DashboardCard :dashboard_id id))})))
 
 ;;; ------------------------------------------------ Create Collection -----------------------------------------------
 

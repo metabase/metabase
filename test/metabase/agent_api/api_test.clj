@@ -713,6 +713,83 @@
         (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
                               {:name "Forbidden Rename"})))))
 
+(deftest update-dashboard-dashcards-test
+  (testing "Add a card to the dashboard (autoplaced)"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Phase B Add Target"}
+                   :model/Card      {card-id :id} {:name          "Card to add"
+                                                   :dataset_query (orders-count-query)
+                                                   :display       :table}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                       {:dashcards [{:action "add" :card_id card-id}]})]
+        (is (= 1 (count (:dashcard_ids resp))))
+        (let [dashcards (t2/select :model/DashboardCard :dashboard_id dash-id)]
+          (is (= 1 (count dashcards)))
+          (is (= card-id (:card_id (first dashcards))))
+          ;; Autoplaced - row and col are set even though we didn't provide them.
+          (is (nat-int? (:row (first dashcards))))
+          (is (nat-int? (:col (first dashcards))))))))
+
+  (testing "Add multiple cards in one call - each one autoplaced w/o overlap"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Phase B Multi-add"}
+                   :model/Card      {c1 :id}      {:name "C1" :dataset_query (orders-count-query) :display :table}
+                   :model/Card      {c2 :id}      {:name "C2" :dataset_query (orders-count-query) :display :table}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add" :card_id c1}
+                                         {:action "add" :card_id c2}]})
+      (let [dashcards (t2/select :model/DashboardCard :dashboard_id dash-id)
+            positions (map (juxt :row :col) dashcards)]
+        (is (= 2 (count dashcards)))
+        (is (= 2 (count (set positions))) "Each dashcard should have a unique row/col"))))
+
+  (testing "Remove a dashcard"
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Phase B Remove"}
+                   :model/Card          {card-id :id} {:name "to remove" :dataset_query (orders-count-query) :display :table}
+                   :model/DashboardCard {dashcard-id :id} {:dashboard_id dash-id :card_id card-id
+                                                           :row 0 :col 0 :size_x 12 :size_y 9}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "remove" :dashcard_id dashcard-id}]})
+      (is (zero? (count (t2/select :model/DashboardCard :dashboard_id dash-id))))))
+
+  (testing "Move a dashcard to the top"
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Phase B Move"}
+                   :model/Card          {card-id :id} {:name "movable" :dataset_query (orders-count-query) :display :table}
+                   :model/DashboardCard {dashcard-id :id} {:dashboard_id dash-id :card_id card-id
+                                                           :row 5 :col 3 :size_x 12 :size_y 9}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "move" :dashcard_id dashcard-id :position "top"}]})
+      (let [moved (t2/select-one :model/DashboardCard :id dashcard-id)]
+        (is (= 0 (:row moved)))
+        (is (= 0 (:col moved))))))
+
+  (testing "Mix add + remove + metadata patch in a single call"
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Phase B Mix"}
+                   :model/Card          {keep-card :id} {:name "keep" :dataset_query (orders-count-query) :display :table}
+                   :model/Card          {add-card :id}  {:name "add"  :dataset_query (orders-count-query) :display :table}
+                   :model/Card          {drop-card :id} {:name "drop" :dataset_query (orders-count-query) :display :table}
+                   :model/DashboardCard {keep-dc :id}   {:dashboard_id dash-id :card_id keep-card
+                                                         :row 0 :col 0 :size_x 6 :size_y 4}
+                   :model/DashboardCard {drop-dc :id}   {:dashboard_id dash-id :card_id drop-card
+                                                         :row 4 :col 0 :size_x 6 :size_y 4}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:description "Mixed patch"
+                             :dashcards [{:action "remove" :dashcard_id drop-dc}
+                                         {:action "add"    :card_id add-card}]})
+      (let [dashcards (t2/select :model/DashboardCard :dashboard_id dash-id)
+            card-ids  (set (map :card_id dashcards))]
+        (is (= #{keep-card add-card} card-ids))
+        (is (some #(= keep-dc (:id %)) dashcards) "Untouched dashcard survives")
+        (is (= "Mixed patch" (t2/select-one-fn :description :model/Dashboard :id dash-id))))))
+
+  (testing "Returns 404 when add references a missing card"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Phase B Missing Card"}]
+      (mt/user-http-request :rasta :put 404 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add" :card_id 999999}]})))
+
+  (testing "Returns 404 when remove references a dashcard not on this dashboard"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Phase B Wrong Dashcard"}]
+      (mt/user-http-request :rasta :put 404 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "remove" :dashcard_id 999999}]}))))
+
 ;;; ------------------------------------------------- Execute SQL Tests --------------------------------------------
 
 (deftest execute-sql-test
