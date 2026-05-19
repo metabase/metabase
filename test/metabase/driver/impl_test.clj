@@ -8,6 +8,7 @@
    [clojure.tools.namespace.find :as ns.find]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
+   [metabase.test :as mt]
    [metabase.test.util.async :as tu.async])
   (:import
    (com.vladsch.flexmark.ast Heading)
@@ -32,11 +33,11 @@
     ;; until the namespace has completed loading.
     (tu.async/with-open-channels [started-loading-chan (a/promise-chan)]
       (let [finished-loading (atom false)]
-        (with-redefs [driver.impl/require-driver-ns (fn [_]
-                                                      (driver/register! ::race-condition-test)
-                                                      (a/>!! started-loading-chan :start)
-                                                      (Thread/sleep 100)
-                                                      (reset! finished-loading true))]
+        (mt/with-dynamic-fn-redefs [driver.impl/require-driver-ns (fn [_]
+                                                                    (driver/register! ::race-condition-test)
+                                                                    (a/>!! started-loading-chan :start)
+                                                                    (Thread/sleep 100)
+                                                                    (reset! finished-loading true))]
           ;; fire off a separate thread that will start loading the driver
           (future (driver/the-initialized-driver ::race-condition-test))
           (tu.async/wait-for-result started-loading-chan 500)

@@ -12,8 +12,8 @@
 (deftest bcc-enabled-test
   (testing "When bcc is not enabled, return an email that uses to:"
     (let [sent-message (atom nil)]
-      (with-redefs [email/send-email! (fn [_ message]
-                                        (reset! sent-message message))]
+      (mt/with-dynamic-fn-redefs [email/send-email! (fn [_ message]
+                                                      (reset! sent-message message))]
         (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"
                                            email-smtp-host    "fake_smtp_host"
                                            email-smtp-port    587
@@ -36,7 +36,7 @@
                                   :dashboard_card_id 100
                                   :include_csv true
                                   :include_xls true}
-            result (with-redefs [render.util/is-visualizer-dashcard? (constantly true)]
+            result (mt/with-dynamic-fn-redefs [render.util/is-visualizer-dashcard? (constantly true)]
                      (#'email.impl/assoc-attachment-booleans [matching-part-config] [visualizer-part]))]
 
         (is (true? (-> result first :card :include_csv))
