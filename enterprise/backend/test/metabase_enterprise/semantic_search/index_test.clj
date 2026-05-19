@@ -12,7 +12,9 @@
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u])
+  (:import
+   (org.postgresql.util PGobject)))
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
@@ -558,6 +560,17 @@
     (testing "MySQL-style integer booleans are converted correctly"
       (is (false? (#'semantic.index/to-boolean 0)))
       (is (true? (#'semantic.index/to-boolean 1))))))
+
+(deftest decode-legacy-input-test
+  (letfn [(pgo [s] (doto (PGobject.) (.setType "jsonb") (.setValue s)))]
+    (testing "JSONB object value decodes to a map"
+      (is (= {:legacy_input {:name "Top 10" :model "card"}}
+             (#'semantic.index/decode-legacy-input
+              {:legacy_input (pgo "{\"name\":\"Top 10\",\"model\":\"card\"}")}))))
+    (testing "BOT-1543: JSONB string value (double-encoded) is decoded again"
+      (is (= {:legacy_input {:name "Pro" :model "collection"}}
+             (#'semantic.index/decode-legacy-input
+              {:legacy_input (pgo "\"{\\\"name\\\":\\\"Pro\\\",\\\"model\\\":\\\"collection\\\"}\"")}))))))
 
 (deftest doc->db-record-boolean-conversion-test
   (testing "doc->db-record properly converts boolean fields using to-boolean"
