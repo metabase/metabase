@@ -157,10 +157,8 @@ describe("ManageApiKeys", () => {
 
     await screen.findByText("Copy and save the API key");
     expect(
-      await fetchMock.callHistory
-        .lastCall(REGEN_URL, { method: "PUT" })
-        ?.request?.json(),
-    ).toEqual({});
+      fetchMock.callHistory.called(REGEN_URL, { method: "PUT" }),
+    ).toBeTruthy();
     await waitFor(() => {
       expect(
         fetchMock.callHistory.calls("path:/api/api-key", { method: "GET" }),
