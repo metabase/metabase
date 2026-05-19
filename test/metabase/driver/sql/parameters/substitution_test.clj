@@ -18,22 +18,17 @@
 
 (deftest ^:parallel field->field-filter-clause-test
   (mt/test-driver :h2
-    (letfn [(strip-uuid [clause]
-              (mapv #(if (map? %) (dissoc % :lib/uuid) %) clause))]
-      (is (=? (strip-uuid
-               (sql.qp/mbql-clause-with-opts
-                driver/*driver*
-                :field
-                {:base-type                                                          :type/BigInteger
-                 :metabase.query-processor.util.add-alias-info/source-table          (meta/id :venues)
-                 :metabase.driver.sql.parameters.substitution/compiling-field-filter? true}
-                (meta/id :venues :id)))
-              (strip-uuid
-               (#'sql.params.substitution/field->field-ref
-                driver/*driver*
-                (meta/field-metadata :venues :id)
-                :number/=
-                nil)))))))
+    (is (=? [:field
+             {:effective-type :type/BigInteger,
+              :base-type :type/BigInteger,
+              :metabase.query-processor.util.add-alias-info/source-table 28040,
+              :metabase.driver.sql.parameters.substitution/compiling-field-filter? true}
+             28400]
+            (#'sql.params.substitution/field->field-ref
+             driver/*driver*
+             (meta/field-metadata :venues :id)
+             :number/=
+             nil)))))
 
 (deftest ^:parallel honeysql->replacement-snippet-info-test
   (testing "make sure we handle quotes inside names correctly!"
