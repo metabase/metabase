@@ -378,7 +378,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
     body,
     data,
     options,
-    retry,
+    retry: canRetry,
   }: {
     method: string;
     url: string;
@@ -388,34 +388,13 @@ export class LegacyApi extends EventEmitter<EventMap> {
     options: RequestOptions;
     retry: boolean;
   }): Promise<unknown> {
-    if (retry) {
-      return this._makeRequestWithRetries(
-        method,
-        url,
-        headers,
-        body,
-        data,
-        options,
-      );
-    }
-    return this._makeRequest(method, url, headers, body, data, options);
-  }
-
-  async _makeRequestWithRetries(
-    method: string,
-    url: string,
-    headers: Record<string, string>,
-    body: string | FormData | URLSearchParams | undefined,
-    data: Record<string, unknown>,
-    options: RequestOptions,
-  ): Promise<unknown> {
     // Attempt the request; on 503 retry up to MAX_RETRIES times with
     // exponential backoff (1s, 2s, 4s, 8s, ...).
     return retry(
       () => this._makeRequest(method, url, headers, body, data, options),
       {
-        maxRetries: MAX_RETRIES,
-        shouldRetry: (error) => getErrorStatus(error) === 503,
+        maxRetries: canRetry ? MAX_RETRIES : 0,
+        shouldRetry: canRetryRequest,
       },
     );
   }
@@ -621,4 +600,8 @@ function getErrorStatus(error: unknown): number | undefined {
     return error.status;
   }
   return undefined;
+}
+
+function canRetryRequest(error: unknown): boolean {
+  return getErrorStatus(error) === 503;
 }
