@@ -9,6 +9,42 @@ summary: Connect MCP-compatible AI clients to Metabase to search, explore, and q
 
 Metabase includes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server (using Streamable HTTP transport) that lets AI clients connect directly to your Metabase, all scoped to the connecting person's permissions.
 
+# Enable MCP server
+
+_Admin > AI > MCP_
+
+MCP server and Agent API settings live on their own subpage. From **Admin > AI**, open the **MCP** tab in the left sidebar.
+
+Use the **MCP server** toggle to turn external access to the [MCP server](./mcp.md) on or off.
+
+### Supported MCP clients
+
+Under **Supported MCP clients**, switch on any clients you want to allow:
+
+- **Claude** (Claude Desktop and Claude on the web)
+- **Cursor and VS Code**
+- **ChatGPT**
+
+Toggling on a client automatically adds that client's sandbox domains to Metabase's CORS allowlist, which is what lets browser-based MCP clients make cross-origin requests to your Metabase.
+
+Some clients run outside the browser (like Claude Code on your own machine) and don't need a CORS allowlist entry. You can connect those clients without toggling anything on (assuming you've turned on the main MCP server setting).
+
+### Custom MCP client domains
+
+If you run a self-hosted MCP client or one that isn't in the supported list, add its domain to the **Custom MCP client domains** field. Separate values with a space, for example:
+
+```
+https://mcp.internal.example.com https://*.staging.example.com
+```
+
+The field accepts wildcards (`*`) for subdomains. Changes take effect in about a minute. Might be a good time to get up and pour yourself a glass of water.
+
+## Agent API settings
+
+_Admin > AI > MCP_
+
+Use the **Agent API** toggle to turn external access to the [Agent API](./agent-api.md) on or off.
+
 ## Connect an MCP client
 
 If your admin has turned on [your Metabase's MCP server](./settings.md#enable-mcp-server), all you need to do is point your MCP client at Metabase's MCP endpoint, `/api/mcp`. For example:
