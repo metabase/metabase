@@ -2,9 +2,8 @@
 title: Transform tiers and add-ons
 ---
 
-# Transform tiers and add-ons
+# Transform add-ons
 
-Metabase comes with two tiers of transform functionality:
 
 - **Basic transforms**: run [query-based transforms](query-transforms.md) and schedule transform [jobs](jobs-and-runs.md).
 - **Advanced transforms**: both query-based and Python transforms; separate database connection for write operations; transform inspector.
@@ -13,7 +12,8 @@ Availability and pricing depends on your plan and hosting method.
 
 ## Basic transforms
 
-With basic transform functionality, you can:
+
+With basic transforms, you can:
 
 - Write and run [query-based transforms](query-transforms.md) (but not Python transforms).
 - [Schedule and run jobs](jobs-and-runs.md).
@@ -33,21 +33,21 @@ Once basic transforms are enabled on your Metabase Cloud instance, they can't be
 
 ## Advanced transforms
 
-Advanced transform functionality includes:
+Advanced transforms include:
 
-- All [basic transform](#basic-transforms) functionality: query-based transforms, scheduled jobs, and transform permissions (on Pro/Enterprise).
+- Everything in [basic transforms](#basic-transforms).
 - [Python transforms](python-transforms.md) for more flexible data processing.
-- [Writable connection](../../databases/writable-connection.md) - separate database connection used for write operations.
+- [Writable connection](../../databases/writable-connection.md): separate database connection used for write operations.
 - [Transform inspector](transform-inspector.md).
 
-Advanced transforms functionality can be added to:
+You can buy the Advanced transforms add-on for:
 
 - Any Metabase Cloud instance (Starter, Pro, Enterprise)
 - Self-hosted Pro or Enterprise instances.
 
   Currently, you can't use Advanced transforms functionality on Open Source self-hosted plans.
 
-Advanced transforms add-on comes with an additional charge per successful transform run (compare to [Basic transforms](#basic-transforms)). See [Pricing](https://www.metabase.com/pricing).
+The Advanced transforms add-on comes with an additional charge per successful transform run (compare to [Basic transforms](#basic-transforms)). See [Pricing](https://www.metabase.com/pricing).
 
 ### Enable Advanced transforms
 

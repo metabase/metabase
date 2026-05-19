@@ -154,7 +154,7 @@ To make a query transform incremental:
 
 ## Convert models to transforms
 
-> {% include plans-blockquote.html feature="Converting models to transforms"%}
+{% include plans-blockquote.html feature="Converting models to transforms"%}
 
 If you have models you'd like to migrate to transforms, Metabase can convert them for you. When you convert a model, Metabase:
 
@@ -179,8 +179,8 @@ Metabase runs the conversion in the background. A status indicator at the bottom
 
 If the transform run fails, Metabase stops and leaves the model unchanged—nothing is replaced.
 
-If the transform runs successfully but the source swap fails afterward, the transform and its output table are kept. The model is left unchanged. You can complete the migration manually using [Replace data sources](../dependencies/replace-data-sources.md) to point remaining content from the model to the transform's output table.
+If the transform runs successfully, but the source swap fails afterward, the transform and its output table are kept. The model is left unchanged. You can complete the migration manually using [Replace data sources](../dependencies/replace-data-sources.md) to point the remaining content from the model to the transform's output table.
 
-Once conversion completes, all content that previously queried the model now queries the transform's output table, and the model becomes a saved question.
+Once conversion completes, all content that previously queried the model now queries the transform's output table. The original model just becomes a question.
 
 Newly created tables will be created with default permissions and will _not_ inherit the model's permissions. As an alternative, consider manually creating and running the transform first, setting up the permissions, then using [Replace data sources](../dependencies/replace-data-sources.md) to swap the model for the transform's output table once you configured permissions.

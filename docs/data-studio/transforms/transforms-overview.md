@@ -68,7 +68,7 @@ To enable transforms:
 2. In Data Studio, click **Transforms** in the right sidebar.
 3. If the transforms have not been enabled on your instance yet, you'll see a prompt to enable them. You can do just that.
 
-Once you enabled transforms, you can [configure permissions](#permissions-for-transforms) and start [creating transforms](#create-a-transform).
+Once you've enabled transforms, you can [configure permissions](#permissions-for-transforms) and start [creating transforms](#create-a-transform).
 
 ## See all transforms
 
