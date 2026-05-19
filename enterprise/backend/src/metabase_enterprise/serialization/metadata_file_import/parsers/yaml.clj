@@ -28,8 +28,14 @@
         (or (= v "") (= v "~") (= v "null") (= v "Null") (= v "NULL")) nil
         (or (= v "true") (= v "True") (= v "TRUE")) true
         (or (= v "false") (= v "False") (= v "FALSE")) false
-        (re-matches #"-?\d+" v)         (Long/parseLong v)
-        (re-matches #"-?\d+\.\d+" v)    (Double/parseDouble v)
+        ;; YAML 1.1 plain int: optional sign + digits.
+        (re-matches #"[-+]?\d+" v)                                  (Long/parseLong v)
+        ;; YAML 1.1 plain float: optional sign; mantissa is one of
+        ;;   `<digits>.<digits>?` | `.<digits>` | `<digits>` (with exponent)
+        ;; followed by an optional [eE]exponent. Plain integer-only forms
+        ;; (`5`, `+5`) match the int branch above. Examples that must parse:
+        ;; `1.5`, `+1.0`, `1.`, `.5`, `1e5`, `1.5e-3`, `2E3`.
+        (re-matches #"[-+]?(\d+\.\d*|\.\d+|\d+)([eE][-+]?\d+)?" v) (Double/parseDouble v)
         :else v))))
 
 (declare ^:private read-from-event)

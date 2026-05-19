@@ -75,7 +75,14 @@
     (let [yaml    (str "xs:\n"
                        "- int_val: 42\n"
                        "  neg_int: -7\n"
+                       "  pos_int: +5\n"
                        "  float_val: 3.14\n"
+                       "  pos_float: +1.0\n"
+                       "  trailing_dot: 1.\n"
+                       "  leading_dot: .5\n"
+                       "  exp_int: 1e5\n"
+                       "  exp_float: 1.5e-3\n"
+                       "  exp_upper: 2E3\n"
                        "  bool_t: true\n"
                        "  bool_f: false\n"
                        "  bool_upper: TRUE\n"
@@ -87,7 +94,14 @@
           [[_ row]] (first (collect-batches! yaml :xs 10))]
       (is (= 42        (:int_val row)))
       (is (= -7        (:neg_int row)))
+      (is (= 5         (:pos_int row))      "+5 must parse as Long, not Double")
       (is (= 3.14      (:float_val row)))
+      (is (= 1.0       (:pos_float row))    "+1.0 must parse as Double")
+      (is (= 1.0       (:trailing_dot row)) "1. must parse as Double")
+      (is (= 0.5       (:leading_dot row))  ".5 must parse as Double")
+      (is (= 100000.0  (:exp_int row))      "1e5 must parse as Double")
+      (is (= 0.0015    (:exp_float row))    "1.5e-3 must parse as Double")
+      (is (= 2000.0    (:exp_upper row))    "uppercase E exponent must parse as Double")
       (is (true?       (:bool_t row)))
       (is (= false     (:bool_f row)))
       (is (true?       (:bool_upper row)))
