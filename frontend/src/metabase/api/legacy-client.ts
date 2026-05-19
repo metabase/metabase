@@ -401,8 +401,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
       // An empty body (e.g. 204 No Content) surfaces as `null`, not `""`,
       // so callers don't have to handle "the response was empty" via
       // per-endpoint `transformResponse` workarounds.
-      let body: string | Response | null | undefined =
-        response.status === 204 ? null : bodyText;
+      let body: unknown = response.status === 204 ? null : bodyText;
 
       if (bodyText !== "") {
         try {
@@ -557,10 +556,7 @@ function isRetriableError(error: unknown): boolean {
   return getErrorStatus(error) === 503;
 }
 
-function getResponseStatus(
-  response: Response,
-  body: string | Response | undefined,
-): number {
+function getResponseStatus(response: Response, body: unknown): number {
   if (
     response.status === 202 &&
     body &&
