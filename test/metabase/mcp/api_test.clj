@@ -766,6 +766,27 @@
 
 ;;; --------------------------------------- widgetSessionId cross-session handle resolution -------------------------------------
 
+(deftest tools-expose-output-schema-test
+  (testing "MCP tools/list declares outputSchema for tools that emit structuredContent"
+    (let [[session-id _] (initialize!)
+          response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+          tools          (get-in response [:body :result :tools])
+          tools-by-name  (into {} (map (juxt :name identity)) tools)]
+      (testing "construct_query advertises {query_handle, widgetSessionId} as its output"
+        (let [output-schema (get-in tools-by-name ["construct_query" :outputSchema])
+              prop-names    (set (map name (keys (:properties output-schema))))]
+          (is (= "object" (:type output-schema)))
+          (is (contains? prop-names "query_handle"))
+          (is (contains? prop-names "widgetSessionId"))))
+      (testing "visualize_query advertises its structuredContent shape"
+        (let [output-schema (get-in tools-by-name ["visualize_query" :outputSchema])]
+          (is (= "object" (:type output-schema)))
+          (is (contains? (set (map name (keys (:properties output-schema)))) "query"))))
+      (testing "render_drill_through advertises its structuredContent shape"
+        (let [output-schema (get-in tools-by-name ["render_drill_through" :outputSchema])]
+          (is (= "object" (:type output-schema)))
+          (is (contains? (set (map name (keys (:properties output-schema)))) "query")))))))
+
 (deftest construct-query-returns-widget-session-id-test
   (testing "construct_query echoes the calling MCP session id as widgetSessionId for cross-session handoff"
     (let [[session-id _] (initialize!)

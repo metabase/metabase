@@ -120,6 +120,7 @@
                     [:name :string]
                     [:description :string]
                     [:inputSchema :map]
+                    [:outputSchema {:optional true} :map]
                     [:response-fn fn?]]]
   (if-let [uri (get-in @registry [:key->uri resource-key])]
     (let [scope (get-in @registry [:uri->resource uri :scope])
@@ -232,13 +233,21 @@
   ;; Both fields are optional rather than expressing "at least one of" via a top-level `anyOf`.
   ;; This is because some MCP clients, e.g. the MCP inspector (mcpjam) rejects top-level combinators.
   ;; The response-fn enforces the at-least-one contract at runtime.
-  :inputSchema {:type       "object"
-                :properties {:query           {:type "string" :minLength 1
-                                               :description "Base64-encoded MBQL query (use query_handle instead when available)"}
-                             :query_handle    {:type "string" :format "uuid"
-                                               :description "Handle returned by construct_query; preferred over raw query"}
-                             :widgetSessionId {:type "string"
-                                               :description "Session id returned by construct_query. In the case of ChatGPT, pass it so the handle resolves across rotating MCP sessions; other clients can omit it."}}}
+  :inputSchema  {:type       "object"
+                 :properties {:query           {:type "string" :minLength 1
+                                                :description "Base64-encoded MBQL query (use query_handle instead when available)"}
+                              :query_handle    {:type "string" :format "uuid"
+                                                :description "Handle returned by construct_query; preferred over raw query"}
+                              :widgetSessionId {:type "string"
+                                                :description "Session id returned by construct_query. In the case of ChatGPT, pass it so the handle resolves across rotating MCP sessions; other clients can omit it."}}}
+  :outputSchema {:type       "object"
+                 :properties {:query           {:type        "string"
+                                                :description "Base64-encoded MBQL query that the visualization is rendering."}
+                              :prompt          {:type        "string"
+                                                :description "User's original request, when stored alongside the handle."}
+                              :widgetSessionId {:type        "string"
+                                                :description "Session id under which the handle resolved — re-emitted so ChatGPT can thread it to subsequent calls."}}
+                 :required   ["query"]}
   :response-fn (fn [arguments {:keys [session-id]}]
                  (let [query             (:query arguments)
                        handle            (:query_handle arguments)
@@ -280,12 +289,18 @@
                     "In the case of ChatGPT (which rotates MCP sessions between tool calls), "
                     "pass `widgetSessionId` from a prior tool response so the handle resolves "
                     "against the original session; other MCP clients can omit it.")
-  :inputSchema {:type       "object"
-                :properties {:handle          {:type "string" :format "uuid"
-                                               :description "Handle UUID from the user's drill-through message."}
-                             :widgetSessionId {:type "string"
-                                               :description "Session id from a prior tool response. In the case of ChatGPT, pass it so the handle resolves across rotating MCP sessions; other clients can omit it."}}
-                :required   ["handle"]}
+  :inputSchema  {:type       "object"
+                 :properties {:handle          {:type "string" :format "uuid"
+                                                :description "Handle UUID from the user's drill-through message."}
+                              :widgetSessionId {:type "string"
+                                                :description "Session id from a prior tool response. In the case of ChatGPT, pass it so the handle resolves across rotating MCP sessions; other clients can omit it."}}
+                 :required   ["handle"]}
+  :outputSchema {:type       "object"
+                 :properties {:query           {:type        "string"
+                                                :description "Base64-encoded MBQL query bound to the drill-through handle."}
+                              :widgetSessionId {:type        "string"
+                                                :description "Session id under which the handle resolved — re-emitted so ChatGPT can thread it to subsequent calls."}}
+                 :required   ["query"]}
   :response-fn (fn [arguments {:keys [session-id]}]
                  (if-let [handle (:handle arguments)]
                    (let [widget-session-id (:widgetSessionId arguments)

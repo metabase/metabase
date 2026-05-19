@@ -233,9 +233,9 @@
                                :properties {:id {:type "integer"}}
                                :required   [:id]
                                :additionalProperties false}
-              :responseSchema {:type       "object"
-                               :properties {:name {:type "string"}}
-                               :required   [:name]}
+              :outputSchema {:type       "object"
+                             :properties {:name {:type "string"}}
+                             :required   [:name]}
               :annotations    {:readOnlyHint   true
                                :idempotentHint true}}
              result))))
@@ -456,9 +456,9 @@
                                                 :description "Maximum number of results to return"}}
                            :required   [:q :limit]
                            :additionalProperties false}
-          :responseSchema {:type       "object"
-                           :properties {:results {:type "array" :items {:type "string"}}}
-                           :required   [:results]}}
+          :outputSchema {:type       "object"
+                         :properties {:results {:type "array" :items {:type "string"}}}
+                         :required   [:results]}}
          (test-tool "test_search"))))
 
 (deftest ^:parallel generate-tools-manifest-post-with-task-support-test
@@ -472,11 +472,11 @@
                                         :action {:type "string"}}
                            :required   [:id :action]
                            :additionalProperties false}
-          :responseSchema {:type       "object"
-                           :properties {:id     {:type "integer"}
-                                        :status {:type "string"
-                                                 :enum ["active" "inactive" "pending"]}}
-                           :required   [:id :status]}
+          :outputSchema {:type       "object"
+                         :properties {:id     {:type "integer"}
+                                      :status {:type "string"
+                                               :enum ["active" "inactive" "pending"]}}
+                         :required   [:id :status]}
           :execution      {:taskSupport "parallel"}}
          (test-tool "test_resource_action"))))
 

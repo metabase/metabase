@@ -46,7 +46,7 @@
     (into []
           (comp (filter #(mcp.scope/matches? token-scopes (:scope %)))
                 (map (fn [tool]
-                       (select-keys tool [:name :title :description :inputSchema :annotations :_meta]))))
+                       (select-keys tool [:name :title :description :inputSchema :outputSchema :annotations :_meta]))))
           (concat tools (mcp.resources/list-ui-tools)))))
 
 (defn- build-tool-index
