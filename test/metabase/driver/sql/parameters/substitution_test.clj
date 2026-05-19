@@ -19,11 +19,10 @@
 (deftest ^:parallel field->field-filter-clause-test
   (mt/test-driver :h2
     (is (=? [:field
-             {:effective-type :type/BigInteger,
-              :base-type :type/BigInteger,
-              :metabase.query-processor.util.add-alias-info/source-table 28040,
+             {:base-type                                                           :type/BigInteger,
+              :metabase.query-processor.util.add-alias-info/source-table           (meta/id :venues),
               :metabase.driver.sql.parameters.substitution/compiling-field-filter? true}
-             28400]
+             (meta/id :venues :id)]
             (#'sql.params.substitution/field->field-ref
              driver/*driver*
              (meta/field-metadata :venues :id)
