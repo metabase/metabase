@@ -65,14 +65,7 @@ Delivery Engine (mq.impl)
 ### Idempotency
 
 Queue listeners must be idempotent. A batch can return to `pending` after a partial failure, and the same messages will
-be redelivered. Use `dedup-fn` to filter already-processed messages on retry:
-
-```clojure
-(mq/def-listener! :queue/my-task
-  {:dedup-fn (fn [msgs] (remove already-processed? msgs))}
-  [msg]
-  (process! msg))
-```
+be redelivered.
 
 ## Testing
 
