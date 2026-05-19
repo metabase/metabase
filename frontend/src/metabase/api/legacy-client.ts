@@ -20,6 +20,7 @@ const ANTI_CSRF_HEADER = "X-Metabase-Anti-CSRF-Token";
 const METABASE_VERSION_HEADER = "X-Metabase-Version";
 
 let ANTI_CSRF_TOKEN: string | null = null;
+let LOCALE: string | null = null;
 
 type RequestOptions = {
   json: boolean;
@@ -157,9 +158,8 @@ export class LegacyApi extends EventEmitter {
       headers[ANTI_CSRF_HEADER] = ANTI_CSRF_TOKEN;
     }
 
-    if (DEFAULT_OPTIONS.headers["X-Metabase-Locale"]) {
-      headers["X-Metabase-Locale"] =
-        DEFAULT_OPTIONS.headers["X-Metabase-Locale"];
+    if (LOCALE) {
+      headers["X-Metabase-Locale"] = LOCALE;
     }
 
     const traceparent = getTraceparentHeader();
@@ -615,5 +615,5 @@ export const setLocaleHeader = (locale: string | null | undefined): void => {
    * We need it to localize downloads. It *currently* only work if there is a user, so it won't work
    * for public/static embedding.
    */
-  DEFAULT_OPTIONS.headers["X-Metabase-Locale"] = locale ?? undefined!;
+  LOCALE = locale ?? null;
 };
