@@ -16,13 +16,10 @@
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.core :as metabot]
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.metabot.tools.construct :as metabot-construct]
-   [metabase.metabot.tools.entity-details :as entity-details]
-   [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.resources :as metabot-resources]
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.metabot.util :as metabot.u]
@@ -41,10 +38,6 @@
 
 ;;; --------------------------------------------------- Defaults ------------------------------------------------------
 
-(def ^:private ^:const default-field-values-limit
-  "Default number of field values to return when no limit is specified."
-  30)
-
 (def ^:private ^:const default-query-row-limit
   "Default row cap when :limit is omitted from a table query request."
   200)
@@ -60,15 +53,6 @@
   2000)
 
 ;;; ---------------------------------------------------- Helpers ------------------------------------------------------
-
-(defn- check-tool-result
-  "Extract :structured-output from a tool result, or throw with the appropriate HTTP status code.
-   Tool functions return {:structured-output ...} on success,
-   {:output \"error\" :status-code 4xx/5xx} on failure.
-   Defaults to 404 if no status-code is provided for backwards compatibility."
-  [{:keys [structured-output output status-code]}]
-  (or structured-output
-      (api/check false [(or status-code 404) (or output "Not found.")])))
 
 (defn submit-mcp-visualization-feedback!
   "Submit MCP Apps visualization feedback to Harbormaster.
@@ -88,129 +72,6 @@
 ;; - Use snake_case keys in schema definitions (JSON convention)
 ;; - Use :encode/api transformers to convert kebab-case data from internal functions
 ;; - Convert keyword enum values (like :table, :metric) to strings for JSON
-
-(mr/def ::field-type
-  "A data type for a field derived from Metabase's type hierarchy."
-  [:enum :boolean :date :datetime :time :number :string])
-
-(mr/def ::field-id
-  "Field id as accepted by agent_api endpoints — either a real app-DB field id (positive integer)
-  or a string alias for expression/aggregation columns."
-  [:or ::lib.schema.id/field :string])
-
-(mr/def ::field
-  "A field from a table or metric. field_id is the real database field ID (integer) for concrete fields,
-  or a string alias for expression/aggregation columns."
-  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
-   [:field_id ::field-id]
-   [:name :string]
-   [:display_name :string]
-   [:type {:optional true} [:maybe ::field-type]]
-   [:description {:optional true} [:maybe :string]]
-   [:base_type {:optional true} [:maybe :string]]
-   [:effective_type {:optional true} [:maybe :string]]
-   [:semantic_type {:optional true} [:maybe :string]]
-   [:database_type {:optional true} [:maybe :string]]
-   [:coercion_strategy {:optional true} [:maybe :string]]
-   [:field_values {:optional true} [:maybe [:sequential :any]]]])
-
-(mr/def ::entity-type
-  "The type of queryable entity."
-  [:enum :table :metric])
-
-(mr/def ::metric-summary
-  "Summary of a metric associated with a table. Includes the field_id of the default time dimension for temporal breakouts."
-  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
-   [:id :int]
-   [:type [:= :metric]]
-   [:name :string]
-   [:description {:optional true} [:maybe :string]]
-   [:default_time_dimension_field_id {:optional true} [:maybe ::field-id]]])
-
-(mr/def ::segment
-  "A predefined filter condition that can be applied to queries via the segment_id in filters."
-  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
-   [:id :int]
-   [:name :string]
-   [:display_name {:optional true} [:maybe :string]]
-   [:description {:optional true} [:maybe :string]]])
-
-(mr/def ::measure
-  "A reusable aggregation expression associated with a table. Reference via measure_id in the aggregations array."
-  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
-   [:id :int]
-   [:name :string]
-   [:display_name {:optional true} [:maybe :string]]
-   [:description {:optional true} [:maybe :string]]])
-
-(mr/def ::related-table
-  "A table related to the queried entity via foreign key. The related_by field indicates the FK field name."
-  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
-   [:id :int]
-   [:type [:= :table]]
-   [:name :string]
-   [:display_name {:optional true} [:maybe :string]]
-   [:database_id {:optional true} [:maybe :int]]
-   [:database_engine {:optional true} [:maybe :string]]
-   [:database_schema {:optional true} [:maybe :string]]
-   [:description {:optional true} [:maybe :string]]
-   [:fields {:optional true} [:maybe [:sequential ::field]]]
-   [:related_by {:optional true} [:maybe :string]]])
-
-(mr/def ::table
-  "Full details of a table including its fields, related tables, metrics, and segments."
-  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
-   [:id :int]
-   [:type ::entity-type]
-   [:name :string]
-   [:display_name :string]
-   [:database_id :int]
-   [:database_engine :string]
-   [:database_schema {:optional true} [:maybe :string]]
-   [:description {:optional true} [:maybe :string]]
-   [:fields [:sequential ::field]]
-   [:related_tables {:optional true} [:maybe [:sequential ::related-table]]]
-   [:metrics {:optional true} [:maybe [:sequential ::metric-summary]]]
-   [:measures {:optional true} [:maybe [:sequential ::measure]]]
-   [:segments {:optional true} [:maybe [:sequential ::segment]]]])
-
-(mr/def ::metric
-  "A metric with its queryable dimensions and segments. The default_time_dimension_field_id is the field_id of the recommended time dimension for temporal breakouts."
-  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
-   [:id :int]
-   [:type [:= :metric]]
-   [:name :string]
-   [:description {:optional true} [:maybe :string]]
-   [:default_time_dimension_field_id {:optional true} [:maybe ::field-id]]
-   [:verified {:optional true} [:maybe :boolean]]
-   [:queryable_dimensions {:optional true} [:maybe [:sequential ::field]]]
-   [:segments {:optional true} [:maybe [:sequential ::segment]]]])
-
-(mr/def ::statistics
-  "Statistical summary of a field's values computed during database sync. Includes counts, percentages, numeric summaries (min/max/avg/quartiles/sd), and date ranges."
-  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
-   [:distinct_count {:optional true} [:maybe :int]]
-   [:percent_null   {:optional true} [:maybe number?]]
-   [:min            {:optional true} [:maybe number?]]
-   [:max            {:optional true} [:maybe number?]]
-   [:avg            {:optional true} [:maybe number?]]
-   [:q1             {:optional true} [:maybe number?]]
-   [:q3             {:optional true} [:maybe number?]]
-   [:sd             {:optional true} [:maybe number?]]
-   [:percent_json   {:optional true} [:maybe number?]]
-   [:percent_url    {:optional true} [:maybe number?]]
-   [:percent_email  {:optional true} [:maybe number?]]
-   [:percent_state  {:optional true} [:maybe number?]]
-   [:average_length {:optional true} [:maybe number?]]
-   [:earliest       {:optional true} [:maybe :string]]
-   [:latest         {:optional true} [:maybe :string]]])
-
-(mr/def ::field-values
-  "Statistics and sample values for a specific field."
-  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
-   [:field_id {:optional true} [:maybe ::field-id]]
-   [:statistics {:optional true} [:maybe ::statistics]]
-   [:values {:optional true} [:maybe [:sequential :any]]]])
 
 (mr/def ::search-result-item
   "A table or metric returned from search."
@@ -239,87 +100,6 @@
   {:scope :unchecked}
   []
   {:message "pong"})
-
-(api.macros/defendpoint :get "/v1/table/:id" :- ::table
-  "Get details for a table by ID."
-  {:scope metabot/agent-table-read
-   :tool  {:name "get_table"
-           :description "Get details about a table including its fields, related tables, and metrics."}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {:keys [with-fields with-field-values with-related-tables with-metrics with-measures with-segments]
-    :or   {with-fields true, with-field-values false, with-related-tables true,
-           with-metrics true, with-measures false, with-segments false}}
-   :- [:map
-       [:with-field-values   {:optional true} [:maybe :boolean]]
-       [:with-fields         {:optional true} [:maybe :boolean]]
-       [:with-related-tables {:optional true} [:maybe :boolean]]
-       [:with-metrics        {:optional true} [:maybe :boolean]]
-       [:with-measures       {:optional true} [:maybe :boolean]]
-       [:with-segments       {:optional true} [:maybe :boolean]]]]
-  (check-tool-result
-   (entity-details/get-table-details
-    {:entity-type          :table
-     :entity-id            id
-     :with-fields?         with-fields
-     :with-field-values?   with-field-values
-     :with-related-tables? with-related-tables
-     :with-metrics?        with-metrics
-     :with-measures?       with-measures
-     :with-segments?       with-segments})))
-
-(api.macros/defendpoint :get "/v1/table/:id/field/:field-id/values" :- ::field-values
-  "Get statistics and sample values for a table field."
-  {:scope metabot/agent-table-read
-   :tool  {:name "get_table_field_values"
-           :description "Get sample values and statistics for a field in a table."}}
-  [{:keys [id field-id]} :- [:map
-                             [:id       ms/PositiveInt]
-                             [:field-id {:tool/description "Field identifier - a real database field id (positive integer as a string) or a string alias for an expression/aggregation column."}
-                              ms/NonBlankString]]]
-  (check-tool-result
-   (field-stats/field-values
-    {:entity-type "table"
-     :entity-id   id
-     :field-id    field-id
-     :limit       (or (request/limit) default-field-values-limit)})))
-
-(api.macros/defendpoint :get "/v1/metric/:id" :- ::metric
-  "Get details for a metric by ID."
-  {:scope metabot/agent-metric-read
-   :tool  {:name "get_metric"
-           :description "Get details about a metric including its queryable dimensions."}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {:keys [with-default-temporal-breakout with-field-values with-queryable-dimensions with-segments]
-    :or   {with-default-temporal-breakout true, with-field-values false,
-           with-queryable-dimensions true, with-segments false}}
-   :- [:map
-       [:with-default-temporal-breakout {:optional true} [:maybe :boolean]]
-       [:with-field-values              {:optional true} [:maybe :boolean]]
-       [:with-queryable-dimensions      {:optional true} [:maybe :boolean]]
-       [:with-segments                  {:optional true} [:maybe :boolean]]]]
-  (check-tool-result
-   (entity-details/get-metric-details
-    {:metric-id                       id
-     :with-default-temporal-breakout? with-default-temporal-breakout
-     :with-field-values?              with-field-values
-     :with-queryable-dimensions?      with-queryable-dimensions
-     :with-segments?                  with-segments})))
-
-(api.macros/defendpoint :get "/v1/metric/:id/field/:field-id/values" :- ::field-values
-  "Get statistics and sample values for a metric field."
-  {:scope metabot/agent-metric-read
-   :tool  {:name "get_metric_field_values"
-           :description "Get sample values and statistics for a field in a metric."}}
-  [{:keys [id field-id]} :- [:map
-                             [:id       ms/PositiveInt]
-                             [:field-id {:tool/description "Field identifier - a real database field id (positive integer as a string) or a string alias for an expression/aggregation column."}
-                              ms/NonBlankString]]]
-  (check-tool-result
-   (field-stats/field-values
-    {:entity-type "metric"
-     :entity-id   id
-     :field-id    field-id
-     :limit       (or (request/limit) default-field-values-limit)})))
 
 (defn- coerce-query-list
   "Defensive coercion for `/v1/search`'s query arguments. Some MCP clients (notably

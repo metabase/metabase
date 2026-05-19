@@ -6,7 +6,6 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
-   [medley.core :as m]
    [metabase.agent-api.api :as agent-api.api]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.lib.core :as lib]
@@ -20,7 +19,6 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -87,99 +85,6 @@
 
 ;;; ------------------------------------------------- Functional Tests --------------------------------------------------
 
-(deftest get-table-details-test
-  (testing "Returns table details for valid table ID"
-    (let [table-id (mt/id :orders)]
-      (is (=? {:type           "table"
-               :id             table-id
-               :name           "ORDERS"
-               :display_name   "Orders"
-               :database_id    (mt/id)
-               :fields         sequential?
-               :related_tables sequential?}
-              (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id))))))
-
-  (testing "Returns 404 for non-existent table"
-    (is (= "Not found."
-           (mt/user-http-request :rasta :get 404 "agent/v1/table/999999"))))
-
-  (testing "Respects query parameters"
-    (let [table-id (mt/id :orders)]
-      (is (=? {:type   "table"
-               :id     table-id
-               :fields empty?}
-              (mt/user-http-request :rasta :get 200
-                                    (str "agent/v1/table/" table-id "?with-fields=false&with-related-tables=false"))))))
-
-  (testing "Field values are excluded by default"
-    (let [table-id (mt/id :orders)
-          table    (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id))]
-      (is (every? #(nil? (:field_values %)) (:fields table)))))
-
-  (testing "Field values are included when explicitly requested"
-    (let [table-id (mt/id :orders)
-          table    (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id "?with-field-values=true"))]
-      (is (some #(seq (:field_values %)) (:fields table))))))
-
-(deftest get-table-details-field-types-test
-  (testing "Field metadata (base_type, effective_type, semantic_type, coercion_strategy) is returned correctly"
-    (mt/with-temp [:model/Database {db-id :id}    {}
-                   :model/Table    {table-id :id} {:db_id db-id, :name "t", :active true}
-                   :model/Field    _              {:table_id table-id, :name "id"
-                                                   :base_type :type/BigInteger
-                                                   :semantic_type :type/PK}
-                   :model/Field    _              {:table_id table-id, :name "name"
-                                                   :base_type :type/Text}
-                   :model/Field    _              {:table_id table-id, :name "created_at"
-                                                   :base_type :type/Text
-                                                   :effective_type :type/DateTime
-                                                   :coercion_strategy :Coercion/ISO8601->DateTime}]
-      (let [fields  (-> (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id))
-                        :fields)
-            by-name (m/index-by :name fields)]
-        (testing "base_type is always set"
-          (is (= "type/BigInteger" (get-in by-name ["id" :base_type])))
-          (is (= "type/Text"       (get-in by-name ["name" :base_type])))
-          (is (= "type/Text"       (get-in by-name ["created_at" :base_type]))))
-        (testing "semantic_type is returned when set"
-          (is (= "type/PK" (get-in by-name ["id" :semantic_type])))
-          (is (nil? (get-in by-name ["name" :semantic_type]))))
-        (testing "effective_type and coercion_strategy are returned when coerced"
-          (is (= "type/DateTime"               (get-in by-name ["created_at" :effective_type])))
-          (is (= "Coercion/ISO8601->DateTime" (get-in by-name ["created_at" :coercion_strategy]))))
-        (testing "effective_type is omitted when it equals base_type"
-          (is (not (contains? (get by-name "id") :effective_type)))
-          (is (not (contains? (get by-name "name") :effective_type))))))))
-
-(deftest get-metric-details-test
-  (mt/with-temp [:model/Card metric {:name          "Test Metric"
-                                     :type          :metric
-                                     :database_id   (mt/id)
-                                     :dataset_query (orders-count-query)}]
-    (testing "Returns metric details for valid metric ID"
-      (is (=? {:type                 "metric"
-               :id                   (:id metric)
-               :name                 "Test Metric"
-               :queryable_dimensions sequential?}
-              (mt/user-http-request :rasta :get 200 (str "agent/v1/metric/" (:id metric))))))
-
-    (testing "Respects query parameters"
-      (is (=? {:type "metric"
-               :id   (:id metric)}
-              (mt/user-http-request :rasta :get 200
-                                    (str "agent/v1/metric/" (:id metric)
-                                         "?with-queryable-dimensions=false&with-field-values=false")))))
-
-    (testing "Returns 404 for non-existent metric"
-      (is (= "Not found."
-             (mt/user-http-request :rasta :get 404 "agent/v1/metric/999999"))))))
-
-(defn- ensure-fresh-field-values!
-  "Ensure field values exist for a field by deleting any existing ones and recreating them."
-  [field-id]
-  (t2/delete! :model/FieldValues :field_id field-id :type :full)
-  (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id field-id)))
-
 (defn- visible-field-id
   "Find the real field ID for a field by display name within a table's visible columns."
   [table-id field-display-name]
@@ -190,37 +95,6 @@
          (filter #(= (lib/display-name query %) field-display-name))
          first
          :id)))
-
-(deftest get-table-field-values-test
-  ;; Ensure field values exist for the field we'll test
-  (ensure-fresh-field-values! (mt/id :people :state))
-
-  (testing "Returns field statistics and values with default limit of 30"
-    (let [table-id (mt/id :people)
-          field-id (visible-field-id table-id "State")]
-      (is (some? field-id) "Should find the State field")
-      (let [result (mt/user-http-request :crowberto :get 200
-                                         (format "agent/v1/table/%d/field/%s/values" table-id field-id))]
-        (is (=? {:value_metadata {:statistics   {:distinct-count 49}
-                                  :field_values sequential?}}
-                result))
-        (is (<= (count (:values result)) 30) "Should apply default limit of 30"))))
-
-  (testing "Respects explicit limit parameter"
-    (let [table-id (mt/id :people)
-          field-id (visible-field-id table-id "State")]
-      (is (=? {:value_metadata {:field_values #(= 5 (count %))}}
-              (mt/user-http-request :crowberto :get 200
-                                    (format "agent/v1/table/%d/field/%s/values?limit=5" table-id field-id))))))
-
-  (testing "Returns 404 for non-existent table"
-    (is (= "Not found."
-           (mt/user-http-request :crowberto :get 404 "agent/v1/table/999999/field/999999/values"))))
-
-  (testing "Returns 404 for non-existent field"
-    (let [table-id (mt/id :people)]
-      (is (= "Field 999999 not found"
-             (mt/user-http-request :crowberto :get 404 (format "agent/v1/table/%d/field/999999/values" table-id)))))))
 
 (deftest search-test
   (binding [search.ingestion/*force-sync* true]
@@ -444,30 +318,6 @@
       (is (=? {:status "completed" :row_count 200}
               execute-resp)))))
 
-(deftest get-metric-field-values-test
-  (ensure-fresh-field-values! (mt/id :orders :quantity))
-  (mt/with-temp [:model/Card metric {:name          "Test Metric"
-                                     :type          :metric
-                                     :database_id   (mt/id)
-                                     :dataset_query (orders-count-query)}]
-    (testing "Returns field statistics for a field that has statistics"
-      (let [metric-details (mt/user-http-request :rasta :get 200 (str "agent/v1/metric/" (:id metric)))
-            quantity-field (m/find-first #(= (:name %) "QUANTITY") (:queryable_dimensions metric-details))]
-        (is (some? quantity-field) "Quantity field should be in queryable_dimensions")
-        (when-let [field-id (:field_id quantity-field)]
-          (is (=? {:value_metadata {:statistics   map?
-                                    :field_values sequential?}}
-                  (mt/user-http-request :rasta :get 200
-                                        (format "agent/v1/metric/%d/field/%s/values" (:id metric) field-id)))))))
-
-    (testing "Returns 404 for non-existent metric"
-      (is (= "Not found."
-             (mt/user-http-request :rasta :get 404 "agent/v1/metric/999999/field/999999/values"))))
-
-    (testing "Returns 404 for non-existent field on metric"
-      (is (= "Field 999999 not found"
-             (mt/user-http-request :rasta :get 404 (format "agent/v1/metric/%d/field/999999/values" (:id metric))))))))
-
 (deftest construct-metric-query-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                      :type          :metric
@@ -511,25 +361,6 @@
       (is (string? (:query response)))
       (let [decoded (decode-query response)]
         (is (seq (lib/filters decoded)) "Query should have filters")))))
-
-(deftest get-table-details-with-measures-test
-  (let [measure-def (-> (lib/query (mt/metadata-provider)
-                                   (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
-                        (lib/aggregate (lib/sum (lib.metadata/field (mt/metadata-provider) (mt/id :orders :total)))))]
-    (mt/with-temp [:model/Measure {measure-id :id} {:name       "Total Revenue"
-                                                    :table_id   (mt/id :orders)
-                                                    :definition measure-def}]
-      (testing "with-measures=false (default) does not include measures"
-        (let [table (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" (mt/id :orders)))]
-          (is (nil? (:measures table)))))
-
-      (testing "with-measures=true includes measures for the table"
-        (let [table (mt/user-http-request :rasta :get 200
-                                          (str "agent/v1/table/" (mt/id :orders) "?with-measures=true"))]
-          (is (sequential? (:measures table)))
-          (is (=? [{:id   measure-id
-                    :name "Total Revenue"}]
-                  (:measures table))))))))
 
 (deftest combined-query-test
   (testing "Returns results for a table query that fits in a single page"

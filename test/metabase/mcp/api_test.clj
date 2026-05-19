@@ -233,10 +233,6 @@
     "create_question"
     "execute_query"
     "execute_sql"
-    "get_metric"
-    "get_metric_field_values"
-    "get_table"
-    "get_table_field_values"
     "query"
     "read_resource"
     "render_drill_through"
@@ -485,30 +481,6 @@
       (is (= 400 (:status response)))
       (is (= -32600 (get-in response [:body :error :code]))))))
 
-;;; --------------------------------------------- Type-Safe Responses -----------------------------------------------
-
-(deftest type-safe-get-table-test
-  (testing "get_table response has properly encoded keys from Agent API"
-    (let [[session-id _] (initialize!)
-          response (mcp-request (jsonrpc-request "tools/call"
-                                                 {:name      "get_table"
-                                                  :arguments {:id (mt/id :orders)}})
-                                {"mcp-session-id" session-id})
-          result       (get-in response [:body :result])
-          ;; Use first+:text since :content is a lazy seq (not indexable by get-in)
-          content-text (:text (first (:content result)))]
-      (is (= 200 (:status response)))
-      (is (nil? (:isError result)))
-      (is (string? content-text))
-      ;; Parse the content text as JSON and verify snake_case keys from Malli encoding
-      (let [table-data (json/decode+kw content-text)]
-        (is (=? {:name         string?
-                 :display_name string?
-                 :database_id  int?
-                 :type         "table"
-                 :fields       sequential?}
-                table-data))))))
-
 (deftest initialized-notification-compatibility-test
   (testing "requests succeed without notifications/initialized"
     (let [response      (mcp-request (jsonrpc-request "initialize"))
@@ -556,7 +528,7 @@
   (testing "tools/call with missing path params returns an error"
     (let [[session-id _] (initialize!)
           response (mcp-request (jsonrpc-request "tools/call"
-                                                 {:name "get_table" :arguments {}})
+                                                 {:name "update_question" :arguments {}})
                                 {"mcp-session-id" session-id})
           result (get-in response [:body :result])]
       (is (= 200 (:status response)))
@@ -570,8 +542,8 @@
                 "\"Agent API error: <status>\".")
     (let [[session-id _] (initialize!)
           response (mcp-request (jsonrpc-request "tools/call"
-                                                 {:name      "get_table"
-                                                  :arguments {:id 999999}})
+                                                 {:name      "update_question"
+                                                  :arguments {:id 999999 :name "Bogus"}})
                                 {"mcp-session-id" session-id})
           result   (get-in response [:body :result])
           message  (:text (first (:content result)))]
@@ -600,22 +572,6 @@
                 (is (not (contains? schema k))
                     (str (:name tool) " should have no top-level " k))))))))))
 
-(deftest tools-call-get-table-query-params-test
-  (testing "get_table passes query params correctly (with-fields default true)"
-    (let [result (mt/with-current-user (mt/user->id :crowberto)
-                   (mcp.tools/call-tool nil nil "get_table" {:id (mt/id :orders)}))]
-      (is (not (:isError result)))
-      (let [table-data (json/decode+kw (:text (first (:content result))))]
-        (is (seq (:fields table-data))
-            "with-fields defaults to true, so fields should be present"))))
-  (testing "get_table with with-fields=false omits fields"
-    (let [result (mt/with-current-user (mt/user->id :crowberto)
-                   (mcp.tools/call-tool nil nil "get_table" {:id (mt/id :orders) :with-fields false}))]
-      (is (not (:isError result)))
-      (let [table-data (json/decode+kw (:text (first (:content result))))]
-        (is (empty? (:fields table-data))
-            "with-fields=false should return no fields")))))
-
 (defn- orders-count-query
   "Simple count query on the orders table — used as the dataset_query for smoke-test metrics."
   []
@@ -628,8 +584,7 @@
    below) — the test compares this set against the Agent API-backed tools and
    fails when they diverge, ensuring no Agent API tool ships without a basic
    invocation check."
-  #{"get_table" "get_table_field_values" "get_metric" "get_metric_field_values"
-    "search" "construct_query" "query" "execute_query" "execute_sql"
+  #{"search" "construct_query" "query" "execute_query" "execute_sql"
     "read_resource"
     "create_question" "create_dashboard"
     "update_question" "update_dashboard" "create_collection"})
@@ -642,10 +597,10 @@
         "Add the missing tool to `smoke-tested-tools` and the call sequence below."))
   (testing "every tool returns a successful response with valid parameters"
     (search.tu/with-legacy-search
-      (mt/with-temp [:model/Card metric {:name          "Smoke Metric"
-                                         :type          :metric
-                                         :database_id   (mt/id)
-                                         :dataset_query (orders-count-query)}]
+      (mt/with-temp [:model/Card _metric {:name          "Smoke Metric"
+                                          :type          :metric
+                                          :database_id   (mt/id)
+                                          :dataset_query (orders-count-query)}]
         (let [[session-id _] (initialize!)
               orders-id      (mt/id :orders)
               db-name        (t2/select-one-fn :name :model/Database (mt/id))
@@ -659,15 +614,7 @@
               dash-id        (atom nil)
               coll-id        (atom nil)]
           (try
-            (let [;; Read tools — call-tool helper asserts (not :isError) internally.
-                  table-data     (call-tool session-id "get_table" {:id orders-id})
-                  table-fid      (-> table-data :fields first :field_id)
-                  _              (call-tool session-id "get_table_field_values"
-                                            {:id orders-id :field-id (str table-fid)})
-                  metric-data    (call-tool session-id "get_metric" {:id (:id metric)})
-                  metric-fid     (-> metric-data :queryable_dimensions first :field_id)
-                  _              (call-tool session-id "get_metric_field_values"
-                                            {:id (:id metric) :field-id (str metric-fid)})
+            (let [;; Discovery tools — call-tool helper asserts (not :isError) internally.
                   _              (call-tool session-id "search" {:term_queries ["orders"]})
                   ;; Query construction + execution
                   construct-data (call-tool session-id "construct_query" {:query orders-query})
@@ -1172,7 +1119,7 @@
       ;; Should include search (matches scope)
       (is (contains? tool-names "search"))
       ;; Should NOT include tools with other scopes
-      (is (not (contains? tool-names "get_table")))
+      (is (not (contains? tool-names "update_question")))
       (is (not (contains? tool-names "construct_query")))))
 
   (testing "tools/list with wildcard scope matches all agent and UI tools"
@@ -1217,22 +1164,28 @@
                   response)))))))
 
 (deftest tools-call-scope-enforcement-test
-  (testing "tool call is rejected when token scopes don't include the required scope"
-    (let [result (mt/with-current-user (mt/user->id :crowberto)
-                   (mcp.tools/call-tool #{"agent:search"} nil "get_table" {:id (mt/id :orders)}))]
-      (is (=? {:isError true} result))
-      (is (str/includes? (-> result :content first :text) "Insufficient scope")
-          "Scope enforcement error from defendpoint middleware")))
-  (testing "tool call with matching scope is not rejected by scope enforcement"
-    (let [result (mt/with-current-user (mt/user->id :crowberto)
-                   (mcp.tools/call-tool #{"agent:table:read"} nil "get_table" {:id (mt/id :orders)}))]
-      (is (not (:isError result)))))
-  (testing "tool call with empty scopes is rejected for scoped tools"
-    (let [result (mt/with-current-user (mt/user->id :crowberto)
-                   (mcp.tools/call-tool #{} nil "get_table" {:id (mt/id :orders)}))]
-      (is (=? {:isError true} result))
-      (is (str/includes? (-> result :content first :text) "Insufficient scope")
-          "Scope enforcement error from defendpoint middleware"))))
+  (mt/with-temp [:model/Card {card-id :id} {:name          "Scope Test Card"
+                                            :dataset_query (orders-count-query)
+                                            :display       :table}]
+    (testing "tool call is rejected when token scopes don't include the required scope"
+      (let [result (mt/with-current-user (mt/user->id :crowberto)
+                     (mcp.tools/call-tool #{"agent:search"} nil "update_question"
+                                          {:id card-id :name "Renamed"}))]
+        (is (=? {:isError true} result))
+        (is (str/includes? (-> result :content first :text) "Insufficient scope")
+            "Scope enforcement error from defendpoint middleware")))
+    (testing "tool call with matching scope is not rejected by scope enforcement"
+      (let [result (mt/with-current-user (mt/user->id :crowberto)
+                     (mcp.tools/call-tool #{"agent:question:update"} nil "update_question"
+                                          {:id card-id :name "Renamed Again"}))]
+        (is (not (:isError result)))))
+    (testing "tool call with empty scopes is rejected for scoped tools"
+      (let [result (mt/with-current-user (mt/user->id :crowberto)
+                     (mcp.tools/call-tool #{} nil "update_question"
+                                          {:id card-id :name "Nope"}))]
+        (is (=? {:isError true} result))
+        (is (str/includes? (-> result :content first :text) "Insufficient scope")
+            "Scope enforcement error from defendpoint middleware")))))
 
 (deftest check-resource-access-test
   (testing "returns :ok for a known URI with matching scope"
@@ -1259,29 +1212,36 @@
 
 (deftest agent-api-preserves-token-scopes-test
   (testing "scoped token restrictions are enforced by the Agent API layer (defense-in-depth)"
-    (testing "restricted scopes that don't match the endpoint are rejected by Agent API"
-      (let [result (mt/with-current-user (mt/user->id :crowberto)
-                     ;; Bypass the MCP scope check by calling invoke-agent-api directly
-                     ;; with scopes that don't match the endpoint's required scope (agent:table:read)
-                     (#'mcp.tools/invoke-agent-api :get (str "/v1/table/" (mt/id :orders)) #{"agent:search"} nil))]
-        (is (=? {:isError true} result)
-            "Agent API should reject when token scopes don't include the required scope")))
-    (testing "matching scopes are accepted by Agent API"
-      (let [result (mt/with-current-user (mt/user->id :crowberto)
-                     (#'mcp.tools/invoke-agent-api :get (str "/v1/table/" (mt/id :orders)) #{"agent:table:read"} nil))]
-        (is (not (:isError result))
-            "Agent API should accept when token scopes include the required scope")))
-    (testing "unrestricted scopes are accepted by Agent API"
-      (let [result (mt/with-current-user (mt/user->id :crowberto)
-                     (#'mcp.tools/invoke-agent-api :get (str "/v1/table/" (mt/id :orders)) #{::scope/unrestricted} nil))]
-        (is (not (:isError result))
-            "Agent API should accept unrestricted scopes")))))
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Scope Probe Card"
+                                              :dataset_query (orders-count-query)
+                                              :display       :table}]
+      (testing "restricted scopes that don't match the endpoint are rejected by Agent API"
+        (let [result (mt/with-current-user (mt/user->id :crowberto)
+                       ;; Bypass the MCP scope check by calling invoke-agent-api directly
+                       ;; with scopes that don't match the endpoint's required scope (agent:question:update)
+                       (#'mcp.tools/invoke-agent-api :put (str "/v1/question/" card-id) #{"agent:search"}
+                                                     {:name "Probe"}))]
+          (is (=? {:isError true} result)
+              "Agent API should reject when token scopes don't include the required scope")))
+      (testing "matching scopes are accepted by Agent API"
+        (let [result (mt/with-current-user (mt/user->id :crowberto)
+                       (#'mcp.tools/invoke-agent-api :put (str "/v1/question/" card-id) #{"agent:question:update"}
+                                                     {:name "Probe"}))]
+          (is (not (:isError result))
+              "Agent API should accept when token scopes include the required scope")))
+      (testing "unrestricted scopes are accepted by Agent API"
+        (let [result (mt/with-current-user (mt/user->id :crowberto)
+                       (#'mcp.tools/invoke-agent-api :put (str "/v1/question/" card-id) #{::scope/unrestricted}
+                                                     {:name "Probe"}))]
+          (is (not (:isError result))
+              "Agent API should accept unrestricted scopes"))))))
 
 (deftest mcp-does-not-depend-on-external-agent-api-setting-test
   (testing "MCP tool calls still work when the external Agent API is disabled"
     (mt/with-temporary-setting-values [agent-api.settings/agent-api-enabled? false]
       (let [result (mt/with-current-user (mt/user->id :crowberto)
-                     (mcp.tools/call-tool #{::scope/unrestricted} nil "get_table" {:id (mt/id :orders)}))]
+                     (mcp.tools/call-tool #{::scope/unrestricted} nil "read_resource"
+                                          {:uris ["metabase://databases"]}))]
         (is (not (:isError result)))))))
 
 ;;; ------------------------------------------------- Throttling ---------------------------------------------------
