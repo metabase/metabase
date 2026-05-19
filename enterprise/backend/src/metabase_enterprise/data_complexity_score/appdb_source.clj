@@ -36,6 +36,13 @@
   surface as exceptions."
   false)
 
+(def ^:dynamic *degraded-signals*
+  "Optional atom (or nil) that [[with-missing-relation-fallback]] `swap!`s a `signal` keyword into
+  whenever it returns the fallback. The CLI binds it so the final score can be stamped with the
+  set of degraded signals — letting operators tell a real `0` from `\"schema too old to score
+  this signal\"`. Default nil because cron / API don't need it (their schema is current)."
+  nil)
+
 ;; SQLState codes that mean "the table or column you referenced isn't there" across the appdb
 ;; backends Metabase supports. Listed explicitly rather than prefix-matched on `42S` so we don't
 ;; accidentally trip on other `42Sxx` codes a driver might introduce. Postgres uses `42P01`
@@ -92,6 +99,7 @@
         (if (missing-relation-error? t)
           (do (log/warnf "Data Complexity: %s unavailable on this appdb (%s). Falling back to %s."
                          signal (.getMessage t) (pr-str fallback))
+              (some-> *degraded-signals* (swap! conj signal))
               fallback)
           (throw t))))
     (f)))
