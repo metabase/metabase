@@ -598,7 +598,8 @@
                   ;; can clean up even if a later step throws.
                   question-data  (call-tool session-id "create_question"
                                             {:name  "Smoke Question"
-                                             :query (mcp.session/read-handle session-id (:query_handle construct-data))})
+                                             :query (mcp.session/read-handle session-id
+                                                                             (:query_handle construct-data))})
                   _              (reset! question-id (:id question-data))
                   dash-data      (call-tool session-id "create_dashboard"
                                             {:name "Smoke Dashboard"})]

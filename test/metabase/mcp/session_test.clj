@@ -118,6 +118,25 @@
       (is (= "payload" (mcp.session/read-handle owner-session handle)))
       (is (nil? (mcp.session/read-handle other-session handle))))))
 
+(deftest verified-widget-session-id-test
+  (testing "verified-widget-session-id returns the id only when core_session ownership matches"
+    (let [owner-id    (mt/user->id :crowberto)
+          attacker-id (mt/user->id :rasta)
+          session-id  (mcp.session/create! owner-id)
+          ;; `create!` only mints a UUID — the backing `core_session` row is
+          ;; materialized lazily. Storing a handle triggers
+          ;; `get-or-create-embedding-session!` and gives us a row to look up.
+          _           (mcp.session/store-handle! session-id owner-id "seed")]
+      (testing "matching user → trusted"
+        (is (= session-id (mcp.session/verified-widget-session-id session-id owner-id))))
+      (testing "non-matching user → nil"
+        (is (nil? (mcp.session/verified-widget-session-id session-id attacker-id))))
+      (testing "unknown session id → nil"
+        (is (nil? (mcp.session/verified-widget-session-id (str (random-uuid)) owner-id))))
+      (testing "nil inputs → nil"
+        (is (nil? (mcp.session/verified-widget-session-id nil owner-id)))
+        (is (nil? (mcp.session/verified-widget-session-id session-id nil)))))))
+
 (deftest store-handle-cascades-with-core-session-test
   (testing "deleting the backing core_session cascades to its handles"
     (let [user-id    (mt/user->id :crowberto)

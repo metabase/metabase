@@ -185,6 +185,17 @@
   (when-let [row (t2/select-one :model/McpQueryHandle :id handle-id, :mcp_session_id session-id)]
     (select-keys row [:encoded_query :prompt])))
 
+(defn verified-widget-session-id
+  "Return `widget-session-id` only if it has a backing `core_session` row owned by
+  `user-id`, otherwise nil. Used to gate the LLM-supplied widgetSessionId override
+  before it's accepted as a handle-lookup key."
+  [widget-session-id user-id]
+  (when (and widget-session-id user-id)
+    (let [key-hashed (session/hash-session-key (derive-embedding-session-key widget-session-id))
+          owner      (t2/select-one-fn :user_id :core_session :key_hashed key-hashed)]
+      (when (= owner user-id)
+        widget-session-id))))
+
 (defn delete!
   "Delete the `core_session` backing this MCP session (if one was ever created)
    and any associated query handles. Scoped to `user-id` so that one user cannot

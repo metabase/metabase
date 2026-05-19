@@ -108,14 +108,13 @@
    If :query_handle is present, look it up and replace with :query.
    If :query is itself a UUID (the LLM passed the handle in the wrong field), resolve
    it too — but log a warning so we can track how often this antipattern fires.
-   When the caller provides :widgetSessionId (in the case of ChatGPT, the
-   thread-stable id used to correlate tool calls across rotating MCP sessions),
-   it takes precedence over the current request's MCP session id for handle
-   lookup. Other MCP clients (Claude Desktop, Cursor, …) have stable per-thread
-   sessions and don't need to pass it — the fallback uses the current session id.
+   :widgetSessionId, when provided, overrides the current request's session id
+   for lookup (ChatGPT's thread-continuity hack — see `make-store-construct-query-result`).
    Returns updated arguments, or ::handle-not-found if the handle doesn't exist."
   [session-id tool-name arguments]
-  (let [lookup-session-id (or (:widgetSessionId arguments) session-id)]
+  (let [verified-widget    (mcp.session/verified-widget-session-id
+                            (:widgetSessionId arguments) api/*current-user-id*)
+        lookup-session-id  (or verified-widget session-id)]
     (cond
       (:query_handle arguments)
       (if-let [{:keys [encoded_query]} (mcp.session/resolve-query-handle lookup-session-id (:query_handle arguments))]
@@ -138,12 +137,10 @@
    so the LLM carries a short opaque UUID rather than the full base64 string.
    Also stores the optional prompt with the handle, used for submitting feedback on visualizations.
 
-   Returns a wrapped shape `{:body … :_meta …}` so the caller can lift `:_meta`
-   onto the MCP tool-call response. The MCP `_meta.openai/widgetSessionId` is
-   the runtime channel ChatGPT uses to correlate tool calls within one chat
-   thread (other MCP clients ignore it); the `:widgetSessionId` field in the
-   structured content is the LLM-visible fallback the model is instructed to
-   pass forward when ChatGPT rotates sessions between tool calls."
+   Returns `{:body … :_meta …}` so the caller can lift `:_meta` onto the MCP
+   tool-call response. Both `_meta.openai/widgetSessionId` and the
+   `:widgetSessionId` field in `structuredContent` carry the session id forward
+   so ChatGPT can correlate handles across its rotated MCP sessions."
   [session-id user-id]
   (fn [body]
     (if-let [encoded (:query body)]
