@@ -305,9 +305,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
     const middlewareResult = await this.apiRequestManipulationMiddleware({
       url: urlTemplate,
       method: method as "GET" | "POST",
-      options: {
-        ...invocationOptions,
-      } as OnBeforeRequestHandlerConfig["options"],
+      options: invocationOptions,
       data: { ...params },
     });
 
