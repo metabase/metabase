@@ -434,7 +434,7 @@ export class LegacyApi extends EventEmitter {
     options: RequestOptions,
   ): Promise<unknown> {
     const controller = options.controller || new AbortController();
-    const signal = options.signal ?? controller.signal;
+    const signal = controller.signal;
     options.cancelled?.then(() => controller.abort());
 
     const requestUrl = new URL(this.basename + url, location.origin);
@@ -444,6 +444,20 @@ export class LegacyApi extends EventEmitter {
       body: requestBody,
       signal,
     });
+
+    // Propagate aborts from an externally-supplied signal. If the signal is
+    // already aborted (e.g. cancelled while we were awaiting auth-refresh
+    // middleware), defer the propagation to the next microtask so the request
+    // still gets dispatched first — matching XHR's `send()` then-`abort()`
+    // semantics, where `xhr.send()` runs before the cancel handler is wired
+    // up. Otherwise the network never sees the request at all.
+    if (options.signal) {
+      if (options.signal.aborted) {
+        queueMicrotask(() => controller.abort());
+      } else {
+        options.signal.addEventListener("abort", () => controller.abort());
+      }
+    }
 
     return fetch(request)
       .then((response) => {
