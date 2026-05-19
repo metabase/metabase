@@ -23,6 +23,7 @@
    [metabase.metabot.tools.construct :as metabot-construct]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
+   [metabase.metabot.tools.resources :as metabot-resources]
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.metabot.util :as metabot.u]
    [metabase.queries.core :as queries]
@@ -749,6 +750,53 @@
                        :database_id database_id})))
     (qp.streaming/streaming-response [rff :api]
       (qp/process-query query rff))))
+
+;;; -------------------------------------------------- Read Resource -------------------------------------------------
+
+(mr/def ::read-resource-request
+  "Request shape for /v1/read-resource. Accepts up to 5 metabase:// URIs."
+  [:map
+   [:uris [:sequential ms/NonBlankString]]])
+
+(mr/def ::read-resource-item
+  "One fetched resource. Either `:content` (success) or `:error` (failure) is present."
+  [:map
+   [:uri     ms/NonBlankString]
+   [:content {:optional true} [:maybe :any]]
+   [:error   {:optional true} [:maybe :string]]])
+
+(mr/def ::read-resource-response
+  "Response shape from /v1/read-resource. `:resources` is the per-URI result list;
+  `:output` is the formatted XML string the LLM consumes."
+  [:map
+   [:resources [:sequential ::read-resource-item]]
+   [:output    :string]])
+
+(api.macros/defendpoint :post "/v1/read-resource" :- ::read-resource-response
+  "Read one or more Metabase resources via metabase:// URI patterns.
+
+  Dispatches into the shared URI resolver in `metabase.metabot.tools.resources`,
+  which validates URIs, fetches entities with per-URI permission checks, and
+  returns a map of `{:resources ... :output ...}`. Up to 5 URIs per call."
+  {:scope metabot/agent-resource-read
+   :tool  {:name "read_resource"
+           :description (str "Read Metabase entities by metabase:// URI. "
+                             "Examples: metabase://databases, metabase://database/{id}/tables, "
+                             "metabase://collection/{id}/items, metabase://card/{id}, "
+                             "metabase://dashboard/{id}/items, metabase://table/{id}/fields. "
+                             "Up to 5 URIs per call. List endpoints cap at 25 items.")}}
+  [_route-params
+   _query-params
+   body :- ::read-resource-request]
+  (try
+    (metabot-resources/read-resource body)
+    (catch clojure.lang.ExceptionInfo e
+      ;; The Metabot dispatcher's "too many URIs" guard throws ex-info without a
+      ;; :status-code. Surface it as a 400 to the HTTP boundary rather than the
+      ;; default 500.
+      (throw (ex-info (ex-message e)
+                      (merge {:status-code 400} (ex-data e))
+                      e)))))
 
 ;;; ------------------------------------------------- Create Question ------------------------------------------------
 

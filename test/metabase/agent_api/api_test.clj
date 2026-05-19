@@ -2,6 +2,7 @@
   "Agent API functional tests using session-based authentication.
    JWT and scope-related tests live in metabase-enterprise.agent-api.api-test."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
@@ -903,5 +904,35 @@
                             {:database_id (mt/id)
                              :sql         "SELECT 1"}))))
 
+;;; ------------------------------------------------- Read Resource Tests -----------------------------------------
 
+(deftest read-resource-test
+  (testing "Dispatches a top-level URI through the shared resolver"
+    (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
+                                     {:uris ["metabase://databases"]})]
+      (is (=? {:resources [(fn [r] (and (= "metabase://databases" (:uri r))
+                                        (some? (:content r))))]
+               :output    string?}
+              resp))
+      ;; Output is XML-shaped for LLM consumption.
+      (is (str/includes? (:output resp) "<resources>"))
+      (is (str/includes? (:output resp) "metabase://databases"))))
+
+  (testing "Fetches a single-entity URI"
+    (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
+                                     {:uris [(str "metabase://table/" (mt/id :orders))]})]
+      (is (= 1 (count (:resources resp))))
+      (is (some? (-> resp :resources first :content)))))
+
+  (testing "Returns 400 when too many URIs"
+    (let [uris (vec (repeat 10 "metabase://databases"))]
+      (mt/user-http-request :crowberto :post 400 "agent/v1/read-resource"
+                            {:uris uris})))
+
+  (testing "Reports a per-URI error rather than failing the whole call"
+    (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
+                                     {:uris ["metabase://nonsense/path"]})]
+      (is (= 1 (count (:resources resp))))
+      (is (nil? (-> resp :resources first :content)))
+      (is (some? (-> resp :resources first :error))))))
 

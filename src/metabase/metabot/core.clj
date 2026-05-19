@@ -20,6 +20,7 @@
   agent-question-update
   agent-query-construct
   agent-query-execute
+  agent-resource-read
   agent-search
   agent-sql-execute
   agent-table-read]
