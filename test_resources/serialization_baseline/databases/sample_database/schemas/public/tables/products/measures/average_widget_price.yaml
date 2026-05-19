@@ -21,10 +21,6 @@ definition:
 description: Average price of Widget products — uses Widget Products segment and Average Product Price measure
 entity_id: K7cMzOau9SI2h8hCx936w
 name: Average Widget Price
-table_id:
-- Sample Database
-- PUBLIC
-- PRODUCTS
 serdes/meta:
 - id: K7cMzOau9SI2h8hCx936w
   label: average_widget_price

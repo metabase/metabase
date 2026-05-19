@@ -3,7 +3,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { fieldApi } from "metabase/api";
-import type { EmbeddingParameterVisibility } from "metabase/embedding/types";
 import { entityCompatibleQuery } from "metabase/entities/utils";
 import { TemporalUnitSettings } from "metabase/parameters/components/TemporalUnitSettings";
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
@@ -26,6 +25,7 @@ import {
 } from "metabase-lib/v1/parameters/utils/template-tag-options";
 import type {
   DimensionReference,
+  EmbeddingParameterVisibility,
   FieldId,
   Parameter,
   ParameterValuesConfig,
