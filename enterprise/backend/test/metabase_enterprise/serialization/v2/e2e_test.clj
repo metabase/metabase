@@ -34,7 +34,8 @@
 (use-fixtures :each (fn [thunk]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)
                                                   models.database/assert-not-h2! (constantly nil)]
-                        (thunk))))
+                        (binding [models.database/*include-h2-in-extract?* true]
+                          (thunk)))))
 
 (defn- dir->contents-set [p ^File dir]
   (->> dir

@@ -48,7 +48,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
                       (mt/with-dynamic-fn-redefs [models.database/assert-not-h2! (constantly nil)]
-                        (thunk))))
+                        (binding [models.database/*include-h2-in-extract?* true]
+                          (thunk)))))
 
 (set! *warn-on-reflection* true)
 
@@ -191,14 +192,15 @@
   "Run this if you've examined the output of [[directory-comparison-test]], and are happy to accept the changes."
   []
   (mt/with-dynamic-fn-redefs [models.database/assert-not-h2! (constantly nil)]
-    (let [temp-dir   (temp-dir "serialization_test")
-          output-dir (.toFile (.resolve temp-dir "serialization_output"))]
-      (mt/with-empty-h2-app-db!
-        (load-extract! source-dir output-dir))
-      (delete-dir-contents! source-dir)
-      (Files/move (.toPath output-dir)
-                  (.toPath source-dir)
-                  (into-array [StandardCopyOption/REPLACE_EXISTING])))))
+    (binding [models.database/*include-h2-in-extract?* true]
+      (let [temp-dir   (temp-dir "serialization_test")
+            output-dir (.toFile (.resolve temp-dir "serialization_output"))]
+        (mt/with-empty-h2-app-db!
+          (load-extract! source-dir output-dir))
+        (delete-dir-contents! source-dir)
+        (Files/move (.toPath output-dir)
+                    (.toPath source-dir)
+                    (into-array [StandardCopyOption/REPLACE_EXISTING]))))))
 
 (comment
   (delete-dir-contents! source-dir)
