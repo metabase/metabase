@@ -198,7 +198,7 @@
         atom-count  (count atoms)]
     (when (>= atom-count 2)
       (let [root-owner       (query-source-table-or-card query)
-            synthetic-and    (lib/expression-clause :and atoms nil)
+            synthetic-and    (apply lib/and atoms)
             canonical-clause (canonicalize-for-storage synthetic-and)
             canonical-atoms  (vec (sort (map canonicalize-for-storage atoms)))
             field-refs       (into []

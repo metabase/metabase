@@ -11,8 +11,10 @@
    [metabase.usage-metadata.models.source-metric-daily]
    [metabase.usage-metadata.models.source-segment-composite-daily]
    [metabase.usage-metadata.models.source-segment-daily]
+   [metabase.usage-metadata.schema :as usage-metadata.schema]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -291,20 +293,13 @@
   []
   (existing-metric-signatures*-memo ::all))
 
-(defn implicit-segments
+(mu/defn implicit-segments :- [:sequential ::usage-metadata.schema/implicit-segment]
   "Top implicit segments recorded across usage-metadata rollups.
 
   Predicates that correspond to *existing* saved Segments are filtered out — only truly
-  ad-hoc filter patterns are returned.
-
-  Returns a flat ranked sequence of:
-    {:predicate <mbql-clause>
-     :source {:type :id :name :display-name}
-     :fields [{:id :name :display-name} ...]
-     :count <long>}"
-  ([]
-   (implicit-segments {}))
-  ([{:keys [limit] :or {limit 10} :as opts}]
+  ad-hoc filter patterns are returned."
+  ([] (implicit-segments {}))
+  ([{:keys [limit] :or {limit 10} :as opts} :- ::usage-metadata.schema/opts]
    (let [existing    (existing-segment-predicates opts)
          raw-rows    (remove (fn [{:keys [source_type source_id predicate]}]
                                (contains? existing [source_type source_id predicate]))
@@ -333,14 +328,13 @@
             (take limit))
            enriched))))
 
-(defn implicit-metrics
+(mu/defn implicit-metrics :- [:sequential ::usage-metadata.schema/implicit-metric]
   "Top implicit metrics recorded across usage-metadata rollups.
 
   Aggregations that correspond to *existing* saved Metrics (Cards of type `metric`) are
   filtered out — only truly ad-hoc aggregation patterns are returned."
-  ([]
-   (implicit-metrics {}))
-  ([{:keys [limit] :or {limit 10} :as opts}]
+  ([] (implicit-metrics {}))
+  ([{:keys [limit] :or {limit 10} :as opts} :- ::usage-metadata.schema/opts]
    (let [existing   (existing-metric-signatures)
          rows       (remove (fn [{:keys [source_type source_id agg_type agg_field_id temporal_field_id temporal_unit]}]
                               (contains? existing [source_type source_id agg_type agg_field_id temporal_field_id temporal_unit]))
@@ -362,11 +356,10 @@
             (take limit))
            rows))))
 
-(defn implicit-dimensions
+(mu/defn implicit-dimensions :- [:sequential ::usage-metadata.schema/implicit-dimension]
   "Top implicit dimensions recorded across usage-metadata rollups."
-  ([]
-   (implicit-dimensions {}))
-  ([{:keys [limit] :or {limit 10} :as opts}]
+  ([] (implicit-dimensions {}))
+  ([{:keys [limit] :or {limit 10} :as opts} :- ::usage-metadata.schema/opts]
    (let [rows       (grouped-dimension-rows opts)
          source-idx (build-source-index
                      (into #{} (map (juxt :source_type :source_id)) rows))
@@ -533,39 +526,20 @@
   [{:keys [source-type source-id]}]
   (existing-composite-atomsets*-memo [source-type source-id]))
 
-(defn suggested-segments-for-owner
+(mu/defn suggested-segments-for-owner :- [:sequential ::usage-metadata.schema/suggested-segment]
   "Suggest composite (`:and`) segment definitions that recur across a source's query history but
   have not been saved as Segments yet. Implemented as Apriori FIM over composite rollup baskets:
   each rollup row is a basket whose items are the atomic predicates of one stage's top-level `:and`.
   We mine closed frequent itemsets and reconstruct each surviving itemset as an `:and` MBQL clause.
 
-  Each returned map describes one suggestion:
-
-    :clause         The reconstructed MBQL clause. This is what a caller would offer
-                    the user to save as a new Segment.
-
-    :itemset-size   How many atomic predicates the suggestion combines (`k` in FIM terms). Bounded
-                    by `fim-k-min`/`fim-k-max` (2..5). NOTE: not the size of the source baskets the
-                    itemset was mined from — those can be larger.
-
-    :source         The table or card the suggestion is attributed to: `{:type :id :name
-                    :display-name ...}`. A suggestion lives within a single source; cross-source
-                    composites aren't mined.
-
-    :support        Weighted count of baskets that contain ALL the itemset's atoms. The basket
-                    weight is the rollup row's `:count`, i.e. number of executions — so a
-                    suggestion with `:support 12` was observed across baskets representing 12 query
-                    executions. Used as the primary ranking key.
-
-    :support-ratio  `support / any-atom-support`, i.e. the fraction of baskets-touching-any-atom
-                    that also contain the FULL itemset. Guards against an individually popular
-                    atom dragging a co-occurrence that doesn't really travel together. Floor:
-                    `fim-relative-support-floor`.
+  `:itemset-size` is bounded by `fim-k-min`/`fim-k-max` (2..5). `:support` is the weighted count of
+  baskets containing ALL of the itemset's atoms (basket weight = the rollup row's `:count`).
+  `:support-ratio` is `support / any-atom-support` and is floored by `fim-relative-support-floor`.
 
   Results are sorted by `:support` desc, then by `:itemset-size` desc — at equal support, larger
   recurring `:and`s rank higher, since they encode more user intent. Truncated to `:limit`."
   ([] (suggested-segments-for-owner {}))
-  ([{:keys [limit] :or {limit fim-default-limit} :as opts}]
+  ([{:keys [limit] :or {limit fim-default-limit} :as opts} :- ::usage-metadata.schema/opts]
    (let [rows          (grouped-composite-rows opts)
          by-source     (group-by (juxt :source_type :source_id) rows)
          source-idx    (build-source-index (keys by-source))
@@ -593,11 +567,10 @@
            (take limit)
            (sort-by (juxt (comp - :support) (comp - :itemset-size)) candidates)))))
 
-(defn profile-observations
+(mu/defn profile-observations :- [:sequential ::usage-metadata.schema/profile-observation]
   "Top dimension profile observations recorded across usage-metadata rollups."
-  ([]
-   (profile-observations {}))
-  ([{:keys [limit] :or {limit 10} :as opts}]
+  ([] (profile-observations {}))
+  ([{:keys [limit] :or {limit 10} :as opts} :- ::usage-metadata.schema/opts]
    (let [rows       (grouped-profile-rows opts)
          source-idx (build-source-index
                      (into #{} (map (juxt :source_type :source_id)) rows))
