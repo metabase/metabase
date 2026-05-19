@@ -60,16 +60,14 @@
        (some? (tool-output->structured (:result output-block)))))
 
 (defn- ->mbql5-query
-  "Convert a raw query map (legacy or MBQL 5) into an MBQL 5 query with an
-  application-database metadata provider attached. We pass
-  [[lib-be/application-database-metadata-provider]] as the metadata-providerable
-  function — `lib/query` extracts the database id from the query and invokes
-  the function with it. Returns nil on conversion failure."
+  "Convert a raw query (legacy or MBQL 5) into an MBQL 5 query with an metadata provider attached. 
+  We pass [[lib-be/application-database-metadata-provider]] as the metadata-providerable.
+  Returns nil on conversion failure."
   [raw-query]
   (try
     (lib/query lib-be/application-database-metadata-provider raw-query)
     (catch Exception e
-      (log/warn e "Failed to convert raw query to MBQL 5")
+      (log/warn e "Failed to convert query to MBQL 5")
       nil)))
 
 (defn- native-tables
@@ -94,11 +92,11 @@
   and any tables found by macaw in native stages.
 
   `:cards` includes `:source-card`, template-tag `:card-id`, and `:metric` ref ids."
-  [mbql5-query]
+  [query]
   (try
-    (let [ids (lib/all-referenced-entity-ids [mbql5-query])]
+    (let [ids (lib/all-referenced-entity-ids [query])]
       {:tables (set/union (:table ids)
-                          (native-tables mbql5-query))
+                          (native-tables query))
        :cards  (set/union (:card ids) (:metric ids))})
     (catch Exception e
       (log/warn e "Failed to walk query for used-table extraction")

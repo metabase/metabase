@@ -16,20 +16,19 @@
 (defn- mp [] (mt/metadata-provider))
 
 (defn- table-query
-  "MBQL 5 query whose first stage's source is `table-id`."
+  "Query whose first stage's source is `table-id`."
   [table-id]
   (let [provider (mp)]
     (lib/query provider (lib.metadata/table provider table-id))))
 
 (defn- card-query
-  "MBQL 5 query whose first stage's source is the given Card. The Card must
-  exist in the appdb."
+  "Query whose first stage's source is the given Card. The Card must exist in the appdb."
   [card-id]
   (let [provider (mp)]
     (lib/query provider (lib.metadata/card provider card-id))))
 
 (defn- query-on-absent-card-id
-  "MBQL 5 query whose first stage's `:source-card` points at a card id that
+  "Query whose first stage's `:source-card` points at a card id that
   may not exist in the appdb — used to simulate a deleted card. We construct
   the query map directly rather than going through
   `(lib/query provider (lib.metadata/card provider card-id))` because that
@@ -40,7 +39,7 @@
    :stages   [{:lib/type :mbql.stage/mbql :source-card card-id}]})
 
 (defn- native-query
-  "MBQL 5 native query against the test database. Template tags are
+  "Native query against the test database. Template tags are
   auto-extracted from the SQL text (`{{name}}`, `{{#card-id}}`, etc.)."
   [sql]
   (lib/native-query (mp) sql))
@@ -70,8 +69,8 @@
    {:type :tool-input :id id :function fn-name :arguments args}))
 
 (defn- sql-output
-  "Build a SQL tool-output. `query` is an already-constructed MBQL 5 native
-  query (built via [[native-query]] in the test)."
+  "Build a SQL tool-output. `query` is an already-constructed native query
+  (built via [[native-query]] in the test)."
   [id sql db-id query]
   {:type   :tool-output
    :id     id
@@ -116,10 +115,10 @@
     (let [parts [(notebook-input "c1")]]
       (is (= [] (used-tables/extract-used-tables 1 parts))))))
 
-;;; ---------------------------------------- notebook (MBQL 5) ----------------------------------------
+;;; ---------------------------------------- notebook ----------------------------------------
 
 (deftest notebook-source-table-test
-  (testing "construct_notebook_query MBQL 5 with :source-table yields one table row"
+  (testing "construct_notebook_query with :source-table yields one table row"
     (let [parts [(notebook-input "c1")
                  (notebook-output "c1" (table-query (mt/id :orders)))]
           rows  (used-tables/extract-used-tables 99 parts)]
@@ -368,8 +367,7 @@
         ;; `lib/native-query` auto-extracts a card-type tag pointing at the card
         (let [outer-sql (format "SELECT * FROM {{#%s}}" card-id)]
           (with-redefs [nqa/tables-for-native (fn [query & _]
-                                                ;; production extractor converts to MBQL 5
-                                                ;; before calling, so query is an MBQL 5 query
+                                                ;; production extractor passes a query, not raw SQL
                                                 (let [sql (lib/raw-native-query query)]
                                                   (cond
                                                     (= sql outer-sql) {:tables [{:table-id orders-id}]}
@@ -442,8 +440,7 @@
 
 (defn- transform-sql-output
   "Build a `write_transform_sql` tool-output whose suggested transform's
-  `[:source :query]` is an MBQL 5 native query (built via [[native-query]]
-  by the test caller)."
+  `[:source :query]` is a native query (built via [[native-query]] by the test caller)."
   [id db-id query]
   {:type :tool-output :id id
    :result {:output "ok"
@@ -478,7 +475,7 @@
                                 :message "Transform Python updated successfully."}}})
 
 (deftest transform-sql-extracts-macaw-tables-from-structured-output-test
-  (testing "write_transform_sql walks the suggested transform's MBQL 5 native query through macaw"
+  (testing "write_transform_sql walks the suggested transform's native query through macaw"
     (let [orders-id (mt/id :orders)
           sql       "SELECT * FROM orders"]
       (with-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id orders-id}]})]

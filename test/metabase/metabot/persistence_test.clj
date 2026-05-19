@@ -635,8 +635,8 @@
 ;;; ---------------------------------------- used-table recording ----------------------------------------
 
 (defn- ->notebook-parts
-  "Build a minimal `construct_notebook_query` tool-input/output pair whose MBQL 5
-  query references the given table id."
+  "Build a minimal `construct_notebook_query` tool-input/output pair whose query
+  references the given table id."
   [call-id source-table-id]
   (let [provider (mt/metadata-provider)
         query    (lib/query provider (lib.metadata/table provider source-table-id))]
@@ -692,9 +692,9 @@
 
 (defn- ->transform-sql-parts
   "Build a `write_transform_sql` tool-input/output pair whose suggested
-  transform's `[:source :query]` is an MBQL 5 native query. The structured-
-  output's `:transform` key is dropped by `strip-tool-output-bloat`, so this
-  pair exercises finalize's pre-strip extraction path."
+  transform's `[:source :query]` is a native query. The structured-output's
+  `:transform` key is dropped by `strip-tool-output-bloat`, so this pair
+  exercises finalize's pre-strip extraction path."
   [call-id db-id sql]
   (let [query (lib/native-query (mt/metadata-provider) sql)]
     [{:type     :tool-input
@@ -733,7 +733,7 @@
                     (t2/select :model/MetabotUsedTable :message_id assistant-msg-id)))))))))
 
 (deftest finalize-records-used-tables-for-sql-transform-test
-  (testing "finalize-assistant-turn! macaw-parses the SQL transform's MBQL 5 native
+  (testing "finalize-assistant-turn! macaw-parses the SQL transform's native
             query out of the un-stripped structured-output. The `:transform` key
             is dropped by `strip-tool-output-bloat`, so the only path to these
             tables is the pre-strip parts vector — this test fails if extraction
