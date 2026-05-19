@@ -1,5 +1,6 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 
+import { PUT } from "metabase/api/legacy-client";
 import {
   isPublicEmbedding,
   isStaticEmbedding,
@@ -9,7 +10,6 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { MantineThemeOverride } from "metabase/ui";
 import { mutateColors } from "metabase/ui/colors/colors";
 import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
-import { PUT } from "metabase/utils/api";
 import { parseHashOptions } from "metabase/utils/browser";
 import type {
   ColorScheme,

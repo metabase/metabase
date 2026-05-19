@@ -18,12 +18,12 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk.util :as lib.walk.util]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [every? mapv select-keys some empty? not-empty]]))
 
 (defn- finish-tag [{tag-name :name :as tag}]
@@ -49,7 +49,7 @@
   (let [parsed (lib.parse/parse {} query-text)]
     (loop [found            {}
            [current & more] parsed]
-      (let [[found more] (lib.util.match/match-lite current
+      (let [[found more] (match/match-one current
                            (_ :guard string?) [found more]
 
                            {:type ::lib.parse/param, :name tag-name}

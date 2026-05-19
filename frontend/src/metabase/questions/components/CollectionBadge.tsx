@@ -1,11 +1,8 @@
-import type { ComponentType, PropsWithChildren } from "react";
-
+import { useGetCollectionQuery } from "metabase/api";
 import { Badge } from "metabase/common/components/Badge";
-import { getIcon } from "metabase/common/utils/icon";
-import { Collections } from "metabase/entities/collections";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import type { State } from "metabase/redux/store";
 import { modelToUrl } from "metabase/urls/modelToUrl";
 import { getName } from "metabase/utils/name";
 import type {
@@ -22,7 +19,7 @@ const IRREGULAR_ICON_PROPS = {
   targetOffsetX: IRREGULAR_ICON_WIDTH,
 };
 
-type CollectionBadgeProps = {
+type CollectionBadgeInnerProps = {
   className?: string;
   collection: CollectionType;
   isSingleLine?: boolean;
@@ -34,8 +31,9 @@ const CollectionBadgeInner = ({
   collection,
   isSingleLine,
   onClick,
-}: CollectionBadgeProps) => {
+}: CollectionBadgeInnerProps) => {
   const tc = useTranslateContent();
+  const getIcon = useGetIcon();
 
   if (!collection) {
     return null;
@@ -64,15 +62,22 @@ const CollectionBadgeInner = ({
   );
 };
 
-export const CollectionBadge = Collections.load({
-  id: (state: State, props: { collectionId?: CollectionId }) =>
-    props.collectionId || "root",
-  wrapped: true,
-  loadingAndErrorWrapper: false,
-})(CollectionBadgeInner) as ComponentType<
-  PropsWithChildren<
-    {
-      collectionId?: CollectionId;
-    } & Omit<CollectionBadgeProps, "collection">
-  >
->;
+type CollectionBadgeProps = {
+  className?: string;
+  collectionId?: CollectionId;
+  isSingleLine?: boolean;
+  onClick?: () => void;
+};
+
+export const CollectionBadge = ({
+  collectionId,
+  ...rest
+}: CollectionBadgeProps) => {
+  const { data: collection } = useGetCollectionQuery({
+    id: collectionId || "root",
+  });
+  if (!collection) {
+    return null;
+  }
+  return <CollectionBadgeInner collection={collection} {...rest} />;
+};

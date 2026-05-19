@@ -30,4 +30,7 @@
   io.netty/netty-common                  {:mvn/version "4.2.12.Final"}
   io.netty/netty-buffer                  {:mvn/version "4.2.12.Final"}
   ;; pinned: google-cloud-bigquery pulls 2.18.2 which has resource exhaustion vulns
-  com.fasterxml.jackson.core/jackson-core {:mvn/version "2.21.2"}}}
+  com.fasterxml.jackson.core/jackson-core {:mvn/version "2.21.2"}
+  ;; Need gson ≥ 2.9.0 for JsonWriter.value(float) used in
+  ;; BigQueryRetryAlgorithm error handling (#73736).
+  com.google.code.gson/gson {:mvn/version "2.12.1"}}}

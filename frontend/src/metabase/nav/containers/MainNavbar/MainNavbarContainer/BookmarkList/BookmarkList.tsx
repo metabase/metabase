@@ -11,13 +11,13 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { useDeleteBookmarkMutation } from "metabase/api";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Sortable } from "metabase/common/components/Sortable";
-import { getIcon } from "metabase/common/utils/icon";
 import GrabberS from "metabase/css/components/grabber.module.css";
-import { Bookmarks } from "metabase/entities/bookmarks";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { connect, useSelector } from "metabase/redux";
+import { useSelector } from "metabase/redux";
 import { getIsTenantUser } from "metabase/selectors/user";
 import { Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -28,16 +28,10 @@ import type { SelectedItem } from "../../types";
 
 import { SidebarBookmarkItem } from "./BookmarkList.styled";
 
-const mapDispatchToProps = {
-  onDeleteBookmark: ({ item_id, type }: Bookmark) =>
-    Bookmarks.actions.delete({ id: item_id, type }),
-};
-
 interface CollectionSidebarBookmarksProps {
   bookmarks: Bookmark[];
   selectedItem?: SelectedItem;
   onSelect: () => void;
-  onDeleteBookmark: (bookmark: Bookmark) => void;
   reorderBookmarks: ({
     newIndex,
     oldIndex,
@@ -81,6 +75,7 @@ const BookmarkItem = ({
   onSelect,
   onDeleteBookmark,
 }: BookmarkItemProps) => {
+  const getIcon = useGetIcon();
   const isSelected = isBookmarkSelected(bookmark, selectedItem);
   const url = Urls.bookmark(bookmark);
   const isTenantUser = useSelector(getIsTenantUser);
@@ -131,11 +126,13 @@ const BookmarkList = ({
   bookmarks,
   selectedItem,
   onSelect,
-  onDeleteBookmark,
   reorderBookmarks,
   onToggle,
   initialState,
 }: CollectionSidebarBookmarksProps) => {
+  const [deleteBookmark] = useDeleteBookmarkMutation();
+  const onDeleteBookmark = ({ item_id, type }: Bookmark) =>
+    deleteBookmark({ id: item_id, type });
   const [orderedBookmarks, setOrderedBookmarks] = useState(bookmarks);
   const [isSorting, setIsSorting] = useState(false);
 
@@ -206,4 +203,4 @@ const BookmarkList = ({
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(null, mapDispatchToProps)(BookmarkList);
+export default BookmarkList;

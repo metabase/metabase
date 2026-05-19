@@ -109,7 +109,7 @@ export const CollectionPickerModal = ({
 
   const handleChange = (newItem: OmniPickerItem) => {
     if (canSelectItem(newItem)) {
-      onChange(newItem);
+      return onChange(newItem);
     }
   };
 

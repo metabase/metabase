@@ -5,12 +5,12 @@ import "metabase-dev";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
+import api from "metabase/api/legacy-client";
 import { init } from "metabase/app";
 import { mainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
 import { clearCurrentUser } from "metabase/redux/user";
 import { getRoutes } from "metabase/routes";
-import api from "metabase/utils/api";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 
 // If any of these receives a 403, we should display the "not authorized" page.

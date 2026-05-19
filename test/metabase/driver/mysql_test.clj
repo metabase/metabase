@@ -1,4 +1,6 @@
 (ns metabase.driver.mysql-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.mysql-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.mysql-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -756,7 +758,7 @@
                          :message     "Some of your values violate the constraint: email_format_check"
                          :status-code 400
                          :type        actions.error/violate-check-constraint}
-                        (sql-jdbc.actions-test/perform-action-ex-data
+                        (sql-jdbc.actions-test/perform-action-ex-data!
                          :model.row/create (mt/$ids {:create-row {"email" "invalid-email"
                                                                   "age"   25}
                                                      :database   (:id database)
@@ -788,7 +790,7 @@
                          :message     "Column1 and Column2 already exist."
                          :errors      {"column1" "This Column1 value already exists." "column2" "This Column2 value already exists."}
                          :status-code 400}
-                        (sql-jdbc.actions-test/perform-action-ex-data
+                        (sql-jdbc.actions-test/perform-action-ex-data!
                          :model.row/create (mt/$ids {:create-row {"id"      3
                                                                   "column1" "A"
                                                                   "column2" "A"}
@@ -801,7 +803,7 @@
                          :message     "Column1 and Column2 already exist."
                          :status-code 400
                          :type        actions.error/violate-unique-constraint}
-                        (sql-jdbc.actions-test/perform-action-ex-data
+                        (sql-jdbc.actions-test/perform-action-ex-data!
                          :model.row/update (mt/$ids {:update-row {"column1" "A"
                                                                   "column2" "A"}
                                                      :database   (:id database)
@@ -1042,21 +1044,26 @@
               (jdbc/execute! spec "DROP USER IF EXISTS 'partial_revokes_test_user';"))))))))
 
 (deftest ^:parallel only-connect-when-non-malicious-properties
-  (testing "Reject connection strings with malicious properties"
-    (are [bad-option] (let [details (assoc (tx/dbdef->connection-details :mysql :db
-                                                                         {:database-name "argent"})
-                                           :additional-options bad-option)
-                            result (try (driver/can-connect? :mysql details)
-                                        ::did-not-throw
-                                        (catch Exception e e))]
-                        (is (instance? clojure.lang.ExceptionInfo result))
-                        (is (partial= {:cause "Potentially dangerous keys in additional options"}
-                                      (Throwable->map result))))
-      "allowLoadLocalInfile=true"
-      "allowLoadLocalInfileInPath=1"
-      "allowUrlInLocalInfile=1"
-      "autoDeserialize=1"
-      "serverRSAPublicKeyFile=/path/to/file")))
+  (mt/test-driver :mysql
+    (let [details (:details (mt/db))]
+      (testing "Reject connection strings with malicious properties"
+        (are [bad-option] (let [details (assoc details :additional-options bad-option)]
+                            (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                                  #"Potentially dangerous keys in additional options"
+                                                  (driver/can-connect? :mysql details))))
+          "allowLoadLocalInfile=true"
+          "allowLoadLocalInfileInPath=1"
+          "allowUrlInLocalInfile=1"
+          "autoDeserialize=1"
+          "serverRSAPublicKeyFile=/path/to/file"))
+      (testing "Allow connection strings with non-malicious properties"
+        (are [ok-option] (let [details (assoc details :additional-options ok-option)]
+                           (is (true? (driver/can-connect? :mysql details))))
+          nil
+          ""
+          " "
+          "tinyInt1isBit=1")
+        (is (true? (driver/can-connect? :mysql details)))))))
 
 (deftest ^:parallel set-role-statement-escape-quotes-test
   (mt/test-driver :mysql

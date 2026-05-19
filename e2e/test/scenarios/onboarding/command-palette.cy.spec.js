@@ -120,7 +120,7 @@ describe("command palette", () => {
 
       // When entering a query, if there are results that come before search results, highlight
       // the first action, otherwise, highlight the first search result
-      H.commandPaletteInput().clear().type("For");
+      H.commandPaletteInput().clear().type("Form");
       cy.findByRole("option", { name: "Performance" }).should(
         "have.attr",
         "aria-selected",
@@ -212,7 +212,7 @@ describe("command palette", () => {
 
         cy.findAllByRole("option")
           // filter out unrelated items, keep only options with data
-          .invoke("slice", 1, -2)
+          .invoke("slice", 3, -2)
           .should("have.length", results.length)
           .each(($option, index) => {
             cy.wrap($option).should("contain", results[index].name);

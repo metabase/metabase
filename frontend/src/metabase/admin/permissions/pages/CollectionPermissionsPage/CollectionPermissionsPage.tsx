@@ -5,8 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
-import { Collections } from "metabase/entities/collections";
-import { Groups } from "metabase/entities/groups";
+import { useListCollectionsTreeQuery } from "metabase/api";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { Collection, CollectionId } from "metabase-types/api";
@@ -60,18 +59,13 @@ type CollectionPermissionsPageProps = {
   params: CollectionIdProps["params"];
   sidebar: CollectionSidebarType;
   permissionEditor: PermissionEditorType | null;
-  collection: Collection;
+  collection: Collection | undefined;
   navigateToItem: (item: any) => void;
-  updateCollectionPermission: ({
-    groupId,
-    collection,
-    value,
-    shouldPropagateToChildren,
-  }: UpdateCollectionPermissionParams) => void;
+  updateCollectionPermission: (params: UpdateCollectionPermissionParams) => any;
   isDirty: boolean;
-  savePermissions: () => void;
-  loadPermissions: () => void;
-  initialize: () => void;
+  savePermissions: (...args: any[]) => any;
+  loadPermissions: (...args: any[]) => any;
+  initialize: (...args: any[]) => any;
   route: Route;
 };
 
@@ -87,6 +81,8 @@ function CollectionsPermissionsPageView({
   initialize,
   route,
 }: CollectionPermissionsPageProps) {
+  useListCollectionsTreeQuery(collectionsQuery);
+
   const originalPermissionsState = useSelector(
     ({ admin }) => admin.permissions.originalCollectionPermissions,
   );
@@ -102,6 +98,9 @@ function CollectionsPermissionsPageView({
       value: unknown,
       toggleState: boolean | null,
     ) => {
+      if (!collection) {
+        return;
+      }
       updateCollectionPermission({
         groupId: assertNumericId(item.id),
         collection,
@@ -145,9 +144,5 @@ function CollectionsPermissionsPageView({
 }
 
 export const CollectionPermissionsPage = _.compose(
-  Collections.loadList({
-    entityQuery: collectionsQuery,
-  }),
-  Groups.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
 )(CollectionsPermissionsPageView);

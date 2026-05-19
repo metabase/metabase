@@ -1,4 +1,7 @@
 (ns metabase.query-processor.middleware.process-userland-query-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.query-processor.middleware.process-userland-query-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.query-processor.middleware.process-userland-query-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.middleware.process-userland-query-test]}}}}}}
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.core.async :as a]
@@ -171,20 +174,21 @@
                                  :type   :category
                                  :target $price
                                  :value  "4"}]})]
-      (testing "PII retention enabled -> parameters populated"
-        (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
-          (with-query-execution! [qe query]
-            (process-userland-query query)
-            (is (=? {:parameterized true
-                     :parameters    some?}
-                    (qe))))))
-      (testing "PII retention disabled -> parameters nil, parameterized still set"
-        (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]
-          (with-query-execution! [qe query]
-            (process-userland-query query)
-            (is (=? {:parameterized true
-                     :parameters    nil}
-                    (qe)))))))))
+      (mt/with-premium-features #{:audit-app}
+        (testing "PII retention enabled -> parameters populated"
+          (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
+            (with-query-execution! [qe query]
+              (process-userland-query query)
+              (is (=? {:parameterized true
+                       :parameters    some?}
+                      (qe))))))
+        (testing "PII retention disabled -> parameters nil, parameterized still set"
+          (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]
+            (with-query-execution! [qe query]
+              (process-userland-query query)
+              (is (=? {:parameterized true
+                       :parameters    nil}
+                      (qe))))))))))
 
 (def ^:private ^:dynamic *viewlog-call-count* nil)
 

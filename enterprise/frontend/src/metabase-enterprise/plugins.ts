@@ -19,6 +19,7 @@ import { initializePlugin as initializeCleanUp } from "./clean_up";
 import { initializePlugin as initializeCollections } from "./collections";
 import { initializePlugin as initializeContentTranslation } from "./content_translation";
 import { initializePlugin as initializeContentVerification } from "./content_verification";
+import { initializePlugin as initializeCustomViz } from "./custom_viz";
 import { initializePlugin as initializeLibrary } from "./data-studio/library";
 import { initializePlugin as initializeDatabaseReplication } from "./database_replication";
 import { initializePlugin as initializeDatabaseRouting } from "./database_routing";
@@ -65,6 +66,7 @@ export function initializePlugins() {
   initializeCollections();
   initializeContentTranslation();
   initializeContentVerification();
+  initializeCustomViz();
   initializeDatabaseRouting();
   initializeRemoteSync();
   initializeReplacement();

@@ -397,8 +397,8 @@
             results (transduce
                      (comp (partition-all *batch-size*)
                            (map (if serial?
-                                  #(upsert-index-batch! connectable index % {:type :index})
-                                  #(upsert-index-pooled! pool connectable index % {:type :index}))))
+                                  #(upsert-index-batch! connectable index % {:type :index :record-tokens? true})
+                                  #(upsert-index-pooled! pool connectable index % {:type :index :record-tokens? true}))))
                      conj
                      documents-reducible)]
         (reduce (fn [update-counts result]
@@ -818,7 +818,8 @@
             embedding (tracing/with-span :search "search.semantic.embedding"
                         {:search.semantic/provider   (:provider embedding-model)
                          :search.semantic/model-name (:model-name embedding-model)}
-                        (embedding/get-embedding embedding-model search-string {:type :query}))
+                        (embedding/get-embedding embedding-model search-string
+                                                 {:type :query :record-tokens? true}))
             embedding-time-ms (u/since-ms timer)
 
             db-timer (u/start-timer)
@@ -881,7 +882,7 @@
   (def embedding-model (embedding/get-configured-model))
   (def index (default-index embedding-model))
   (def search-ctx {:search-string "pasta"})
-  (def embed (embedding/get-embedding embedding-model (:search-string search-ctx)))
+  (def embed (embedding/get-embedding embedding-model (:search-string search-ctx) {:record-tokens? true}))
   (def scorers (scoring/semantic-scorers (:table-name index) search-ctx))
 
   (keyword-search-query index search-ctx)
@@ -965,7 +966,7 @@
                        :verified nil})
   (def search-context {:search-string search-string})
 
-  (def embedding (embedding/get-embedding (:embedding-model index) search-string))
+  (def embedding (embedding/get-embedding (:embedding-model index) search-string {:record-tokens? true}))
   (def scorers (scoring/semantic-scorers (:table-name index) search-context))
 
   ;; Format queries for execution

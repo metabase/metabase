@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-test
   "Tests for specific behavior of the ClickHouse driver."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.clickhouse-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]

@@ -3,7 +3,7 @@ import {
   fetchDashboard,
   fetchDashboardCardData,
 } from "metabase/dashboard/actions";
-import { entityCompatibleQuery } from "metabase/entities";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import { createThunkAction } from "metabase/redux";
 import { REVERT_TO_REVISION } from "metabase/redux/dashboard";
 import type { DashboardId, Revision } from "metabase-types/api";

@@ -1,9 +1,11 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { Snippets } from "metabase/entities/snippets";
+import {
+  useCreateSnippetMutation,
+  useUpdateSnippetMutation,
+} from "metabase/api";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
 import { Flex, Modal } from "metabase/ui";
 import type {
   CreateSnippetRequest,
@@ -30,7 +32,8 @@ export function SnippetFormModal({
   onClose,
 }: SnippetModalProps) {
   const [snippet, setSnippet] = useState(initialSnippet);
-  const dispatch = useDispatch();
+  const [createSnippet] = useCreateSnippetMutation();
+  const [updateSnippet] = useUpdateSnippetMutation();
   const isEditing = isSavedSnippet(snippet);
   const modalTitle = isEditing
     ? t`Editing ${snippet.name}`
@@ -38,12 +41,11 @@ export function SnippetFormModal({
 
   const handleCreate = useCallback(
     async (values: CreateSnippetRequest) => {
-      const action = await dispatch(Snippets.actions.create(values));
-      const snippet = Snippets.HACK_getObjectFromAction(action);
-      onCreate?.(snippet);
+      const created = await createSnippet(values).unwrap();
+      onCreate?.(created);
       onClose?.();
     },
-    [dispatch, onCreate, onClose],
+    [createSnippet, onCreate, onClose],
   );
 
   const handleUpdate = useCallback(
@@ -51,21 +53,23 @@ export function SnippetFormModal({
       if (!isSavedSnippet(snippet)) {
         return;
       }
-      const action = await dispatch(Snippets.actions.update(snippet, values));
-      const nextSnippet = Snippets.HACK_getObjectFromAction(action);
+      const nextSnippet = await updateSnippet({
+        ...values,
+        id: snippet.id,
+      }).unwrap();
       onUpdate?.(nextSnippet, snippet);
       onClose?.();
     },
-    [snippet, dispatch, onUpdate, onClose],
+    [snippet, updateSnippet, onUpdate, onClose],
   );
 
   const handleArchive = useCallback(async () => {
     if (!isSavedSnippet(snippet)) {
       return;
     }
-    await dispatch(Snippets.actions.update({ id: snippet.id, archived: true }));
+    await updateSnippet({ id: snippet.id, archived: true });
     onClose?.();
-  }, [snippet, dispatch, onClose]);
+  }, [snippet, updateSnippet, onClose]);
 
   const {
     checkData,

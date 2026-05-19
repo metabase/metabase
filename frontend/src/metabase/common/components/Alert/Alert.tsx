@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import type { IconName } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import { AlertIcon, AlertRoot, CloseIcon } from "./Alert.styled";
 

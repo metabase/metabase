@@ -43,11 +43,11 @@
     (is (= [:current-query 42]
            (eval.invoke/invoke-field-helper! runtime :current-query [:operations 0] [42])))))
 
-(deftest ensure-query-result-recognizes-pmbql-queries-test
+(deftest ensure-query-result-recognizes-mbql5-queries-test
   (testing "non-query values are rejected"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"must return a pMBQL query map"
+         #"must return a MBQL 5 query map"
          (eval.invoke/ensure-query-result! :not-a-query))))
   (testing "queries pass through unchanged"
     (let [query (agent-lib.tu/query-for-table :orders)]

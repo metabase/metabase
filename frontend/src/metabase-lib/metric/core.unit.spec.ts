@@ -79,7 +79,6 @@ const DIM_IDX = {
 function createSampleMetadata() {
   const metadata = createMockMetadata();
 
-  // @ts-expect-error - mock metric works just as well as a real one
   metadata.metrics = {
     [SAMPLE_METRIC.id]: SAMPLE_METRIC,
   };

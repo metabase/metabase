@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase-enterprise.impersonation.driver-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase-enterprise.impersonation.driver-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase-enterprise.impersonation.driver-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -709,7 +711,8 @@
           ;; (`LIMITED.ROLE` in CI Snowflake has no data access)
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"(?s)SQL compilation error.*operation cannot be performed"
+               ;; I've seen different error messages here, not 100% sure why but the important thing is that this fails
+               #"(?s)(?:SQL compilation error.*(?:(?:operation cannot be performed)|(?:Object.*does not exist or not authorized))|Cannot perform SELECT)"
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]})))
 

@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
-import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
+import type { IconName } from "metabase-types/api";
 
 import type {
   QueryColumnInfoPopoverProps,

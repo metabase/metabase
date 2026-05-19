@@ -38,7 +38,10 @@
     (conj "Transform" "TransformTag" "TransformJob" "PythonLibrary")
 
     (not (:no-embedding-themes opts))
-    (conj "EmbeddingTheme")))
+    (conj "EmbeddingTheme")
+
+    (not (:no-custom-viz-plugins opts))
+    (conj "CustomVizPlugin")))
 
 (defn make-targets-of-type
   "Returns a targets seq with model type and given ids"

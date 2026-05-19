@@ -28,6 +28,7 @@ export {
   type CollectionAuthorityLevelIcon,
 } from "./oss/collections";
 export { PLUGIN_CONTENT_TRANSLATION } from "./oss/content-translation";
+export { PLUGIN_CUSTOM_VIZ } from "./oss/custom-viz";
 export {
   PLUGIN_CONTENT_VERIFICATION,
   type ModelFilterControlsProps,
@@ -46,7 +47,6 @@ export {
   PLUGIN_FORM_WIDGETS,
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
   PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
-  PLUGIN_SNIPPET_SIDEBAR_MODALS,
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
   PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE,
   PLUGIN_REDUCERS,
@@ -69,11 +69,15 @@ export { PLUGIN_EMBEDDING_SDK } from "./oss/embedding-sdk";
 export { PLUGIN_ENTITIES } from "./oss/entities";
 export {
   PLUGIN_LIBRARY,
+  type CollectionPermissionsModalProps,
   type CreateLibraryModalProps,
   type PublishTablesModalProps,
   type UnpublishTablesModalProps,
 } from "./oss/library";
-export { PLUGIN_METABOT } from "./oss/metabot";
+export {
+  PLUGIN_METABOT,
+  type MetabaseAIProviderSetupProps,
+} from "./oss/metabot";
 export { PLUGIN_MODEL_PERSISTENCE } from "./oss/model-persistence";
 export {
   PLUGIN_MODERATION,
@@ -117,8 +121,6 @@ export { PLUGIN_SMTP_OVERRIDE } from "./oss/smtp-override";
 export {
   PLUGIN_SNIPPET_FOLDERS,
   type MoveSnippetModalProps,
-  type SnippetFormModalProps,
-  type SnippetCollectionMenuProps,
   type SnippetCollectionPermissionsModalProps,
   type SnippetCollectionPickerModalProps,
 } from "./oss/snippets";
@@ -170,6 +172,7 @@ import { reinitialize as reinitializeCollections } from "./oss/collections";
 import { reinitialize as reinitializeContentTranslation } from "./oss/content-translation";
 import { reinitialize as reinitializeContentVerification } from "./oss/content-verification";
 import { reinitialize as reinitializeCore } from "./oss/core";
+import { reinitialize as reinitializeCustomViz } from "./oss/custom-viz";
 import { reinitialize as reinitializeDatabase } from "./oss/database";
 import { reinitialize as reinitializeDependencies } from "./oss/dependencies";
 import { reinitialize as reinitializeEmbedding } from "./oss/embedding";
@@ -213,6 +216,7 @@ export function reinitialize() {
   reinitializeContentTranslation();
   reinitializeContentVerification();
   reinitializeCore();
+  reinitializeCustomViz();
   reinitializeDatabase();
   reinitializeEmbedding();
   reinitializeEmbeddingIframeSdk();

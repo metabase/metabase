@@ -1,0 +1,32 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.metabase/mcp",
+  "title": "Metabase",
+  "description": "Lets AI clients search, explore, query, and visualize data in a Metabase instance.",
+  "version": "1.0.0",
+  "websiteUrl": "https://www.metabase.com",
+  "icons": [
+    {
+      "src": "https://www.metabase.com/images/logo.svg",
+      "mimeType": "image/svg+xml",
+      "sizes": ["any"]
+    }
+  ],
+  "repository": {
+    "url": "https://github.com/metabase/metabase",
+    "source": "github",
+    "subfolder": "src/metabase/mcp"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://{metabase_host}/api/mcp",
+      "variables": {
+        "metabase_host": {
+          "description": "Your Metabase hostname, e.g. 'metabase.example.com'.",
+          "isRequired": true
+        }
+      }
+    }
+  ]
+}

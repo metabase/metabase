@@ -16,6 +16,8 @@
 (def ^:private entities-external-name
   "Entities with external names, so they don't need a generated entity_id."
   #{:model/Channel
+    ;; CustomVizPlugins have unique identifiers.
+    :model/CustomVizPlugin
     ;; Databases have external names based on their URLs; tables are nested under databases; fields under tables.
     :model/Database
     :model/Table
@@ -58,6 +60,7 @@
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
+    :model/McpQueryHandle
     :model/FieldValues
     :model/MetabotConversation
     :model/MetabotFeedback

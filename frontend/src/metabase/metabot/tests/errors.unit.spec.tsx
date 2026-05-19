@@ -1,14 +1,17 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { within } from "__support__/ui";
 import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 
 import {
   adminQuotaLimitErroredResponse,
   assertConversation,
+  chat,
   enterChatMessage,
   erroredResponse,
   input,
+  lastReqBody,
   mockAgentEndpoint,
   resetChatButton,
   setup,
@@ -94,7 +97,7 @@ describe("metabot > errors", () => {
     expect(await input()).toHaveTextContent("Who is your favorite?");
   });
 
-  it("should handle show error if data error part is in response", async () => {
+  it("should mask streamed errors with a generic message", async () => {
     setup();
     mockAgentEndpoint({ textChunks: erroredResponse });
 
@@ -102,8 +105,11 @@ describe("metabot > errors", () => {
 
     await assertConversation([
       ["user", "Who is your favorite?"],
-      ["agent", /Anthropic API key expired or invalid/],
+      ["agent", /Something went wrong/],
     ]);
+    expect(
+      within(await chat()).queryByText(/Anthropic API key expired or invalid/),
+    ).not.toBeInTheDocument();
     expect(await input()).toHaveTextContent("Who is your favorite?");
   });
 
@@ -144,5 +150,32 @@ describe("metabot > errors", () => {
       ["user", "Who is your favorite?"],
       ["agent", "You, but don't tell anyone."],
     ]);
+  });
+
+  it("should rewind the previous prompt on next submit if last response contained a stream-level error", async () => {
+    setup();
+    mockAgentEndpoint({ textChunks: erroredResponse });
+
+    await enterChatMessage("first prompt");
+    await assertConversation([
+      ["user", "first prompt"],
+      ["agent", /Something went wrong/],
+    ]);
+
+    const retrySpy = mockAgentEndpoint({
+      textChunks: whoIsYourFavoriteResponse,
+    });
+    await enterChatMessage("new first prompt");
+
+    await assertConversation([
+      ["user", "new first prompt"],
+      ["agent", "You, but don't tell anyone."],
+    ]);
+
+    const retryBody = await lastReqBody(retrySpy);
+    expect(retryBody.message).toBe("new first prompt");
+    expect(retryBody.history).not.toContainEqual(
+      expect.objectContaining({ role: "user", content: "first prompt" }),
+    );
   });
 });

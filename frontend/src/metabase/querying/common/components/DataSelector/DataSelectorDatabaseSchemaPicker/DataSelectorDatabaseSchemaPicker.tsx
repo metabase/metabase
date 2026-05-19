@@ -10,6 +10,7 @@ import { Icon } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
+import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 
 import { DataSelectorLoading } from "../DataSelectorLoading";
 import { RawDataBackButton } from "../RawDataBackButton";
@@ -59,7 +60,7 @@ export const DataSelectorDatabaseSchemaPicker = ({
       !database.is_saved_questions && database.getSchemas().length > 1
         ? database.getSchemas().map((schema) => ({
             schema,
-            name: schema.displayName() ?? "",
+            name: getSchemaDisplayName(schema.name) ?? "",
           }))
         : [],
     className: database.is_saved_questions ? CS.bgLight : undefined,

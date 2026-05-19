@@ -33,6 +33,7 @@
     :model/CommentReaction                   metabase.comments.models.comment-reaction
     :model/ConnectionImpersonation           metabase-enterprise.impersonation.models
     :model/ContentTranslation                metabase.content-translation.models
+    :model/CustomVizPlugin                   metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
     :model/Dashboard                         metabase.dashboards.models.dashboard
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
     :model/DashboardCard                     metabase.dashboards.models.dashboard-card
@@ -55,6 +56,7 @@
     :model/HTTPAction                        metabase.actions.models
     :model/ImplicitAction                    metabase.actions.models
     :model/LoginHistory                      metabase.login-history.models.login-history
+    :model/McpQueryHandle                    metabase.mcp.models.mcp-query-handle
     :model/Measure                           metabase.measures.models.measure
     :model/Metabot                           metabase.metabot.models.metabot
     :model/MetabotConversation               metabase.metabot.models.metabot-conversation

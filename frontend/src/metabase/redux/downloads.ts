@@ -8,6 +8,8 @@ import {
 import { t } from "ttag";
 import _ from "underscore";
 
+import { datasetApi } from "metabase/api/dataset";
+import api from "metabase/api/legacy-client";
 import { exportFormatPng } from "metabase/common/types/export";
 import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
@@ -20,7 +22,6 @@ import type { DownloadsState, State } from "metabase/redux/store";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { getTokenFeature } from "metabase/setup/selectors";
 import * as Urls from "metabase/urls";
-import api, { GET, POST } from "metabase/utils/api";
 import { openSaveDialog } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
 import { isJWT } from "metabase/utils/jwt";
@@ -58,7 +59,7 @@ export interface DownloadQueryResultsOpts {
 }
 
 interface DownloadQueryResultsParams {
-  method: string;
+  method: "GET" | "POST";
   url: string;
   body?: Record<string, unknown>;
   params?: URLSearchParams | string;
@@ -242,14 +243,28 @@ export const downloadQueryResults = createAsyncThunk(
 
 export const downloadDataset = createAsyncThunk(
   "metabase/downloads/downloadDataset",
-  async ({ opts, id }: { opts: DownloadQueryResultsOpts; id: number }) => {
+  async (
+    { opts, id }: { opts: DownloadQueryResultsOpts; id: number },
+    { dispatch },
+  ) => {
     const params = getDatasetParams(opts);
-    const response = await getDatasetResponse(params);
-    const fileName = getDatasetFileName(response.headers, opts.type);
-    const fileContent = await response.blob();
-    openSaveDialog(fileName, fileContent);
+    const promise = dispatch(
+      datasetApi.endpoints.downloadDataset.initiate({
+        method: params.method,
+        url: getDatasetDownloadUrl(params.url, params.params),
+        body: params.body,
+      }),
+    );
+    try {
+      const response = await promise.unwrap();
+      const fileName = getDatasetFileName(response.headers, opts.type);
+      const fileContent = await response.blob();
+      openSaveDialog(fileName, fileContent);
 
-    return { id, fileName };
+      return { id, fileName };
+    } finally {
+      promise.reset();
+    }
   },
 );
 
@@ -551,43 +566,6 @@ export function getDatasetDownloadUrl(
 
   return url;
 }
-
-interface TransformResponseProps {
-  response?: Response;
-}
-
-const getDatasetResponse = ({
-  url,
-  method,
-  body,
-  params,
-}: DownloadQueryResultsParams) => {
-  const requestUrl = getDatasetDownloadUrl(url, params);
-
-  if (method === "POST") {
-    // BE expects the body to be form-encoded :(
-    const formattedBody = new URLSearchParams();
-    if (body != null) {
-      for (const key in body) {
-        formattedBody.append(key, JSON.stringify(body[key]));
-      }
-    }
-    return POST(requestUrl, {
-      formData: true,
-      fetch: true,
-      transformResponse: ({ response }: TransformResponseProps) =>
-        checkNotNull(response),
-    })({
-      formData: formattedBody,
-    });
-  } else {
-    return GET(requestUrl, {
-      fetch: true,
-      transformResponse: ({ response }: TransformResponseProps) =>
-        checkNotNull(response),
-    })();
-  }
-};
 
 const getDatasetFileName = (headers: Headers, type: string) => {
   const header = headers.get("Content-Disposition") ?? "";

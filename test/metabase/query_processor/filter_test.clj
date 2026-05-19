@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.filter-test
   "Tests for the `:filter` clause."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.filter-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.filter-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]

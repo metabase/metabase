@@ -61,7 +61,6 @@ describe("DashboardChartSettings", () => {
         card: createMockCard({ visualization_settings: originalVizSettings }),
       }),
       settings: modifiedSettings,
-      widgets: [],
       onChange,
     });
 

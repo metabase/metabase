@@ -17,6 +17,8 @@ function getJvmOptsFromDepsEdn(alias = "e2e") {
 // Ensure that the only two required env vars have values
 process.env.MB_DB_FILE = process.env.MB_DB_FILE || tempDbPath;
 process.env.MB_JETTY_PORT = process.env.MB_JETTY_PORT || 4000;
+process.env.MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED =
+  process.env.MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED || "true";
 
 // Expose the `en-ZZ` pseudo-locale in the Cypress backend's language pickers and API validation.
 process.env.MB_ENABLE_TEST_LOCALES = "true";

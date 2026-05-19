@@ -1,6 +1,6 @@
+import { DELETE, GET, POST, PUT } from "metabase/api/legacy-client";
 import { isNative } from "metabase/common/utils/card";
 import { isEmbedPreview } from "metabase/embedding/config";
-import api, { DELETE, GET, POST, PUT } from "metabase/utils/api";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
@@ -69,6 +69,16 @@ async function handleQueryApiError(apiPromise) {
 // To fetch that extra data we rely on specific APIs for pivot tables that mirrow the normal endpoints.
 // Those endpoints take the query along with `pivot_rows` and `pivot_cols` to return the subtotal data.
 // If we add breakout/grouping sets to MBQL in the future we can remove this API switching.
+export function shouldUsePivotEndpoint(card, metadata) {
+  const question = new Question(card, metadata);
+  return (
+    question.display() === "pivot" &&
+    !isNative(card) &&
+    // if we have metadata for the db, check if it supports pivots
+    (!question.database() || question.database().supportsPivots())
+  );
+}
+
 export function maybeUsePivotEndpoint(api, card, metadata) {
   const question = new Question(card, metadata);
 
@@ -91,12 +101,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
     };
   }
 
-  if (
-    question.display() !== "pivot" ||
-    isNative(card) ||
-    // if we have metadata for the db, check if it supports pivots
-    (question.database() && !question.database().supportsPivots())
-  ) {
+  if (!shouldUsePivotEndpoint(card, metadata)) {
     return api;
   }
 
@@ -189,14 +194,8 @@ export async function runQuestionQuery(
 }
 
 export const CardApi = {
-  get: GET("/api/card/:cardId"),
-  update: PUT("/api/card/:id"),
   query: POST("/api/card/:cardId/query"),
   query_pivot: POST("/api/card/pivot/:cardId/query"),
-  // related
-  compatibleCards: GET("/api/card/:cardId/series"),
-  parameterValues: GET("/api/card/:cardId/params/:paramId/values"),
-  parameterSearch: GET("/api/card/:cardId/params/:paramId/search/:query"),
 };
 
 export const DashboardApi = {
@@ -356,22 +355,6 @@ export const UserApi = {
   list: GET("/api/user/recipients"),
   current: GET("/api/user/current"),
   update_qbnewb: PUT("/api/user/:id/modal/qbnewb"),
-};
-
-// TODO: move to all functions to RTK (metabase/api/util.ts)
-export const UtilApi = {
-  password_check: POST("/api/session/password-check"),
-  random_token: GET("/api/util/random_token"),
-  logs: GET("/api/logger/logs"),
-  bug_report_details: GET("/api/bug-reporting/details"),
-  get_connection_pool_details_url: () => {
-    // this one does not need an HTTP verb because it's opened as an external link
-    // and it can be deployed at subpath
-    const path = "/api/bug-reporting/connection-pool-details";
-    const { href } = new URL(api.basename + path, location.origin);
-
-    return href;
-  },
 };
 
 export const FrontendErrorsApi = {

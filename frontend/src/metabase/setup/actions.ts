@@ -2,6 +2,7 @@ import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import { userApi } from "metabase/api";
+import { loadLocalization } from "metabase/api/localization";
 import { createDatabase } from "metabase/redux/databases";
 import {
   initializeSettings,
@@ -12,7 +13,6 @@ import type { InviteInfo, Locale, State, UserInfo } from "metabase/redux/store";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { getSetting } from "metabase/selectors/settings";
 import { SetupApi } from "metabase/services";
-import { loadLocalization } from "metabase/utils/i18n";
 import MetabaseSettings from "metabase/utils/settings";
 import type { DatabaseData, Settings, UsageReason } from "metabase-types/api";
 
@@ -231,6 +231,10 @@ export const setEmbeddingHomepageFlags = createAsyncThunk(
 
     if (isEmbeddingUseCase || interestedInEmbedding) {
       settingsToChange["embedding-homepage"] = "visible";
+    }
+
+    if (interestedInEmbedding) {
+      settingsToChange["setup-embedding-autoenabled"] = true;
     }
 
     settingsToChange["setup-license-active-at-setup"] = isLicenseActive;

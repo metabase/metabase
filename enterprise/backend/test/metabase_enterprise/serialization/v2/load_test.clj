@@ -1,4 +1,5 @@
 (ns metabase-enterprise.serialization.v2.load-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.serialization.v2.load-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -8,10 +9,12 @@
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.actions.models :as action]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -2187,3 +2190,257 @@
             (let [metabot (t2/select-one :model/Metabot :name "Minimal Bot")]
               (is (some? metabot))
               (is (= "Minimal Bot" (:name metabot))))))))))
+
+;;; ===========================================================================
+;;; Round-trip tests for stripped fields
+;;;
+;;; Export now omits table_id, database_id, query_type, source_card_id from
+;;; Cards, and table_id from Segments/Measures. These tests verify the full
+;;; export → import round-trip backfills the fields correctly.
+;;; ===========================================================================
+
+(deftest card-stripped-fields-round-trip-test
+  (testing "Card round-trip: stripped fields (table_id, database_id, query_type) are backfilled on import"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db    (ts/create! :model/Database :name "my-db")
+                table (ts/create! :model/Table :name "orders" :db_id (:id db))
+                _     (ts/create! :model/Field :name "id" :table_id (:id table))
+                user  (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+                _card (ts/create! :model/Card
+                                  :collection_id nil
+                                  :creator_id    (:id user)
+                                  :name          "Round Trip Card"
+                                  :dataset_query (mbql5-query (:id db) (:id table))
+                                  :display       :table)]
+            (reset! serialized (into [] (serdes.extract/extract {})))
+            ;; Verify the fields are actually stripped from export
+            (let [card-ser (first (filter #(= "Card" (-> % :serdes/meta last :model)) @serialized))]
+              (is (not (contains? card-ser :table_id)) "table_id should be stripped from export")
+              (is (not (contains? card-ser :database_id)) "database_id should be stripped from export")
+              (is (not (contains? card-ser :query_type)) "query_type should be stripped from export"))))
+
+        (ts/with-db dest-db
+          (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (let [card  (t2/select-one :model/Card :name "Round Trip Card")
+                db    (t2/select-one :model/Database :name "my-db")
+                table (t2/select-one :model/Table :name "orders")]
+            (is (some? card))
+            (is (= (:id db) (:database_id card)) "database_id backfilled from query")
+            (is (= (:id table) (:table_id card)) "table_id backfilled from query")
+            (is (= :query (:query_type card)) "query_type backfilled from query")
+            (is (nil? (:source_card_id card)) "source_card_id nil for table-based query")))))))
+
+(deftest segment-stripped-fields-round-trip-test
+  (testing "Segment round-trip: stripped table_id is backfilled from definition on import"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db       (ts/create! :model/Database :name "my-db")
+                table    (ts/create! :model/Table :name "customers" :db_id (:id db))
+                field    (ts/create! :model/Field :name "age" :table_id (:id table))
+                user     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+                _segment (ts/create! :model/Segment :table_id (:id table) :name "Minors"
+                                     :definition (mbql5-segment-definition (:id db) (:id table) (:id field))
+                                     :creator_id (:id user))]
+            (reset! serialized (into [] (serdes.extract/extract {})))
+            (let [seg-ser (first (filter #(= "Segment" (-> % :serdes/meta last :model)) @serialized))]
+              (is (not (contains? seg-ser :table_id)) "table_id should be stripped from export"))))
+
+        (ts/with-db dest-db
+          (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (let [segment (t2/select-one :model/Segment :name "Minors")
+                table   (t2/select-one :model/Table :name "customers")]
+            (is (some? segment))
+            (is (= (:id table) (:table_id segment)) "table_id backfilled from definition")))))))
+
+(deftest measure-stripped-fields-round-trip-test
+  (testing "Measure round-trip: stripped table_id is backfilled from definition on import"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db       (ts/create! :model/Database :name "my-db")
+                table    (ts/create! :model/Table :name "sales" :db_id (:id db))
+                field    (ts/create! :model/Field :name "amount" :table_id (:id table))
+                user     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+                _measure (ts/create! :model/Measure :table_id (:id table) :name "Total Sales"
+                                     :definition (mbql5-measure-definition (:id db) (:id table) (:id field))
+                                     :creator_id (:id user))]
+            (reset! serialized (into [] (serdes.extract/extract {})))
+            (let [msr-ser (first (filter #(= "Measure" (-> % :serdes/meta last :model)) @serialized))]
+              (is (not (contains? msr-ser :table_id)) "table_id should be stripped from export"))))
+
+        (ts/with-db dest-db
+          (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (let [measure (t2/select-one :model/Measure :name "Total Sales")
+                table   (t2/select-one :model/Table :name "sales")]
+            (is (some? measure))
+            (is (= (:id table) (:table_id measure)) "table_id backfilled from definition")))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Keep-side round-trips: fields that cannot be derived are exported and then
+;;; correctly resolved on import.
+;;; ---------------------------------------------------------------------------
+
+(deftest card-kept-fields-round-trip-test
+  (testing "Card round-trip: database_id is exported and resolved when dataset_query is empty"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db   (ts/create! :model/Database :name "my-db")
+                user (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+                ;; Empty dataset_query — populate-query-fields does not run, so database_id
+                ;; comes only from the explicit field we pass.
+                _card (ts/create! :model/Card
+                                  :collection_id nil
+                                  :creator_id    (:id user)
+                                  :name          "Empty Query Card"
+                                  :database_id   (:id db)
+                                  :dataset_query {}
+                                  :display       :table)]
+            (reset! serialized (into [] (serdes.extract/extract {})))
+            (let [card-ser (first (filter #(= "Card" (-> % :serdes/meta last :model)) @serialized))]
+              (is (contains? card-ser :database_id) "database_id exported — not derivable from empty query"))))
+
+        (ts/with-db dest-db
+          (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (let [card (t2/select-one :model/Card :name "Empty Query Card")
+                db   (t2/select-one :model/Database :name "my-db")]
+            (is (some? card))
+            (is (= (:id db) (:database_id card)) "database_id resolved from exported portable ref")))))))
+
+(deftest card-broken-query-exports-kept-fields-test
+  (testing "Card with a non-empty but broken dataset_query still exports database_id"
+    (ts/with-dbs [source-db _dest-db]
+      (ts/with-db source-db
+        (let [db   (ts/create! :model/Database :name "my-db")
+              user (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+              card (ts/create! :model/Card
+                               :creator_id    (:id user)
+                               :name          "Broken Query Card"
+                               :database_id   (:id db)
+                               :dataset_query {}
+                               :display       :table)]
+          ;; Corrupt dataset_query to a non-empty but structurally broken value, bypassing the
+          ;; model hooks. This simulates a card whose query became malformed after migrations.
+          (t2/query {:update :report_card
+                     :set    {:dataset_query (json/encode {:broken true})}
+                     :where  [:= :id (:id card)]})
+          (let [serialized (into [] (serdes.extract/extract {}))
+                card-ser   (first (filter #(= "Card" (-> % :serdes/meta last :model)) serialized))]
+            (is (not (contains? card-ser :table_id))    "table_id always skipped for cards — re-derived on import")
+            (is (contains? card-ser :database_id) "database_id exported — not derivable from broken query")))))))
+
+(deftest library-subcollection-round-trip-test
+  (testing "Library subcollection structure and types are preserved through serdes round-trip"
+    (let [serialized (atom nil)
+          library    (atom nil)
+          data-root  (atom nil)
+          metrics-root (atom nil)
+          data-sub   (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (testing "extraction of library hierarchy"
+          (ts/with-db source-db
+            (reset! library      (ts/create! :model/Collection
+                                             :name      "Library"
+                                             :type      collection/library-collection-type
+                                             :location  "/"
+                                             :entity_id @#'collection/library-entity-id))
+            (reset! data-root    (ts/create! :model/Collection
+                                             :name      "Data"
+                                             :type      collection/library-data-collection-type
+                                             :location  (format "/%d/" (:id @library))
+                                             :entity_id @#'collection/library-data-entity-id))
+            (reset! metrics-root (ts/create! :model/Collection
+                                             :name      "Metrics"
+                                             :type      collection/library-metrics-collection-type
+                                             :location  (format "/%d/" (:id @library))
+                                             :entity_id @#'collection/library-metrics-entity-id))
+            (reset! data-sub     (ts/create! :model/Collection
+                                             :name     "Sales Tables"
+                                             :type     collection/library-data-collection-type
+                                             :location (format "/%d/%d/" (:id @library) (:id @data-root))))
+            (reset! serialized (into [] (serdes.extract/extract {})))
+            (is (some (fn [{[{:keys [model id]}] :serdes/meta}]
+                        (and (= model "Collection") (= id (:entity_id @library))))
+                      @serialized))))
+
+        (testing "loading into destination preserves library structure"
+          (ts/with-db dest-db
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (let [lib-dest     (t2/select-one :model/Collection :entity_id (:entity_id @library))
+                  data-dest    (t2/select-one :model/Collection :entity_id (:entity_id @data-root))
+                  metrics-dest (t2/select-one :model/Collection :entity_id (:entity_id @metrics-root))
+                  sub-dest     (t2/select-one :model/Collection :entity_id (:entity_id @data-sub))]
+              (testing "all collections exist"
+                (is (some? lib-dest))
+                (is (some? data-dest))
+                (is (some? metrics-dest))
+                (is (some? sub-dest)))
+              (testing "types are preserved"
+                (is (= collection/library-collection-type (:type lib-dest)))
+                (is (= collection/library-data-collection-type (:type data-dest)))
+                (is (= collection/library-metrics-collection-type (:type metrics-dest)))
+                (is (= collection/library-data-collection-type (:type sub-dest))))
+              (testing "parent-child hierarchy is correct"
+                (is (= "/" (:location lib-dest)))
+                (is (= (format "/%d/" (:id lib-dest)) (:location data-dest)))
+                (is (= (format "/%d/" (:id lib-dest)) (:location metrics-dest)))
+                (is (= (format "/%d/%d/" (:id lib-dest) (:id data-dest)) (:location sub-dest)))))))))))
+
+(deftest library-import-preserves-existing-permissions-test
+  (testing "Importing library subcollections does not overwrite existing permissions on destination"
+    (let [serialized (atom nil)
+          eid-data   "testdataeid0000000000"
+          eid-sub    "testsubeid00000000000"]
+      (ts/with-dbs [source-db dest-db]
+        (testing "extract from source"
+          (ts/with-db source-db
+            (let [data-coll (ts/create! :model/Collection
+                                        :name      "Data"
+                                        :type      collection/library-data-collection-type
+                                        :location  "/"
+                                        :entity_id eid-data)
+                  _sub-coll (ts/create! :model/Collection
+                                        :name     "Sales Tables"
+                                        :type     collection/library-data-collection-type
+                                        :location (format "/%d/" (:id data-coll))
+                                        :entity_id eid-sub)]
+              (reset! serialized (into [] (serdes.extract/extract {}))))))
+
+        (testing "pre-populate dest with same collections and custom permissions"
+          (ts/with-db dest-db
+            (let [data-dest (ts/create! :model/Collection
+                                        :name      "Data"
+                                        :type      collection/library-data-collection-type
+                                        :location  "/"
+                                        :entity_id eid-data)
+                  sub-dest  (ts/create! :model/Collection
+                                        :name     "Sales Tables"
+                                        :type     collection/library-data-collection-type
+                                        :location (format "/%d/" (:id data-dest))
+                                        :entity_id eid-sub)
+                  group     (ts/create! :model/PermissionsGroup :name "Custom Group")]
+              (perms/grant-collection-readwrite-permissions! group data-dest)
+              (perms/grant-collection-read-permissions! group sub-dest)
+              (let [perms-before (set (map #(select-keys % [:group_id :object])
+                                           (t2/select :model/Permissions
+                                                      :object [:like (format "/collection/%d/%%" (:id data-dest))])))]
+                (testing "custom permissions exist before import"
+                  (is (seq perms-before)))
+
+                (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+
+                (let [data-after (t2/select-one :model/Collection :entity_id eid-data)
+                      perms-after (set (map #(select-keys % [:group_id :object])
+                                            (t2/select :model/Permissions
+                                                       :object [:like (format "/collection/%d/%%" (:id data-after))])))]
+                  (testing "collection still exists with same ID"
+                    (is (= (:id data-dest) (:id data-after))))
+                  (testing "permissions are unchanged after import"
+                    (is (= perms-before perms-after))))))))))))

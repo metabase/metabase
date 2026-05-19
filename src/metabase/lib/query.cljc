@@ -22,12 +22,12 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [some select-keys mapv empty? #?(:clj for)]]
    [weavejester.dependency :as dep]))
 
@@ -126,7 +126,7 @@
   "Add `:base-type` and `:effective-type` to options of fields in `x` using `metadata-provider`. Works on MBQL 5 fields.
   `:effective-type` is required for coerced fields to pass schema checks."
   [x metadata-provider :- ::lib.schema.metadata/metadata-provider]
-  (if-let [field-ids (lib.util.match/match-many x
+  (if-let [field-ids (match/match-many x
                        [:field
                         (_opts :guard (and (map? _opts) (not (and (:base-type _opts) (:effective-type _opts)))))
                         (id :guard (and (integer? id) (pos? id)))]
@@ -134,7 +134,7 @@
                          id))]
     ;; "pre-warm" the metadata provider
     (do (lib.metadata/bulk-metadata metadata-provider :metadata/column field-ids)
-        (lib.util.match/replace-lite x
+        (match/replace x
           [:field
            (options :guard (and (map? options) (not (and (:base-type options)
                                                          (:effective-type options)))))
@@ -228,7 +228,7 @@
            (mapv (fn [[stage-number stage]]
                    (-> stage
                        (add-types-to-fields metadata-provider)
-                       (lib.util.match/replace-lite
+                       (match/replace
                          [:expression
                           (opts :guard (and (map? opts) (not (and (:base-type opts)
                                                                   (:effective-type opts)))))

@@ -26,9 +26,7 @@ export const getChartGoal = (
 
 export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.show_goal": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Goal line`;
     },
@@ -40,9 +38,7 @@ export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
     }),
   },
   "graph.goal_value": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Goal value`;
     },
@@ -53,9 +49,7 @@ export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
     readDependencies: ["graph.show_goal"],
   },
   "graph.goal_label": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Goal label`;
     },

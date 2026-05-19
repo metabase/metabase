@@ -1,10 +1,11 @@
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
-import { getIcon } from "metabase/common/utils/icon";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_LIBRARY, PLUGIN_MODERATION } from "metabase/plugins";
 import {
   Box,
@@ -27,7 +28,7 @@ import {
   useCurrentSearchScope,
   useGetLastCollection,
 } from "../../hooks/use-current-search-scope";
-import { getEntityPickerIcon, isSelectedItem } from "../../utils";
+import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
 
 export const SearchResults = ({
   searchResults,
@@ -43,6 +44,7 @@ export const SearchResults = ({
   const { path, setPath, isDisabledItem, isSelectableItem, options, onChange } =
     useOmniPickerContext();
   const selectedItem = path?.[path.length - 1];
+  const getEntityPickerIcon = useGetEntityPickerIcon();
 
   if (isLoading || error) {
     return (
@@ -102,9 +104,9 @@ export const SearchResults = ({
               }
               active={isSelected}
               leftSection={
-                <Icon
+                <EntityIcon
                   {...getEntityPickerIcon(item, { isSelected })}
-                  size={16}
+                  size="1rem"
                 />
               }
               onClick={(e: React.MouseEvent) => {
@@ -163,7 +165,9 @@ const getItemText = (item: OmniPickerItem) => {
     : (item?.collection?.name ?? t`Our analytics`);
 };
 
-const getLocationIcon = (item: OmniPickerItem) => {
+const useLocationIcon = (item: OmniPickerItem) => {
+  const getIcon = useGetIcon();
+
   if (
     item.model === "table" ||
     item.model === "schema" ||
@@ -190,12 +194,11 @@ const LocationInfo = ({
   isSelected: boolean;
 }) => {
   const itemText = getItemText(item);
+  const iconProps = useLocationIcon(item);
 
   if (!itemText) {
     return null;
   }
-
-  const iconProps = getLocationIcon(item);
 
   return (
     <Flex gap="xs" align="center">

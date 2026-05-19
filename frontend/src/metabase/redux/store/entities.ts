@@ -4,18 +4,15 @@ import type {
   NormalizedDashboard,
   NormalizedDatabase,
   NormalizedField,
-  NormalizedGroup,
   NormalizedMeasure,
   NormalizedMetric,
   NormalizedNativeQuerySnippet,
   NormalizedSchema,
   NormalizedSegment,
   NormalizedTable,
-  NormalizedWritebackAction,
 } from "metabase-types/api";
 
 export interface EntitiesState {
-  actions: Record<string, NormalizedWritebackAction>;
   collections: Record<string, NormalizedCollection>;
   dashboards: Record<string, NormalizedDashboard>;
   databases: Record<string, NormalizedDatabase>;
@@ -27,7 +24,6 @@ export interface EntitiesState {
   metrics: Record<string, NormalizedMetric>;
   snippets: Record<string, NormalizedNativeQuerySnippet>;
   questions: Record<string, NormalizedCard>;
-  groups: Record<string, NormalizedGroup>;
 
   [key: `${string}_list`]: unknown;
 }

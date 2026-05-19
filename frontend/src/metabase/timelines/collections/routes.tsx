@@ -23,7 +23,9 @@ const getRoutes = () => {
         {...{
           path: "timelines",
           modal: TimelineIndexModal,
-          modalProps: { enableTransition: false },
+          // enableMouseEvents lets Mantine's click-outside detection work
+          // for the overflow menus inside (UXW-264).
+          modalProps: { enableTransition: false, enableMouseEvents: true },
         }}
       />
       <ModalRoute
@@ -37,14 +39,16 @@ const getRoutes = () => {
         {...{
           path: "timelines/archive",
           modal: TimelineListArchiveModal,
-          modalProps: { enableTransition: false },
+          modalProps: { enableTransition: false, enableMouseEvents: true },
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/:timelineId",
           modal: TimelineDetailsModal,
-          modalProps: { enableTransition: false },
+          // enableMouseEvents lets Mantine's click-outside detection work
+          // for the overflow menus inside (UXW-264).
+          modalProps: { enableTransition: false, enableMouseEvents: true },
         }}
       />
       <ModalRoute
@@ -66,7 +70,7 @@ const getRoutes = () => {
         {...{
           path: "timelines/:timelineId/archive",
           modal: TimelineArchiveModal,
-          modalProps: { enableTransition: false },
+          modalProps: { enableTransition: false, enableMouseEvents: true },
         }}
       />
       <ModalRoute

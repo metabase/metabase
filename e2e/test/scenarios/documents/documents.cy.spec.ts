@@ -341,6 +341,38 @@ describe("documents", () => {
       .should("have.attr", "contenteditable", "false");
   });
 
+  it("should default the save modal to a selectable collection when Library is enabled (#73538)", () => {
+    H.activateToken("pro-self-hosted");
+    H.createLibrary();
+    cy.intercept("POST", "/api/document").as("createDocument");
+
+    cy.visit("/");
+
+    H.newButton("Document").click();
+    cy.findByRole("textbox", { name: "Document Title" }).type(
+      "Document in default collection",
+    );
+    H.documentContent().type(
+      "This document should save without changing folders",
+    );
+
+    cy.findByRole("button", { name: "Save" }).click();
+
+    H.entityPickerModal().within(() => {
+      cy.findByTestId("entity-picker-select-button").should("be.enabled");
+    });
+    cy.findByTestId("entity-picker-select-button").click();
+
+    cy.wait("@createDocument").then(({ request }) => {
+      expect(request.body).not.to.have.property("collection_id");
+    });
+    cy.location("pathname").should("match", /^\/document\/\d+/);
+    cy.findByRole("textbox", { name: "Document Title" }).should(
+      "have.value",
+      "Document in default collection",
+    );
+  });
+
   it("should focus the start of the document body when pressing Enter on the title input", () => {
     cy.visit("/document/new");
 

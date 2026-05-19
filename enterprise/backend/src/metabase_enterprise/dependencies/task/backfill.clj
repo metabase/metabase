@@ -7,6 +7,10 @@
   outdated dependency_analysis_version. The backfill task computes dependencies and updates
   the dependency_status table."
   (:require
+   [clojurewerkz.quartzite.jobs :as jobs]
+   [clojurewerkz.quartzite.scheduler :as qs]
+   [clojurewerkz.quartzite.triggers :as triggers]
+   [java-time.api :as t]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
@@ -18,7 +22,8 @@
    [metabase.transforms.core :as transforms]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (org.quartz JobExecutionContext)))
 
 (set! *warn-on-reflection* true)
 
@@ -137,48 +142,60 @@
 (defn- has-pending-retries? []
   (deps.dependency-status/has-pending-retries?))
 
-(declare schedule-next-run!)
+(declare schedule-run!)
+
+(defn- log-job-start
+  [^JobExecutionContext ctx]
+  (let [scheduler (.getScheduler ctx)
+        job-key (.getKey (.getJobDetail ctx))
+        job-class (.getSimpleName (.getJobClass (.getJobDetail ctx)))
+        active-triggers-count (try (count (qs/get-triggers-of-job scheduler job-key)) (catch Exception _))]
+    (log/infof "Executing %s job. %s total triggers active." job-class active-triggers-count)))
 
 (task/defjob
   ^{:doc "Backfill the dependency table."
     org.quartz.DisallowConcurrentExecution true}
   BackfillDependencies [ctx]
-  (log/info "Executing BackfillDependencies job...")
-  (let [full-batch-selected? (backfill-dependencies!)
-        retries? (has-pending-retries?)]
-    (if (or full-batch-selected?
-            retries?)
-      (let [delay-in-seconds (deps.task-util/job-delay
-                              (deps.settings/dependency-backfill-delay-minutes)
-                              (deps.settings/dependency-backfill-variance-minutes))]
-        (schedule-next-run! delay-in-seconds (.getScheduler ctx)))
-      (log/info "No more entities to backfill for, stopping."))))
+  (let [ctx ^JobExecutionContext ctx]
+    (log-job-start ctx)
+    (let [full-batch-selected? (backfill-dependencies!)
+          retries? (has-pending-retries?)]
+      (if (or full-batch-selected?
+              retries?)
+        (let [delay-in-seconds (deps.task-util/job-delay
+                                (deps.settings/dependency-backfill-delay-minutes)
+                                (deps.settings/dependency-backfill-variance-minutes))]
+          (schedule-run! (.getScheduler ctx) delay-in-seconds))
+        (log/info "No more entities to backfill for, stopping.")))))
 
 (def ^:private job-key     "metabase.task.dependency-backfill.job")
 (def ^:private trigger-key "metabase.task.dependency-backfill.trigger")
 
-(defn- schedule-next-run!
-  ([delay-in-seconds] (schedule-next-run! delay-in-seconds nil))
-  ([delay-in-seconds scheduler]
-   (deps.task-util/schedule-next-run!
-    {:job-type         BackfillDependencies
-     :job-name         "Dependency Backfill"
-     :job-key          job-key
-     :trigger-key      trigger-key
-     :delay-in-seconds delay-in-seconds
-     :scheduler        scheduler})))
+(defn- schedule-run! [scheduler delay-in-seconds]
+  (let [start-at (-> (t/instant)
+                     (t/+ (t/duration delay-in-seconds :seconds))
+                     java.util.Date/from)
+        trigger  (triggers/build
+                  (triggers/with-identity (triggers/key trigger-key))
+                  (triggers/for-job job-key)
+                  (triggers/start-at start-at))
+        job      (jobs/build (jobs/of-type BackfillDependencies) (jobs/with-identity job-key))]
+    (log/info "Scheduling next run of job Dependency Backfill at" start-at)
+    (task/schedule-task! scheduler job trigger)))
 
 (defn trigger-backfill-job!
   "Trigger the BackfillDependencies job to run after a brief delay.
   The 1-second delay ensures the calling transaction has committed before
   the job checks for stale entities."
   []
-  (schedule-next-run! 1))
+  (schedule-run! (task/scheduler) 1))
 
 (defmethod task/init! ::DependencyBackfill [_]
   (if (pos? (deps.settings/dependency-backfill-batch-size))
-    (schedule-next-run! (deps.task-util/job-initial-delay
-                         (deps.settings/dependency-backfill-variance-minutes)))
+    (schedule-run!
+     (task/scheduler)
+     (deps.task-util/job-initial-delay
+      (deps.settings/dependency-backfill-variance-minutes)))
     (log/info "Not starting dependency backfill job because the batch size is not positive")))
 
 (derive ::backfill :metabase/event)

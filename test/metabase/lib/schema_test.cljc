@@ -9,6 +9,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.schema.util-test :as lib.schema.util-test]
+   [metabase.lib.test-metadata :as meta]
    [metabase.util.malli.registry :as mr]))
 
 (comment
@@ -418,3 +419,13 @@
                                     basic-external-query))))
   (is (not (me/humanize (mr/explain ::lib.schema/external-query
                                     native-external-query)))))
+
+(deftest ^:parallel normalize-query-drop-limit-in-stage-with-page-test
+  (testing "If a query has `:page` we should drop `:limit` since the two conflict during normalization"
+    (let [stage {:lib/type     :mbql.stage/mbql
+                 :source-table (:id (meta/table-metadata :venues))
+                 :page         {:page 1, :items 15}
+                 :limit        20}]
+      (is (=? {:page  {:page 1, :items 15}
+               :limit (symbol "nil #_\"key is not present.\"")}
+              (lib/normalize ::lib.schema/stage stage))))))

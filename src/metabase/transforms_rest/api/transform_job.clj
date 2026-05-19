@@ -43,6 +43,7 @@
    [:description [:maybe [:or :string LocalizedString]]]
    [:schedule :string]
    [:ui_display_type [:enum :cron/raw :cron/builder]]
+   [:active :boolean]
    [:entity_id [:maybe :string]]
    [:created_at :any]
    [:updated_at :any]
@@ -121,50 +122,86 @@
     ;; Return with hydrated tag_ids
     (t2/hydrate job :tag_ids)))
 
+(api.macros/defendpoint :put "/active" :- [:map {:closed true}
+                                           [:updated :int]
+                                           [:failed :int]]
+  "Activate or deactivate every transform job. Inactive jobs do not run on schedule. Manual runs
+  via `POST /api/transform-job/:job-id/run` ignore this flag.
+
+  Reports per-job outcome counts: `:updated` (successfully flipped) and `:failed` (raised an
+  error during the flip — the row update or Quartz write failed and was logged)."
+  [_route-params
+   _query-params
+   {:keys [active]} :- [:map [:active :boolean]]]
+  (api/check-superuser)
+  (log/info "Setting active =" active "on all transform jobs")
+  (let [op         (if active transforms.core/activate-job! transforms.core/deactivate-job!)
+        verb       (if active "activate" "deactivate")
+        candidates (t2/select :model/TransformJob :active (not active))
+        try-op     (fn [job]
+                     (try
+                       (op (:id job))
+                       :ok
+                       (catch Throwable t
+                         (log/errorf t "Failed to %s transform job %d" verb (:id job))
+                         :failed)))
+        outcomes   (frequencies (map try-op candidates))]
+    {:updated (get outcomes :ok 0)
+     :failed  (get outcomes :failed 0)}))
+
 (api.macros/defendpoint :put "/:job-id" :- TransformJobResponse
   "Update a transform job."
   [{:keys [job-id]} :- [:map
                         [:job-id ms/PositiveInt]]
    _query-params
    {tag-ids :tag_ids
-    :keys [name description schedule ui_display_type]} :- [:map
-                                                           [:name {:optional true} ms/NonBlankString]
-                                                           [:description {:optional true} [:maybe ms/NonBlankString]]
-                                                           [:schedule {:optional true} ms/NonBlankString]
-                                                           [:ui_display_type
-                                                            {:optional true}
-                                                            (ms/enum-decode-keyword ui-display-types)]
-                                                           [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+    :keys [name description schedule ui_display_type active]} :- [:map
+                                                                  [:name {:optional true} ms/NonBlankString]
+                                                                  [:description {:optional true} [:maybe ms/NonBlankString]]
+                                                                  [:schedule {:optional true} ms/NonBlankString]
+                                                                  [:ui_display_type
+                                                                   {:optional true}
+                                                                   (ms/enum-decode-keyword ui-display-types)]
+                                                                  [:active {:optional true} :boolean]
+                                                                  [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Updating transform job" job-id)
   (let [existing-job (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids)]
     ;; Check write permission on both current state and final state (with new tags if provided)
     (api/write-check existing-job)
     (when (some? tag-ids)
-      (api/write-check (assoc existing-job :tag_ids tag-ids))))
-  ;; Validate cron expression if provided
-  (when schedule
-    (api/check-400 (transforms.core/validate-cron-expression schedule)
-                   (deferred-tru "Invalid cron expression: {0}" schedule)))
-  ;; Validate tag IDs if provided
-  (when (seq tag-ids)
-    (let [existing-tags (set (t2/select-pks-vec :model/TransformTag :id [:in tag-ids]))]
-      (api/check-400 (= (set tag-ids) existing-tags)
-                     (deferred-tru "Some tag IDs do not exist"))))
-  (t2/with-transaction [_conn]
-    (when-let [updates (m/assoc-some nil
-                                     :name name
-                                     :description description
-                                     :schedule schedule
-                                     :ui_display_type ui_display_type)]
-      (t2/update! :model/TransformJob job-id updates))
+      (api/write-check (assoc existing-job :tag_ids tag-ids)))
+    ;; Validate cron expression if provided
     (when schedule
-      (transforms.core/update-job! job-id schedule))
-    ;; Update tag associations if provided
-    (when (some? tag-ids)
-      (transforms.core/update-job-tags! job-id tag-ids))
-    ;; Return updated job with hydration
-    (-> (t2/select-one :model/TransformJob :id job-id)
-        (t2/hydrate :tag_ids :last_run))))
+      (api/check-400 (transforms.core/validate-cron-expression schedule)
+                     (deferred-tru "Invalid cron expression: {0}" schedule)))
+    ;; Validate tag IDs if provided
+    (when (seq tag-ids)
+      (let [existing-tags (set (t2/select-pks-vec :model/TransformTag :id [:in tag-ids]))]
+        (api/check-400 (= (set tag-ids) existing-tags)
+                       (deferred-tru "Some tag IDs do not exist"))))
+    (let [was-active     (:active existing-job)
+          will-be-active (if (some? active) active was-active)]
+      ;; DB writes that can fail commit before any Quartz side effect, so a tag FK race or
+      ;; non-toggle-update failure can't roll back state already written to the scheduler.
+      (t2/with-transaction [_conn]
+        (when-let [updates (m/assoc-some nil
+                                         :name name
+                                         :description description
+                                         :schedule schedule
+                                         :ui_display_type ui_display_type)]
+          (t2/update! :model/TransformJob job-id updates))
+        (when (some? tag-ids)
+          (transforms.core/update-job-tags! job-id tag-ids)))
+      (when (some? active)
+        (if active
+          (transforms.core/activate-job! job-id)
+          (transforms.core/deactivate-job! job-id)))
+      ;; A schedule edit on a job that stays active needs a separate trigger rebuild;
+      ;; activate-job! only runs when :active toggled false→true.
+      (when (and schedule was-active will-be-active)
+        (transforms.core/update-job! job-id schedule))
+      (-> (t2/select-one :model/TransformJob :id job-id)
+          (t2/hydrate :tag_ids :last_run)))))
 
 (api.macros/defendpoint :delete "/:job-id" :- nil
   "Delete a transform job."

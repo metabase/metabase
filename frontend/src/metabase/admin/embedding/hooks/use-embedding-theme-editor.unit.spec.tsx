@@ -1,7 +1,13 @@
+import Color from "color";
 import fetchMock from "fetch-mock";
 
 import { act, renderHookWithProviders, waitFor } from "__support__/ui";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
+import { performUndo } from "metabase/redux/undo";
+import { suggestHarmonyColors } from "metabase/ui/colors/harmonies";
 import type { EmbeddingTheme } from "metabase-types/api/embedding-theme";
+import type { ColorSettings } from "metabase-types/api/settings";
 
 import {
   type ThemeEditorId,
@@ -20,7 +26,7 @@ const TEST_THEME: EmbeddingTheme = {
   updated_at: "2024-01-01T00:00:00Z",
 };
 
-function setup(themeId: ThemeEditorId = 1) {
+function setup(themeId: ThemeEditorId = 1, applicationColors?: ColorSettings) {
   if (typeof themeId === "number") {
     fetchMock.get(`path:/api/embed-theme/${themeId}`, TEST_THEME);
     fetchMock.put(`path:/api/embed-theme/${themeId}`, {
@@ -29,8 +35,16 @@ function setup(themeId: ThemeEditorId = 1) {
     });
   }
 
+  const storeInitialState = applicationColors
+    ? createMockState({
+        settings: { values: { "application-colors": applicationColors } },
+      } as Partial<State>)
+    : undefined;
+
   return renderHookWithProviders(() => useEmbeddingThemeEditor(themeId), {
     withUndos: true,
+    withRouter: true,
+    storeInitialState,
   });
 }
 
@@ -105,155 +119,277 @@ describe("useEmbeddingThemeEditor", () => {
     expect(result.current.isDirty).toBe(false);
   });
 
-  describe("additional colors reset", () => {
-    const CUSTOM_ADDITIONAL_COLORS = {
-      "text-secondary": "#AAAAAA",
-      "text-tertiary": "#BBBBBB",
-      border: "#CCCCCC",
-      "background-secondary": "#DDDDDD",
-      filter: "#EEEEEE",
-      summarize: "#FFFFFF",
-      positive: "#00FF00",
-      negative: "#FF0000",
-      shadow: "#333333",
-    };
+  describe("hasOutOfSyncAdditionalColors", () => {
+    it("is false on a fresh draft — additional colors are pre-seeded from the brand harmony", async () => {
+      const { result } = setup("new");
 
-    const THEME_WITH_CUSTOM_COLORS: EmbeddingTheme = {
-      ...TEST_THEME,
-      settings: {
-        ...TEST_THEME.settings,
-        colors: {
-          brand: "#FF0000",
-          background: "#111111",
-          "text-primary": "#222222",
-          ...CUSTOM_ADDITIONAL_COLORS,
-          charts: [
-            "#A00",
-            "#B00",
-            "#C00",
-            "#D00",
-            "#E00",
-            "#F00",
-            "#100",
-            "#200",
-          ],
-        },
-      },
-    };
-
-    function setupWithCustomColors() {
-      fetchMock.get("path:/api/embed-theme/1", THEME_WITH_CUSTOM_COLORS);
-      fetchMock.put("path:/api/embed-theme/1", THEME_WITH_CUSTOM_COLORS);
-
-      return renderHookWithProviders(() => useEmbeddingThemeEditor(1), {
-        withUndos: true,
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
       });
-    }
 
-    it("hasAdditionalColorChanges is false when colors match defaults", async () => {
+      expect(result.current.hasOutOfSyncAdditionalColors).toBe(false);
+    });
+
+    it("is false when filter / summarize / positive / negative / charts match the brand-derived harmony", async () => {
+      const { result } = setup("new");
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      act(() => {
+        result.current.regenerateAdditionalColorsFromBrand();
+      });
+
+      expect(result.current.hasOutOfSyncAdditionalColors).toBe(false);
+    });
+
+    it("is true when a harmony-managed color is edited away from the derived value", async () => {
+      const { result } = setup("new");
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      act(() => {
+        result.current.regenerateAdditionalColorsFromBrand();
+      });
+      expect(result.current.hasOutOfSyncAdditionalColors).toBe(false);
+
+      act(() => {
+        result.current.setColor("filter", "#123456");
+      });
+
+      expect(result.current.hasOutOfSyncAdditionalColors).toBe(true);
+    });
+
+    it("is true when a chart color is edited away from the derived value", async () => {
+      const { result } = setup("new");
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      act(() => {
+        result.current.regenerateAdditionalColorsFromBrand();
+      });
+
+      act(() => {
+        result.current.setChartColor(3, "#abcdef");
+      });
+
+      expect(result.current.hasOutOfSyncAdditionalColors).toBe(true);
+    });
+
+    it("is true when the brand changes (derived values now stale)", async () => {
+      const { result } = setup("new");
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      act(() => {
+        result.current.regenerateAdditionalColorsFromBrand();
+      });
+      expect(result.current.hasOutOfSyncAdditionalColors).toBe(false);
+
+      act(() => {
+        result.current.setColor("brand", "#aa3322");
+      });
+
+      expect(result.current.hasOutOfSyncAdditionalColors).toBe(true);
+    });
+
+    it("ignores edits to non-derived colors like border", async () => {
+      const { result } = setup("new");
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      act(() => {
+        result.current.regenerateAdditionalColorsFromBrand();
+      });
+      expect(result.current.hasOutOfSyncAdditionalColors).toBe(false);
+
+      act(() => {
+        result.current.setColor("border", "#abcdef");
+      });
+
+      expect(result.current.hasOutOfSyncAdditionalColors).toBe(false);
+    });
+  });
+
+  describe("regenerateAdditionalColorsFromBrand", () => {
+    it("overwrites filter / summarize / positive / negative / charts with brand-derived values", async () => {
+      const { result } = setup("new");
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      // Make derived colors stale by editing them.
+      act(() => {
+        result.current.setColor("filter", "#000001");
+        result.current.setChartColor(0, "#000002");
+      });
+
+      const brand = result.current.currentTheme?.settings.colors?.brand ?? "";
+      const expected = suggestHarmonyColors(brand);
+
+      act(() => {
+        result.current.regenerateAdditionalColorsFromBrand();
+      });
+
+      const colors = result.current.currentTheme?.settings.colors;
+      expect(colors?.filter).toBe(expected.filter);
+      expect(colors?.summarize).toBe(expected.summarize);
+      expect(colors?.positive).toBe(expected.positive);
+      expect(colors?.negative).toBe(expected.negative);
+      expect(colors?.charts).toEqual(expected.charts);
+    });
+
+    it("queues an undo entry that restores the prior colors when invoked", async () => {
+      const { result, store } = setup("new");
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      act(() => {
+        result.current.setColor("filter", "#abc123");
+      });
+      const filterBefore = result.current.currentTheme?.settings.colors?.filter;
+      expect(filterBefore).toBe("#abc123");
+
+      await act(async () => {
+        result.current.regenerateAdditionalColorsFromBrand();
+      });
+
+      expect(result.current.currentTheme?.settings.colors?.filter).not.toBe(
+        filterBefore,
+      );
+
+      // The hook dispatched an undo entry; assert and trigger it programmatically.
+      await waitFor(() => {
+        expect(store.getState().undo).toHaveLength(1);
+      });
+      const undo = store.getState().undo[0];
+      expect(undo.actionLabel).toBe("Undo");
+
+      await act(async () => {
+        // performUndo is a thunk; the test store wires thunk middleware at runtime.
+        store.dispatch(performUndo(undo.id) as never);
+      });
+
+      expect(result.current.currentTheme?.settings.colors?.filter).toBe(
+        filterBefore,
+      );
+    });
+
+    it("derives the expected harmony for the Metabase brand color", async () => {
       const { result } = setup();
 
       await waitFor(() => {
         expect(result.current.currentTheme).not.toBeNull();
       });
 
-      // TEST_THEME has no additional colors set, so they're undefined/"",
-      // but defaults come from useDefaultEmbeddingThemeSettings.
-      // After a reset, hasAdditionalColorChanges should be false.
-      act(() => {
-        result.current.resetAdditionalColors();
-      });
+      // TEST_THEME's brand is the canonical Metabase blue. Trigger the
+      // generator and verify each derived color independently against the
+      // harmony spec, without going through `suggestHarmonyColors` — this
+      // catches regressions in either the algorithm or the wiring.
+      const BRAND = "#509EE3";
+      expect(result.current.currentTheme?.settings.colors?.brand).toBe(BRAND);
 
-      expect(result.current.hasAdditionalColorChanges).toBe(false);
-    });
-
-    it("hasAdditionalColorChanges is true when an additional color differs", async () => {
-      const { result } = setup();
-
-      await waitFor(() => {
-        expect(result.current.currentTheme).not.toBeNull();
-      });
-
-      act(() => {
-        result.current.setColor("border", "#FF00FF");
-      });
-
-      expect(result.current.hasAdditionalColorChanges).toBe(true);
-    });
-
-    it("hasAdditionalColorChanges is true when chart colors differ", async () => {
-      const { result } = setup();
-
-      await waitFor(() => {
-        expect(result.current.currentTheme).not.toBeNull();
-      });
-
-      act(() => {
-        result.current.setChartColor(0, "#FF00FF");
-      });
-
-      expect(result.current.hasAdditionalColorChanges).toBe(true);
-    });
-
-    it("hasAdditionalColorChanges is false for main color changes only", async () => {
-      const { result } = setup();
-
-      await waitFor(() => {
-        expect(result.current.currentTheme).not.toBeNull();
-      });
-
-      // Reset additional colors to defaults first
-      act(() => {
-        result.current.resetAdditionalColors();
-      });
-
-      // Change only a main color
-      act(() => {
-        result.current.setColor("brand", "#123456");
-      });
-
-      expect(result.current.hasAdditionalColorChanges).toBe(false);
-    });
-
-    it("resets additional and chart colors to defaults, preserving main colors", async () => {
-      const { result } = setupWithCustomColors();
-
-      await waitFor(() => {
-        expect(result.current.currentTheme).not.toBeNull();
-      });
-
-      expect(result.current.hasAdditionalColorChanges).toBe(true);
-
-      act(() => {
-        result.current.resetAdditionalColors();
+      await act(async () => {
+        result.current.regenerateAdditionalColorsFromBrand();
       });
 
       const colors = result.current.currentTheme?.settings.colors;
 
-      // Main colors should remain unchanged
-      expect(colors?.brand).toBe("#FF0000");
-      expect(colors?.background).toBe("#111111");
-      expect(colors?.["text-primary"]).toBe("#222222");
+      // Filter / summarize follow the square harmony at brand ± 90°.
+      expect(colors?.filter).toBe(Color(BRAND).rotate(90).hex().toLowerCase());
+      expect(colors?.summarize).toBe(
+        Color(BRAND).rotate(-90).hex().toLowerCase(),
+      );
 
-      // Additional colors should no longer be the custom values
-      expect(colors?.["text-secondary"]).not.toBe("#AAAAAA");
-      expect(colors?.border).not.toBe("#CCCCCC");
-      expect(colors?.positive).not.toBe("#00FF00");
+      // Positive / negative anchor to fixed hues at lightness 50.
+      expect(colors?.positive).toBe(
+        Color(BRAND).hue(89).lightness(50).hex().toLowerCase(),
+      );
+      expect(colors?.negative).toBe(
+        Color(BRAND).hue(359).lightness(50).hex().toLowerCase(),
+      );
 
-      // Chart colors should be reset
-      expect(colors?.charts).not.toEqual([
-        "#A00",
-        "#B00",
-        "#C00",
-        "#D00",
-        "#E00",
-        "#F00",
-        "#100",
-        "#200",
-      ]);
+      // Charts: brand verbatim at index 0, then 45° rotations clockwise.
+      const charts = colors?.charts as string[];
+      expect(charts).toHaveLength(8);
+      expect(charts[0]).toBe(BRAND.toLowerCase());
+      for (let i = 1; i < 8; i++) {
+        expect(charts[i]).toBe(
+          Color(BRAND)
+            .rotate(i * 45)
+            .hex()
+            .toLowerCase(),
+        );
+      }
+    });
+  });
 
-      expect(result.current.hasAdditionalColorChanges).toBe(false);
-      expect(result.current.isDirty).toBe(true);
+  describe("resetMainColors", () => {
+    it("resets brand / background / text-primary to defaults", async () => {
+      const { result } = setup();
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      act(() => {
+        result.current.setColor("brand", "#aa1111");
+      });
+      expect(result.current.hasMainColorChanges).toBe(true);
+
+      act(() => {
+        result.current.resetMainColors();
+      });
+
+      expect(result.current.hasMainColorChanges).toBe(false);
+    });
+
+    it("queues an undo entry that restores the prior main colors when invoked", async () => {
+      const { result, store } = setup();
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      act(() => {
+        result.current.setColor("brand", "#aa1111");
+      });
+      const brandBefore = result.current.currentTheme?.settings.colors?.brand;
+      expect(brandBefore).toBe("#aa1111");
+
+      await act(async () => {
+        result.current.resetMainColors();
+      });
+
+      expect(result.current.currentTheme?.settings.colors?.brand).not.toBe(
+        brandBefore,
+      );
+
+      await waitFor(() => {
+        expect(store.getState().undo).toHaveLength(1);
+      });
+      const undo = store.getState().undo[0];
+
+      await act(async () => {
+        // performUndo is a thunk; the test store wires thunk middleware at runtime.
+        store.dispatch(performUndo(undo.id) as never);
+      });
+
+      expect(result.current.currentTheme?.settings.colors?.brand).toBe(
+        brandBefore,
+      );
     });
   });
 
@@ -359,6 +495,29 @@ describe("useEmbeddingThemeEditor", () => {
       expect(fetchMock.callHistory.calls("path:/api/embed-theme")).toHaveLength(
         1,
       );
+    });
+
+    it("preserves whitelabel-provided colors when seeding the draft", async () => {
+      const whitelabel = {
+        brand: "#8e44ad",
+        filter: "#16a085",
+        summarize: "#d35400",
+        accent0: "#e74c3c",
+        accent7: "#34495e",
+      } satisfies ColorSettings;
+
+      const { result } = setup("new", whitelabel);
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      const colors = result.current.currentTheme?.settings.colors;
+      expect(colors?.brand).toBe(whitelabel.brand);
+      expect(colors?.filter).toBe(whitelabel.filter);
+      expect(colors?.summarize).toBe(whitelabel.summarize);
+      expect(colors?.charts?.[0]).toBe(whitelabel.accent0);
+      expect(colors?.charts?.[7]).toBe(whitelabel.accent7);
     });
   });
 

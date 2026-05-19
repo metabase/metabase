@@ -47,7 +47,7 @@ const getDatabaseId = (
 };
 
 const getSchemaName = (props: TableBrowserContainerProps): string | undefined =>
-  props.schemaName ?? props.params?.schemaName;
+  props.schemaName || props.params?.schemaName || undefined;
 
 const getReloadInterval = (
   _state: State,

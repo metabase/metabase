@@ -34,8 +34,8 @@
    [metabase.lib.schema.settings :as lib.schema.settings]
    [metabase.lib.schema.template-tag :as template-tag]
    [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [every? select-keys some empty? get-in]]))
 
 (comment metabase.lib.schema.expression.arithmetic/keep-me
@@ -272,6 +272,16 @@
       ;; reliable way to differentiate them since it gets populated by the QP.
       (merge (select-keys stage [:qp/stage-is-from-source-card :qp/stage-had-source-card]))))
 
+(mr/def ::stage.page-and-limit-are-mutually-exclusive
+  "If an MBQL query stage specifies `:page`, it should not also specify `:limit`"
+  [:fn
+   {:error/message    "A query stage should not specify both :page and :limit since they conflict"
+    ;; if both are specified, ignore `:limit` and prefer `:page`
+    :decode/normalize (fn [stage]
+                        (cond-> stage
+                          ((every-pred :page :limit) stage) (dissoc :limit)))}
+   (complement (every-pred :page :limit))])
+
 (mr/def ::stage.mbql
   [:and
    [:merge
@@ -295,6 +305,7 @@
     {:error/message "A query must have exactly one of :source-table or :source-card"}
     (complement (comp #(= (count %) 1) #{:source-table :source-card}))]
    [:ref ::stage.valid-refs]
+   [:ref ::stage.page-and-limit-are-mutually-exclusive]
    (common/disallowed-keys
     {:native             ":native is not allowed in an MBQL stage."
      :aggregation-idents ":aggregation-idents is deprecated and should not be used"
@@ -409,7 +420,7 @@
       (let [visible-join-alias? (some-fn visible-join-alias? (visible-join-alias?-fn stage))]
         (or
          (when (map? stage)
-           (lib.util.match/match-lite (dissoc stage :joins :lib/stage-metadata)
+           (match/match-one (dissoc stage :joins :lib/stage-metadata)
              [:field {:join-alias (join-alias :guard (and join-alias
                                                           (not (visible-join-alias? join-alias))))} _id-or-name]
              (str "Invalid :field reference in stage " i ": no join named " (pr-str join-alias))))
