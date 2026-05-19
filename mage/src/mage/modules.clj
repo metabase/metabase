@@ -131,6 +131,7 @@
      pulse
      remote-sync
      request
+     root
      search
      secrets
      server
