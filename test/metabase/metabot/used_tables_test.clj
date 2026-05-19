@@ -442,10 +442,9 @@
 ;;;
 ;;; The tests above all stub `nqa/tables-for-native` to isolate the extractor logic from the macaw
 ;;; parser. These two tests run the real parser end-to-end against the H2 test-data DB so we catch
-;;; integration regressions in the lib/query → tables-for-native handoff. They need the real
-;;; application DB metadata provider, so they cannot be `^:parallel`.
+;;; integration issues. They need the real application DB metadata provider, so they cannot be `^:parallel`.
 
-(deftest ^:sequential sql-real-macaw-join-with-where-test
+(deftest sql-real-macaw-join-with-where-test
   (testing "real macaw against a plain JOIN + WHERE: both tables come through end-to-end"
     (let [sql   "SELECT o.id FROM orders o JOIN products p ON o.product_id = p.id WHERE p.category = 'Widget'"
           mp    (mt/metadata-provider)
@@ -455,9 +454,8 @@
       (is (= #{(mt/id :orders) (mt/id :products)}
              (table-ids rows))))))
 
-(deftest ^:sequential sql-real-macaw-with-card-template-tag-test
-  (testing (str "real macaw against SQL that references a saved card via {{#card-id}} template tag — "
-                "macaw expands the tag and surfaces both the outer table and the card's underlying table")
+(deftest sql-real-macaw-with-card-template-tag-test
+  (testing "real macaw against SQL that references a saved card via {{#card-id}} template tag"
     (mt/with-temp [:model/Card {card-id :id}
                    {:type          :question
                     :database_id   (mt/id)
@@ -470,8 +468,7 @@
                       (sql-output "s1" sql (mt/id) (lib/native-query mp sql))]
             rows     (used-tables/extract-used-tables mp 99 parts)]
         (is (= #{(mt/id :orders) (mt/id :products)}
-               (table-ids rows))
-            "outer macaw walk finds orders; template-tag substitution + card recursion both reach products")))))
+               (table-ids rows)))))))
 
 ;;; ---------------------------------------- transforms ----------------------------------------
 
