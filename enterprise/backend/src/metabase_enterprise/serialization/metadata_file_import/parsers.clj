@@ -23,12 +23,12 @@
       ("yaml" "yml") :yaml
       (throw (ex-info (format "Unknown file format for %s — expected one of .json / .yaml / .yml"
                               (pr-str name))
-                      {:kind :unknown_format, :file name})))))
+                      {:kind :unknown-format, :file name})))))
 
 (defn stream-array-batches!
   "Stream `file`'s named array (string or keyword `array-key`) through `process-batch!`.
   Format is auto-detected from the extension; an unrecognized extension throws
-  `ex-info` with `:kind :unknown_format`. Caller's responsibility to ensure the
+  `ex-info` with `:kind :unknown-format`. Caller's responsibility to ensure the
   file exists and is readable; opening errors propagate."
   [^File file array-key batch-size process-batch!]
   (let [parser-fn (case (detect-format file)
@@ -43,7 +43,7 @@
   per-key handlers. `handlers` is a map of keyword → fn-of-batch (each batch
   is a vector of `[line-num row]` tuples, up to `batch-size`). Format is
   auto-detected from the extension; an unrecognized extension throws `ex-info`
-  with `:kind :unknown_format`. Arrays for keys not in `handlers` are skipped
+  with `:kind :unknown-format`. Arrays for keys not in `handlers` are skipped
   without materialization."
   [^File file batch-size handlers]
   (let [parser-fn (case (detect-format file)

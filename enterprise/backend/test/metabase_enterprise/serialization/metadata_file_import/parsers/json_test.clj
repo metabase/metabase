@@ -56,21 +56,21 @@
 
 (deftest missing-array-key-throws-shape-error-test
   (testing "a top-level object that doesn't contain the requested key throws ex-info with
-            :kind :missing_key"
+            :kind :missing-key"
     (try
       (collect-batches! "{\"other\":[]}" :databases 10)
       (is false "should have thrown")
       (catch clojure.lang.ExceptionInfo e
-        (is (= :missing_key (:kind (ex-data e))))
+        (is (= :missing-key (:kind (ex-data e))))
         (is (= "databases" (:key (ex-data e))))))))
 
 (deftest non-array-value-at-key-throws-shape-error-test
-  (testing "a top-level key whose value is not an array throws ex-info with :kind :bad_shape"
+  (testing "a top-level key whose value is not an array throws ex-info with :kind :bad-shape"
     (try
       (collect-batches! "{\"databases\":{\"not\":\"an array\"}}" :databases 10)
       (is false "should have thrown")
       (catch clojure.lang.ExceptionInfo e
-        (is (= :bad_shape (:kind (ex-data e))))))))
+        (is (= :bad-shape (:kind (ex-data e))))))))
 
 (deftest non-object-top-level-throws-shape-error-test
   (testing "a document that doesn't begin with a top-level object throws"
@@ -78,7 +78,7 @@
       (collect-batches! "[1, 2, 3]" :anything 10)
       (is false "should have thrown")
       (catch clojure.lang.ExceptionInfo e
-        (is (= :bad_shape (:kind (ex-data e))))))))
+        (is (= :bad-shape (:kind (ex-data e))))))))
 
 (deftest skips-other-top-level-keys-before-target-test
   (testing "the parser advances past unrelated top-level keys (and their values, including

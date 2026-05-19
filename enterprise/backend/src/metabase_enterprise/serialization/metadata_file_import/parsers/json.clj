@@ -17,27 +17,27 @@
 (defn- advance-to-array!
   "Advance `parser` from start-of-input through a top-level JSON object to the
   array valued at `target-key` (parser has just consumed the START_ARRAY
-  token). Throws `:bad_shape` if the document doesn't begin with an object or
-  the value at `target-key` isn't an array; throws `:missing_key` if the key
+  token). Throws `:bad-shape` if the document doesn't begin with an object or
+  the value at `target-key` isn't an array; throws `:missing-key` if the key
   is absent."
   [^JsonParser parser ^String target-key]
   (let [t (.nextToken parser)]
     (when-not (= t JsonToken/START_OBJECT)
       (throw (ex-info "Expected JSON document to begin with an object"
-                      {:kind :bad_shape, :target-key target-key}))))
+                      {:kind :bad-shape, :target-key target-key}))))
   (loop []
     (let [t (.nextToken parser)]
       (cond
         (or (nil? t) (= t JsonToken/END_OBJECT))
         (throw (ex-info (format "Key %s not found in top-level object" (pr-str target-key))
-                        {:kind :missing_key, :key target-key}))
+                        {:kind :missing-key, :key target-key}))
 
         (= t JsonToken/FIELD_NAME)
         (if (= target-key (.getCurrentName parser))
           (let [vt (.nextToken parser)]
             (when-not (= vt JsonToken/START_ARRAY)
               (throw (ex-info (format "Value of %s must be an array" (pr-str target-key))
-                              {:kind :bad_shape, :key target-key}))))
+                              {:kind :bad-shape, :key target-key}))))
           (do (.nextToken parser) (.skipChildren parser) (recur)))
 
         :else (recur)))))
@@ -68,12 +68,12 @@
 
         (nil? t)
         (throw (ex-info (format "Unexpected end-of-input in array %s" (pr-str array-key))
-                        {:kind :bad_shape, :key array-key}))
+                        {:kind :bad-shape, :key array-key}))
 
         :else
         (throw (ex-info (format "Unexpected token %s in array %s"
                                 (some-> t .asString) (pr-str array-key))
-                        {:kind :bad_shape, :key array-key}))))))
+                        {:kind :bad-shape, :key array-key}))))))
 
 (defn stream-array-batches!
   "Walk `reader` to the array at top-level `array-key` (string or keyword), then
@@ -93,7 +93,7 @@
   `batch-size`). Other top-level keys are skipped. `line-num` is 1-indexed
   per array and continues across batch boundaries within an array.
 
-  Throws `:bad_shape` if the document doesn't begin with an object or if a
+  Throws `:bad-shape` if the document doesn't begin with an object or if a
   known key's value isn't an array. Missing keys (in `handlers` but not in
   the document) are silently OK."
   [^Reader reader batch-size handlers]
@@ -101,7 +101,7 @@
     (let [t (.nextToken parser)]
       (when-not (= t JsonToken/START_OBJECT)
         (throw (ex-info "Expected JSON document to begin with an object"
-                        {:kind :bad_shape}))))
+                        {:kind :bad-shape}))))
     (loop []
       (let [t (.nextToken parser)]
         (cond
@@ -115,7 +115,7 @@
               (let [vt (.nextToken parser)]
                 (when-not (= vt JsonToken/START_ARRAY)
                   (throw (ex-info (format "Value of %s must be an array" (pr-str field-name))
-                                  {:kind :bad_shape, :key field-name})))
+                                  {:kind :bad-shape, :key field-name})))
                 (consume-array-as-batches! parser field-name batch-size handler-fn)
                 (recur))
               (do (.nextToken parser)

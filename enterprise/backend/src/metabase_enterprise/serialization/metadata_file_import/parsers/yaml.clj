@@ -58,7 +58,7 @@
         :else
         (throw (ex-info (format "Expected scalar mapping key, got %s"
                                 (.getSimpleName (class ev)))
-                        {:kind :bad_shape, :got (.getSimpleName (class ev))}))))))
+                        {:kind :bad-shape, :got (.getSimpleName (class ev))}))))))
 
 (defn- read-sequence
   "Build a Clojure vector from events between `SequenceStartEvent` (already
@@ -79,10 +79,10 @@
     MappingStartEvent  (read-mapping iter)
     SequenceStartEvent (read-sequence iter)
     AliasEvent         (throw (ex-info "YAML aliases (*name) are not supported"
-                                       {:kind :unsupported_alias}))
+                                       {:kind :unsupported-alias}))
     (throw (ex-info (format "Unexpected YAML event %s"
                             (.getSimpleName (class ev)))
-                    {:kind :bad_shape, :got (.getSimpleName (class ev))}))))
+                    {:kind :bad-shape, :got (.getSimpleName (class ev))}))))
 
 (defn- skip-value!
   "Consume events for one value rooted at `ev`. Used to advance past unrelated
@@ -102,32 +102,32 @@
                                             (recur))))
     :else (throw (ex-info (format "Unexpected YAML event %s while skipping"
                                   (.getSimpleName (class ev)))
-                          {:kind :bad_shape}))))
+                          {:kind :bad-shape}))))
 
 (defn- advance-to-array!
   "Advance `iter` from start-of-input through the top-level mapping to the
-  `SequenceStartEvent` for `target-key`. Throws `:bad_shape` if the document
+  `SequenceStartEvent` for `target-key`. Throws `:bad-shape` if the document
   doesn't begin with a mapping or the value at `target-key` isn't a sequence;
-  throws `:missing_key` if the key is absent."
+  throws `:missing-key` if the key is absent."
   [^Iterator iter ^String target-key]
   (let [e1 (.next iter)]
     (when-not (instance? StreamStartEvent e1)
       (throw (ex-info "Malformed YAML: expected StreamStartEvent"
-                      {:kind :bad_shape}))))
+                      {:kind :bad-shape}))))
   (let [e2 (.next iter)]
     (when-not (instance? DocumentStartEvent e2)
       (throw (ex-info "Malformed YAML: expected DocumentStartEvent"
-                      {:kind :bad_shape}))))
+                      {:kind :bad-shape}))))
   (let [e3 (.next iter)]
     (when-not (instance? MappingStartEvent e3)
       (throw (ex-info "Expected YAML document to begin with a mapping"
-                      {:kind :bad_shape, :target-key target-key}))))
+                      {:kind :bad-shape, :target-key target-key}))))
   (loop []
     (let [ev (.next iter)]
       (cond
         (instance? MappingEndEvent ev)
         (throw (ex-info (format "Key %s not found in top-level mapping" (pr-str target-key))
-                        {:kind :missing_key, :key target-key}))
+                        {:kind :missing-key, :key target-key}))
 
         (instance? ScalarEvent ev)
         (let [k (.getValue ^ScalarEvent ev)
@@ -138,7 +138,7 @@
 
             (= k target-key)
             (throw (ex-info (format "Value of %s must be a sequence" (pr-str target-key))
-                            {:kind :bad_shape, :key target-key}))
+                            {:kind :bad-shape, :key target-key}))
 
             :else
             (do (skip-value! iter vt)
@@ -147,7 +147,7 @@
         :else
         (throw (ex-info (format "Unexpected event %s in top-level mapping"
                                 (.getSimpleName (class ev)))
-                        {:kind :bad_shape}))))))
+                        {:kind :bad-shape}))))))
 
 (defn- consume-sequence-as-batches!
   "After SequenceStartEvent has been consumed, walk sequence items into batches
@@ -173,12 +173,12 @@
 
         (instance? AliasEvent ev)
         (throw (ex-info "YAML aliases (*name) are not supported"
-                        {:kind :unsupported_alias, :key array-key}))
+                        {:kind :unsupported-alias, :key array-key}))
 
         :else
         (throw (ex-info (format "Unexpected event %s in array %s"
                                 (.getSimpleName (class ev)) (pr-str array-key))
-                        {:kind :bad_shape, :key array-key}))))))
+                        {:kind :bad-shape, :key array-key}))))))
 
 (defn stream-array-batches!
   "Walk `reader` to the sequence at top-level `array-key` (string or keyword),
@@ -198,22 +198,22 @@
   `batch-size`). Other top-level keys are skipped. `line-num` is 1-indexed
   per sequence and continues across batch boundaries within a sequence.
 
-  Throws `:bad_shape` if the document doesn't begin with a mapping or if a
+  Throws `:bad-shape` if the document doesn't begin with a mapping or if a
   known key's value isn't a sequence. Missing keys are silently OK."
   [^Reader reader batch-size handlers]
   (let [iter (.iterator (.parse (Yaml.) reader))]
     (let [e1 (.next iter)]
       (when-not (instance? StreamStartEvent e1)
         (throw (ex-info "Malformed YAML: expected StreamStartEvent"
-                        {:kind :bad_shape}))))
+                        {:kind :bad-shape}))))
     (let [e2 (.next iter)]
       (when-not (instance? DocumentStartEvent e2)
         (throw (ex-info "Malformed YAML: expected DocumentStartEvent"
-                        {:kind :bad_shape}))))
+                        {:kind :bad-shape}))))
     (let [e3 (.next iter)]
       (when-not (instance? MappingStartEvent e3)
         (throw (ex-info "Expected YAML document to begin with a mapping"
-                        {:kind :bad_shape}))))
+                        {:kind :bad-shape}))))
     (loop []
       (let [ev (.next iter)]
         (cond
@@ -227,7 +227,7 @@
             (if handler-fn
               (do (when-not (instance? SequenceStartEvent vt)
                     (throw (ex-info (format "Value of %s must be a sequence" (pr-str k))
-                                    {:kind :bad_shape, :key k})))
+                                    {:kind :bad-shape, :key k})))
                   (consume-sequence-as-batches! iter k batch-size handler-fn)
                   (recur))
               (do (skip-value! iter vt)
@@ -236,4 +236,4 @@
           :else
           (throw (ex-info (format "Unexpected event %s in top-level mapping"
                                   (.getSimpleName (class ev)))
-                          {:kind :bad_shape})))))))
+                          {:kind :bad-shape})))))))

@@ -54,21 +54,21 @@
       (is (= [[[1 {:id 1}]]] (collect-batches! yaml "databases" 10))))))
 
 (deftest missing-array-key-throws-shape-error-test
-  (testing "missing target key throws ex-info with :kind :missing_key"
+  (testing "missing target key throws ex-info with :kind :missing-key"
     (try
       (collect-batches! "other: []\n" :databases 10)
       (is false "should have thrown")
       (catch clojure.lang.ExceptionInfo e
-        (is (= :missing_key (:kind (ex-data e))))
+        (is (= :missing-key (:kind (ex-data e))))
         (is (= "databases"  (:key (ex-data e))))))))
 
 (deftest non-sequence-value-at-key-throws-shape-error-test
-  (testing "if the value at the target key is a mapping (not a sequence), throws :bad_shape"
+  (testing "if the value at the target key is a mapping (not a sequence), throws :bad-shape"
     (try
       (collect-batches! "databases:\n  not: an array\n" :databases 10)
       (is false "should have thrown")
       (catch clojure.lang.ExceptionInfo e
-        (is (= :bad_shape (:kind (ex-data e))))))))
+        (is (= :bad-shape (:kind (ex-data e))))))))
 
 (deftest scalar-coercion-rules-test
   (testing "plain scalars coerce per YAML 1.1 rules; quoted scalars stay String"
@@ -121,7 +121,7 @@
                         :xs 10)
       (is false "should have thrown")
       (catch clojure.lang.ExceptionInfo e
-        (is (= :unsupported_alias (:kind (ex-data e))))))))
+        (is (= :unsupported-alias (:kind (ex-data e))))))))
 
 (deftest skips-other-top-level-keys-before-target-test
   (testing "the walker advances past unrelated top-level keys (and their values) before

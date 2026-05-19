@@ -47,14 +47,14 @@
         (finally (.delete file))))))
 
 (deftest unknown-extension-throws-test
-  (testing "a file with an unrecognized extension hard-fails with :kind :unknown_format"
+  (testing "a file with an unrecognized extension hard-fails with :kind :unknown-format"
     (let [file (temp-file ".xml" "<not-supported/>")]
       (try
         (try
           (collect-batches! file :anything 10)
           (is false "should have thrown")
           (catch clojure.lang.ExceptionInfo e
-            (is (= :unknown_format (:kind (ex-data e))))
+            (is (= :unknown-format (:kind (ex-data e))))
             (is (string? (.getMessage e)))))
         (finally (.delete file))))))
 
