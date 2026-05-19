@@ -5,6 +5,7 @@ import type { StoryFn } from "@storybook/react";
 import { useEffect, useMemo } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
+import { PrintContext } from "metabase/documents/contexts/PrintContext";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { mainReducers } from "metabase/reducers-main";
 import { MetabaseReduxProvider } from "metabase/redux";
@@ -150,15 +151,14 @@ export function createWaitForResizeToStopDecorator(timeoutMs: number = 1000) {
 }
 
 /**
- * Loki decorator that defers the snapshot until lazily-rendered
- * visualizations have mounted and painted.
+ * Loki decorator that defers the snapshot until the expected number of
+ * visualizations have rendered and painted.
  *
- * Document card embeds render their visualization only once an
- * IntersectionObserver reports them on-screen (see `useNodeInViewport`),
- * so a fixed delay races the async chain — IO callback, card query, then
- * the ECharts paint. Instead we poll for the expected number of
- * `visualization-root` nodes, then settle for `settleMs` so charts can
- * finish their entry animation before the screenshot.
+ * Once a card's data query resolves the visualization still needs a tick
+ * to mount and ECharts a few more to paint, so a fixed delay races that
+ * chain. Instead we poll for the expected number of `visualization-root`
+ * nodes, then settle for `settleMs` so charts can finish their entry
+ * animation before the screenshot.
  *
  * Polling uses `setTimeout`, not `requestAnimationFrame`: rAF does not
  * fire reliably in Loki's headless Chrome, which would strand the async
@@ -221,4 +221,26 @@ export function createWaitForChartsDecorator({
 
     return <Story />;
   };
+}
+
+/**
+ * Loki decorator that forces document card embeds to render eagerly.
+ *
+ * Card embeds defer their visualization until an IntersectionObserver
+ * reports them on-screen (see `useNodeInViewport`). IO callbacks are only
+ * delivered on rendered frames, and Loki's headless Chrome produces none
+ * on an idle page — so a card would stay a skeleton forever. Providing
+ * `isPrinting: true` makes `isInViewport` true unconditionally, rendering
+ * the card immediately without the observer. The `@media print` rules
+ * that hide `[data-hide-on-print]` are keyed on the print media query,
+ * not this flag, so the snapshot is unaffected.
+ */
+export function ForceDocumentCardRenderDecorator(Story: StoryFn) {
+  return (
+    <PrintContext.Provider
+      value={{ isPrinting: true, prepareForPrint: async () => {} }}
+    >
+      <Story />
+    </PrintContext.Provider>
+  );
 }

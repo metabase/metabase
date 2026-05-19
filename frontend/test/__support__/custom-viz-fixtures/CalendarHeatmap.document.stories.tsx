@@ -7,7 +7,10 @@ import _ from "underscore";
 import { getStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { createWaitForChartsDecorator } from "__support__/storybook";
+import {
+  ForceDocumentCardRenderDecorator,
+  createWaitForChartsDecorator,
+} from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { Api } from "metabase/api";
@@ -15,7 +18,6 @@ import { Api } from "metabase/api";
 // rule that ChartTooltip relies on to anchor near the hovered cell.
 import "metabase/common/components/Popover/Popover.module.css";
 import { Editor } from "metabase/documents/components/Editor/Editor";
-import { PrintContext } from "metabase/documents/contexts/PrintContext";
 import { commonReducers } from "metabase/reducers-common";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -94,34 +96,21 @@ function DocumentProviders({
   );
 }
 
-// Card embeds render their visualization only once an IntersectionObserver
-// reports them on-screen (see useNodeInViewport). IO callbacks are delivered
-// per rendered frame, and Loki's headless Chrome produces no frames on an
-// idle page — so the card would stay a skeleton forever. `isPrinting` forces
-// `isInViewport` true, rendering the card eagerly without the observer.
-// (The `@media print` styles that hide `[data-hide-on-print]` are keyed on
-// the print media query, not this flag, so the snapshot is unaffected.)
-const FORCE_RENDER_PRINT_CONTEXT = {
-  isPrinting: true,
-  prepareForPrint: async () => {},
-};
-
 const Template: StoryFn<{ theme: "light" | "dark" }> = ({ theme }) => {
   const ready = useHeatmapPlugin();
 
   return (
     <DocumentProviders theme={theme}>
       {ready ? (
-        <PrintContext.Provider value={FORCE_RENDER_PRINT_CONTEXT}>
-          <Editor initialContent={DOCUMENT_CONTENT} editable={false} />
-        </PrintContext.Provider>
+        <Editor initialContent={DOCUMENT_CONTENT} editable={false} />
       ) : null}
     </DocumentProviders>
   );
 };
 
-// Hold the Loki snapshot until the heatmap has rendered and painted.
+// Render the card eagerly, then hold the snapshot until the heatmap paints.
 const decorators = [
+  ForceDocumentCardRenderDecorator,
   createWaitForChartsDecorator({
     count: 1,
     settleMs: HEATMAP_SNAPSHOT_DELAY_MS,
