@@ -658,15 +658,19 @@
   {:model        :model/Table
    :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
                   ;; so we moved that to the where clause
-                  :archived      false
+                  :archived        false
                   ;; For published tables with no collection, we want to show "root" as the collection id
-                  :collection-id true
-                  :creator-id    false
-                  :database-id   :db_id
-                  :view-count    true
-                  :created-at    true
-                  :updated-at    true
-                  :is-published  :is_published}
+                  :collection-id   true
+                  :creator-id      false
+                  :database-id     :db_id
+                  :view-count      true
+                  :created-at      true
+                  :updated-at      true
+                  :is-published        :is_published
+                  :collection-type     :collection.type
+                  :collection-location :collection.location
+                  :root-collection-type {:fn collection/root-collection-type}
+                  :data-layer          :data_layer}
    :search-terms {:name         search.spec/explode-camel-case
                   :display_name true
                   :description  true}
@@ -677,14 +681,12 @@
                   :table-schema               :schema
                   :database-name              :db.name
                   :collection-authority_level :collection.authority_level
-                  :collection-location        :collection.location
                   ;; For published tables with no collection, show "Our analytics" as the collection name
                   :collection-name            [:coalesce :collection.name
                                                [:case
                                                 [:and :this.is_published
                                                  [:= :this.collection_id nil]] [:inline "Our analytics"]
-                                                :else nil]]
-                  :collection-type            :collection.type}
+                                                :else nil]]}
    :where        [:and
                   :active
                   [:= :visibility_type nil]
