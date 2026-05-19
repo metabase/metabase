@@ -13,7 +13,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [some]]))
+   [metabase.util.performance :refer [some]]))
 
 (defn- lib-type [x]
   (when (map? x)
@@ -31,18 +31,6 @@
    :metadata/measure  ::lib.schema.metadata/measure
    :metadata/segment  ::lib.schema.metadata/segment
    :metadata/metric   ::lib.schema.metadata/metric})
-
-(defn- seqs->vecs
-  "Recursively convert non-map-entry `seq?` nodes (e.g. LazySeqs from `json/decode+kw`) to vectors.
-  Some MBQL clause schemas dispatch via `:tuple`, which only matches vectors — a nested LazySeq
-  would silently skip clause-specific `:decode/normalize` handlers."
-  [x]
-  (perf/postwalk
-   (fn [node]
-     (if (and (seq? node) (not (map-entry? node)))
-       (vec node)
-       node))
-   x))
 
 (defn- infer-schema [x]
   (cond
@@ -101,8 +89,7 @@
    (normalize schema x nil))
 
   ([schema x {:keys [throw?], :or {throw? false}, :as _options}]
-   (let [x      (seqs->vecs x)
-         schema (or schema (infer-schema x))
+   (let [schema (or schema (infer-schema x))
          thunk  (^:once fn* []
                   ((coercer schema) x))]
      (if throw?
