@@ -16,37 +16,23 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private Rating
-  "A rating band label drawn from `complexity-thresholds`."
+  "A rating band label drawn from `complexity-bands`."
   [:maybe [:enum "low" "medium" "high"]])
 
-(def ^:private SubScore
-  "Either a computed sub-score (`:measurement` + `:score`) or an uncomputed one (`:error`)."
-  [:or
-   [:map {:closed true}
-    [:measurement  number?]
-    [:score        nat-int?]
-    [:rating       Rating]
-    [:rating_label [:maybe string?]]]
-   [:map {:closed true}
-    [:measurement  nil?]
-    [:score        nil?]
-    [:error        string?]
-    [:rating       Rating]
-    [:rating_label [:maybe string?]]]])
-
 (def ^:private Catalog
-  "One catalog's total + per-component breakdown."
-  [:map
-   [:total        [:maybe nat-int?]]
-   [:rating       Rating]
-   [:rating_label [:maybe string?]]
-   [:components
-    [:map
-     [:entity_count      SubScore]
-     [:name_collisions   SubScore]
-     [:synonym_pairs     SubScore]
-     [:field_count       SubScore]
-     [:repeated_measures SubScore]]]])
+  "Recursive score node.
+  Regular nodes carry `:score` + `:rating` plus optional `:measurement` (leaf) or `:components` (keyword→Catalog).
+  Error leaves carry only `:error`."
+  [:schema
+   {:registry {::node [:or
+                       [:map {:closed true} [:error string?]]
+                       [:map {:closed true}
+                        [:score                       [:maybe nat-int?]]
+                        [:rating                      Rating]
+                        [:rating_label                [:maybe string?]]
+                        [:measurement {:optional true} number?]
+                        [:components  {:optional true} [:map-of :keyword [:ref ::node]]]]]}}
+   [:ref ::node]])
 
 (def ^:private EmbeddingModelMeta
   "Identifies the embedding model backing the synonym calculations, so benchmark consumers can pin to it.
@@ -65,6 +51,7 @@
    [:meta
     [:map
      [:formula_version   pos-int?]
+     [:format_version     pos-int?]
      [:synonym_threshold number?]
      [:calculated_at {:optional true} some?]
      [:embedding_model {:optional true} EmbeddingModelMeta]]]])
