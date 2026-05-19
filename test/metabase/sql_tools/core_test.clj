@@ -230,3 +230,9 @@
         "SELECT * FROM foo INTERSECT ALL SELECT * FROM bar EXCEPT ALL SELECT * FROM baz"
         "SELECT * FROM foo EXCEPT ALL SELECT * FROM bar UNION ALL SELECT * FROM baz"
         "SELECT * FROM foo EXCEPT ALL SELECT * FROM bar INTERSECT ALL SELECT * FROM baz"))))
+
+(deftest ^:parallel is-single-stmt-of-type-not-stripped-test
+  (testing "we don't strip value clauses for impersonation validation (#74284)"
+    (let [values-query (str "SELECT x FROM (VALUES " (str/join ", " (repeat 105 "(1)")) ") AS t(x)")]
+      (is (= {:is-single-stmt? true, :sql values-query}
+             (sql-tools/is-single-stmt-of-type? :postgres values-query "read"))))))
