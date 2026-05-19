@@ -13,18 +13,16 @@
 
 ;;; ---------------------------------------- query construction helpers ----------------------------------------
 
-(defn- mp [] (mt/metadata-provider))
-
 (defn- table-query
   "Query whose first stage's source is `table-id`."
   [table-id]
-  (let [provider (mp)]
+  (let [provider (mt/metadata-provider)]
     (lib/query provider (lib.metadata/table provider table-id))))
 
 (defn- card-query
   "Query whose first stage's source is the given Card. The Card must exist in the appdb."
   [card-id]
-  (let [provider (mp)]
+  (let [provider (mt/metadata-provider)]
     (lib/query provider (lib.metadata/card provider card-id))))
 
 (defn- query-on-absent-card-id
@@ -42,7 +40,7 @@
   "Native query against the test database. Template tags are
   auto-extracted from the SQL text (`{{name}}`, `{{#card-id}}`, etc.)."
   [sql]
-  (lib/native-query (mp) sql))
+  (lib/native-query (mt/metadata-provider) sql))
 
 ;;; ---------------------------------------- tool-input/output helpers ----------------------------------------
 
@@ -229,7 +227,7 @@
 
 (deftest notebook-explicit-join-against-table-test
   (testing "an explicit join against another table surfaces both the source and joined tables"
-    (let [provider (mp)
+    (let [provider (mt/metadata-provider)
           query    (-> (lib/query provider (lib.metadata/table provider (mt/id :orders)))
                        (lib/join (lib.metadata/table provider (mt/id :people))))
           parts    [(notebook-input "c1") (notebook-output "c1" query)]
@@ -241,7 +239,7 @@
     (mt/with-temp [:model/Card {card-id :id} {:type          :question
                                               :database_id   (mt/id)
                                               :dataset_query (table-query (mt/id :people))}]
-      (let [provider (mp)
+      (let [provider (mt/metadata-provider)
             query    (-> (lib/query provider (lib.metadata/table provider (mt/id :orders)))
                          (lib/join (lib.metadata/card provider card-id)))
             parts    [(notebook-input "c1") (notebook-output "c1" query)]
@@ -253,7 +251,7 @@
     (mt/with-temp [:model/Card {model-id :id} {:type          :model
                                                :database_id   (mt/id)
                                                :dataset_query (table-query (mt/id :people))}]
-      (let [provider (mp)
+      (let [provider (mt/metadata-provider)
             query    (-> (lib/query provider (lib.metadata/table provider (mt/id :orders)))
                          (lib/join (lib.metadata/card provider model-id)))
             parts    [(notebook-input "c1") (notebook-output "c1" query)]
@@ -262,7 +260,7 @@
 
 (deftest notebook-recurses-into-card-with-joins-test
   (testing "recursing into a Card whose own query has joins picks up all of the card's tables"
-    (let [provider   (mp)
+    (let [provider   (mt/metadata-provider)
           card-query-with-join (-> (lib/query provider (lib.metadata/table provider (mt/id :orders)))
                                    (lib/join (lib.metadata/table provider (mt/id :people))))]
       (mt/with-temp [:model/Card {card-id :id} {:type          :question
@@ -280,7 +278,7 @@
                    :model/Card {mid  :id} {:type          :question
                                            :database_id   (mt/id)
                                            :dataset_query (card-query leaf)}]
-      (let [provider (mp)
+      (let [provider (mt/metadata-provider)
             query    (-> (lib/query provider (lib.metadata/table provider (mt/id :orders)))
                          (lib/join (lib.metadata/card provider mid)))
             parts    [(notebook-input "c1") (notebook-output "c1" query)]
