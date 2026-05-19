@@ -3,7 +3,7 @@
   the depth-walk merge. Asymmetric by ref kind:
 
     - `source_parent_id` orphans → fatal (`assert-no-orphan-refs!` throws
-      `:file_incomplete`). A field claiming a non-present parent has no
+      `:file-incomplete`). A field claiming a non-present parent has no
       structurally valid position.
     - `source_fk_target_id` orphans → lossy (`null-orphan-fk-target-refs!`
       NULLs the ref and returns the count for the caller to WARN-log).
@@ -59,7 +59,7 @@
     (let [thrown (try (p/assert-no-orphan-refs!) nil
                       (catch clojure.lang.ExceptionInfo e e))]
       (is (some? thrown) "should have thrown")
-      (is (= :file_incomplete (:kind (ex-data thrown))))
+      (is (= :file-incomplete (:kind (ex-data thrown))))
       (is (= 1 (:orphan-parent-count (ex-data thrown))))
       (is (= [{:source_id 101 :source_parent_id 999}]
              (:orphan-parent-sample (ex-data thrown))))
@@ -132,7 +132,7 @@
     (let [thrown (try (p/assert-no-orphan-refs!) nil
                       (catch clojure.lang.ExceptionInfo e e))]
       (is (some? thrown) "assert-no-orphan-refs! should still throw on parent orphan")
-      (is (= :file_incomplete (:kind (ex-data thrown))))
+      (is (= :file-incomplete (:kind (ex-data thrown))))
       (is (= 1 (:orphan-parent-count (ex-data thrown))))
       (is (seq (:orphan-parent-sample (ex-data thrown)))))
     (finally (p/clear-staging-tables!))))

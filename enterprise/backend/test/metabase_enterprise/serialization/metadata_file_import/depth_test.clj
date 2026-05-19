@@ -139,7 +139,7 @@
     (let [thrown (try (p/compute-staging-depth!) nil
                       (catch clojure.lang.ExceptionInfo e e))]
       (is (some? thrown) "should have thrown")
-      (is (= :cycle_in_field_graph (:kind (ex-data thrown))))
+      (is (= :cycle-in-field-graph (:kind (ex-data thrown))))
       (is (= 2 (:remaining-rows-count (ex-data thrown))))
       (is (= 2 (count (:remaining-rows-sample (ex-data thrown))))))
     (finally (p/clear-staging-tables!))))
@@ -153,7 +153,7 @@
     (let [thrown (try (p/compute-staging-depth!) nil
                       (catch clojure.lang.ExceptionInfo e e))]
       (is (some? thrown))
-      (is (= :cycle_in_field_graph (:kind (ex-data thrown))))
+      (is (= :cycle-in-field-graph (:kind (ex-data thrown))))
       (is (= 1 (:remaining-rows-count (ex-data thrown)))))
     (finally (p/clear-staging-tables!))))
 
@@ -167,7 +167,7 @@
     (let [thrown (try (p/compute-staging-depth!) nil
                       (catch clojure.lang.ExceptionInfo e e))]
       (is (some? thrown))
-      (is (= :cycle_in_field_graph (:kind (ex-data thrown)))))
+      (is (= :cycle-in-field-graph (:kind (ex-data thrown)))))
     (finally (p/clear-staging-tables!))))
 
 (deftest cycle-with-some-tagged-rows-test
@@ -181,7 +181,7 @@
                              {:source_id 101 :source_parent_id 100}])        ; cycle
     (let [thrown (try (p/compute-staging-depth!) nil
                       (catch clojure.lang.ExceptionInfo e e))]
-      (is (= :cycle_in_field_graph (:kind (ex-data thrown))))
+      (is (= :cycle-in-field-graph (:kind (ex-data thrown))))
       (is (= 2 (:remaining-rows-count (ex-data thrown)))))
     (finally (p/clear-staging-tables!))))
 

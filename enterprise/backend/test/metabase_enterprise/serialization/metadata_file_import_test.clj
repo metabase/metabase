@@ -194,7 +194,7 @@
 
 (deftest pre-flight-orphan-bail-test
   (testing "a file whose field references a parent_id not in the same file is rejected
-            with :file_incomplete; no live writes happen"
+            with :file-incomplete; no live writes happen"
     (mt/with-temp [:model/Database {} {:name "orphan-bail-db" :engine :postgres}]
       (let [meta-file (json-file
                        {:databases [{:id 7 :name "orphan-bail-db" :engine "postgres"}]
@@ -205,13 +205,13 @@
             thrown    (try (loader/import-metadata-file! meta-file) nil
                            (catch clojure.lang.ExceptionInfo e e))]
         (is (some? thrown))
-        (is (= :file_incomplete (:kind (ex-data thrown))))
+        (is (= :file-incomplete (:kind (ex-data thrown))))
         (is (zero? (t2/count :model/Table :name "t"))
             "no live writes happened — pre-flight ran before any txn")))))
 
 (deftest cycle-bail-test
   (testing "a file with a cycle in source_parent_id is rejected with
-            :cycle_in_field_graph; no live writes happen"
+            :cycle-in-field-graph; no live writes happen"
     (mt/with-temp [:model/Database {} {:name "cycle-db" :engine :postgres}]
       (let [meta-file (json-file
                        {:databases [{:id 7 :name "cycle-db" :engine "postgres"}]
@@ -225,7 +225,7 @@
             thrown    (try (loader/import-metadata-file! meta-file) nil
                            (catch clojure.lang.ExceptionInfo e e))]
         (is (some? thrown))
-        (is (= :cycle_in_field_graph (:kind (ex-data thrown))))
+        (is (= :cycle-in-field-graph (:kind (ex-data thrown))))
         (is (zero? (t2/count :model/Table :name "t")))))))
 
 ;;; ============================== Atomic rollback ==============================
