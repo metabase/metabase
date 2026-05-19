@@ -244,16 +244,28 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a notification, can also update its subscriptions, handlers.
-  Return the updated notification."
+  Return the updated notification.
+
+  `creator_id` (owner reassignment): superusers may supply it here (e.g. the admin 'Edit alert'
+  modal's owner picker). Non-superusers always have `:creator_id` stripped — the model's
+  `before-update` hook enforces this as well. `update-notification!` routes changes through
+  a spec that only tracks `:active` + nested entities, so a superuser-supplied `creator_id`
+  is applied via a separate update before the spec-based update. Bulk reassignment via
+  `POST /ee/notifications/bulk` remains the recommended path for multi-row owner changes."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
    body :- ::NotificationApiInput]
   (check-no-resource-templates! (:handlers body))
-  ;; Ownership is reassigned only via the admin bulk endpoint.
-  (let [body                  (dissoc body :creator_id)
+  (let [new-creator-id        (when (mi/superuser?) (:creator_id body))
+        body                  (dissoc body :creator_id)
         existing-notification (get-notification id)]
     (api/update-check existing-notification body)
-    (models.notification/update-notification! existing-notification body)
+    (t2/with-transaction [_conn]
+      (when new-creator-id
+        (t2/update! :model/Notification id {:creator_id new-creator-id}))
+      (models.notification/update-notification! (cond-> existing-notification
+                                                  new-creator-id (assoc :creator_id new-creator-id))
+                                                body))
     (u/prog1 (get-notification id)
       (publish-notification-update! <> existing-notification))))
 

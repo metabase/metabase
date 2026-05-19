@@ -398,11 +398,11 @@
   (some #(when (= id (:id %)) %) data))
 
 ;; ---------------------------------------------------------------------------------------------
-;; :last_check / :last_sent shape
+;; :last_check / :last_send shape
 ;; ---------------------------------------------------------------------------------------------
 
-(deftest last-sent-shape-test
-  (testing ":last_sent reflects the latest successful TaskRun for the card; nil when none"
+(deftest last-send-from-channel-send-task-history-test
+  (testing ":last_send reflects the latest channel-send task_history row (any outcome)"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card             {card-a :id}    {:archived false}
                      :model/Card             {card-b :id}    {:archived false}
@@ -414,20 +414,56 @@
                      :model/Notification     {n-unsent :id}  {:payload_type :notification/card
                                                               :payload_id   nc-b
                                                               :creator_id   (mt/user->id :crowberto)}
-                     :model/TaskRun          _run            {:run_type    :alert
+                     :model/TaskRun          {run-id :id}    {:run_type    :alert
                                                               :entity_type :card
                                                               :entity_id   card-a
                                                               :status      :success
                                                               :started_at  (t/instant)
-                                                              :ended_at    (t/instant)}]
+                                                              :ended_at    (t/instant)}
+                     :model/TaskHistory      _th             {:task         "channel-send"
+                                                              :run_id       run-id
+                                                              :status       :success
+                                                              :started_at   (t/instant)
+                                                              :ended_at     (t/instant)
+                                                              :task_details {:channel_type "channel/email"
+                                                                             :notification_id (:id n-sent)}}]
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
               by-id          (into {} (map (juxt :id identity) data))]
-          (is (=? {:last_sent {:at     some?
+          (is (=? {:last_send {:at     some?
                                :status "successful"
                                :error  nil}}
                   (by-id n-sent)))
-          (is (=? {:last_sent nil}
+          (is (=? {:last_send nil}
                   (by-id n-unsent))))))))
+
+(deftest last-send-failing-channel-send-surfaces-status-test
+  (testing ":last_send on the list shows :failing status when the latest send-tick had a channel failure;
+   error details are nil at the list level (they live on the detail page)"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-id :id} {:archived false}
+                     :model/NotificationCard {nc :id}      {:card_id card-id}
+                     :model/Notification     {nid :id}     {:payload_type :notification/card
+                                                            :payload_id   nc
+                                                            :creator_id   (mt/user->id :crowberto)}
+                     :model/TaskRun          {run-id :id}  {:run_type    :alert
+                                                            :entity_type :card
+                                                            :entity_id   card-id
+                                                            :status      :failed
+                                                            :started_at  (t/instant)
+                                                            :ended_at    (t/instant)}
+                     :model/TaskHistory      _th           {:task         "channel-send"
+                                                            :run_id       run-id
+                                                            :status       :failed
+                                                            :started_at   (t/instant)
+                                                            :ended_at     (t/instant)
+                                                            :task_details {:message      "SMTP connection refused"
+                                                                           :channel_type "channel/email"
+                                                                           :notification_id nid}}]
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")]
+          (is (=? {:last_send {:at     some?
+                               :status "failing"
+                               :error  nil}}
+                  (find-row-by-id data nid))))))))
 
 (deftest last-check-shape-success-test
   (testing ":last_check on a successful run reports status=successful with no error"
@@ -508,7 +544,7 @@
                                                             :started_at  (t/instant)}]
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")]
           (is (=? {:last_check nil
-                   :last_sent  nil}
+                   :last_send  nil}
                   (find-row-by-id data nid))))))))
 
 (deftest response-shape-includes-pagination-metadata-test
@@ -520,43 +556,69 @@
         (is (contains? resp :limit))
         (is (contains? resp :offset))))))
 
-(deftest filter-by-last-sent-status-test
-  (testing "?last_sent_status=successful|failing filters by the latest task_run outcome"
+(deftest response-shape-does-not-include-counts-test
+  (testing "GET / response does NOT include a :counts key — tab counts are dropped"
+    (mt/with-premium-features #{:audit-app}
+      (let [resp (mt/user-http-request :crowberto :get 200 "ee/notifications")]
+        (is (not (contains? resp :counts)))))))
+
+(deftest filter-by-last-send-status-test
+  (testing "?last_send_status=successful|failing filters by the latest channel-send outcome"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card             {success-card :id} {:archived false}
                      :model/Card             {fail-card :id}    {:archived false}
+                     :model/Card             {no-send-card :id} {:archived false}
                      :model/NotificationCard {nc-success :id}   {:card_id success-card}
                      :model/NotificationCard {nc-fail :id}      {:card_id fail-card}
+                     :model/NotificationCard {nc-no-send :id}   {:card_id no-send-card}
                      :model/Notification     success-n          {:payload_type :notification/card
                                                                  :payload_id   nc-success
                                                                  :creator_id   (mt/user->id :crowberto)}
                      :model/Notification     fail-n             {:payload_type :notification/card
                                                                  :payload_id   nc-fail
                                                                  :creator_id   (mt/user->id :crowberto)}
-                     :model/TaskRun          _success-run       {:run_type    :alert
+                     :model/Notification     no-send-n          {:payload_type :notification/card
+                                                                 :payload_id   nc-no-send
+                                                                 :creator_id   (mt/user->id :crowberto)}
+                     :model/TaskRun          {ok-run :id}       {:run_type    :alert
                                                                  :entity_type :card
                                                                  :entity_id   success-card
                                                                  :status      :success
                                                                  :started_at  (t/instant)
                                                                  :ended_at    (t/instant)}
-                     :model/TaskRun          _fail-run          {:run_type    :alert
+                     :model/TaskRun          {fail-run :id}     {:run_type    :alert
                                                                  :entity_type :card
                                                                  :entity_id   fail-card
                                                                  :status      :failed
                                                                  :started_at  (t/instant)
-                                                                 :ended_at    (t/instant)}]
+                                                                 :ended_at    (t/instant)}
+                     ;; channel-send rows drive the filter
+                     :model/TaskHistory      _ok-th             {:task         "channel-send"
+                                                                 :run_id       ok-run
+                                                                 :status       :success
+                                                                 :started_at   (t/instant)
+                                                                 :ended_at     (t/instant)
+                                                                 :task_details {:channel_type "channel/email"}}
+                     :model/TaskHistory      _fail-th           {:task         "channel-send"
+                                                                 :run_id       fail-run
+                                                                 :status       :failed
+                                                                 :started_at   (t/instant)
+                                                                 :ended_at     (t/instant)
+                                                                 :task_details {:channel_type "channel/email"}}]
         (testing "successful"
           (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
-                                                     :last_sent_status "successful")
+                                                     :last_send_status "successful")
                 ids            (set (map :id data))]
             (is (contains? ids (:id success-n)))
-            (is (not (contains? ids (:id fail-n))))))
+            (is (not (contains? ids (:id fail-n))))
+            (is (not (contains? ids (:id no-send-n))))))
         (testing "failing"
           (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
-                                                     :last_sent_status "failing")
+                                                     :last_send_status "failing")
                 ids            (set (map :id data))]
             (is (contains? ids (:id fail-n)))
-            (is (not (contains? ids (:id success-n))))))))))
+            (is (not (contains? ids (:id success-n))))
+            (is (not (contains? ids (:id no-send-n))))))))))
 
 (deftest filter-compound-test
   (testing "multiple filters AND together (active + owner_id)"
@@ -591,8 +653,8 @@
 ;; Sort
 ;; ---------------------------------------------------------------------------------------------
 
-(deftest sort-by-last-sent-test
-  (testing "?sort_column=last_sent orders rows by the latest successful TaskRun ended_at"
+(deftest sort-by-last-send-test
+  (testing "?sort_column=last_send orders rows by the latest channel-send started_at"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card             {card-old :id}   {:archived false}
                      :model/Card             {card-new :id}   {:archived false}
@@ -609,20 +671,32 @@
                      :model/Notification     {never-id :id}   {:payload_type :notification/card
                                                                :payload_id   nc-never
                                                                :creator_id   (mt/user->id :crowberto)}
-                     :model/TaskRun          _old             {:run_type    :alert
+                     :model/TaskRun          {old-run :id}    {:run_type    :alert
                                                                :entity_type :card
                                                                :entity_id   card-old
                                                                :status      :success
                                                                :started_at  (t/minus (t/instant) (t/days 5))
                                                                :ended_at    (t/minus (t/instant) (t/days 5))}
-                     :model/TaskRun          _new             {:run_type    :alert
+                     :model/TaskRun          {new-run :id}    {:run_type    :alert
                                                                :entity_type :card
                                                                :entity_id   card-new
                                                                :status      :success
                                                                :started_at  (t/instant)
-                                                               :ended_at    (t/instant)}]
+                                                               :ended_at    (t/instant)}
+                     :model/TaskHistory      _old-th          {:task         "channel-send"
+                                                               :run_id       old-run
+                                                               :status       :success
+                                                               :started_at   (t/minus (t/instant) (t/days 5))
+                                                               :ended_at     (t/minus (t/instant) (t/days 5))
+                                                               :task_details {:channel_type "channel/email"}}
+                     :model/TaskHistory      _new-th          {:task         "channel-send"
+                                                               :run_id       new-run
+                                                               :status       :success
+                                                               :started_at   (t/instant)
+                                                               :ended_at     (t/instant)
+                                                               :task_details {:channel_type "channel/email"}}]
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
-                                                   :sort_column "last_sent"
+                                                   :sort_column "last_send"
                                                    :sort_direction "desc")
               ids            (->> data (map :id) (filter #{old-id new-id never-id}) vec)]
           (is (= [new-id old-id never-id] ids)
@@ -660,6 +734,36 @@
     (mt/with-premium-features #{:audit-app}
       (mt/user-http-request :crowberto :get 400 "ee/notifications"
                             :sort_column "name; DROP TABLE notification"))))
+
+(deftest default-sort-is-last-send-test
+  (testing "default sort_column is :last_send (null-trailing desc), driven by channel-send rows"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-sent :id}   {:archived false}
+                     :model/Card             {card-unsent :id} {:archived false}
+                     :model/NotificationCard {nc-sent :id}     {:card_id card-sent}
+                     :model/NotificationCard {nc-unsent :id}   {:card_id card-unsent}
+                     :model/Notification     {sent-id :id}     {:payload_type :notification/card
+                                                                :payload_id   nc-sent
+                                                                :creator_id   (mt/user->id :crowberto)}
+                     :model/Notification     {unsent-id :id}   {:payload_type :notification/card
+                                                                :payload_id   nc-unsent
+                                                                :creator_id   (mt/user->id :crowberto)}
+                     :model/TaskRun          {run-id :id}      {:run_type    :alert
+                                                               :entity_type :card
+                                                               :entity_id   card-sent
+                                                               :status      :success
+                                                               :started_at  (t/instant)
+                                                               :ended_at    (t/instant)}
+                     :model/TaskHistory      _th               {:task         "channel-send"
+                                                               :run_id       run-id
+                                                               :status       :success
+                                                               :started_at   (t/instant)
+                                                               :ended_at     (t/instant)
+                                                               :task_details {:channel_type "channel/email"}}]
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
+              ids            (->> data (map :id) (filter #{sent-id unsent-id}) vec)]
+          (is (= [sent-id unsent-id] ids)
+              "notification with a last_send appears before the never-sent one under the default sort"))))))
 
 ;; ---------------------------------------------------------------------------------------------
 ;; POST /bulk
@@ -781,7 +885,7 @@
 ;; ---------------------------------------------------------------------------------------------
 
 (deftest detail-returns-notification-with-run-summaries-test
-  (testing "GET /:id returns the hydrated notification with :last_check / :last_sent slots and owner_id"
+  (testing "GET /:id returns the hydrated notification with :last_check / :last_send slots and owner_id"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card             {card-id :id} {:archived false}
                      :model/NotificationCard {nc :id}      {:card_id card-id}
@@ -791,7 +895,7 @@
         (is (=? {:id        nid
                  :owner_id  (mt/user->id :crowberto)
                  :last_check any?
-                 :last_sent  any?}
+                 :last_send  any?}
                 (mt/user-http-request :crowberto :get 200 (str "ee/notifications/" nid))))))))
 
 (deftest detail-404-for-missing-id-test
@@ -824,3 +928,578 @@
                                                             :payload_id   nc
                                                             :creator_id   (mt/user->id :crowberto)}]
         (mt/user-http-request :rasta :get 403 (str "ee/notifications/" nid))))))
+
+;; ---------------------------------------------------------------------------------------------
+;; B. Ownerless filter
+;; ---------------------------------------------------------------------------------------------
+
+(deftest filter-by-ownerless-true-test
+  (testing "?ownerless=true includes notifications with a deactivated creator and excludes active owners"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/User             {active-user :id}   {:is_active true}
+                     :model/User             {deact-user :id}    {:is_active false}
+                     :model/Card             {card-id :id}       {}
+                     :model/NotificationCard {nc1 :id}           {:card_id card-id}
+                     :model/NotificationCard {nc2 :id}           {:card_id card-id}
+                     :model/Notification     active-owner-n      {:payload_type :notification/card
+                                                                  :payload_id   nc1
+                                                                  :creator_id   active-user}
+                     :model/Notification     deact-owner-n       {:payload_type :notification/card
+                                                                  :payload_id   nc2
+                                                                  :creator_id   deact-user}]
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
+                                                   :ownerless true)
+              ids            (set (map :id data))]
+          (is (contains? ids (:id deact-owner-n))
+              "deactivated creator = ownerless")
+          (is (not (contains? ids (:id active-owner-n)))
+              "active owner is excluded"))))))
+
+(deftest filter-by-ownerless-false-test
+  (testing "?ownerless=false includes only notifications with an active owner"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/User             {active-user :id}    {:is_active true}
+                     :model/User             {deact-user :id}     {:is_active false}
+                     :model/Card             {card-id :id}        {}
+                     :model/NotificationCard {nc1 :id}            {:card_id card-id}
+                     :model/NotificationCard {nc2 :id}            {:card_id card-id}
+                     :model/Notification     active-owner-n       {:payload_type :notification/card
+                                                                   :payload_id   nc1
+                                                                   :creator_id   active-user}
+                     :model/Notification     deact-owner-n        {:payload_type :notification/card
+                                                                   :payload_id   nc2
+                                                                   :creator_id   deact-user}]
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
+                                                   :ownerless false)
+              ids            (set (map :id data))]
+          (is (contains? ids (:id active-owner-n))
+              "active owner is included")
+          (is (not (contains? ids (:id deact-owner-n)))
+              "deactivated owner is excluded"))))))
+
+;; ---------------------------------------------------------------------------------------------
+;; C. Multi-value channel filter
+;; ---------------------------------------------------------------------------------------------
+
+(deftest filter-by-channel-multi-value-test
+  (testing "?channel= accepts multiple values (OR semantics across channel types)"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card                {card-id :id}    {}
+                     :model/NotificationCard    {nc1 :id}        {:card_id card-id}
+                     :model/NotificationCard    {nc2 :id}        {:card_id card-id}
+                     :model/NotificationCard    {nc3 :id}        {:card_id card-id}
+                     :model/Notification        email-notif      {:payload_type :notification/card
+                                                                  :payload_id   nc1
+                                                                  :creator_id   (mt/user->id :crowberto)}
+                     :model/Notification        slack-notif      {:payload_type :notification/card
+                                                                  :payload_id   nc2
+                                                                  :creator_id   (mt/user->id :crowberto)}
+                     :model/Notification        other-notif      {:payload_type :notification/card
+                                                                  :payload_id   nc3
+                                                                  :creator_id   (mt/user->id :crowberto)}
+                     :model/NotificationHandler _email-handler   {:notification_id (:id email-notif)
+                                                                  :channel_type    :channel/email}
+                     :model/NotificationHandler _slack-handler   {:notification_id (:id slack-notif)
+                                                                  :channel_type    :channel/slack}]
+        (testing "single channel still works"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
+                                                     :channel "channel/email")
+                ids            (set (map :id data))]
+            (is (contains? ids (:id email-notif)))
+            (is (not (contains? ids (:id slack-notif))))
+            (is (not (contains? ids (:id other-notif))))))
+        (testing "multiple channels (vector) returns union"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
+                                                     :channel ["channel/email" "channel/slack"])
+                ids            (set (map :id data))]
+            (is (contains? ids (:id email-notif)))
+            (is (contains? ids (:id slack-notif)))
+            (is (not (contains? ids (:id other-notif))))))))))
+
+;; ---------------------------------------------------------------------------------------------
+;; D. New sort columns + default sort
+;; ---------------------------------------------------------------------------------------------
+
+(deftest sort-by-last-check-test
+  (testing "?sort_column=last_check orders rows by the latest task_run started_at"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-old :id}   {:archived false}
+                     :model/Card             {card-new :id}   {:archived false}
+                     :model/Card             {card-never :id} {:archived false}
+                     :model/NotificationCard {nc-old :id}     {:card_id card-old}
+                     :model/NotificationCard {nc-new :id}     {:card_id card-new}
+                     :model/NotificationCard {nc-never :id}   {:card_id card-never}
+                     :model/Notification     {old-id :id}     {:payload_type :notification/card
+                                                               :payload_id   nc-old
+                                                               :creator_id   (mt/user->id :crowberto)}
+                     :model/Notification     {new-id :id}     {:payload_type :notification/card
+                                                               :payload_id   nc-new
+                                                               :creator_id   (mt/user->id :crowberto)}
+                     :model/Notification     {never-id :id}   {:payload_type :notification/card
+                                                               :payload_id   nc-never
+                                                               :creator_id   (mt/user->id :crowberto)}
+                     :model/TaskRun          _old-run         {:run_type    :alert
+                                                               :entity_type :card
+                                                               :entity_id   card-old
+                                                               :status      :failed
+                                                               :started_at  (t/minus (t/instant) (t/days 5))
+                                                               :ended_at    (t/minus (t/instant) (t/days 5))}
+                     :model/TaskRun          _new-run         {:run_type    :alert
+                                                               :entity_type :card
+                                                               :entity_id   card-new
+                                                               :status      :failed
+                                                               :started_at  (t/instant)
+                                                               :ended_at    (t/instant)}]
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
+                                                   :sort_column "last_check"
+                                                   :sort_direction "desc")
+              ids            (->> data (map :id) (filter #{old-id new-id never-id}) vec)]
+          (is (= [new-id old-id never-id] ids)
+              "newest-checked first, oldest-checked next, never-checked last (nulls trailing)"))))))
+
+(deftest sort-by-id-test
+  (testing "?sort_column=id orders rows by notification.id"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-id :id} {}
+                     :model/NotificationCard {nc1 :id}     {:card_id card-id}
+                     :model/NotificationCard {nc2 :id}     {:card_id card-id}
+                     :model/Notification     {n1 :id}      {:payload_type :notification/card
+                                                            :payload_id   nc1
+                                                            :creator_id   (mt/user->id :crowberto)}
+                     :model/Notification     {n2 :id}      {:payload_type :notification/card
+                                                            :payload_id   nc2
+                                                            :creator_id   (mt/user->id :crowberto)}]
+        (testing "asc puts smaller id first"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
+                                                     :sort_column "id"
+                                                     :sort_direction "asc")
+                seen           (->> data (map :id) (filter #{n1 n2}) vec)]
+            (is (= [(min n1 n2) (max n1 n2)] seen))))
+        (testing "desc puts larger id first"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
+                                                     :sort_column "id"
+                                                     :sort_direction "desc")
+                seen           (->> data (map :id) (filter #{n1 n2}) vec)]
+            (is (= [(max n1 n2) (min n1 n2)] seen))))))))
+
+;; ---------------------------------------------------------------------------------------------
+;; E. check_history / send_history in the detail endpoint
+;; ---------------------------------------------------------------------------------------------
+
+(deftest detail-includes-check-history-test
+  (testing "GET /:id includes :check_history — up to 10 most-recent terminal runs for THIS notification, newest first"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-id :id} {:archived false}
+                     :model/NotificationCard {nc :id}      {:card_id card-id}
+                     :model/Notification     {nid :id}     {:payload_type :notification/card
+                                                            :payload_id   nc
+                                                            :creator_id   (mt/user->id :crowberto)}
+                     :model/TaskRun          {r1 :id}      {:run_type    :alert
+                                                            :entity_type :card
+                                                            :entity_id   card-id
+                                                            :status      :success
+                                                            :started_at  (t/minus (t/instant) (t/hours 2))
+                                                            :ended_at    (t/minus (t/instant) (t/hours 2))}
+                     :model/TaskRun          {r2 :id}      {:run_type    :alert
+                                                            :entity_type :card
+                                                            :entity_id   card-id
+                                                            :status      :failed
+                                                            :started_at  (t/minus (t/instant) (t/hours 1))
+                                                            :ended_at    (t/minus (t/instant) (t/hours 1))}
+                     ;; notification-send rows with notification_id — required for per-notification filter
+                     :model/TaskHistory      _th1          {:task         "notification-send"
+                                                            :run_id       r1
+                                                            :status       :success
+                                                            :started_at   (t/minus (t/instant) (t/hours 2))
+                                                            :ended_at     (t/minus (t/instant) (t/hours 2))
+                                                            :task_details {:notification_id nid}}
+                     :model/TaskHistory      _th2          {:task         "notification-send"
+                                                            :run_id       r2
+                                                            :status       :failed
+                                                            :started_at   (t/minus (t/instant) (t/hours 1))
+                                                            :ended_at     (t/minus (t/instant) (t/hours 1))
+                                                            :task_details {:notification_id nid
+                                                                           :message         "Connection refused"}}]
+        (let [resp           (mt/user-http-request :crowberto :get 200 (str "ee/notifications/" nid))
+              check-history  (:check_history resp)]
+          (is (sequential? check-history))
+          (is (= 2 (count check-history))
+              "two terminal runs for this notification, newest first")
+          (is (=? {:status "failing" :error "Connection refused"} (first check-history))
+              "most-recent (the failed one) is first")
+          (is (=? {:status "successful" :error nil} (second check-history))
+              "older successful run is second"))))))
+
+(deftest detail-includes-send-history-test
+  (testing "GET /:id includes :send_history — per-tick rollup, newest tick first, with :channels breakdown"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-id :id} {:archived false}
+                     :model/NotificationCard {nc :id}      {:card_id card-id}
+                     :model/Notification     {nid :id}     {:payload_type :notification/card
+                                                            :payload_id   nc
+                                                            :creator_id   (mt/user->id :crowberto)}
+                     :model/TaskRun          {run-ok :id}  {:run_type    :alert
+                                                            :entity_type :card
+                                                            :entity_id   card-id
+                                                            :status      :success
+                                                            :started_at  (t/minus (t/instant) (t/hours 2))
+                                                            :ended_at    (t/minus (t/instant) (t/hours 2))}
+                     :model/TaskRun          {run-fail :id} {:run_type    :alert
+                                                             :entity_type :card
+                                                             :entity_id   card-id
+                                                             :status      :failed
+                                                             :started_at  (t/minus (t/instant) (t/hours 1))
+                                                             :ended_at    (t/minus (t/instant) (t/hours 1))}
+                     :model/TaskHistory      _ok-th        {:task         "channel-send"
+                                                            :run_id       run-ok
+                                                            :status       :success
+                                                            :started_at   (t/minus (t/instant) (t/hours 2))
+                                                            :ended_at     (t/minus (t/instant) (t/hours 2))
+                                                            :task_details {:channel_type    "channel/email"
+                                                                           :notification_id nid}}
+                     :model/TaskHistory      _fail-th      {:task         "channel-send"
+                                                            :run_id       run-fail
+                                                            :status       :failed
+                                                            :started_at   (t/minus (t/instant) (t/hours 1))
+                                                            :ended_at     (t/minus (t/instant) (t/hours 1))
+                                                            :task_details {:channel_type    "channel/slack"
+                                                                           :message         "Slack token invalid"
+                                                                           :notification_id nid}}]
+        (let [resp         (mt/user-http-request :crowberto :get 200 (str "ee/notifications/" nid))
+              send-history (:send_history resp)]
+          (is (sequential? send-history))
+          (is (= 2 (count send-history))
+              "two ticks (one channel-send each)")
+          (testing "most-recent tick (failed slack) is first"
+            (is (=? {:status   "failing"
+                     :error    "Slack token invalid"
+                     :channels [{:channel_type "channel/slack"
+                                 :status       "failing"
+                                 :error        "Slack token invalid"}]}
+                    (first send-history))))
+          (testing "older successful email tick is second"
+            (is (=? {:status   "successful"
+                     :error    nil
+                     :channels [{:channel_type "channel/email"
+                                 :status       "successful"
+                                 :error        nil}]}
+                    (second send-history)))))))))
+
+(deftest detail-send-history-multi-channel-tick-test
+  (testing "GET /:id: one tick with email+slack both succeeding → ONE send entry, status successful"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-id :id} {:archived false}
+                     :model/NotificationCard {nc :id}      {:card_id card-id}
+                     :model/Notification     {nid :id}     {:payload_type :notification/card
+                                                            :payload_id   nc
+                                                            :creator_id   (mt/user->id :crowberto)}
+                     :model/TaskRun          {run-id :id}  {:run_type    :alert
+                                                            :entity_type :card
+                                                            :entity_id   card-id
+                                                            :status      :success
+                                                            :started_at  (t/instant)
+                                                            :ended_at    (t/instant)}
+                     :model/TaskHistory      _email-th     {:task         "channel-send"
+                                                            :run_id       run-id
+                                                            :status       :success
+                                                            :started_at   (t/instant)
+                                                            :ended_at     (t/instant)
+                                                            :task_details {:channel_type    "channel/email"
+                                                                           :notification_id nid}}
+                     :model/TaskHistory      _slack-th     {:task         "channel-send"
+                                                            :run_id       run-id
+                                                            :status       :success
+                                                            :started_at   (t/instant)
+                                                            :ended_at     (t/instant)
+                                                            :task_details {:channel_type    "channel/slack"
+                                                                           :notification_id nid}}]
+        (let [resp         (mt/user-http-request :crowberto :get 200 (str "ee/notifications/" nid))
+              send-history (:send_history resp)]
+          (is (= 1 (count send-history))
+              "two channels in the same tick collapse to ONE send entry")
+          (is (=? {:status   "successful"
+                   :error    nil
+                   :channels [{:channel_type "channel/email" :status "successful"}
+                               {:channel_type "channel/slack" :status "successful"}]}
+                  (first send-history))))))))
+
+(deftest detail-send-history-mixed-channels-test
+  (testing "GET /:id: one tick with email success + slack failure → failing, :channels shows both"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-id :id} {:archived false}
+                     :model/NotificationCard {nc :id}      {:card_id card-id}
+                     :model/Notification     {nid :id}     {:payload_type :notification/card
+                                                            :payload_id   nc
+                                                            :creator_id   (mt/user->id :crowberto)}
+                     :model/TaskRun          {run-id :id}  {:run_type    :alert
+                                                            :entity_type :card
+                                                            :entity_id   card-id
+                                                            :status      :success
+                                                            :started_at  (t/instant)
+                                                            :ended_at    (t/instant)}
+                     :model/TaskHistory      _email-th     {:task         "channel-send"
+                                                            :run_id       run-id
+                                                            :status       :success
+                                                            :started_at   (t/instant)
+                                                            :ended_at     (t/instant)
+                                                            :task_details {:channel_type    "channel/email"
+                                                                           :notification_id nid}}
+                     :model/TaskHistory      _slack-th     {:task         "channel-send"
+                                                            :run_id       run-id
+                                                            :status       :failed
+                                                            :started_at   (t/instant)
+                                                            :ended_at     (t/instant)
+                                                            :task_details {:channel_type    "channel/slack"
+                                                                           :message         "Rate limited"
+                                                                           :notification_id nid}}]
+        (let [resp  (mt/user-http-request :crowberto :get 200 (str "ee/notifications/" nid))
+              entry (first (:send_history resp))]
+          (is (= 1 (count (:send_history resp)))
+              "two channels in the same tick → ONE send entry")
+          (is (=? {:status "failing" :error "Rate limited"} entry))
+          (is (= 2 (count (:channels entry)))
+              "channels breakdown has one entry per channel-send row")
+          (let [by-type (into {} (map (juxt :channel_type identity) (:channels entry)))]
+            (is (=? {:status "successful"} (get by-type "channel/email")))
+            (is (=? {:status "failing" :error "Rate limited"} (get by-type "channel/slack")))))))))
+
+(deftest detail-check-history-empty-when-no-runs-test
+  (testing "GET /:id returns :check_history as empty vector when no terminal runs exist"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-id :id} {:archived false}
+                     :model/NotificationCard {nc :id}      {:card_id card-id}
+                     :model/Notification     {nid :id}     {:payload_type :notification/card
+                                                            :payload_id   nc
+                                                            :creator_id   (mt/user->id :crowberto)}]
+        (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/notifications/" nid))]
+          (is (= [] (:check_history resp)))
+          (is (= [] (:send_history resp))))))))
+
+(deftest detail-check-history-respects-limit-test
+  (testing "GET /:id returns at most 10 runs in :check_history"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-id :id} {:archived false}
+                     :model/NotificationCard {nc :id}      {:card_id card-id}
+                     :model/Notification     {nid :id}     {:payload_type :notification/card
+                                                            :payload_id   nc
+                                                            :creator_id   (mt/user->id :crowberto)}]
+        ;; create 12 runs, each with a matching notification-send row so the per-notification filter passes
+        (doseq [i (range 12)]
+          (let [run-id (t2/insert-returning-pk! :model/TaskRun
+                                                {:run_type     "alert"
+                                                 :entity_type  "card"
+                                                 :entity_id    card-id
+                                                 :status       "success"
+                                                 :started_at   (t/minus (t/instant) (t/hours (inc i)))
+                                                 :ended_at     (t/minus (t/instant) (t/hours (inc i)))
+                                                 :process_uuid "test"})]
+            (t2/insert! :model/TaskHistory
+                        {:task         "notification-send"
+                         :run_id       run-id
+                         :status       "success"
+                         :started_at   (t/minus (t/instant) (t/hours (inc i)))
+                         :ended_at     (t/minus (t/instant) (t/hours (inc i)))
+                         :task_details (str "{\"notification_id\":" nid "}")})))
+        (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/notifications/" nid))]
+          (is (<= (count (:check_history resp)) 10)))))))
+
+;; ---------------------------------------------------------------------------------------------
+;; F. Superuser may reassign creator_id via the public PUT endpoint
+;; ---------------------------------------------------------------------------------------------
+
+(deftest put-non-superuser-cannot-change-creator-id-test
+  (testing "PUT /api/notification/:id strips creator_id for non-superusers (owner stays unchanged)"
+    (mt/with-temp [:model/Card             {card-id :id} {}
+                   :model/NotificationCard {nc :id}      {:card_id card-id}
+                   :model/Notification     {nid :id}     {:payload_type :notification/card
+                                                          :payload_id   nc
+                                                          :creator_id   (mt/user->id :rasta)}]
+      ;; rasta owns this notification; they cannot change creator_id to someone else
+      (let [notification (mt/user-http-request :rasta :get 200 (format "notification/%d" nid))]
+        (mt/user-http-request :rasta :put 200 (format "notification/%d" nid)
+                              (assoc notification :creator_id (mt/user->id :crowberto)))
+        ;; creator_id must not have changed
+        (is (= (mt/user->id :rasta)
+               (t2/select-one-fn :creator_id :model/Notification nid))
+            "non-superuser cannot change creator_id via PUT")))))
+
+(deftest put-superuser-can-change-creator-id-test
+  (testing "PUT /api/notification/:id allows superusers to change creator_id (owner picker)"
+    (mt/with-temp [:model/User             {new-owner :id} {}
+                   :model/Card             {card-id :id}   {}
+                   :model/NotificationCard {nc :id}        {:card_id card-id}
+                   :model/Notification     {nid :id}       {:payload_type :notification/card
+                                                            :payload_id   nc
+                                                            :creator_id   (mt/user->id :rasta)}]
+      (let [notification (mt/user-http-request :crowberto :get 200 (format "notification/%d" nid))]
+        (mt/user-http-request :crowberto :put 200 (format "notification/%d" nid)
+                              (assoc notification :creator_id new-owner))
+        (is (= new-owner
+               (t2/select-one-fn :creator_id :model/Notification nid))
+            "superuser CAN change creator_id via PUT")))))
+
+;; ---------------------------------------------------------------------------------------------
+;; Per-notification isolation — two notifications on the same card
+;; ---------------------------------------------------------------------------------------------
+
+(deftest detail-per-notification-isolation-test
+  (testing "Two notifications on the same card each see only their own ticks in check_history and send_history"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-id :id} {:archived false}
+                     :model/NotificationCard {nc :id}      {:card_id card-id}
+                     ;; Two distinct notifications sharing the same card
+                     :model/Notification     {n1 :id}      {:payload_type :notification/card
+                                                            :payload_id   nc
+                                                            :creator_id   (mt/user->id :crowberto)}
+                     :model/Notification     {n2 :id}      {:payload_type :notification/card
+                                                            :payload_id   nc
+                                                            :creator_id   (mt/user->id :crowberto)}
+                     ;; tick-A: fires for n1 only
+                     :model/TaskRun          {run-a :id}   {:run_type    :alert
+                                                            :entity_type :card
+                                                            :entity_id   card-id
+                                                            :status      :success
+                                                            :started_at  (t/minus (t/instant) (t/hours 2))
+                                                            :ended_at    (t/minus (t/instant) (t/hours 2))}
+                     :model/TaskHistory      _ns-a         {:task         "notification-send"
+                                                            :run_id       run-a
+                                                            :status       :success
+                                                            :started_at   (t/minus (t/instant) (t/hours 2))
+                                                            :ended_at     (t/minus (t/instant) (t/hours 2))
+                                                            :task_details {:notification_id n1}}
+                     :model/TaskHistory      _cs-a         {:task         "channel-send"
+                                                            :run_id       run-a
+                                                            :status       :success
+                                                            :started_at   (t/minus (t/instant) (t/hours 2))
+                                                            :ended_at     (t/minus (t/instant) (t/hours 2))
+                                                            :task_details {:channel_type    "channel/email"
+                                                                           :notification_id n1}}
+                     ;; tick-B: fires for n2 only
+                     :model/TaskRun          {run-b :id}   {:run_type    :alert
+                                                            :entity_type :card
+                                                            :entity_id   card-id
+                                                            :status      :success
+                                                            :started_at  (t/minus (t/instant) (t/hours 1))
+                                                            :ended_at    (t/minus (t/instant) (t/hours 1))}
+                     :model/TaskHistory      _ns-b         {:task         "notification-send"
+                                                            :run_id       run-b
+                                                            :status       :success
+                                                            :started_at   (t/minus (t/instant) (t/hours 1))
+                                                            :ended_at     (t/minus (t/instant) (t/hours 1))
+                                                            :task_details {:notification_id n2}}
+                     :model/TaskHistory      _cs-b         {:task         "channel-send"
+                                                            :run_id       run-b
+                                                            :status       :success
+                                                            :started_at   (t/minus (t/instant) (t/hours 1))
+                                                            :ended_at     (t/minus (t/instant) (t/hours 1))
+                                                            :task_details {:channel_type    "channel/slack"
+                                                                           :notification_id n2}}]
+        ;; suppress unused-var warnings
+        (let [_ [run-a run-b]]
+          (testing "detail for n1 sees only tick-A in check_history and send_history"
+            (let [resp-n1 (mt/user-http-request :crowberto :get 200 (str "ee/notifications/" n1))]
+              (is (= 1 (count (:check_history resp-n1)))
+                  "n1 check_history has exactly 1 tick (tick-A)")
+              (is (= 1 (count (:send_history resp-n1)))
+                  "n1 send_history has exactly 1 tick (tick-A)")
+              (is (=? {:channels [{:channel_type "channel/email"}]}
+                      (first (:send_history resp-n1))))))
+          (testing "detail for n2 sees only tick-B in check_history and send_history"
+            (let [resp-n2 (mt/user-http-request :crowberto :get 200 (str "ee/notifications/" n2))]
+              (is (= 1 (count (:check_history resp-n2)))
+                  "n2 check_history has exactly 1 tick (tick-B)")
+              (is (= 1 (count (:send_history resp-n2)))
+                  "n2 send_history has exactly 1 tick (tick-B)")
+              (is (=? {:channels [{:channel_type "channel/slack"}]}
+                      (first (:send_history resp-n2)))))))))))
+
+(deftest detail-goal-not-met-tick-absent-from-send-history-test
+  (testing "A tick where the goal was not met (no channel-send rows) appears in check_history but NOT send_history"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-id :id} {:archived false}
+                     :model/NotificationCard {nc :id}      {:card_id card-id}
+                     :model/Notification     {nid :id}     {:payload_type :notification/card
+                                                            :payload_id   nc
+                                                            :creator_id   (mt/user->id :crowberto)}
+                     ;; tick-1: goal not met — notification-send row exists but no channel-send
+                     :model/TaskRun          {run-skip :id} {:run_type    :alert
+                                                             :entity_type :card
+                                                             :entity_id   card-id
+                                                             :status      :success
+                                                             :started_at  (t/minus (t/instant) (t/hours 2))
+                                                             :ended_at    (t/minus (t/instant) (t/hours 2))}
+                     :model/TaskHistory      _ns-skip      {:task         "notification-send"
+                                                            :run_id       run-skip
+                                                            :status       :success
+                                                            :started_at   (t/minus (t/instant) (t/hours 2))
+                                                            :ended_at     (t/minus (t/instant) (t/hours 2))
+                                                            :task_details {:notification_id nid
+                                                                           :skip_reason     "goal-not-met"}}
+                     ;; tick-2: goal met — has channel-send
+                     :model/TaskRun          {run-sent :id} {:run_type    :alert
+                                                             :entity_type :card
+                                                             :entity_id   card-id
+                                                             :status      :success
+                                                             :started_at  (t/minus (t/instant) (t/hours 1))
+                                                             :ended_at    (t/minus (t/instant) (t/hours 1))}
+                     :model/TaskHistory      _ns-sent      {:task         "notification-send"
+                                                            :run_id       run-sent
+                                                            :status       :success
+                                                            :started_at   (t/minus (t/instant) (t/hours 1))
+                                                            :ended_at     (t/minus (t/instant) (t/hours 1))
+                                                            :task_details {:notification_id nid}}
+                     :model/TaskHistory      _cs-sent      {:task         "channel-send"
+                                                            :run_id       run-sent
+                                                            :status       :success
+                                                            :started_at   (t/minus (t/instant) (t/hours 1))
+                                                            :ended_at     (t/minus (t/instant) (t/hours 1))
+                                                            :task_details {:channel_type    "channel/email"
+                                                                           :notification_id nid}}]
+        ;; suppress unused-var warnings
+        (let [_ [run-skip run-sent]
+              resp (mt/user-http-request :crowberto :get 200 (str "ee/notifications/" nid))]
+          (is (= 2 (count (:check_history resp)))
+              "both ticks appear in check_history")
+          (is (= 1 (count (:send_history resp)))
+              "only the goal-met tick appears in send_history — goal-not-met tick is absent")
+          (is (=? {:channels [{:channel_type "channel/email" :status "successful"}]}
+                  (first (:send_history resp)))))))))
+
+(deftest detail-last-check-and-last-send-derived-from-histories-test
+  (testing "GET /:id: last_check and last_send are derived per-notification from histories, not from card-level join"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-id :id} {:archived false}
+                     :model/NotificationCard {nc :id}      {:card_id card-id}
+                     :model/Notification     {n1 :id}      {:payload_type :notification/card
+                                                            :payload_id   nc
+                                                            :creator_id   (mt/user->id :crowberto)}
+                     :model/Notification     {n2 :id}      {:payload_type :notification/card
+                                                            :payload_id   nc
+                                                            :creator_id   (mt/user->id :crowberto)}
+                     ;; Only n2 has ever fired
+                     :model/TaskRun          {run2 :id}    {:run_type    :alert
+                                                            :entity_type :card
+                                                            :entity_id   card-id
+                                                            :status      :success
+                                                            :started_at  (t/instant)
+                                                            :ended_at    (t/instant)}
+                     :model/TaskHistory      _ns2          {:task         "notification-send"
+                                                            :run_id       run2
+                                                            :status       :success
+                                                            :started_at   (t/instant)
+                                                            :ended_at     (t/instant)
+                                                            :task_details {:notification_id n2}}
+                     :model/TaskHistory      _cs2          {:task         "channel-send"
+                                                            :run_id       run2
+                                                            :status       :success
+                                                            :started_at   (t/instant)
+                                                            :ended_at     (t/instant)
+                                                            :task_details {:channel_type    "channel/email"
+                                                                           :notification_id n2}}]
+        (let [_ run2
+              resp-n1 (mt/user-http-request :crowberto :get 200 (str "ee/notifications/" n1))]
+          (testing "n1 has nil last_check and nil last_send because it has never fired"
+            (is (nil? (:last_check resp-n1))
+                "n1 last_check is nil — the card-level task_run is for n2 only")
+            (is (nil? (:last_send resp-n1))
+                "n1 last_send is nil — the channel-send belongs to n2")))))))
