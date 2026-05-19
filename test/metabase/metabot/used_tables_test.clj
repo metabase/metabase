@@ -4,6 +4,8 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.query-analyzer :as nqa]
    [metabase.metabot.used-tables :as used-tables]
    [metabase.test :as mt]
@@ -11,35 +13,45 @@
 
 (set! *warn-on-reflection* true)
 
+;;; ---------------------------------------- metadata provider helpers ----------------------------------------
+
+(defn- mock-card
+  "Build a card map suitable for [[lib.tu/mock-metadata-provider]]."
+  ([id query]
+   (mock-card id query :question))
+  ([id query card-type]
+   {:lib/type      :metadata/card
+    :id            id
+    :name          (str "Card " id)
+    :database-id   (meta/id)
+    :type          card-type
+    :dataset-query query}))
+
+(defn- mp+cards
+  "Compose `meta/metadata-provider` with a mock provider containing `cards`."
+  [cards]
+  (lib.tu/mock-metadata-provider meta/metadata-provider {:cards cards}))
+
 ;;; ---------------------------------------- query construction helpers ----------------------------------------
 
 (defn- table-query
-  "Query whose first stage's source is `table-id`."
-  [table-id]
-  (let [mp (mt/metadata-provider)]
-    (lib/query mp (lib.metadata/table mp table-id))))
+  "Query whose first stage's source is `table-id`, attached to `metadata-provider`."
+  ([table-id]
+   (table-query meta/metadata-provider table-id))
+  ([metadata-provider table-id]
+   (lib/query metadata-provider (lib.metadata/table metadata-provider table-id))))
 
 (defn- card-query
-  "Query whose first stage's source is the given Card. The Card must exist in the appdb."
-  [card-id]
-  (let [mp (mt/metadata-provider)]
-    (lib/query mp (lib.metadata/card mp card-id))))
-
-(defn- query-on-absent-card-id
-  "Query whose first stage's `:source-card` points at a card id that
-  may not exist in the appdb — used to simulate a deleted card. We construct
-  the query map directly rather than going through
-  `(lib/query mp (lib.metadata/card mp card-id))` because that
-  path requires the card to actually exist."
-  [card-id]
-  {:lib/type :mbql/query
-   :database (mt/id)
-   :stages   [{:lib/type :mbql.stage/mbql :source-card card-id}]})
+  "Query whose first stage's source is the given Card, attached to `metadata-provider`."
+  [metadata-provider card-id]
+  (lib/query metadata-provider (lib.metadata/card metadata-provider card-id)))
 
 (defn- native-query
   "Native query against the test database."
-  [sql]
-  (lib/native-query (mt/metadata-provider) sql))
+  ([sql]
+   (native-query meta/metadata-provider sql))
+  ([metadata-provider sql]
+   (lib/native-query metadata-provider sql)))
 
 ;;; ---------------------------------------- tool-input/output helpers ----------------------------------------
 
@@ -89,7 +101,7 @@
 ;;; ---------------------------------------- empty/no-op (no DB) ----------------------------------------
 
 (deftest ^:parallel empty-parts-returns-nothing-test
-  (is (= [] (used-tables/extract-used-tables 1 []))))
+  (is (= [] (used-tables/extract-used-tables meta/metadata-provider 1 []))))
 
 (deftest ^:parallel non-query-tool-skipped-test
   (testing "tool calls outside `query-generation-tool-names` produce no rows"
@@ -101,14 +113,14 @@
                   :id     "n1"
                   :result {:output            "ok"
                            :structured-output {:query-id "ignored"}}}]]
-      (is (= [] (used-tables/extract-used-tables 1 parts))))))
+      (is (= [] (used-tables/extract-used-tables meta/metadata-provider 1 parts))))))
 
-(deftest errored-tool-output-skipped-test
+(deftest ^:parallel errored-tool-output-skipped-test
   (testing "tool outputs with :error are dropped even with structured-output"
     (let [parts [(notebook-input "c1")
-                 (-> (notebook-output "c1" (table-query (mt/id :orders)))
+                 (-> (notebook-output "c1" (table-query (meta/id :orders)))
                      (assoc :error "exploded"))]]
-      (is (= [] (used-tables/extract-used-tables 1 parts))))))
+      (is (= [] (used-tables/extract-used-tables meta/metadata-provider 1 parts))))))
 
 (deftest ^:parallel missing-structured-output-skipped-test
   (testing "tool outputs without :structured-output are dropped"
@@ -116,344 +128,334 @@
                  {:type   :tool-output
                   :id     "c1"
                   :result {:output "<result>failed</result>"}}]]
-      (is (= [] (used-tables/extract-used-tables 1 parts))))))
+      (is (= [] (used-tables/extract-used-tables meta/metadata-provider 1 parts))))))
 
 (deftest ^:parallel orphan-tool-input-skipped-test
   (testing "tool-inputs without a matching tool-output yield no rows"
     (let [parts [(notebook-input "c1")]]
-      (is (= [] (used-tables/extract-used-tables 1 parts))))))
+      (is (= [] (used-tables/extract-used-tables meta/metadata-provider 1 parts))))))
 
 ;;; ---------------------------------------- notebook ----------------------------------------
 
-(deftest notebook-source-table-test
+(deftest ^:parallel notebook-source-table-test
   (testing "construct_notebook_query with :source-table yields one table row"
     (let [parts [(notebook-input "c1")
-                 (notebook-output "c1" (table-query (mt/id :orders)))]
-          rows  (used-tables/extract-used-tables 99 parts)]
+                 (notebook-output "c1" (table-query (meta/id :orders)))]
+          rows  (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
       (is (= [{:message_id 99
-               :table_id   (mt/id :orders)}]
+               :table_id   (meta/id :orders)}]
              rows)))))
 
-(deftest notebook-source-card-question-expanded-test
+(deftest ^:parallel notebook-source-card-question-expanded-test
   (testing ":source-card pointing at a question Card collapses to the question's underlying table"
-    (mt/with-temp [:model/Card {card-id :id} {:type          :question
-                                              :database_id   (mt/id)
-                                              :dataset_query (table-query (mt/id :orders))}]
-      (let [parts [(notebook-input "c1")
-                   (notebook-output "c1" (card-query card-id))]
-            rows  (used-tables/extract-used-tables 99 parts)]
-        (is (= [{:message_id 99
-                 :table_id   (mt/id :orders)}]
-               rows))))))
+    (let [card-id 1
+          mp      (mp+cards [(mock-card card-id (table-query (meta/id :orders)) :question)])
+          parts   [(notebook-input "c1")
+                   (notebook-output "c1" (card-query mp card-id))]
+          rows    (used-tables/extract-used-tables mp 99 parts)]
+      (is (= [{:message_id 99
+               :table_id   (meta/id :orders)}]
+             rows)))))
 
-(deftest notebook-source-card-model-expanded-test
+(deftest ^:parallel notebook-source-card-model-expanded-test
   (testing ":source-card pointing at a model Card collapses to the model's underlying table"
-    (mt/with-temp [:model/Card {card-id :id} {:type          :model
-                                              :database_id   (mt/id)
-                                              :dataset_query (table-query (mt/id :orders))}]
-      (let [parts [(notebook-input "c1")
-                   (notebook-output "c1" (card-query card-id))]
-            rows  (used-tables/extract-used-tables 99 parts)]
-        (is (= [{:message_id 99
-                 :table_id   (mt/id :orders)}]
-               rows))))))
+    (let [card-id 1
+          mp      (mp+cards [(mock-card card-id (table-query (meta/id :orders)) :model)])
+          parts   [(notebook-input "c1")
+                   (notebook-output "c1" (card-query mp card-id))]
+          rows    (used-tables/extract-used-tables mp 99 parts)]
+      (is (= [{:message_id 99
+               :table_id   (meta/id :orders)}]
+             rows)))))
 
-(deftest notebook-source-card-metric-expanded-test
+(deftest ^:parallel notebook-source-card-metric-expanded-test
   (testing ":source-card pointing at a metric Card collapses to the metric's underlying table"
-    (mt/with-temp [:model/Card {card-id :id} {:type          :metric
-                                              :database_id   (mt/id)
-                                              :dataset_query (-> (table-query (mt/id :orders))
-                                                                 (lib/aggregate (lib/count)))}]
-      (let [parts [(notebook-input "c1")
-                   (notebook-output "c1" (card-query card-id))]
-            rows  (used-tables/extract-used-tables 99 parts)]
-        (is (= [{:message_id 99
-                 :table_id   (mt/id :orders)}]
-               rows))))))
+    (let [card-id 1
+          mp      (mp+cards [(mock-card card-id
+                                        (-> (table-query (meta/id :orders))
+                                            (lib/aggregate (lib/count)))
+                                        :metric)])
+          parts   [(notebook-input "c1")
+                   (notebook-output "c1" (card-query mp card-id))]
+          rows    (used-tables/extract-used-tables mp 99 parts)]
+      (is (= [{:message_id 99
+               :table_id   (meta/id :orders)}]
+             rows)))))
 
-(deftest notebook-recurses-through-card-on-card-test
+(deftest ^:parallel notebook-recurses-through-card-on-card-test
   (testing "card A on card B on table T collapses all the way down to T"
-    (mt/with-temp [:model/Card {b-id :id} {:type          :question
-                                           :database_id   (mt/id)
-                                           :dataset_query (table-query (mt/id :orders))}
-                   :model/Card {a-id :id} {:type          :question
-                                           :database_id   (mt/id)
-                                           :dataset_query (card-query b-id)}]
-      (let [parts [(notebook-input "c1")
-                   (notebook-output "c1" (card-query a-id))]
-            rows  (used-tables/extract-used-tables 99 parts)]
-        (is (= [{:message_id 99
-                 :table_id   (mt/id :orders)}]
-               rows))))))
+    (let [a-id  1
+          mp-b  (mp+cards [(mock-card 2 (table-query (meta/id :orders)))])
+          mp    (mp+cards [(mock-card 2 (table-query (meta/id :orders)))
+                           (mock-card a-id (card-query mp-b 2))])
+          parts [(notebook-input "c1")
+                 (notebook-output "c1" (card-query mp a-id))]
+          rows  (used-tables/extract-used-tables mp 99 parts)]
+      (is (= [{:message_id 99
+               :table_id   (meta/id :orders)}]
+             rows)))))
 
-(deftest notebook-deleted-card-warns-test
+(deftest ^:parallel notebook-deleted-card-warns-test
   (testing "a :source-card id that doesn't exist yields no row and logs a warn"
-    (let [absent-id (+ 1000000 (rand-int 1000000))
+    (let [card-id   1
+          absent-id 2
+          mp0       (mp+cards [(mock-card 1 (table-query (meta/id :orders)))
+                               (mock-card 2 (table-query (meta/id :products)))])
+          ;; query references a card which does not exist in new mock mp
+          mp        (mp+cards [(mock-card card-id (card-query mp0 2))])
           parts     [(notebook-input "c1")
-                     (notebook-output "c1" (query-on-absent-card-id absent-id))]]
+                     (notebook-output "c1" (card-query mp card-id))]]
       (log.capture/with-log-messages-for-level [logs [metabase.metabot.used-tables :warn]]
-        (let [rows (used-tables/extract-used-tables 99 parts)]
+        (let [rows (used-tables/extract-used-tables mp 99 parts)]
           (is (= [] rows))
           (is (some #(re-find (re-pattern (str absent-id)) (:message %)) (logs))
               "warn line mentions the missing card id"))))))
 
 ;;; ---------------------------------------- nested cards (recursion) ----------------------------------------
 
-(deftest notebook-three-levels-of-nesting-test
+(deftest ^:parallel notebook-three-levels-of-nesting-test
   (testing "card -> card -> card -> table collapses all the way down to the table"
-    (mt/with-temp [:model/Card {c-id :id} {:type          :question
-                                           :database_id   (mt/id)
-                                           :dataset_query (table-query (mt/id :orders))}
-                   :model/Card {b-id :id} {:type          :question
-                                           :database_id   (mt/id)
-                                           :dataset_query (card-query c-id)}
-                   :model/Card {a-id :id} {:type          :question
-                                           :database_id   (mt/id)
-                                           :dataset_query (card-query b-id)}]
-      (let [parts [(notebook-input "c1")
-                   (notebook-output "c1" (card-query a-id))]
-            rows  (used-tables/extract-used-tables 99 parts)]
-        (is (= #{(mt/id :orders)}
-               (table-ids rows)))))))
+    (let [a-id  1
+          mp-c  (mp+cards [(mock-card 3 (table-query (meta/id :orders)))])
+          mp-b  (mp+cards [(mock-card 3 (table-query (meta/id :orders)))
+                           (mock-card 2 (card-query mp-c 3))])
+          mp    (mp+cards [(mock-card 3 (table-query (meta/id :orders)))
+                           (mock-card 2 (card-query mp-c 3))
+                           (mock-card a-id (card-query mp-b 2))])
+          parts [(notebook-input "c1")
+                 (notebook-output "c1" (card-query mp a-id))]
+          rows  (used-tables/extract-used-tables mp 99 parts)]
+      (is (= #{(meta/id :orders)}
+             (table-ids rows))))))
 
-(deftest notebook-model-on-question-test
+(deftest ^:parallel notebook-model-on-question-test
   (testing "a model whose source is a question Card still resolves to the underlying table"
-    (mt/with-temp [:model/Card {q-id :id} {:type          :question
-                                           :database_id   (mt/id)
-                                           :dataset_query (table-query (mt/id :orders))}
-                   :model/Card {m-id :id} {:type          :model
-                                           :database_id   (mt/id)
-                                           :dataset_query (card-query q-id)}]
-      (let [parts [(notebook-input "c1")
-                   (notebook-output "c1" (card-query m-id))]
-            rows  (used-tables/extract-used-tables 99 parts)]
-        (is (= #{(mt/id :orders)}
-               (table-ids rows)))))))
+    (let [m-id  1
+          mp-q  (mp+cards [(mock-card 2 (table-query (meta/id :orders)))])
+          mp    (mp+cards [(mock-card 2 (table-query (meta/id :orders)))
+                           (mock-card m-id (card-query mp-q 2) :model)])
+          parts [(notebook-input "c1")
+                 (notebook-output "c1" (card-query mp m-id))]
+          rows  (used-tables/extract-used-tables mp 99 parts)]
+      (is (= #{(meta/id :orders)}
+             (table-ids rows))))))
 
-(deftest notebook-question-on-model-test
+(deftest ^:parallel notebook-question-on-model-test
   (testing "a question whose source is a model resolves to the underlying table"
-    (mt/with-temp [:model/Card {m-id :id} {:type          :model
-                                           :database_id   (mt/id)
-                                           :dataset_query (table-query (mt/id :orders))}
-                   :model/Card {q-id :id} {:type          :question
-                                           :database_id   (mt/id)
-                                           :dataset_query (card-query m-id)}]
-      (let [parts [(notebook-input "c1")
-                   (notebook-output "c1" (card-query q-id))]
-            rows  (used-tables/extract-used-tables 99 parts)]
-        (is (= #{(mt/id :orders)}
-               (table-ids rows)))))))
+    (let [q-id  1
+          mp-m  (mp+cards [(mock-card 2 (table-query (meta/id :orders)) :model)])
+          mp    (mp+cards [(mock-card 2 (table-query (meta/id :orders)) :model)
+                           (mock-card q-id (card-query mp-m 2))])
+          parts [(notebook-input "c1")
+                 (notebook-output "c1" (card-query mp q-id))]
+          rows  (used-tables/extract-used-tables mp 99 parts)]
+      (is (= #{(meta/id :orders)}
+             (table-ids rows))))))
 
-(deftest notebook-multi-stage-source-table-test
+(deftest ^:parallel notebook-multi-stage-source-table-test
   (testing "a query with multiple stages still surfaces the first-stage :source-table"
-    (let [query (-> (table-query (mt/id :orders))
+    (let [query (-> (table-query (meta/id :orders))
                     (lib/aggregate (lib/count))
                     lib/append-stage)
           parts [(notebook-input "c1")
                  (notebook-output "c1" query)]
-          rows  (used-tables/extract-used-tables 99 parts)]
-      (is (= #{(mt/id :orders)}
+          rows  (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
+      (is (= #{(meta/id :orders)}
              (table-ids rows))))))
 
 ;;; ---------------------------------------- joins ----------------------------------------
 
-(deftest notebook-explicit-join-against-table-test
+(deftest ^:parallel notebook-explicit-join-against-table-test
   (testing "an explicit join against another table surfaces both the source and joined tables"
-    (let [mp    (mt/metadata-provider)
-          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                    (lib/join (lib.metadata/table mp (mt/id :people))))
+    (let [mp    meta/metadata-provider
+          query (-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
+                    (lib/join (lib.metadata/table mp (meta/id :people))))
           parts [(notebook-input "c1")
                  (notebook-output "c1" query)]
-          rows  (used-tables/extract-used-tables 99 parts)]
-      (is (= #{(mt/id :orders) (mt/id :people)}
+          rows  (used-tables/extract-used-tables mp 99 parts)]
+      (is (= #{(meta/id :orders) (meta/id :people)}
              (table-ids rows))))))
 
-(deftest notebook-explicit-join-against-card-test
+(deftest ^:parallel notebook-explicit-join-against-card-test
   (testing "an explicit join against a question Card surfaces both the source table and the card's underlying table"
-    (mt/with-temp [:model/Card {card-id :id} {:type          :question
-                                              :database_id   (mt/id)
-                                              :dataset_query (table-query (mt/id :people))}]
-      (let [mp    (mt/metadata-provider)
-            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+    (let [card-id 1
+          mp      (mp+cards [(mock-card card-id (table-query (meta/id :people)))])
+          query   (-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
                       (lib/join (lib.metadata/card mp card-id)))
-            parts [(notebook-input "c1")
+          parts   [(notebook-input "c1")
                    (notebook-output "c1" query)]
-            rows  (used-tables/extract-used-tables 99 parts)]
-        (is (= #{(mt/id :orders) (mt/id :people)}
-               (table-ids rows)))))))
+          rows    (used-tables/extract-used-tables mp 99 parts)]
+      (is (= #{(meta/id :orders) (meta/id :people)}
+             (table-ids rows))))))
 
-(deftest notebook-explicit-join-against-model-test
+(deftest ^:parallel notebook-explicit-join-against-model-test
   (testing "an explicit join against a model Card surfaces both the source table and the model's underlying table"
-    (mt/with-temp [:model/Card {model-id :id} {:type          :model
-                                               :database_id   (mt/id)
-                                               :dataset_query (table-query (mt/id :people))}]
-      (let [mp    (mt/metadata-provider)
-            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                      (lib/join (lib.metadata/card mp model-id)))
-            parts [(notebook-input "c1")
-                   (notebook-output "c1" query)]
-            rows  (used-tables/extract-used-tables 99 parts)]
-        (is (= #{(mt/id :orders) (mt/id :people)}
-               (table-ids rows)))))))
+    (let [model-id 1
+          mp       (mp+cards [(mock-card model-id (table-query (meta/id :people)) :model)])
+          query    (-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
+                       (lib/join (lib.metadata/card mp model-id)))
+          parts    [(notebook-input "c1")
+                    (notebook-output "c1" query)]
+          rows     (used-tables/extract-used-tables mp 99 parts)]
+      (is (= #{(meta/id :orders) (meta/id :people)}
+             (table-ids rows))))))
 
-(deftest notebook-recurses-into-card-with-joins-test
+(deftest ^:parallel notebook-recurses-into-card-with-joins-test
   (testing "recursing into a Card whose own query has joins picks up all of the card's tables"
-    (let [mp                   (mt/metadata-provider)
-          card-query-with-join (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                   (lib/join (lib.metadata/table mp (mt/id :people))))]
-      (mt/with-temp [:model/Card {card-id :id} {:type          :question
-                                                :database_id   (mt/id)
-                                                :dataset_query card-query-with-join}]
-        (let [parts [(notebook-input "c1")
-                     (notebook-output "c1" (card-query card-id))]
-              rows  (used-tables/extract-used-tables 99 parts)]
-          (is (= #{(mt/id :orders) (mt/id :people)}
-                 (table-ids rows))))))))
+    (let [card-query-with-join (-> (table-query (meta/id :orders))
+                                   (lib/join (lib.metadata/table meta/metadata-provider (meta/id :people))))
+          card-id              1
+          mp                   (mp+cards [(mock-card card-id card-query-with-join)])
+          parts                [(notebook-input "c1")
+                                (notebook-output "c1" (card-query mp card-id))]
+          rows                 (used-tables/extract-used-tables mp 99 parts)]
+      (is (= #{(meta/id :orders) (meta/id :people)}
+             (table-ids rows))))))
 
-(deftest notebook-source-table-with-join-to-card-on-card-test
+(deftest ^:parallel notebook-source-table-with-join-to-card-on-card-test
   (testing "an outer query with both :source-table and a join to a chain of cards captures everything"
-    (mt/with-temp [:model/Card {leaf :id} {:type          :question
-                                           :database_id   (mt/id)
-                                           :dataset_query (table-query (mt/id :people))}
-                   :model/Card {mid  :id} {:type          :question
-                                           :database_id   (mt/id)
-                                           :dataset_query (card-query leaf)}]
-      (let [mp    (mt/metadata-provider)
-            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                      (lib/join (lib.metadata/card mp mid)))
-            parts [(notebook-input "c1")
+    (let [mid-id  1
+          mp-leaf (mp+cards [(mock-card 2 (table-query (meta/id :people)))])
+          mp      (mp+cards [(mock-card 2 (table-query (meta/id :people)))
+                             (mock-card mid-id (card-query mp-leaf 2))])
+          query   (-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
+                      (lib/join (lib.metadata/card mp mid-id)))
+          parts   [(notebook-input "c1")
                    (notebook-output "c1" query)]
-            rows  (used-tables/extract-used-tables 99 parts)]
-        (is (= #{(mt/id :orders) (mt/id :people)}
-               (table-ids rows)))))))
+          rows    (used-tables/extract-used-tables mp 99 parts)]
+      (is (= #{(meta/id :orders) (meta/id :people)}
+             (table-ids rows))))))
 
-(deftest notebook-implicit-join-via-source-field-breakout-test
+(deftest ^:parallel notebook-implicit-join-via-source-field-breakout-test
   (testing (str "a breakout with :source-field (implicit join) surfaces the joined table — "
                 "the field reaches into products via the orders.product_id FK without "
                 "any explicit :source-table for products")
-    (let [base    (-> (table-query (mt/id :orders))
+    (let [base    (-> (table-query (meta/id :orders))
                       (lib/aggregate (lib/count)))
           ;; pick the implicitly-joinable products.category column reachable
           ;; via the FK orders.product_id -> products.id
-          cat-col (m/find-first #(= (:id %) (mt/id :products :category))
+          cat-col (m/find-first #(= (:id %) (meta/id :products :category))
                                 (lib/breakoutable-columns base))
           query   (lib/breakout base cat-col)
           parts   [(notebook-input "c1")
                    (notebook-output "c1" query)]
-          rows    (used-tables/extract-used-tables 99 parts)]
-      (is (= #{(mt/id :orders) (mt/id :products)}
+          rows    (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
+      (is (= #{(meta/id :orders) (meta/id :products)}
              (table-ids rows))))))
 
-(deftest notebook-implicit-join-via-source-field-filter-test
+(deftest ^:parallel notebook-implicit-join-via-source-field-filter-test
   (testing "an implicit-join field reference inside a filter clause also surfaces the joined table"
-    (let [base    (table-query (mt/id :orders))
-          cat-col (m/find-first #(= (:id %) (mt/id :products :category))
+    (let [base    (table-query (meta/id :orders))
+          cat-col (m/find-first #(= (:id %) (meta/id :products :category))
                                 (lib/filterable-columns base))
           query   (lib/filter base (lib/= cat-col "Widget"))
           parts   [(notebook-input "c1")
                    (notebook-output "c1" query)]
-          rows    (used-tables/extract-used-tables 99 parts)]
-      (is (= #{(mt/id :orders) (mt/id :products)}
+          rows    (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
+      (is (= #{(meta/id :orders) (meta/id :products)}
              (table-ids rows))))))
 
-(deftest notebook-implicit-join-inside-nested-card-test
+(deftest ^:parallel notebook-implicit-join-inside-nested-card-test
   (testing "implicit joins inside a recursively-walked card's dataset_query also surface"
-    (let [base    (-> (table-query (mt/id :orders))
+    (let [base    (-> (table-query (meta/id :orders))
                       (lib/aggregate (lib/count)))
-          cat-col (m/find-first #(= (:id %) (mt/id :products :category))
+          cat-col (m/find-first #(= (:id %) (meta/id :products :category))
                                 (lib/breakoutable-columns base))
-          inner   (lib/breakout base cat-col)]
-      (mt/with-temp [:model/Card {card-id :id} {:type          :question
-                                                :database_id   (mt/id)
-                                                :dataset_query inner}]
-        (let [parts [(notebook-input "c1")
-                     (notebook-output "c1" (card-query card-id))]
-              rows  (used-tables/extract-used-tables 99 parts)]
-          (is (= #{(mt/id :orders) (mt/id :products)}
-                 (table-ids rows))))))))
+          inner   (lib/breakout base cat-col)
+          card-id 1
+          mp      (mp+cards [(mock-card card-id inner)])
+          parts   [(notebook-input "c1")
+                   (notebook-output "c1" (card-query mp card-id))]
+          rows    (used-tables/extract-used-tables mp 99 parts)]
+      (is (= #{(meta/id :orders) (meta/id :products)}
+             (table-ids rows))))))
 
 ;;; ---------------------------------------- native (SQL) ----------------------------------------
+;;;
+;;; These tests stub `nqa/tables-for-native` via `with-redefs`, so they cannot be `^:parallel`.
 
 (deftest sql-extracts-macaw-tables-test
   (testing "native SQL is parsed by macaw and the underlying tables come through"
-    (let [order-id (mt/id :orders)
+    (let [order-id (meta/id :orders)
           sql      "SELECT * FROM orders"]
       (with-redefs [nqa/tables-for-native (fn [_ & _]
                                             {:tables [{:table-id order-id}]})]
-        (let [parts [(sql-input "s1" "create_sql_query" {:database_id (mt/id) :sql_query sql})
-                     (sql-output "s1" sql (mt/id) (native-query sql))]
-              rows  (used-tables/extract-used-tables 99 parts)]
+        (let [parts [(sql-input "s1" "create_sql_query" {:database_id (meta/id) :sql_query sql})
+                     (sql-output "s1" sql (meta/id) (native-query sql))]
+              rows  (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
           (is (= [{:message_id 99
                    :table_id   order-id}]
                  rows)))))))
 
 (deftest sql-template-tag-card-expanded-test
   (testing "card-type template tag in native SQL recursively expands to its underlying table"
-    (mt/with-temp [:model/Card {card-id :id} {:type          :question
-                                              :database_id   (mt/id)
-                                              :dataset_query (table-query (mt/id :orders))}]
+    (let [card-id 1
+          mp      (mp+cards [(mock-card card-id (table-query (meta/id :orders)))])]
       (with-redefs [nqa/tables-for-native (fn [_ & _] {:tables []})]
         (let [;; `{{#N}}` syntax produces a card-type template tag with :card-id N
               sql   (format "SELECT * FROM {{#%s}}" card-id)
-              parts [(sql-input "s1" "create_sql_query" {:database_id (mt/id) :sql_query sql})
-                     (sql-output "s1" sql (mt/id) (native-query sql))]
-              rows  (used-tables/extract-used-tables 99 parts)]
+              parts [(sql-input "s1" "create_sql_query" {:database_id (meta/id) :sql_query sql})
+                     (sql-output "s1" sql (meta/id) (native-query mp sql))]
+              rows  (used-tables/extract-used-tables mp 99 parts)]
           (is (some #(= % {:message_id 99
-                           :table_id   (mt/id :orders)})
+                           :table_id   (meta/id :orders)})
                     rows)))))))
 
 (deftest sql-template-tag-native-card-recurses-macaw-test
   (testing "template tag pointing at a native-query Card recurses and macaw parses the inner SQL"
-    (let [orders-id     (mt/id :orders)
-          people-id     (mt/id :people)
-          inner-sql     "SELECT * FROM people"
-          inner-tables  (atom nil)]
-      (mt/with-temp [:model/Card {card-id :id} {:type          :question
-                                                :database_id   (mt/id)
-                                                :dataset_query (mt/native-query {:query inner-sql})}]
-        ;; outer SQL must contain the `{{#N}}` template tag for the card so that
-        ;; `lib/native-query` auto-extracts a card-type tag pointing at the card
-        (let [outer-sql (format "SELECT * FROM {{#%s}}" card-id)]
-          (with-redefs [nqa/tables-for-native (fn [query & _]
-                                                ;; production extractor passes a query, not raw SQL
-                                                (let [sql (lib/raw-native-query query)]
-                                                  (cond
-                                                    (= sql outer-sql) {:tables [{:table-id orders-id}]}
-                                                    (= sql inner-sql) (do (reset! inner-tables true)
-                                                                          {:tables [{:table-id people-id}]})
-                                                    :else             {:tables []})))]
-            (let [parts [(sql-input "s1" "create_sql_query"
-                                    {:database_id (mt/id) :sql_query outer-sql})
-                         (sql-output "s1" outer-sql (mt/id) (native-query outer-sql))]
-                  rows  (used-tables/extract-used-tables 99 parts)]
-              (is (true? @inner-tables) "macaw was invoked on the inner card's native SQL")
-              (is (= #{orders-id people-id}
-                     (table-ids rows))
-                  "outer and inner native tables both make it into the result"))))))))
+    (let [orders-id    (meta/id :orders)
+          people-id    (meta/id :people)
+          inner-sql    "SELECT * FROM people"
+          inner-tables (atom nil)
+          card-id      1
+          ;; build the inner native query attached to the base provider, then mock the card
+          inner-query  (native-query inner-sql)
+          mp           (mp+cards [(mock-card card-id inner-query)])
+          ;; outer SQL must contain the `{{#N}}` template tag for the card so that
+          ;; `lib/native-query` auto-extracts a card-type tag pointing at the card
+          outer-sql    (format "SELECT * FROM {{#%s}}" card-id)]
+      (with-redefs [nqa/tables-for-native (fn [query & _]
+                                            ;; production extractor passes a query, not raw SQL
+                                            (let [sql (lib/raw-native-query query)]
+                                              (cond
+                                                (= sql outer-sql) {:tables [{:table-id orders-id}]}
+                                                (= sql inner-sql) (do (reset! inner-tables true)
+                                                                      {:tables [{:table-id people-id}]})
+                                                :else             {:tables []})))]
+        (let [parts [(sql-input "s1" "create_sql_query"
+                                {:database_id (meta/id) :sql_query outer-sql})
+                     (sql-output "s1" outer-sql (meta/id) (native-query mp outer-sql))]
+              rows  (used-tables/extract-used-tables mp 99 parts)]
+          (is (true? @inner-tables) "macaw was invoked on the inner card's native SQL")
+          (is (= #{orders-id people-id}
+                 (table-ids rows))
+              "outer and inner native tables both make it into the result"))))))
 
 (deftest sql-parse-error-logged-test
   (testing "tables-for-native error yields no rows and logs a warn"
     (with-redefs [nqa/tables-for-native (fn [_ & _]
                                           {:error :query-analysis.error/parse-failed})]
       (let [sql   "SELEKT bad"
-            parts [(sql-input "s1" "create_sql_query" {:database_id (mt/id) :sql_query sql})
-                   (sql-output "s1" sql (mt/id) (native-query sql))]]
+            parts [(sql-input "s1" "create_sql_query" {:database_id (meta/id) :sql_query sql})
+                   (sql-output "s1" sql (meta/id) (native-query sql))]]
         (log.capture/with-log-messages-for-level [logs [metabase.metabot.used-tables :warn]]
-          (is (= [] (used-tables/extract-used-tables 99 parts)))
+          (is (= [] (used-tables/extract-used-tables meta/metadata-provider 99 parts)))
           (is (some #(re-find #"tables-for-native error" (:message %)) (logs))))))))
 
 ;;; ---------------------------------------- native (SQL) — real macaw ----------------------------------------
 ;;;
 ;;; The tests above all stub `nqa/tables-for-native` to isolate the extractor logic from the macaw
 ;;; parser. These two tests run the real parser end-to-end against the H2 test-data DB so we catch
-;;; integration regressions in the lib/query → tables-for-native handoff.
+;;; integration regressions in the lib/query → tables-for-native handoff. They need the real
+;;; application DB metadata provider, so they cannot be `^:parallel`.
 
 (deftest ^:sequential sql-real-macaw-join-with-where-test
   (testing "real macaw against a plain JOIN + WHERE: both tables come through end-to-end"
-    (let [sql "SELECT o.id FROM orders o JOIN products p ON o.product_id = p.id WHERE p.category = 'Widget'"
+    (let [sql   "SELECT o.id FROM orders o JOIN products p ON o.product_id = p.id WHERE p.category = 'Widget'"
+          mp    (mt/metadata-provider)
           parts [(sql-input "s1" "create_sql_query" {:database_id (mt/id) :sql_query sql})
-                 (sql-output "s1" sql (mt/id) (native-query sql))]
-          rows  (used-tables/extract-used-tables 99 parts)]
+                 (sql-output "s1" sql (mt/id) (lib/native-query mp sql))]
+          rows  (used-tables/extract-used-tables mp 99 parts)]
       (is (= #{(mt/id :orders) (mt/id :products)}
              (table-ids rows))))))
 
@@ -463,12 +465,14 @@
     (mt/with-temp [:model/Card {card-id :id}
                    {:type          :question
                     :database_id   (mt/id)
-                    :dataset_query (table-query (mt/id :products))}]
+                    :dataset_query (let [mp (mt/metadata-provider)]
+                                     (lib/query mp (lib.metadata/table mp (mt/id :products))))}]
       (let [tag-name (str "#" card-id)
             sql      (format "SELECT * FROM orders WHERE product_id IN (SELECT id FROM {{%s}})" tag-name)
+            mp       (mt/metadata-provider)
             parts    [(sql-input "s1" "create_sql_query" {:database_id (mt/id) :sql_query sql})
-                      (sql-output "s1" sql (mt/id) (native-query sql))]
-            rows     (used-tables/extract-used-tables 99 parts)]
+                      (sql-output "s1" sql (mt/id) (lib/native-query mp sql))]
+            rows     (used-tables/extract-used-tables mp 99 parts)]
         (is (= #{(mt/id :orders) (mt/id :products)}
                (table-ids rows))
             "outer macaw walk finds orders; template-tag substitution + card recursion both reach products")))))
@@ -514,8 +518,8 @@
                :source_tables  (vec source-tables)}})
 
 (defn- transform-python-output
-  "Build a `write_transform_python` tool-output. 
-  The structured `:transform`is intentionally sparse. 
+  "Build a `write_transform_python` tool-output.
+  The structured `:transform`is intentionally sparse.
   Extraction reads `:source_tables` from the *arguments*, not from the structured output."
   [id]
   {:type   :tool-output
@@ -527,29 +531,29 @@
 
 (deftest transform-sql-extracts-macaw-tables-from-structured-output-test
   (testing "write_transform_sql walks the suggested transform's native query through macaw"
-    (let [orders-id (mt/id :orders)
+    (let [orders-id (meta/id :orders)
           sql       "SELECT * FROM orders"]
       (with-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id orders-id}]})]
         (let [parts [(transform-sql-input "t1")
-                     (transform-sql-output "t1" (mt/id) (native-query sql))]
-              rows  (used-tables/extract-used-tables 99 parts)]
+                     (transform-sql-output "t1" (meta/id) (native-query sql))]
+              rows  (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
           (is (= [{:message_id 99 :table_id orders-id}]
                  rows)))))))
 
 (deftest transform-sql-defensively-reads-source-tables-arg-test
   (testing "write_transform_sql also picks up `:source_tables` from arguments when present,
             and dedupes against macaw-derived ids — guards against a future schema relaxation"
-    (let [orders-id (mt/id :orders)
-          people-id (mt/id :people)
+    (let [orders-id (meta/id :orders)
+          people-id (meta/id :people)
           sql       "SELECT * FROM orders"]
       (with-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id orders-id}]})]
         (let [parts [(transform-sql-input "t1"
                                           {:source_tables [{:alias "o" :table_id orders-id
-                                                            :schema "PUBLIC" :database_id (mt/id)}
+                                                            :schema "PUBLIC" :database_id (meta/id)}
                                                            {:alias "p" :table_id people-id
-                                                            :schema "PUBLIC" :database_id (mt/id)}]})
-                     (transform-sql-output "t1" (mt/id) (native-query sql))]
-              rows  (used-tables/extract-used-tables 99 parts)]
+                                                            :schema "PUBLIC" :database_id (meta/id)}]})
+                     (transform-sql-output "t1" (meta/id) (native-query sql))]
+              rows  (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
           (is (= #{orders-id people-id}
                  (table-ids rows))
               "macaw-derived `orders` and arg-declared `people` both surface, deduped")
@@ -557,13 +561,13 @@
 
 (deftest transform-sql-errored-output-skipped-test
   (testing "an errored write_transform_sql output yields no rows"
-    (with-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id (mt/id :orders)}]})]
+    (with-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id (meta/id :orders)}]})]
       (let [parts [(transform-sql-input "t1")
-                   (-> (transform-sql-output "t1" (mt/id) (native-query "SELECT 1"))
+                   (-> (transform-sql-output "t1" (meta/id) (native-query "SELECT 1"))
                        (assoc :error "boom"))]]
-        (is (= [] (used-tables/extract-used-tables 99 parts)))))))
+        (is (= [] (used-tables/extract-used-tables meta/metadata-provider 99 parts)))))))
 
-(deftest transform-sql-without-query-source-yields-nothing-test
+(deftest ^:parallel transform-sql-without-query-source-yields-nothing-test
   (testing "if the suggested transform has no `[:source :query]`, no macaw walk happens
             (and with no `:source_tables` argument, no rows at all)"
     (let [parts [(transform-sql-input "t1")
@@ -573,77 +577,77 @@
                            :structured-output {:transform {:source {:type "query"}}
                                                :thinking  "x"
                                                :message   "ok"}}}]]
-      (is (= [] (used-tables/extract-used-tables 99 parts))))))
+      (is (= [] (used-tables/extract-used-tables meta/metadata-provider 99 parts))))))
 
-(deftest transform-python-extracts-declared-source-tables-test
+(deftest ^:parallel transform-python-extracts-declared-source-tables-test
   (testing "write_transform_python yields one row per declared `:source_tables` entry"
-    (let [orders-id (mt/id :orders)
-          people-id (mt/id :people)
+    (let [orders-id (meta/id :orders)
+          people-id (meta/id :people)
           parts [(transform-python-input
                   "t1"
-                  [{:alias "o" :table_id orders-id :schema "PUBLIC" :database_id (mt/id)}
-                   {:alias "p" :table_id people-id :schema "PUBLIC" :database_id (mt/id)}])
+                  [{:alias "o" :table_id orders-id :schema "PUBLIC" :database_id (meta/id)}
+                   {:alias "p" :table_id people-id :schema "PUBLIC" :database_id (meta/id)}])
                  (transform-python-output "t1")]
-          rows  (used-tables/extract-used-tables 99 parts)]
+          rows  (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
       (is (= #{orders-id people-id}
              (table-ids rows)))
       (is (= 2 (count rows))))))
 
-(deftest transform-python-empty-source-tables-yields-nothing-test
+(deftest ^:parallel transform-python-empty-source-tables-yields-nothing-test
   (testing "write_transform_python with an empty source_tables list yields no rows"
     (let [parts [(transform-python-input "t1" [])
                  (transform-python-output "t1")]]
-      (is (= [] (used-tables/extract-used-tables 99 parts))))))
+      (is (= [] (used-tables/extract-used-tables meta/metadata-provider 99 parts))))))
 
-(deftest transform-python-errored-output-skipped-test
+(deftest ^:parallel transform-python-errored-output-skipped-test
   (testing "an errored write_transform_python output yields no rows, even if arguments declare tables"
     (let [parts [(transform-python-input
                   "t1"
-                  [{:alias "o" :table_id (mt/id :orders) :schema "PUBLIC" :database_id (mt/id)}])
+                  [{:alias "o" :table_id (meta/id :orders) :schema "PUBLIC" :database_id (meta/id)}])
                  (assoc (transform-python-output "t1") :error "boom")]]
-      (is (= [] (used-tables/extract-used-tables 99 parts))))))
+      (is (= [] (used-tables/extract-used-tables meta/metadata-provider 99 parts))))))
 
-(deftest transform-python-orphan-input-yields-nothing-test
+(deftest ^:parallel transform-python-orphan-input-yields-nothing-test
   (testing "a write_transform_python tool-input without a matching tool-output yields no rows"
     (let [parts [(transform-python-input
                   "t1"
-                  [{:alias "o" :table_id (mt/id :orders) :schema "PUBLIC" :database_id (mt/id)}])]]
-      (is (= [] (used-tables/extract-used-tables 99 parts))))))
+                  [{:alias "o" :table_id (meta/id :orders) :schema "PUBLIC" :database_id (meta/id)}])]]
+      (is (= [] (used-tables/extract-used-tables meta/metadata-provider 99 parts))))))
 
-(deftest transform-and-notebook-tool-calls-combine-test
+(deftest ^:parallel transform-and-notebook-tool-calls-combine-test
   (testing "a turn that mixes write_transform_python with construct_notebook_query
             yields the union of their tables"
-    (let [orders-id (mt/id :orders)
-          people-id (mt/id :people)
+    (let [orders-id (meta/id :orders)
+          people-id (meta/id :people)
           parts [(transform-python-input
                   "t1"
-                  [{:alias "p" :table_id people-id :schema "PUBLIC" :database_id (mt/id)}])
+                  [{:alias "p" :table_id people-id :schema "PUBLIC" :database_id (meta/id)}])
                  (transform-python-output "t1")
                  (notebook-input "n1")
                  (notebook-output "n1" (table-query orders-id))]
-          rows  (used-tables/extract-used-tables 99 parts)]
+          rows  (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
       (is (= #{orders-id people-id}
              (table-ids rows))))))
 
 ;;; ---------------------------------------- dedupe / stamping ----------------------------------------
 
-(deftest dedupes-within-message-test
+(deftest ^:parallel dedupes-within-message-test
   (testing "two notebook tool calls referencing the same table yield a single row"
     (let [parts [(notebook-input "c1")
-                 (notebook-output "c1" (table-query (mt/id :orders)))
+                 (notebook-output "c1" (table-query (meta/id :orders)))
                  (notebook-input "c2")
-                 (notebook-output "c2" (table-query (mt/id :orders)))]
-          rows  (used-tables/extract-used-tables 99 parts)]
+                 (notebook-output "c2" (table-query (meta/id :orders)))]
+          rows  (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
       (is (= [{:message_id 99
-               :table_id   (mt/id :orders)}]
+               :table_id   (meta/id :orders)}]
              rows)))))
 
-(deftest stamps-message-id-test
+(deftest ^:parallel stamps-message-id-test
   (testing "every returned row has :message_id set to the value passed in"
     (let [parts [(notebook-input "c1")
-                 (notebook-output "c1" (table-query (mt/id :orders)))
+                 (notebook-output "c1" (table-query (meta/id :orders)))
                  (notebook-input "c2")
-                 (notebook-output "c2" (table-query (mt/id :people)))]
-          rows  (used-tables/extract-used-tables 42 parts)]
+                 (notebook-output "c2" (table-query (meta/id :people)))]
+          rows  (used-tables/extract-used-tables meta/metadata-provider 42 parts)]
       (is (every? #(= 42 (:message_id %)) rows))
       (is (= 2 (count rows))))))

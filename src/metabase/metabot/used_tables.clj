@@ -21,10 +21,10 @@
    [clojure.set :as set]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.query-analyzer :as nqa]
    [metabase.metabot.tools :as metabot.tools]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -60,12 +60,11 @@
        (some? (tool-output->structured (:result output-block)))))
 
 (defn- ->mbql5-query
-  "Convert a raw query (legacy or MBQL 5) into an MBQL 5 query with an metadata provider attached.
-  We pass [[lib-be/application-database-metadata-provider]] as the metadata-providerable.
+  "Convert a raw query (legacy or MBQL 5) into an MBQL 5 query with `metadata-providerable` attached.
   Returns nil on conversion failure."
-  [raw-query]
+  [metadata-providerable raw-query]
   (try
-    (lib/query lib-be/application-database-metadata-provider raw-query)
+    (lib/query metadata-providerable raw-query)
     (catch Exception e
       (log/warn e "Failed to convert query to MBQL 5")
       nil)))
@@ -102,12 +101,13 @@
       (log/warn e "Failed to walk query for used-table extraction")
       {:tables #{} :cards #{}})))
 
-(defn- card-dataset-query
-  "Fetch a card's `:dataset_query` by id. Warns and returns nil if missing."
-  [card-id]
+(defn- card-query
+  "Look up the Card with `card-id` via `metadata-providerable` and return its underlying query.
+  Warns and returns nil if the card is missing or the conversion fails."
+  [metadata-providerable card-id]
   (try
-    (if-let [card (t2/select-one [:model/Card :dataset_query] :id card-id)]
-      (:dataset_query card)
+    (if-let [card (lib.metadata/card metadata-providerable card-id)]
+      (lib/card->underlying-query metadata-providerable card)
       (do (log/warnf "Card %s referenced by Metabot query was not found" card-id)
           nil))
     (catch Exception e
@@ -127,17 +127,16 @@
             queue'                 (subvec queue 1)
             {ts :tables cs :cards} (query-tables-and-cards query)
             new-cards              (set/difference cs visited)
-            new-queries            (keep (fn [card-id]
-                                           (some-> (card-dataset-query card-id) ->mbql5-query))
-                                         new-cards)]
+            new-queries            (keep #(card-query query %) new-cards)]
         (recur (into tables ts)
                (into queue' new-queries)
                (into visited new-cards))))))
 
 (defn- notebook-starting-query
   "Starting query for a `construct_notebook_query` tool output."
-  [structured]
-  (some-> (:query structured) ->mbql5-query))
+  [metadata-providerable structured]
+  (some->> (:query structured)
+           (->mbql5-query metadata-providerable)))
 
 (defn- sql-raw-text
   "Best-effort raw SQL text for a SQL tool call."
@@ -152,21 +151,22 @@
   "Starting query for an SQL tool output.
   Prefers the structured output's full `:query` map; falls back to building a native query from the structured
   output's `:database` field plus the tool's raw SQL text."
-  [tool-name arguments structured]
-  (or (some-> (:query structured) ->mbql5-query)
+  [metadata-providerable tool-name arguments structured]
+  (or (notebook-starting-query metadata-providerable structured)
       (when-let [db-id (:database structured)]
         (when-let [sql (sql-raw-text tool-name arguments structured)]
           (when (seq sql)
             (try
-              (lib/native-query (lib-be/application-database-metadata-provider db-id) sql)
+              (lib/native-query (lib.metadata/->metadata-provider metadata-providerable db-id) sql)
               (catch Exception e
                 (log/warn e "Failed to build native query from raw SQL")
                 nil)))))))
 
 (defn- transform-sql-starting-query
   "Starting query for a `write_transform_sql` tool output."
-  [structured]
-  (some-> (get-in structured [:transform :source :query]) ->mbql5-query))
+  [metadata-providerable structured]
+  (some->> (get-in structured [:transform :source :query])
+           (->mbql5-query metadata-providerable)))
 
 (defn- transform-declared-table-ids
   "Read `:table_id` values from a write_transform_* tool's `:source_tables`argument. 
@@ -175,19 +175,19 @@
   (into #{} (keep :table_id) (:source_tables arguments)))
 
 (defn- pair->table-ids
-  [input-block output-block]
+  [metadata-providerable input-block output-block]
   (let [tool-name  (:function input-block)
         arguments  (:arguments input-block)
         structured (tool-output->structured (:result output-block))]
     (cond
       (= tool-name notebook-tool-name)
-      (if-let [start (notebook-starting-query structured)]
+      (if-let [start (notebook-starting-query metadata-providerable structured)]
         (collect-tables [start])
         #{})
 
       (= tool-name transform-sql-tool-name)
       (let [declared  (transform-declared-table-ids arguments)
-            sql-start (transform-sql-starting-query structured)]
+            sql-start (transform-sql-starting-query metadata-providerable structured)]
         (cond-> declared
           sql-start (into (collect-tables [sql-start]))))
 
@@ -195,7 +195,7 @@
       (transform-declared-table-ids arguments)
 
       :else
-      (if-let [start (sql-starting-query tool-name arguments structured)]
+      (if-let [start (sql-starting-query metadata-providerable tool-name arguments structured)]
         (collect-tables [start])
         #{}))))
 
@@ -212,19 +212,21 @@
   Must run on the pre-strip `parts` before [[metabase.metabot.persistence/strip-tool-output-bloat]] trims tool-output;
   the transform path needs the un-trimmed `:transform` key, which is not in
   [[metabase.metabot.persistence/persisted-structured-output-keys]]."
-  [message-id parts]
-  (lib-be/with-metadata-provider-cache
-    (let [outputs-by-id (->> parts
-                             (filter #(= :tool-output (:type %)))
-                             (into {} (map (juxt :id identity))))
-          pairs         (->> parts
-                             (filter #(= :tool-input (:type %)))
-                             (keep (fn [input]
-                                     (let [output (get outputs-by-id (:id input))]
-                                       (when (successful-tracked-output? input output)
-                                         [input output])))))
-          all-tables    (reduce (fn [acc [input output]]
-                                  (into acc (pair->table-ids input output)))
-                                #{}
-                                pairs)]
-      (->rows message-id all-tables))))
+  ([message-id parts]
+   (lib-be/with-metadata-provider-cache
+     (extract-used-tables lib-be/application-database-metadata-provider message-id parts)))
+  ([metadata-providerable message-id parts]
+   (let [outputs-by-id (->> parts
+                            (filter #(= :tool-output (:type %)))
+                            (into {} (map (juxt :id identity))))
+         pairs         (->> parts
+                            (filter #(= :tool-input (:type %)))
+                            (keep (fn [input]
+                                    (let [output (get outputs-by-id (:id input))]
+                                      (when (successful-tracked-output? input output)
+                                        [input output])))))
+         all-tables    (reduce (fn [acc [input output]]
+                                 (into acc (pair->table-ids metadata-providerable input output)))
+                               #{}
+                               pairs)]
+     (->rows message-id all-tables))))
