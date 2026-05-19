@@ -25,7 +25,6 @@
    [throttle.core :as throttle])
   (:import
    (java.io BufferedWriter OutputStreamWriter)
-   (java.net URI)
    (java.nio.charset StandardCharsets)))
 
 (set! *warn-on-reflection* true)
@@ -154,11 +153,13 @@
 
 (defn- same-origin-host?
   [origin host]
-  (try
-    (let [origin-host  (.getHost (URI. origin))
-          request-host (first (str/split (str host) #":"))]
-      (= origin-host request-host))
-    (catch Exception _ false)))
+  (let [origin-url (mw.security/parse-url origin)
+        host-url   (mw.security/parse-url (str host))]
+    (boolean
+     (and origin-url
+          host-url
+          (= (str/lower-case (:domain origin-url))
+             (str/lower-case (:domain host-url)))))))
 
 (defn- approved-mcp-origin?
   [origin]

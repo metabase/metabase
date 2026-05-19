@@ -153,7 +153,17 @@
                                   {"host"   "mbtest.poom.dev"
                                    "origin" "http://127.0.0.1:6274"})]
         (is (= 200 (:status response)))
-        (is (some? (get-in response [:headers "Mcp-Session-Id"])))))))
+        (is (some? (get-in response [:headers "Mcp-Session-Id"]))))))
+  (testing "same-origin requests with bracketed IPv6 hosts are accepted"
+    (let [response (mcp-request (jsonrpc-request "initialize")
+                                {"host"   "[::1]:3000"
+                                 "origin" "http://[::1]:3000"})]
+      (is (= 200 (:status response)))))
+  (testing "same-origin requests with mixed-case host/origin are accepted"
+    (let [response (mcp-request (jsonrpc-request "initialize")
+                                {"host"   "Example.com"
+                                 "origin" "https://example.COM"})]
+      (is (= 200 (:status response))))))
 
 (deftest mcp-enabled-setting-test
   (testing "external MCP requests return 403 when disabled"
