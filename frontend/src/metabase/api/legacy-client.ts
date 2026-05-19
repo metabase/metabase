@@ -314,30 +314,15 @@ export class LegacyApi extends EventEmitter<EventMap> {
     data: Record<string, unknown>,
     options: RequestOptions<T>,
   ): Promise<T> {
-    // We bridge `options.signal` through a local controller (rather than
-    // handing it to `fetch` directly) so an already-aborted signal still gets
-    // its request dispatched: the request is sent this microtask, then the
-    // local controller aborts on the next. This matches XHR's `send()` →
-    // `abort()` semantics and keeps superseded-but-parked requests (e.g.
-    // through the embedding-SDK token refresh) going out.
-    const controller = new AbortController();
-    const request = new Request(url.href, {
-      method,
-      headers,
-      body: requestBody,
-      signal: controller.signal,
-    });
-
-    if (options.signal) {
-      if (options.signal.aborted) {
-        queueMicrotask(() => controller.abort());
-      } else {
-        options.signal.addEventListener("abort", () => controller.abort());
-      }
-    }
-
     try {
-      const response = await fetch(request);
+      const response = await fetch(url.href, {
+        method,
+        headers,
+        body: requestBody,
+        signal: options.signal,
+      });
+
+
       const unreadResponse = response.clone();
       const bodyText = await response.text();
       // An empty body (e.g. 204 No Content) surfaces as `null`, not `""`,
