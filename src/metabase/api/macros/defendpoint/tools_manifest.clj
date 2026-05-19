@@ -214,6 +214,70 @@
       (when (:properties jss)
         (select-keys jss [:properties :required])))))
 
+(defn- nullable-schema
+  "Return a JSON Schema that accepts `nil` in addition to `schema`.
+  OpenAI's strict tool schema validation expects every property to be listed in
+  `required`; nullable properties are how we preserve optional API inputs in the
+  exported MCP schema without changing the endpoint contract."
+  [schema]
+  (cond
+    (= "null" (:type schema))
+    schema
+
+    (string? (:type schema))
+    (update schema :type (fn [type] [type "null"]))
+
+    (vector? (:type schema))
+    (update schema :type (fn [types] (vec (distinct (conj types "null")))))
+
+    (contains? schema :oneOf)
+    (update schema :oneOf (fn [schemas] (vec (distinct (conj schemas {:type "null"})))))
+
+    (contains? schema :anyOf)
+    (update schema :anyOf (fn [schemas] (vec (distinct (conj schemas {:type "null"})))))
+
+    :else
+    {:anyOf [schema {:type "null"}]}))
+
+(defn- strict-tool-input-schema
+  "Make an MCP inputSchema compatible with stricter LLM clients.
+
+  MCP allows normal JSON Schema optional object properties. OpenAI's strict tool
+  schema validation is narrower: every object property must be required, and
+  optional values should be modeled as nullable instead."
+  [schema]
+  (letfn [(strict-schema [schema]
+            (let [schema (cond-> schema
+                           (:properties schema)
+                           (update :properties update-vals strict-schema)
+
+                           (:items schema)
+                           (update :items strict-schema)
+
+                           (:oneOf schema)
+                           (update :oneOf #(mapv strict-schema %))
+
+                           (:anyOf schema)
+                           (update :anyOf #(mapv strict-schema %))
+
+                           (:allOf schema)
+                           (update :allOf #(mapv strict-schema %)))]
+              (if (and (= "object" (:type schema)) (seq (:properties schema)))
+                (let [property-names      (vec (keys (:properties schema)))
+                      required-property?  (set (:required schema))
+                      nullable-properties (remove required-property? property-names)]
+                  (-> schema
+                      (assoc :required property-names
+                             :additionalProperties false)
+                      (update :properties
+                              (fn [properties]
+                                (reduce (fn [properties property-name]
+                                          (update properties property-name nullable-schema))
+                                        properties
+                                        nullable-properties)))))
+                schema)))]
+    (strict-schema schema)))
+
 (defn- merge-input-schemas
   "Merge route, query, and body param schemas into a single inputSchema object.
   Route params are always required. For body schemas that aren't simple maps (e.g. `:or`),
@@ -238,6 +302,22 @@
       (and body-full (empty? all-props)) body-full
       (seq all-props)                    (cond-> {:type "object" :properties all-props}
                                            (seq all-req) (assoc :required all-req)))))
+
+(defn- tool-input-schema
+  "Resolve a tool's MCP `inputSchema`. Three sources, in priority order:
+
+  1. `:input-schema` set on the tool metadata as a Malli vector — passed through
+     the standard `malli->json-schema` pipeline and the strict transform.
+  2. `:input-schema` set as a JSON Schema map — used verbatim (escape hatch for
+     hand-tuned schemas).
+  3. Implicit — derived from the endpoint's body Malli via `merge-input-schemas`,
+     then run through the strict transform."
+  [form]
+  (let [explicit (get-in form [:metadata :tool :input-schema])]
+    (cond
+      (vector? explicit) (-> explicit malli->json-schema strict-tool-input-schema)
+      (map? explicit)    explicit
+      :else              (some-> (merge-input-schemas form) strict-tool-input-schema))))
 
 (defn- response-schema->json-schema
   "Convert an endpoint's response schema to JSON Schema for the tools manifest."
@@ -290,7 +370,7 @@
         description    (or (:description tool-md)
                            (:docstr form))
         full-path      (str prefix (route-path->endpoint-path route-path))
-        input-schema   (merge-input-schemas form)
+        input-schema   (tool-input-schema form)
         resp-schema    (response-schema->json-schema (:response-schema form))
         inferred       (infer-annotations method (:annotations tool-md))
         annotations    (:annotations inferred)
