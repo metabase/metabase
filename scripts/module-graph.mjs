@@ -24,8 +24,33 @@ const tierColors = {
   basic: "#e3f2fd",
   shared: "#fff3e0",
   feature: "#fce4ec",
-  app: "#f3e5f5",
+  app: "#e8eaf6",
 };
+
+// Darker variants of each tier color for use as edge strokes (the pastel fill
+// colors above are too faint to read on a white background as lines).
+const tierEdgeColors = {
+  lib: "#2e7d32",      // pure green (was olive-ish #558b2f)
+  basic: "#0288d1",    // light blue 700 — cyan-leaning but still clearly blue
+  shared: "#ffc107",
+  feature: "#c2185b",
+  app: "#3949ab",
+};
+
+// Per-tier edge alpha (2-hex-digit suffix). Defaults to 80 (~50%); bump
+// individual tiers when their color reads as too faint against others.
+const tierEdgeAlpha = {
+  basic: "b0", // cyan is light — bump opacity ~69% so it doesn't get drowned
+};
+const DEFAULT_EDGE_ALPHA = "80";
+
+/**
+ * How non-violation edges are coloured:
+ *   "none"   — uniform gray (#00000055)
+ *   "source" — tier colour of the source module (where the edge starts)
+ *   "target" — tier colour of the destination module (where it ends)
+ */
+const EDGE_COLOR_MODE = "target";
 
 // ---------------------------------------------------------------------------
 // Derive configuration from boundaries
@@ -124,14 +149,14 @@ const sharedSubtiers = [
   // Domain shared concepts — the core data/visualization primitives
   {
     id: "shared_domain",
-    modules: ["common", "querying", "api", "visualizations", "embedding", "palette", "metadata"],
+    modules: ["common", "querying", "api", "visualizations", "embedding", "palette", "metadata", "comments", "transforms"],
   },
   // Content / lifecycle pieces shared across features
   {
     id: "shared_content",
     modules: [
-      "archive", "comments", "data-grid", "databases", "history", "new",
-      "pulse", "questions", "status", "timelines", "transforms",
+      "archive", "data-grid", "databases", "history", "new",
+      "pulse", "questions", "status", "timelines",
     ],
   },
   // Bottom: pure utilities (closest to lib tier)
@@ -175,19 +200,25 @@ if (sharedIdx >= 0) {
 
 /** Tier definitions: label, color, and module names */
 const tiers = {};
+const moduleToBaseTier = {};
 for (const el of graphElements) {
   const tier = tierForElement(el);
+  const baseTier = getTier(el.type);
+  moduleToBaseTier[moduleNameForElement(el)] = baseTier;
   if (!tiers[tier]) {
     tiers[tier] = {
       label:
         tier === "meta_feature" ? "feature"
         : tier.startsWith("shared") ? "shared"
         : tier,
-      color: tierColors[getTier(el.type)] || "#ffffff",
+      color: tierColors[baseTier] || "#ffffff",
       modules: [],
     };
   }
   tiers[tier].modules.push(moduleNameForElement(el));
+}
+for (const el of elements) {
+  if (el.type === "app/misc") moduleToBaseTier["misc"] = "app";
 }
 
 /** Directories already assigned to a tier */
@@ -439,22 +470,27 @@ function buildDot() {
     const centralMods = modules
       .filter((m) => spineColumn[m] === 0)
       .sort(spineSort);
-    // Non-spine[0] spine modules get pulled by their own spine chain — usually
-    // to the right of spine[0]. Place them on the right side of the row chain
-    // so Graphviz doesn't have to swap them past spine[0] to satisfy both.
+    // Non-spine[0] spine modules: split across both sides by spine column
+    // parity. Putting all of them on one side caused 2+ imbalance in rows
+    // like feature (admin + reference both ended up right of dashboard).
     const spineOthers = modules
       .filter((m) => spineColumn[m] !== undefined && spineColumn[m] !== 0)
       .sort((a, b) => spineColumn[a] - spineColumn[b]);
     const unspined = modules
       .filter((m) => spineColumn[m] === undefined)
       .sort((a, b) => (inDegree[b] ?? 0) - (inDegree[a] ?? 0));
-    // Alternate unspined: most-imported adjacent to spine, alternating outward.
-    // Start on the side opposite to where spineOthers are stacked so the row
-    // ends up balanced.
+    // Empirically, spine[1] and spine[2] columns end up to the right of
+    // spine[0] in Graphviz's layout (they get anchored by their inter-row
+    // chains). Putting their modules on the right side of the row chain keeps
+    // the emitted order consistent with the rendered order. Then fill unspined
+    // on whichever side has fewer modules so the row stays balanced.
     const leftInnerToOuter = [];
     const rightInnerToOuter = [...spineOthers];
-    unspined.forEach((m, i) => {
-      (i % 2 === 0 ? leftInnerToOuter : rightInnerToOuter).push(m);
+    unspined.forEach((m) => {
+      (leftInnerToOuter.length <= rightInnerToOuter.length
+        ? leftInnerToOuter
+        : rightInnerToOuter
+      ).push(m);
     });
     const leftHalf = leftInnerToOuter.reverse(); // outermost first for chain order
     const rightHalf = rightInnerToOuter;
@@ -520,7 +556,17 @@ function buildDot() {
       attrs.push('color="red"', 'penwidth="2.0"');
       attrs.push(`tooltip="${tip}"`, `edgetooltip="${tip}"`);
     } else {
-      attrs.push('color="#00000044"', 'penwidth="1.0"');
+      // Edge stroke per EDGE_COLOR_MODE (configured at the top of this file).
+      let stroke;
+      if (EDGE_COLOR_MODE === "source" || EDGE_COLOR_MODE === "target") {
+        const tier = moduleToBaseTier[EDGE_COLOR_MODE === "source" ? from : to];
+        const c = tierEdgeColors[tier] ?? "#000000";
+        const a = tierEdgeAlpha[tier] ?? DEFAULT_EDGE_ALPHA;
+        stroke = `${c}${a}`;
+      } else {
+        stroke = "#00000055";
+      }
+      attrs.push(`color="${stroke}"`, 'penwidth="1.0"');
       attrs.push(`tooltip="${from} → ${to}"`, `edgetooltip="${from} → ${to}"`);
     }
     attrs.push('constraint="false"');
