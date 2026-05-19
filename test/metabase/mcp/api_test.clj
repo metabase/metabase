@@ -764,6 +764,78 @@
                                  :content [{:text #(str/includes? % "Query handle not found")}]}}}
               response)))))
 
+;;; --------------------------------------- widgetSessionId cross-session handle resolution -------------------------------------
+
+(deftest construct-query-returns-widget-session-id-test
+  (testing "construct_query echoes the calling MCP session id as widgetSessionId for cross-session handoff"
+    (let [[session-id _] (initialize!)
+          construct-data (call-tool session-id "construct_query"
+                                    {:source     {:type "table" :id (mt/id :orders)}
+                                     :operations [["limit" 5]]
+                                     :prompt     "show 5 orders"})
+          response       (mcp-request (jsonrpc-request "tools/call"
+                                                       {:name      "construct_query"
+                                                        :arguments {:source     {:type "table" :id (mt/id :orders)}
+                                                                    :operations [["limit" 5]]
+                                                                    :prompt     "show 5 orders"}})
+                                      {"mcp-session-id" session-id})]
+      ;; Structured content (LLM-visible) carries `widgetSessionId` so the model
+      ;; can thread it forward in tool-call arguments.
+      (is (= session-id (:widgetSessionId construct-data)))
+      ;; The MCP `_meta.openai/widgetSessionId` is the OpenAI-runtime channel
+      ;; that ChatGPT correlates tool calls by.
+      (is (= session-id (get-in response [:body :result :_meta :openai/widgetSessionId]))))))
+
+(deftest visualize-query-resolves-via-widget-session-id-test
+  (testing "visualize_query resolves a handle from another session when widgetSessionId points back to the original session"
+    (let [user-id             (mt/user->id :crowberto)
+          [owner-session _]   (initialize!)
+          [rotated-session _] (initialize!)
+          handle              (mt/with-current-user user-id
+                                (mcp.session/store-handle! owner-session user-id "ZW5jb2RlZA=="))]
+      (is (=? {:status 200
+               :body   {:result {:structuredContent {:query            "ZW5jb2RlZA=="
+                                                     :widgetSessionId  owner-session}
+                                 :_meta             {:openai/widgetSessionId owner-session}}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "visualize_query"
+                                             :arguments {:query_handle    handle
+                                                         :widgetSessionId owner-session}})
+                           {"mcp-session-id" rotated-session}))))))
+
+(deftest execute-query-resolves-via-widget-session-id-test
+  (testing "execute_query resolves a handle from another session when widgetSessionId points back to the original session"
+    (let [[owner-session _]   (initialize!)
+          [rotated-session _] (initialize!)
+          construct-data      (call-tool owner-session "construct_query"
+                                         {:source     {:type "table" :id (mt/id :orders)}
+                                          :operations [["limit" 5]]
+                                          :prompt     "show 5 orders"})
+          response            (mcp-request (jsonrpc-request "tools/call"
+                                                            {:name      "execute_query"
+                                                             :arguments {:query_handle    (:query_handle construct-data)
+                                                                         :widgetSessionId owner-session}})
+                                           {"mcp-session-id" rotated-session})]
+      (is (= 200 (:status response)))
+      (is (not (get-in response [:body :result :isError]))))))
+
+(deftest render-drill-through-resolves-via-widget-session-id-test
+  (testing "render_drill_through resolves a handle from another session when widgetSessionId points back to the original session"
+    (let [user-id             (mt/user->id :crowberto)
+          [owner-session _]   (initialize!)
+          [rotated-session _] (initialize!)
+          handle              (mt/with-current-user user-id
+                                (mcp.session/store-handle! owner-session user-id "ZW5jb2RlZA=="))]
+      (is (=? {:status 200
+               :body   {:result {:structuredContent {:query            "ZW5jb2RlZA=="
+                                                     :widgetSessionId  owner-session}
+                                 :_meta             {:openai/widgetSessionId owner-session}}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "render_drill_through"
+                                             :arguments {:handle          handle
+                                                         :widgetSessionId owner-session}})
+                           {"mcp-session-id" rotated-session}))))))
+
 ;;; --------------------------------------------- OAuth Bearer Auth -------------------------------------------------
 
 (deftest unauthenticated-returns-401-test

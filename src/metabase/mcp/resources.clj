@@ -229,34 +229,45 @@
                     "`Show me orders by month`, `Display revenue by region`, or "
                     "`Visualize active users over time`. This renders the final answer in the UI. "
                     "Do not call execute_query after visualize_query; showing the visualization "
-                    "is enough.")
+                    "is enough. "
+                    "In the case of ChatGPT (which rotates MCP sessions between tool calls), "
+                    "pass the `widgetSessionId` returned by the prior construct_query response so "
+                    "the handle resolves against the original session; other MCP clients can omit it.")
   ;; Both fields are optional rather than expressing "at least one of" via a top-level `anyOf`.
   ;; This is because some MCP clients, e.g. the MCP inspector (mcpjam) rejects top-level combinators.
   ;; The response-fn enforces the at-least-one contract at runtime.
   :inputSchema {:type       "object"
-                :properties {:query        {:type "string" :minLength 1
-                                            :description "Base64-encoded MBQL query (use query_handle instead when available)"}
-                             :query_handle {:type "string" :format "uuid"
-                                            :description "Handle returned by construct_query; preferred over raw query"}}}
+                :properties {:query           {:type "string" :minLength 1
+                                               :description "Base64-encoded MBQL query (use query_handle instead when available)"}
+                             :query_handle    {:type "string" :format "uuid"
+                                               :description "Handle returned by construct_query; preferred over raw query"}
+                             :widgetSessionId {:type "string"
+                                               :description "Session id returned by construct_query. In the case of ChatGPT, pass it so the handle resolves across rotating MCP sessions; other clients can omit it."}}}
   :response-fn (fn [arguments {:keys [session-id]}]
-                 (let [query   (:query arguments)
-                       handle  (:query_handle arguments)
-                       resolved (some->> handle (mcp.session/resolve-query-handle session-id))
-                       encoded (or query (:encoded_query resolved))
-                       prompt  (:prompt resolved)]
+                 (let [query             (:query arguments)
+                       handle            (:query_handle arguments)
+                       widget-session-id (:widgetSessionId arguments)
+                       lookup-session-id (or widget-session-id session-id)
+                       resolved          (some->> handle (mcp.session/resolve-query-handle lookup-session-id))
+                       encoded           (or query (:encoded_query resolved))
+                       prompt            (:prompt resolved)]
                    (cond
                      (and (nil? query) (nil? handle))
                      {:content [{:type "text" :text "Provide either 'query' or 'query_handle'."}]
                       :isError true}
 
                      encoded
-                     {:content           [{:type "text" :text (str "Visualizing query in the interactive UI. "
-                                                                   "Do not call execute_query after this; "
-                                                                   "the visualization is the final result.")}]
-                      ;; If visualize_query was called with a handle, use the stored prompt so the iframe can
-                      ;; include the user's original request when submitting visualization feedback.
-                      :structuredContent (cond-> {:query encoded}
-                                           prompt (assoc :prompt prompt))}
+                     (cond-> {:content           [{:type "text" :text (str "Visualizing query in the interactive UI. "
+                                                                           "Do not call execute_query after this; "
+                                                                           "the visualization is the final result.")}]
+                              ;; If visualize_query was called with a handle, use the stored prompt so the iframe can
+                              ;; include the user's original request when submitting visualization feedback.
+                              ;; Re-emit `lookup-session-id` (not the current rotating MCP session id) so
+                              ;; the LLM keeps threading the same stable id across all follow-ups.
+                              :structuredContent (cond-> {:query encoded}
+                                                   prompt            (assoc :prompt prompt)
+                                                   lookup-session-id (assoc :widgetSessionId lookup-session-id))}
+                       lookup-session-id (assoc :_meta {"openai/widgetSessionId" lookup-session-id}))
 
                      :else
                      {:content [{:type "text" :text "Query handle not found. Try running construct_query again."}]
@@ -269,17 +280,26 @@
                     "Use this tool, not execute_query, when the user asks to show the result and "
                     "their message includes a `handle` UUID. This is the exact follow-up for the "
                     "phrase `Show me the result`. Do not execute the query yourself; pass the "
-                    "`handle` UUID as the `handle` argument.")
+                    "`handle` UUID as the `handle` argument. "
+                    "In the case of ChatGPT (which rotates MCP sessions between tool calls), "
+                    "pass `widgetSessionId` from a prior tool response so the handle resolves "
+                    "against the original session; other MCP clients can omit it.")
   :inputSchema {:type       "object"
-                :properties {:handle {:type "string" :format "uuid"
-                                      :description "Handle UUID from the user's drill-through message."}}
+                :properties {:handle          {:type "string" :format "uuid"
+                                               :description "Handle UUID from the user's drill-through message."}
+                             :widgetSessionId {:type "string"
+                                               :description "Session id from a prior tool response. In the case of ChatGPT, pass it so the handle resolves across rotating MCP sessions; other clients can omit it."}}
                 :required   ["handle"]}
   :response-fn (fn [arguments {:keys [session-id]}]
                  (if-let [handle (:handle arguments)]
-                   (if-let [encoded (mcp.session/read-handle session-id handle)]
-                     {:content          [{:type "text" :text "Rendering drill-through visualization..."}]
-                      :structuredContent {:query encoded}}
-                     {:content [{:type "text" :text "No drill-through found for that handle."}]
-                      :isError true})
+                   (let [widget-session-id (:widgetSessionId arguments)
+                         lookup-session-id (or widget-session-id session-id)]
+                     (if-let [encoded (mcp.session/read-handle lookup-session-id handle)]
+                       (cond-> {:content           [{:type "text" :text "Rendering drill-through visualization..."}]
+                                :structuredContent (cond-> {:query encoded}
+                                                     lookup-session-id (assoc :widgetSessionId lookup-session-id))}
+                         lookup-session-id (assoc :_meta {"openai/widgetSessionId" lookup-session-id}))
+                       {:content [{:type "text" :text "No drill-through found for that handle."}]
+                        :isError true}))
                    {:content [{:type "text" :text "No drill-through found for that handle."}]
                     :isError true}))})

@@ -420,7 +420,7 @@
    "Construct a Metabase MBQL query from a structured program. The body structure is:\n"
    "`{\"source\": {...}, \"operations\": [...]}`\n"
    "For MCP calls, include `\"prompt\": \"<user's exact original message>\"` whenever you have the user's message; do not summarize or modify it.\n"
-   "Returns `{\"query_handle\": \"<uuid>\"}` — pass it as `query_handle` to `execute_query` or `visualize_query`.\n"
+   "Returns `{\"query_handle\": \"<uuid>\", \"widgetSessionId\": \"<id>\"}` — pass `query_handle` to `execute_query` or `visualize_query`. In the case of ChatGPT (which rotates MCP sessions between tool calls), also pass `widgetSessionId` to the follow-up tool so the handle resolves against the original session; other MCP clients can ignore it.\n"
    "For the full reference, read the `metabase://docs/construct-query.md` MCP resource.\n"
    "\n"
    "IMPORTANT: field IDs must come from entity-detail endpoints (`/v1/table/{id}`, `/v1/metric/{id}`). "
@@ -429,8 +429,8 @@
    "\n"
    "## Workflow\n"
    "1. Use `search_entities` / entity-detail tools to find the table/metric/model and its fields.\n"
-   "2. Call `construct_query` with the program. Include the user's original `prompt` whenever available. You get back `{\"query_handle\": \"<uuid>\"}`.\n"
-   "3. Pass that handle to `execute_query` or `visualize_query` as `query_handle`.\n"
+   "2. Call `construct_query` with the program. Include the user's original `prompt` whenever available. You get back `{\"query_handle\": \"<uuid>\", \"widgetSessionId\": \"<id>\"}`.\n"
+   "3. Pass `query_handle` to the follow-up `execute_query` or `visualize_query` call. In ChatGPT, also pass `widgetSessionId`; other clients can omit it.\n"
    "Never embed IDs you did not read from a metadata endpoint — invented IDs will fail at execution.\n"
    "\n"
    "## Source\n"
@@ -792,7 +792,21 @@
                              "row count, and execution time. Use this when the user explicitly asks for raw data, "
                              "rows, columns, counts, metadata, or programmatic query results. If the user asks to "
                              "show, display, visualize, plot, chart, or present the result, use visualize_query "
-                             "instead.")
+                             "instead. "
+                             "Pass `query_handle` (preferred) from construct_query rather than constructing the "
+                             "base64 query yourself. In the case of ChatGPT, also pass `widgetSessionId` from "
+                             "the construct_query response so the handle resolves against the original session; "
+                             "other MCP clients can ignore it.")
+           :input-schema [:map
+                          [:query {:optional true
+                                   :tool/description "Base64-encoded MBQL query. Use `query_handle` instead when available."}
+                           [:maybe ms/NonBlankString]]
+                          [:query_handle {:optional true
+                                          :tool/description "Handle returned by construct_query — preferred over raw `query`."}
+                           [:maybe ms/NonBlankString]]
+                          [:widgetSessionId {:optional true
+                                             :tool/description "Session id returned by construct_query. In the case of ChatGPT, pass it so the handle resolves across rotating MCP sessions; other clients can omit it."}
+                           [:maybe ms/NonBlankString]]]
            :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
