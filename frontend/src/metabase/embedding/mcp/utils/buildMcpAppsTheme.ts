@@ -52,7 +52,9 @@ export function buildMcpAppsTheme({
   const agentOverrides =
     (agentName && AGENT_CSS_VARIABLE_OVERRIDES[agentName]?.[preset]) || {};
 
-  const mergedCssVariables = { ...hostCssVariables, ...agentOverrides };
+  // Agent overrides serve as per-key defaults — any value the host actually
+  // sends takes precedence.
+  const mergedCssVariables = { ...agentOverrides, ...hostCssVariables };
 
   const colors: MetabaseTheme["colors"] = {};
 
