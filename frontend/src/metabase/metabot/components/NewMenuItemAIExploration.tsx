@@ -8,23 +8,9 @@ import type { CollectionId } from "metabase-types/api";
 export function getNewMenuItemAIExploration(
   hasDataAccess: boolean,
   collectionId?: CollectionId,
-  hasNlqAccess?: boolean,
 ) {
   if (!hasDataAccess) {
     return undefined;
-  }
-
-  if (!hasNlqAccess) {
-    return (
-      <Menu.Item
-        key="research"
-        component={ForwardRefLink}
-        to={Urls.newExploration()}
-        leftSection={<Icon name="zoom_in" />}
-      >
-        {t`Research`}
-      </Menu.Item>
-    );
   }
 
   return (

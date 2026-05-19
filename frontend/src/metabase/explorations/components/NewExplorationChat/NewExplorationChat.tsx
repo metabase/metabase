@@ -26,7 +26,7 @@ import type {
   MetabotDebugToolCallMessage,
 } from "metabase/metabot/state";
 import { useDispatch } from "metabase/redux";
-import { Center, Flex, Stack, Text } from "metabase/ui";
+import { Center, Flex, Stack } from "metabase/ui";
 import type {
   GetExplorationDataResponse,
   MetricDimension,
@@ -56,7 +56,7 @@ export function NewExplorationChat({
   setName,
 }: NewExplorationChatProps) {
   const dispatch = useDispatch();
-  const { canUseNlq, hasNlqAccess } = useUserMetabotPermissions();
+  const { canUseNlq } = useUserMetabotPermissions();
   const [
     isAiProviderConfigurationModalOpen,
     {
@@ -248,18 +248,13 @@ export function NewExplorationChat({
               suggestionConfig={{ suggestionModels: ["metric"] }}
               ref={metabotPromptInputRef}
             />
-          ) : hasNlqAccess ? (
+          ) : (
             <AIProviderConfigurationNotice
               p="0.75rem"
               featureName={t`the AI agent`}
               inline
               onConfigureAi={openAiProviderConfigurationModal}
             />
-          ) : (
-            <Text
-              p="0.75rem"
-              c="text-tertiary"
-            >{t`You don't have access to the AI agent. Please contact your admin for access.`}</Text>
           )}
         </Flex>
       </Stack>

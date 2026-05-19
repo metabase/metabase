@@ -12,10 +12,8 @@ import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useSetting } from "metabase/common/hooks";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
-import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useDispatch } from "metabase/redux";
 import { useRouter } from "metabase/router";
-import { getSettingsLoading } from "metabase/selectors/settings";
 import {
   ActionIcon,
   Box,
@@ -60,7 +58,7 @@ const responseHasNavigateTo = (action: SubmitInputResult) =>
     isMatching({ type: "navigate_to" }),
   );
 
-const MetabotQueryBuilderInner = () => {
+export const MetabotQueryBuilder = () => {
   const { canUseNlq } = useUserMetabotPermissions();
   const [
     isAiProviderConfigurationModalOpen,
@@ -205,7 +203,7 @@ const MetabotQueryBuilderInner = () => {
               {!canUseNlq ? (
                 <AIProviderConfigurationNotice
                   py="0.5rem"
-                  featureName={t`AI exploration`}
+                  featureName={t`AI explorations`}
                   inline
                   onConfigureAi={openAiProviderConfigurationModal}
                 />
@@ -278,21 +276,4 @@ const MetabotQueryBuilderInner = () => {
       />
     </Box>
   );
-};
-
-export const MetabotQueryBuilder = (
-  props: React.ComponentProps<typeof QueryBuilder>,
-) => {
-  const { hasNlqAccess, isLoading } = useUserMetabotPermissions();
-  const areSettingsLoading = useSelector(getSettingsLoading);
-  // Wait until settings and metabot permissions are both resolved before
-  // deciding which view to render. Otherwise QueryBuilder may mount briefly
-  // and rewrite the URL away from /question/ask, racing the metabot view.
-  if (areSettingsLoading || isLoading) {
-    return null;
-  }
-  if (!hasNlqAccess) {
-    return <QueryBuilder {...props} />;
-  }
-  return <MetabotQueryBuilderInner />;
 };

@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { getNewMenuItemAIExploration } from "metabase/metabot/components/NewMenuItemAIExploration";
-import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
@@ -42,15 +41,12 @@ export const NewItemMenuView = ({
 
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
 
-  const { hasNlqAccess } = useUserMetabotPermissions();
-
   const menuItems = useMemo(() => {
     const items = [];
 
     const aiExplorationItem = getNewMenuItemAIExploration(
       hasDataAccess,
       collectionId,
-      hasNlqAccess,
     );
     if (aiExplorationItem) {
       items.push(aiExplorationItem);
@@ -128,7 +124,6 @@ export const NewItemMenuView = ({
     hasDatabaseWithJsonEngine,
     dispatch,
     canWriteToCollections,
-    hasNlqAccess,
   ]);
 
   if (menuItems.length === 0) {

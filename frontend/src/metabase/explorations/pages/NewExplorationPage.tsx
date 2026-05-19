@@ -4,10 +4,7 @@ import { useEffect, useState } from "react";
 import { EditableText } from "metabase/common/components/EditableText";
 import CS from "metabase/css/core/index.css";
 import { QuestionModeSwitcher } from "metabase/metabot/components/QuestionModeSwitcher";
-import {
-  useMetabotAgent,
-  useUserMetabotPermissions,
-} from "metabase/metabot/hooks";
+import { useMetabotAgent } from "metabase/metabot/hooks";
 import { Box, Center, Group, Paper, Stack } from "metabase/ui";
 import type { MetricDimension, Timeline } from "metabase-types/api";
 
@@ -25,7 +22,6 @@ export function NewExplorationPage(props: { location?: Location }) {
 }
 
 function NewExplorationPageInner() {
-  const { hasNlqAccess } = useUserMetabotPermissions();
   const [metrics, setMetrics] = useState<ExplorationMetric[]>([]);
   const [dimensions, setDimensions] = useState<MetricDimension[]>([]);
   const [timelines, setTimelines] = useState<Timeline[]>([]);
@@ -39,10 +35,8 @@ function NewExplorationPageInner() {
     resetConversation();
   }, [resetConversation]);
 
+  // hide the mode switcher once the user has started chatting or selecting data
   const shouldShowModeSwitcher =
-    // hide if the user doesn't have AI permissions
-    hasNlqAccess &&
-    // or the user has started chatting or selecting data
     metrics.length === 0 &&
     dimensions.length === 0 &&
     timelines.length === 0 &&
