@@ -1,14 +1,14 @@
 (ns metabase-enterprise.advanced-config.file.workspace
   "Loader for the `:workspace` section of `config.yml`.
 
-   On boot, parses the section and stores it in the in-process atom
-   `metabase-enterprise.workspaces.core/workspace-instance-config`. That atom is the
-   instance-side source of truth for `db-workspace-namespace`.
+  On boot, parses the section and stores it in the in-process atom:
+  [[metabase-enterprise.workspaces.core/workspace-instance-config]].
+  That atom is the instance-side source of truth for `db-workspace-namespace`.
 
-   The atom is fresh per process — every boot re-reads `config.yml` and replaces the
-   prior value. There is no durable storage of instance-side workspace state, by
-   design: the file IS the source of truth, and a different file at boot means a
-   different workspace, no questions asked."
+  The atom is fresh per process, every boot re-reads `config.yml` and replaces the
+  prior value. There is no durable storage of instance-side workspace state, by
+  design: the file IS the source of truth, and a different file at boot means a
+  different workspace, no questions asked."
   (:require
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
