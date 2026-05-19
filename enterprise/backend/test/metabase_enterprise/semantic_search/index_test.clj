@@ -16,6 +16,8 @@
   (:import
    (org.postgresql.util PGobject)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once #'semantic.tu/once-fixture)
 
 (deftest create-index-table!-test
