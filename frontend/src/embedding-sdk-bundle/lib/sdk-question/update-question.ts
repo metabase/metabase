@@ -132,6 +132,7 @@ export const updateQuestionSdk =
         originalQuestion,
         parameterValues: nextParameterValues,
         cancelDeferred,
+        dispatch,
       });
     }
 

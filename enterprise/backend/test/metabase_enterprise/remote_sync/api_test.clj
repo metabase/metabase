@@ -1132,6 +1132,19 @@
             (is (= "Transforms" (:name (first dirty-items))))
             (is (= "delete" (:sync_status (first dirty-items))))))))))
 
+(deftest settings-collections-not-marked-synced-when-settings-validation-fails-test
+  (testing "PUT /api/ee/remote-sync/settings does not mark collections as synced when settings validation fails"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced false}]
+        (with-redefs [settings/check-and-update-remote-settings!
+                      (fn [_] (throw (ex-info "Authentication is required" {:status-code 400})))
+                      impl/finish-remote-config! (constantly nil)]
+          (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                {:remote-sync-url   "https://github.com/test/private-repo.git"
+                                 :remote-sync-type  :read-write
+                                 :collections       {coll-id true}})
+          (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))))))))
+
 ;; ---------- API-level guard sweep --------------------------------------------------------------
 ;;
 ;; Boundary tests verifying that every mutating remote-sync HTTP endpoint surfaces the guard's

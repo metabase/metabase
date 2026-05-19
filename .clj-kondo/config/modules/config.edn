@@ -2246,7 +2246,8 @@
   {:team "DevEx"
    :api  #{metabase.tracing.core
            metabase.tracing.init}
-   :uses #{events
+   :uses #{config
+           events
            settings
            task
            util}}
@@ -3260,6 +3261,7 @@
    :api  #{metabase-enterprise.security-center.api
            metabase-enterprise.security-center.init}
    :uses #{analytics
+           analytics-interface
            api
            app-db
            channel
@@ -3445,6 +3447,7 @@
            permissions
            query-processor
            settings
+           tracing
            transforms
            transforms-base
            util}
