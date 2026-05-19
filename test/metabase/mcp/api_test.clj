@@ -294,7 +294,7 @@
                                  "")
                              "exact original message"))
           (is (str/includes? reference "MCP clients should include it whenever they have the user's message"))
-          (is (str/includes? reference "{\"query_handle\": \"<uuid>\"}")))))))
+          (is (str/includes? reference "{\"query_handle\": \"<uuid>\", \"widgetSessionId\": \"<id>\"}")))))))
 
 (deftest ping-test
   (testing "ping returns empty result"
