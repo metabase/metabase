@@ -406,6 +406,25 @@ describe("api", () => {
       fetchMock.removeRoutes().clearHistory();
     });
 
+    it("`:tag*` substitutes a multi-segment value without URL-encoding the slashes", async () => {
+      fetchMock.get("path:/api/automagic-dashboards/table/3/cell/4", {
+        items: [],
+      });
+
+      await apiInstance.request({
+        method: "GET",
+        url: "/api/automagic-dashboards/:subPath*",
+        params: { subPath: "table/3/cell/4" },
+      });
+
+      const call = fetchMock.callHistory.lastCall();
+      expect(call?.url).toMatch(
+        /\/api\/automagic-dashboards\/table\/3\/cell\/4$/,
+      );
+      // sanity-check: slashes were NOT %2F-encoded
+      expect(call?.url).not.toContain("%2F");
+    });
+
     it("substitutes :tag URL placeholders from `params`", async () => {
       fetchMock.get("path:/api/card/123/params/abc-def/values", { values: [] });
 

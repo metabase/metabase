@@ -295,7 +295,6 @@ export class LegacyApi extends EventEmitter<EventMap> {
     noEvent,
     rawResponse,
     headers: headerOverrides,
-    raw,
   }: {
     method: "GET" | "POST" | "PUT" | "DELETE";
     url: string;
@@ -305,14 +304,12 @@ export class LegacyApi extends EventEmitter<EventMap> {
     noEvent?: boolean;
     rawResponse?: boolean;
     headers?: Record<string, string>;
-    raw?: Record<string, boolean>;
   }): Promise<unknown> {
     const invocationOptions: Partial<RequestOptions> = {
       signal,
       ...(noEvent !== undefined ? { noEvent } : {}),
       ...(rawResponse !== undefined ? { rawResponse } : {}),
       ...(headerOverrides ? { headers: headerOverrides } : {}),
-      ...(raw ? { raw } : {}),
     };
 
     const middlewareResult = await this.apiRequestManipulationMiddleware({
@@ -333,19 +330,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
     } as RequestOptions;
     const { data } = middlewareResult;
 
-    for (const tag of url.match(/:\w+/g) || []) {
-      const paramName = tag.slice(1);
-      let value = data[paramName];
-      delete data[paramName];
-      if (value === undefined) {
-        console.warn("Warning: calling", finalMethod, "without", tag);
-        value = "";
-      }
-      if (!options.raw || !options.raw[paramName]) {
-        value = encodeURIComponent(value as string);
-      }
-      url = url.replace(tag, value as string);
-    }
+    url = substituteUrlTags(url, data, finalMethod);
     for (const name in data) {
       if (data[name] === undefined) {
         delete data[name];
