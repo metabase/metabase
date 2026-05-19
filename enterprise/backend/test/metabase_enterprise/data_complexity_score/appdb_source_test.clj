@@ -38,9 +38,11 @@
                        [(str "SELECT fingerprint, source, score_data "
                              "FROM data_complexity_score WHERE fingerprint = ?") fp]
                        {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-              ;; `${text.type}` maps to CLOB on H2 and TEXT on Postgres/MySQL — `clob->str`
-              ;; normalizes the JDBC driver's String / Clob handoff.
-              decoded (-> row :score_data mdb/clob->str (json/decode true))]
+              ;; `${text.type}` maps to CLOB on H2 and TEXT on Postgres/MySQL/MariaDB. next.jdbc's
+              ;; default column-reader hands back a String for TEXT and an `org.h2.jdbc.JdbcClob`
+              ;; for the H2 CLOB; `mdb/clob->str` only knows the Clob branch.
+              raw     (:score_data row)
+              decoded (json/decode (if (string? raw) raw (mdb/clob->str raw)) true)]
           (is (=? {:fingerprint fp
                    :source      source}
                   row))
