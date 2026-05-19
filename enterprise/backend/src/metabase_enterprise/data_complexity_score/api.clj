@@ -17,7 +17,7 @@
 
 (def ^:private Rating
   "A rating band label drawn from `complexity-bands`."
-  [:maybe [:enum "low" "medium" "high"]])
+  [:enum "low" "medium" "high"])
 
 (def ^:private Failure
   "Sub-score that couldn't be computed; carries only the failure message.
@@ -30,14 +30,14 @@
   [:map {:closed true}
    [:measurement  number?]
    [:score        nat-int?]
-   [:rating       Rating]
+   [:rating       [:maybe Rating]]
    [:rating_label [:maybe string?]]])
 
 (def ^:private Grouping
   "Internal node whose `:score` is the rolled-up sum of its `:components` children."
   [:map {:closed true}
    [:score        [:maybe nat-int?]]
-   [:rating       Rating]
+   [:rating       [:maybe Rating]]
    [:rating_label [:maybe string?]]
    [:components   [:map-of :keyword [:ref ::node]]]])
 
