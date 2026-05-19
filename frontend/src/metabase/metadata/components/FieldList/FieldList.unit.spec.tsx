@@ -1,8 +1,8 @@
 import { createMockField } from "metabase-types/api/mocks";
 
-import { areFieldItemPropsEqual } from "./FieldItem/FieldItem";
+import { areFieldItemPropsEqual } from "./FieldItem";
 
-describe("FieldList", () => {
+describe("areFieldItemPropsEqual", () => {
   const onNameChange = jest.fn();
   const onDescriptionChange = jest.fn();
 
