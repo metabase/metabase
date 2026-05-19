@@ -708,7 +708,12 @@
 (defn- decode-legacy-input
   "Decode `row`s `:legacy_input` JSONB PGobject into a Clojure map."
   [row]
-  (update row :legacy_input decode-pgobject))
+  ;; BOT-1543: some existing rows have legacy_input stored as a JSON string rather than a JSON
+  ;; object, so one decode yields a string; decode once more in that case.
+  (update row :legacy_input
+          (fn [pgo]
+            (let [decoded (decode-pgobject pgo)]
+              (cond-> decoded (string? decoded) json/decode+kw)))))
 
 ;; Search-models whose `mi/can-read?` is a pure function of `:collection_id`, which is
 ;; already denormalized on the index row. Values are the Toucan model whose `can-read?`
