@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.macros.scope :as scope]
    [metabase.lib.core :as lib]
@@ -121,6 +122,21 @@
       (is (= 401 (:status response)))
       (is (= -32603 (get-in response [:body :error :code]))))))
 
+(deftest origin-validation-test
+  (testing "cross-origin browser requests are rejected when the origin is not configured"
+    (let [response (mcp-request (jsonrpc-request "initialize")
+                                {"host"   "mbtest.poom.dev"
+                                 "origin" "http://127.0.0.1:6274"})]
+      (is (= 403 (:status response)))
+      (is (= "Origin not allowed" (get-in response [:body :error :message])))))
+  (testing "cross-origin browser requests are accepted for configured MCP client origins"
+    (mt/with-temporary-setting-values [mcp-apps-cors-custom-origins "http://127.0.0.1:6274"]
+      (let [response (mcp-request (jsonrpc-request "initialize")
+                                  {"host"   "mbtest.poom.dev"
+                                   "origin" "http://127.0.0.1:6274"})]
+        (is (= 200 (:status response)))
+        (is (some? (get-in response [:headers "Mcp-Session-Id"])))))))
+
 (deftest mcp-enabled-setting-test
   (testing "external MCP requests return 403 when disabled"
     (mt/with-temporary-setting-values [mcp.settings/mcp-enabled? false]
@@ -220,17 +236,45 @@
           (is (= "string" (get-in (array-branch (property-schema "search" "term_queries")) [:items :type])))
           (is (contains? (leaf-types (property-schema "search" "semantic_queries")) "array"))
           (is (= "string" (get-in (array-branch (property-schema "search" "semantic_queries")) [:items :type])))))
-      (testing "construct_query exposes the optional user prompt"
+      (testing "construct_query exposes the nullable user prompt"
         (let [tools-by-name          (into {} (map (juxt :name identity)) tools)
               construct-query-tool   (get tools-by-name "construct_query")
               construct-query-schema (:inputSchema construct-query-tool)
               prompt-schema          (or (get-in construct-query-schema [:properties "prompt"])
                                          (get-in construct-query-schema [:properties :prompt]))
               required-fields        (set (:required construct-query-schema))
+              schema-keys            (atom #{})
               reference              (slurp (io/resource "metabase/agent_api/construct_query.md"))]
+          (walk/postwalk (fn [x]
+                           (when (map? x)
+                             (swap! schema-keys into (keys x)))
+                           x)
+                         construct-query-schema)
           (is (str/includes? (:description construct-query-tool) "include `\"prompt\""))
-          (is (not (contains? required-fields "prompt")))
-          (is (str/includes? (:description prompt-schema) "exact original message"))
+          ;; Strict-tool-input-schema forces every property into :required and
+          ;; converts previously-optional ones (like :prompt) to nullable unions.
+          (is (or (contains? required-fields "prompt")
+                  (contains? required-fields :prompt)))
+          (is (= false (:additionalProperties construct-query-schema)))
+          ;; Prompt is nullable. Either a `:type` union (hand-written form) or an
+          ;; `:anyOf`/`:oneOf` with a {:type "null"} branch (Malli `[:maybe …]`).
+          (is (or (= ["string" "null"] (:type prompt-schema))
+                  (= #{"string" "null"} (set (:type prompt-schema)))
+                  (some #(= "null" (:type %)) (:anyOf prompt-schema))
+                  (some #(= "null" (:type %)) (:oneOf prompt-schema))))
+          ;; ChatGPT's MCP validator rejects exactly these JSON-Schema constructs.
+          ;; `:oneOf`/`:minLength`/`:maxLength` are accepted by ChatGPT and not asserted against.
+          (is (empty? (select-keys (frequencies @schema-keys)
+                                   [:allOf :prefixItems])))
+          ;; `items: false` (tuple closure) must not appear either.
+          (is (not (some #(false? (:items %))
+                         (->> (tree-seq coll? seq construct-query-schema)
+                              (filter map?)))))
+          (is (str/includes? (or (:description prompt-schema)
+                                 (some :description (:anyOf prompt-schema))
+                                 (some :description (:oneOf prompt-schema))
+                                 "")
+                             "exact original message"))
           (is (str/includes? reference "MCP clients should include it whenever they have the user's message"))
           (is (str/includes? reference "{\"query_handle\": \"<uuid>\"}")))))))
 

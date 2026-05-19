@@ -9,12 +9,14 @@
    [metabase.api.common :as api]
    [metabase.api.macros.scope :as scope]
    [metabase.api.open-api :as open-api]
+   [metabase.mcp.core :as mcp]
    [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.tools :as mcp.tools]
    [metabase.mcp.validation :as mcp.validation]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.request.core :as request]
+   [metabase.server.middleware.security :as mw.security]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
@@ -150,18 +152,36 @@
 
 ;;; ------------------------------------------------- Validation --------------------------------------------------
 
+(defn- same-origin-host?
+  [origin host]
+  (try
+    (let [origin-host  (.getHost (URI. origin))
+          request-host (first (str/split (str host) #":"))]
+      (= origin-host request-host))
+    (catch Exception _ false)))
+
+(defn- approved-mcp-origin?
+  [origin]
+  (or (mcp/sandbox-origin? origin)
+      (when-let [approved-origins (not-empty (mcp/cors-origins))]
+        (let [origin-url (mw.security/parse-url origin)]
+          (boolean
+           (some (fn [approved-origin]
+                   (and (mw.security/approved-domain? (:domain origin-url) (:domain approved-origin))
+                        (mw.security/approved-protocol? (:protocol origin-url) (:protocol approved-origin))
+                        (mw.security/approved-port? (:port origin-url) (:port approved-origin))))
+                 (mw.security/parse-approved-origins approved-origins)))))))
+
 (defn- validate-origin
   "Validate the Origin header to prevent DNS rebinding attacks (MCP spec requirement).
-   Returns a 403 response if Origin is present and doesn't match the request's Host header.
-   Non-browser clients that omit the Origin header are allowed through."
+   Returns a 403 response if Origin is present and is neither same-host nor an
+   explicitly configured MCP app origin. Non-browser clients that omit the Origin
+   header are allowed through."
   [request]
   (when-let [origin (get-in request [:headers "origin"])]
     (let [host (get-in request [:headers "host"])]
-      (when-not (try
-                  (let [origin-host (.getHost (URI. origin))
-                        request-host (first (str/split (str host) #":"))]
-                    (= origin-host request-host))
-                  (catch Exception _ false))
+      (when-not (or (same-origin-host? origin host)
+                    (approved-mcp-origin? origin))
         (json-response 403 (jsonrpc-error nil -32600 "Origin not allowed"))))))
 
 (defn- require-valid-session
