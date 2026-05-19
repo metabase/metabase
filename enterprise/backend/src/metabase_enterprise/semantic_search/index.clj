@@ -710,9 +710,16 @@
            :all-scores (scoring/all-scores weights scorers row))))
 
 (defn- decode-metadata
-  "Decode `row`s `:metadata`."
+  "Decode `row`s `:metadata` and handle double-encoded `:legacy_input`."
   [row]
-  (update row :metadata decode-pgobject))
+  ;; BOT-1543: some existing rows have legacy_input stored as a JSON string rather than a JSON
+  ;; object, so one decode yields a string; decode once more in that case.
+  (-> row
+      (update :metadata decode-pgobject)
+      (update :legacy_input
+              (fn [pgo]
+                (let [decoded (decode-pgobject pgo)]
+                  (cond-> decoded (string? decoded) json/decode+kw))))))
 
 (defn- filter-can-read-indexed-entity
   "Check permissions for indexed entities by resolving to their parent model / card"
