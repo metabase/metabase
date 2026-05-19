@@ -27,7 +27,6 @@ import {
 import type { LayoutRendererArgs } from "metabase/common/components/TokenField/TokenField";
 import CS from "metabase/css/core/index.css";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { Fields } from "metabase/entities/fields";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import {
@@ -38,6 +37,7 @@ import {
 import { connect, useDispatch } from "metabase/redux";
 import { addRemappings } from "metabase/redux/metadata";
 import type { State } from "metabase/redux/store";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   type ComboboxItem,
   Loader,
@@ -85,11 +85,9 @@ const COMBOBOX_WIDTH = 364;
 const DROPDOWN_WIDTH = 314;
 
 function mapStateToProps(state: State, { fields = [] }: { fields: Field[] }) {
+  const metadata = getMetadata(state);
   return {
-    fields: fields.map(
-      (field) =>
-        Fields.selectors.getObject(state, { entityId: field.id }) || field,
-    ),
+    fields: fields.map((field) => metadata.field(field.id) || field),
   };
 }
 

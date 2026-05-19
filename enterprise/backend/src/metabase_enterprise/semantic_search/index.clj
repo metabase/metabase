@@ -397,8 +397,8 @@
             results (transduce
                      (comp (partition-all *batch-size*)
                            (map (if serial?
-                                  #(upsert-index-batch! connectable index % {:type :index})
-                                  #(upsert-index-pooled! pool connectable index % {:type :index}))))
+                                  #(upsert-index-batch! connectable index % {:type :index :record-tokens? true})
+                                  #(upsert-index-pooled! pool connectable index % {:type :index :record-tokens? true}))))
                      conj
                      documents-reducible)]
         (reduce (fn [update-counts result]
@@ -708,7 +708,12 @@
 (defn- decode-legacy-input
   "Decode `row`s `:legacy_input` JSONB PGobject into a Clojure map."
   [row]
-  (update row :legacy_input decode-pgobject))
+  ;; BOT-1543: some existing rows have legacy_input stored as a JSON string rather than a JSON
+  ;; object, so one decode yields a string; decode once more in that case.
+  (update row :legacy_input
+          (fn [pgo]
+            (let [decoded (decode-pgobject pgo)]
+              (cond-> decoded (string? decoded) json/decode+kw)))))
 
 ;; Search-models whose `mi/can-read?` is a pure function of `:collection_id`, which is
 ;; already denormalized on the index row. Values are the Toucan model whose `can-read?`
@@ -818,7 +823,8 @@
             embedding (tracing/with-span :search "search.semantic.embedding"
                         {:search.semantic/provider   (:provider embedding-model)
                          :search.semantic/model-name (:model-name embedding-model)}
-                        (embedding/get-embedding embedding-model search-string {:type :query}))
+                        (embedding/get-embedding embedding-model search-string
+                                                 {:type :query :record-tokens? true}))
             embedding-time-ms (u/since-ms timer)
 
             db-timer (u/start-timer)
@@ -881,7 +887,7 @@
   (def embedding-model (embedding/get-configured-model))
   (def index (default-index embedding-model))
   (def search-ctx {:search-string "pasta"})
-  (def embed (embedding/get-embedding embedding-model (:search-string search-ctx)))
+  (def embed (embedding/get-embedding embedding-model (:search-string search-ctx) {:record-tokens? true}))
   (def scorers (scoring/semantic-scorers (:table-name index) search-ctx))
 
   (keyword-search-query index search-ctx)
@@ -965,7 +971,7 @@
                        :verified nil})
   (def search-context {:search-string search-string})
 
-  (def embedding (embedding/get-embedding (:embedding-model index) search-string))
+  (def embedding (embedding/get-embedding (:embedding-model index) search-string {:record-tokens? true}))
   (def scorers (scoring/semantic-scorers (:table-name index) search-context))
 
   ;; Format queries for execution

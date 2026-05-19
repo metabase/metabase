@@ -327,6 +327,46 @@
       (testing "normal table should be updated to writable"
         (is (true? (t2/select-one-fn :is_writable :model/Table (:id normal-table))))))))
 
+(deftest no-spurious-update-when-metadata-unchanged-test
+  (testing (str "update-table-metadata-if-needed! should not issue an UPDATE (which would bump updated_at) "
+                "when none of the tracked metadata fields have changed. Regression test for GHY-3272 — "
+                "a customer with a trigger on metabase_table.updated_at was seeing it fire on every sync.")
+    (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}
+                   :model/Table    tbl {:name                    "stable_table"
+                                        :db_id                   (u/the-id db)
+                                        :description             nil
+                                        :database_require_filter nil
+                                        :estimated_row_count     100
+                                        :initial_sync_status     "complete"
+                                        :visibility_type         nil
+                                        :is_writable             false
+                                        :data_authority          :unconfigured}]
+      (let [select-cols        (into [:model/Table :id :name :schema :data_authority]
+                                     @#'sync-tables/keys-to-update)
+            matching-metadata  {:name                    "stable_table"
+                                :schema                  nil
+                                :description             nil
+                                :database_require_filter nil
+                                :estimated_row_count     100
+                                :is_writable             false}
+            initial-updated-at (t2/select-one-fn :updated_at :model/Table (:id tbl))]
+        (testing "no-op sync does not bump updated_at"
+          (#'sync-tables/update-table-metadata-if-needed!
+           matching-metadata
+           (t2/select-one select-cols (:id tbl))
+           db)
+          (is (= initial-updated-at
+                 (t2/select-one-fn :updated_at :model/Table (:id tbl)))))
+        (testing "a real change still bumps updated_at"
+          (#'sync-tables/update-table-metadata-if-needed!
+           (assoc matching-metadata :estimated_row_count 999)
+           (t2/select-one select-cols (:id tbl))
+           db)
+          (is (not= initial-updated-at
+                    (t2/select-one-fn :updated_at :model/Table (:id tbl))))
+          (is (= 999
+                 (t2/select-one-fn :estimated_row_count :model/Table (:id tbl)))))))))
+
 (deftest sample-database-tables-data-authority-test
   (testing "Tables from sample databases should be marked as :ingested"
     (mt/with-temp [:model/Database sample-db {:is_sample true}

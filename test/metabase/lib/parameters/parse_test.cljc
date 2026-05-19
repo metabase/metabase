@@ -6,8 +6,11 @@
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.util :as lib.util]))
 
-(defn- param [field-name] (lib.parms.parse.types/param {:k field-name}))
-(defn- optional [& args] (lib.parms.parse.types/optional {:args (vec args)}))
+(defn- param [field-name]
+  {:lib/type ::lib.parms.parse.types/param, :k field-name})
+
+(defn- optional [& args]
+  {:lib/type ::lib.parms.parse.types/optional, :args (vec args)})
 
 (defn- normalize-tokens
   [tokens]

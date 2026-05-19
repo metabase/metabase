@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [diehard.core :as dh]
+   [java-time.api :as t]
    [metabase-enterprise.remote-sync.core :as remote-sync.core]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
@@ -140,7 +141,7 @@
                                            remote-sync-token "test-token"
                                            remote-sync-branch "main"]
           (with-redefs [source/source-from-settings (constantly mock-source)]
-            (is (= "Remote sync in progress"
+            (is (= "Remote sync task in progress"
                    (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {})))))))))
 
 (deftest import-errors-when-dirty-changes-test
@@ -245,7 +246,7 @@
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
             (with-redefs [source/source-from-settings (constantly mock-source)]
-              (is (= "Remote sync in progress"
+              (is (= "Remote sync task in progress"
                      (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))))))))
 
 (deftest export-errors-if-external-changes-test
@@ -557,6 +558,32 @@
                                         :remote-sync-branch "main"
                                         :remote-sync-url "https://github.com/test/repo.git"
                                         :remote-sync-token "test-token"}))))))))
+
+(deftest settings-refuses-while-task-running-test
+  (testing "PUT /api/ee/remote-sync/settings refuses with 400 when a RemoteSyncTask is active"
+    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                            :initiated_by   (mt/user->id :rasta)
+                                            :started_at     (t/offset-date-time)
+                                            :progress       0.0}]
+      (let [check-git-call-count (atom 0)]
+        (with-redefs [settings/check-git-settings! (fn [_] (swap! check-git-call-count inc) true)]
+          (mt/with-temporary-setting-values [remote-sync-url    "file://my/repo.git"
+                                             remote-sync-token  nil
+                                             remote-sync-type   :read-only
+                                             remote-sync-branch "main"]
+            (let [response (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                                 {:remote-sync-url    "file://different.git"
+                                                  :remote-sync-type   :read-only
+                                                  :remote-sync-branch "feature-x"
+                                                  :remote-sync-token  nil})]
+              (is (= "Remote sync task in progress" (:message response))
+                  "endpoint should return the guard's error message"))
+            (is (= "file://my/repo.git" (settings/remote-sync-url))
+                "remote-sync-url must remain unchanged when the guard fires")
+            (is (= "main" (settings/remote-sync-branch))
+                "remote-sync-branch must remain unchanged when the guard fires")
+            (is (zero? @check-git-call-count)
+                "check-git-settings! must not be called when the guard fires")))))))
 
 ;;; ------------------------------------------- Settings Collections Tests -------------------------------------------
 
@@ -1104,3 +1131,94 @@
             (is (= 1 (count dirty-items)) "Transforms root should be returned even when setting is disabled")
             (is (= "Transforms" (:name (first dirty-items))))
             (is (= "delete" (:sync_status (first dirty-items))))))))))
+
+;; ---------- API-level guard sweep --------------------------------------------------------------
+;;
+;; Boundary tests verifying that every mutating remote-sync HTTP endpoint surfaces the guard's
+;; refusal as a 400 response with `Remote sync task in progress`. Companions to the operation-level
+;; tests; this catches the case where an endpoint is edited to bypass the guarded function.
+
+(deftest import-refuses-while-task-running-test
+  (testing "POST /api/ee/remote-sync/import returns 400 when a RemoteSyncTask is active"
+    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                            :initiated_by   (mt/user->id :rasta)
+                                            :started_at     (t/offset-date-time)
+                                            :progress       0.0}]
+      (let [mock-source     (test-helpers/create-mock-source)
+            tasks-before    (t2/count :model/RemoteSyncTask)]
+        (with-redefs [source/source-from-settings (constantly mock-source)]
+          (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                             remote-sync-token  "test-token"
+                                             remote-sync-branch "main"
+                                             remote-sync-type   :read-write]
+            (is (= "Remote sync task in progress"
+                   (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {})))
+            (is (= tasks-before (t2/count :model/RemoteSyncTask))
+                "no NEW RemoteSyncTask row should be created when the guard fires")))))))
+
+(deftest export-refuses-while-task-running-test
+  (testing "POST /api/ee/remote-sync/export returns 400 when a RemoteSyncTask is active"
+    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                            :initiated_by   (mt/user->id :rasta)
+                                            :started_at     (t/offset-date-time)
+                                            :progress       0.0}]
+      (let [mock-source  (test-helpers/create-mock-source)
+            tasks-before (t2/count :model/RemoteSyncTask)]
+        (with-redefs [source/source-from-settings (constantly mock-source)]
+          (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                             remote-sync-token  "test-token"
+                                             remote-sync-branch "main"
+                                             remote-sync-type   :read-write]
+            (is (= "Remote sync task in progress"
+                   (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export"
+                                         {:message "test export"})))
+            (is (= tasks-before (t2/count :model/RemoteSyncTask))
+                "no NEW RemoteSyncTask row should be created when the guard fires")))))))
+
+(deftest create-branch-refuses-while-task-running-test
+  (testing "POST /api/ee/remote-sync/create-branch returns 400 when a RemoteSyncTask is active"
+    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                            :initiated_by   (mt/user->id :rasta)
+                                            :started_at     (t/offset-date-time)
+                                            :progress       0.0}]
+      (let [mock-source      (test-helpers/create-mock-source)
+            initial-branches @(:branches-atom mock-source)]
+        (with-redefs [source/source-from-settings (constantly mock-source)]
+          (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                             remote-sync-token  "test-token"
+                                             remote-sync-branch "main"
+                                             remote-sync-type   :read-write]
+            ;; The endpoint wraps the guard's exception with "Failed to create branch: ..." in its catch.
+            (is (re-find #"Remote sync task in progress"
+                         (str (mt/user-http-request :crowberto :post 400 "ee/remote-sync/create-branch"
+                                                    {:name "feature-x"}))))
+            (is (= "main" (settings/remote-sync-branch))
+                "remote-sync-branch must remain unchanged when the guard fires")
+            (is (= initial-branches @(:branches-atom mock-source))
+                "no new branch should be pushed to the source when the guard fires")))))))
+
+(deftest stash-refuses-while-task-running-test
+  (testing "POST /api/ee/remote-sync/stash returns 400 when a RemoteSyncTask is active"
+    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                            :initiated_by   (mt/user->id :rasta)
+                                            :started_at     (t/offset-date-time)
+                                            :progress       0.0}]
+      (let [mock-source      (test-helpers/create-mock-source)
+            initial-branches @(:branches-atom mock-source)
+            tasks-before     (t2/count :model/RemoteSyncTask)]
+        (with-redefs [source/source-from-settings (constantly mock-source)]
+          (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                             remote-sync-token  "test-token"
+                                             remote-sync-branch "main"
+                                             remote-sync-type   :read-write]
+            ;; The endpoint wraps the guard's exception with "Failed to stash changes to branch: ..." in its catch.
+            (is (re-find #"Remote sync task in progress"
+                         (str (mt/user-http-request :crowberto :post 400 "ee/remote-sync/stash"
+                                                    {:new_branch "stash-branch"
+                                                     :message    "stash msg"}))))
+            (is (= "main" (settings/remote-sync-branch))
+                "remote-sync-branch must remain unchanged when the guard fires")
+            (is (= initial-branches @(:branches-atom mock-source))
+                "no new branch should be pushed to the source when the guard fires")
+            (is (= tasks-before (t2/count :model/RemoteSyncTask))
+                "no NEW RemoteSyncTask row should be created when the guard fires")))))))

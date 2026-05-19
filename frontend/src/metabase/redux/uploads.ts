@@ -1,7 +1,7 @@
 import { assocIn, dissocIn, updateIn } from "icepick";
 import { t } from "ttag";
 
-import { Api, cardApi } from "metabase/api";
+import { Api, cardApi, tableApi } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { entityCompatibleQuery } from "metabase/entities/utils";
 import type { Dispatch, State } from "metabase/redux/store";
@@ -12,7 +12,6 @@ import {
   createThunkAction,
   handleActions,
 } from "metabase/redux/utils";
-import { MetabaseApi } from "metabase/services";
 import type { CardId, CollectionId, TableId } from "metabase-types/api";
 
 export const UPLOAD_DATA_FILE_TYPES = [".csv", ".tsv"];
@@ -98,9 +97,17 @@ export const uploadFile = createThunkAction(
         const response = await (() => {
           switch (uploadMode) {
             case UploadMode.append:
-              return MetabaseApi.tableAppendCSV({ tableId, formData });
+              return entityCompatibleQuery(
+                { tableId, formData },
+                dispatch,
+                tableApi.endpoints.appendTableCsv,
+              );
             case UploadMode.replace:
-              return MetabaseApi.tableReplaceCSV({ tableId, formData });
+              return entityCompatibleQuery(
+                { tableId, formData },
+                dispatch,
+                tableApi.endpoints.replaceTableCsv,
+              );
             case UploadMode.create:
             default:
               return entityCompatibleQuery(

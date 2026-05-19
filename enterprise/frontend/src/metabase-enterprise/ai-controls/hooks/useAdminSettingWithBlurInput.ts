@@ -7,22 +7,24 @@ import type {
   EnterpriseSettings,
 } from "metabase-types/api";
 
-/**
- * Persists a setting on blur and on unmount instead of on every keystroke.
- * For text settings whose saves shouldn't be debounced (e.g. Metabot system
- * prompts, where each save changes LLM behavior and the audit log).
- *
- * Dirty check uses `===` - safe for primitive setting values only.
- */
-export function useAdminSettingWithBlurInput<K extends EnterpriseSettingKey>(
-  settingName: K,
-) {
-  const { value: settingValue, updateSetting } = useAdminSetting(settingName);
-  const [inputValue, setInputValue] =
-    useState<EnterpriseSettings[K]>(settingValue);
-  const lastSavedRef = useRef<EnterpriseSettings[K] | undefined>(undefined);
+type StringSettingKey = {
+  [K in EnterpriseSettingKey]: EnterpriseSettings[K] extends
+    | string
+    | null
+    | undefined
+    ? K
+    : never;
+}[EnterpriseSettingKey];
 
-  // `lastSavedRef.current === undefined` is the "not yet initialized" sentinel.
+/**
+ * Persists a text setting on blur and on unmount. Suited for settings whose
+ * saves shouldn't be debounced (e.g. Metabot system prompts).
+ */
+export function useAdminSettingWithBlurInput(settingName: StringSettingKey) {
+  const { value: settingValue, updateSetting } = useAdminSetting(settingName);
+  const [inputValue, setInputValue] = useState(settingValue);
+  const lastSavedRef = useRef(settingValue);
+
   useEffect(() => {
     if (lastSavedRef.current === undefined && settingValue !== undefined) {
       setInputValue(settingValue);
@@ -30,43 +32,31 @@ export function useAdminSettingWithBlurInput<K extends EnterpriseSettingKey>(
     }
   }, [settingValue]);
 
-  const isDirty = inputValue !== lastSavedRef.current;
+  const trimmedInput = (inputValue ?? "").trim();
+  const trimmedSaved = (lastSavedRef.current ?? "").trim();
+  const isDirty = trimmedInput !== trimmedSaved;
+
+  useBeforeUnload(isDirty);
 
   const save = useCallback(() => {
     if (!isDirty) {
       return;
     }
-    lastSavedRef.current = inputValue;
-    updateSetting({
-      key: settingName,
-      value: inputValue,
-    });
-  }, [isDirty, inputValue, settingName, updateSetting]);
+    lastSavedRef.current = trimmedInput;
+    updateSetting({ key: settingName, value: trimmedInput });
+  }, [isDirty, trimmedInput, settingName, updateSetting]);
 
-  // Mirror `save` so blur / unmount can read the latest closure without
-  // re-binding handlers on every keystroke.
+  // Track the latest `save` so the unmount cleanup can fire it. Browser back
+  // doesn't fire blur on the focused textarea, so the cleanup is what saves.
   const saveRef = useRef(save);
-  useEffect(() => {
-    saveRef.current = save;
-  }, [save]);
-
-  // Browsers won't wait for async saves during unload, so prompt the user.
-  useBeforeUnload(isDirty);
-
-  const handleBlur = useCallback(() => {
-    saveRef.current();
-  }, []);
+  saveRef.current = save;
 
   // Persist a pending edit on SPA navigation away.
-  useEffect(() => {
-    return () => {
-      saveRef.current();
-    };
-  }, []);
+  useEffect(() => () => saveRef.current(), []);
 
   return {
     inputValue,
     handleInputChange: setInputValue,
-    handleBlur,
+    handleBlur: save,
   };
 }

@@ -400,7 +400,7 @@ jobs:
           npm publish --tag "$TAG"
       # ⚠️ This step should only be executed on the latest stable (gold) release branch.
       # Only uncomment this when the new release branch becomes stable (gold).
-      # - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
+      # - name: Add `latest` tag to the latest release branch (e.g. `release-x.61.x`) deployment
       #   working-directory: sdk
       #   run: |
       #     npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
