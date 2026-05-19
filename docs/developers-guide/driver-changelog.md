@@ -35,6 +35,14 @@ title: Driver interface changelog
   `metabase.driver.sql-jdbc/set-role-statement`, which takes an additional `java.sql.Connection` parameter, so you use
   the connection to call `quote_ident()` or similar for identifier quoting/escaping purposes.
 
+- The `metabase.driver.commmon.parameters` and `metabase.driver.commmon.parameters.parse` namespaces, deprecated in
+  0.57.0, have been removed. Please use the Lib implementations instead. Relevant functions are aliased in
+  `metabase.lib.core`, for example `metabase.lib.core/parse-parameters`, `metabase.lib.core/parsed-parameter`, and
+  `metabase.lib.core/parsed-parameter?`.
+
+- `metabase.driver.sql.parameters.substitution/align-temporal-unit-with-param-type`, deprecated in 0.49.0, has been
+  removed.
+
 ## Metabase 0.60.0
 
 - Added `validate-impersonated-query` multimethod. This is used for drivers to perform validation on impersonated native queries.
@@ -88,6 +96,9 @@ title: Driver interface changelog
   `:bigquery-cloud-sdk` driver for example.
 
 ## Metabase 0.57.0
+
+- Added `metabase.driver/validate-db-details!` multimethod for rejecting connection details that are unsafe to
+  persist (independent of whether the database is currently reachable). The default implementation is a no-op.
 
 - `driver/field-reference-mlv2` is now deprecated, and is no longer used. Please remove your implementations.
 
