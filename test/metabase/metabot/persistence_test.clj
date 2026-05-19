@@ -668,52 +668,49 @@
                   (t2/select :model/MetabotUsedTable :message_id assistant-msg-id))))))))
 
 (defn- ->transform-python-parts
-  "Build a `write_transform_python` tool-input/output pair that declares
-  `table-id` as its single source table. Used to verify the end-to-end
-  transform extraction path."
+  "Build a `write_transform_python` tool-input/output pair that declares `table-id` as its single source table. 
+  Used to verify the end-to-end transform extraction path."
   [call-id table-id]
-  [{:type     :tool-input
-    :id       call-id
-    :function "write_transform_python"
+  [{:type      :tool-input
+    :id        call-id
+    :function  "write_transform_python"
     :arguments {:transform_name "T"
-                :edit_action    {:mode "replace" :new_content "def transform(): pass"}
-                :source_tables  [{:alias "t" :table_id table-id
-                                  :schema "PUBLIC" :database_id (mt/id)}]}}
+                :edit_action    {:mode        "replace"
+                                 :new_content "def transform(): pass"}
+                :source_tables  [{:alias       "t"
+                                  :table_id    table-id
+                                  :schema      "PUBLIC"
+                                  :database_id (mt/id)}]}}
    {:type   :tool-output
     :id     call-id
-    :result {:output "ok"
-             ;; Structured-output's `:transform` key is *dropped* by
-             ;; `strip-tool-output-bloat`. This test exercises the
-             ;; un-stripped extraction path — for python the relevant
-             ;; signal lives in tool-input `:arguments`, which the strip
-             ;; doesn't touch, but the test is here to make sure the
-             ;; transform branch runs against finalize's full parts vector.
+    :result {:output            "ok"
              :structured-output {:transform {:source {:type "python"}}
-                                 :thinking "x"
-                                 :message "Transform Python updated successfully."}}}])
+                                 :thinking  "x"
+                                 :message   "Transform Python updated successfully."}}}])
 
 (defn- ->transform-sql-parts
-  "Build a `write_transform_sql` tool-input/output pair whose suggested
-  transform's `[:source :query]` is a native query. The structured-output's
-  `:transform` key is dropped by `strip-tool-output-bloat`, so this pair
-  exercises finalize's pre-strip extraction path."
+  "Build a `write_transform_sql` tool-input/output pair whose suggested transform's `[:source :query]` is a native query.
+  The structured-output's `:transform` key is dropped by `strip-tool-output-bloat`, so this pair exercises finalize's 
+  pre-strip extraction path."
   [call-id db-id sql]
   (let [query (lib/native-query (mt/metadata-provider) sql)]
-    [{:type     :tool-input
-      :id       call-id
-      :function "write_transform_sql"
+    [{:type      :tool-input
+      :id        call-id
+      :function  "write_transform_sql"
       :arguments {:database_id db-id
                   :edit_action {:mode "replace" :new_content sql}}}
      {:type   :tool-output
       :id     call-id
       :result {:output "ok"
                :structured-output
-               {:transform {:id nil :name "T" :description ""
-                            :target {:type "table" :name "" :database db-id :schema nil}
-                            :source {:type "query"
-                                     :query query}}
-                :thinking "x"
-                :message "Transform SQL updated successfully."}}}]))
+               {:transform {:id          nil
+                            :name        "T"
+                            :description ""
+                            :target      {:type "table" :name "" :database db-id :schema nil}
+                            :source      {:type  "query"
+                                          :query query}}
+                :thinking  "x"
+                :message   "Transform SQL updated successfully."}}}]))
 
 (deftest finalize-records-used-tables-for-python-transform-test
   (testing "finalize-assistant-turn! records `metabot_used_table` rows for a
