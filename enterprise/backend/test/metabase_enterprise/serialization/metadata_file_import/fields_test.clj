@@ -1,4 +1,4 @@
-(ns metabase-enterprise.serialization.metadata-file-import.fields-test
+(ns ^:synchronous metabase-enterprise.serialization.metadata-file-import.fields-test
   "Tests for the per-depth field-merge functions: the three resolves
   (`resolve-target-table-ids-for-fields-in-staging!`,
   `fill-target-parent-ids-at-depth!`, `fill-target-fk-target-ids-at-depth!`,

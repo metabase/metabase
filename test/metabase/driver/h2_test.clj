@@ -47,6 +47,11 @@
                       ;; NB: because of test parallelism, this *will* affect other non-h2
                       ;; tests, but the check above in the test-driver function will
                       ;; prevent it from actually doing anything different in those tests.
+                      ;; The kondo ignore is the exemption: this `with-redefs` is
+                      ;; parallel-safe by construction (the redef target is a no-op
+                      ;; identity for h2, and the inner conditional in `test-driver`
+                      ;; prevents it from affecting non-h2 tests).
+                      #_{:clj-kondo/ignore [:metabase/validate-deftest]}
                       (with-redefs [mtd/-test-driver test-driver]
                         (f))))
 

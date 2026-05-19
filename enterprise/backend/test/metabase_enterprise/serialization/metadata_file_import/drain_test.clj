@@ -1,4 +1,4 @@
-(ns metabase-enterprise.serialization.metadata-file-import.drain-test
+(ns ^:synchronous metabase-enterprise.serialization.metadata-file-import.drain-test
   "Tests for the drain phase of the metadata file importer. Exercises
   `process-databases!` and the per-batch drain handlers directly against
   hand-built batches — bypassing the parser and orchestrator — and asserts

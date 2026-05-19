@@ -1,4 +1,4 @@
-(ns metabase-enterprise.serialization.metadata-file-import.processors-test
+(ns ^:synchronous metabase-enterprise.serialization.metadata-file-import.processors-test
   "Tests for the pure batch processors. Each processor is exercised against an
   appdb populated via `mt/with-temp` — no HTTP, no streaming parser. Tests
   verify the processor's behavior contract: input shape, return shape, batch

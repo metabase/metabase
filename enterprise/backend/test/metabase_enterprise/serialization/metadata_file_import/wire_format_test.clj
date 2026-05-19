@@ -1,4 +1,4 @@
-(ns metabase-enterprise.serialization.metadata-file-import.wire-format-test
+(ns ^:synchronous metabase-enterprise.serialization.metadata-file-import.wire-format-test
   "Contract test between the metadata export and import sides. The importer's
   Malli schemas describe what the importer expects on the wire; this test
   exercises the export pipeline against a small hand-built fixture and
