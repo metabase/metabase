@@ -133,13 +133,13 @@
   "Resolve the `--embedder` flag into `{:embedder :embedding-model-meta}` to splice over the
   default synonym embedder. `nil` when the flag wasn't passed.
 
-  `requiring-resolve` keeps DJL + ONNX Runtime out of the load graph for runs that don't opt in."
+  `requiring-resolve` keeps DJL + ONNX Runtime out of the load graph for runs that don't opt in.
+  The model meta is read from the jvm-embedder ns itself so both stay in sync if the model is
+  ever swapped."
   [embedder-name]
   (case embedder-name
     "jvm" {:embedder             ((requiring-resolve 'metabase-enterprise.data-complexity-score.jvm-embedder/jvm-embedder))
-           :embedding-model-meta {:provider         "in-process"
-                                  :model-name       "all-MiniLM-L6-v2"
-                                  :model-dimensions 384}}
+           :embedding-model-meta @(requiring-resolve 'metabase-enterprise.data-complexity-score.jvm-embedder/model-descriptor)}
     nil))
 
 (defn- run-appdb-mode!

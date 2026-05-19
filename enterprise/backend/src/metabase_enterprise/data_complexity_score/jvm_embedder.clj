@@ -22,6 +22,13 @@
 (def ^:private model-url
   "djl://ai.djl.huggingface.onnxruntime/sentence-transformers/all-MiniLM-L6-v2")
 
+(def model-descriptor
+  "Single source of truth for the in-process embedder's identity. The CLI reads this so its
+  `:embedding-model-meta` field can't drift from whatever model the JVM is actually loading."
+  {:provider         "in-process"
+   :model-name       "all-MiniLM-L6-v2"
+   :model-dimensions 384})
+
 (def ^:private ^Class floats-class
   ;; `float[].class` isn't directly expressible in Clojure; resolve once.
   (Class/forName "[F"))
@@ -35,6 +42,12 @@
                      (.build))]
     (.loadModel criteria)))
 
+;; `defonce` + `delay` permanently caches an exception thrown by `build-model` (e.g. a
+;; transient HuggingFace 5xx or a network blip on first use). Once that happens, every later
+;; `@model` in the same JVM re-throws the same error — recovery requires a JVM restart. CLI
+;; runs are unaffected since the process exits, but a REPL/long-running JVM session is stuck.
+;; The model download is also the airgap follow-up referenced in the ns docstring; both are
+;; on the PoC follow-up list.
 (defonce ^:private model
   (delay (build-model)))
 
@@ -42,7 +55,7 @@
   "Embed `texts` (a seq of strings) → vector of `float[384]` arrays, in input order."
   [texts]
   (with-open [predictor ^Predictor (.newPredictor ^ZooModel @model)]
-    (vec (.batchPredict predictor (ArrayList. ^java.util.Collection (vec texts))))))
+    (vec (.batchPredict predictor (ArrayList. ^java.util.Collection texts)))))
 
 (defn jvm-embedder
   "Build an in-JVM embedder for the synonym axis. Output map is keyed by normalized name with
