@@ -7,7 +7,6 @@
    [metabase-enterprise.data-complexity-score.appdb-source :as appdb-source]
    [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
-   [metabase.test.initialize :as test.initialize]
    [metabase.util.json :as json]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]
@@ -17,16 +16,13 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fn [thunk]
-                      ;; The raw-JDBC INSERT bypasses Toucan, so the test framework's lazy
-                      ;; DB-init (normally triggered by the first `t2/*` call) doesn't fire on
-                      ;; its own. Force it once so the appdb has its schema before the writer
-                      ;; runs.
-                      (test.initialize/initialize-if-needed! :db)
-                      (thunk)))
-
 (deftest ^:sequential record-score-roundtrips-json-via-raw-jdbc-test
   (testing "record-score! inserts a row whose score_data round-trips back through raw SQL as the expected JSON"
+    ;; The raw-JDBC INSERT bypasses Toucan, so the test framework's lazy DB-init (normally
+    ;; triggered by the first `t2/*` call) doesn't fire on its own. Force it inline so the
+    ;; appdb has its schema before the writer runs. Inline rather than a `:once` fixture
+    ;; because the Kondo `validate-deftest` rule forbids destructive ops in fixtures.
+    (mt/initialize-if-needed! :db)
     (let [fp     (str "appdb-source-test/fp-" (random-uuid))
           source "appdb-cli-test"
           score  {:library  {:total 1 :components {:entity-count {:measurement 1.0 :score 10}}}
@@ -55,7 +51,7 @@
           ;; Append-only table — clean up manually so the test doesn't accumulate rows.
           (t2/delete! :model/DataComplexityScore :fingerprint fp))))))
 
-(defn- ^SQLException sql-error-with-state [state]
+(defn- sql-error-with-state ^SQLException [^String state]
   (SQLException. (str "boom (" state ")") state))
 
 (deftest with-missing-relation-fallback-test
