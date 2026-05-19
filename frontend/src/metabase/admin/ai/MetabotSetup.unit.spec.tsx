@@ -10,6 +10,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Api } from "metabase/api";
 import { reinitialize } from "metabase/plugins";
 import { defer } from "metabase/utils/promise";
 import type {
@@ -717,6 +718,33 @@ describe("MetabotSetup", () => {
     await openModelSelector();
 
     expect(await screen.findByText("Sonnet")).toBeInTheDocument();
+  });
+
+  it("BOT-1429: keeps the Model select enabled while session-properties refetches in the background", async () => {
+    const { store } = await setup();
+    await screen.findByLabelText("Model");
+    expect(screen.getByLabelText("Model")).toBeEnabled();
+
+    const sessionPropertiesDeferred = defer<unknown>();
+    fetchMock.removeRoute("get-session-properties");
+    fetchMock.get(
+      "path:/api/session/properties",
+      () => sessionPropertiesDeferred.promise,
+    );
+
+    act(() => {
+      store.dispatch(Api.util.invalidateTags(["session-properties"]));
+    });
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/session/properties").length,
+      ).toBeGreaterThan(1);
+    });
+
+    expect(screen.getByLabelText("Model")).toBeEnabled();
+
+    sessionPropertiesDeferred.resolve({});
   });
 
   it("does not show the API key input when no provider is selected", async () => {
