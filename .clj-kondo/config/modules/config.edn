@@ -806,8 +806,6 @@
   {:team "Querying Platform"
    :api  #{metabase.driver
            metabase.driver.common
-           metabase.driver.common.parameters
-           metabase.driver.common.parameters.parse
            metabase.driver.connection
            metabase.driver.ddl.interface
            metabase.driver.h2
@@ -1685,7 +1683,6 @@
                     :model/NativeQuerySnippet
                     :model/Notification
                     :model/Revision
-                    :model/Table
                     :model/User}}
 
   queries-rest
@@ -2666,6 +2663,7 @@
            api-keys
            app-db
            driver
+           lib
            permissions
            premium-features
            settings
@@ -2884,6 +2882,7 @@
            audit-app
            collections
            config
+           driver
            metabot
            models
            premium-features

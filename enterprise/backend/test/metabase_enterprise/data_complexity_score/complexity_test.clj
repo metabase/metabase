@@ -581,12 +581,28 @@
         (is (fn? embedder)
             "synonym-source returns a fresh provider-embedder for the descriptor")))))
 
+(deftest ^:sequential provider-embedder-suppresses-token-tracking-test
+  (testing "provider-embedder always passes :record-tokens? false to get-embeddings-batch"
+    ;; Complexity scoring isn't user-driven search traffic; the score itself is the analytics
+    ;; signal, so embedding calls here shouldn't write to `semantic_search_token_tracking`
+    ;; — regardless of caller (CLI, Quartz cron, API).
+    (let [captured (atom nil)
+          embedder (embedders/provider-embedder {:provider "ai-service" :model-name "fake" :model-dimensions 4})]
+      (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch
+                                  (fn [_model texts & {:as opts}]
+                                    (reset! captured opts)
+                                    (repeat (count texts) [1.0]))]
+        (embedder [{:id 1 :name "orders" :kind :table}])
+        (is (false? (:record-tokens? @captured)))))))
+
 (deftest ^:sequential provider-embedder-splits-names-before-calling-provider-test
   (testing "provider-embedder splits names on _, -, ., and camelCase before sending to get-embeddings-batch"
     (let [captured (atom nil)
           embedder (embedders/provider-embedder {:provider "ai-service" :model-name "fake" :model-dimensions 4})]
       (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch
-                                  (fn [_model texts] (reset! captured (vec texts)) (repeat (count texts) [1.0]))]
+                                  (fn [_model texts & _opts]
+                                    (reset! captured (vec texts))
+                                    (repeat (count texts) [1.0]))]
         (embedder
          [{:id 1 :name "monthly_active_users" :kind :table}
           {:id 2 :name "dim-date"             :kind :table}
@@ -602,7 +618,7 @@
   (testing "provider errors bubble up so score-synonym-pairs can report nil measurements + :error"
     (let [embedder (embedders/provider-embedder {:provider "ai-service" :model-name "fake" :model-dimensions 4})]
       (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch
-                                  (fn [_ _] (throw (ex-info "ai-service down" {})))]
+                                  (fn [& _] (throw (ex-info "ai-service down" {})))]
         (is (thrown-with-msg? Throwable #"ai-service down"
                               (embedder [{:id 1 :name "orders" :kind :table}])))))))
 
@@ -610,7 +626,7 @@
   (testing "vectors come back keyed by the normalized name; nil slots are dropped"
     (let [embedder (embedders/provider-embedder {:provider "ai-service" :model-name "fake" :model-dimensions 2})]
       (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch
-                                  (fn [_ texts]
+                                  (fn [_ texts & _opts]
                                     (for [t texts] (when-not (= t "drop me") [1.0 0.0])))]
         (let [result (embedder
                       [{:id 1 :name "keep me"  :kind :table}
@@ -778,7 +794,7 @@
 (deftest ^:sequential emit-snowplow-includes-embedding-model-and-text-variant-meta-test
   (testing "every event's parameters carry the nested embedding_model + text_variant from synonym-source"
     (snowplow-test/with-fake-snowplow-collector
-      (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch (fn [_ _] [])
+      (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch (fn [& _] [])
                                   complexity/enumerate-catalogs
                                   (constantly {:library  [(entity :name "orders")]
                                                :universe [(entity :name "orders")]
@@ -834,35 +850,24 @@
                     (messages))
               "a warning about the publish failure was logged"))))))
 
-(deftest ^:sequential local-info-log-is-emitted-even-when-snowplow-fails-test
-  (testing "the 'Semantic complexity score' info log fires independently of Snowplow emission"
-    ;; Guards two regressions together: local logging being removed, and local logging being
-    ;; gated on successful telemetry (so a broken collector would silence the operator-visible log).
-    (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
-                                (constantly {:library  [(entity :name "orders")]
-                                             :universe [(entity :name "orders")]
-                                             :metabot  []})
-                                analytics/track-event!       (fn [& _] (throw (RuntimeException. "snowplow down")))]
-      (mt/with-log-messages-for-level [messages [metabase-enterprise.data-complexity-score.complexity :info]]
-        (complexity/complexity-scores :embedder nil)
-        (is (some #(and (= :info (:level %))
-                        (re-find #"Semantic complexity score" (:message %)))
-                  (messages))
-            "the score was logged locally at :info even though Snowplow emission threw")))))
-
-(deftest ^:sequential scheduled-task-logs-score-test
-  (testing "the scheduled task body runs complexity-scores so operators see a score line in the logs"
-    (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
-                                (constantly {:library  [(entity :name "orders")]
-                                             :universe [(entity :name "orders")]
-                                             :metabot  []})]
-      (mt/with-temporary-setting-values [data-complexity-scoring-enabled true]
-        (mt/with-log-messages-for-level [messages [metabase-enterprise.data-complexity-score.complexity :info]]
-          (#'task.complexity-score/run-scoring! "test-fp")
-          (is (some #(and (= :info (:level %))
-                          (re-find #"Semantic complexity score" (:message %)))
-                    (messages))
-              "the scheduled task produced the expected info log"))))))
+(deftest ^:sequential complexity-scores-emit-snowplow-false-skips-publish-test
+  (testing ":emit-snowplow? false bypasses Snowplow entirely and stamps ::snowplow-published? false"
+    ;; Pins the CLI/appdb path: the standalone scorer disables telemetry, so we must not call
+    ;; into the analytics tracker at all (catching failures upstream isn't enough — the cost is
+    ;; the syscall + the misleading WARN). The accompanying metadata flag lets callers tell
+    ;; intentional skip apart from a successful publish, so they can avoid advancing fingerprints
+    ;; or otherwise treating the run as observed.
+    (let [tracked? (atom false)]
+      (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
+                                  (constantly {:library  [(entity :name "orders")]
+                                               :universe [(entity :name "orders")]
+                                               :metabot  []})
+                                  analytics/track-event! (fn [& _] (reset! tracked? true))]
+        (let [result (complexity/complexity-scores :embedder nil :emit-snowplow? false)]
+          (is (false? @tracked?)
+              "analytics/track-event! must not be called when :emit-snowplow? false")
+          (is (false? (::complexity/snowplow-published? (meta result)))
+              "result metadata reflects that nothing was published"))))))
 
 (deftest ^:sequential complexity-score-library-hermetic-test
   (testing "library score is computed over exactly the Library collection tree — known inputs produce known scores"
@@ -1045,6 +1050,38 @@
             (#'task.complexity-score/run-scoring! "fresh-fp")
             (is (= "stale" (settings/data-complexity-scoring-last-fingerprint))
                 "fingerprint preserved — next boot / cron will retry the emission")))))))
+
+(deftest ^:sequential scoring-gate-matrix-test
+  (testing "scoring runs iff :data-complexity-score premium feature OR deprecated setting is on"
+    (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
+      (doseq [[label premium-features setting-value should-run?]
+              [["both gates on → run"           #{:data-complexity-score} true  true]
+               ["feature on, setting off → run" #{:data-complexity-score} false true]
+               ["feature off, setting on → run" #{}                       true  true]
+               ["both gates off → skip"         #{}                       false false]]]
+        (testing label
+          (mt/with-premium-features premium-features
+            (mt/with-temporary-setting-values [data-complexity-scoring-enabled         setting-value
+                                               data-complexity-scoring-last-fingerprint "stale"
+                                               data-complexity-scoring-claim            ""]
+              (testing "run-scoring! direct path"
+                (let [scoring-ran? (atom false)]
+                  (mt/with-dynamic-fn-redefs [complexity/complexity-scores
+                                              (fn [& _]
+                                                (reset! scoring-ran? true)
+                                                (stub-result true))]
+                    (#'task.complexity-score/run-scoring! "gate-matrix-test-fp")
+                    (is (= should-run? @scoring-ran?)
+                        (format "run-scoring! should %sinvoke complexity-scores for [%s]"
+                                (if should-run? "" "NOT ") label)))))
+              (testing "with-scoring-claim! cron/boot path"
+                (let [inner-ran? (atom false)]
+                  (#'task.complexity-score/with-scoring-claim!
+                   {}
+                   (fn [_fp] (reset! inner-ran? true)))
+                  (is (= should-run? @inner-ran?)
+                      (format "with-scoring-claim! should %sacquire a claim for [%s]"
+                              (if should-run? "" "NOT ") label)))))))))))
 
 (deftest ^:sequential run-scoring-keeps-fingerprint-stale-when-persistence-fails-test
   (testing "persistence is part of a successful run now — if the cache write fails we must retry"

@@ -3,8 +3,8 @@ import { withRouter } from "react-router";
 import { t } from "ttag";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
+import { useSetArchive } from "metabase/archive/hooks";
 import { ArchiveModal } from "metabase/common/components/ArchiveModal";
-import { useSetArchive } from "metabase/common/hooks";
 import * as Urls from "metabase/urls";
 
 function ArchiveCollectionModalInner({ collection, onClose }) {

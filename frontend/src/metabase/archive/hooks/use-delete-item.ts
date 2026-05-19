@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { match } from "ts-pattern";
+import { t } from "ttag";
 
 import {
   useDeleteCardMutation,
@@ -7,6 +8,8 @@ import {
   useDeleteDashboardMutation,
   useDeleteDocumentMutation,
 } from "metabase/api";
+import { TRASHABLE_MODELS } from "metabase/archive/utils";
+import { useToast } from "metabase/common/hooks/use-toast";
 import type {
   CardId,
   DashboardId,
@@ -30,31 +33,27 @@ export type DeletableItem =
 
 export type DeletableModel = DeletableItem["model"];
 
-const DELETABLE_MODELS = new Set<string>([
-  "card",
-  "dataset",
-  "metric",
-  "dashboard",
-  "collection",
-  "document",
-]);
+export function isDeletable(item: { model: string }): item is DeletableItem {
+  return TRASHABLE_MODELS.has(item.model);
+}
 
 export function canDelete(item: {
   model: string;
   can_delete?: boolean;
 }): item is DeletableItem {
-  return item.can_delete === true && DELETABLE_MODELS.has(item.model);
+  return item.can_delete === true && isDeletable(item);
 }
 
 export function useDeleteItem() {
+  const [sendToast] = useToast();
   const [deleteCard] = useDeleteCardMutation();
   const [deleteDashboard] = useDeleteDashboardMutation();
   const [deleteCollection] = useDeleteCollectionMutation();
   const [deleteDocument] = useDeleteDocumentMutation();
 
   return useCallback(
-    (item: DeletableItem) =>
-      match(item)
+    async (item: DeletableItem) => {
+      await match(item)
         .with(
           { model: "card" },
           { model: "dataset" },
@@ -68,7 +67,10 @@ export function useDeleteItem() {
         .with({ model: "document" }, ({ id }) =>
           deleteDocument({ id }).unwrap(),
         )
-        .exhaustive(),
-    [deleteCard, deleteDashboard, deleteCollection, deleteDocument],
+        .exhaustive();
+
+      sendToast({ message: t`This item has been permanently deleted.` });
+    },
+    [sendToast, deleteCard, deleteDashboard, deleteCollection, deleteDocument],
   );
 }
