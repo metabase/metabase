@@ -53,10 +53,9 @@
   (get-in @active-handlers [channel :metadata]))
 
 (defn invoke-listener!
-  "Common listener invocation skeleton for both queues and topics.
+  "Common listener invocation skeleton.
   Looks up listener via `listener-fn`, times execution, logs errors,
-  and records metrics. Calls `on-success` / `on-error` for system-specific
-  side effects (e.g. queue ACK/NACK)."
+  and records metrics. Calls `on-success` / `on-error` for queue ACK/NACK."
   [{:keys [channel listener-fn invoke-fn on-success on-error]}]
   (let [transport (namespace channel)
         listener    (listener-fn)
@@ -113,8 +112,7 @@
 
 (defn deliver!
   "Called by backends when messages are ready for delivery.
-   Passes messages directly to handle! for processing.
-   `batch-id` and `backend` are optional — queues pass them for ACK/NACK, topics pass nil."
+   Passes messages directly to handle! for processing."
   [channel messages batch-id backend]
   (handle! channel (if batch-id {batch-id backend} {}) messages))
 
@@ -177,16 +175,14 @@
     (reset! worker-pool nil)))
 
 (defn start-transports
-  "Starts the queue/topic backends."
+  "Starts the queue backend."
   []
-  (transport/start! :queue)
-  (transport/start! :topic))
+  (transport/start! :queue))
 
 (defn shutdown-transports
-  "Shuts down all queue/topic backends."
+  "Shuts down the queue backend."
   []
-  (transport/shutdown! :queue)
-  (transport/shutdown! :topic))
+  (transport/shutdown! :queue))
 
 (defn shutdown!
   "Shuts down all mq infrastructure: publish buffer, worker pool, backends, and listener state."

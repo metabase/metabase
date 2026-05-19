@@ -1,5 +1,5 @@
 (ns metabase.mq.backend-parity-test
-  "Contract-level parity between the queue/topic backends.
+  "Contract-level parity between the queue backends.
 
   Each scenario is written once and run against every backend kind so that
   semantic drift between the memory and appdb implementations is caught at
@@ -47,8 +47,7 @@
   parity scenario does not pollute later tests."
   [channel]
   (case (namespace channel)
-    "queue" (t2/delete! :queue_message_batch :queue_name (name channel))
-    "topic" (t2/delete! :topic_message_batch :topic_name (name channel))))
+    "queue" (t2/delete! :queue_message_batch :queue_name (name channel))))
 
 (defn- unique-channel [transport-ns suffix]
   (keyword transport-ns (str suffix "-" (random-uuid))))
@@ -91,45 +90,6 @@
        (is (every? pos? (vals (frequencies @received)))
            "No spurious messages appeared in @received")
        (mq/unlisten! queue-name)))))
-
-(deftest topic-delivers-published-messages-test
-  (run-parity!
-   :topic/parity-delivery
-   (fn [ctx topic-name]
-     (let [received (atom [])]
-       (mq.tu/listen! topic-name {} #(swap! received conj %))
-       (mq/with-topic topic-name [t]
-         (mq/put t "x")
-         (mq/put t "y"))
-       (mq.tu/eventually! ctx
-                          #(= #{"x" "y"} (set @received))
-                          scenario-timeout-ms)
-       (is (= #{"x" "y"} (set @received))
-           "Every unique topic message was delivered at least once")
-       (mq/unlisten! topic-name)))))
-
-(deftest topic-error-isolation-test
-  (run-parity!
-   :topic/parity-errors
-   (fn [ctx topic-name]
-     (let [received (atom [])]
-       (mq.tu/listen! topic-name {}
-                      (fn [msg]
-                        (when (= "bad" msg)
-                          (throw (ex-info "handler error" {})))
-                        (swap! received conj msg)))
-       (mq/with-topic topic-name [t]
-         (mq/put t "good-1")
-         (mq/put t "bad")
-         (mq/put t "good-2"))
-       (mq.tu/eventually! ctx
-                          #(= #{"good-1" "good-2"} (set @received))
-                          scenario-timeout-ms)
-       (is (= #{"good-1" "good-2"} (set @received))
-           "Good messages delivered; bad message isolated from neighbours")
-       (is (not (contains? (set @received) "bad"))
-           "The throwing message never ends up in @received")
-       (mq/unlisten! topic-name)))))
 
 (deftest queue-retries-failed-batch-test
   (run-parity!

@@ -21,7 +21,7 @@
                   publish-buffer/*publish-buffer*        (atom {})
                   publish-buffer/*publish-buffer-ms*     60000
                   publish-buffer/*publish-buffer-max-ms* 0]
-          (let [handle (mq.init/start! :queue.backend/appdb :topic.backend/appdb)]
+          (let [handle (mq.init/start! :queue.backend/appdb)]
             (mq/with-queue queue-name [q]
               (mq/put q "drain-me"))
             (is (= ["drain-me"]
@@ -37,28 +37,3 @@
                 "The buffered message should have been persisted on shutdown")))
         (finally
           (t2/delete! :queue_message_batch :queue_name (name queue-name)))))))
-
-(deftest topic-shutdown-drains-publish-buffer-test
-  (testing "stop! drains the publish buffer for topics so buffered messages land in the appdb table"
-    (let [topic-name (keyword "topic" (str "shutdown-drain-" (gensym)))]
-      (try
-        (binding [listener/*listeners*                   (atom {})
-                  publish-buffer/*publish-buffer*        (atom {})
-                  publish-buffer/*publish-buffer-ms*     60000
-                  publish-buffer/*publish-buffer-max-ms* 0]
-          (let [handle (mq.init/start! :queue.backend/appdb :topic.backend/appdb)]
-            (mq/with-topic topic-name [t]
-              (mq/put t "drain-me"))
-            (is (= ["drain-me"]
-                   (get-in @publish-buffer/*publish-buffer* [topic-name :messages]))
-                "Message should be sitting in the publish buffer before stop!")
-            (is (empty? (t2/select :topic_message_batch :topic_name (name topic-name)))
-                "Buffer drain hasn't happened yet — table should be empty")
-            (mq.init/stop! handle))
-          (let [rows (t2/select :topic_message_batch :topic_name (name topic-name))]
-            (is (= 1 (count rows))
-                "Exactly one row should exist after the graceful shutdown drain")
-            (is (= ["drain-me"] (json/decode (:messages (first rows))))
-                "The buffered message should have been persisted on shutdown")))
-        (finally
-          (t2/delete! :topic_message_batch :topic_name (name topic-name)))))))

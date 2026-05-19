@@ -1,7 +1,7 @@
 # metabase.mq
 
-A persistent message queue and pub/sub topic system for Metabase. Supports both durable (database-backed) and in-memory
-transports with a unified API.
+A persistent message queue for Metabase. Supports both durable (database-backed) and in-memory transports with a
+unified API.
 
 ## Quick Start
 
@@ -15,17 +15,13 @@ transports with a unified API.
 (t2/with-transaction [_]
   (mq/with-queue :queue/my-task [q]
     (mq/put q {:key "value"})))
-
-;; Publish to a topic (fan-out, at-most-once)
-(mq/with-topic :topic/settings-changed [t]
-  (mq/put t {:setting "site-name"}))
 ```
 
 ## Publishing Semantics
 
-`with-queue` and `with-topic` are designed to read like a direct publish — you write a message and move on. Under the hood, delivery is intentionally deferred through several layers:
+`with-queue` is designed to read like a direct publish — you write a message and move on. Under the hood, delivery is intentionally deferred through several layers:
 
-1. **Macro body must succeed.** Messages are only enqueued if the body of `with-queue` / `with-topic` returns normally. An exception discards them.
+1. **Macro body must succeed.** Messages are only enqueued if the body of `with-queue` returns normally. An exception discards them.
 
 2. **Surrounding transaction must commit.** If the call is inside a `t2/with-transaction` block (directly or transitively), messages are held until the transaction commits. A rollback discards them. This means a message will never be delivered for a database change that didn't happen.
 
@@ -33,21 +29,21 @@ transports with a unified API.
 
 4. **Deduplication.** Before dispatch, duplicate messages in the same batch are removed.
 
-## Queues vs Topics
+## Queue semantics
 
-|               | Queue                                       | Topic                             |
-|---------------|---------------------------------------------|-----------------------------------|
-| Delivery      | At-least-once per listener                  | At-least-once per active node     |
-| Retry         | Yes — up to `queue-max-retries` (default 5) | No                                |
-| Backing table | `queue_message_batch`                       | `topic_message_batch`             |
-| Backlog       | Persists until processed or exhausted       | Cleaned up after 1 hour           |
-| Use when      | Work must complete reliably                 | All nodes must react to something |
+|               | Queue                                       |
+|---------------|---------------------------------------------|
+| Delivery      | At-least-once per listener                  |
+| Retry         | Yes — up to `queue-max-retries` (default 5) |
+| Backing table | `queue_message_batch`                       |
+| Backlog       | Persists until processed or exhausted       |
+| Use when      | Work must complete reliably                 |
 
 ## Architecture
 
 ```
 User Code
-  with-queue / with-topic
+  with-queue
         │
         ▼
 Publish Pipeline (mq.publish)
@@ -56,11 +52,10 @@ Publish Pipeline (mq.publish)
         ▼
 Transport Dispatch (mq.transport)   ← multimethod on channel namespace
   :queue → queue backends
-  :topic → topic backends
         │
         ▼
 Backends
-  appdb  — FOR UPDATE SKIP LOCKED (queue), offset polling (topic)
+  appdb  — FOR UPDATE SKIP LOCKED
   memory — LinkedBlockingQueue per channel
         │
         ▼

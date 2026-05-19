@@ -655,9 +655,6 @@
    (prometheus/counter :metabase-mq/appdb-queue-poll-results
                        {:description "Queue poll results by outcome."
                         :labels [:result]})
-   (prometheus/gauge :metabase-mq/appdb-topic-subscriber-lag
-                     {:description "Undelivered messages between subscriber offset and latest."
-                      :labels [:channel]})
    (prometheus/counter :metabase-mq/batch-stale-recoveries
                        {:description "Batches recovered from stale processing state."
                         :labels [:transport :channel]})
@@ -690,7 +687,7 @@
                        {:description "Individual messages delivered to handlers."
                         :labels [:transport :channel]})
    (prometheus/counter :metabase-mq/handler-errors
-                       {:description "Errors thrown by queue or topic message handlers."
+                       {:description "Errors thrown by queue message handlers."
                         :labels [:transport :channel]})
 
    ;; release dashboard metrics

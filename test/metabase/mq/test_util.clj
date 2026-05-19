@@ -21,10 +21,7 @@
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.appdb :as q.appdb]
    [metabase.mq.queue.backend :as q.backend]
-   [metabase.mq.queue.memory :as q.memory]
-   [metabase.mq.topic.appdb :as topic.appdb]
-   [metabase.mq.topic.backend :as topic.backend]
-   [metabase.mq.topic.memory :as topic.memory])
+   [metabase.mq.queue.memory :as q.memory])
   (:import
    (java.util.concurrent LinkedBlockingQueue)))
 
@@ -160,11 +157,9 @@
     :memory (let [layer (memory/make-layer)]
               {:backend  :memory
                :layer    layer
-               :queue-be (q.memory/make-backend layer)
-               :topic-be (topic.memory/make-backend layer)})
+               :queue-be (q.memory/make-backend layer)})
     :appdb  {:backend  :appdb
-             :queue-be (q.appdb/make-backend)
-             :topic-be (topic.appdb/make-backend)}))
+             :queue-be (q.appdb/make-backend)}))
 
 (defn- double-delivery-queue-backend!
   "Wraps an inner `QueueBackend` so that `publish!` calls the inner backend's
@@ -182,22 +177,6 @@
       (q.backend/batch-failed! inner queue-name batch-id))
     (start! [_] (q.backend/start! inner))
     (shutdown! [_] (q.backend/shutdown! inner))))
-
-(defn- double-delivery-topic-backend!
-  "Wraps an inner `TopicBackend` so that `publish!` calls the inner backend's
-  `publish!` twice with the same payload. Used by `do-with-test-mq!` when
-  `:duplicate-delivery?` is set."
-  [inner]
-  (reify topic.backend/TopicBackend
-    (publish! [_ topic-name messages]
-      (topic.backend/publish! inner topic-name messages)
-      (topic.backend/publish! inner topic-name messages))
-    (start-receiving! [_ topic-name]
-      (topic.backend/start-receiving! inner topic-name))
-    (unsubscribe! [_ topic-name]
-      (topic.backend/unsubscribe! inner topic-name))
-    (start-handling! [_] (topic.backend/start-handling! inner))
-    (shutdown! [_] (topic.backend/shutdown! inner))))
 
 (defn do-with-test-mq!
   "Function form of [[with-test-mq]]. `opts` may include:
@@ -220,10 +199,8 @@
        (let [backends (make-fixture-backends backend)
              queue-be (cond-> (:queue-be backends)
                         duplicate-delivery? double-delivery-queue-backend!)
-             topic-be (cond-> (:topic-be backends)
-                        duplicate-delivery? double-delivery-topic-backend!)
-             handle   (mq.init/start! queue-be topic-be)
-             ctx      (assoc backends :queue-be queue-be :topic-be topic-be :handle handle)]
+             handle   (mq.init/start! queue-be)
+             ctx      (assoc backends :queue-be queue-be :handle handle)]
          (try
            (merge-listeners! listeners)
            (let [result (f ctx)]
@@ -279,18 +256,6 @@
         (is (= ["hello" "hello"] @received)
             "Single published message is delivered to the listener twice")
         (mq/unlisten! :queue/chaos-smoke)))))
-
-(deftest duplicate-delivery-doubles-topic-messages-test
-  (testing "With :duplicate-delivery? true, the topic backend delivers each message twice"
-    (with-test-mq [ctx {:duplicate-delivery? true}]
-      (let [received (atom [])]
-        (listen! :topic/chaos-smoke {} #(swap! received conj %))
-        (mq/with-topic :topic/chaos-smoke [t]
-          (mq/put t "ping"))
-        (eventually! ctx #(= 2 (count @received)) 5000)
-        (is (= ["ping" "ping"] @received)
-            "Single published topic message is delivered to the subscriber twice")
-        (mq/unlisten! :topic/chaos-smoke)))))
 
 (deftest duplicate-delivery-off-by-default-test
   (testing "The default fixture delivers each message exactly once"

@@ -2,14 +2,12 @@
   "Listener registry: registration, lookup, and the `def-listener!` macro."
   (:require
    [metabase.mq.queue.transport-impl :as q.transport-impl]
-   [metabase.mq.topic.transport-impl :as topic.transport-impl]
    [metabase.mq.transport :as transport]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]))
 
 (comment
-  q.transport-impl/keep-me
-  topic.transport-impl/keep-me)
+  q.transport-impl/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -26,11 +24,6 @@
   "Returns the seq of queue channel names currently registered in `*listeners*`."
   []
   (filter #(= "queue" (namespace %)) (keys @*listeners*)))
-
-(defn topic-names
-  "Returns the seq of topic channel names currently registered in `*listeners*`."
-  []
-  (filter #(= "topic" (namespace %)) (keys @*listeners*)))
 
 (defn get-listener
   "Returns the listener config map for `channel`, or nil if not registered."
@@ -52,7 +45,7 @@
 (defn batch-listen!
   "Low-level listener registration. Prefer [[def-listener!]] for production code — the macro
    is the supported way to wire a handler so it gets activated through `register-listeners!`
-   at the correct point in startup, and discovered early by `mq/start-receiving!`.
+   at the correct point in startup.
 
    Use this directly only when you need a runtime-dynamic registration (e.g. plugins, ad-hoc
    tests). The listener is invoked with a vec of messages, sized up to `:max-batch-messages`
@@ -69,8 +62,8 @@
   (swap! *listeners* dissoc channel))
 
 (mr/def ::channel
-  [:and :keyword [:fn {:error/message "Channel must be namespaced to 'queue' or 'topic'"}
-                  #(#{"queue" "topic"} (namespace %))]])
+  [:and :keyword [:fn {:error/message "Channel must be namespaced to 'queue'"}
+                  #(= "queue" (namespace %))]])
 
 (mr/def ::listen-opts
   [:map [:exclusive {:optional true} :boolean]])
@@ -81,21 +74,17 @@
   identity)
 
 (defmacro def-listener!
-  "Declares a listener for a queue or topic.
+  "Declares a listener for a queue.
 
    The listener body receives a vec of messages; for per-message handling write
-   `(doseq [m messages] ...)` inside the body. The keyword's namespace decides the transport:
-   `:queue/*` for at-least-once queues, `:topic/*` for fire-and-forget pub/sub.
+   `(doseq [m messages] ...)` inside the body. Queue channels are namespaced `:queue/*`.
 
    Optional config keys:
    - `:max-batch-messages` — slice size (defaults to [[default-max-batch-messages]]).
-   - `:exclusive` (queues only) — when true, at most one batch is in-flight cluster-wide.
+   - `:exclusive` — when true, at most one batch is in-flight cluster-wide.
    - `:dedup-fn` — function that filters duplicates from a batch before delivery.
 
    Examples:
-
-       (mq/def-listener! :topic/settings-cache-invalidated [messages]
-         (doseq [_ messages] (restore-cache!)))
 
        (mq/def-listener! :queue/simple-task {:exclusive true} [messages]
          (doseq [msg messages] (process msg)))

@@ -1,5 +1,5 @@
 (ns dev.mq-perf
-  "Performance benchmarks for the appdb-backed MQ system (queues and topics).
+  "Performance benchmarks for the appdb-backed MQ queue system.
 
   Measures publishing throughput, end-to-end latency, and sustained throughput
   under different load levels. Benchmarks exercise the full realistic pipeline:
@@ -9,20 +9,14 @@
   Supports multi-node testing: run multiple JVM instances against the same DB.
 
   Example usage:
-    ;; Single-node: start MQ and run all benchmarks
+    ;; Start MQ and run all benchmarks
     (start-mq!)
     (run-all-benchmarks!)
 
-    ;; Multi-node coordination: start multiple JVMs, each calls:
-    (start-mq!)
-    (run-all-benchmarks-coordinated!)
-    ;; Then from any node (or a separate REPL), publish the go signal:
-    (signal-go!)
-
     ;; Individual benchmarks
     (bench-publish-throughput! {:n 1000 :batch-sizes [1 10 100]})
-    (bench-e2e-latency! {:n 50 :rate :medium :transport :queue})
-    (bench-sustained-throughput! {:duration-sec 15 :rate :medium :transport :queue})
+    (bench-e2e-latency! {:n 50 :rate :medium})
+    (bench-sustained-throughput! {:duration-sec 15 :rate :medium})
     (bench-batch-listener! {:n 200 :batch-sizes [1 10 50]})
     (bench-multi-queue! {:queue-counts [1 5 10 20] :msgs-per-queue 50})"
   (:require
@@ -34,8 +28,6 @@
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.appdb :as q.appdb]
    [metabase.mq.queue.backend :as q.backend]
-   [metabase.mq.topic.appdb :as topic.appdb]
-   [metabase.mq.topic.backend :as topic.backend]
    [toucan2.core :as t2])
   (:import
    (java.lang.reflect InvocationHandler Method Proxy)
@@ -176,8 +168,6 @@
   "Fixed set of 10 shared queue names used across all nodes for cross-node contention testing."
   (mapv #(keyword "queue" (str "bench-shared-" %)) (range 10)))
 
-(def ^:private shared-topic :topic/bench-shared)
-
 (defn- run-id
   "Generates an 8-character unique identifier for a benchmark run."
   []
@@ -255,7 +245,6 @@
   "Removes all benchmark data for the given run-id."
   [id]
   (t2/delete! :queue_message_batch :queue_name [:like (str "bench-" id "%")])
-  (t2/delete! :topic_message_batch :topic_name [:like (str "bench-" id "%")])
   (doseq [[ch _] @listener/*listeners*]
     (when (str/includes? (name ch) (str "bench-" id))
       (mq/unlisten! ch))))
@@ -292,31 +281,28 @@
   This benchmark bypasses the publish buffer to measure direct DB insert speed.
   Options:
     :n           - total messages to publish per batch-size test (default 1000)
-    :batch-sizes - vector of batch sizes to test (default [1 10 100])
-    :transport   - :queue or :topic (default :queue)"
+    :batch-sizes - vector of batch sizes to test (default [1 10 100])"
   ([] (bench-publish-throughput! {}))
-  ([{:keys [n batch-sizes transport]
-     :or   {n 1000 batch-sizes [1 10 100] transport :queue}}]
+  ([{:keys [n batch-sizes]
+     :or   {n 1000 batch-sizes [1 10 100]}}]
    (ensure-started!)
    (let [id      (run-id)
          results (atom [])]
      (try
        (doseq [bs batch-sizes]
-         (let [channel    (make-channel transport id (str "pub-" bs))
+         (let [channel    (make-channel :queue id (str "pub-" bs))
                iterations (/ n bs)
                start      (System/nanoTime)]
            (binding [publish-buffer/*publish-buffer-ms* 0]
              (dotimes [i iterations]
                (let [msgs (vec (for [j (range bs)]
                                  {:seq (+ (* i bs) j) :ts (System/currentTimeMillis)}))]
-                 (if (= transport :queue)
-                   (q.backend/publish! q.appdb/backend channel msgs)
-                   (topic.backend/publish! topic.appdb/backend channel msgs)))))
+                 (q.backend/publish! q.appdb/backend channel msgs))))
            (let [elapsed-ms (/ (- (System/nanoTime) start) 1e6)]
              (swap! results conj
                     [(str bs) (fmt (/ n (/ elapsed-ms 1000.0))) (fmt elapsed-ms)]))))
        (print-table!
-        (str "Publishing Throughput (" (name transport) ", n=" n ")")
+        (str "Publishing Throughput (queue, n=" n ")")
         ["Batch Size" "Msgs/sec" "Total ms"]
         @results)
        (finally
@@ -327,19 +313,17 @@
 (defn bench-e2e-latency!
   "Measures end-to-end latency from publish to listener receipt via the full async pipeline.
   Uses the real publish API including the publish buffer.
-  Publishes randomly to the 10 shared queues (or the shared topic) so multiple nodes
-  compete for the same messages.
+  Publishes randomly to the 10 shared queues so multiple nodes compete for the same messages.
   Options:
     :n         - number of messages to publish (default 50)
-    :rate      - :low, :medium, :high, or :burst (default :medium)
-    :transport - :queue or :topic (default :queue)"
+    :rate      - :low, :medium, :high, or :burst (default :medium)"
   ([] (bench-e2e-latency! {}))
-  ([{:keys [n rate transport]
-     :or   {n 50 rate :medium transport :queue}}]
+  ([{:keys [n rate]
+     :or   {n 50 rate :medium}}]
    (ensure-started!)
    (let [latencies (atom [])
          received  (atom 0)
-         channels  (if (= transport :queue) shared-queues [shared-topic])]
+         channels  shared-queues]
      (try
        ;; Register listeners on all shared channels
        (doseq [ch channels]
@@ -359,12 +343,9 @@
          (publish-at-rate!
           n msgs-sec
           (fn [i]
-            (let [ch (if (= transport :queue) (random-shared-queue) shared-topic)]
-              (if (= transport :queue)
-                (mq/with-queue ch [q]
-                  (mq/put q {:seq i :publish-ns (System/nanoTime)}))
-                (mq/with-topic ch [t]
-                  (mq/put t {:seq i :publish-ns (System/nanoTime)}))))))
+            (let [ch (random-shared-queue)]
+              (mq/with-queue ch [q]
+                (mq/put q {:seq i :publish-ns (System/nanoTime)})))))
          ;; Force flush the publish buffer then wait for delivery
          (publish-buffer/flush-publish-buffer!)
          ;; Wait until we've received at least n messages or timeout
@@ -376,7 +357,7 @@
          (let [elapsed-ms (/ (- (System/nanoTime) start) 1e6)
                stats      (collect-stats @latencies)]
            (print-table!
-            (str "End-to-End Latency (" (name transport) ", rate=" (name rate) ", n=" n ")")
+            (str "End-to-End Latency (queue, rate=" (name rate) ", n=" n ")")
             ["Metric" "Value"]
             [["Published" (str n)]
              ["Received" (str @received)]
@@ -398,16 +379,15 @@
 
 (defn bench-sustained-throughput!
   "Publishes continuously while consuming for a given duration via the full async pipeline.
-  Publishes randomly to the 10 shared queues (or shared topic).
+  Publishes randomly to the 10 shared queues.
   Options:
     :duration-sec - how long to publish (default 15)
-    :rate         - :low, :medium, :high, or :burst (default :medium)
-    :transport    - :queue or :topic (default :queue)"
+    :rate         - :low, :medium, :high, or :burst (default :medium)"
   ([] (bench-sustained-throughput! {}))
-  ([{:keys [duration-sec rate transport]
-     :or   {duration-sec 15 rate :medium transport :queue}}]
+  ([{:keys [duration-sec rate]
+     :or   {duration-sec 15 rate :medium}}]
    (ensure-started!)
-   (let [channels  (if (= transport :queue) shared-queues [shared-topic])
+   (let [channels  shared-queues
          received  (atom 0)
          latencies (atom [])
          published (atom 0)
@@ -432,12 +412,9 @@
                            (loop []
                              (when-not @stop?
                                (try
-                                 (let [ch (if (= transport :queue) (random-shared-queue) shared-topic)]
-                                   (if (= transport :queue)
-                                     (mq/with-queue ch [q]
-                                       (mq/put q {:seq @published :publish-ns (System/nanoTime)}))
-                                     (mq/with-topic ch [t]
-                                       (mq/put t {:seq @published :publish-ns (System/nanoTime)}))))
+                                 (let [ch (random-shared-queue)]
+                                   (mq/with-queue ch [q]
+                                     (mq/put q {:seq @published :publish-ns (System/nanoTime)})))
                                  (swap! published inc)
                                  (catch Exception _))
                                (when msgs-sec
@@ -457,7 +434,7 @@
          (let [elapsed-ms  (/ (- (System/nanoTime) start) 1e6)
                stats       (collect-stats @latencies)]
            (print-table!
-            (str "Sustained Throughput (" (name transport) ", rate=" (name rate)
+            (str "Sustained Throughput (queue, rate=" (name rate)
                  ", duration=" duration-sec "s)")
             ["Metric" "Value"]
             [["Published" (str @published)]
@@ -808,21 +785,15 @@
   (println "=== MQ Performance Benchmarks ===")
   (println)
 
-  (println "--- 1/5: Publishing Throughput (Queue) ---")
-  (bench-publish-throughput! {:n 1000 :transport :queue})
-
-  (println "--- 1b/5: Publishing Throughput (Topic) ---")
-  (bench-publish-throughput! {:n 1000 :transport :topic})
+  (println "--- 1/5: Publishing Throughput ---")
+  (bench-publish-throughput! {:n 1000})
 
   (println "--- 2/5: End-to-End Latency ---")
   (doseq [rate [:low :medium :high :burst]]
-    (bench-e2e-latency! {:n 50 :rate rate :transport :queue}))
-  (doseq [rate [:low :medium :burst]]
-    (bench-e2e-latency! {:n 50 :rate rate :transport :topic}))
+    (bench-e2e-latency! {:n 50 :rate rate}))
 
   (println "--- 3/5: Sustained Throughput ---")
-  (bench-sustained-throughput! {:duration-sec 15 :rate :medium :transport :queue})
-  (bench-sustained-throughput! {:duration-sec 15 :rate :medium :transport :topic})
+  (bench-sustained-throughput! {:duration-sec 15 :rate :medium})
 
   (println "--- 4/5: Batch Listener Comparison ---")
   (bench-batch-listener! {:n 200})
@@ -840,31 +811,3 @@
 
 ;;; ---------------------------------------- Multi-Node Coordination ----------------------------------------
 
-(defn run-all-benchmarks-coordinated!
-  "Waits for a 'go' signal on :topic/bench-coordination, then runs all benchmarks.
-  Use with multiple JVM instances to start benchmarks simultaneously.
-
-  Usage:
-    ;; On each node:
-    (start-mq!)
-    (run-all-benchmarks-coordinated!)
-
-    ;; Then from any node or separate REPL:
-    (signal-go!)"
-  []
-  (let [latch (CountDownLatch. 1)]
-    (listener/batch-listen! :topic/bench-coordination
-                            (fn [_msgs] (.countDown latch))
-                            {})
-    (println "Waiting for go signal... (call (signal-go!) from any node)")
-    (.await latch 300 TimeUnit/SECONDS)
-    (mq/unlisten! :topic/bench-coordination)
-    (println "Go signal received! Starting benchmarks...")
-    (run-all-benchmarks!)))
-
-(defn signal-go!
-  "Sends the go signal to all waiting nodes."
-  []
-  (mq/with-topic :topic/bench-coordination [t]
-    (mq/put t {:go true :time (System/currentTimeMillis)}))
-  (println "Go signal sent."))

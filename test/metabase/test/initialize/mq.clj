@@ -14,4 +14,4 @@
   ;; Drive through mq.init/start! so the worker pool, publish-buffer flush thread,
   ;; and the memory backend's polling loop all come up — otherwise MQ-driven behaviour
   ;; outside `with-test-mq` would silently drop messages onto a non-polling queue.
-  (mq.init/start! :queue.backend/memory :topic.backend/memory))
+  (mq.init/start! :queue.backend/memory))

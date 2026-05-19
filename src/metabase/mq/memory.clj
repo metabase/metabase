@@ -1,5 +1,5 @@
 (ns metabase.mq.memory
-  "Shared in-memory message store used by the memory queue and topic backends.
+  "Shared in-memory message store used by the memory queue backend.
   Each `layer` is a self-contained bundle of channel state, batch-registry, and a
   poll thread — tests can construct isolated layers with [[make-layer]] instead of
   rebinding dynamic vars."
@@ -80,20 +80,16 @@
 ;;; ------------------------------------------- Polling -------------------------------------------
 
 (defn- poll-once!
-  "Drains all non-busy channels and submits messages for delivery.
-  For queue channels, generates a batch-id and passes the layer's registered
-  queue backend. For topic channels, passes nil batch-id and nil backend."
+  "Drains all non-busy queue channels and submits messages for delivery.
+  Generates a batch-id and passes the layer's registered queue backend."
   [{:keys [queue-backend] :as layer}]
-  (doseq [channel-name (remove mq.impl/channel-busy?
-                               (concat (listener/queue-names) (listener/topic-names)))]
+  (doseq [channel-name (remove mq.impl/channel-busy? (listener/queue-names))]
     (let [max-elements (:max-batch-messages (listener/get-listener channel-name))]
       (when-let [messages (drain! layer channel-name max-elements)]
-        (if (= "queue" (namespace channel-name))
-          (let [batch-id (str (random-uuid))]
-            (register-batch! layer batch-id channel-name messages)
-            (mq.impl/submit-delivery! channel-name messages batch-id @queue-backend
-                                      {:batch-id batch-id}))
-          (mq.impl/submit-delivery! channel-name messages nil nil nil))))))
+        (let [batch-id (str (random-uuid))]
+          (register-batch! layer batch-id channel-name messages)
+          (mq.impl/submit-delivery! channel-name messages batch-id @queue-backend
+                                    {:batch-id batch-id}))))))
 
 (defn start!
   "Starts the layer's polling thread. Idempotent — second call is a no-op."
