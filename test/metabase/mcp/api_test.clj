@@ -779,6 +779,37 @@
             (str "Expected handle-resolved query's :source-table = products id " products-id
                  ", got " persisted-table))))))
 
+(deftest tools-call-read-resource-test
+  (testing "read_resource returns the shared dispatcher's response shape"
+    (let [[session-id _] (initialize!)
+          result         (call-tool session-id "read_resource"
+                                    {:uris ["metabase://databases"]})]
+      ;; `result` is the parsed MCP text-content JSON, which is the dispatcher's
+      ;; full return map (`:resources` per-URI + formatted `:output` string).
+      (is (sequential? (:resources result)))
+      (is (= 1 (count (:resources result))))
+      (is (= "metabase://databases" (-> result :resources first :uri)))
+      (is (some? (-> result :resources first :content))
+          "Top-level navigation URI must come back with :content (no :error)")
+      (is (string? (:output result)))
+      (is (str/includes? (:output result) "<resources>")
+          "Output is XML-shaped for LLM consumption")))
+
+  (testing "read_resource fetches a single-entity URI"
+    (let [[session-id _] (initialize!)
+          uri            (str "metabase://table/" (mt/id :orders))
+          result         (call-tool session-id "read_resource" {:uris [uri]})]
+      (is (= [uri] (mapv :uri (:resources result))))
+      (is (some? (-> result :resources first :content)))))
+
+  (testing "read_resource reports a per-URI error rather than failing the whole call"
+    (let [[session-id _] (initialize!)
+          result         (call-tool session-id "read_resource"
+                                    {:uris ["metabase://nonsense/path"]})]
+      (is (= 1 (count (:resources result))))
+      (is (nil? (-> result :resources first :content)))
+      (is (some? (-> result :resources first :error))))))
+
 ;;; ----------------------------------------------- Drill Handles ---------------------------------------------------
 
 (deftest tools-call-render-drill-through-test
