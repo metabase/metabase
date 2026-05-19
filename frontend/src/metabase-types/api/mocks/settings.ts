@@ -177,6 +177,8 @@ export const createMockSettings = (
   "custom-viz-plugin-dev-mode-enabled": false,
   "allowed-iframe-hosts": "*",
   "anon-tracking-enabled": false,
+  "metaplow-tracking-enabled": false,
+  "metaplow-url": null,
   "application-colors": {},
   "application-font": "Lato",
   "application-font-files": [],

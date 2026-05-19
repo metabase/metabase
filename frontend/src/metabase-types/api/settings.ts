@@ -554,7 +554,7 @@ interface PublicSettings {
   "analytics-uuid": string;
   "anon-tracking-enabled": boolean;
   "metaplow-tracking-enabled": boolean;
-  "metaplow-url": string;
+  "metaplow-url": string | null;
   "application-font": string;
   "application-font-files": FontFile[] | null;
   "application-name": string;
