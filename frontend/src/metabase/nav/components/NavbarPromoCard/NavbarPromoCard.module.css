@@ -1,7 +1,3 @@
-.Root {
-  margin: 0 var(--mantine-spacing-md) var(--mantine-spacing-md);
-}
-
 .IconWrapper {
   display: inline-flex;
   align-items: center;
