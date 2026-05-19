@@ -635,7 +635,10 @@
   (t2/reducible-select (keyword "model" model-name)
                        {:where [:and
                                 (or where true)
-                                [:= :router_database_id nil]]}))
+                                [:= :router_database_id nil]
+                                ;; H2 databases are rejected at import time (see [[assert-not-h2!]]),
+                                ;; so skipping them here keeps the export/import contract consistent.
+                                [:not= :engine "h2"]]}))
 
 (defmethod serdes/entity-id "Database"
   [_ {:keys [name]}]
