@@ -101,25 +101,43 @@ export type ConversationDetail = {
 
 export type DataComplexityCatalogId = "library" | "universe" | "metabot";
 export type DataComplexityGroupId = "size" | "ambiguity";
-export type DataComplexityComponentId =
-  | "entity_count"
-  | "field_count"
+
+export type DataComplexitySizeComponentId = "entity_count" | "field_count";
+export type DataComplexityAmbiguityComponentId =
   | "name_collisions"
   | "synonym_pairs"
   | "repeated_measures";
+export type DataComplexityComponentId =
+  | DataComplexitySizeComponentId
+  | DataComplexityAmbiguityComponentId;
 
 export type DataComplexitySubScore =
   | { error: string }
   | { measurement: number; score: number };
 
-export type DataComplexityGroup = {
+export type DataComplexitySizeGroup = {
   score: number | null;
-  components: Record<DataComplexityComponentId, DataComplexitySubScore>;
+  components: Record<DataComplexitySizeComponentId, DataComplexitySubScore>;
 };
+
+export type DataComplexityAmbiguityGroup = {
+  score: number | null;
+  components: Record<
+    DataComplexityAmbiguityComponentId,
+    DataComplexitySubScore
+  >;
+};
+
+export type DataComplexityGroup =
+  | DataComplexitySizeGroup
+  | DataComplexityAmbiguityGroup;
 
 export type DataComplexityCatalog = {
   score: number | null;
-  components: Record<DataComplexityGroupId, DataComplexityGroup>;
+  components: {
+    size: DataComplexitySizeGroup;
+    ambiguity: DataComplexityAmbiguityGroup;
+  };
 };
 
 export type DataComplexityScoresResponse = {

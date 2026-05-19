@@ -26,9 +26,25 @@ import type {
   DataComplexityCatalog,
   DataComplexityCatalogId,
   DataComplexityComponentId,
+  DataComplexityGroup,
   DataComplexityGroupId,
   DataComplexitySubScore,
 } from "../../types";
+
+// Each group only carries its own component IDs (size: entity_count/field_count;
+// ambiguity: name_collisions/synonym_pairs/repeated_measures). The data-driven
+// iteration over COMPONENT_GROUPS uses the wide union, so cast to a permissive
+// view for the lookup — missing keys yield undefined.
+function getSubScore(
+  group: DataComplexityGroup,
+  componentId: DataComplexityComponentId,
+): DataComplexitySubScore | undefined {
+  return (
+    group.components as Partial<
+      Record<DataComplexityComponentId, DataComplexitySubScore>
+    >
+  )[componentId];
+}
 
 const CATALOG_IDS: DataComplexityCatalogId[] = [
   "library",
@@ -166,7 +182,7 @@ function DataComplexityBreakdown({
 
             <Stack gap="sm" mt="md">
               {componentIds.map((componentId) => {
-                const component = group.components[componentId];
+                const component = getSubScore(group, componentId);
                 if (!component) {
                   return null;
                 }
