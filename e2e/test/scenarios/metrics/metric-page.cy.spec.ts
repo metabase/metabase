@@ -259,6 +259,8 @@ describe("scenarios > metrics > metric page", () => {
     H.getNotebookStep("summarize")
       .findByText("Sum of Total")
       .should("be.visible");
+    H.undoToast().should("contain.text", "Metric query updated");
+    H.undoToast().findByRole("img", { name: /close/ }).click();
 
     cy.log("surface backend error when a revert fails (UXW-310)");
     cy.intercept("POST", "/api/revision/revert", {
