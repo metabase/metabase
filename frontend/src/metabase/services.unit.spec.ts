@@ -1,6 +1,9 @@
 import fetchMock from "fetch-mock";
 
+import { getStore } from "__support__/entities-store";
 import { createMockEntitiesState } from "__support__/store";
+import { Api } from "metabase/api";
+import { mainReducers } from "metabase/reducers-main";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { defer } from "metabase/utils/promise";
@@ -83,10 +86,21 @@ function getQueryEndpointPath(question: Question) {
     : `path:/api/card/${question.id()}/query`;
 }
 
+function getRtkStore() {
+  return getStore(
+    { ...mainReducers, [Api.reducerPath]: Api.reducer },
+    createMockState(),
+    [Api.middleware],
+  );
+}
+
 async function setupRunQuestionQuery(question: Question) {
   const mockResult = createMockDataset();
   fetchMock.post(getQueryEndpointPath(question), mockResult);
-  const result = await runQuestionQuery(question, { cancelDeferred: defer() });
+  const result = await runQuestionQuery(question, {
+    dispatch: getRtkStore().dispatch,
+    cancelDeferred: defer(),
+  });
   return { result, mockResult };
 }
 
@@ -216,6 +230,7 @@ describe("metabase/services > runQuestionQuery", () => {
       });
 
       const result = await runQuestionQuery(question, {
+        dispatch: getRtkStore().dispatch,
         cancelDeferred: defer(),
       });
 
@@ -237,6 +252,7 @@ describe("metabase/services > runQuestionQuery", () => {
       });
 
       const result = await runQuestionQuery(question, {
+        dispatch: getRtkStore().dispatch,
         cancelDeferred: defer(),
       });
 
@@ -254,10 +270,35 @@ describe("metabase/services > runQuestionQuery", () => {
 
       // 5xx errors should still throw
       await expect(
-        runQuestionQuery(question, { cancelDeferred: defer() }),
+        runQuestionQuery(question, {
+          dispatch: getRtkStore().dispatch,
+          cancelDeferred: defer(),
+        }),
       ).rejects.toMatchObject({
         status: 500,
       });
+    });
+
+    it("rejects with { isCancelled: true } when cancelDeferred resolves (ad-hoc question)", async () => {
+      // Guards the RTK Query cancellation path: resolving `cancelDeferred`
+      // must abort the underlying `/api/dataset` request and reject with
+      // the legacy `{ isCancelled: true }` shape that `queryErrored` and
+      // other callers rely on.
+      const question = createMockAdHocQuestion();
+      fetchMock.post(
+        getQueryEndpointPath(question),
+        new Promise(() => undefined),
+      );
+
+      const cancelDeferred = defer();
+      const runPromise = runQuestionQuery(question, {
+        dispatch: getRtkStore().dispatch,
+        cancelDeferred,
+      });
+
+      cancelDeferred.resolve();
+
+      await expect(runPromise).rejects.toEqual({ isCancelled: true });
     });
 
     it("normalizes plain-text 4xx error bodies into a structured error result (EMB-1659)", async () => {
@@ -275,6 +316,7 @@ describe("metabase/services > runQuestionQuery", () => {
       });
 
       const result = await runQuestionQuery(question, {
+        dispatch: getRtkStore().dispatch,
         cancelDeferred: defer(),
       });
 

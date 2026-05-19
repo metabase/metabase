@@ -21,10 +21,6 @@ definition:
   lib/type: mbql/query
 entity_id: aB3kLmN9pQrStUvWxYz1a
 name: Widget Products
-table_id:
-- Sample Database
-- PUBLIC
-- PRODUCTS
 serdes/meta:
 - id: aB3kLmN9pQrStUvWxYz1a
   label: widget_products

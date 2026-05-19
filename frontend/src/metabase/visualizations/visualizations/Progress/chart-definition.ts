@@ -35,9 +35,7 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
   },
   settings: {
     ...fieldSetting("progress.value", {
-      get section() {
-        return t`Display`;
-      },
+      getSection: () => t`Display`,
       get title() {
         return t`Value`;
       },
@@ -69,9 +67,7 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
       readDependencies: ["progress.value"],
     }),
     "progress.goal": {
-      get section() {
-        return t`Display`;
-      },
+      getSection: () => t`Display`,
       get title() {
         return t`Goal`;
       },
@@ -98,9 +94,7 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
       readDependencies: ["progress.value"],
     },
     "progress.color": {
-      get section() {
-        return t`Display`;
-      },
+      getSection: () => t`Display`,
       get title() {
         return t`Color`;
       },

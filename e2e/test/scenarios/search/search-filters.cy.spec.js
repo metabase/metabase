@@ -95,6 +95,21 @@ describe("scenarios > search", () => {
           cy.findByText('Results for "orders"').should("exist");
         });
       });
+
+      it("hydrates the command palette search from the URL (#71248)", () => {
+        cy.visit("/search?q=products");
+        cy.wait("@search");
+        H.commandPaletteButton().should("contain.text", "products");
+
+        cy.intercept("GET", "/api/search?q=products*").as("paletteSearch");
+        H.commandPaletteButton().click();
+        H.commandPaletteInput().should("have.value", "products");
+        cy.wait("@paletteSearch");
+
+        H.commandPalette().within(() => {
+          cy.findByRole("option", { name: "Products" }).should("be.visible");
+        });
+      });
     });
 
     describe("type filter", () => {

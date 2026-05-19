@@ -3,8 +3,8 @@ import { memo, useCallback } from "react";
 import { t } from "ttag";
 
 import { CheckBox as Checkbox } from "metabase/common/components/CheckBox/CheckBox";
-import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { useScrollOnMount } from "metabase/common/hooks/use-scroll-on-mount";
+import { ActionIcon, Icon, Menu } from "metabase/ui";
 import Settings from "metabase/utils/settings";
 import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
 import type { IconName, Timeline, TimelineEvent } from "metabase-types/api";
@@ -100,7 +100,14 @@ const EventCard = ({
       </CardBody>
       {menuItems.length > 0 && (
         <CardAside onClick={handleAsideClick}>
-          <EntityMenu items={menuItems} triggerIcon="ellipsis" />
+          <Menu position="bottom-end" shadow="md">
+            <Menu.Target>
+              <ActionIcon variant="subtle" aria-label={t`Event menu`}>
+                <Icon name="ellipsis" />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>{menuItems}</Menu.Dropdown>
+          </Menu>
         </CardAside>
       )}
     </CardRoot>
@@ -119,18 +126,15 @@ const getMenuItems = (
   }
 
   return [
-    {
-      title: t`Edit event`,
-      action: () => onEdit?.(event),
-    },
-    {
-      title: t`Move event`,
-      action: () => onMove?.(event),
-    },
-    {
-      title: t`Archive event`,
-      action: () => onArchive?.(event),
-    },
+    <Menu.Item key="edit-event" onClick={() => onEdit?.(event)}>
+      {t`Edit event`}
+    </Menu.Item>,
+    <Menu.Item key="move-event" onClick={() => onMove?.(event)}>
+      {t`Move event`}
+    </Menu.Item>,
+    <Menu.Item key="archive-event" onClick={() => onArchive?.(event)}>
+      {t`Archive event`}
+    </Menu.Item>,
   ];
 };
 

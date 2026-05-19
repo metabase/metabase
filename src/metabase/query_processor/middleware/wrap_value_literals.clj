@@ -276,11 +276,12 @@
 ;;;
 ;;; Tangentially-related nonsense not used by the middleware
 ;;;
+;;; TODO (Cam 2026-05-14) -- move this into Lib or somewhere else since this is just a raw MBQL transformation that
+;;; only seems to be used by driver-specific parameter compilation code
 
 (defn- type-info-no-query
   "This is like [[type-info*]] but specifically for supporting the legacy/deprecated [[wrap-value-literals-in-mbql]]
   function."
-  {:deprecated "0.57.0"}
   [clause]
   (let [expr-type (lib.schema.expression/type-of-resolved clause)]
     (merge
@@ -306,15 +307,11 @@
                    [:value {:base_type :type/Text, \"foo\"
                             :semantic_type nil,
                             :database_type \"VARCHAR\",
-                            :name \"description\"}]]]
-
-  DEPRECATED: This is for legacy compatibility and should not be used in new code."
-  {:deprecated "0.57.0"}
+                            :name \"description\"}]]]"
   [mbql :- [:cat :keyword [:* :any]]]
   (-> mbql
       lib/->mbql5
       (as-> $mbql (binding [*type-info* (fn [_query _path clause]
-                                          #_{:clj-kondo/ignore [:deprecated-var]}
                                           (type-info-no-query clause))]
                     (-> (lib.walk/walk-clauses*
                          [$mbql]
