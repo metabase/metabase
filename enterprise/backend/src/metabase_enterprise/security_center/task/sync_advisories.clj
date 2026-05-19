@@ -64,6 +64,7 @@
     (log/info "Syncing security advisories")
     (try
       (fetch/sync-advisories!)
+      (settings/security-center-last-synced-at! (t/offset-date-time))
       (catch Exception e
         (log/warn e "Error fetching advisories from HM")))
     (try
@@ -74,7 +75,6 @@
       (send-repeat-notifications!)
       (catch Exception e
         (log/warn e "Error sending repeat notifications")))
-    (settings/security-center-last-synced-at! (t/offset-date-time))
     (metrics/refresh-metrics!)))
 
 (task/defjob ^{:doc "Periodically fetch and re-evaluate security advisories."
