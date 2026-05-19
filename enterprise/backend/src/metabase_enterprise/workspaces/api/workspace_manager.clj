@@ -11,6 +11,7 @@
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.server.streaming-response :as sr]
    [metabase.util.malli.schema :as ms]
@@ -21,11 +22,12 @@
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
 (def ^:private WorkspaceStatus
-  [:enum "unprovisioned" "provisioning" "provisioned" "deprovisioning"])
+  [:enum {:decode/api keyword}
+   :unprovisioned :provisioning :provisioned :deprovisioning])
 
 (def ^:private AddDatabaseParams
   [:map {:closed true}
-   [:database_id   ms/PositiveInt]
+   [:database_id   ::lib.schema.id/database]
    [:input_schemas [:sequential ms/NonBlankString]]])
 
 (def ^:private UpdateDatabaseParams
@@ -42,7 +44,7 @@
 
 (def ^:private WorkspaceDatabaseResponse
   [:map {:closed true}
-   [:database_id      ms/PositiveInt]
+   [:database_id      ::lib.schema.id/database]
    [:input_schemas    [:sequential ms/NonBlankString]]
    [:output_namespace :string]
    [:status           WorkspaceStatus]])
@@ -55,7 +57,9 @@
    [:email       ms/NonBlankString]
    [:common_name {:optional true} [:maybe :string]]])
 
-(def ^:private Timestamp
+(def ^:private DateTimeWithTimeZone
+  "An instant with explicit time-zone info. `Timestamp` would be ambiguous --
+   `TIMESTAMP` in most SQL databases is short for `TIMESTAMP WITHOUT TIME ZONE`."
   [:or
    (ms/InstanceOfClass java.time.OffsetDateTime)
    (ms/InstanceOfClass java.time.ZonedDateTime)])
@@ -65,8 +69,8 @@
    [:id          ms/PositiveInt]
    [:name        ms/NonBlankString]
    [:creator     [:maybe CreatorResponse]]
-   [:created_at  Timestamp]
-   [:updated_at  Timestamp]
+   [:created_at  DateTimeWithTimeZone]
+   [:updated_at  DateTimeWithTimeZone]
    ;; `:databases` is only included when hydrated (i.e. the GET /:id endpoint).
    ;; The list endpoint omits it — clients should treat a missing array as `[]`.
    [:databases   {:optional true} [:sequential WorkspaceDatabaseResponse]]])
@@ -74,8 +78,7 @@
 ;;; -------------------------------------------- Presentation --------------------------------------------------
 
 (defn- present-workspace-database [wsd]
-  (-> (select-keys wsd [:database_id :input_schemas :output_namespace :status])
-      (update :status name)))
+  (select-keys wsd [:database_id :input_schemas :output_namespace :status]))
 
 (defn- present-creator [creator]
   (when creator

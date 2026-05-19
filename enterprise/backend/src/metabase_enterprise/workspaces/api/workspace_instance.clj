@@ -6,6 +6,7 @@
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.schema :as ms]))
 
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
@@ -23,12 +24,12 @@
 (def ^:private WorkspaceInstance
   [:map
    [:name      ms/NonBlankString]
-   [:databases [:map-of :int WorkspaceInstanceDatabase]]])
+   [:databases [:map-of ::lib.schema.id/database WorkspaceInstanceDatabase]]])
 
 (def ^:private TableRemapping
   [:map
    [:id              ms/PositiveInt]
-   [:database_id     ms/PositiveInt]
+   [:database_id     ::lib.schema.id/database]
    [:from_db         [:maybe :string]]
    [:from_schema     [:maybe :string]]
    [:from_table_name ms/NonBlankString]
