@@ -6,29 +6,16 @@
    (e.g. `ws_alice.public__orders`). This is the security boundary that makes workspace
    isolation real — a silent miss here would let a workspace child read or write production.
 
-   The work is split across **two phases** because there is no single point in the QP pipeline
-   where both structured query data AND fully-resolved SQL are available simultaneously:
+   ## Phase 1 — [[apply-workspace-remapping]]  (around middleware; emission-time remapping)
 
-   ## Phase 1 — [[apply-workspace-remapping]]  (preprocess; MBQL metadata mutation)
+   Position: around-middleware in `metabase.query-processor/around-middleware`.
+   Wraps the entire pipeline (preprocess + compile + execute).
 
-   Position: preprocessing pipeline (`metabase.query-processor.preprocess`).
-
-   What it does: walks the cached metadata provider, finds each `:metadata/table` whose
-   `(:schema, :name)` matches a remapping `from` pair, and mutates `:schema`/`:name` in place
-   to the `to` pair. Downstream HoneySQL compilation reads those overridden values and emits
-   workspace identifiers directly.
-
-   Why it exists (Phase 2 alone is sufficient for the security guarantee):
-     1. **Pipeline coherence.** Other middleware between preprocess and execute may read
-        `:schema`/`:name` off table metadata (sandboxing, permissions checks, cache key
-        generation, audit logging). Phase 1 ensures they all see the same identifiers Phase 2
-        will emit, preventing subtle bugs where intermediate decisions are made against
-        canonical names while the final SQL targets workspace names.
-     2. **Cost is essentially zero.** A few `store-metadata!` calls; no string parsing.
-
-   Phase 1 deliberately **does not touch native SQL**. At this stage native queries may still
-   contain unresolved template tags (`{{snippet:foo}}`, `{{#42}}`, `{{date_filter}}`) that
-   make the SQL un-parseable by SQLGlot. Any preprocess-time SQL rewrite would be fragile.
+   What it does: binds [[metabase.workspaces.table-remapping/*table-remapper*]] to a
+   a remapper function so that HoneySQL compilation emits workspace identifiers
+   at the two SQL-emission points (`->honeysql [:sql :metadata/table]` and
+   `field-source-table-aliases`). No metadata provider mutation — the table metadata stays
+   canonical; only the SQL output is remapped.
 
    ## Phase 2 — [[apply-workspace-sql-remapping]]  (execute; authoritative SQL rewrite)
 
@@ -58,7 +45,7 @@
 
    ## Cost
 
-     - Phase 1: microseconds (a few in-memory map mutations).
+     - Phase 1: negligible (protocol dispatch per table reference during compilation).
      - Phase 2: ~150ms per query when remappings exist (SQLGlot via GraalPy roundtrip).
        Amortized against query execution time, which is usually >150ms anyway."
   (:require
@@ -66,11 +53,11 @@
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]))
+   [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
+   [metabase.workspaces.table-remapping :as oss.table-remapping]))
 
 (set! *warn-on-reflection* true)
 
@@ -81,79 +68,71 @@
 ;;; alongside the `::table-spec` shape they consume. The native-transform exec hook
 ;;; needs the same primitives outside this QP middleware path.
 
-(defn- remap-mbql-table-metadata!
-  "Override `:db`, `:schema`, and `:name` on table metadata in the CachedMetadataProvider
-   for each remapping. Downstream HoneySQL compilation will read the overridden values.
+;;; --------------------------------- Phase 1: Emission-time table remapping ------------------------------------
 
-   Match key is `(:schema, :name)` — sync doesn't populate `:db` on `:metadata/table`,
-   so the canonical from-side never carries it. The `to-spec`'s `:db` IS written when
-   populated; the `[:sql :metadata/table]` ->honeysql handler reads it and emits a
-   `db.schema.table` (or `db.table`) qualifier. That makes cross-DB workspaces
-   (currently MySQL — iso namespace lives in `:db`) routable through Phase 1 without
-   needing Phase 2's SQLGlot rewriter to insert a missing qualifier.
+(defn- build-remap-lookup
+  "Build a lookup map from `(denormalized-schema, table-name)` → `{:schema :name :db}` for
+   fast matching at emission time. `denormalize-level` collapses the `\"\"` storage sentinel
+   to nil so that a remapping row with `from_schema = \"\"` matches a schema-less driver's
+   `:metadata/table :schema nil`."
+  [remappings]
+  (into {} (map (fn [[from-spec to-spec]]
+                  (let [{from-schema :schema from-name :table} from-spec
+                        {to-db :db to-schema :schema to-name :table} to-spec
+                        from-db-dn (ws.table-remapping/denormalize-level (:db from-spec))
+                        to-db-dn   (ws.table-remapping/denormalize-level to-db)]
+                    [[(ws.table-remapping/denormalize-level from-schema) from-name]
+                     (cond-> {:schema (ws.table-remapping/denormalize-level to-schema)
+                              :name   to-name}
+                       ;; Only inject :db when the to-side differs from the from-side.
+                       ;; Drivers like BigQuery handle project/catalog qualification
+                       ;; themselves; injecting :db when it hasn't changed would add
+                       ;; an unexpected third component to the identifier. When :db
+                       ;; genuinely changes (e.g. MySQL cross-DB workspaces), the
+                       ;; injection is needed so ->honeysql emits the right qualifier.
+                       (and to-db-dn (not= to-db-dn from-db-dn))
+                       (assoc :db to-db-dn))])))
+        remappings))
 
-   `denormalize-level` collapses storage's `\"\"` sentinel to `nil` on both sides of
-   the schema comparison, so a remapping row with `from_schema = \"\"` matches a
-   schema-less driver's `:metadata/table.:schema = nil` (and a Postgres remapping
-   row with `from_schema = \"public\"` matches the literal value)."
-  [metadata-provider remappings]
-  (doseq [[from-spec to-spec] remappings
-          :let [{from-schema :schema from-name :table} from-spec
-                {to-db :db to-schema :schema to-name :table} to-spec
-                from-schema-match (ws.table-remapping/denormalize-level from-schema)
-                candidates        (lib.metadata.protocols/metadatas
-                                   metadata-provider
-                                   {:lib/type :metadata/table, :name #{from-name}})
-                table             (some #(when (= (ws.table-remapping/denormalize-level (:schema %))
-                                                  from-schema-match)
-                                           %)
-                                        candidates)]
-          :when table]
-    (lib.metadata.protocols/store-metadata!
-     metadata-provider
-     (assoc table
-            :db     (ws.table-remapping/denormalize-level to-db)
-            :schema (ws.table-remapping/denormalize-level to-schema)
-            :name to-name))))
-
-;;; --------------------------------------- Phase 1: Preprocessing (MBQL only) ------------------------------------
+(defn workspace-table-remapper
+  "Return a [[oss.table-remapping/TableRemapper]] suitable for binding to
+   [[oss.table-remapping/*table-remapper*]]. Precomputes a lookup map from
+   `remappings` for O(1) matching at emission time. When no remapping matches,
+   passes coordinates through unchanged (same contract as the identity remapper)."
+  [remappings]
+  (let [lookup (build-remap-lookup remappings)]
+    (reify oss.table-remapping/TableRemapper
+      (remap-table [_ schema table-name]
+        (or (get lookup [(ws.table-remapping/denormalize-level schema) table-name])
+            {:schema schema :name table-name})))))
 
 (defenterprise apply-workspace-remapping
-  "**Phase 1 — preprocess.** Mutate cached table metadata so every QP middleware between here
-   and execute sees workspace identifiers, not canonical ones.
+  "**Phase 1 — around middleware.** Binds [[oss.table-remapping/*table-remapper*]] so HoneySQL
+   compilation emits workspace identifiers instead of canonical ones.
 
-   For each remapping, walks the cached metadata provider, finds the `:metadata/table` that
-   matches the `from` (schema, name) pair, and stores it back with `:schema`/`:name` set to
-   the `to` pair. Downstream HoneySQL compilation reads the mutated values and emits workspace
-   identifiers in the compiled SQL.
+   This wraps the entire inner pipeline (preprocess + compile + execute) so the
+   binding is active during compilation. No metadata provider mutation.
 
-   Phase 1 is **not** the security boundary — Phase 2 is. Phase 1 exists for *pipeline
-   coherence*: middleware like sandboxing, permission checks, and cache-key generation may
-   read `:schema`/`:name` off table metadata and make decisions on them. Without Phase 1
-   those decisions would be made against canonical names, which is invisible bug-bait. With
-   Phase 1, the whole pipeline sees the same identifiers Phase 2 will emit.
-
-   Native queries are intentionally untouched here — see the namespace docstring for why.
+   Phase 2 ([[apply-workspace-sql-remapping]]) remains the authoritative security
+   boundary for native SQL.
 
    ## Why `:feature :none` and not `:feature :workspaces`
 
    Workspace child instances bootstrap from `config.yml` *before* their token is installed
    (see `metabase-enterprise.advanced-config.file/initialize!`). A child whose remap rows
    exist but whose `:workspaces` token isn't yet active must still rewrite reads — otherwise
-   the child silently leaks production data. The same rationale documented on
-   [[metabase-enterprise.workspaces.transform-hooks/resolve-transform-target]] applies here:
-   if remap rows exist, isolation must engage regardless of token state. The internal
+   the child silently leaks production data. The internal
    `(ws.remapping/enabled-for-db? db-id)` check is the actual gate."
   :feature :none
-  [{db-id :database, mp :lib/metadata, :as query}]
-  (if-not (ws.remapping/enabled-for-db? db-id)
-    query
-    (let [remappings (ws.remapping/remappings-for-db db-id)]
-      (if (empty? remappings)
-        query
-        (do
-          (remap-mbql-table-metadata! mp remappings)
-          query)))))
+  [qp]
+  (fn [{db-id :database :as query} rff]
+    (if-not (ws.remapping/enabled-for-db? db-id)
+      (qp query rff)
+      (let [remappings (ws.remapping/remappings-for-db db-id)]
+        (if (empty? remappings)
+          (qp query rff)
+          (binding [oss.table-remapping/*table-remapper* (workspace-table-remapper remappings)]
+            (qp query rff)))))))
 
 ;;; ----------------------------- Phase 2: Post-Compilation SQL Rewrite (authoritative) ----------------------------
 

@@ -851,7 +851,8 @@
            tracing
            util
            warehouse-schema
-           warehouses}
+           warehouses
+           workspaces}
    :model-imports #{:model/Database :model/Field :model/Table}}
 
   driver-api
@@ -3501,7 +3502,6 @@
            app-db
            cache
            driver
-           lib
            models
            permissions
            premium-features

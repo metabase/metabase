@@ -40,7 +40,10 @@
   [#'qp.middleware.enterprise/handle-audit-app-internal-queries-middleware
    #'qp.process-userland-query/process-userland-query-middleware
    ;; userland queries only: catch Exceptions and return a special error response
-   #'qp.catch-exceptions/catch-exceptions])
+   #'qp.catch-exceptions/catch-exceptions
+   ;; workspace table remapping: binds *table-remapper* so HoneySQL compilation
+   ;; emits workspace identifiers. Must wrap preprocess + compile + execute.
+   #'qp.middleware.enterprise/apply-workspace-remapping-middleware])
 ;; ↑↑↑ PRE-PROCESSING ↑↑↑ happens from BOTTOM TO TOP
 
 (defn- process-query** [query rff]

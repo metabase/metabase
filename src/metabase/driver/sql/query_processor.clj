@@ -20,6 +20,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf :refer [empty? every? mapv not-empty select-keys some]]
+   [metabase.workspaces.table-remapping :as ws.table-remapping]
    [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -37,6 +38,27 @@
 (def ^:dynamic *inner-query*
   "The INNER query currently being processed, for situations where we need to refer back to it."
   nil)
+
+;;; ---------------------------------------- Table remapping (emission-time) ----------------------------------------
+;;;
+;;; Workspace isolation redirects table references at SQL-emission time.
+;;; [[ws.table-remapping/*table-remapper*]] always holds a [[ws.table-remapping/TableRemapper]]:
+;;; the default is an identity passthrough; enterprise workspace middleware binds one that
+;;; rewrites canonical coordinates to workspace-isolation coordinates.
+;;;
+;;; The two call sites — [[->honeysql]] for `:metadata/table` and
+;;; [[field-source-table-aliases]] — call [[remap-table-for-emission]] which
+;;; always delegates to the bound remapper.
+
+(defn- remap-table-for-emission
+  "Ask the active [[ws.table-remapping/TableRemapper]] for the coordinates to emit.
+   Merges the result (`:schema`, `:name`, `:db`) back onto the original metadata map
+   so other keys (`:id`, `:lib/type`, etc.) survive."
+  [table-metadata]
+  (merge table-metadata
+         (ws.table-remapping/remap-table ws.table-remapping/*table-remapper*
+                                         (:schema table-metadata)
+                                         (:name table-metadata))))
 
 (defn make-nestable-sql*
   "See [[make-nestable-sql]] but does not wrap in result in parens."
@@ -901,9 +923,11 @@
     (cond
       (= source-table driver-api/qp.add.source) [source-query-alias]
       (= source-table driver-api/qp.add.none)   nil
-      (integer? source-table)       (let [{schema :schema, table-name :name} (driver-api/table
-                                                                              (driver-api/metadata-provider)
-                                                                              source-table)]
+      (integer? source-table)       (let [table (remap-table-for-emission
+                                                 (driver-api/table
+                                                  (driver-api/metadata-provider)
+                                                  source-table))
+                                          {schema :schema, table-name :name} table]
                                       (not-empty (filterv some? [schema table-name])))
       source-table                  [source-table])))
 
@@ -2049,12 +2073,15 @@
 
 (defmethod ->honeysql [:sql :metadata/table]
   [driver table]
+  ;; Apply table remapping (workspace isolation) if a remapper is bound.
+  ;; The remapper may override `:schema`, `:name`, and `:db`.
   ;; `:db` is normally absent on `:metadata/table` — sync doesn't populate it.
   ;; Workspace remap (and any future cross-DB rewriter) can fill it to route the
   ;; query at a database different from the connection's bound one. The
   ;; identifier helper drops nil components, so absent `:db` produces the same
   ;; `schema.table` shape as before.
-  (let [{table-name :name, schema :schema, db :db} table]
+  (let [table (remap-table-for-emission table)
+        {table-name :name, schema :schema, db :db} table]
     (->honeysql driver (h2x/identifier :table db schema table-name))))
 
 (defmethod apply-top-level-clause [:sql :source-table]

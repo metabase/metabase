@@ -18,6 +18,7 @@
    [metabase.sql-tools.core :as sql-tools]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.workspaces.table-remapping :as oss.table-remapping]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -44,17 +45,36 @@
                                              {~db-id (widen-2-tuples ~remappings)})]
      ~@body))
 
-;;; -------------------------------------- Phase 1: Preprocessing (MBQL only) --------------------------------------
+;;; ------------------------------ Helper: run Phase 1 as around-middleware ------------------------------------
+
+(defn- run-phase-1
+  "Invoke Phase 1 as around-middleware and return what the inner qp sees (the query)
+   and what `*table-remapper*` is bound to."
+  [query]
+  (let [captured-query    (atom nil)
+        captured-remapper (atom nil)
+        mock-qp           (fn [q _rff]
+                            (reset! captured-query q)
+                            (reset! captured-remapper oss.table-remapping/*table-remapper*)
+                            :ok)
+        wrapped           (#'ws.middleware/apply-workspace-remapping mock-qp)]
+    (wrapped query identity)
+    {:query    @captured-query
+     :remapper @captured-remapper}))
+
+;;; -------------------------------------- Phase 1: Emission-time remapping --------------------------------------
 
 (deftest phase-1-no-remappings-passthrough-test
-  (testing "Phase 1 passes through when no remappings exist"
+  (testing "Phase 1 passes through when no remappings exist — *table-remapper* stays identity"
     (mt/with-premium-features #{:workspaces}
       (binding [ws.remapping/*remapping-store* (ws.remapping/map-store {})]
         (qp.store/with-metadata-provider (mt/id)
           (let [venues-table (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))
                 query (-> (lib/query (qp.store/metadata-provider) venues-table)
-                          (assoc :database (mt/id)))]
-            (is (= query (#'ws.middleware/apply-workspace-remapping query)))))))))
+                          (assoc :database (mt/id)))
+                {:keys [remapper]} (run-phase-1 query)]
+            (is (identical? oss.table-remapping/identity-table-remapper remapper)
+                "*table-remapper* should be the identity remapper when no remappings exist")))))))
 
 (deftest phase-1-skip-dynamic-var-test
   (testing "Phase 1 passes through when *skip-remapping?* is true"
@@ -64,11 +84,36 @@
           (qp.store/with-metadata-provider (mt/id)
             (let [venues-table (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))
                   query (-> (lib/query (qp.store/metadata-provider) venues-table)
-                            (assoc :database (mt/id)))]
-              (is (= query (#'ws.middleware/apply-workspace-remapping query))))))))))
+                            (assoc :database (mt/id)))
+                  {:keys [remapper]} (run-phase-1 query)]
+              (is (identical? oss.table-remapping/identity-table-remapper remapper)
+                  "*table-remapper* should be the identity remapper when *skip-remapping?* is true"))))))))
 
-(deftest phase-1-mbql-table-metadata-swap-test
-  (testing "Phase 1 swaps table metadata for MBQL queries"
+(deftest phase-1-binds-table-remapper-test
+  (testing "Phase 1 binds *table-remapper* when remappings exist"
+    (mt/with-premium-features #{:workspaces}
+      (qp.store/with-metadata-provider (mt/id)
+        (let [venues-table (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))
+              original-schema (:schema venues-table)
+              original-name   (:name venues-table)]
+          (with-remappings (mt/id) {[original-schema original-name] ["mb_iso_workspace" "remapped_venues"]}
+            (let [query (-> (lib/query (qp.store/metadata-provider) venues-table)
+                            (assoc :database (mt/id)))
+                  {:keys [remapper]} (run-phase-1 query)]
+              (is (not (identical? oss.table-remapping/identity-table-remapper remapper))
+                  "*table-remapper* should be a workspace remapper, not identity")
+              (is (satisfies? oss.table-remapping/TableRemapper remapper))
+              (testing "the remapper maps canonical coordinates to workspace coordinates"
+                (let [result (oss.table-remapping/remap-table remapper original-schema original-name)]
+                  (is (= "mb_iso_workspace" (:schema result)))
+                  (is (= "remapped_venues" (:name result)))))
+              (testing "non-remapped tables pass through unchanged"
+                (let [result (oss.table-remapping/remap-table remapper "PUBLIC" "NONEXISTENT")]
+                  (is (= "PUBLIC" (:schema result)))
+                  (is (= "NONEXISTENT" (:name result))))))))))))
+
+(deftest phase-1-does-not-mutate-metadata-test
+  (testing "Phase 1 does NOT mutate the metadata provider (the whole point of this refactor)"
     (mt/with-premium-features #{:workspaces}
       (qp.store/with-metadata-provider (mt/id)
         (let [venues-table (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))
@@ -77,10 +122,12 @@
           (with-remappings (mt/id) {[original-schema original-name] ["mb_iso_workspace" "remapped_venues"]}
             (let [query (-> (lib/query (qp.store/metadata-provider) venues-table)
                             (assoc :database (mt/id)))]
-              (#'ws.middleware/apply-workspace-remapping query)
+              (run-phase-1 query)
               (let [table-after (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))]
-                (is (= "mb_iso_workspace" (:schema table-after)))
-                (is (= "remapped_venues" (:name table-after)))))))))))
+                (is (= original-schema (:schema table-after))
+                    "metadata provider should NOT be mutated")
+                (is (= original-name (:name table-after))
+                    "metadata provider should NOT be mutated")))))))))
 
 (deftest phase-1-does-not-touch-native-queries-test
   (testing "Phase 1 passes native queries through unchanged — Phase 2 handles SQL rewriting"
@@ -92,10 +139,29 @@
                        :lib/metadata (qp.store/metadata-provider)
                        :stages       [{:lib/type :mbql.stage/native
                                        :native   "SELECT * FROM PUBLIC.VENUES"}]}
-                result (#'ws.middleware/apply-workspace-remapping query)]
+                {:keys [query]} (run-phase-1 query)]
             ;; SQL should be unchanged — Phase 1 doesn't rewrite native SQL
             (is (= "SELECT * FROM PUBLIC.VENUES"
-                   (get-in result [:stages 0 :native])))))))))
+                   (get-in query [:stages 0 :native])))))))))
+
+(deftest phase-1-compilation-uses-remapper-test
+  (testing "When *table-remapper* is bound, MBQL compilation emits workspace identifiers"
+    (mt/with-premium-features #{:workspaces}
+      (qp.store/with-metadata-provider (mt/id)
+        (let [venues-table (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))
+              original-schema (:schema venues-table)
+              original-name   (:name venues-table)]
+          (with-remappings (mt/id) {[original-schema original-name] ["ws_alice" "venues_workspace"]}
+            (let [remappings (ws.remapping/remappings-for-db (mt/id))
+                  remapper   (ws.middleware/workspace-table-remapper remappings)
+                  query      (-> (lib/query (qp.store/metadata-provider) venues-table)
+                                 (assoc :database (mt/id)))
+                  compiled   (binding [oss.table-remapping/*table-remapper* remapper]
+                               (qp.compile/compile query))]
+              (is (re-find #"(?i)ws_alice" (:query compiled))
+                  "compiled SQL should contain workspace schema")
+              (is (re-find #"(?i)venues_workspace" (:query compiled))
+                  "compiled SQL should contain workspace table name"))))))))
 
 ;;; --------------------------------- Phase 2: Post-Compilation SQL Rewrite ----------------------------------------
 
@@ -328,7 +394,7 @@
 ;;; should require a hydrated `:model/Table` on the to-side.
 
 (deftest phase-1-handles-to-side-without-model-table-test
-  (testing "Phase 1 mutates the from-side metadata even when the to-side has no :model/Table"
+  (testing "Phase 1 binds a remapper even when the to-side has no :model/Table"
     (mt/with-premium-features #{:workspaces}
       (qp.store/with-metadata-provider (mt/id)
         (let [venues-table    (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))
@@ -338,14 +404,12 @@
               to-table        "remapped_venues_no_sync"]
           (with-remappings (mt/id) {[original-schema original-name] [to-schema to-table]}
             (let [query (-> (lib/query (qp.store/metadata-provider) venues-table)
-                            (assoc :database (mt/id)))]
-              ;; Should not throw — the to-side strings are written into the from-side metadata in place.
-              (#'ws.middleware/apply-workspace-remapping query)
-              (let [table-after (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))]
-                (is (= to-schema (:schema table-after))
-                    "Phase 1 wrote the to-side schema even with no :model/Table for it")
-                (is (= to-table (:name table-after))
-                    "Phase 1 wrote the to-side name even with no :model/Table for it")))))))))
+                            (assoc :database (mt/id)))
+                  {:keys [remapper]} (run-phase-1 query)]
+              (is (not (identical? oss.table-remapping/identity-table-remapper remapper)))
+              (let [result (oss.table-remapping/remap-table remapper original-schema original-name)]
+                (is (= to-schema (:schema result)))
+                (is (= to-table (:name result)))))))))))
 
 (deftest phase-2-handles-to-side-without-model-table-test
   (testing "Phase 2 rewrites SQL using to-side strings even when no :model/Table exists for the to-side"
@@ -365,17 +429,6 @@
                   "Phase 2 emits the to-side table name in the rewritten SQL"))))))))
 
 ;;; ========================================= Read-path tests ===================================================
-;;;
-;;; Progressive coverage of every read-path query shape we ship. Each test adds one bit of complexity, all
-;;; asserting the same invariant: remapped tables resolve to the workspace schema; non-remapped tables stay
-;;; canonical.
-;;;
-;;; This subsumes the call-site survey's bypass-path concern from a different angle — instead of enumerating
-;;; call sites where remapping might miss, enumerate query shapes and prove each one rewrites correctly.
-;;;
-;;; All single-table-through-subquery tests run through Dan's `MapRemappingStore` (no DB temps) and assert on
-;;; the rewritten SQL produced by Phase 2. The MBQL Phase 1, Card, and Dashboard tests add the MBQL preprocess
-;;; pipeline, Card execution, and Dashboard execution respectively.
 
 (defn- rewrite-via-phase-2
   "Run `sql` through Phase 2 with the given remappings and return the rewritten SQL.
@@ -486,22 +539,22 @@
         (is (re-find #"(?i)PUBLIC\.USERS" rewritten)
             "USERS in the outer query keeps its canonical ref")))))
 
-(deftest mbql-phase-1-metadata-override-test
-  (testing "MBQL preprocess (Phase 1) overrides table metadata so HoneySQL emits workspace identifiers"
+(deftest mbql-compilation-with-remapper-test
+  (testing "MBQL compilation with *table-remapper* bound emits workspace identifiers"
     (mt/with-premium-features #{:workspaces}
       (qp.store/with-metadata-provider (mt/id)
         (let [venues          (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))
               original-schema (:schema venues)
               original-name   (:name venues)]
           (with-remappings (mt/id) {[original-schema original-name] ["ws_alice" "venues_workspace"]}
-            (let [query (-> (lib/query (qp.store/metadata-provider) venues)
-                            (assoc :database (mt/id)))]
-              (#'ws.middleware/apply-workspace-remapping query)
-              (let [after (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))]
-                (is (= "ws_alice"         (:schema after))
-                    "Phase 1 wrote the workspace schema into the cached metadata")
-                (is (= "venues_workspace" (:name after))
-                    "Phase 1 wrote the workspace table name into the cached metadata")))))))))
+            (let [remappings (ws.remapping/remappings-for-db (mt/id))
+                  remapper   (ws.middleware/workspace-table-remapper remappings)
+                  query      (-> (lib/query (qp.store/metadata-provider) venues)
+                                 (assoc :database (mt/id)))
+                  compiled   (binding [oss.table-remapping/*table-remapper* remapper]
+                               (qp.compile/compile query))]
+              (is (re-find #"(?i)ws_alice" (:query compiled)))
+              (is (re-find #"(?i)venues_workspace" (:query compiled))))))))))
 
 (deftest card-execution-path-test
   (testing "a Card whose dataset_query targets a remapped table compiles to workspace SQL"
@@ -518,9 +571,12 @@
               (let [card        (t2/select-one :model/Card :id card-id)
                     mbql-query  (-> (:dataset_query card)
                                     (assoc :lib/metadata (qp.store/metadata-provider)))
-                    ;; Phase 1 runs during preprocess, mutating the metadata provider in place.
+                    ;; Compile with *table-remapper* bound (as Phase 1 around-middleware would do)
+                    remappings  (ws.remapping/remappings-for-db (mt/id))
+                    remapper    (ws.middleware/workspace-table-remapper remappings)
                     preprocessed (qp.preprocess/preprocess mbql-query)
-                    compiled    (qp.compile/compile preprocessed)
+                    compiled    (binding [oss.table-remapping/*table-remapper* remapper]
+                                  (qp.compile/compile preprocessed))
                     ;; Phase 2 runs during execute. Apply it to the compiled SQL.
                     rewritten   (binding [driver/*driver* :h2]
                                   (let [captured (atom nil)
@@ -553,13 +609,16 @@
                          :model/DashboardCard _ {:dashboard_id dash-id :card_id venues-card-id}
                          :model/DashboardCard _ {:dashboard_id dash-id :card_id checkins-card-id}]
             (with-remappings (mt/id) {["PUBLIC" "VENUES"] ["ws_alice" "venues_workspace"]}
-              (let [compile-card-sql
+              (let [remappings (ws.remapping/remappings-for-db (mt/id))
+                    remapper   (ws.middleware/workspace-table-remapper remappings)
+                    compile-card-sql
                     (fn [card-id]
                       (let [card     (t2/select-one :model/Card :id card-id)
                             query    (-> (:dataset_query card)
                                          (assoc :lib/metadata (qp.store/metadata-provider)))
                             pre      (qp.preprocess/preprocess query)
-                            compiled (qp.compile/compile pre)]
+                            compiled (binding [oss.table-remapping/*table-remapper* remapper]
+                                       (qp.compile/compile pre))]
                         (binding [driver/*driver* :h2]
                           (let [captured (atom nil)
                                 mock-qp  (fn [q _rff] (reset! captured q) :ok)
@@ -578,19 +637,7 @@
                         "the workspace schema does not appear in the non-remapped card")))))))))))
 
 ;;; ====================================== Cross-cardinality SQL rewrites =========================================
-;;;
-;;; Drivers vary in how many identifier levels they emit in compiled SQL:
-;;;   - cardinality 1 (MySQL-style):    `SELECT * FROM orders`
-;;;   - cardinality 2 (Postgres-style): `SELECT * FROM public.orders`
-;;;   - cardinality 3 (BigQuery-style): `SELECT * FROM proj.ds.orders`
-;;; Phase 2 has to handle each shape. These tests exercise the rewriter directly, sidestepping
-;;; the warehouse — they verify SQLGlot accepts our `{:db, :schema, :table}` keys and emits
-;;; correct output for every cardinality.
 
-;;; These tests use a synthetic db-id and bind `*driver*` directly so we exercise the
-;;; rewriter against arbitrary dialects without triggering test-data fixtures for
-;;; warehouses we don't intend to provision (e.g. binding `*driver* :mysql` while using
-;;; `(mt/id)` would coerce mt to spin up a MySQL container).
 (def ^:private synthetic-db-id 99999)
 
 (defn- rewrite-via-phase-2-with-driver
@@ -641,12 +688,6 @@
           "the canonical dataset.table is gone"))))
 
 ;;; =========== T0.1 — native-origin queries: stage `:native` must be rewritten ============
-;;;
-;;; The stage's `:native` is the source of truth for native-origin SQL. `lib/->legacy-MBQL`
-;;; (called inside `metabase.query-processor.execute/run` immediately before driver dispatch)
-;;; rebuilds the legacy top-level `:native` from `(get-in query [:stages -1 :native])`. So
-;;; patching legacy `:native` directly is futile — the rebuild from the stage clobbers it.
-;;; Patch the stage; the rebuild propagates the rewrite to legacy `:native`.
 
 (deftest phase-2-rewrites-native-stage-test
   (testing "Phase 2 rewrites stage's :native for native-origin queries (security boundary)"
@@ -739,14 +780,9 @@
               "second pass leaves the already-rewritten :qp/compiled unchanged"))))))
 
 ;;; =========== T0.2 — workspace remapping engages without `:workspaces` token ============
-;;;
-;;; Workspace child instances bootstrap from config.yml *before* their token is installed
-;;; (see metabase-enterprise.advanced-config.file/initialize!). A child whose remap rows
-;;; exist but whose `:workspaces` token isn't yet active must still rewrite reads —
-;;; otherwise the child silently leaks production data.
 
 (deftest phase-1-engages-without-workspaces-token-test
-  (testing "Phase 1 mutates table metadata even when :workspaces token is absent (workspace child boot)"
+  (testing "Phase 1 binds *table-remapper* even when :workspaces token is absent (workspace child boot)"
     (mt/with-premium-features #{}
       (qp.store/with-metadata-provider (mt/id)
         (let [venues-table    (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))
@@ -754,12 +790,13 @@
               original-name   (:name venues-table)]
           (with-remappings (mt/id) {[original-schema original-name] ["mb_iso_workspace" "remapped_venues"]}
             (let [query (-> (lib/query (qp.store/metadata-provider) venues-table)
-                            (assoc :database (mt/id)))]
-              (#'ws.middleware/apply-workspace-remapping query)
-              (let [table-after (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))]
-                (is (= "mb_iso_workspace" (:schema table-after))
-                    "Phase 1 fires without the :workspaces token")
-                (is (= "remapped_venues" (:name table-after)))))))))))
+                            (assoc :database (mt/id)))
+                  {:keys [remapper]} (run-phase-1 query)]
+              (is (not (identical? oss.table-remapping/identity-table-remapper remapper))
+                  "Phase 1 fires without the :workspaces token")
+              (let [result (oss.table-remapping/remap-table remapper original-schema original-name)]
+                (is (= "mb_iso_workspace" (:schema result)))
+                (is (= "remapped_venues" (:name result)))))))))))
 
 (deftest phase-2-engages-without-workspaces-token-test
   (testing "Phase 2 rewrites SQL even when :workspaces token is absent (workspace child boot)"
