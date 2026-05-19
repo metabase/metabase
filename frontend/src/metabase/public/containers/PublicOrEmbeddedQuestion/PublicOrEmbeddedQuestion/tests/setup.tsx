@@ -45,7 +45,9 @@ jest.mock(
           <div>
             {rows[0].map((value: unknown, i: number) => (
               <span key={i}>
-                {typeof value === "object" ? JSON.stringify(value) : value}
+                {typeof value === "object"
+                  ? JSON.stringify(value)
+                  : String(value)}
               </span>
             ))}
           </div>
