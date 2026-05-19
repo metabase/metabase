@@ -94,6 +94,12 @@ The modular embeds that you can set up in the [in-app wizard](./modular-embeddin
 
 If you're using an AI agent to help you embed Metabase in your app, check out [AI agent resources](./ai-agent-resources.md).
 
+## Tracking embed usage
+
+{% include plans-blockquote.html feature="Tracking embed usage" %}
+
+You can use [Usage Analytics](../usage-and-performance-tools/usage-analytics.md) to monitor embed usage - like embedding context, authentication methods, hostname etc. See [Embedding usage dashboard](../usage-and-performance-tools/usage-analytics-reference.md#embedding-usage).
+
 ## Further reading
 
 - [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/metabase-basics/embedding/overview).
