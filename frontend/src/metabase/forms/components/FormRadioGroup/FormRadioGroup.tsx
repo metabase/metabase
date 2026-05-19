@@ -5,8 +5,10 @@ import { forwardRef, useCallback } from "react";
 import type { RadioGroupProps } from "metabase/ui";
 import { Radio } from "metabase/ui";
 
-export interface FormRadioGroupProps
-  extends Omit<RadioGroupProps, "value" | "error"> {
+export interface FormRadioGroupProps extends Omit<
+  RadioGroupProps,
+  "value" | "error"
+> {
   name: string;
 }
 

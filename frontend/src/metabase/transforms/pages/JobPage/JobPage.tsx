@@ -14,7 +14,7 @@ import {
   useTransformPermissions,
 } from "metabase/transforms/hooks/use-transform-permissions";
 import { Center } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type {
   ScheduleDisplayType,
   TransformJob,
@@ -23,9 +23,8 @@ import type {
 } from "metabase-types/api";
 
 import { JobEditor } from "../../components/JobEditor";
+import { JobMoreMenu } from "../../components/JobMoreMenu";
 import { POLLING_INTERVAL } from "../../constants";
-
-import { JobMoreMenu } from "./JobMoreMenu";
 
 type JobPageParams = {
   jobId: string;

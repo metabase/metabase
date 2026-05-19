@@ -2,6 +2,12 @@ import userEvent from "@testing-library/user-event";
 
 import { findRequests } from "__support__/server-mocks";
 import { screen, waitFor, within } from "__support__/ui";
+import {
+  createMockCollection,
+  createMockCollectionItem,
+} from "metabase-types/api/mocks";
+
+import type { OmniPickerItem } from "../../types";
 
 import { setup } from "./setup";
 
@@ -25,6 +31,122 @@ const expectVisibleItem = async (itemName: string) =>
       screen.getByRole("link", { name: new RegExp(itemName) }),
     ).toBeVisible(),
   );
+
+const libraryCollection = createMockCollection({
+  id: 9,
+  name: "Library",
+  type: "library",
+  can_write: false,
+  location: "/",
+  here: ["collection"],
+  below: ["table"],
+});
+
+const hiddenDataCollection = createMockCollection({
+  id: 10,
+  name: "Data",
+  type: "library-data",
+  can_write: false,
+  location: "/9/",
+});
+
+const promotedDataCollection = createMockCollection({
+  id: 28,
+  name: "LibraryCollection3",
+  type: "library-data",
+  can_write: false,
+  location: "/9/10/",
+  effective_location: "/9/",
+  here: ["collection"],
+  below: ["table", "collection"],
+});
+
+const writableNestedDataCollection = createMockCollection({
+  id: 24,
+  name: "LibraryCollection1",
+  type: "library-data",
+  can_write: true,
+  location: "/9/10/28/",
+  effective_location: "/9/28/",
+  here: ["collection"],
+  below: ["table", "collection"],
+});
+
+const libraryRootItems = [
+  createMockCollectionItem({
+    id: promotedDataCollection.id as number,
+    model: "collection",
+    name: promotedDataCollection.name,
+    type: "library-data",
+    can_write: false,
+    collection_id: libraryCollection.id as number,
+    location: "/9/10/",
+    effective_location: "/9/",
+    here: ["collection"],
+    below: ["table", "collection"],
+  }),
+  createMockCollectionItem({
+    id: 30,
+    model: "collection",
+    name: "LibraryCollection5",
+    type: "library-data",
+    can_write: true,
+    collection_id: libraryCollection.id as number,
+    location: "/9/10/",
+    effective_location: "/9/",
+  }),
+  createMockCollectionItem({
+    id: 11,
+    model: "collection",
+    name: "Metrics",
+    type: "library-metrics",
+    is_library_root: true,
+    can_write: false,
+    collection_id: libraryCollection.id as number,
+    location: "/9/",
+    effective_location: "/9/",
+    here: ["collection"],
+    below: ["collection"],
+  }),
+];
+
+const promotedDataCollectionItems = [
+  createMockCollectionItem({
+    id: writableNestedDataCollection.id as number,
+    model: "collection",
+    name: writableNestedDataCollection.name,
+    type: "library-data",
+    can_write: true,
+    collection_id: promotedDataCollection.id as number,
+    location: "/9/10/28/",
+    effective_location: "/9/28/",
+    here: ["collection"],
+    below: ["table", "collection"],
+  }),
+];
+
+const libraryPickerSetup = {
+  additionalCollections: [
+    hiddenDataCollection,
+    promotedDataCollection,
+    writableNestedDataCollection,
+  ],
+  additionalCollectionItemEndpoints: [
+    {
+      collection: promotedDataCollection,
+      collectionItems: promotedDataCollectionItems,
+    },
+    {
+      collection: writableNestedDataCollection,
+      collectionItems: [],
+    },
+  ],
+  libraryCollection,
+  libraryCollectionItems: libraryRootItems,
+  options: { hasRecents: false, hasDatabases: false },
+  isSelectableItem: (item: OmniPickerItem) =>
+    !("can_write" in item) || item.can_write !== false,
+};
 
 describe("EntityPickerModal", () => {
   afterEach(() => {
@@ -155,6 +277,125 @@ describe("EntityPickerModal", () => {
       await expectVisibleItem("Model in Collection 2");
       expect(
         screen.queryByText("Question in Collection 1"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should show non-selectable synthetic library sections for promoted descendants", async () => {
+      await setup({
+        ...libraryPickerSetup,
+        value: { id: "root", model: "collection" },
+      });
+
+      await userEvent.click(await screen.findByText("Library"));
+      await waitFor(() => {
+        const item = screen
+          .getAllByRole("link")
+          .find((item) => item.textContent?.trim() === "Library");
+
+        expect(item).toHaveAttribute("data-active", "true");
+      });
+      await expectInactiveItem("Data");
+      await expectInactiveItem("Metrics");
+      expect(screen.queryByText("LibraryCollection3")).not.toBeInTheDocument();
+
+      await userEvent.click(await screen.findByText("Data"));
+      await expectActiveItem("Data");
+      expect(
+        await screen.findByRole("button", { name: "Select" }),
+      ).toBeDisabled();
+      await expectInactiveItem("LibraryCollection3");
+      await expectInactiveItem("LibraryCollection5");
+
+      await userEvent.click(await screen.findByText("LibraryCollection3"));
+      await expectActiveItem("LibraryCollection3");
+      expect(
+        await screen.findByRole("button", { name: "Select" }),
+      ).toBeDisabled();
+
+      await userEvent.click(await screen.findByText("LibraryCollection1"));
+      await expectActiveItem("LibraryCollection1");
+      expect(
+        await screen.findByRole("button", { name: "Select" }),
+      ).toBeEnabled();
+    });
+
+    it("should include synthetic library sections when auto-selecting a promoted descendant path", async () => {
+      await setup({
+        ...libraryPickerSetup,
+        value: { id: writableNestedDataCollection.id, model: "collection" },
+      });
+
+      expect(await screen.findByText("Library")).toBeVisible();
+      expect(await screen.findByText("Data")).toBeVisible();
+      expect(await screen.findByText("LibraryCollection3")).toBeVisible();
+      expect(await screen.findByText("LibraryCollection1")).toBeVisible();
+      expect(
+        await screen.findByRole("button", { name: "Select" }),
+      ).toBeEnabled();
+    });
+
+    it("should use real library section roots when they are available", async () => {
+      await setup({
+        ...libraryPickerSetup,
+        libraryCollectionItems: [
+          createMockCollectionItem({
+            id: hiddenDataCollection.id as number,
+            model: "collection",
+            name: "Data",
+            type: "library-data",
+            can_write: true,
+            is_library_root: true,
+            collection_id: libraryCollection.id as number,
+            location: "/9/",
+            effective_location: "/9/",
+            here: ["collection"],
+            below: ["collection"],
+          }),
+        ],
+        additionalCollectionItemEndpoints: [
+          {
+            collection: hiddenDataCollection,
+            collectionItems: promotedDataCollectionItems,
+          },
+        ],
+        value: { id: "root", model: "collection" },
+      });
+
+      await userEvent.click(await screen.findByText("Library"));
+      await userEvent.click(await screen.findByText("Data"));
+
+      expect(await screen.findByText("LibraryCollection1")).toBeVisible();
+      const gets = await findRequests("GET");
+      expect(
+        gets.some((req) => req.url.includes("/api/collection/10/items")),
+      ).toBe(true);
+    });
+
+    it("should filter synthetic library section children by section type", async () => {
+      await setup({
+        ...libraryPickerSetup,
+        libraryCollectionItems: [
+          ...libraryRootItems,
+          createMockCollectionItem({
+            id: 31,
+            model: "collection",
+            name: "Promoted Metric Collection",
+            type: "library-metrics",
+            can_write: true,
+            collection_id: libraryCollection.id as number,
+            location: "/9/11/",
+            effective_location: "/9/",
+          }),
+        ],
+        value: { id: "root", model: "collection" },
+      });
+
+      await userEvent.click(await screen.findByText("Library"));
+      await userEvent.click(await screen.findByText("Data"));
+
+      expect(await screen.findByText("LibraryCollection3")).toBeVisible();
+      expect(
+        screen.queryByText("Promoted Metric Collection"),
       ).not.toBeInTheDocument();
     });
   });
@@ -341,6 +582,51 @@ describe("EntityPickerModal", () => {
           name: "First Collection",
         }),
       );
+    });
+
+    it("should record recent selections by default", async () => {
+      await setup({
+        options: { hasRecents: false },
+      });
+
+      await userEvent.click(await screen.findByText("Our analytics"));
+      await userEvent.click(await screen.findByText("First Collection"));
+      await userEvent.click(
+        await screen.findByText("Question in Collection 1"),
+      );
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Select" }),
+      );
+
+      const posts = await findRequests("POST");
+      expect(posts).toEqual([
+        expect.objectContaining({
+          body: {
+            context: "selection",
+            model: "card",
+            model_id: 100,
+          },
+        }),
+      ]);
+    });
+
+    it("should not record recent selections when logging is disabled", async () => {
+      await setup({
+        disableRecentLogging: true,
+        options: { hasRecents: false },
+      });
+
+      await userEvent.click(await screen.findByText("Our analytics"));
+      await userEvent.click(await screen.findByText("First Collection"));
+      await userEvent.click(
+        await screen.findByText("Question in Collection 1"),
+      );
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Select" }),
+      );
+
+      const posts = await findRequests("POST");
+      expect(posts).toHaveLength(0);
     });
 
     it("can disable selection based on provided models", async () => {

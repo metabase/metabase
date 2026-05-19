@@ -8,6 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { TokenFeatures, User } from "metabase-types/api";
 import {
   createMockCollection,
@@ -16,7 +17,6 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { SnippetSidebar } from "../SnippetSidebar";
 
@@ -54,7 +54,7 @@ export async function setup({
     enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
-  renderWithProviders(
+  const utils = renderWithProviders(
     <SnippetSidebar
       onClose={() => null}
       setModalSnippet={() => null}
@@ -68,4 +68,6 @@ export async function setup({
     },
   );
   await waitForLoaderToBeRemoved();
+
+  return utils;
 }

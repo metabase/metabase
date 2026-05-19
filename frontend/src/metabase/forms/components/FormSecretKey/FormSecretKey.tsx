@@ -15,8 +15,10 @@ import {
 import S from "./FormSecretKey.module.css";
 import { SetupKeyModal } from "./SetupKeyModal";
 
-export interface FormSecretKeyProps
-  extends Omit<TextInputProps, "value" | "error"> {
+export interface FormSecretKeyProps extends Omit<
+  TextInputProps,
+  "value" | "error"
+> {
   name: string;
   nullable?: boolean;
 }

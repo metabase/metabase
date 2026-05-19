@@ -1,9 +1,14 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupDashboardEndpoints } from "__support__/server-mocks";
+import {
+  setupCollectionsEndpoints,
+  setupDashboardEndpoints,
+  setupGetCollectionEndpoint,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { CardType } from "metabase-types/api";
 import {
+  createMockCollection,
   createMockDashboard,
   createMockDashboardTab,
 } from "metabase-types/api/mocks";
@@ -30,7 +35,11 @@ function setup({ initialValues = {}, model = "question" }: SetupOpts = {}) {
   const onSaved = jest.fn();
   const onCancel = jest.fn();
 
+  const fooCollection = createMockCollection({ id: 1, name: "Foo Collection" });
+
   setupDashboardEndpoints(FOO_DASH);
+  setupCollectionsEndpoints({ collections: [fooCollection] });
+  setupGetCollectionEndpoint(fooCollection);
 
   renderWithProviders(
     <CopyCardForm

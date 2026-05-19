@@ -3,6 +3,7 @@ import { createMockMetadata } from "__support__/metadata";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { getHelpText } from "metabase/querying/expressions";
+import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
@@ -15,7 +16,6 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { HelpText, type HelpTextProps } from "../HelpText";
 

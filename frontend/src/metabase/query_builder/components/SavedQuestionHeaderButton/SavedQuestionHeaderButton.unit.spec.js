@@ -4,13 +4,13 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
 import { mockSettings } from "__support__/settings";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import Question from "metabase-lib/v1/Question";
 import {
   createMockCollection,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { SavedQuestionHeaderButton } from "./SavedQuestionHeaderButton";
 

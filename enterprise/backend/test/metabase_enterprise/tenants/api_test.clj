@@ -1,4 +1,5 @@
 (ns metabase-enterprise.tenants.api-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.tenants.api-test]}}}}}}
   (:require
    [clojure.test :refer [deftest testing is use-fixtures]]
    [metabase.collections.models.collection :as collection]
@@ -742,3 +743,23 @@
                 (is (false? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))
                 (is (false? (t2/select-one-fn :archived :model/Collection :id child-id)))
                 (is (false? (t2/select-one-fn :archived :model/Collection :id grandchild-id)))))))))))
+
+(deftest create-tenant-audit-log-test
+  (testing "Creating a tenant records an audit log entry with correct model and details"
+    (mt/with-premium-features #{:tenants :advanced-permissions :audit-app}
+      (mt/with-model-cleanup [:model/Tenant]
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/tenant/"
+                                             {:name "Audit Tenant"
+                                              :slug "audit-tenant"
+                                              :attributes {"department" "engineering"
+                                                           "region" "us-west"}})
+              audit-entry (t2/select-one :model/AuditLog
+                                         :topic :tenant-create
+                                         :model_id (:id response))]
+          (is (= "Tenant" (:model audit-entry)))
+          (is (= {:name "Audit Tenant"
+                  :slug "audit-tenant"
+                  :is_active true
+                  :attributes {:department "engineering"
+                               :region "us-west"}}
+                 (:details audit-entry))))))))

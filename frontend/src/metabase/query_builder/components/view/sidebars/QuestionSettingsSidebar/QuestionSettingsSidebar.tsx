@@ -5,9 +5,9 @@ import { t } from "ttag";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
 import { PLUGIN_CACHING, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
+import { useDispatch } from "metabase/redux";
 import { onCloseQuestionSettings } from "metabase/redux/query-builder";
 import { Stack, useModalsStack } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import type Question from "metabase-lib/v1/Question";
 
 import { ModelCacheManagementSection } from "../ModelCacheManagementSection";

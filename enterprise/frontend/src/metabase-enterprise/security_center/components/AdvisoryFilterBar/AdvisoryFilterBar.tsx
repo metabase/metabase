@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
-import { Checkbox, Group, Select, Stack } from "metabase/ui";
+import { Box, Checkbox, Group, Select, Stack } from "metabase/ui";
 import type { AdvisorySeverity } from "metabase-types/api";
 
 import type { AdvisoryFilter } from "../../types";
@@ -29,12 +29,6 @@ export function AdvisoryFilterBar({
     { value: "low", label: t`Low` },
   ];
 
-  const statusOptions: SelectOption<AdvisoryFilter["status"]>[] = [
-    { value: "all", label: t`All statuses` },
-    { value: "affected", label: t`Affected` },
-    { value: "not-affected", label: t`Not affected` },
-  ];
-
   const Wrapper = isSmallScreen ? Stack : Group;
 
   return (
@@ -51,18 +45,7 @@ export function AdvisoryFilterBar({
         w={isSmallScreen ? "100%" : 180}
         data-testid="severity-filter"
       />
-      <Select
-        data={statusOptions}
-        value={filter.status}
-        onChange={(value) =>
-          onChange({
-            ...filter,
-            status: value ?? "all",
-          })
-        }
-        w={isSmallScreen ? "100%" : 180}
-        data-testid="status-filter"
-      />
+      <Box style={{ flex: 1 }} />
       <Checkbox
         label={t`Show dismissed`}
         checked={filter.showAcknowledged}

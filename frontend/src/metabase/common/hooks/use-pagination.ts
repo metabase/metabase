@@ -8,7 +8,7 @@ export const usePagination = (initialPage = 0) => {
     [setPage],
   );
   const handlePreviousPage = useCallback(
-    () => setPage((prev) => prev - 1),
+    () => setPage((prev) => Math.max(0, prev - 1)),
     [setPage],
   );
 

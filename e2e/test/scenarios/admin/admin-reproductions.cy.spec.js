@@ -251,7 +251,7 @@ describe("issue 45890", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
 
     cy.visit("/admin/performance/databases");
     H.main().within(() => {

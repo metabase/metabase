@@ -1,9 +1,11 @@
 import type { UpdateQueryHookProps } from "metabase/query_builder/hooks";
 import * as Lib from "metabase-lib";
 
+import { LAST_STAGE_INDEX } from "../../../utils/stages";
+
 export const useFilterHandlers = ({
   query,
-  stageIndex = -1,
+  stageIndex = LAST_STAGE_INDEX,
   onQueryChange,
 }: Partial<UpdateQueryHookProps>) => {
   const onAddFilter = (filter: Lib.Filterable) => {

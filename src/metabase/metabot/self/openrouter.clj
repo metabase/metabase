@@ -12,6 +12,7 @@
    [malli.json-schema :as mjs]
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
+   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -92,17 +93,20 @@
                 :parameters  (mjs/transform params {:additionalProperties false})}}))
 
 (defn- openrouter-errors [res]
-  (case (long (:status res 0))
-    401 (tru "OpenRouter API key expired or invalid")
-    402 (tru "OpenRouter has insufficient credits")
-    403 (tru "OpenRouter API key has insufficient permissions")
-    404 (tru "OpenRouter model listing endpoint is unavailable")
-    429 (tru "OpenRouter has rate limited us")
-    500 (tru "OpenRouter returned an internal server error")
-    502 (tru "OpenRouter upstream provider returned an error")
-    503 (tru "OpenRouter service is unavailable")
-    (or (-> res :body :error :message)
-        (tru "Unhandled error accessing OpenRouter API"))))
+  (let [status    (long (:status res 0))
+        error-msg (get-in res [:body :error :message])]
+    (case status
+      401 (tru "OpenRouter API key expired or invalid")
+      402 (tru "OpenRouter has insufficient credits")
+      403 (tru "OpenRouter API key has insufficient permissions")
+      404 (tru "OpenRouter model listing endpoint is unavailable")
+      429 (tru "OpenRouter has rate limited us")
+      500 (tru "OpenRouter returned an internal server error")
+      502 (tru "OpenRouter upstream provider returned an error")
+      503 (tru "OpenRouter service is unavailable")
+      (if error-msg
+        (tru "OpenRouter API error (HTTP {0}): {1}" status error-msg)
+        (tru "OpenRouter API error (HTTP {0})" status)))))
 
 (defn list-models
   "List available OpenRouter models.
@@ -295,7 +299,11 @@
                                                 "HTTP-Referer" "https://metabase.com"
                                                 "X-Title"      "Metabase"}
                                       :body    (json/encode req)})]
-          (core/sse-reducible (:body response)))
+          (-> (core/sse-reducible (:body response))
+              (debug/capture-stream {:provider "openrouter"
+                                     :model    model
+                                     :url      "/v1/chat/completions"
+                                     :request  req})))
         (catch Exception e
           (core/rethrow-api-error! "openrouter" openrouter-errors e))))))
 

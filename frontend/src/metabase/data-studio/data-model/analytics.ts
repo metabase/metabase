@@ -1,5 +1,5 @@
+import { trackSimpleEvent } from "metabase/analytics";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
-import { trackSimpleEvent } from "metabase/utils/analytics";
 
 export function trackMetadataChange(detail: MetadataEditEventDetail) {
   trackSimpleEvent({

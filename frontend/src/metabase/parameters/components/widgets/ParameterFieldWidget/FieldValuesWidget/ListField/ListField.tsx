@@ -209,7 +209,7 @@ export const ListField = ({
               <Checkbox
                 variant="stacked"
                 label={
-                  <Text c="text-secondary">
+                  <Text c="text-secondary" lh="inherit">
                     {debouncedFilter ? t`Select these` : t`Select all`}
                   </Text>
                 }

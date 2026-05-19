@@ -3,10 +3,10 @@ import { jt, t } from "ttag";
 import { Alert } from "metabase/common/components/Alert";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
+import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { Box, Center, Stack, Text } from "metabase/ui";
 import { isSameOrigin } from "metabase/utils/dom";
-import { useSelector } from "metabase/utils/redux";
 
 import S from "./EmbeddingAppSameSiteCookieDescription.module.css";
 

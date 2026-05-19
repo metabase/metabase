@@ -213,7 +213,7 @@
   (interface/transpile-sql-impl (sql-tools.settings/sql-tools-parser-backend)
                                 sql from-dialect to-dialect))
 
-(defn is-single-select-stmt?
-  "Wrapper around `sql-parsing/is-single-select-stmt`."
-  [driver sql]
-  (sql-parsing/is-single-select-stmt? (sqlglot/driver->dialect driver) sql))
+(defn is-single-stmt-of-type?
+  "Wrapper around `sql-parsing/is-single-stmt-of-type?`."
+  [driver sql stmt-type]
+  (sql-parsing/is-single-stmt-of-type? (sqlglot/driver->dialect driver) sql stmt-type))

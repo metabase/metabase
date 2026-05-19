@@ -2,6 +2,7 @@
 import dayjs from "dayjs";
 
 import { createMockEntitiesState } from "__support__/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -22,7 +23,6 @@ import {
   createProductsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 const SEGMENT_1 = createMockSegment({
   id: 1,

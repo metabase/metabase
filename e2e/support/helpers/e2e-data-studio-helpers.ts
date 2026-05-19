@@ -24,26 +24,8 @@ export const DataStudio = {
     list: () => cy.findByTestId("transforms-list"),
     saveChangesButton: () => DataStudio.Transforms.queryEditor().button("Save"),
     editTransform: () => cy.findByRole("button", { name: "Edit" }),
-    editDefinitionButton: () =>
-      cy.get(
-        '[data-testid="edit-definition-button"], [data-testid="transform-edit-menu-button"]',
-      ),
-    getEditDefinitionLink: () => {
-      // When workspaces are available, "Edit definition" is inside the "Edit" menu
-      // When workspaces are not available, "Edit definition" is a direct link
-      return DataStudio.Transforms.editDefinitionButton()
-        .first()
-        .then(($el) => {
-          if ($el.attr("data-testid") === "edit-definition-button") {
-            return cy.wrap($el);
-          } else {
-            cy.wrap($el).click();
-            return popover().findByRole("menuitem", {
-              name: /Edit definition/,
-            });
-          }
-        });
-    },
+    editDefinitionButton: () => cy.findByTestId("edit-definition-button"),
+    getEditDefinitionLink: () => DataStudio.Transforms.editDefinitionButton(),
     clickEditDefinition: () => {
       DataStudio.Transforms.getEditDefinitionLink().click();
     },
@@ -76,6 +58,7 @@ export const DataStudio = {
   Runs: {
     list: () => cy.findByTestId("transforms-run-list"),
     content: () => cy.findByTestId("transforms-run-content"),
+    sidebar: () => cy.findByTestId("run-list-sidebar"),
   },
   Dependencies: {
     content: () => cy.findByTestId("transforms-dependencies-content"),
@@ -94,6 +77,8 @@ export const DataStudio = {
     saveButton: () => cy.findByRole("button", { name: "Save" }),
     cancelButton: () => cy.findByRole("button", { name: "Cancel" }),
     editor: codeMirrorHelpers("snippet-editor", {}),
+    visitSnippet: (snippetId: number) =>
+      cy.visit(`/data-studio/library/snippets/${snippetId}`),
   },
   Metrics: MetricPage,
   Tables: {
@@ -166,7 +151,7 @@ export const DataStudio = {
     result: (name: string) =>
       libraryPage().findByText(name).closest('[role="row"]'),
     newButton: () => libraryPage().findByRole("button", { name: /New/ }),
-    collectionItem: (name: string) =>
+    collectionItem: (name: string | RegExp) =>
       libraryPage().findAllByTestId("collection-name").contains(name),
   },
 };

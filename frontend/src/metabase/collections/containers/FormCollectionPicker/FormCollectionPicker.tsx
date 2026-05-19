@@ -1,8 +1,9 @@
 import { useField } from "formik";
-import type { HTMLAttributes } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import {
   type EntityType,
   canonicalCollectionId,
@@ -10,23 +11,21 @@ import {
   isValidCollectionId,
 } from "metabase/collections/utils";
 import { CollectionName } from "metabase/common/components/CollectionName";
-import type {
-  EntityPickerOptions,
-  EntityPickerProps,
-  FilterItemsInPersonalCollection,
-  OmniPickerItem,
+import {
+  CollectionPickerModal,
+  type EntityPickerModalProps,
+  type EntityPickerOptions,
+  type FilterItemsInPersonalCollection,
+  type OmniPickerItem,
 } from "metabase/common/components/Pickers";
-import { CollectionPickerModal } from "metabase/common/components/Pickers";
 import { SnippetCollectionName } from "metabase/common/components/SnippetCollectionName";
 import { TransformCollectionName } from "metabase/common/components/TransformCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import { Collections } from "metabase/entities/collections";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import { Button, Icon, Input } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
+import { Button, Icon, Input, type InputWrapperProps } from "metabase/ui";
 import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 
-interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
+interface FormCollectionPickerProps extends InputWrapperProps {
   name: string;
   title?: string;
   placeholder?: string;
@@ -34,7 +33,7 @@ interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   entityType?: EntityType;
-  collectionPickerModalProps?: Partial<EntityPickerProps>;
+  collectionPickerModalProps?: Partial<EntityPickerModalProps>;
   onCollectionSelect?: (collection: OmniPickerItem) => void;
 }
 
@@ -75,6 +74,7 @@ function FormCollectionPicker({
   entityType,
   collectionPickerModalProps,
   onCollectionSelect,
+  ...rest
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
 
@@ -84,16 +84,12 @@ function FormCollectionPicker({
 
   const [openCollectionId] = useState<CollectionId>("root");
 
-  const openCollection = useSelector((state) =>
-    Collections.selectors.getObject(state, {
-      entityId: openCollectionId,
-    }),
-  );
+  const { data: openCollection } = useGetCollectionQuery({
+    id: openCollectionId,
+  });
 
-  const selectedCollection = useSelector((state) =>
-    Collections.selectors.getObject(state, {
-      entityId: value,
-    }),
+  const { data: selectedCollection } = useGetCollectionQuery(
+    value != null ? { id: value } : skipToken,
   );
 
   const [collectionNamespace, setCollectionNamespace] =
@@ -120,7 +116,7 @@ function FormCollectionPicker({
   const nonDefaultNamespace =
     collectionPickerModalProps?.namespaces?.[0] ?? null;
 
-  const options = useMemo<EntityPickerOptions>( // FIXME, this should throw more type errors 🤔
+  const defaultOptions = useMemo<EntityPickerOptions>( // FIXME, this should throw more type errors 🤔
     () => ({
       hasPersonalCollections:
         !nonDefaultNamespace && filterPersonalCollections !== "exclude",
@@ -161,6 +157,7 @@ function FormCollectionPicker({
         label={title}
         labelProps={{ htmlFor: id }}
         error={touched ? error : undefined}
+        {...rest}
       >
         <Button
           data-testid="collection-picker-button"
@@ -192,9 +189,9 @@ function FormCollectionPicker({
           }}
           onChange={handleChange}
           onClose={() => setIsPickerOpen(false)}
-          options={options}
+          options={collectionPickerModalProps?.options || defaultOptions}
           entityType={entityType}
-          {...collectionPickerModalProps}
+          {..._.omit(collectionPickerModalProps, ["options"])}
         />
       )}
     </>

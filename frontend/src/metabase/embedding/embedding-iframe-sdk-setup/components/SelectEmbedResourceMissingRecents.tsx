@@ -1,7 +1,8 @@
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
-import { Anchor, Icon, type IconName, Stack, Text } from "metabase/ui";
+import { Anchor, Icon, Stack, Text } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import type { SdkIframeEmbedSetupExperience } from "../types";
 
@@ -66,12 +67,12 @@ const getSearchLink = (
       "dashboard",
       () =>
         c("{0} is a link button to search for dashboards")
-          .jt`You can ${(<Anchor size="sm" onClick={openPicker} key="picker-link" inline>{t`search for dashboards`}</Anchor>)} to embed.`,
+          .jt`You can ${<Anchor size="sm" onClick={openPicker} key="picker-link" inline>{t`search for dashboards`}</Anchor>} to embed.`,
     )
     .with(
       "chart",
       () =>
         c("{0} is a link button to search for charts")
-          .jt`You can ${(<Anchor size="sm" onClick={openPicker} key="picker-link" inline>{t`search for charts`}</Anchor>)} to embed.`,
+          .jt`You can ${<Anchor size="sm" onClick={openPicker} key="picker-link" inline>{t`search for charts`}</Anchor>} to embed.`,
     )
     .otherwise(() => null);

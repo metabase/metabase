@@ -12,10 +12,10 @@ import {
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import { useLocale } from "metabase/common/hooks";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
+import { modelIconMap } from "metabase/common/utils/icon";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
-  type DefinedClauseName,
   clausesForMode,
   getClauseDefinition,
 } from "metabase/querying/expressions";
@@ -53,7 +53,7 @@ export interface FilterColumnPickerProps {
   checkItemIsSelected?: (item: Item) => boolean;
   onColumnSelect: (item: ColumnListItem) => void;
   onSegmentSelect: (item: SegmentListItem) => void;
-  onExpressionSelect?: (clause?: DefinedClauseName) => void;
+  onExpressionSelect?: (clause?: Lib.DefinedClauseName) => void;
 
   withCustomExpression?: boolean;
   withColumnGroupIcon?: boolean;
@@ -268,7 +268,7 @@ function getSections({
 
 function renderItemIcon(query: Lib.Query, item: Item) {
   if (isSegmentListItem(item)) {
-    return <Icon name="star" size={18} />;
+    return <Icon name={modelIconMap["segment"]} size={18} />;
   } else if (isExpressionClauseItem(item)) {
     return <Icon name="function" size={18} />;
   } else {

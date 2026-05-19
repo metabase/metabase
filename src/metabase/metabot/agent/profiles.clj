@@ -75,9 +75,12 @@
   :prompt-template "embedding-next.selmer"
   :max-iterations  10
   :temperature     0.3
-  :tools           [#'tools/construct-notebook-query-tool
+  :tools           [#'tools/nlq-search-tool
                     #'tools/read-resource-tool
-                    #'tools/list-available-data-sources-tool]})
+                    #'tools/construct-notebook-query-tool
+                    #'tools/navigate-user-tool
+                    #'tools/create-chart-tool
+                    #'tools/edit-chart-tool]})
 
 (register-profile!
  {:name            :internal

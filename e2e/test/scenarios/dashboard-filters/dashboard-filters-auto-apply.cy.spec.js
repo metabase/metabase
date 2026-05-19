@@ -71,7 +71,7 @@ describe(
         );
         H.openDashboardSettingsSidebar();
         H.sidesheet().within(() => {
-          cy.findByText(filterToggleLabel).click();
+          cy.findByLabelText(filterToggleLabel).click();
           cy.wait("@updateDashboard");
           cy.findByLabelText(filterToggleLabel).should("not.be.checked");
         });
@@ -106,7 +106,7 @@ describe(
 
         H.openDashboardSettingsSidebar();
         H.sidesheet().within(() => {
-          cy.findByText(filterToggleLabel).click();
+          cy.findByLabelText(filterToggleLabel).click();
           cy.wait("@updateDashboard");
           cy.findByLabelText(filterToggleLabel).should("be.checked");
         });
@@ -127,7 +127,7 @@ describe(
 
         H.openDashboardSettingsSidebar();
         H.sidesheet().within(() => {
-          cy.findByText(filterToggleLabel).click();
+          cy.findByLabelText(filterToggleLabel).click();
           cy.wait("@updateDashboard");
           cy.findByLabelText(filterToggleLabel).should("not.be.checked");
         });
@@ -250,7 +250,7 @@ describe(
         H.openDashboardSettingsSidebar();
         H.sidesheet().within(() => {
           cy.findByLabelText(filterToggleLabel).should("be.checked");
-          cy.findByText(filterToggleLabel).click();
+          cy.findByLabelText(filterToggleLabel).click();
           cy.wait("@updateDashboard");
           cy.findByLabelText(filterToggleLabel).should("not.be.checked");
         });
@@ -276,7 +276,7 @@ describe(
         H.openDashboardSettingsSidebar();
         H.sidesheet().within(() => {
           cy.findByLabelText(filterToggleLabel).should("not.be.checked");
-          cy.findAllByText(filterToggleLabel).click();
+          cy.findAllByLabelText(filterToggleLabel).click();
           cy.wait("@updateDashboard");
           cy.findByLabelText(filterToggleLabel).should("be.checked");
         });
@@ -459,7 +459,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
 
     H.openDashboardSettingsSidebar();
     H.sidesheet().within(() => {
-      cy.findByText(filterToggleLabel).click();
+      cy.findByLabelText(filterToggleLabel).click();
       cy.wait("@updateDashboard");
       cy.findByLabelText(filterToggleLabel).should("not.be.checked");
       H.expectUnstructuredSnowplowEvent({
@@ -475,7 +475,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
 
     H.openDashboardSettingsSidebar();
     H.sidesheet().within(() => {
-      cy.findByText(filterToggleLabel).click();
+      cy.findByLabelText(filterToggleLabel).click();
       cy.wait("@updateDashboard");
       cy.findByLabelText(filterToggleLabel).should("be.checked");
       H.assertNoUnstructuredSnowplowEvent({

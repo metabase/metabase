@@ -90,7 +90,7 @@ jobs:
           base-ref: ${{ env.BASE_REF }}
           head-ref: ${{ env.HEAD_REF }}
 
-  migrations-mysql-8-4-ee:
+  migrations-mysql-8-0-ee:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     env:
@@ -102,7 +102,7 @@ jobs:
       MB_DB_USER: root
     services:
       mysql:
-        image: mysql:8.4
+        image: mysql:8.0
         ports:
           - "3306:3306"
         env:

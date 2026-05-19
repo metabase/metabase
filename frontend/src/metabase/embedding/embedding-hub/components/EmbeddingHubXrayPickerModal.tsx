@@ -2,8 +2,8 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { DataPickerModal } from "metabase/common/components/Pickers/DataPicker";
-import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/embedding-hub/constants";
-import { useDispatch } from "metabase/utils/redux";
+import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/constants";
+import { useDispatch } from "metabase/redux";
 import type { TableId } from "metabase-types/api";
 
 interface EmbeddingHubXrayPickerModalProps {

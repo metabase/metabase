@@ -9,6 +9,7 @@ import {
 } from "metabase/common/components/DateTime";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   ActionIcon,
@@ -24,14 +25,13 @@ import {
   type TransitionProps,
 } from "metabase/ui";
 import { isWithinIframe } from "metabase/utils/iframe";
-import { useSelector } from "metabase/utils/redux";
 import type { Document } from "metabase-types/api";
 
-import { DocumentPublicLinkPopover } from "../../embedding/components/PublicLinkPopover";
 import { trackDocumentPrint } from "../analytics";
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
 import { getListCommentsQuery } from "../utils/api";
 
+import { DocumentPublicLinkPopover } from "./DocumentHeader/DocumentPublicLinkPopover/DocumentPublicLinkPopover";
 import S from "./DocumentHeader.module.css";
 
 const saveButtonTransition: TransitionProps["transition"] = {

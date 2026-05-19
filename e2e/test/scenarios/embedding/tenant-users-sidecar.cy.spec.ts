@@ -51,7 +51,7 @@ describe("scenarios > sidecar > tenant users", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
 
     cy.request("PUT", "/api/setting", {
       "jwt-attribute-email": "email",

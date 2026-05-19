@@ -1,5 +1,4 @@
 (ns metabase.lib.js.metadata
-  (:refer-clojure :exclude [keywordize-keys])
   (:require
    #?@(:clj  (#_{:clj-kondo/ignore [:discouraged-namespace]}
               [metabase.legacy-mbql.normalize :as legacy-mbql.normalize])
@@ -503,8 +502,11 @@
 
 (defmethod parse-field-fn :measure
   [_object-type]
-  (fn [_k v]
-    v))
+  (fn [k v]
+    (case k
+      :definition #?(:cljs (js->clj v :keywordize-keys true)
+                     :clj  (perf/keywordize-keys v))
+      v)))
 
 (defmethod parse-objects-default-key :measure
   [_object-type]

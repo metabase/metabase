@@ -22,12 +22,16 @@ interface TestInputProps {
 }
 
 function TestInput({ defaultValue = "", onChange }: TestInputProps) {
-  const [value, setValue] = useState(defaultValue);
+  const [value, setValue] = useState<number | string>(defaultValue);
 
-  // onChange returns either a valid number or string edge cases like "" or "."
+  // onChange returns either a valid number or string edge cases like "", ".", or "15."
   const handleChange = (value: number | string) => {
-    setValue(typeof value === "number" ? value : "");
-    onChange?.(typeof value === "number" ? value : "");
+    setValue(value);
+    if (typeof value === "number") {
+      onChange?.(value);
+    } else if (value === "") {
+      onChange?.("");
+    }
   };
 
   return <NumberInput label="Number" value={value} onChange={handleChange} />;

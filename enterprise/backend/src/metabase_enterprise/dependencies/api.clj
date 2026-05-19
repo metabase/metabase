@@ -839,7 +839,7 @@
     #{}))
 
 (defn- build-optional-filters
-  [{:keys [entity-type card-types query include-archived-items include-personal-collections]}
+  [{:keys [query-type entity-type card-types query include-archived-items include-personal-collections]}
    {:keys [name-column location-column]}]
   (let [card-type-filter (when (and (= entity-type :card)
                                     (seq card-types))
@@ -853,6 +853,17 @@
         database-filter (when (= entity-type :table)
                           {:filter [:and [:not :database.is_sample] [:not :database.is_audit]]
                            :filter-joins #{:database}})
+        ;; Hide system-managed (internal-user) content like Usage Analytics from the unreferenced
+        ;; list — analytics dashboards have nothing pointing at them by design and would just be
+        ;; noise. The breaking-items list intentionally still surfaces them, since broken analytics
+        ;; deps are real signals worth showing.
+        internal-content-filter (when-let [model (and (= query-type :unreferenced)
+                                                      (case entity-type
+                                                        :card      :model/Card
+                                                        :dashboard :model/Dashboard
+                                                        nil))]
+                                  {:filter (mi/exclude-internal-content-hsql model :table-alias :entity)
+                                   :filter-joins #{}})
         archived-filter (when (= include-archived-items :exclude)
                           {:filter (case entity-type
                                      (:card :dashboard :document :snippet :segment :measure)
@@ -880,7 +891,8 @@
                                  :filter-joins #{:collection}}))
                             nil))
         filter-results (keep identity
-                             [card-type-filter query-filter database-filter archived-filter personal-filter])]
+                             [card-type-filter query-filter database-filter
+                              internal-content-filter archived-filter personal-filter])]
     {:filters (keep :filter filter-results)
      :filter-joins (reduce set/union #{} (map :filter-joins filter-results))}))
 

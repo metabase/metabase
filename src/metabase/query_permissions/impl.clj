@@ -15,7 +15,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -26,6 +25,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -126,29 +126,29 @@
      (recur (lib/->legacy-MBQL query) parent-source-card-id in-sandbox?)
      ;; already legacy MBQL
      (apply merge-with merge-source-ids
-            (lib.util.match/match-many query
-              (m :guard (and (map? m) (:qp/stage-is-from-source-card m)))
+            (match/match-many query
+              (:and m {:qp/stage-is-from-source-card (id :guard identity)})
               (merge-with merge-source-ids
                           (when-not parent-source-card-id
-                            {:card-ids #{(:qp/stage-is-from-source-card m)}})
-                          (query->source-ids (dissoc m :qp/stage-is-from-source-card) (:qp/stage-is-from-source-card m) in-sandbox?))
+                            {:card-ids #{id}})
+                          (query->source-ids (dissoc m :qp/stage-is-from-source-card) id in-sandbox?))
 
-              (m :guard (and (map? m) (:query-permissions/sandboxed-table m)))
+              (:and m {:query-permissions/sandboxed-table (id :guard identity)})
               (merge-with merge-source-ids
-                          {:table-ids #{(:query-permissions/sandboxed-table m)}}
+                          {:table-ids #{id}}
                           (when-not (or parent-source-card-id in-sandbox?)
-                            {:table-query-ids #{(:query-permissions/sandboxed-table m)}})
+                            {:table-query-ids #{id}})
                           (query->source-ids (dissoc m :query-permissions/sandboxed-table :native) parent-source-card-id true))
 
-              {:native (_ :guard identity)}
+              {:native &truthy}
               (when-not parent-source-card-id
                 {:native? true})
 
-              (m :guard (and (map? m) (pos-int? (:source-table m))))
+              (:and m {:source-table (id :guard pos-int?)})
               (merge-with merge-source-ids
-                          {:table-ids #{(:source-table m)}}
+                          {:table-ids #{id}}
                           (when-not (or parent-source-card-id in-sandbox?)
-                            {:table-query-ids #{(:source-table m)}})
+                            {:table-query-ids #{id}})
                           (query->source-ids (dissoc m :source-table) parent-source-card-id in-sandbox?)))))))
 
 (mu/defn query->source-table-ids

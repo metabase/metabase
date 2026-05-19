@@ -2,7 +2,9 @@
   {:clj-kondo/config '{:linters
                        ;; allowing this for now since we sorta need to put real DBs in the app DB to test the DB ID
                        ;; -> connection pool stuff
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}
+                        :deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sql-jdbc.connection-test]}
+                                                   metabase.test.data/run-mbql-query {:namespaces [metabase.driver.sql-jdbc.connection-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -66,13 +68,13 @@
     (testing "creating and removing specs works"
       ;; need to create a new, nonexistent h2 db
       (let [destroyed?         (atom false)
-            original-destroy   @#'sql-jdbc.conn/destroy-pool!
+            original-destroy   (mt/original-fn #'sql-jdbc.conn/destroy-pool!)
             pool-cache-key     @#'sql-jdbc.conn/pool-cache-key
             connection-details {:db "mem:connection_test"}
             spec               (mdb/spec :h2 connection-details)]
-        (with-redefs [sql-jdbc.conn/destroy-pool! (fn [id destroyed-spec]
-                                                    (original-destroy id destroyed-spec)
-                                                    (reset! destroyed? true))]
+        (mt/with-dynamic-fn-redefs [sql-jdbc.conn/destroy-pool! (fn [id destroyed-spec]
+                                                                  (original-destroy id destroyed-spec)
+                                                                  (reset! destroyed? true))]
           (sql-jdbc.execute/do-with-connection-with-options
            :h2
            spec
@@ -244,7 +246,7 @@
                                    (get props "dataSourceName"))]
         (is (some? db-nm))
         ;; ensure that, for any sql-jdbc driver anyway, we found *some* DB name to use in this String
-        (is (not= db-nm "null"))))))
+        (is (not= "null" db-nm))))))
 
 (deftest ^:parallel same-connection-details-result-in-equal-specs-test
   (testing "Two JDBC specs created with the same details must be considered equal for the connection pool cache to work correctly"
@@ -308,7 +310,7 @@
               (testing "hash value calculated correctly for new pooled conn"
                 (is (some? pool-spec-1))
                 (is (integer? db-hash-1))
-                (is (not= db-hash-1 0)))
+                (is (not= 0 db-hash-1)))
               (testing "changing DB details results in hash value changing and connection being invalidated"
                 (let [db-perturbed (perturb-db-details db)]
                   (testing "The calculated hash should be different"
@@ -335,7 +337,7 @@
                     (is (some? pool-spec-2))
                     (is (= 1 @hash-change-called-times) "One hash change should have been logged")
                     (is (integer? db-hash-2))
-                    (is (not= db-hash-2 0))
+                    (is (not= 0 db-hash-2))
                     (is (not= db-hash-1 db-hash-2)))))))
           (finally
             ;; restore the original test DB details, no matter what just happened
@@ -729,7 +731,7 @@
           port   (config/config-int :mb-postgres-aws-iam-test-port)
           user   (config/config-str :mb-postgres-aws-iam-test-user)
           dbname (config/config-str :mb-postgres-aws-iam-test-dbname)]
-      (with-redefs [premium-features/is-hosted? (constantly false)]
+      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
         (testing "Connection details are configured"
           (is (string? host))
           (is (string? user))
@@ -755,7 +757,7 @@
           user   (config/config-str :mb-mysql-aws-iam-test-user)
           dbname (config/config-str :mb-mysql-aws-iam-test-dbname)
           ssl-cert (config/config-str :mb-mysql-aws-iam-test-ssl-cert)]
-      (with-redefs [premium-features/is-hosted? (constantly false)]
+      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
         (testing "Connection details are configured"
           (is (string? host))
           (is (string? user))
@@ -959,8 +961,8 @@
                 (.put cache cache-key (assoc pool-1 :tunnel-session :mock-closed-session)))
 
               ;; Mock ssh-tunnel-open? to return false for our mock session
-              (with-redefs [ssh/ssh-tunnel-open? (fn [pool-spec]
-                                                   (not= :mock-closed-session (:tunnel-session pool-spec)))]
+              (mt/with-dynamic-fn-redefs [ssh/ssh-tunnel-open? (fn [pool-spec]
+                                                                 (not= :mock-closed-session (:tunnel-session pool-spec)))]
                 ;; Next call should detect invalid pool and recreate
                 (let [pool-2 (sql-jdbc.conn/db->pooled-connection-spec db)]
                   (is (= 2 @create-count) "Pool should have been recreated due to closed tunnel")

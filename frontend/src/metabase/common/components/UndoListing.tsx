@@ -15,6 +15,8 @@ import {
 import { t } from "ttag";
 
 import ZIndex from "metabase/css/core/z-index.module.css";
+import { useDispatch, useSelector } from "metabase/redux";
+import type { Undo } from "metabase/redux/store/undo";
 import {
   dismissUndo,
   pauseUndo,
@@ -23,8 +25,6 @@ import {
 } from "metabase/redux/undo";
 import { Ellipsified, Portal, Progress } from "metabase/ui";
 import { capitalize, inflect } from "metabase/utils/formatting";
-import { useDispatch, useSelector } from "metabase/utils/redux";
-import type { Undo } from "metabase-types/store/undo";
 
 import CS from "./UndoListing.module.css";
 import {
@@ -92,7 +92,7 @@ function UndoToast({
   return (
     <ToastCard
       ref={undo.ref}
-      dark
+      dark={undo.dark ?? true}
       data-testid="toast-undo"
       color={undo.toastColor}
       role="status"
@@ -100,7 +100,7 @@ function UndoToast({
       className={CS.toast}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      style={style}
+      style={{ ...style, ...undo.style }}
     >
       {undo.showProgress && (
         <Progress

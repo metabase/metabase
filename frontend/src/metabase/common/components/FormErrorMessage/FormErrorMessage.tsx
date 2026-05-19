@@ -5,8 +5,10 @@ import { useFormErrorMessage } from "metabase/forms";
 
 import { ErrorMessageRoot } from "./FormErrorMessage.styled";
 
-export interface FormErrorMessageProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, "children"> {
+export interface FormErrorMessageProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  "children"
+> {
   inline?: boolean;
 }
 

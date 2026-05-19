@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
 import {
+  useAcknowledgeAdvisoriesMutation,
   useAcknowledgeAdvisoryMutation,
   useListSecurityAdvisoriesQuery,
 } from "metabase/api";
@@ -18,6 +19,7 @@ export function useSecurityAdvisories(isPolling = false) {
     pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
   });
   const [acknowledgeAdvisory] = useAcknowledgeAdvisoryMutation();
+  const [acknowledgeAdvisories] = useAcknowledgeAdvisoriesMutation();
 
   const advisories: Advisory[] = useMemo(
     () => response?.advisories ?? [],
@@ -30,5 +32,6 @@ export function useSecurityAdvisories(isPolling = false) {
     isLoading,
     isError,
     acknowledgeAdvisory,
+    acknowledgeAdvisories,
   };
 }

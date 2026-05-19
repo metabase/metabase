@@ -2,17 +2,22 @@
   (:require
    [babashka.process :as p]
    [cheshire.core :as json]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [mage.util :as u]))
 
 (def ^:private repo "metabase/metabase")
 
 ;;; Utilities
 
-(defn- sh
-  "Run shell command, return stdout or nil on error"
+(defn- sh-nil
+  "Run shell command, return stdout or nil on error.
+   Use for commands where non-zero exit is expected - e.g., `gh pr checks`
+   returns exit 1 when checks fail but output is still valid JSON, and
+   `gh pr view` returns exit 1 when no PR exists for the branch.
+   For commands that should fail loudly, use `mage.util/sh` instead."
   [& args]
   (try
-    (let [result (apply p/shell {:out :string :err :string :in nil} args)]
+    (let [result @(apply p/process {:out :string :err :string :in nil} args)]
       (when (zero? (:exit result))
         (str/trim (:out result))))
     (catch Exception e
@@ -23,7 +28,7 @@
 (defn- gh-api
   "Call GitHub API via gh cli, return parsed JSON"
   [endpoint]
-  (when-let [result (sh "gh" "api" endpoint)]
+  (when-let [result (u/sh "gh" "api" endpoint)]
     (json/parse-string result true)))
 
 (defn- strip-ansi
@@ -68,15 +73,15 @@
 (defn- pr-info
   "Fetch PR metadata"
   [pr-number]
-  (when-let [result (sh "gh" "pr" "view" (str pr-number) "-R" repo
-                        "--json" "headRefName,headRefOid,title,url")]
+  (when-let [result (u/sh "gh" "pr" "view" (str pr-number) "-R" repo
+                          "--json" "headRefName,headRefOid,title,url")]
     (json/parse-string result true)))
 
 (defn- pr-checks
   "Fetch PR check statuses"
   [pr-number]
-  (when-let [result (sh "gh" "pr" "checks" (str pr-number) "-R" repo
-                        "--json" "name,state,link")]
+  (when-let [result (sh-nil "gh" "pr" "checks" (str pr-number) "-R" repo
+                            "--json" "name,state,link")]
     (json/parse-string result true)))
 
 (defn- find-test-report-start
@@ -391,6 +396,10 @@
 
     ;; Status message
     (cond
+      (zero? (count checks))
+      (do (println "⚠️ **No checks found.** CI may not have started yet, or check data was unavailable. Try again in a minute.")
+          (println))
+
       (and (zero? (count failed)) (zero? (count pending)))
       (do (println "✅ **All checks passing!**")
           (println))
@@ -465,7 +474,7 @@
 (defn- get-current-branch-pr
   "Get PR number for current branch, or nil if none"
   []
-  (when-let [result (sh "gh" "pr" "view" "--json" "number" "-q" ".number")]
+  (when-let [result (sh-nil "gh" "pr" "view" "--json" "number" "-q" ".number")]
     (when (re-matches #"\d+" result)
       result)))
 
@@ -542,22 +551,24 @@
       (System/exit 1))
     (log-success (format "Found PR on branch: %s" (:headRefName info)))
     (log-progress "Checking PR status...")
-    (let [checks (pr-checks pr-number)
-          {:keys [failed pending]} (categorize-checks checks)]
-      (log-progress (format "Found %d failed, %d pending check(s)"
-                            (count failed) (count pending)))
-      (log-progress "Fetching failed job logs...")
-      (let [logs-by-job-id (if (pos? (count failed))
-                             (fetch-failed-logs-parallel failed {:detailed? detailed?})
-                             {})]
-        (when (seq logs-by-job-id)
-          (log-success "Retrieved logs"))
-        (log-progress (str "Generating report" (when detailed? " (detailed mode)") "..."))
-        (println)
-        (generate-report pr-number info checks logs-by-job-id
-                         {:detailed? detailed?
-                          :progress-log *progress-log*})
-        (log-success "Done!")))))
+    (let [checks (pr-checks pr-number)]
+      (when-not checks
+        (u/exit (format "Error: Could not fetch checks for PR #%s (API error)" pr-number) 1))
+      (let [{:keys [failed pending]} (categorize-checks checks)]
+        (log-progress (format "Found %d failed, %d pending check(s)"
+                              (count failed) (count pending)))
+        (log-progress "Fetching failed job logs...")
+        (let [logs-by-job-id (if (pos? (count failed))
+                               (fetch-failed-logs-parallel failed {:detailed? detailed?})
+                               {})]
+          (when (seq logs-by-job-id)
+            (log-success "Retrieved logs"))
+          (log-progress (str "Generating report" (when detailed? " (detailed mode)") "..."))
+          (println)
+          (generate-report pr-number info checks logs-by-job-id
+                           {:detailed? detailed?
+                            :progress-log *progress-log*})
+          (log-success "Done!"))))))
 
 (defn- run-commit-report!
   "Generate report for a commit SHA (with optional branch name for display)."
@@ -597,7 +608,7 @@
                                      (do (log-success (format "Found PR #%s for current branch" pr))
                                          {:type :pr :value pr})
                                      ;; No PR — use current branch name
-                                     (let [branch (sh "git" "rev-parse" "--abbrev-ref" "HEAD")]
+                                     (let [branch (u/sh "git" "rev-parse" "--abbrev-ref" "HEAD")]
                                        (if branch
                                          (do (log-progress (format "No PR found, using branch: %s" branch))
                                              {:type :branch :value branch})

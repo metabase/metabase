@@ -3,8 +3,8 @@ import { useCallback, useState } from "react";
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { MetabotAppBarButton } from "metabase/metabot/components/MetabotAppBarButton";
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
+import type { DetailViewState } from "metabase/redux/store";
 import { Box, Flex } from "metabase/ui";
-import type { DetailViewState } from "metabase-types/store";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";

@@ -1,10 +1,7 @@
-import { getIn } from "icepick";
 import _ from "underscore";
 
-import { UtilApi } from "metabase/services";
-import { passwordComplexityDescription } from "metabase/utils/password";
+import type { Locale } from "metabase/redux/store";
 import type { LocaleData } from "metabase-types/api";
-import type { Locale } from "metabase-types/store";
 
 import { SUBSCRIBE_TOKEN, SUBSCRIBE_URL } from "./constants";
 
@@ -28,19 +25,6 @@ export const getDefaultLocale = (
     locales.find(({ code }) => code.toLowerCase() === browserLocalePrefix) ??
     locales.find(({ code }) => code === "en")
   );
-};
-
-export const validatePassword = async (password: string) => {
-  const error = passwordComplexityDescription(password);
-  if (error) {
-    return error;
-  }
-
-  try {
-    await UtilApi.password_check({ password });
-  } catch (error) {
-    return getIn(error, ["data", "errors", "password"]);
-  }
 };
 
 export const subscribeToNewsletter = (email: string) => {

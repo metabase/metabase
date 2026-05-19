@@ -10,6 +10,7 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import { useDispatch } from "metabase/redux";
 import {
   Anchor,
   Box,
@@ -21,8 +22,7 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Task } from "metabase-types/api";
 
 import {

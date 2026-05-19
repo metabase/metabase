@@ -3,7 +3,7 @@
 
   Integrates directly with our prometheus integration, so we don't need to translate from one to another."
   (:require
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.util :as u])
   (:import
    (jakarta.servlet AsyncListener AsyncEvent)
@@ -18,11 +18,11 @@
   [total-metric-name max-metric-name]
   (let [stat-max (atom 0)]
     (fn [value]
-      (prometheus/inc! total-metric-name value)
+      (analytics/inc! total-metric-name value)
       (swap! stat-max (fn [current-max]
                         (let [new-max (max value current-max)]
                           (u/prog1 new-max
-                            (prometheus/set! max-metric-name new-max))))))))
+                            (analytics/set-gauge! max-metric-name new-max))))))))
 
 (defn- stats-counter
   "Tracks a given stat as an atom nad logs total/max/current to prometheus. Returns a function that can be
@@ -33,14 +33,14 @@
     (fn [inc-or-dec]
       (assert (contains? #{:inc :dec} inc-or-dec) "Must call with :inc or :dec")
       (when (= :inc inc-or-dec)
-        (prometheus/inc! total-metric-name))
+        (analytics/inc! total-metric-name))
       (letfn [(updater [{current-max :max :as current-stat}]
                 (let [new-current (update current-stat :current + (if (= inc-or-dec :inc) 1 -1))
                       new-value (cond-> new-current
                                   (= :inc inc-or-dec) (assoc :max (max current-max (:current new-current))))]
                   (u/prog1 new-value
-                    (prometheus/set! max-metric-name (:max new-value))
-                    (prometheus/set! current-metric-name (:current new-value)))))]
+                    (analytics/set-gauge! max-metric-name (:max new-value))
+                    (analytics/set-gauge! current-metric-name (:current new-value)))))]
         (swap! stat updater)))))
 
 (defn- inc!
@@ -55,15 +55,15 @@
   [^Request base-request]
   (let [response (.getResponse base-request)]
     (if (.isCommitted response)
-      (prometheus/inc! :jetty/responses-total
-                       (condp = (quot (.getStatus response) 100)
-                         1 {:code "1xx"}
-                         2 {:code "2xx"}
-                         3 {:code "3xx"}
-                         4 {:code "4xx"}
-                         5 {:code "5xx"}))
-      (prometheus/inc! :jetty/responses-total {:code "4xx"}))
-    (prometheus/inc! :jetty/responses-bytes-total (.getContentCount response))))
+      (analytics/inc! :jetty/responses-total
+                      (condp = (quot (.getStatus response) 100)
+                        1 {:code "1xx"}
+                        2 {:code "2xx"}
+                        3 {:code "3xx"}
+                        4 {:code "4xx"}
+                        5 {:code "5xx"}))
+      (analytics/inc! :jetty/responses-total {:code "4xx"}))
+    (analytics/inc! :jetty/responses-bytes-total (.getContentCount response))))
 
 (defn- on-complete-listener
   [request-counter async-counter request-time]
@@ -71,7 +71,7 @@
     (onStartAsync [^AsyncEvent event]
       (.. event getAsyncContext (addListener this)))
     (onTimeout [^AsyncEvent _]
-      (prometheus/inc! :jetty/expires-total))
+      (analytics/inc! :jetty/expires-total))
     (onError [^AsyncEvent _])
     (onComplete [^AsyncEvent event]
       (let [request (.. ^AsyncContextEvent event getHttpChannelState getBaseRequest)
@@ -101,7 +101,7 @@
                         (inc! requests))
                       ;; resumed async request
                       (u/prog1 (System/currentTimeMillis)
-                        (prometheus/inc! :jetty/async-dispatches-total)))]
+                        (analytics/inc! :jetty/async-dispatches-total)))]
           (try
             (.handle next path base-request request response)
             (finally

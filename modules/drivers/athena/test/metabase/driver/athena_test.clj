@@ -1,4 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.athena-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.athena-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -11,6 +12,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.premium-features.core :as premium-features]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.date-time-zone-functions-test :as qp-test.date-time-zone-functions-test]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -295,21 +297,27 @@
                              (let [metadata (.getMetaData conn)]
                                (#'athena/get-columns metadata catalog (:schema table) (:name table))))))))
             (testing "`describe-table` returns the fields anyway"
-              (is (not-empty (:fields (driver/describe-table :athena db table)))))
-            (testing "`describe-table-fields` uses DESCRIBE if the JDBC driver returns duplicate column names (#58441)"
-              (let [get-columns-called (volatile! false)]
-                (with-redefs [athena/get-columns (fn [& _]
-                                                   (vreset! get-columns-called true)
-                                                   [{:column_name "c" :type_name "bigint"}
-                                                    {:column_name "c" :type_name "string"}])]
-                  (is (= #{{:database-position 0, :name "id", :database-type "int", :base-type :type/Integer}
-                           {:database-position 1, :name "name", :database-type "string", :base-type :type/Text}
-                           {:database-position 2, :name "code", :database-type "string", :base-type :type/Text}
-                           {:database-position 3, :name "latitude", :database-type "double", :base-type :type/Float}
-                           {:database-position 4, :name "longitude", :database-type "double", :base-type :type/Float}
-                           {:database-position 5, :name "municipality_id", :database-type "int", :base-type :type/Integer}}
-                         (:fields (driver/describe-table :athena db table))))
-                  (is (true? @get-columns-called)))))))))))
+              (is (not-empty (:fields (driver/describe-table :athena db table)))))))))))
+
+(deftest describe-table-falls-back-to-describe-on-duplicate-jdbc-columns-test
+  (testing "`describe-table-fields` uses DESCRIBE if the JDBC driver returns duplicate column names (#58441, GHY-3273)"
+    (mt/test-driver :athena
+      (mt/dataset airports
+        (let [db                 (mt/db)
+              table              (t2/select-one :model/Table :db_id (:id db) :name "airport")
+              get-columns-called (volatile! false)]
+          (with-redefs [athena/get-columns (fn [& _]
+                                             (vreset! get-columns-called true)
+                                             [{:column_name "c" :type_name "bigint"}
+                                              {:column_name "c" :type_name "string"}])]
+            (is (= #{{:database-position 0, :name "id", :database-type "int", :base-type :type/Integer}
+                     {:database-position 1, :name "name", :database-type "string", :base-type :type/Text}
+                     {:database-position 2, :name "code", :database-type "string", :base-type :type/Text}
+                     {:database-position 3, :name "latitude", :database-type "double", :base-type :type/Float}
+                     {:database-position 4, :name "longitude", :database-type "double", :base-type :type/Float}
+                     {:database-position 5, :name "municipality_id", :database-type "int", :base-type :type/Integer}}
+                   (:fields (driver/describe-table :athena db table))))
+            (is (true? @get-columns-called))))))))
 
 (deftest column-name-with-question-mark-test
   (testing "Column name with a question mark in it should be compiled correctly (#44915)"
@@ -504,3 +512,28 @@
                             {:name "t", :schema "db_router_data", :description nil}
                             {:name "times", :schema "diff_time_zones_athena_cases", :description nil}}}
                  filtered-tables)))))))
+
+(deftest ^:parallel regex-text-parameters-in-native-template-tags-test
+  (testing "Text parameters should be compiled inline (#33878)"
+    (driver/with-driver :athena
+      (letfn [(query-with-param [parameter-value]
+                {:lib/type     :mbql/query
+                 :lib/metadata meta/metadata-provider
+                 :database     (meta/id)
+                 :stages       [{:lib/type      :mbql.stage/native
+                                 :template-tags {"category_name" {:name         "category_name"
+                                                                  :display-name "Category name"
+                                                                  :type         :text
+                                                                  :required     true}}
+                                 :native        "SELECT * FROM categories WHERE regexp_like(name, {{category_name}})"}]
+                 :parameters   [{:type   :text
+                                 :target [:variable [:template-tag "category_name"]]
+                                 :value  parameter-value}]})]
+        (are [parameter-value expected] (=? {:query expected}
+                                            (qp.compile/compile (query-with-param parameter-value)))
+          "^(?!.*\btrial_text\b).*$"
+          "SELECT * FROM categories WHERE regexp_like(name, '^(?!.*\btrial_text\b).*$')"
+
+          ;; should escape single quotes
+          "'); OR 1 = 1 --"
+          "SELECT * FROM categories WHERE regexp_like(name, '''); OR 1 = 1 --')")))))

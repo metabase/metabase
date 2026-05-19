@@ -1,5 +1,5 @@
 import { PLUGIN_SELECTORS } from "metabase/plugins";
-import type { State } from "metabase-types/store";
+import type { State } from "metabase/redux/store";
 
 export function getWhiteLabeledLoadingMessageFactory(state: State) {
   return PLUGIN_SELECTORS.getLoadingMessageFactory(state);

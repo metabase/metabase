@@ -7,8 +7,8 @@ import { useUpsellLink } from "metabase/common/components/upsells/components/use
 import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
-import { useSelector } from "metabase/utils/redux";
 
 export const UpsellWhitelabel = ({ source }: { source: string }) => {
   const isWhitelabeled = useHasTokenFeature("whitelabel");

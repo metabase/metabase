@@ -4,14 +4,14 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { EnterpriseSettings, Measure, Table } from "metabase-types/api";
 import {
   createMockTable,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { MeasureList } from "../MeasureList";
 

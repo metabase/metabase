@@ -19,7 +19,7 @@ import {
   Title,
 } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
-import { formatDateTimeWithUnit } from "metabase/utils/formatting/date";
+import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting/date";
 import type { ApiKey } from "metabase-types/api";
 
 import { CreateApiKeyModal } from "./CreateApiKeyModal";

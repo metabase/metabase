@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { useDispatch } from "metabase/utils/redux";
 import {
   useGetTenantQuery,
   useUpdateTenantMutation,

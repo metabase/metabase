@@ -188,6 +188,24 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Lens data not available"
                           (lens.core/get-lens {:has-joins? false} "join-analysis")))))
 
+;;; -------------------------------------------------- registered-lens-types --------------------------------------------------
+
+(deftest registered-lens-types-test
+  (testing "arity-0 returns registered non-drill lens types"
+    (let [types (set (lens.core/registered-lens-types))]
+      (is (contains? types :generic-summary))
+      (is (contains? types :join-analysis))
+      (is (contains? types :column-comparison))
+      (testing "drill lenses are excluded"
+        (is (not (contains? types :unmatched-rows))))))
+  (testing "arity-1 true includes drill lenses"
+    (let [types (set (lens.core/registered-lens-types true))]
+      (is (contains? types :unmatched-rows))
+      (is (contains? types :generic-summary))))
+  (testing "arity-1 false matches arity-0"
+    (is (= (lens.core/registered-lens-types)
+           (lens.core/registered-lens-types false)))))
+
 ;;; -------------------------------------------------- register-lens! --------------------------------------------------
 
 (deftest register-lens-idempotent-test

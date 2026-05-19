@@ -19,12 +19,13 @@ import _ from "underscore";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { connect } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
 import { useMantineTheme } from "metabase/ui";
 import { sumArray } from "metabase/utils/arrays";
 import { getCspNonce } from "metabase/utils/csp";
 import { getScrollBarSize } from "metabase/utils/dom";
-import { connect } from "metabase/utils/redux";
 import {
   COLUMN_SHOW_TOTALS,
   isPivotGroupColumn,
@@ -38,7 +39,6 @@ import type {
   VisualizationDefinition,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import type { State } from "metabase-types/store";
 
 import {
   PivotTableRoot,

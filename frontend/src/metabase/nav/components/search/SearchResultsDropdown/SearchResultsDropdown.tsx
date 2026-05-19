@@ -2,8 +2,8 @@ import { jt, t } from "ttag";
 
 import type { SearchResultsFooter } from "metabase/nav/components/search/SearchResults";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
-import type { WrappedResult } from "metabase/search/types";
 import { Icon, Text, rem } from "metabase/ui";
+import type { SearchResult } from "metabase-types/api";
 
 import {
   SearchDropdownFooter,
@@ -13,7 +13,7 @@ import { MIN_RESULTS_FOR_FOOTER_TEXT } from "./constants";
 
 export type SearchResultsDropdownProps = {
   searchText: string;
-  onSearchItemSelect: (item: WrappedResult) => void;
+  onSearchItemSelect: (item: SearchResult) => void;
   goToSearchApp: () => void;
   isSearchBar?: boolean;
 };

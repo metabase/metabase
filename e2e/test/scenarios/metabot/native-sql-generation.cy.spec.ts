@@ -17,22 +17,29 @@ const rejectButton = () => cy.findByTestId("reject-proposed-changes-button");
 const generatingLoader = () => cy.findByTestId("metabot-inline-sql-generating");
 
 describe("Native SQL generation", () => {
-  it("should not be available when metabot is not configured", () => {
+  it("should show setup guidance when metabot is not configured", () => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
 
     H.startNewNativeQuestion();
     H.NativeEditor.get().should("be.visible");
     toggleInlineSQLPrompt();
-    inlinePrompt().should("not.exist");
+    inlinePrompt().should("be.visible");
+    inlinePrompt()
+      .findByText(/To use SQL generation, please/)
+      .should("be.visible");
+    generateButton().should("not.exist");
+
+    cy.findByRole("button", { name: "connect to a model" }).click();
+    cy.findByTestId("ai-provider-configuration-modal").should("be.visible");
   });
 
   describe("single db", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       cy.request("PUT", "/api/setting/llm-anthropic-api-key", {
         value: "sk-ant-api03-test-token",
       });
@@ -120,7 +127,7 @@ describe("Native SQL generation", () => {
     beforeEach(() => {
       H.restore("postgres-12");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       cy.request("PUT", "/api/setting/llm-anthropic-api-key", {
         value: "sk-ant-api03-test-token",
       });

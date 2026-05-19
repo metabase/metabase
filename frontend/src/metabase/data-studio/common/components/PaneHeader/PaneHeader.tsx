@@ -6,6 +6,7 @@ import { EditableText } from "metabase/common/components/EditableText";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { MetabotDataStudioButton } from "metabase/metabot/components/MetabotDataStudioButton";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
+import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
 import {
   Box,
@@ -13,12 +14,11 @@ import {
   FixedSizeIcon,
   Flex,
   Group,
-  type IconName,
   Stack,
   type StackProps,
   Tooltip,
 } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
+import type { IconName } from "metabase-types/api";
 
 import S from "./PaneHeader.module.css";
 import type { PaneHeaderTab } from "./types";
@@ -48,12 +48,12 @@ export const PaneHeader = ({
 }: PaneHeaderProps) => {
   return (
     <Stack gap={0} pt="xs" {...rest}>
-      <Flex mb="lg" mt="md" w="100%">
+      <Flex mb="lg" mt="md" w="100%" h="xl">
         {breadcrumbs}
 
-        <Group ml="auto" gap="md">
+        <Group ml="auto" gap="md" className={S.ButtonGroup}>
           {showMetabotButton && <MetabotDataStudioButton />}
-          {showAppSwitcher && <AppSwitcher className={S.ProfileLink} />}
+          {showAppSwitcher && <AppSwitcher />}
         </Group>
       </Flex>
       <Group

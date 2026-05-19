@@ -9,17 +9,17 @@ import {
   reset as dashboardReset,
 } from "metabase/redux/dashboard";
 import { navigateBackToDashboard } from "metabase/redux/query-builder";
+import type { StoreDashboard } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
+import * as Urls from "metabase/urls";
 import { isJWT } from "metabase/utils/jwt";
 import { parseNumber } from "metabase/utils/number";
-import * as Urls from "metabase/utils/urls";
 import type Question from "metabase-lib/v1/Question";
 import {
   type DashboardId,
   type QuestionDashboardCard,
   isBaseEntityID,
 } from "metabase-types/api";
-import type { StoreDashboard } from "metabase-types/store";
 
 export const useCommonDashboardParams = ({
   dashboardId,
@@ -114,7 +114,7 @@ export const useCommonDashboardParams = ({
             model: "dashboard",
           },
         });
-        setAdhocQuestionUrl(Urls.question(question.card()));
+        setAdhocQuestionUrl(Urls.card(question.card()));
       }
     },
     [dashboardId, dispatch, store],

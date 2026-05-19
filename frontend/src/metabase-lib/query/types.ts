@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unused-vars -- used for types */
-import type { DefinedClauseName } from "metabase/querying/expressions";
 import type {
   CardId,
   DatabaseId,
@@ -30,6 +29,7 @@ import type {
   TimeFilterOperator,
 } from "../common";
 
+import type { DefinedClauseName } from "./clauses";
 import type { ColumnExtractionTag } from "./extractions";
 
 /**
@@ -222,16 +222,16 @@ export type TextFingerprintDisplayInfo = {
   percentUrl: number;
 };
 
-// We're setting the values here as unknown even though
-// the API will return numbers most of the time, because
-// sometimes it doesn't!
+// Properties are typed as optional unknown: the API returns numbers most of
+// the time but sometimes returns non-numbers, and sometimes omits the property
+// entirely.
 export type NumberFingerprintDisplayInfo = {
-  avg: unknown;
-  max: unknown;
-  min: unknown;
-  q1: unknown;
-  q3: unknown;
-  sd: unknown;
+  avg?: unknown;
+  max?: unknown;
+  min?: unknown;
+  q1?: unknown;
+  q3?: unknown;
+  sd?: unknown;
 };
 
 export type DateTimeFingerprintDisplayInfo = {

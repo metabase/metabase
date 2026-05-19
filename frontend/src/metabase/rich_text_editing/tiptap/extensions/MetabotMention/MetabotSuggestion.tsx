@@ -22,7 +22,7 @@ import { useMetabotName } from "metabase/metabot/hooks";
 import { Box, Group, Loader, Text } from "metabase/ui";
 import type { Database, SearchResult } from "metabase-types/api";
 
-import { buildDbMenuItems } from "../shared/suggestionUtils";
+import { useBuildDbMenuItems } from "../shared/suggestionHooks";
 
 interface MentionSuggestionProps {
   items: SearchResult[];
@@ -52,6 +52,7 @@ const MetabotMentionSuggestionComponent = forwardRef<
   const [selectedIndex, setSelectedIndex] = useState(0);
   const { data: dbsResponse, isLoading } = useListDatabasesQuery();
   const metabotName = useMetabotName();
+  const buildDbMenuItems = useBuildDbMenuItems();
 
   const handleDbSelect = useCallback(
     (item: Database) => {
@@ -89,7 +90,7 @@ const MetabotMentionSuggestionComponent = forwardRef<
     }
 
     return items;
-  }, [dbsResponse?.data, handleDbSelect, query]);
+  }, [dbsResponse?.data, handleDbSelect, query, buildDbMenuItems]);
 
   const totalItems = menuItems.length;
 

@@ -321,6 +321,13 @@
       (is (= :filter/not (:node/type result)))
       (is (= :filter/comparison (get-in result [:child :node/type]))))))
 
+(deftest ^:parallel mbql-filter->ast-filter-segment-test
+  (testing "segment filters are preserved as raw MBQL passthrough"
+    (let [clause [:segment {:lib/uuid "46acdc23-a272-414a-b8eb-f93ead6b98ec"} 2]
+          result (ast.build/mbql-filter->ast-filter clause)]
+      (is (= :filter/mbql (:node/type result)))
+      (is (= clause (:clause result))))))
+
 (deftest ^:parallel mbql-filter->ast-filter-exclude-day-of-week-test
   (let [;; Exclude Monday (1) and Sunday (7) using ISO day-of-week
         ;; This is the MBQL 5 shape produced by lib/fe_util/exclude-date-filter-clause
@@ -551,3 +558,72 @@
     (testing "projections are assigned to matching leaf sub-ASTs"
       (doseq [child (get-in ast [:expression :children])]
         (is (= 1 (count (get-in child [:ast :group-by]))))))))
+
+;;; -------------------------------------------------- Segment filter passthrough --------------------------------------------------
+
+;; A `[:segment _ id]` filter clause is wrapped as a `:filter/mbql` passthrough
+;; AST node and compiled verbatim. The QP's `expand-macros` middleware then
+;; replaces it with the segment's own filter clauses at run time.
+;;
+;; Joined-table segment support (pre-expanding the segment clause at build
+;; time and annotating field refs with `:source-field`) lives in the follow-up
+;; branch `den/UXW-3754-segments-joined-tables`.
+
+(defn- source-table-segment []
+  ;; A segment authored on the metric's own source table (venues).
+  {:lib/type   :metadata/segment
+   :id         600
+   :name       "expensive"
+   :table-id   (meta/id :venues)
+   :definition {:lib/type :mbql/query
+                :database (meta/id)
+                :stages   [{:lib/type :mbql.stage/mbql
+                            :source-table (meta/id :venues)
+                            :filters [[:> {:lib/uuid "ffffffff-0000-0000-0000-000000000001"}
+                                       [:field {:lib/uuid "ffffffff-0000-0000-0000-000000000002"}
+                                        (meta/id :venues :price)]
+                                       50]]}]}})
+
+(defn- make-test-provider-with-segments
+  "Test provider that additionally serves the listed segments."
+  [metric-metadata measure-metadata segments]
+  (let [seg-by-id (into {} (map (juxt :id identity)) segments)]
+    (reify lib.metadata.protocols/MetadataProvider
+      (metadatas [_this metadata-spec]
+        (case (:lib/type metadata-spec)
+          :metadata/metric
+          (if (contains? (:id metadata-spec) (:id metric-metadata))
+            [metric-metadata]
+            [])
+          :metadata/measure
+          (if (and measure-metadata (contains? (:id metadata-spec) (:id measure-metadata)))
+            [measure-metadata]
+            [])
+          :metadata/segment
+          (into [] (keep seg-by-id) (:id metadata-spec))
+          (lib.metadata.protocols/metadatas meta/metadata-provider metadata-spec)))
+      (database [_this]
+        (lib.metadata.protocols/database meta/metadata-provider))
+      (setting [_this setting-key]
+        (lib.metadata.protocols/setting meta/metadata-provider setting-key)))))
+
+(deftest ^:parallel from-definition-preserves-source-table-segment-test
+  (testing "segment on the metric's source table is passed through as a raw :segment clause"
+    (let [provider   (make-test-provider-with-segments
+                      (sample-metric-metadata)
+                      (sample-measure-metadata)
+                      [(source-table-segment)])
+          definition {:lib/type          :metric/definition
+                      :expression        [:metric {:lib/uuid expr-uuid} 42]
+                      :filters           [{:lib/uuid expr-uuid
+                                           :filter [:segment {:lib/uuid "22222222-0000-0000-0000-000000000001"} 600]}]
+                      :projections       []
+                      :metadata-provider provider}
+          ast        (ast.build/from-definition definition)
+          filter-node (get-in ast [:expression :ast :filter])]
+      (testing "valid AST"
+        (is (nil? (me/humanize (mr/explain ::ast.schema/ast ast)))))
+      (testing "segment clause is passed through unchanged"
+        (is (= :filter/mbql (:node/type filter-node)))
+        (is (= :segment (first (:clause filter-node))))
+        (is (= 600 (nth (:clause filter-node) 2)))))))

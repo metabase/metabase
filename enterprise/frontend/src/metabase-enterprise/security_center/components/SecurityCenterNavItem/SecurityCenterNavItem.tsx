@@ -4,7 +4,7 @@ import { useListSecurityAdvisoriesQuery } from "metabase/api";
 import {
   AdminNavLink,
   AdminNavListItem,
-} from "metabase/nav/components/AdminNavbar/AdminNavItem.styled";
+} from "metabase/nav/components/AdminNavbar/AdminNavLink";
 import { Box, Flex } from "metabase/ui";
 
 import { isAffected } from "../../utils";

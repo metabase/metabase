@@ -5,8 +5,10 @@
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
+   [metabase.driver.h2 :as h2]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.util.malli.registry :as mr])
   (:import
    (java.sql Connection DatabaseMetaData)
@@ -28,19 +30,19 @@
     (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
       (let [test-db-id (mt/id)  ;; Get the test database ID
             connection-count (volatile! 0)
-            orig-do-with-resolved-connection-data-source @#'sql-jdbc.execute/do-with-resolved-connection-data-source]
-        (with-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
-                      (fn [driver db opts]
+            orig-do-with-resolved-connection-data-source (mt/original-fn #'sql-jdbc.execute/do-with-resolved-connection-data-source)]
+        (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                                    (fn [driver db opts]
                         ;; Only count connections for our test database because on startup the audit-db will be
                         ;; synced, which causes this to fail intermittently because it creates connections (to db
                         ;; 13371337)
-                        (if (= db test-db-id)
-                          (reify javax.sql.DataSource
-                            (getConnection [_]
-                              (vswap! connection-count inc)
-                              (.getConnection ^DataSource (orig-do-with-resolved-connection-data-source driver db opts))))
+                                      (if (= db test-db-id)
+                                        (reify javax.sql.DataSource
+                                          (getConnection [_]
+                                            (vswap! connection-count inc)
+                                            (.getConnection ^DataSource (orig-do-with-resolved-connection-data-source driver db opts))))
                           ;; For other databases (like audit DB), just pass through
-                          (orig-do-with-resolved-connection-data-source driver db opts)))]
+                                        (orig-do-with-resolved-connection-data-source driver db opts)))]
           (let [closed-conn (doto (.getConnection ^DataSource
                                    (orig-do-with-resolved-connection-data-source driver/*driver* test-db-id {}))
                               (.close))]
@@ -62,12 +64,12 @@
     (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
       (let [test-db-id               (mt/id)
             captured-connection-type (volatile! nil)
-            orig-fn                  @#'sql-jdbc.execute/do-with-resolved-connection-data-source]
-        (with-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
-                      (fn [driver db opts]
-                        (when (and (= db test-db-id) (:keep-open? opts))
-                          (vreset! captured-connection-type driver.conn/*connection-type*))
-                        (orig-fn driver db opts))]
+            orig-fn                  (mt/original-fn #'sql-jdbc.execute/do-with-resolved-connection-data-source)]
+        (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                                    (fn [driver db opts]
+                                      (when (and (= db test-db-id) (:keep-open? opts))
+                                        (vreset! captured-connection-type driver.conn/*connection-type*))
+                                      (orig-fn driver db opts))]
           (let [closed-conn (doto (.getConnection ^DataSource
                                    (orig-fn driver/*driver* test-db-id {}))
                               (.close))]
@@ -214,3 +216,23 @@
                    (fn [_conn] nil)))
                 (is (pos? (mt/metric-value system :metabase-db-connection/write-op
                                            {:connection-type "write-data"})))))))))))
+
+(deftest bad-connection-details-throw-client-error-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (mt/with-temp [:model/Database tmp-db {:details (tx/bad-connection-details driver/*driver*)
+                                           :engine  driver/*driver*}]
+      ;; It's not straightforward to trigger a `.getConnection` error for some drivers (e.g. sqlite)
+      ;; so just mock the exception. Also need to mock this h2 method so that the query doesn't fail
+      ;; before it gets to `do-with-resolved-connection-data-source`.
+      (with-redefs [h2/check-read-only-statements (fn [_query] nil)
+                    sql-jdbc.execute/do-with-resolved-connection-data-source
+                    (fn [_driver _db-or-id-or-spec _options]
+                      (reify javax.sql.DataSource
+                        (getConnection [_]
+                          (throw (java.sql.SQLException. "connection error")))))]
+        (let [query    {:database (:id tmp-db)
+                        :type     :native
+                        :native   {:query "SELECT 1"}}
+              response (mt/user-http-request :crowberto :post 400 "dataset" query)]
+          (is (= "unable-to-acquire-connection" (:error_type response))))))))

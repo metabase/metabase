@@ -7,8 +7,8 @@ import {
   getIsTimeseries,
 } from "metabase/query_builder/selectors";
 import { getIsObjectDetail } from "metabase/query_builder/selectors/mode";
+import { useSelector } from "metabase/redux";
 import { Group } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 
 import { ExecutionTime } from "../ExecutionTime";
 import { QuestionLastUpdated } from "../QuestionLastUpdated/QuestionLastUpdated";

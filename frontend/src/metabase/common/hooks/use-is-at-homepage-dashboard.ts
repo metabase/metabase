@@ -1,7 +1,7 @@
 import { useLocation } from "react-use";
 
+import { useSelector } from "metabase/redux";
 import { getCustomHomePageDashboardId } from "metabase/selectors/app";
-import { useSelector } from "metabase/utils/redux";
 
 import { useSetting } from "./use-setting";
 

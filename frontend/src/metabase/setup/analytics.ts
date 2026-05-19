@@ -1,4 +1,4 @@
-import { trackSchemaEvent } from "metabase/utils/analytics";
+import { trackSchemaEvent } from "metabase/analytics";
 import type { SetupVersion } from "metabase-types/analytics/setup";
 import type { UsageReason } from "metabase-types/api";
 

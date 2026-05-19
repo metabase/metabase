@@ -2,11 +2,11 @@ import type { ReactNode } from "react";
 import { Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockVersion } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import { createMockVersion } from "metabase-types/api/mocks";
 
 import { MarkdownLink } from "./MarkdownLink";
 

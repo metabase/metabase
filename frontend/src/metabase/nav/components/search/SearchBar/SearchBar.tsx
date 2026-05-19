@@ -17,7 +17,8 @@ import { useToggle } from "metabase/common/hooks/use-toggle";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
 import { zoomInRow } from "metabase/query_builder/actions";
-import type { SearchAwareLocation, WrappedResult } from "metabase/search/types";
+import { useDispatch, useSelector } from "metabase/redux";
+import type { SearchAwareLocation } from "metabase/search/types";
 import {
   getFiltersFromLocation,
   getSearchTextFromLocation,
@@ -25,10 +26,10 @@ import {
 } from "metabase/search/utils";
 import { getSetting } from "metabase/selectors/settings";
 import { Icon } from "metabase/ui";
+import { modelToUrl } from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
-import { useDispatch, useSelector } from "metabase/utils/redux";
-import { modelToUrl } from "metabase/utils/urls";
+import type { SearchResult } from "metabase-types/api";
 
 import { CommandPaletteTrigger } from "./CommandPaletteTrigger";
 import {
@@ -94,7 +95,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   }, []);
 
   const onSearchItemSelect = useCallback(
-    (result: WrappedResult) => {
+    (result: SearchResult) => {
       // if we're already looking at the right model, don't navigate, just update the zoomed in row
       const isSameModel = result?.model_id === location?.state?.cardId;
       if (isSameModel && result.model === "indexed-entity") {

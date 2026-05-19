@@ -9,8 +9,8 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
-import { Search } from "metabase/entities/search";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { useDispatch } from "metabase/redux";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import {
   SearchContextTypes,
@@ -29,7 +29,6 @@ import {
   getSearchTextFromLocation,
 } from "metabase/search/utils";
 import { Box, Group, Paper, Text } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 
 const getPageFromLocation = (location) => {
   const maybePage = location.query?.page
@@ -89,9 +88,7 @@ function SearchApp({ location }) {
   };
 
   const { data, error, isFetching, requestId } = useSearchQuery(query);
-  const list = useMemo(() => {
-    return data?.data?.map((item) => Search.wrapEntity(item, dispatch)) ?? [];
-  }, [data, dispatch]);
+  const list = useMemo(() => data?.data ?? [], [data?.data]);
 
   return (
     <SearchMain direction="column" gap="2rem" m="auto" data-testid="search-app">

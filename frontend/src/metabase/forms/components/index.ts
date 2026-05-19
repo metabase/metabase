@@ -5,7 +5,6 @@ export * from "./FormChipGroup";
 export * from "./FormDateInput";
 export * from "./FormErrorMessage";
 export * from "./FormField";
-export * from "./FormGroupsWidget";
 export * from "./FormGroupWidget";
 export * from "./FormInlineUpdater";
 export * from "./FormMessage";

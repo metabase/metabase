@@ -1,17 +1,16 @@
 import type React from "react";
 
 import { Link } from "metabase/common/components/Link";
+import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
 import {
   Icon,
-  type IconName,
   NavLink,
   type NavLinkProps,
   Stack,
   type StackProps,
 } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
-
+import type { IconName } from "metabase-types/api";
 export const AdminNavWrapper = ({
   children,
   ...stackProps

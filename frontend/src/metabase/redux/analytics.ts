@@ -1,4 +1,4 @@
-import { trackSchemaEvent } from "metabase/utils/analytics";
+import { trackSchemaEvent } from "metabase/analytics";
 
 import type { ResourceAccessedVia, ResourceType } from "./downloads";
 

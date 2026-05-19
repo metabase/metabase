@@ -25,6 +25,7 @@ import {
   useMetabotName,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
+import { useSelector } from "metabase/redux";
 import { getBrowseAllItemIndex } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
 import type { SuggestionPickerViewMode } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
@@ -36,7 +37,6 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import type { SearchResult } from "metabase-types/api";
 
 import { EntitySearchSection } from "../shared/EntitySearchSection";

@@ -6,9 +6,11 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.example-question-generator :as metabot.example-question-generator]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.suggested-prompts :as metabot.suggested-prompts]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -213,7 +215,7 @@
                                                       :collection_id collection-id-1}]
 
         (testing "should update use_verified_content field"
-          (with-redefs [metabot.suggested-prompts/generate-sample-prompts (constantly nil)]
+          (mt/with-dynamic-fn-redefs [metabot.suggested-prompts/generate-sample-prompts (constantly nil)]
             (let [response (mt/user-http-request :crowberto :put 200
                                                  (format "metabot/metabot/%d" metabot-id)
                                                  {:use_verified_content true})]
@@ -224,7 +226,7 @@
                 (is (true? (:use_verified_content updated-metabot)))))))
 
         (testing "should update collection_id field"
-          (with-redefs [metabot.suggested-prompts/generate-sample-prompts (constantly nil)]
+          (mt/with-dynamic-fn-redefs [metabot.suggested-prompts/generate-sample-prompts (constantly nil)]
             (let [response (mt/user-http-request :crowberto :put 200
                                                  (format "metabot/metabot/%d" metabot-id)
                                                  {:collection_id collection-id-2})]
@@ -235,7 +237,7 @@
                 (is (= collection-id-2 (:collection_id updated-metabot)))))))
 
         (testing "should update collection_id to null"
-          (with-redefs [metabot.suggested-prompts/generate-sample-prompts (constantly nil)]
+          (mt/with-dynamic-fn-redefs [metabot.suggested-prompts/generate-sample-prompts (constantly nil)]
             (let [response (mt/user-http-request :crowberto :put 200
                                                  (format "metabot/metabot/%d" metabot-id)
                                                  {:collection_id nil})]
@@ -245,7 +247,7 @@
                 (is (= nil (:collection_id updated-metabot)))))))
 
         (testing "should update all fields simultaneously"
-          (with-redefs [metabot.suggested-prompts/generate-sample-prompts (constantly nil)]
+          (mt/with-dynamic-fn-redefs [metabot.suggested-prompts/generate-sample-prompts (constantly nil)]
             (let [response (mt/user-http-request :crowberto :put 200
                                                  (format "metabot/metabot/%d" metabot-id)
                                                  {:use_verified_content false
@@ -271,6 +273,66 @@
                    (:message (mt/user-http-request :crowberto :put 402
                                                    (format "metabot/metabot/%d" metabot-id)
                                                    {:use_verified_content true}))))))))))
+
+(deftest metabot-put-skips-prompt-regeneration-when-managed-provider-is-locked-test
+  (mt/dataset test-data
+    (let [model-query {:type :query, :database (mt/id), :query {:source-table (mt/id :products)}}]
+      (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                         "metabase/anthropic/claude-sonnet-4-6"]
+        (mt/with-temp [:model/Collection {collection-id :id} {:name "Collection"}
+                       :model/Metabot {metabot-id :id} {:name "Test Metabot"
+                                                        :collection_id collection-id}
+                       :model/Card {card-id :id} {:name "Test Model Card"
+                                                  :type :model
+                                                  :dataset_query model-query}
+                       :model/MetabotPrompt {prompt-id :id} {:metabot_id metabot-id
+                                                             :prompt "existing prompt"
+                                                             :model :model
+                                                             :card_id card-id}]
+          (mt/with-dynamic-fn-redefs [premium-features/token-status
+                                      (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens {:meter-value 1000000
+                                                                                                 :is-locked   true}}})
+                                      metabot.suggested-prompts/delete-all-metabot-prompts
+                                      (fn [& _]
+                                        (throw (ex-info "should not delete prompts" {})))
+                                      metabot.suggested-prompts/generate-sample-prompts
+                                      (fn [& _]
+                                        (throw (ex-info "should not generate prompts" {})))]
+            (let [response (mt/user-http-request :crowberto :put 200
+                                                 (format "metabot/metabot/%d" metabot-id)
+                                                 {:collection_id nil})]
+              (is (nil? (:collection_id response)))
+              (is (= #{prompt-id}
+                     (t2/select-pks-set :model/MetabotPrompt :metabot_id metabot-id))))))))))
+
+(deftest metabot-prompt-regenerate-returns-free-trial-limit-error-when-managed-provider-is-locked-test
+  (mt/dataset test-data
+    (let [model-query {:type :query, :database (mt/id), :query {:source-table (mt/id :products)}}]
+      (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                         "metabase/anthropic/claude-sonnet-4-6"]
+        (mt/with-temp [:model/Metabot {metabot-id :id} {:name "Test Metabot"}
+                       :model/Card {card-id :id} {:name "Test Model Card"
+                                                  :type :model
+                                                  :dataset_query model-query}
+                       :model/MetabotPrompt {prompt-id :id} {:metabot_id metabot-id
+                                                             :prompt "existing prompt"
+                                                             :model :model
+                                                             :card_id card-id}]
+          (mt/with-dynamic-fn-redefs [premium-features/token-status
+                                      (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens {:meter-value 1000000
+                                                                                                 :is-locked   true}}})
+                                      metabot.suggested-prompts/delete-all-metabot-prompts
+                                      (fn [& _]
+                                        (throw (ex-info "should not delete prompts" {})))
+                                      metabot.suggested-prompts/generate-sample-prompts
+                                      (fn [& _]
+                                        (throw (ex-info "should not generate prompts" {})))]
+            (let [response (mt/user-http-request :crowberto :post 402
+                                                 (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id))]
+              (is (= "You've used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key."
+                     (:message response))))
+            (is (= #{prompt-id}
+                   (t2/select-pks-set :model/MetabotPrompt :metabot_id metabot-id)))))))))
 
 (deftest metabot-prompt-regeneration-on-config-change-test
   (mt/dataset test-data
@@ -310,12 +372,12 @@
             (let [original-prompt-ids #{prompt-id-1 prompt-id-2}]
 
               (testing "should regenerate prompts when use_verified_content changes"
-                (with-redefs [metabot.suggested-prompts/generate-sample-prompts
-                              (fn [metabot-id]
-                                (t2/insert! :model/MetabotPrompt {:metabot_id metabot-id
-                                                                  :prompt "new prompt after verified change"
-                                                                  :model :metric
-                                                                  :card_id card-id-3}))]
+                (mt/with-dynamic-fn-redefs [metabot.suggested-prompts/generate-sample-prompts
+                                            (fn [metabot-id]
+                                              (t2/insert! :model/MetabotPrompt {:metabot_id metabot-id
+                                                                                :prompt "new prompt after verified change"
+                                                                                :model :metric
+                                                                                :card_id card-id-3}))]
                   (mt/user-http-request :crowberto :put 200
                                         (format "metabot/metabot/%d" metabot-id)
                                         {:use_verified_content true})
@@ -328,12 +390,12 @@
                     (is (= "new prompt after verified change" (:prompt (first current-prompts)))))))
 
               (testing "should regenerate prompts when collection_id changes"
-                (with-redefs [metabot.suggested-prompts/generate-sample-prompts
-                              (fn [metabot-id]
-                                (t2/insert! :model/MetabotPrompt {:metabot_id metabot-id
-                                                                  :prompt "new prompt after collection change"
-                                                                  :model :model
-                                                                  :card_id card-id-4}))]
+                (mt/with-dynamic-fn-redefs [metabot.suggested-prompts/generate-sample-prompts
+                                            (fn [metabot-id]
+                                              (t2/insert! :model/MetabotPrompt {:metabot_id metabot-id
+                                                                                :prompt "new prompt after collection change"
+                                                                                :model :model
+                                                                                :card_id card-id-4}))]
                   (mt/user-http-request :crowberto :put 200
                                         (format "metabot/metabot/%d" metabot-id)
                                         {:collection_id collection-id-2})
@@ -355,8 +417,8 @@
 
                             ;; Make a PUT request that doesn't change verified content or collection_id
                             ;; (This would be if we add other fields to update in the future)
-                  (with-redefs [metabot.suggested-prompts/generate-sample-prompts
-                                (fn [_] (throw (Exception. "Should not be called")))]
+                  (mt/with-dynamic-fn-redefs [metabot.suggested-prompts/generate-sample-prompts
+                                              (fn [_] (throw (Exception. "Should not be called")))]
                     (mt/user-http-request :crowberto :put 200
                                           (format "metabot/metabot/%d" metabot-id)
                                           {:use_verified_content true  ; Same as current value

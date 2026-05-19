@@ -23,6 +23,7 @@
   border: 1px solid var(--mb-color-border);
   border-radius: 0.25rem;
   padding: 0 0.25rem;
+  line-height: 1.25rem;
 }
 
 .cmErrorUnderline {

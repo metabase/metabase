@@ -4,7 +4,12 @@ import { useAsyncFn } from "react-use";
 import { c, jt, t } from "ttag";
 import _ from "underscore";
 
-import { skipToken, useGetCardQuery, useGetTableQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCardQuery,
+  useGetPermissionsGroupQuery,
+  useGetTableQuery,
+} from "metabase/api";
 import { ActionButton } from "metabase/common/components/ActionButton";
 import {
   QuestionPickerModal,
@@ -16,7 +21,6 @@ import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import { EntityName } from "metabase/entities/containers/EntityName";
 import { GTAPApi } from "metabase/services";
-import type { IconName } from "metabase/ui";
 import { Button, Center, Icon, Loader } from "metabase/ui";
 import type {
   GroupTableAccessPolicyDraft,
@@ -25,7 +29,9 @@ import type {
 import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
 import * as Lib from "metabase-lib";
 import type {
+  GroupId,
   GroupTableAccessPolicy,
+  IconName,
   Table,
   UserAttributeKey,
 } from "metabase-types/api";
@@ -310,6 +316,11 @@ const SummaryRow = ({ icon, content }: SummaryRowProps) => (
   </div>
 );
 
+const PermissionsGroupName = ({ groupId }: { groupId: GroupId }) => {
+  const { data: group } = useGetPermissionsGroupQuery(groupId);
+  return group ? <span>{group.name}</span> : null;
+};
+
 interface PolicySummaryProps {
   policy: GroupTableAccessPolicy;
   policyTable: Table | undefined;
@@ -329,7 +340,7 @@ const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
         icon="group"
         content={jt`Users in ${(
           <strong key="group-name">
-            <EntityName entityType="groups" entityId={policy.group_id} />
+            <PermissionsGroupName groupId={policy.group_id} />
           </strong>
         )} can view`}
       />
@@ -407,7 +418,7 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
         <span>
           {c(
             "{0} is a name of a variable being used by row and column security",
-          ).jt`${(<strong key="strong">{target[1][1]}</strong>)} variable`}
+          ).jt`${<strong key="strong">{target[1][1]}</strong>} variable`}
         </span>
       );
     } else if (target[0] === "dimension") {
@@ -449,7 +460,7 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
                 {c(
                   "{0} is a name of a field being used by row and column security",
                 )
-                  .jt`${(<strong key="strong">{columnInfo.displayName}</strong>)} field`}
+                  .jt`${<strong key="strong">{columnInfo.displayName}</strong>} field`}
               </span>
             );
           }}

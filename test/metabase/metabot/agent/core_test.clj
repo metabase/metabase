@@ -1,12 +1,13 @@
 (ns metabase.metabot.agent.core-test
   (:require
    [clojure.test :refer :all]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
-   [metabase.metabot.api :as api]
+   [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as mut]
@@ -56,9 +57,9 @@
   (mt/as-admin
     (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
       (testing "runs agent loop with mocked LLM returning text"
-        (with-redefs [openrouter/openrouter (fn [_]
-                                              (mut/mock-llm-response
-                                               [{:type :text :text "Hello"}]))]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                            (mut/mock-llm-response
+                                                             [{:type :text :text "Hello"}]))]
           (let [result (into [] (agent/run-agent-loop
                                  {:messages   [{:role :user :content "Hi"}]
                                   :state      {}
@@ -72,10 +73,10 @@
 
       (testing "sql profile requests required tool choice"
         (let [captured (atom nil)]
-          (with-redefs [self/call-llm (fn [_model _system _parts _tools _tracking-opts llm-opts]
-                                        (reset! captured llm-opts)
-                                        (mut/mock-llm-response
-                                         [{:type :text :text "Hello"}]))]
+          (mt/with-dynamic-fn-redefs [self/call-llm (fn [_model _system _parts _tools _tracking-opts llm-opts]
+                                                      (reset! captured llm-opts)
+                                                      (mut/mock-llm-response
+                                                       [{:type :text :text "Hello"}]))]
             (into [] (agent/run-agent-loop
                       {:messages   [{:role :user :content "Hi"}]
                        :state      {}
@@ -85,17 +86,17 @@
 
       (testing "runs agent loop with tool execution"
         (let [call-count (atom 0)]
-          (with-redefs [openrouter/openrouter (fn [_]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
                                             ;; First call returns tool-input, second returns text
-                                                (let [n (swap! call-count inc)]
-                                                  (if (= 1 n)
-                                                    (mut/mock-llm-response
-                                                     [{:type      :tool-input
-                                                       :id        "t1"
-                                                       :function  "search"
-                                                       :arguments {:query "test"}}])
-                                                    (mut/mock-llm-response
-                                                     [{:type :text :text "Found results"}]))))]
+                                                              (let [n (swap! call-count inc)]
+                                                                (if (= 1 n)
+                                                                  (mut/mock-llm-response
+                                                                   [{:type      :tool-input
+                                                                     :id        "t1"
+                                                                     :function  "search"
+                                                                     :arguments {:query "test"}}])
+                                                                  (mut/mock-llm-response
+                                                                   [{:type :text :text "Found results"}]))))]
             (let [result (into [] (agent/run-agent-loop
                                    {:messages   [{:role :user :content "Search for test"}]
                                     :state      {}
@@ -109,8 +110,8 @@
               (is (some #(= :tool-input (:type %)) result))))))
 
       (testing "handles errors gracefully"
-        (with-redefs [openrouter/openrouter (fn [_]
-                                              (throw (ex-info "Mock error" {})))]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                            (throw (ex-info "Mock error" {})))]
           (let [result (mt/with-log-level [metabase.metabot.agent.core :fatal]
                          (into [] (agent/run-agent-loop
                                    {:messages   [{:role :user :content "Hi"}]
@@ -152,9 +153,9 @@
   (mt/as-admin
     (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
       (testing "runs full agent loop without external calls"
-        (with-redefs [openrouter/openrouter (fn [_]
-                                              (mut/mock-llm-response
-                                               [{:type :text :text "Test response"}]))]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                            (mut/mock-llm-response
+                                                             [{:type :text :text "Test response"}]))]
           (let [result (into [] (agent/run-agent-loop
                                  {:messages   [{:role :user :content "Hello"}]
                                   :state      {}
@@ -202,8 +203,10 @@
 
 (deftest extract-charts-test
   (testing "extracts charts from tool output parts"
-    (let [chart-data {:chart-id "c-456"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          chart-data {:chart-id "c-456"
                       :query-id "q-123"
+                      :query query
                       :chart-type :bar}
           parts [{:type :tool-output
                   :id "t1"
@@ -211,21 +214,9 @@
                   :result {:structured-output chart-data}}]
           memory {:state {:queries {} :charts {}}}
           updated (#'agent/extract-charts memory parts)]
-      (is (= chart-data (get-in (memory/get-state updated) [:charts "c-456"])))))
-
-  (testing "stores charts even when query details are included"
-    (let [query-data {:chart-id "c-789"
-                      :query-id "q-789"
-                      :query {:database 1}
-                      :result-columns []}
-          parts [{:type :tool-output
-                  :id "t1"
-                  :function "query_model"
-                  :result {:structured-output query-data}}]
-          memory {:state {:queries {} :charts {}}}
-          updated (#'agent/extract-charts memory parts)]
-      (is (= query-data (get-in (memory/get-state updated) [:charts "c-789"])))))
-
+      (is (= {:chart_id "c-456"
+              :queries [query]
+              :visualization_settings {:chart_type :bar}} (get-in (memory/get-state updated) [:charts "c-456"])))))
   (testing "ignores parts without chart-id"
     (let [parts [{:type :tool-output
                   :id "t1"
@@ -287,18 +278,15 @@
                                :keyword_queries  ["orders"]
                                :entity_types     ["table"]}}
                   {:type :usage :usage {:promptTokens 100 :completionTokens 20} :model "test" :id "msg-1"}]
-             ;; Iteration 2: Construct a simple raw query (no fields/aggregations = select all)
+             ;; Iteration 2: Construct a simple query via agent-lib program
                  [{:type :start :id "msg-2"}
                   {:type      :tool-input
                    :id        "call-construct-1"
                    :function  "construct_notebook_query"
                    :arguments {:reasoning     "User wants to see orders"
-                               :query         {:query_type "raw"
-                                               :source     {:table_id orders-table-id}
-                                               :filters    []
-                                               :fields     []
-                                               :order_by   []
-                                               :limit      10}
+                               :source_entity {:type "table" :id orders-table-id}
+                               :program       {:source     {:type "table" :id orders-table-id}
+                                               :operations [["limit" 10]]}
                                :visualization {:chart_type "table"}}}
                   {:type :usage :usage {:promptTokens 200 :completionTokens 30} :model "test" :id "msg-2"}]
              ;; Iteration 3: Final text response
@@ -308,16 +296,16 @@
                   {:type :usage :usage {:promptTokens 300 :completionTokens 10} :model "test" :id "msg-3"}]]]
         ;; Mock only openrouter/openrouter (LLM) and metabot-search/search (search backend)
         ;; Everything else runs real code
-            (with-redefs [openrouter/openrouter           (fn [_opts]
-                                                            (let [n (swap! llm-call-count inc)]
-                                                              (mut/mock-llm-response (get llm-responses (dec n) []))))
-                          metabot-search/search (fn [_args]
-                                                  [{:id           orders-table-id
-                                                    :type         "table"
-                                                    :name         "orders"
-                                                    :display_name "Orders"
-                                                    :description  "This is a confirmed order for a product from a user."
-                                                    :database_id  (mt/id)}])]
+            (mt/with-dynamic-fn-redefs [openrouter/openrouter           (fn [_opts]
+                                                                          (let [n (swap! llm-call-count inc)]
+                                                                            (mut/mock-llm-response (get llm-responses (dec n) []))))
+                                        metabot-search/search (fn [_args]
+                                                                [{:id           orders-table-id
+                                                                  :type         "table"
+                                                                  :name         "orders"
+                                                                  :display_name "Orders"
+                                                                  :description  "This is a confirmed order for a product from a user."
+                                                                  :database_id  (mt/id)}])]
               (testing "Should successfully go through 3 iterations"
                 (is (=? [{:type :start}
                          {:type :tool-input :function "search"}
@@ -345,7 +333,7 @@
                           :data      {:queries map?
                                       :charts  map?}}]
                         (mt/with-log-level [metabase.metabot.agent.core :warn]
-                          (into [] (#'api/combine-text-parts-xf)
+                          (into [] (metabot.persistence/combine-text-parts-xf)
                                 (agent/run-agent-loop
                                  {:messages   [{:role    :user
                                                 :content "Show me the first 10 orders"}]
@@ -361,25 +349,25 @@
     (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
       (testing "usage parts are cumulative across agent loop iterations"
         (let [call-count (atom 0)]
-          (with-redefs [openrouter/openrouter
-                        (fn [_]
-                          (let [n (swap! call-count inc)]
-                            (case (int n)
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                      (fn [_]
+                                        (let [n (swap! call-count inc)]
+                                          (case (int n)
                           ;; Iteration 1: tool call with usage
-                              1 (mut/mock-llm-response
-                                 [{:type :start :id "msg-1"}
-                                  {:type      :tool-input
-                                   :id        "t1"
-                                   :function  "search"
-                                   :arguments {:query "test"}}
-                                  {:type :usage :usage {:promptTokens 100 :completionTokens 20}
-                                   :model "gpt-4" :id "msg-1"}])
+                                            1 (mut/mock-llm-response
+                                               [{:type :start :id "msg-1"}
+                                                {:type      :tool-input
+                                                 :id        "t1"
+                                                 :function  "search"
+                                                 :arguments {:query "test"}}
+                                                {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                                                 :model "gpt-4" :id "msg-1"}])
                           ;; Iteration 2: text response with usage
-                              (mut/mock-llm-response
-                               [{:type :start :id "msg-2"}
-                                {:type :text :text "Done"}
-                                {:type :usage :usage {:promptTokens 150 :completionTokens 30}
-                                 :model "gpt-4" :id "msg-2"}]))))]
+                                            (mut/mock-llm-response
+                                             [{:type :start :id "msg-2"}
+                                              {:type :text :text "Done"}
+                                              {:type :usage :usage {:promptTokens 150 :completionTokens 30}
+                                               :model "gpt-4" :id "msg-2"}]))))]
             (let [result (mt/with-log-level [metabase.metabot.agent.core :warn]
                            (into [] (agent/run-agent-loop
                                      {:messages   [{:role :user :content "test"}]
@@ -398,23 +386,23 @@
 
       (testing "cumulative usage works across multiple models"
         (let [call-count (atom 0)]
-          (with-redefs [openrouter/openrouter
-                        (fn [_]
-                          (let [n (swap! call-count inc)]
-                            (case (int n)
-                              1 (mut/mock-llm-response
-                                 [{:type :start :id "msg-1"}
-                                  {:type      :tool-input
-                                   :id        "t1"
-                                   :function  "search"
-                                   :arguments {:query "test"}}
-                                  {:type :usage :usage {:promptTokens 100 :completionTokens 20}
-                                   :model "model-a" :id "msg-1"}])
-                              (mut/mock-llm-response
-                               [{:type :start :id "msg-2"}
-                                {:type :text :text "Done"}
-                                {:type :usage :usage {:promptTokens 200 :completionTokens 40}
-                                 :model "model-b" :id "msg-2"}]))))]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                      (fn [_]
+                                        (let [n (swap! call-count inc)]
+                                          (case (int n)
+                                            1 (mut/mock-llm-response
+                                               [{:type :start :id "msg-1"}
+                                                {:type      :tool-input
+                                                 :id        "t1"
+                                                 :function  "search"
+                                                 :arguments {:query "test"}}
+                                                {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                                                 :model "model-a" :id "msg-1"}])
+                                            (mut/mock-llm-response
+                                             [{:type :start :id "msg-2"}
+                                              {:type :text :text "Done"}
+                                              {:type :usage :usage {:promptTokens 200 :completionTokens 40}
+                                               :model "model-b" :id "msg-2"}]))))]
             (let [result (mt/with-log-level [metabase.metabot.agent.core :warn]
                            (into [] (agent/run-agent-loop
                                      {:messages   [{:role :user :content "test"}]
@@ -436,17 +424,17 @@
     (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
       (testing "agent loop retries when LLM returns 429 and then succeeds"
         (let [call-count (atom 0)]
-          (with-redefs [self/retry-delay-ms   (constantly 0)
-                        openrouter/openrouter (fn [_]
-                                                (if (< (swap! call-count inc) 2)
-                                                  (throw (ex-info "Anthropic API has rate limited us"
-                                                                  {:status 429 :api-error true}))
-                                                  (mut/mock-llm-response
-                                                   [{:type :text :text "Hello after retry"}])))]
+          (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                      openrouter/openrouter (fn [_]
+                                                              (if (< (swap! call-count inc) 2)
+                                                                (throw (ex-info "Anthropic API has rate limited us"
+                                                                                {:status 429 :api-error true}))
+                                                                (mut/mock-llm-response
+                                                                 [{:type :text :text "Hello after retry"}])))]
             (is (=? [{:type :text :text "Hello after retry"}
                      {:type :data :data-type "state"}]
                     (mt/with-log-level [metabase.metabot.self :fatal]
-                      (into [] (#'api/combine-text-parts-xf)
+                      (into [] (metabot.persistence/combine-text-parts-xf)
                             (agent/run-agent-loop
                              {:messages   [{:role :user :content "Hi"}]
                               :state      {}
@@ -463,17 +451,17 @@
     (mt/with-prometheus-system! [_ system]
       (testing "records agent-requests, agent-iterations, and llm-requests metrics"
         (let [call-count (atom 0)]
-          (with-redefs [openrouter/openrouter
-                        (fn [_]
-                          (let [n (swap! call-count inc)]
-                            (if (= 1 n)
-                              (mut/mock-llm-response
-                               [{:type      :tool-input
-                                 :id        "t1"
-                                 :function  "search"
-                                 :arguments {:query "test"}}])
-                              (mut/mock-llm-response
-                               [{:type :text :text "Done"}]))))]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                      (fn [_]
+                                        (let [n (swap! call-count inc)]
+                                          (if (= 1 n)
+                                            (mut/mock-llm-response
+                                             [{:type      :tool-input
+                                               :id        "t1"
+                                               :function  "search"
+                                               :arguments {:query "test"}}])
+                                            (mut/mock-llm-response
+                                             [{:type :text :text "Done"}]))))]
             (mt/with-log-level [metabase.metabot.agent.core :warn]
               (run-agent-loop! {:messages   [{:role :user :content "test"}]
                                 :state      {}
@@ -494,14 +482,14 @@
                                          {:profile-id "internal"})))))
 
     ;; clear! is much faster than a new mt/with-prometheus-system!
-      (prometheus/clear! :metabase-metabot/agent-requests)
-      (prometheus/clear! :metabase-metabot/agent-iterations)
-      (prometheus/clear! :metabase-metabot/agent-errors)
-      (prometheus/clear! :metabase-metabot/agent-duration-ms)
-      (prometheus/clear! :metabase-metabot/llm-requests)
+      (analytics/clear! :metabase-metabot/agent-requests)
+      (analytics/clear! :metabase-metabot/agent-iterations)
+      (analytics/clear! :metabase-metabot/agent-errors)
+      (analytics/clear! :metabase-metabot/agent-duration-ms)
+      (analytics/clear! :metabase-metabot/llm-requests)
 
       (testing "records agent-errors on failure"
-        (with-redefs [openrouter/openrouter (fn [_] (throw (ex-info "boom" {})))]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_] (throw (ex-info "boom" {})))]
           (mt/with-log-level [metabase.metabot.agent.core :fatal]
             (run-agent-loop! {:messages   [{:role :user :content "test"}]
                               :state      {}
@@ -528,27 +516,27 @@
     (testing "fires :snowplow/ai_service_event 'agent_used_tool' per tool call"
       (let [call-count (atom 0)
             rasta-id   (mt/user->id :rasta)]
-        (with-redefs [openrouter/openrouter
-                      (fn [_]
-                        (let [n (swap! call-count inc)]
-                          (if (= 1 n)
-                            (mut/mock-llm-response
-                             [{:type :start :id "msg-1"}
-                              {:type      :tool-input
-                               :id        "t1"
-                               :function  "search"
-                               :arguments {:semantic_queries ["test"]
-                                           :keyword_queries  ["test"]
-                                           :entity_types     ["table"]}}
-                              {:type :usage :usage {:promptTokens 100 :completionTokens 20}
-                               :model "test-model" :id "msg-1"}])
-                            (mut/mock-llm-response
-                             [{:type :start :id "msg-2"}
-                              {:type :text :text "Done"}
-                              {:type :usage :usage {:promptTokens 150 :completionTokens 30}
-                               :model "test-model" :id "msg-2"}]))))
-                      metabot-search/search
-                      (fn [_args] [{:id 1 :type "table" :name "test" :display_name "Test" :database_id 1}])]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                    (fn [_]
+                                      (let [n (swap! call-count inc)]
+                                        (if (= 1 n)
+                                          (mut/mock-llm-response
+                                           [{:type :start :id "msg-1"}
+                                            {:type      :tool-input
+                                             :id        "t1"
+                                             :function  "search"
+                                             :arguments {:semantic_queries ["test"]
+                                                         :keyword_queries  ["test"]
+                                                         :entity_types     ["table"]}}
+                                            {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                                             :model "test-model" :id "msg-1"}])
+                                          (mut/mock-llm-response
+                                           [{:type :start :id "msg-2"}
+                                            {:type :text :text "Done"}
+                                            {:type :usage :usage {:promptTokens 150 :completionTokens 30}
+                                             :model "test-model" :id "msg-2"}]))))
+                                    metabot-search/search
+                                    (fn [_args] [{:id 1 :type "table" :name "test" :display_name "Test" :database_id 1}])]
           (mt/with-log-level [metabase.metabot.agent.core :warn]
             (mt/with-current-user rasta-id
               (snowplow-test/with-fake-snowplow-collector
@@ -574,25 +562,25 @@
     (testing "fires 'agent_used_tool' with result=error when tool fails"
       (let [call-count (atom 0)
             rasta-id   (mt/user->id :rasta)]
-        (with-redefs [openrouter/openrouter
-                      (fn [_]
-                        (let [n (swap! call-count inc)]
-                          (if (= 1 n)
-                            (mut/mock-llm-response
-                             [{:type :start :id "msg-1"}
-                              {:type      :tool-input
-                               :id        "t1"
-                               :function  "search"
-                               :arguments {:bad-arg "wrong"}}
-                              {:type :usage :usage {:promptTokens 100 :completionTokens 20}
-                               :model "test-model" :id "msg-1"}])
-                            (mut/mock-llm-response
-                             [{:type :start :id "msg-2"}
-                              {:type :text :text "Done"}
-                              {:type :usage :usage {:promptTokens 150 :completionTokens 30}
-                               :model "test-model" :id "msg-2"}]))))
-                      metabot-search/search
-                      (fn [_args] (throw (ex-info "should not be called" {})))]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                    (fn [_]
+                                      (let [n (swap! call-count inc)]
+                                        (if (= 1 n)
+                                          (mut/mock-llm-response
+                                           [{:type :start :id "msg-1"}
+                                            {:type      :tool-input
+                                             :id        "t1"
+                                             :function  "search"
+                                             :arguments {:bad-arg "wrong"}}
+                                            {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                                             :model "test-model" :id "msg-1"}])
+                                          (mut/mock-llm-response
+                                           [{:type :start :id "msg-2"}
+                                            {:type :text :text "Done"}
+                                            {:type :usage :usage {:promptTokens 150 :completionTokens 30}
+                                             :model "test-model" :id "msg-2"}]))))
+                                    metabot-search/search
+                                    (fn [_args] (throw (ex-info "should not be called" {})))]
           (mt/with-log-level [metabase.metabot.agent.core :warn]
             (mt/with-current-user rasta-id
               (snowplow-test/with-fake-snowplow-collector
@@ -612,23 +600,23 @@
     (testing "fires :snowplow/token_usage event per LLM call"
       (let [call-count (atom 0)
             rasta-id   (mt/user->id :rasta)]
-        (with-redefs [openrouter/openrouter
-                      (fn [_]
-                        (let [n (swap! call-count inc)]
-                          (if (= 1 n)
-                            (mut/mock-llm-response
-                             [{:type :start :id "msg-1"}
-                              {:type      :tool-input
-                               :id        "t1"
-                               :function  "search"
-                               :arguments {:query "test"}}
-                              {:type :usage :usage {:promptTokens 100 :completionTokens 20}
-                               :model "test-model" :id "msg-1"}])
-                            (mut/mock-llm-response
-                             [{:type :start :id "msg-2"}
-                              {:type :text :text "Done"}
-                              {:type :usage :usage {:promptTokens 150 :completionTokens 30}
-                               :model "test-model" :id "msg-2"}]))))]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                    (fn [_]
+                                      (let [n (swap! call-count inc)]
+                                        (if (= 1 n)
+                                          (mut/mock-llm-response
+                                           [{:type :start :id "msg-1"}
+                                            {:type      :tool-input
+                                             :id        "t1"
+                                             :function  "search"
+                                             :arguments {:query "test"}}
+                                            {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                                             :model "test-model" :id "msg-1"}])
+                                          (mut/mock-llm-response
+                                           [{:type :start :id "msg-2"}
+                                            {:type :text :text "Done"}
+                                            {:type :usage :usage {:promptTokens 150 :completionTokens 30}
+                                             :model "test-model" :id "msg-2"}]))))]
           (mt/with-log-level [metabase.metabot.agent.core :warn]
             (mt/with-current-user rasta-id
               (snowplow-test/with-fake-snowplow-collector

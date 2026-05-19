@@ -2,8 +2,8 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { Button } from "metabase/common/components/Button";
+import { useDispatch } from "metabase/redux";
 import { Divider, Radio, Stack, Text } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import type { UsageReason } from "metabase-types/api";
 
 import { submitUsageReason } from "../../actions";

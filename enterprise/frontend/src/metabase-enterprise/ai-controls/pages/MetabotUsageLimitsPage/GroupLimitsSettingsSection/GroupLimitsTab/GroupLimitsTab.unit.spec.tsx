@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupUpdateAIControlsGroupLimitEndpoint } from "__support__/server-mocks/metabot";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type {
   GroupInfo,
   MetabotGroupLimit,
@@ -79,7 +79,7 @@ describe("GroupLimitsTab", () => {
     expect(screen.getByText("Administrators")).toBeInTheDocument();
     expect(screen.getByText("Marketing")).toBeInTheDocument();
 
-    const adminInput = screen.getByRole("spinbutton", {
+    const adminInput = screen.getByRole("textbox", {
       name: /Administrators/,
     });
     expect(adminInput).toBeInTheDocument();
@@ -95,6 +95,18 @@ describe("GroupLimitsTab", () => {
     setup({ limitType: "messages" });
 
     expect(screen.getByText(/Max messages per user/)).toBeInTheDocument();
+  });
+
+  it("shows 'million' unit beside each input when limitType is tokens", () => {
+    setup({ limitType: "tokens" });
+
+    expect(screen.getAllByText("million").length).toBe(defaultGroups.length);
+  });
+
+  it("shows 'messages' unit beside each input when limitType is messages", () => {
+    setup({ limitType: "messages" });
+
+    expect(screen.getAllByText("messages").length).toBe(defaultGroups.length);
   });
 
   it("shows 'Group' column header for regular-groups variant", () => {
@@ -136,12 +148,14 @@ describe("GroupLimitsTab", () => {
   it("updates the input value when user types", async () => {
     setup();
 
-    const adminInput = screen.getByRole("spinbutton", {
+    const adminInput = screen.getByRole("textbox", {
       name: /Administrators/,
     });
-    await userEvent.type(adminInput, "250");
-
-    expect(adminInput).toHaveValue(250);
+    await userEvent.type(adminInput, "1");
+    expect(adminInput).toHaveValue("1");
+    await userEvent.clear(adminInput);
+    await userEvent.type(adminInput, "10");
+    expect(adminInput).toHaveValue("10");
   });
 
   it("shows error message when error is present", () => {
@@ -163,6 +177,23 @@ describe("GroupLimitsTab", () => {
     setup({ limitPeriod: "weekly", limitType: "tokens" });
 
     expect(screen.getByText(/each week/)).toBeInTheDocument();
+  });
+
+  it("shows error when value exceeds the instance limit", async () => {
+    setup({ instanceLimit: 100 });
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    const adminsGroupInput = screen.getByLabelText(
+      /Max tokens per user for Administrators/,
+    );
+    await userEvent.type(adminsGroupInput, "200");
+
+    await waitFor(() => {
+      const alert = screen.getByRole("alert");
+      expect(alert).toHaveTextContent(
+        /Can't be higher than the instance limit/,
+      );
+    });
   });
 
   describe("'All Users' group override warning icons", () => {

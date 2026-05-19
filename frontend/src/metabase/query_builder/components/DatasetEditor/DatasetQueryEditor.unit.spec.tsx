@@ -8,6 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card } from "metabase-types/api";
@@ -17,7 +18,6 @@ import {
   createMockNativeDatasetQuery,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 const TEST_DB = createSampleDatabase();
 
@@ -96,9 +96,8 @@ const setup = async ({
  * would have been used in tests instead of the actual implementation.
  */
 const importDatasetQueryEditor = async () => {
-  const { DatasetQueryEditor } = await import(
-    "metabase/query_builder/components/DatasetEditor/DatasetQueryEditor"
-  );
+  const { DatasetQueryEditor } =
+    await import("metabase/query_builder/components/DatasetEditor/DatasetQueryEditor");
   return DatasetQueryEditor;
 };
 

@@ -1,10 +1,10 @@
+import { useSelector } from "metabase/redux";
 import {
   type UtmProps,
   getDocsUrl,
   getLearnUrl,
 } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { useSelector } from "metabase/utils/redux";
 
 type DocsUtmProps = Omit<UtmProps, "utm_medium"> & {
   utm_medium?: UtmProps["utm_medium"];

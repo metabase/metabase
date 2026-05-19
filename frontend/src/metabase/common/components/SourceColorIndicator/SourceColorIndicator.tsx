@@ -1,5 +1,5 @@
-import type { IconName } from "metabase/ui";
 import { Box, Flex, Icon } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./SourceColorIndicator.module.css";
 
@@ -43,13 +43,15 @@ export function SourceColorIndicator({
     );
   }
   return (
-    <Box
-      className={S.colorDot}
-      w={size}
-      h={size}
-      style={{
-        backgroundColor: color,
-      }}
-    />
+    <Flex align="center" data-testid="color-indicator-container">
+      <Box
+        className={S.colorDot}
+        w={size}
+        h={size}
+        style={{
+          backgroundColor: color,
+        }}
+      />
+    </Flex>
   );
 }

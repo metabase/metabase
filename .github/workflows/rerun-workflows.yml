@@ -4,11 +4,11 @@ on:
   workflow_run:
     workflows: [Run tests]
     types: [completed]
-    branches: [master, 'release-x.**', 'backport-**']
+    branches: [master, "release-x.**", "backport-**"]
 
 jobs:
   rerun-on-failure:
-    name: 'Re-run ''${{ github.event.workflow_run.name }}'' workflow'
+    name: "Re-run '${{ github.event.workflow_run.name }}' workflow"
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     # Do not re-run scheduled workflow runs
     if: github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.event != 'schedule'
@@ -95,7 +95,7 @@ jobs:
                     "type": "header",
                     "text": {
                       "type": "plain_text",
-                      "text": `:warning: CI is failing on ${BRANCH}`,
+                      "text": `:warning: CI is failing on ${repo}@${BRANCH}`,
                       "emoji": true,
                     }
                   },

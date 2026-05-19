@@ -1,4 +1,5 @@
 (ns metabase.metabot.tools.entity-details-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.metabot.tools.entity-details-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
@@ -145,7 +146,8 @@
               products-query (lib/query (mt/metadata-provider) (mt/mbql-query products))
               expected-products-field-count (count (lib/visible-columns products-query -1 {:include-implicitly-joinable? false}))
               ;; Get Orders table details with related tables
-              result (entity-details/get-table-details {:table-id orders-id})
+              result (entity-details/get-table-details {:entity-type :table
+                                                        :entity-id orders-id})
               output (:structured-output result)
               related-tables (:related_tables output)
               products-related (first (filter #(= products-id (:id %)) related-tables))]
@@ -185,12 +187,14 @@
                                                       :definition measure-def}]
         (mt/with-current-user (mt/user->id :crowberto)
           (testing "with_measures: false (default) does not include measures"
-            (let [result (entity-details/get-table-details {:table-id (mt/id :orders)})
+            (let [result (entity-details/get-table-details {:entity-type :table
+                                                            :entity-id (mt/id :orders)})
                   output (:structured-output result)]
               (is (nil? (:measures output)))))
 
           (testing "with_measures: true includes measures for the table"
-            (let [result (entity-details/get-table-details {:table-id (mt/id :orders)
+            (let [result (entity-details/get-table-details {:entity-type :table
+                                                            :entity-id (mt/id :orders)
                                                             :with-measures? true})
                   output (:structured-output result)
                   measures (:measures output)]
@@ -210,12 +214,14 @@
                                                       :definition segment-def}]
         (mt/with-current-user (mt/user->id :crowberto)
           (testing "with_segments: false (default) does not include segments"
-            (let [result (entity-details/get-table-details {:table-id (mt/id :orders)})
+            (let [result (entity-details/get-table-details {:entity-type :table
+                                                            :entity-id (mt/id :orders)})
                   output (:structured-output result)]
               (is (nil? (:segments output)))))
 
           (testing "with_segments: true includes segments for the table"
-            (let [result (entity-details/get-table-details {:table-id (mt/id :orders)
+            (let [result (entity-details/get-table-details {:entity-type :table
+                                                            :entity-id (mt/id :orders)
                                                             :with-segments? true})
                   output (:structured-output result)
                   segments (:segments output)]
@@ -238,7 +244,8 @@
                                                                 :table_id   (mt/id :products)
                                                                 :definition products-measure-def}]
         (mt/with-current-user (mt/user->id :crowberto)
-          (let [result (entity-details/get-table-details {:table-id (mt/id :orders)
+          (let [result (entity-details/get-table-details {:entity-type :table
+                                                          :entity-id (mt/id :orders)
                                                           :with-measures? true})
                 output (:structured-output result)
                 measures (:measures output)]

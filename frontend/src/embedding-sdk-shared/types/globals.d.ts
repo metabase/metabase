@@ -13,4 +13,5 @@ interface Window {
   METABASE_EMBEDDING_SDK_IS_HOST_APP_IN_DEV_MODE?: boolean; // Added in v59
   METABASE_EMBEDDING_SDK_AUTH_STATE?: import("embedding-sdk-shared/types/auth-state").SdkAuthState;
   FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS?: boolean;
+  METABASE_EMBEDDING_SDK_METABOT_STATE?: import("embedding-sdk-shared/lib/metabot-state-channel").MetabotStateChannel;
 }

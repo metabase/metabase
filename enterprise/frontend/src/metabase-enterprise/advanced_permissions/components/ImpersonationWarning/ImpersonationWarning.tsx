@@ -3,7 +3,7 @@ import { jt, t } from "ttag";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { Code } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { isEmpty } from "metabase/utils/validate";
 import type Database from "metabase-lib/v1/metadata/Database";
 

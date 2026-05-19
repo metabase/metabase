@@ -5,7 +5,6 @@
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as ordering]
    [metabase.transforms.test-util :as transforms.tu]
-   [metabase.warehouse-schema.models.table :as ws.table]
    [toucan2.core :as t2]))
 
 (defn- sql-tx [query & [name schema]]
@@ -48,20 +47,19 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
     (testing "Python transforms are ordered correctly based on source-tables dependencies"
       (let [schema (transforms.tu/default-schema-or-public)]
-        (ws.table/gc-transform-target-tables!)
         (mt/with-temp [:model/Table     {table1 :id} {:schema schema    :name "output_1"}
                        :model/Field     _            {:table_id table1  :name "foo"}
                        :model/Transform {t1 :id}     (py-tx [(transforms.tu/source-table-entry "orders" (mt/id :orders))] "output_1")
                        :model/Transform {t2 :id}     (py-tx [(transforms.tu/source-table-entry "output_1" table1)] "output_2")]
+          (t2/update! :model/Transform t1 {:target_table_id table1})
           (is (= {t1 #{}
                   t2 #{t1}}
-                 (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2]])))))))))
+                 (:dependencies (ordering/transform-ordering #{t1 t2} (t2/select :model/Transform :id [:in [t1 t2]]))))))))))
 
 (deftest python-transform-multiple-dependencies-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
     (testing "Python transforms with multiple table dependencies"
       (let [schema (transforms.tu/default-schema-or-public)]
-        (ws.table/gc-transform-target-tables!)
         (mt/with-temp [:model/Table     {table1 :id} {:schema   schema  :name "output_1"}
                        :model/Field     _            {:table_id table1  :name "foo"}
                        :model/Table     {table2 :id} {:schema   schema  :name "output_2"}
@@ -69,17 +67,19 @@
                        :model/Transform {t1 :id}     (py-tx [(transforms.tu/source-table-entry "orders" (mt/id :orders))]     "output_1")
                        :model/Transform {t2 :id}     (py-tx [(transforms.tu/source-table-entry "products" (mt/id :products))] "output_2")
                        :model/Transform {t3 :id}     (py-tx [(transforms.tu/source-table-entry "output_1" table1)
-                                                             (transforms.tu/source-table-entry "output_2" table2)]             "final_output")]
+                                                             (transforms.tu/source-table-entry "output_2" table2)]
+                                                            "final_output")]
+          (t2/update! :model/Transform t1 {:target_table_id table1})
+          (t2/update! :model/Transform t2 {:target_table_id table2})
           (is (= {t1 #{}
                   t2 #{}
                   t3 #{t1 t2}}
-                 (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2 t3]])))))))))
+                 (:dependencies (ordering/transform-ordering #{t1 t2 t3} (t2/select :model/Transform :id [:in [t1 t2 t3]]))))))))))
 
 (deftest mixed-transform-ordering-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python :transforms/table)
     (testing "Python and query transforms are ordered together correctly"
       (let [schema (transforms.tu/default-schema-or-public)]
-        (ws.table/gc-transform-target-tables!)
         (mt/with-temp [:model/Table     {table1 :id} {:schema   schema  :name "sql_output"}
                        :model/Field     _            {:table_id table1  :name "foo"}
                        :model/Table     {table2 :id} {:schema   schema  :name "python_output"}
@@ -95,7 +95,9 @@
                        :model/Transform {t3 :id}     (sql-tx {:database (mt/id)
                                                               :type     "query"
                                                               :query    {:source-table table2}}      "final_output")]
+          (t2/update! :model/Transform t1 {:target_table_id table1})
+          (t2/update! :model/Transform t2 {:target_table_id table2})
           (is (= {t1 #{}
                   t2 #{t1}
                   t3 #{t2}}
-                 (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2 t3]])))))))))
+                 (:dependencies (ordering/transform-ordering #{t1 t2 t3} (t2/select :model/Transform :id [:in [t1 t2 t3]]))))))))))

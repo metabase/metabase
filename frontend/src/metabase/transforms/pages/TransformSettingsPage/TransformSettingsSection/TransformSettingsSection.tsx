@@ -12,20 +12,11 @@ import CS from "metabase/css/core/index.css";
 import { UserInput } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { TransformOwnerAvatar } from "metabase/transforms/components/TransformOwnerAvatar/TransformOwnerAvatar";
-import {
-  Button,
-  Divider,
-  Group,
-  Icon,
-  type IconName,
-  Loader,
-  Stack,
-  Text,
-} from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
-import type { Transform, UserId } from "metabase-types/api";
+import { Button, Divider, Group, Icon, Loader, Stack, Text } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import type { IconName, Transform, UserId } from "metabase-types/api";
 
 import { TitleSection } from "../../../components/TitleSection";
 import { isTransformRunning, sourceDatabaseId } from "../../../utils";

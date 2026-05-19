@@ -19,8 +19,8 @@ import { initializePlugin as initializeCleanUp } from "./clean_up";
 import { initializePlugin as initializeCollections } from "./collections";
 import { initializePlugin as initializeContentTranslation } from "./content_translation";
 import { initializePlugin as initializeContentVerification } from "./content_verification";
+import { initializePlugin as initializeCustomViz } from "./custom_viz";
 import { initializePlugin as initializeLibrary } from "./data-studio/library";
-import { initializePlugin as initializeWorkspaces } from "./data-studio/workspaces";
 import { initializePlugin as initializeDatabaseReplication } from "./database_replication";
 import { initializePlugin as initializeDatabaseRouting } from "./database_routing";
 import { initializePlugin as initializeDependencies } from "./dependencies";
@@ -66,6 +66,7 @@ export function initializePlugins() {
   initializeCollections();
   initializeContentTranslation();
   initializeContentVerification();
+  initializeCustomViz();
   initializeDatabaseRouting();
   initializeRemoteSync();
   initializeReplacement();
@@ -100,7 +101,6 @@ export function initializePlugins() {
   initializeTransformsPython();
   initializeSupport();
   initializeTenants?.();
-  initializeWorkspaces();
   initializeWritableConnection();
   initializeAiControls();
 }

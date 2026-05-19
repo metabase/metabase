@@ -14,9 +14,9 @@ import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsW
 import { Toggle } from "metabase/common/components/Toggle";
 import type { ExportFormat } from "metabase/common/types/export";
 import CS from "metabase/css/core/index.css";
+import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { Box, Checkbox, Group, Icon, Text, Tooltip } from "metabase/ui";
 import type { SubscriptionSupportingCard } from "metabase-types/api";
-import type { DraftDashboardSubscription } from "metabase-types/store";
 
 const DEFAULT_ATTACHMENT_TYPE: AttachmentType = "csv";
 

@@ -31,24 +31,25 @@ runs:
     - name: Prepare frontend
       uses: ./.github/actions/prepare-frontend
     - name: Download current uberjar
-      uses: actions/download-artifact@v4
+      uses: ./.github/actions/fetch-artifact
       with:
-        name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-        path: temp/current-uberjar
+        commit: ${{ github.event.pull_request.head.sha || github.sha }}
+        edition: ${{ inputs.edition }}
+        extract-path: temp/current-uberjar
     - name: Extract embedding-sdk bundles from current uberjar
       shell: bash
       run: |
         # Try new layout first (app/embedding-sdk/legacy/), fall back to old layout (app/embedding-sdk.js)
-        unzip -j temp/current-uberjar/target/uberjar/metabase.jar \
+        unzip -j temp/current-uberjar/metabase.jar \
           "frontend_client/app/embedding-sdk/legacy/embedding-sdk.js" \
           -d temp/current-bundle 2>/dev/null || \
-        unzip -j temp/current-uberjar/target/uberjar/metabase.jar \
+        unzip -j temp/current-uberjar/metabase.jar \
           "frontend_client/app/embedding-sdk.js" \
           -d temp/current-bundle
 
         # Extract chunks directory if it exists (new layout only)
         mkdir -p temp/current-chunks
-        unzip -j temp/current-uberjar/target/uberjar/metabase.jar \
+        unzip -j temp/current-uberjar/metabase.jar \
           "frontend_client/app/embedding-sdk/chunks/*" \
           -d temp/current-chunks 2>/dev/null || true
     - name: Checkout base ref

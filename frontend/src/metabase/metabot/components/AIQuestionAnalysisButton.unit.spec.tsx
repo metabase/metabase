@@ -7,7 +7,7 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { mockStreamedEndpoint } from "metabase/api/ai-streaming/test-utils";
 import { MetabotProvider } from "metabase/metabot/context";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
-import { createMockState } from "metabase-types/store/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { AIQuestionAnalysisButton } from "./AIQuestionAnalysisButton";
 
@@ -21,9 +21,10 @@ const mockAgentEndpoint = () =>
 
 function setup({
   isMetabotEnabled = true,
-}: { isMetabotEnabled?: boolean } = {}) {
+  isConfigured = true,
+}: { isMetabotEnabled?: boolean; isConfigured?: boolean } = {}) {
   const settings = mockSettings({
-    "llm-metabot-configured?": true,
+    "llm-metabot-configured?": isConfigured,
     "metabot-enabled?": isMetabotEnabled,
   });
 
@@ -41,13 +42,25 @@ function setup({
         settings,
         metabot: metabotState,
       } as any),
+      withUndos: true,
     },
   );
 }
 
 describe("AIQuestionAnalysisButton", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it("should render the button when metabot is enabled", async () => {
     setup({ isMetabotEnabled: true });
+    expect(
+      await screen.findByRole("button", { name: "Explain this chart" }),
+    ).toBeInTheDocument();
+  });
+
+  it("should render the button when metabot is enabled but not configured", async () => {
+    setup({ isConfigured: false, isMetabotEnabled: true });
     expect(
       await screen.findByRole("button", { name: "Explain this chart" }),
     ).toBeInTheDocument();
@@ -72,5 +85,19 @@ describe("AIQuestionAnalysisButton", () => {
     const lastCall = agentSpy.mock.lastCall;
     const body = JSON.parse(lastCall?.[1]?.body as string);
     expect(body.message).toBe("Analyze this chart");
+  });
+
+  it("should show the not-configured toast instead of submitting when AI is not configured", async () => {
+    const agentSpy = mockAgentEndpoint();
+
+    setup({ isConfigured: false, isMetabotEnabled: true });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Explain this chart" }),
+    );
+
+    expect(await screen.findByTestId("toast-undo")).toBeInTheDocument();
+    expect(await screen.findByText(/connect to a model/)).toBeInTheDocument();
+    expect(agentSpy).not.toHaveBeenCalled();
   });
 });

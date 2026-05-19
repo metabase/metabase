@@ -495,8 +495,8 @@
                                              :status :success)]
           (is (= 2 (-> response :total)))
           (is (= 1 (-> response :data count)))
-          (is [{:duration 10000}]
-              (-> response :data vec)))))))
+          (is (=? [{:duration 10000}]
+                  (-> response :data vec))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Task Runs API tests                                               |

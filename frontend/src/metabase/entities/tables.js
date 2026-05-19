@@ -7,6 +7,7 @@ import _ from "underscore";
 
 import {
   databaseApi,
+  fieldApi,
   skipToken,
   tableApi,
   useGetDatabaseMetadataQuery,
@@ -15,35 +16,33 @@ import {
   useListDatabaseSchemaTablesQuery,
   useListTablesQuery,
 } from "metabase/api";
-import { Fields } from "metabase/entities/fields";
 import { Questions } from "metabase/entities/questions";
-import { Segments } from "metabase/entities/segments";
-import { TableSchema } from "metabase/schema";
-import {
-  getMetadata,
-  getMetadataUnfiltered,
-} from "metabase/selectors/metadata";
-import { color } from "metabase/ui/colors";
-import {
-  createEntity,
-  entityCompatibleQuery,
-  notify,
-} from "metabase/utils/entities";
 import {
   compose,
   createThunkAction,
   useDispatch,
   useSelector,
   withAction,
-  withCachedDataAndRequestState,
-  withNormalize,
-} from "metabase/utils/redux";
+} from "metabase/redux";
+import { TableSchema } from "metabase/schema";
+import {
+  getMetadata,
+  getMetadataUnfiltered,
+} from "metabase/selectors/metadata";
 import {
   convertSavedQuestionToVirtualTable,
   getCollectionVirtualSchemaId,
   getCollectionVirtualSchemaName,
   getQuestionVirtualTableId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
+
+import {
+  createEntity,
+  entityCompatibleQuery,
+  notify,
+  withCachedDataAndRequestState,
+  withNormalize,
+} from "./utils";
 
 // OBJECT ACTIONS
 export const TABLES_BULK_UPDATE = "metabase/entities/TABLES_BULK_UPDATE";
@@ -63,7 +62,7 @@ export const Tables = createEntity({
   path: "/api/table",
   schema: TableSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: (fetchType) => {
       if (fetchType === "fetchMetadata") {
         return {
@@ -88,7 +87,7 @@ export const Tables = createEntity({
       };
     },
     useListQuery,
-  },
+  }),
 
   api: {
     list: async ({ dbId, schemaName, ...params } = {}, dispatch) => {
@@ -197,7 +196,12 @@ export const Tables = createEntity({
               dispatch(Tables.actions.fetchMetadataDeprecated({ id }, options)),
             ),
             ...getTableForeignKeyFieldIds(table).map((id) =>
-              dispatch(Fields.actions.fetch({ id }, options)),
+              entityCompatibleQuery(
+                { id },
+                dispatch,
+                fieldApi.endpoints.getField,
+                { forceRefetch: options.reload ?? false },
+              ),
             ),
           ]);
         },
@@ -236,24 +240,6 @@ export const Tables = createEntity({
   },
 
   reducer: (state = {}, { type, payload, error }) => {
-    if (type === Fields.actionTypes.UPDATE && !error) {
-      const updatedField = payload.field;
-      const tableId = updatedField.table_id;
-      const table = state[tableId];
-
-      if (table) {
-        return {
-          ...state,
-          [tableId]: {
-            ...table,
-            original_fields: table.original_fields?.map((field) => {
-              return field.id === updatedField.id ? updatedField : field;
-            }),
-          },
-        };
-      }
-    }
-
     if (type === Questions.actionTypes.CREATE && !error) {
       const card = payload.question;
       const virtualQuestionTable = convertSavedQuestionToVirtualTable(card);
@@ -310,31 +296,6 @@ export const Tables = createEntity({
       };
     }
 
-    if (type === Segments.actionTypes.CREATE) {
-      const { table_id: tableId, id: segmentId } = payload.segment;
-      const table = state[tableId];
-      if (table) {
-        return {
-          ...state,
-          [tableId]: { ...table, segments: [segmentId, ...table.segments] },
-        };
-      }
-    }
-
-    if (type === Segments.actionTypes.UPDATE && !error) {
-      const { table_id: tableId, archived, id: segmentId } = payload.segment;
-      const table = state[tableId];
-      if (archived && table && table.segments) {
-        return {
-          ...state,
-          [tableId]: {
-            ...table,
-            segments: table.segments.filter((id) => id !== segmentId),
-          },
-        };
-      }
-    }
-
     if (type === UPDATE_TABLE_FIELD_ORDER) {
       const table = state[payload.id];
       if (table) {
@@ -345,10 +306,50 @@ export const Tables = createEntity({
       }
     }
 
+    // Keep `original_fields` in sync when something dispatches
+    // `updateMetadata(field, FieldSchema)` (e.g. RTK Query's getField
+    // onQueryStarted, or the deprecated redux/metadata wrappers). Without this,
+    // edits land in state.entities.fields but hydrateTableFields keeps reading
+    // stale data from original_fields.
+    //
+    // Virtual card tables can have multiple `original_fields` entries with the
+    // same `id` (a model with two columns both mapped to the same source
+    // field). Normalization collapses those into one entry in
+    // `payload.entities.fields`, so we can't tell which `original_fields` entry
+    // the update belongs to — skip the sync for ambiguous matches.
+    if (
+      type === "metabase/entities/UPDATE" &&
+      !error &&
+      payload?.entities?.fields
+    ) {
+      let nextState = state;
+      for (const updated of Object.values(payload.entities.fields)) {
+        const tableId = updated.table_id;
+        const table = nextState[tableId];
+        if (!table?.original_fields) {
+          continue;
+        }
+        const matchingIndex = findUniqueIndex(
+          table.original_fields,
+          (field) => field.id === updated.id,
+        );
+        if (matchingIndex < 0) {
+          continue;
+        }
+        const nextOriginalFields = [...table.original_fields];
+        nextOriginalFields[matchingIndex] = {
+          ...nextOriginalFields[matchingIndex],
+          ...updated,
+        };
+        nextState = {
+          ...nextState,
+          [tableId]: { ...table, original_fields: nextOriginalFields },
+        };
+      }
+      return nextState;
+    }
+
     return state;
-  },
-  objectSelectors: {
-    getColor: (table) => color("accent2"),
   },
 
   selectors: {
@@ -399,12 +400,30 @@ const useGetMetadataAndForeignTables = (entityQuery, options) => {
 
   useEffect(() => {
     for (const id of tableForeignKeyFieldIds) {
-      dispatch(Fields.actions.fetch({ id }, options));
+      entityCompatibleQuery({ id }, dispatch, fieldApi.endpoints.getField, {
+        forceRefetch: options.reload ?? false,
+      });
     }
   }, [dispatch, options, tableForeignKeyFieldIds]);
 
   return result;
 };
+
+// Returns the index of the only element matching the predicate, or -1 if there
+// are zero or more than one matches.
+function findUniqueIndex(array, predicate) {
+  let found = -1;
+  for (let index = 0; index < array.length; index++) {
+    if (!predicate(array[index])) {
+      continue;
+    }
+    if (found !== -1) {
+      return -1;
+    }
+    found = index;
+  }
+  return found;
+}
 
 function getTableForeignKeyTableIds(table) {
   return _.chain(table.fields)
@@ -459,7 +478,7 @@ function useListQuery({ dbId, schemaName, ...params } = {}, options) {
 }
 
 function getUseListQueryEndpoint(dbId, schemaName) {
-  if (dbId != null && schemaName != null) {
+  if (dbId != null && schemaName) {
     return "listDatabaseSchemaTables";
   }
 

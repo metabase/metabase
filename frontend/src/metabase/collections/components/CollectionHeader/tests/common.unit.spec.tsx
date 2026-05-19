@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 
-import { findRequests } from "__support__/server-mocks";
 import { screen, within } from "__support__/ui";
 import type { CollectionId } from "metabase-types/api";
 
@@ -190,14 +189,6 @@ describe("CollectionHeader", () => {
       setup();
       const button = screen.getByLabelText("calendar icon");
       expect(button).toBeInTheDocument();
-
-      await userEvent.click(button);
-      const puts = await findRequests("PUT");
-      expect(puts).toHaveLength(1);
-
-      expect(puts[0].url).toContain(
-        "/api/user-key-value/namespace/user_acknowledgement/key/events-menu",
-      );
     });
   });
 

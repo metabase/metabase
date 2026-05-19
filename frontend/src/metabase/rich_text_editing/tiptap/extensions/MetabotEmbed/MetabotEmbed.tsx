@@ -26,8 +26,8 @@ import {
   useMetabotName,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { Card, MetabotGenerateContentRequest } from "metabase-types/api";
 
 import { wrapCardEmbed } from "../shared/layout";

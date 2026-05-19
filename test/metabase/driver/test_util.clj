@@ -44,6 +44,6 @@
                              .start)]
       sshd)
     (catch Throwable e
-      (throw (ex-info (format "Error starting SSH mock server with password")
+      (throw (ex-info "Error starting SSH mock server with password"
                       {:username username :password password}
                       e)))))

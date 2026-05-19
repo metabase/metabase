@@ -1,4 +1,5 @@
 (ns metabase.notification.api.notification-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.notification.api.notification-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -680,7 +681,7 @@
           [:model/Collection {collection-id :id} {:personal_owner_id (:id user)}
            :model/Card {card-id :id} {:collection_id collection-id}]
           (let [create-notification! (fn [user-or-id expected-status]
-                                       (with-redefs [notification/send-notification! (fn [& _args] :done)]
+                                       (mt/with-dynamic-fn-redefs [notification/send-notification! (fn [& _args] :done)]
                                          (mt/user-http-request user-or-id :post expected-status "notification/send"
                                                                {:payload_type  "notification/card"
                                                                 :creator_id    (mt/user->id :rasta)

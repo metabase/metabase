@@ -20,6 +20,16 @@
    [:multi {:dispatch :status}
     ["not-connected" [:map]]
 
+    ["initializing"
+     [:map
+      [:url ms/NonBlankString]
+      ;; time in seconds from epoch:
+      [:created_at pos-int?]
+      ;; time in seconds from epoch:
+      [:sync_started_at pos-int?]
+      [:created_by_id pos-int?]
+      [:db_id pos-int?]]]
+
     ["syncing"
      [:map
       [:url ms/NonBlankString]

@@ -414,6 +414,7 @@ const getTicksDimensions = (
     xTicksHeight: 0,
     firstXTickWidth: 0,
     lastXTickWidth: 0,
+    getXTickWidth: () => 0,
   };
 
   if (leftAxisModel) {
@@ -479,6 +480,21 @@ const getTicksDimensions = (
       (isTimeSeries && hasTimelineEvents
         ? CHART_STYLE.timelineEvents.height
         : 0);
+
+    ticksDimensions.getXTickWidth = (text: string) => {
+      if (axisEnabledSetting === "rotate-90") {
+        return renderingContext.theme.cartesian.label.fontSize;
+      }
+      const width = renderingContext.measureText(text, {
+        ...CHART_STYLE.axisTicks,
+        size: renderingContext.theme.cartesian.label.fontSize,
+        family: renderingContext.fontFamily,
+      });
+      if (axisEnabledSetting === "rotate-45") {
+        return width / Math.SQRT2;
+      }
+      return width;
+    };
   }
 
   return { ticksDimensions, axisEnabledSetting };
@@ -836,6 +852,7 @@ export const getChartLayout = (
     bounds,
     boundaryWidth,
     outerHeight: height,
+    outerWidth: width,
     axisEnabledSetting,
     stackedBarTicksRotation,
     panelGap: 0,
@@ -887,6 +904,7 @@ const computeSplitPanelLayout = (
     xTicksHeight: computedTicks.xTicksHeight,
     firstXTickWidth: computedTicks.firstXTickWidth,
     lastXTickWidth: computedTicks.lastXTickWidth,
+    getXTickWidth: computedTicks.getXTickWidth,
   };
 
   const padding = getChartPadding(
@@ -925,6 +943,7 @@ const computeSplitPanelLayout = (
     bounds,
     boundaryWidth,
     outerHeight: height,
+    outerWidth: width,
     axisEnabledSetting,
     panelHeight,
     panelGap,

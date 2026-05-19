@@ -5,10 +5,11 @@ import {
   type AdminNavItemProps,
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
+import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
 import { Divider, Flex, Stack } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 
 export function EmbeddingNav() {
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
@@ -51,6 +52,17 @@ export function EmbeddingNav() {
           path="/admin/embedding/security"
           label={t`Security`}
           icon="shield_outline"
+        />
+
+        <EmbeddingNavItem
+          path="/admin/embedding/themes"
+          label={
+            <Flex gap="sm" align="center">
+              <span>{t`Themes`}</span>
+              {!hasSimpleEmbedding && <UpsellGem />}
+            </Flex>
+          }
+          icon="palette"
         />
       </Stack>
     </AdminNavWrapper>

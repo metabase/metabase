@@ -2,23 +2,24 @@ import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
 import { useLatest, useMount } from "react-use";
 
+import { applyParameters } from "metabase/common/utils/card";
 import { fetchDataOrError } from "metabase/dashboard/utils";
+import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
-import { LocaleProvider } from "metabase/public/LocaleProvider";
+import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { usePublicEndpoints } from "metabase/public/hooks/use-public-endpoints";
 import { useSetEmbedFont } from "metabase/public/hooks/use-set-embed-font";
+import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
-import { addFields } from "metabase/redux/metadata";
+import { updateMetadata } from "metabase/redux/metadata";
+import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { EmbedApi, PublicApi, maybeUsePivotEndpoint } from "metabase/services";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
-import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
-import { applyParameters } from "metabase-lib/v1/queries/utils/card";
 import type {
   Card,
   Dataset,
@@ -70,7 +71,11 @@ export const PublicOrEmbeddedQuestion = ({
       }
 
       if (card.param_fields) {
-        await dispatch(addFields(Object.values(card.param_fields).flat()));
+        await dispatch(
+          updateMetadata(Object.values(card.param_fields).flat(), [
+            FieldSchema,
+          ]),
+        );
       }
 
       const parameters = getCardUiParameters(

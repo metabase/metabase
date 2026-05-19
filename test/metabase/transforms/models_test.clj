@@ -197,35 +197,39 @@
                                                          :schema nil
                                                          :name "test_table_null_schema"
                                                          :db_id db-id}}]
+      (t2/update! :model/Transform (:id transform1) {:target_table_id table-with-schema-id})
+      (t2/update! :model/Transform (:id transform2) {:target_table_id table-null-schema-id})
+      (let [transform1 (t2/select-one :model/Transform :id (:id transform1))
+            transform2 (t2/select-one :model/Transform :id (:id transform2))]
 
-      (testing "Hydrates table with non-NULL schema"
-        (let [hydrated (t2/hydrate transform1 :table-with-db-and-fields)]
-          (is (some? (:table hydrated))
-              "Transform should have hydrated table")
-          (is (= table-with-schema-id (-> hydrated :table :id))
-              "Should hydrate correct table with schema")))
+        (testing "Hydrates table with non-NULL schema"
+          (let [hydrated (t2/hydrate transform1 :table-with-db-and-fields)]
+            (is (some? (:table hydrated))
+                "Transform should have hydrated table")
+            (is (= table-with-schema-id (-> hydrated :table :id))
+                "Should hydrate correct table with schema")))
 
-      (testing "Hydrates table with NULL schema"
-        (let [hydrated (t2/hydrate transform2 :table-with-db-and-fields)]
-          (is (some? (:table hydrated))
-              "Transform with NULL schema should have hydrated table")
-          (is (= table-null-schema-id (-> hydrated :table :id))
-              "Should hydrate correct table with NULL schema")))
+        (testing "Hydrates table with NULL schema"
+          (let [hydrated (t2/hydrate transform2 :table-with-db-and-fields)]
+            (is (some? (:table hydrated))
+                "Transform with NULL schema should have hydrated table")
+            (is (= table-null-schema-id (-> hydrated :table :id))
+                "Should hydrate correct table with NULL schema")))
 
-      (testing "Hydrates multiple transforms with mixed schemas in single batch"
-        (let [hydrated (t2/hydrate [transform1 transform2] :table-with-db-and-fields)]
-          (is (= 2 (count hydrated))
-              "Should hydrate both transforms")
-          (is (every? (comp some? :table) hydrated)
-              "Both transforms should have hydrated tables")
-          (is (= #{table-with-schema-id table-null-schema-id}
-                 (set (map (comp :id :table) hydrated)))
-              "Should hydrate both tables correctly")))
+        (testing "Hydrates multiple transforms with mixed schemas in single batch"
+          (let [hydrated (t2/hydrate [transform1 transform2] :table-with-db-and-fields)]
+            (is (= 2 (count hydrated))
+                "Should hydrate both transforms")
+            (is (every? (comp some? :table) hydrated)
+                "Both transforms should have hydrated tables")
+            (is (= #{table-with-schema-id table-null-schema-id}
+                   (set (map (comp :id :table) hydrated)))
+                "Should hydrate both tables correctly")))
 
-      (testing "Does not hydrate unrelated tables"
-        (let [hydrated (t2/hydrate transform1 :table-with-db-and-fields)]
-          (is (not= other-table-id (-> hydrated :table :id))
-              "Should not hydrate unrelated table"))))))
+        (testing "Does not hydrate unrelated tables"
+          (let [hydrated (t2/hydrate transform1 :table-with-db-and-fields)]
+            (is (not= other-table-id (-> hydrated :table :id))
+                "Should not hydrate unrelated table")))))))
 
 (deftest creator-hydration-test
   (testing "Transform creator hydration returns user details"

@@ -8,7 +8,8 @@ import type {
   CustomClickActionWithCustomView,
   LegacyDrill,
 } from "metabase/visualizations/types";
-import { nativeDrillFallback } from "metabase-lib/v1/queries/drills/native-drill-fallback";
+
+import { nativeDrillFallback } from "./utils";
 
 export const NativeQueryClickFallback: LegacyDrill = ({ question }) => {
   if (!nativeDrillFallback({ question })) {

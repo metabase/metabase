@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
 import { isCartesianChart } from "metabase/visualizations";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
@@ -8,7 +9,6 @@ import type {
   Field,
   VisualizerDataSourceId,
 } from "metabase-types/api";
-import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
 import { findColumnSlotForCartesianChart } from "./cartesian";
 import { findColumnSlotForFunnel } from "./funnel";

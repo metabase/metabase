@@ -1,4 +1,4 @@
-import { trackSchemaEvent } from "metabase/utils/analytics";
+import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";
 
 export const trackTrackingPermissionChanged = (isEnabled: boolean) => {
   trackSchemaEvent("settings", {
@@ -9,11 +9,10 @@ export const trackTrackingPermissionChanged = (isEnabled: boolean) => {
   });
 };
 
-export const trackCustomHomepageDashboardEnabled = (
-  source: "admin" | "homepage",
-) => {
-  trackSchemaEvent("settings", {
-    event: "homepage_dashboard_enabled",
-    source,
+export const trackAnalyticsPiiRetentionChanged = (isEnabled: boolean) => {
+  trackSimpleEvent({
+    event: "analytics_pii_retention_changed",
+    event_detail: isEnabled ? "enabled" : "disabled",
+    triggered_from: "admin",
   });
 };

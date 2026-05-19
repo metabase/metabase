@@ -7,7 +7,7 @@
    SQL-based drivers can use the `:sql` driver as a parent, and JDBC-based SQL drivers can use `:sql-jdbc`. Both of
    these drivers define additional multimethods that child drivers should implement; see [[metabase.driver.sql]] and
    [[metabase.driver.sql-jdbc]] for more details."
-  (:refer-clojure :exclude [some mapv empty?])
+  (:refer-clojure :exclude [mapv empty?])
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.java.io :as io]
@@ -265,6 +265,14 @@
   {:added "0.32.0" :arglists '([driver details])}
   dispatch-on-initialized-driver-safe-keys
   :hierarchy #'hierarchy)
+
+(defmulti validate-db-details!
+  "Throw if `details` are unsafe to persist for `driver`, independent of whether the database is currently reachable."
+  {:added "0.57.0" :arglists '([driver details])}
+  dispatch-on-initialized-driver-safe-keys
+  :hierarchy #'hierarchy)
+
+(defmethod validate-db-details! :default [_driver _details] nil)
 
 (defmulti dbms-version
   "Return a map containing information that describes the version of the DBMS. This typically includes a
@@ -1394,6 +1402,8 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+;;; TODO (Cam 2026-05-04) -- this is JDBC-specific, should be moved to [[metabase.driver.sql-jdbc]] or one of its
+;;; sub-namespaces
 (defmulti set-role!
   "Sets the database role used on a connection. Called prior to query execution for drivers that support connection
   impersonation (an EE-only feature)."

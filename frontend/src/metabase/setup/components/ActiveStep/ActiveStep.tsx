@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
+import { useSelector } from "metabase/redux";
 import { getShouldShowStepNumber } from "metabase/setup";
-import { useSelector } from "metabase/utils/redux";
 
 import {
   StepLabel,

@@ -137,7 +137,8 @@
 (defn- fixup-viz-settings
   "The viz-settings from :data :viz-settings might be incorrect if there is a cached of the same query.
   See #58469 and #64687.
-  TODO: remove this hack when it's fixed in QP."
+  TODO (Ngoc 2026-04-23) -- now that the QP cache preserves fresh viz-settings on cache hit
+  (#72922), this hack is likely redundant. Confirm with coverage and remove."
   [qp-result]
   (update-in qp-result [:data :viz-settings] merge (-> (get-in qp-result [:json_query :viz-settings])
                                                        viz-settings/db->norm)))

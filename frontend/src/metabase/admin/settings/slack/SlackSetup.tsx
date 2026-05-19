@@ -80,7 +80,7 @@ const SlackConnectionStatus = ({
           )}
           {!isValid && (
             <Text ml="sm" inline>
-              {jt`Need help? ${(<ExternalLink key="link" href={docsUrl}>{t`See our docs`}</ExternalLink>)}.`}
+              {jt`Need help? ${<ExternalLink key="link" href={docsUrl}>{t`See our docs`}</ExternalLink>}.`}
             </Text>
           )}
         </Flex>

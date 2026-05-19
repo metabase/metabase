@@ -3,7 +3,7 @@ import { ENTERPRISE_PLUGIN_NAME_MAPPING } from "./enterprise-typed";
 /**
  * @deprecated use setupEnterprisePlugins with settings set via mockSettings
  * ```ts
- * import { createMockState } from "metabase-types/store/mocks";
+ * import { createMockState } from "metabase/redux/store/mocks";
  * import { mockSettings } from "__support__/settings";
  * import {
  *   createMockTokenFeatures,

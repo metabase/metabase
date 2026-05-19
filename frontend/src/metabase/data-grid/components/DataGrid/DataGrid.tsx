@@ -35,8 +35,7 @@ import S from "./DataGrid.module.css";
 import type { DataGridStylesProps } from "./types";
 
 export interface DataGridProps<TData>
-  extends DataGridInstance<TData>,
-    DataGridStylesProps {
+  extends DataGridInstance<TData>, DataGridStylesProps {
   emptyState?: React.ReactNode;
   showRowsCount?: boolean;
   rowsTruncated?: number;

@@ -1,6 +1,6 @@
 import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
+import type { FontStyle } from "metabase/utils/measure-text";
 import * as measureText from "metabase/utils/measure-text";
-import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 import type {
   DatasetColumn,
   DateTimeAbsoluteUnit,

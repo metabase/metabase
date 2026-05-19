@@ -15,6 +15,13 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]))
 
+(def ^:dynamic *destination-database-id*
+  "Bound to the destination database id during query execution when DB routing has swapped in a destination DB.
+  Mirrors the shape of [[metabase-enterprise.impersonation.driver/*impersonation-role*]]: analytics code reads it
+  from inside the postprocessing rff to record `is_db_routed` and the routed `database_id` on the
+  `query_execution` row."
+  nil)
+
 (defenterprise swap-destination-db
   "Must be the last middleware before we actually hit the database. If a Router Database is specified, swaps out the
    Metadata Provider for one that has the appropriate destination database."
@@ -27,11 +34,24 @@
                    (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
                      (qp.store/with-metadata-provider (u/id current-database)
                        (rff metadata))))]
-        (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
+        (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true
+                  *destination-database-id* destination-db-id]
           (qp.store/with-metadata-provider destination-db-id
             (with-database-routing-on
               (qp query rff*)))))
       (qp query rff))))
+
+(defenterprise currently-db-routed?
+  "True when DB routing has swapped in a destination DB for the current query."
+  :feature :none
+  []
+  (some? *destination-database-id*))
+
+(defenterprise currently-destination-database-id
+  "Destination DB id when DB routing has swapped one in for the current query, else nil."
+  :feature :none
+  []
+  *destination-database-id*)
 
 (defenterprise attach-destination-db-middleware
   "Pre-processing middleware. Calculates the destination database that should be used for this query, e.g. for caching

@@ -6,8 +6,7 @@ import CS from "metabase/css/core/index.css";
 
 import { FormTextAreaRoot } from "./FormTextArea.styled";
 
-interface FormTextAreaProps
-  extends TextareaHTMLAttributes<HTMLTextAreaElement> {
+interface FormTextAreaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   touched?: boolean;
   error?: string | boolean;
 }

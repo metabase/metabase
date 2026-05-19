@@ -8,13 +8,45 @@
    [metabase.metabot.tmpl :as te]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [ring.util.codec :as codec]
    [selmer.parser :as selmer]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private llm-template-name "llm_representations.selmer")
 
-(defn- escape-xml
+(defn- encode-uri-segment
+  "URL-encode a single URI path segment. Coerces keywords/numbers to strings first.
+   Per-segment encoding (vs encoding the whole URI) lets us preserve the literal `/`
+   between segments while still protecting against `/` characters inside a segment
+   value — e.g. a database schema name like `weird/name` that would otherwise
+   collide with the path separator and corrupt downstream URI parsing."
+  [s]
+  (codec/url-encode (cond
+                      (keyword? s) (name s)
+                      :else        (str s))))
+
+(defn metabase-uri
+  "Build a metabase:// URI for an entity. Optional trailing path segments append to the URI.
+
+   Each segment is URL-encoded so values containing `/`, `?`, `%`, etc. survive a
+   round-trip through `parse-uri`.
+
+   Examples:
+     (metabase-uri :table 5)              => \"metabase://table/5\"
+     (metabase-uri :table 5 \"fields\")    => \"metabase://table/5/fields\"
+     (metabase-uri :collection 7 \"items\") => \"metabase://collection/7/items\"
+     (metabase-uri :databases)            => \"metabase://databases\"
+     (metabase-uri :database 1 \"schemas\" \"weird/name\" \"tables\")
+                                          => \"metabase://database/1/schemas/weird%2Fname/tables\""
+  ([type]
+   (str "metabase://" (encode-uri-segment type)))
+  ([type id & path-segments]
+   (str "metabase://" (encode-uri-segment type) "/" (encode-uri-segment id)
+        (when (seq path-segments)
+          (str "/" (str/join "/" (map encode-uri-segment path-segments)))))))
+
+(defn escape-xml
   "Escape XML special characters in a string.
    Only needed for content that bypasses Selmer's auto-escaping (marked with |safe)."
   [s]
@@ -316,7 +348,7 @@
 
 (defn question->xml
   "Format question for LLM consumption."
-  [{:keys [id name description verified collection visualization display]}]
+  [{:keys [id name description verified collection visualization display fields]}]
   (render-llm-template
    :question
    {:question_id (str id)
@@ -325,7 +357,9 @@
     :question_description description
     :question_display_type (some-> display clojure.core/name)
     :question_collection_xml (when collection (collection->xml collection))
-    :question_visualization_xml (when visualization (visualization->xml visualization))}))
+    :question_visualization_xml (when visualization (visualization->xml visualization))
+    :question_fields_xml (when (seq fields)
+                           (str/join "\n" (map field->xml fields)))}))
 
 (defn- text-card->xml
   "Format a text card for LLM consumption."
@@ -578,3 +612,66 @@
     (do
       (log/warn "Unknown entity type" {:type (:type entity)})
       (pr-str entity))))
+
+;; ----- Generic list / entity renderers used by the read-resource navigation tools -----
+
+(def ^:private item-attr-keys
+  "Attributes rendered as XML attrs on each <item> element. Order matters for stable output."
+  [:type :id :name :uri :database_id :collection_id :table_id
+   :schema :display_name :authority_level :is_personal :path :location
+   :engine :timestamp])
+
+(defn- item-attrs->xml
+  [item]
+  (->> item-attr-keys
+       (keep (fn [k]
+               (when-let [v (get item k)]
+                 (str (clojure.core/name k) "=\"" (escape-xml v) "\""))))
+       (str/join " ")))
+
+(defn- list-item->xml
+  "Render one item from a metabot-list response."
+  [{:keys [description] :as item}]
+  (let [attrs (item-attrs->xml item)]
+    (if description
+      (str "<item " attrs ">" (escape-xml description) "</item>")
+      (str "<item " attrs "/>"))))
+
+(defn metabot-list->xml
+  "Render a list-shaped read-resource response.
+
+   Input shape:
+     {:list-type :databases     ; keyword, becomes the type attribute
+      :items     [{:type \"database\" :id 1 :name \"Sample\" :uri \"...\" :description \"...\"} ...]
+      :total     5
+      :truncated false}
+
+   Output shape:
+     <list type=\"databases\" total=\"5\" truncated=\"false\">
+       <item type=\"database\" id=\"1\" name=\"Sample\" uri=\"metabase://database/1\">Description</item>
+       ...
+     </list>"
+  [{:keys [list-type items total truncated]}]
+  (let [type-attr (clojure.core/name (or list-type :items))
+        item-xml  (str/join "\n" (map list-item->xml items))
+        showing   (count items)
+        note      (when truncated
+                    (str "<truncation-note>Showing " showing " of " total ". "
+                         "More items exist — read individual items via their URIs above "
+                         "or refine via search.</truncation-note>"))]
+    (str "<list type=\"" type-attr "\" total=\"" total
+         "\" showing=\"" showing
+         "\" truncated=\"" (boolean truncated) "\">\n"
+         (when (seq items) (str item-xml "\n"))
+         (when note (str note "\n"))
+         "</list>")))
+
+(defn metabot-entity->xml
+  "Render a single entity as a flat XML element with attrs and an optional description body."
+  [{:keys [type description] :as entity}]
+  (let [tag   (clojure.core/name (or type :entity))
+        attrs (item-attrs->xml entity)]
+    (if description
+      (str "<" tag (when-not (str/blank? attrs) (str " " attrs)) ">"
+           (escape-xml description) "</" tag ">")
+      (str "<" tag (when-not (str/blank? attrs) (str " " attrs)) "/>"))))

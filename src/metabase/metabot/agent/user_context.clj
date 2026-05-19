@@ -140,7 +140,8 @@
   [entity]
   (fetch-and-format entity
                     "The user is currently looking at the rows of a table:"
-                    #(entity-details/get-table-details {:table-id (:id entity)
+                    #(entity-details/get-table-details {:entity-type :table
+                                                        :entity-id (:id entity)
                                                         :with-field-values? false
                                                         :with-metrics? false
                                                         :with-measures? true
@@ -151,7 +152,8 @@
   [entity]
   (fetch-and-format entity
                     "The user is currently looking at the rows of a model:"
-                    #(entity-details/get-table-details {:model-id (:id entity)
+                    #(entity-details/get-table-details {:entity-type :model
+                                                        :entity-id (:id entity)
                                                         :with-field-values? false
                                                         :with-metrics? false
                                                         :with-measures? true
@@ -348,9 +350,9 @@
 
   Returns formatted string for template variable {{recent_views}}."
   [context]
-  (if-not (:user_recently_viewed context)
-    ""
-    (let [items (:user_recently_viewed context)]
+  (let [items (:user_recently_viewed context)]
+    (if-not (seq items)
+      ""
       (te/lines "Here are some items the user has recently viewed:"
                 (for [item items]
                   (format-simple-entity (select-keys item [:type :id :name :description])))

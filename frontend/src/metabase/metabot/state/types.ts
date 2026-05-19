@@ -1,10 +1,26 @@
+import type { KnownDataPart } from "metabase/api/ai-streaming/schemas";
+import type { MetabotProfileId } from "metabase/metabot/constants";
 import type {
   MetabotCodeEdit,
+  MetabotCodeEditorBufferContext,
   MetabotHistory,
   MetabotSuggestedTransform,
-  MetabotTodoItem,
   MetabotTransformInfo,
 } from "metabase-types/api";
+
+export type MetabotDataPart = Exclude<KnownDataPart, { type: "state" }>;
+
+export type MetabotDataPartMetadata = {
+  codeEditBuffer?: MetabotCodeEditorBufferContext;
+  editorTransform?: MetabotTransformInfo;
+  suggestionId?: string;
+};
+
+export type MetabotAgentTurnError = {
+  message?: string;
+  type?: string;
+  data?: unknown;
+};
 
 export type MetabotUserTextChatMessage = {
   id: string;
@@ -13,37 +29,21 @@ export type MetabotUserTextChatMessage = {
   message: string;
 };
 
-export type MetabotUserActionChatMessage = {
-  id: string;
-  role: "user";
-  type: "action";
-  message: string;
-  userMessage: string;
-};
-
 export type MetabotAgentTextChatMessage = {
   id: string;
   role: "agent";
   type: "text";
   message: string;
+  externalId?: string;
 };
 
-export type MetabotAgentTodoListChatMessage = {
+export type MetabotAgentDataPartMessage = {
   id: string;
   role: "agent";
-  type: "todo_list";
-  payload: MetabotTodoItem[];
-};
-
-export type MetabotAgentEditSuggestionChatMessage = {
-  id: string;
-  role: "agent";
-  type: "edit_suggestion";
-  model: "transform";
-  payload: {
-    editorTransform: MetabotTransformInfo | undefined;
-    suggestedTransform: MetabotSuggestedTransform;
-  };
+  type: "data_part";
+  part: MetabotDataPart;
+  metadata?: MetabotDataPartMetadata;
+  externalId?: string;
 };
 
 export type MetabotDebugToolCallMessage = {
@@ -57,15 +57,35 @@ export type MetabotDebugToolCallMessage = {
   is_error?: boolean;
 };
 
+export type MetabotAgentTurnAbortedMessage = {
+  id: string;
+  role: "agent";
+  type: "turn_aborted";
+  externalId?: string;
+};
+
+export type MetabotAgentTurnDisplayError = {
+  type: "alert" | "locked" | "message";
+  message: string;
+};
+
+export type MetabotAgentTurnErroredMessage = {
+  id: string;
+  role: "agent";
+  type: "turn_errored";
+  error: MetabotAgentTurnError;
+  display?: MetabotAgentTurnDisplayError;
+  externalId?: string;
+};
+
 export type MetabotAgentChatMessage =
   | MetabotAgentTextChatMessage
-  | MetabotAgentTodoListChatMessage
-  | MetabotAgentEditSuggestionChatMessage
-  | MetabotDebugToolCallMessage;
+  | MetabotAgentDataPartMessage
+  | MetabotDebugToolCallMessage
+  | MetabotAgentTurnAbortedMessage
+  | MetabotAgentTurnErroredMessage;
 
-export type MetabotUserChatMessage =
-  | MetabotUserTextChatMessage
-  | MetabotUserActionChatMessage;
+export type MetabotUserChatMessage = MetabotUserTextChatMessage;
 
 export type MetabotDebugChatMessage = MetabotDebugToolCallMessage;
 
@@ -73,11 +93,6 @@ export type MetabotChatMessage =
   | MetabotUserChatMessage
   | MetabotAgentChatMessage
   | MetabotDebugChatMessage;
-
-export type MetabotErrorMessage = {
-  type: "message" | "alert";
-  message: string;
-};
 
 export type MetabotToolCall = {
   id: string;
@@ -98,12 +113,12 @@ export interface MetabotConverstationState {
   conversationId: string;
   isProcessing: boolean;
   messages: MetabotChatMessage[];
-  errorMessages: MetabotErrorMessage[];
   visible: boolean;
   history: MetabotHistory;
   state: any;
   activeToolCalls: MetabotToolCall[];
-  profileOverride: string | undefined;
+  profileOverride: MetabotProfileId | undefined;
+  pendingMessageExternalId: string | undefined;
   experimental: {
     developerMessage: string;
     metabotReqIdOverride: string | undefined;

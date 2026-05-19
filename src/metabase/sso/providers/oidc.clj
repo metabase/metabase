@@ -2,10 +2,10 @@
   "Base OIDC authentication provider. Provides generic OIDC support that concrete
    implementations (Auth0, Okta, etc.) can derive from."
   (:require
-   [clj-http.client :as http]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.sso.oidc.common :as oidc.common]
    [metabase.sso.oidc.discovery :as oidc.discovery]
+   [metabase.sso.oidc.http :as oidc.http]
    [metabase.sso.oidc.schema :as oidc.schema]
    [metabase.sso.oidc.state :as oidc.state]
    [metabase.sso.oidc.tokens :as oidc.tokens]
@@ -51,16 +51,12 @@
   [code config]
   (let [token-endpoint (oidc.discovery/get-token-endpoint config)]
     (try
-      (let [response (http/post token-endpoint
-                                {:form-params {:grant_type "authorization_code"
-                                               :code code
-                                               :redirect_uri (:redirect-uri config)
-                                               :client_id (:client-id config)
-                                               :client_secret (:client-secret config)}
-                                 :as :json
-                                 :throw-exceptions false
-                                 :conn-timeout 5000
-                                 :socket-timeout 5000})]
+      (let [response (oidc.http/oidc-post token-endpoint
+                                          {:form-params {:grant_type "authorization_code"
+                                                         :code code
+                                                         :redirect_uri (:redirect-uri config)
+                                                         :client_id (:client-id config)
+                                                         :client_secret (:client-secret config)}})]
         (if (= 200 (:status response))
           (oidc.common/parse-token-response (:body response))
           (do

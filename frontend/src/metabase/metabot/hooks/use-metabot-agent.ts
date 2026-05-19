@@ -2,16 +2,16 @@ import { isFulfilled } from "@reduxjs/toolkit";
 import { useCallback } from "react";
 
 import { useMetabotContext } from "metabase/metabot";
-import { useDispatch, useSelector } from "metabase/utils/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 
 import { trackMetabotRequestSent } from "../analytics";
+import type { MetabotProfileId } from "../constants";
 import {
   type MetabotAgentId,
   type MetabotPromptSubmissionResult,
   type MetabotUserChatMessage,
   cancelInflightAgentRequests,
   getActiveToolCalls,
-  getAgentErrorMessages,
   getDebugMode,
   getIsLongMetabotConversation,
   getIsProcessing,
@@ -53,7 +53,7 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
   );
 
   const setProfileOverride = useCallback(
-    (profile: string) => {
+    (profile: MetabotProfileId | undefined) => {
       dispatch(setProfileOverrideAction({ agentId, profile }));
     },
     [dispatch, agentId],
@@ -63,7 +63,7 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
     async (
       prompt: string | Omit<MetabotUserChatMessage, "id" | "role">,
       options?: {
-        profile?: string | undefined;
+        profile?: MetabotProfileId | undefined;
         preventOpenSidebar?: boolean;
         focusInput?: boolean;
       },
@@ -156,9 +156,6 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
     cancelRequest,
     metabotId: useSelector(getMetabotId),
     messages: useSelector((state) => getMessages(state, agentId)),
-    errorMessages: useSelector((state) =>
-      getAgentErrorMessages(state, agentId),
-    ),
     isDoingScience: useSelector((state) => getIsProcessing(state, agentId)),
     isLongConversation: useSelector((state) =>
       getIsLongMetabotConversation(state, agentId),

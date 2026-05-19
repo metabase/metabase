@@ -52,6 +52,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  min-width: 0;
 }
 
 .messageContainerUser {
@@ -71,6 +72,7 @@
 .message {
   font-size: 0.875rem;
   line-height: 1.4 !important;
+  min-width: 0;
 }
 
 .messageUser {
@@ -79,14 +81,6 @@
   background: var(--mb-color-background-tertiary);
   max-width: 100%;
   overflow: hidden;
-}
-
-.messageUserAction {
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  background: var(--mb-color-background-secondary);
-  border: 1px solid var(--mb-color-background-tertiary);
-  font-weight: bold;
 }
 
 .messageActions {
@@ -98,6 +92,36 @@
 .messageContainer:hover .messageActions,
 .messageContainer:last-child.messageContainerAgent .messageActions {
   opacity: 1;
+}
+
+.agentPartCard {
+  transition: background 150ms ease;
+}
+
+.agentPartClickable {
+  cursor: pointer;
+}
+
+.agentPartClickable:hover {
+  background: var(--mb-color-background-secondary);
+}
+
+.agentPartActions {
+  opacity: 0;
+  transition: opacity 150ms linear;
+}
+
+.agentPartActionIcon:hover {
+  background-color: var(--mb-color-background-tertiary) !important;
+}
+
+.agentPartCard:hover .agentPartActions,
+.agentPartCard:focus-within .agentPartActions {
+  opacity: 1;
+}
+
+.messageContainerAgent + .messageContainerAgent {
+  margin-top: var(--mantine-spacing-md);
 }
 
 .promptSuggestionsContainer {

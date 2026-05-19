@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useDocsUrl } from "metabase/common/hooks";
 import { FormSelect } from "metabase/forms";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { TitleSection } from "metabase/transforms/components/TitleSection";
 import {
@@ -21,7 +22,6 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type { TransformSource } from "metabase-types/api";
 import type { TransformType } from "metabase-types/api/transform";

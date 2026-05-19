@@ -6,9 +6,8 @@ import {
   hasActionsEnabled,
   hasFeature,
   hasTableEditingEnabled,
-  hasWorkspacesEnabled,
   hasWritableConnectionDetails,
-} from "metabase/admin/databases/utils";
+} from "metabase/common/utils/database";
 import { Text } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
@@ -18,7 +17,6 @@ export const getDisabledFeatureMessage = (
 ) => {
   return match({
     hasActionsEnabled: hasActionsEnabled(database),
-    hasWorkspacesEnabled: hasWorkspacesEnabled(database),
     hasTableEditingEnabled: hasTableEditingEnabled(database),
     isPersisted: hasFeature(database, "persist-models-enabled"),
     isUploadDb: database.uploads_enabled,
@@ -53,10 +51,6 @@ export const getDisabledFeatureMessage = (
       { hasWritableConnection: true },
       () =>
         t`Database routing can't be enabled when a Writable Connection is enabled.`,
-    )
-    .with(
-      { hasWorkspacesEnabled: true },
-      () => t`Database routing can't be enabled when workspaces are enabled.`,
     )
     .with(
       { hasTableEditingEnabled: true },

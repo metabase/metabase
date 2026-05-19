@@ -134,7 +134,7 @@ jobs:
         run: |
           echo "Running tests with specs: $SPEC_PATH"
           node e2e/runner/run_cypress_ci.js e2e \
-            --env grepTags="-@mongo+-@python+-@OSS+-@skip" \
+            --expose grepTags="-@mongo+-@python+-@OSS+-@skip" \
             --spec "$SPEC_PATH"
         # Trunk Quarantine controls the final state of the run in the CI!
         # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
@@ -151,7 +151,7 @@ jobs:
         run: |
           echo "Running tests with specs: $SPEC_PATH"
           node e2e/runner/run_cypress_ci.js e2e \
-          --env grepTags="${{inputs.tags && format('{0}+-@skip', inputs.tags) || '-@skip'}}" \
+          --expose grepTags="${{inputs.tags && format('{0}+-@skip', inputs.tags) || '-@skip'}}" \
           --spec "$SPEC_PATH"
         # Trunk Quarantine controls the final state of the run in the CI!
         # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
@@ -234,7 +234,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: steps.extract-timings.outcome == 'success' && steps.extract-timings.outputs.has-changes == 'true'
         with:
-          name: timing-data-${{ inputs.name }}-${{ inputs.split_index }}
+          name: timing-data-${{ inputs.name }}
           path: chunkTimings.json
           retention-days: 1 # gets merged immediately by parent workflow
 

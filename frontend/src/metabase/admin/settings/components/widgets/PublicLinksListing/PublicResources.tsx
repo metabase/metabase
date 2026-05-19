@@ -9,7 +9,7 @@ import {
   useListPublicDashboardsQuery,
 } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type {
   GetPublicAction,
   GetPublicCard,
@@ -44,7 +44,7 @@ export const PublicLinksQuestionListing = () => {
   return (
     <PublicLinksListing<GetPublicCard>
       revoke={revoke}
-      getUrl={(question) => Urls.question(question)}
+      getUrl={(question) => Urls.card(question)}
       getPublicUrl={({ public_uuid }) => {
         if (public_uuid) {
           return Urls.publicQuestion({ uuid: public_uuid });

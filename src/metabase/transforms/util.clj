@@ -14,6 +14,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.tracing.core :as tracing]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.canceling :as canceling]
    [metabase.transforms.feature-gating :as transforms.gating]
@@ -121,6 +122,10 @@
           transform-timeout    (transforms.settings/transform-timeout)
           transform-timeout-ms (u/minutes->ms transform-timeout)]
       (transforms-base.u/save-run-checkpoint-range! run-id source-range-params)
+      ;; Enrich the active task.transform.* span with checkpoint range attrs for
+      ;; incremental runs. No-op when tracing is disabled or no span is active.
+      (when source-range-params
+        (tracing/add-span-attrs! :tasks (transforms-base.u/checkpoint-span-attrs source-range-params)))
       (canceling/chan-start-timeout-vthread! run-id transform-timeout)
       (let [cancel-chan (a/promise-chan)
             ret (binding [qp.pipeline/*canceled-chan*          cancel-chan

@@ -5,15 +5,17 @@
    [clojure.set :as set]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.values :as params.values]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -27,31 +29,31 @@
 
 (doseq [feature [:advanced-math-expressions
                  :binning
+                 :database-routing
+                 :dependencies/native
+                 :distinct-where
+                 :distinct-where
                  :expression-aggregations
                  :expressions
+                 :expressions/date
+                 :expressions/datetime
+                 :expressions/text
+                 :expressions/today
                  :full-join
                  :inner-join
                  :left-join
+                 :metadata/key-constraints
                  :native-parameters
+                 :native-temporal-units
                  :nested-queries
                  :parameterized-sql
+                 :parameters/table-reference
                  :percentile-aggregations
                  :regex
                  :right-join
                  :standard-deviation-aggregations
-                 :metadata/key-constraints
                  :window-functions/cumulative
-                 :window-functions/offset
-                 :distinct-where
-                 :native-temporal-units
-                 :expressions/datetime
-                 :expressions/date
-                 :expressions/text
-                 :expressions/today
-                 :distinct-where
-                 :database-routing
-                 :dependencies/native
-                 :parameters/table-reference]]
+                 :window-functions/offset]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
 
 (defmethod driver/database-supports? [:sql :persist-models-enabled]
@@ -73,7 +75,7 @@
   (let [params-map          (params.values/query->params-map inner-query)
         referenced-card-ids (params.values/referenced-card-ids params-map)
         [query params]      (-> query
-                                params.parse/parse
+                                lib/parse-parameters
                                 (sql.params.substitute/substitute params-map))]
     (cond-> (assoc inner-query
                    :query  query
@@ -98,13 +100,16 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti set-role-statement
-  "SQL for setting the active role for a connection, such as USE ROLE or equivalent, for the given driver."
-  {:added "0.47.0" :arglists '([driver role])}
+  "SQL for setting the active role for a connection, such as USE ROLE or equivalent, for the given driver.
+
+  DEPRECATED: prefer [[metabase.driver.sql-jdbc/set-role-statement]] going forward."
+  {:added "0.47.0", :deprecated "0.61.0", :arglists '([driver role])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod set-role-statement :default
-  [_ _ _]
+  [_driver _role]
   nil)
 
 (defmulti default-database-role
@@ -237,27 +242,38 @@
    native-query :- :metabase.lib.schema/native-only-query]
   (sql-tools/validate-query driver native-query))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              Convenience Imports                                               |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 (defn validate-impersonated-query*
-  "Validates a native query by parsing it and ensuring that it is a single select statement."
+  "Validates a native query by parsing it and ensuring that it is a single statement.
+   Checks driver.conn/*connection-type* to determine if it is a regular impersonated query or a custom action.
+   For regular impersonated queries, ensure that it is a single select statement.
+   For custom actions, ensure that it is a single write statement (insert, update, delete)."
   [driver query]
   (update query :stages
           (fn [stages]
             (mapv (fn [stage]
                     (if (lib.util/native-stage? stage)
-                      (let [{:keys [is-single-select? sql error]}
-                            (sql-tools/is-single-select-stmt? driver (:native stage))]
-                        (when error
-                          (log/warnf "Failed to parse native query: %s\n: Query: %s" error (:native stage)))
-                        (if is-single-select?
-                          (assoc stage :native sql)
-                          (throw (ex-info (tru "Invalid impersonated native query. Must be a single select statement.")
-                                          {:sql (:native stage)}))))
+                      (let [[stmt-type allowed-stmts] (if (= driver.conn/*connection-type* :write-data)
+                                                        ["write" (tru "insert, update, or delete")]
+                                                        ["read" (tru "select")])
+                            {:keys [is-single-stmt? sql error]}
+                            (sql-tools/is-single-stmt-of-type? driver (:native stage) stmt-type)]
+                        (cond error
+                              (do
+                                (log/warnf "Failed to parse native query: %s\n: Query: %s" error (:native stage))
+                                (throw (ex-info (tru "Unable to parse native query. There might be something wrong with your query.")
+                                                {:type qp.error-type/invalid-query
+                                                 :sql  (:native stage)})))
+                              (not is-single-stmt?)
+                              (throw (ex-info (tru "Invalid impersonated native query. Must be a single {0} statement." allowed-stmts)
+                                              {:type qp.error-type/invalid-query
+                                               :sql  (:native stage)}))
+                              :else (assoc stage :native sql)))
                       stage))
                   stages))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Convenience Imports                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (p/import-vars
  [sql.params.substitution ->prepared-substitution PreparedStatementSubstitution]

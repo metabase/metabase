@@ -4,13 +4,13 @@ import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
-import { getUser } from "metabase/selectors/user";
-import { Box, FixedSizeIcon, Group, Stack, Text } from "metabase/ui";
 import {
   formatNotificationSchedule,
   getNotificationHandlersGroupedByTypes,
-} from "metabase/utils/notifications";
-import { useSelector } from "metabase/utils/redux";
+} from "metabase/notifications/utils";
+import { useSelector } from "metabase/redux";
+import { getUser } from "metabase/selectors/user";
+import { Box, FixedSizeIcon, Group, Stack, Text } from "metabase/ui";
 import { isNotFalsy } from "metabase/utils/types";
 import type {
   Notification,

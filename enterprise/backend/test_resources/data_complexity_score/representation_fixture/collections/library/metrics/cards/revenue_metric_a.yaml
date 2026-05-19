@@ -1,0 +1,11 @@
+name: Revenue
+entity_id: ReVeNuEcArDmEtRiC0a1
+type: metric
+archived: false
+collection_id: LiBrArYmEtRiCs000001
+database_id: Sample Database
+created_at: '2026-04-02T00:00:00Z'
+serdes/meta:
+- id: ReVeNuEcArDmEtRiC0a1
+  label: revenue
+  model: Card

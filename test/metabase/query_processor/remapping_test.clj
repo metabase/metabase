@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.remapping-test
   "Tests for the remapping results"
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.remapping-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.remapping-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -562,7 +564,7 @@
                                   (qp/process-query query))))))))
 
 (deftest ^:parallel fk-remapped-should-remap-test
-  (testing (format "Check that we return the title when it's remapped")
+  (testing "Check that we return the title when it's remapped"
     (let [mp (-> (mt/metadata-provider)
                  (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
                                                  (mt/id :products :title)))

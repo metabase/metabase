@@ -1,5 +1,6 @@
 (ns metabase.parameters.params-test
   "Tests for the utility functions for dealing with parameters in `metabase.parameters.params`."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.parameters.params-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.parameters.params :as params]

@@ -6,8 +6,8 @@ import type {
 import type { ComponentType, ReactNode } from "react";
 
 import type { TagType } from "metabase/api/tags";
+import type { CollectionTreeItem } from "metabase/collections/utils";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import type { CollectionTreeItem } from "metabase/entities/collections";
 import type { UseQuery } from "metabase/entities/containers/rtk-query/types/rtk";
 import type {
   GitSyncSetupMenuItemProps,
@@ -17,11 +17,11 @@ import {
   NotFoundPlaceholder,
   PluginPlaceholder,
 } from "metabase/plugins/components/PluginPlaceholder";
+import type { State } from "metabase/redux/store";
 import type {
   RemoteSyncChangesResponse,
   RemoteSyncEntity,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 export type CollectionsNavTreeProps = {
   collections: CollectionTreeItem[];

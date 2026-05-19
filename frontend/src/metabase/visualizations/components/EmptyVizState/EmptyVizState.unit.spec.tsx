@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import { virtualCardDisplayTypes } from "metabase-types/api";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { EmptyVizState, type EmptyVizStateProps } from "./EmptyVizState";
 import { type ExcludedEmptyVizDisplayTypes, getEmptyVizConfig } from "./utils";

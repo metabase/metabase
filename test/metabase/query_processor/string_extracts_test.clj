@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor.string-extracts-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.string-extracts-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.string-extracts-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]

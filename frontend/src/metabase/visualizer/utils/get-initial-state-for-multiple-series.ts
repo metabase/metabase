@@ -1,3 +1,4 @@
+import type { VisualizerVizDefinitionWithColumnsAndFallbacks } from "metabase/redux/store/visualizer";
 import { isNotNull } from "metabase/utils/types";
 import type {
   Card,
@@ -7,7 +8,6 @@ import type {
   VisualizerColumnReference,
   VisualizerDataSource,
 } from "metabase-types/api";
-import type { VisualizerVizDefinitionWithColumnsAndFallbacks } from "metabase-types/store/visualizer";
 
 import {
   copyColumn,

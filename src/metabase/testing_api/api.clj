@@ -15,6 +15,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.test-spec :as lib.schema.test-spec]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
@@ -303,6 +304,200 @@
 
 (def ^:private e2e-usage-source "e2e-test")
 
+(def ^:private e2e-usage-auditing-group-name "E2E Usage Auditing")
+
+(def ^:private e2e-usage-auditing-conversation-ids
+  ["00000000-0000-0000-0000-000000000101"
+   "00000000-0000-0000-0000-000000000102"
+   "00000000-0000-0000-0000-000000000103"
+   "00000000-0000-0000-0000-000000000104"
+   "00000000-0000-0000-0000-000000000105"
+   "00000000-0000-0000-0000-000000000106"
+   "00000000-0000-0000-0000-000000000107"
+   "00000000-0000-0000-0000-000000000108"
+   "00000000-0000-0000-0000-000000000109"
+   "00000000-0000-0000-0000-000000000110"
+   "00000000-0000-0000-0000-000000000111"])
+
+(defn- e2e-usage-auditing-group-id!
+  []
+  (or (t2/select-one-pk :model/PermissionsGroup :name e2e-usage-auditing-group-name)
+      (t2/insert-returning-pk! :model/PermissionsGroup {:name e2e-usage-auditing-group-name})))
+
+(defn- ensure-seeded-usage-auditing-group-membership!
+  [user-id]
+  (let [group-id (e2e-usage-auditing-group-id!)]
+    (when-not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id)
+      (perms/add-user-to-group! user-id group-id))))
+
+(defn- delete-seeded-usage-auditing-data!
+  []
+  (t2/delete! :model/AiUsageLog {:where [:in :conversation_id e2e-usage-auditing-conversation-ids]})
+  (t2/delete! :model/MetabotMessage {:where [:in :conversation_id e2e-usage-auditing-conversation-ids]})
+  (t2/delete! :model/MetabotConversation {:where [:in :id e2e-usage-auditing-conversation-ids]}))
+
+(defn- insert-seeded-usage-auditing-conversation!
+  [{:keys [id user-id created-at source profile-id prompt-tokens completion-tokens total-tokens roles ip-address tenant-id]}]
+  (t2/insert! :model/MetabotConversation
+              {:id         id
+               :user_id    user-id
+               :summary    "E2E usage auditing conversation"
+               :created_at created-at
+               :ip_address ip-address})
+  (doseq [role roles]
+    (t2/insert! :model/MetabotMessage
+                {:conversation_id id
+                 :user_id         user-id
+                 :role            role
+                 :profile_id      profile-id
+                 :data            []
+                 :total_tokens    0
+                 :created_at      created-at}))
+  (t2/insert! :model/AiUsageLog
+              (cond-> {:source            source
+                       :model             "anthropic/claude-sonnet-4-6"
+                       :conversation_id   id
+                       :user_id           user-id
+                       :prompt_tokens     prompt-tokens
+                       :completion_tokens completion-tokens
+                       :total_tokens      total-tokens
+                       :created_at        created-at}
+                tenant-id (assoc :tenant_id tenant-id))))
+
+(defn- seed-usage-auditing-data!
+  ([user-id second-user-id]
+   (seed-usage-auditing-data! user-id second-user-id nil nil))
+  ([user-id second-user-id tenant-id second-tenant-id]
+   (let [today          (t/offset-date-time (t/zone-offset "+00"))
+         yesterday      (t/minus today (t/days 1))
+         two-days       (t/minus today (t/days 2))
+         previous-week  (t/minus today (t/days 8))
+         previous-month (t/minus today (t/days 45))
+         out-of-bounds  (t/minus today (t/days 395))]
+     (ensure-seeded-usage-auditing-group-membership! user-id)
+     (ensure-seeded-usage-auditing-group-membership! second-user-id)
+     (when tenant-id
+       (t2/update! :model/User user-id {:tenant_id tenant-id}))
+     (when second-tenant-id
+       (t2/update! :model/User second-user-id {:tenant_id second-tenant-id}))
+     (delete-seeded-usage-auditing-data!)
+     (doseq [conversation [{:id                (nth e2e-usage-auditing-conversation-ids 0)
+                            :user-id           user-id
+                            :created-at        (t/minus today (t/hours 2))
+                            :source            "metabot_agent"
+                            :profile-id        "nlq"
+                            :prompt-tokens     100
+                            :completion-tokens 50
+                            :total-tokens      150
+                            :roles             ["user" "assistant"]
+                            :ip-address        "10.0.0.1"}
+                           {:id                (nth e2e-usage-auditing-conversation-ids 1)
+                            :user-id           user-id
+                            :created-at        (t/minus two-days (t/hours 1))
+                            :source            "slackbot"
+                            :profile-id        "internal"
+                            :prompt-tokens     200
+                            :completion-tokens 100
+                            :total-tokens      300
+                            :roles             ["user" "user" "assistant"]
+                            :ip-address        "10.0.0.2"}
+                           {:id                (nth e2e-usage-auditing-conversation-ids 2)
+                            :user-id           second-user-id
+                            :created-at        yesterday
+                            :source            "sql-gen"
+                            :profile-id        "sql"
+                            :prompt-tokens     300
+                            :completion-tokens 150
+                            :total-tokens      450
+                            :roles             ["user" "assistant"]
+                            :ip-address        "10.0.0.3"}
+                           {:id                (nth e2e-usage-auditing-conversation-ids 3)
+                            :user-id           second-user-id
+                            :created-at        (t/minus yesterday (t/hours 2))
+                            :source            "document_generate_content"
+                            :profile-id        "document-generate-content"
+                            :prompt-tokens     400
+                            :completion-tokens 200
+                            :total-tokens      600
+                            :roles             ["user" "assistant" "assistant"]
+                            :ip-address        "10.0.0.4"}
+                           {:id                (nth e2e-usage-auditing-conversation-ids 4)
+                            :user-id           user-id
+                            :created-at        two-days
+                            :source            "metabot_agent"
+                            :profile-id        "nlq"
+                            :prompt-tokens     500
+                            :completion-tokens 250
+                            :total-tokens      750
+                            :roles             ["user" "assistant"]
+                            :ip-address        "10.0.0.1"}
+                           {:id                (nth e2e-usage-auditing-conversation-ids 5)
+                            :user-id           second-user-id
+                            :created-at        (t/minus two-days (t/hours 3))
+                            :source            "sql-gen"
+                            :profile-id        "embedding_next"
+                            :prompt-tokens     600
+                            :completion-tokens 300
+                            :total-tokens      900
+                            :roles             ["user" "assistant"]
+                            :ip-address        "10.0.0.5"}
+                           {:id                (nth e2e-usage-auditing-conversation-ids 6)
+                            :user-id           user-id
+                            :created-at        (t/minus today (t/minutes 30))
+                            :source            "slackbot"
+                            :profile-id        "slackbot"
+                            :prompt-tokens     700
+                            :completion-tokens 350
+                            :total-tokens      1050
+                            :roles             ["user" "assistant"]
+                            :ip-address        "10.0.0.6"}
+                           {:id                (nth e2e-usage-auditing-conversation-ids 7)
+                            :user-id           user-id
+                            :created-at        (t/minus today (t/minutes 15))
+                            :source            "metabot_agent"
+                            :profile-id        "transforms_codegen"
+                            :prompt-tokens     800
+                            :completion-tokens 400
+                            :total-tokens      1200
+                            :roles             ["user" "assistant"]
+                            :ip-address        "10.0.0.7"}
+                           {:id                (nth e2e-usage-auditing-conversation-ids 8)
+                            :user-id           second-user-id
+                            :created-at        previous-month
+                            :source            "sql-gen"
+                            :profile-id        "sql"
+                            :prompt-tokens     900
+                            :completion-tokens 450
+                            :total-tokens      1350
+                            :roles             ["user" "assistant"]
+                            :ip-address        "10.0.0.8"}
+                           {:id                (nth e2e-usage-auditing-conversation-ids 9)
+                            :user-id           user-id
+                            :created-at        out-of-bounds
+                            :source            "metabot_agent"
+                            :profile-id        "internal"
+                            :prompt-tokens     1000
+                            :completion-tokens 500
+                            :total-tokens      1500
+                            :roles             ["user" "assistant"]
+                            :ip-address        "10.0.0.99"}
+                           {:id                (nth e2e-usage-auditing-conversation-ids 10)
+                            :user-id           user-id
+                            :created-at        previous-week
+                            :source            "metabot_agent"
+                            :profile-id        "nlq"
+                            :prompt-tokens     110
+                            :completion-tokens 55
+                            :total-tokens      165
+                            :roles             ["user" "assistant"]
+                            :ip-address        "10.0.0.1"}]]
+       (insert-seeded-usage-auditing-conversation!
+        (cond-> conversation
+          (= (:user-id conversation) user-id) (assoc :tenant-id tenant-id)
+          (= (:user-id conversation) second-user-id) (assoc :tenant-id second-tenant-id))))
+     {:inserted (count e2e-usage-auditing-conversation-ids)
+      :date     (str (t/local-date today))})))
+
 (api.macros/defendpoint :post "/metabot/seed-ai-usage"
   :- [:map [:inserted :int]]
   "Insert `count` rows into `ai_usage_log` for the given `user_id`, then clear the metabot limit
@@ -334,3 +529,17 @@
   (let [deleted (t2/delete! :model/AiUsageLog :user_id user_id :source e2e-usage-source)]
     (clear-metabot-limit-cache!)
     {:deleted deleted}))
+
+(api.macros/defendpoint :post "/metabot/seed-usage-auditing"
+  :- [:map
+      [:inserted :int]
+      [:date ms/NonBlankString]]
+  "Seed deterministic Metabot conversation, message, and token usage rows for the usage auditing E2E charts."
+  [_route-params
+   _query-params
+   {:keys [user_id second_user_id tenant_id second_tenant_id]} :- [:map
+                                                                   [:user_id ms/PositiveInt]
+                                                                   [:second_user_id ms/PositiveInt]
+                                                                   [:tenant_id {:optional true} [:maybe ms/PositiveInt]]
+                                                                   [:second_tenant_id {:optional true} [:maybe ms/PositiveInt]]]]
+  (seed-usage-auditing-data! user_id second_user_id tenant_id second_tenant_id))

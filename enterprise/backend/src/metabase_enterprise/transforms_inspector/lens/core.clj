@@ -108,7 +108,7 @@
                          vec)))
    nil))
 
-(defn- registered-lens-types
+(defn registered-lens-types
   "Return registered lens types in priority order, optionally filtering drill lenses."
   ([]
    (registered-lens-types false))

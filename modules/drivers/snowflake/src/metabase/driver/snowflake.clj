@@ -1,6 +1,6 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
-  (:refer-clojure :exclude [select-keys not-empty mapv])
+  (:refer-clojure :exclude [select-keys empty? not-empty mapv])
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
@@ -36,7 +36,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv not-empty select-keys]]
+   [metabase.util.performance :refer [mapv empty? not-empty select-keys]]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -223,6 +223,13 @@
         (and (not use-password) password-details)
         (conj password-details)))))
 
+(defn- set-put-get [additional-options]
+  (cond (empty? additional-options) "enablePutGet=false"
+        (re-find #"(?i)enablePutGet=" additional-options) (str/replace additional-options
+                                                                       #"enablePutGet=[^&]+"
+                                                                       "enablePutGet=false")
+        :else (str additional-options "&enablePutGet=false")))
+
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account additional-options host use-hostname password use-password], :as details}]
   (when (get "week_start" (sql-jdbc.common/additional-options->map additional-options :url))
@@ -274,7 +281,8 @@
                    (m/update-existing :schema upcase-not-nil)
                    resolve-private-key
                    (dissoc :host :port :timezone)))
-        (sql-jdbc.common/handle-additional-options details)
+        (sql-jdbc.common/handle-additional-options (update details
+                                                           :additional-options set-put-get))
         ;; Role is not respected when used as connection property if connection string is present with private key
         ;; file. Hence it is moved to connection url. https://github.com/metabase/metabase/issues/43600
         (maybe-add-role-to-spec-url details))))
@@ -959,13 +967,19 @@
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
-(defmethod driver.sql/set-role-statement :snowflake
-  [_ role]
+(defmethod sql-jdbc/set-role-statement :snowflake
+  [_driver _conn role]
+  ;; Apparently `identifier(?)` still parses the identifier string as an unquoted identifier, so we still need to
+  ;; manually wrap it in double quotes and manually escape doubles quotes inside `role` itself :unamused: ...
+  ;; see (#73788)
   (let [special-chars-pattern #"[^a-zA-Z0-9_]"
-        needs-quote           (re-find special-chars-pattern role)]
-    (if needs-quote
-      (format "USE ROLE \"%s\";" role)
-      (format "USE ROLE %s;" role))))
+        needs-quote?          (re-find special-chars-pattern role)
+        quoted-role           (if needs-quote?
+                                (-> role
+                                    (str/replace #"\"" "\"\"")
+                                    (as-> $role (str \" $role \")))
+                                role)]
+    ["USE ROLE identifier(?);" quoted-role]))
 
 (defmethod driver.sql/default-database-role :snowflake
   [_ database]
@@ -1024,7 +1038,7 @@
 
 (defn- string-filter
   [driver str-filter field arg {:keys [case-sensitive] :or {case-sensitive true} :as options}]
-  (let [casted-field (sql.qp/->honeysql driver (sql.qp/maybe-cast-uuid-for-text-compare field))]
+  (let [casted-field (sql.qp/->honeysql driver (sql.qp/maybe-cast-uuid-for-text-compare driver field))]
     [str-filter
      (if case-sensitive casted-field [:lower casted-field])
      (get-string-filter-arg driver arg options)]))
@@ -1061,10 +1075,10 @@
                      :password (driver.u/random-workspace-password)}
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     (when-not db-name
-      (throw (ex-info "Snowflake database configuration is missing required 'db' (database name) setting"
+      (throw (ex-info (tru "Snowflake database configuration is missing required ''db'' (database name) setting")
                       {:database-id (:id database) :step :init})))
     (when-not warehouse
-      (throw (ex-info "Snowflake database configuration is missing required 'warehouse' setting"
+      (throw (ex-info (tru "Snowflake database configuration is missing required ''warehouse'' setting")
                       {:database-id (:id database) :step :init})))
     ;; Snowflake RBAC: create schema -> create role -> grant privileges to role -> create user -> grant role to user
     (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS \"%s\".\"%s\"" db-name schema-name)
@@ -1090,7 +1104,7 @@
         username    (driver.u/workspace-isolation-user-name workspace)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     (when-not db-name
-      (throw (ex-info "Snowflake database configuration is missing required 'db' (database name) setting"
+      (throw (ex-info (tru "Snowflake database configuration is missing required ''db'' (database name) setting")
                       {:database-id (:id database) :step :destroy})))
     ;; Drop in reverse order of creation: schema (CASCADE handles tables) -> user -> role
     (doseq [sql [(format "DROP SCHEMA IF EXISTS \"%s\".\"%s\" CASCADE" db-name schema-name)
@@ -1104,10 +1118,10 @@
         db-name   (:db (driver.conn/effective-details database))
         role-name (-> workspace :database_details :role)]
     (when-not db-name
-      (throw (ex-info "Snowflake database configuration is missing required 'db' (database name) setting"
+      (throw (ex-info (tru "Snowflake database configuration is missing required ''db'' (database name) setting")
                       {:database-id (:id database) :step :grant})))
     (when-not role-name
-      (throw (ex-info "Workspace isolation is not properly initialized - missing role name"
+      (throw (ex-info (tru "Workspace isolation is not properly initialized - missing role name")
                       {:workspace-id (:id workspace) :step :grant})))
     (let [qdb (sql.u/quote-name :snowflake :schema db-name)
           qr  (sql.u/quote-name :snowflake :field role-name)]

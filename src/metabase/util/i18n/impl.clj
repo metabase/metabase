@@ -55,13 +55,21 @@
               (str namespce \_ (name this))
               (name this)))))
 
+(def ^:private extra-available-locales
+  "Locales that aren't recognized by the JVM's CLDR data but which Metabase accepts for test purposes. Currently just
+  the `en_ZZ` pseudo-locale used by E2E tests: every English string becomes `[zz] English`, so tests can verify the
+  translation mechanism loaded correctly without depending on fragile real-language strings that change whenever
+  Crowdin updates come in. See UXW-3460."
+  #{"en_ZZ"})
+
 (defn available-locale?
   "True if `locale` (a string, keyword, or `Locale`) is a valid locale available on this system. Normalizes args
-  automatically."
+  automatically. Also accepts Metabase's internal custom locales (e.g., `en_ZZ` which is used for testing)."
   [locale-or-name]
   (boolean
-   (when-let [locale (locale locale-or-name)]
-     (LocaleUtils/isAvailableLocale locale))))
+   (when-let [loc (locale locale-or-name)]
+     (or (LocaleUtils/isAvailableLocale loc)
+         (contains? extra-available-locales (normalized-locale-string (str loc)))))))
 
 (defn- available-locale-names*
   []
