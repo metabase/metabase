@@ -20,6 +20,7 @@ import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
+import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -32,7 +33,6 @@ import type {
 
 import { TransformEditor } from "../../components/TransformEditor";
 import { NAME_MAX_LENGTH } from "../../constants";
-import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
 import { getValidationResult, isCompleteSource } from "../../utils";
 
@@ -120,7 +120,8 @@ function NewTransformPageBody({
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const dispatch = useDispatch();
-  useRegisterMetabotTransformContext(undefined, source);
+  const [dryRunError, setDryRunError] = useState<string | undefined>(undefined);
+  useRegisterMetabotTransformContext(undefined, source, dryRunError);
 
   const validationResult = useMemo(() => {
     return source.type === "query"
@@ -188,6 +189,7 @@ function NewTransformPageBody({
               onChangeSource={setSourceAndRejectProposed}
               onAcceptProposed={acceptProposed}
               onRejectProposed={rejectProposed}
+              onDryRunErrorChange={setDryRunError}
             />
           ) : (
             <TransformEditor
