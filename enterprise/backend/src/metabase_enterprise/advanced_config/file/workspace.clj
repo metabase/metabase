@@ -21,10 +21,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def keep-me
-  "Marker so the parent advanced-config.file ns can `(comment ...keep-me)` to retain the require."
-  nil)
-
 ;;; ---------------------------------- Spec ----------------------------------
 ;;;
 ;;; Wire format: every workspace-database carries `:input_schemas` (vec of plain
