@@ -314,13 +314,20 @@ export class LegacyApi extends EventEmitter<EventMap> {
     data: Record<string, unknown>,
     options: RequestOptions<T>,
   ): Promise<T> {
+    // We wrap the fetch args in an explicit `Request` (instead of just calling
+    // `fetch(url, init)`) so fetch-mock populates `call.request` on every
+    // recorded call. `findRequests()` in our Jest helpers reads `call.request`
+    // to filter by method; without the Request object that field is undefined
+    // and the helper returns nothing.
+    const request = new Request(url.href, {
+      method,
+      headers,
+      body: requestBody,
+      signal: options.signal,
+    });
+
     try {
-      const response = await fetch(url.href, {
-        method,
-        headers,
-        body: requestBody,
-        signal: options.signal,
-      });
+      const response = await fetch(request);
 
 
       const unreadResponse = response.clone();
