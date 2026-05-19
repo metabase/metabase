@@ -1,9 +1,9 @@
 ---
-title: Transform tiers and add-ons
+title: Transform add-ons
+summary: Metabase transforms come in two flavors - basic transforms for basic query-based functionality, and advanced transforms for Python workflows, transform inspector, and other functionality.
 ---
 
 # Transform add-ons
-
 
 - **Basic transforms**: run [query-based transforms](query-transforms.md) and schedule transform [jobs](jobs-and-runs.md).
 - **Advanced transforms**: both query-based and Python transforms; separate database connection for write operations; transform inspector.
@@ -11,7 +11,6 @@ title: Transform tiers and add-ons
 Availability and pricing depends on your plan and hosting method.
 
 ## Basic transforms
-
 
 With basic transforms, you can:
 
@@ -27,7 +26,7 @@ With basic transforms, you can:
 
   Only people logged in with an email of a [Metabase Store admins](../../cloud/accounts-and-billing.md#add-people-to-manage-your-metabase-store-account) (not just Metabase _instance_ admins) can enable basic transforms. To enable Basic transforms on Metabase Cloud, see [Enable transforms](./transforms-overview.md#enable-transforms).
 
-### Disable basic transforms
+### Cancel basic transforms
 
 Once basic transforms are enabled on your Metabase Cloud instance, they can't be disabled.
 
@@ -70,7 +69,7 @@ Once you upgrade to Advanced transforms:
 - You get access to Advanced transforms features/
 - All your existing query-based transforms will be charged at Advanced transforms rate.
 
-### Disable Advanced transforms
+### Cancel Advanced transforms
 
 You can downgrade from Advanced transforms to [Basic transforms](#basic-transforms).
 

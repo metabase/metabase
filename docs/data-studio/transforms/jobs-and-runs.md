@@ -58,21 +58,9 @@ To create a new job:
 
    Job can use multiple tags, and will run all transforms that have _any_ of those tags. For example, you can have a job "Weekend job" that is scheduled run at noon on Saturdays and Sundays that picks up all transforms tagged either "Saturday", "Sunday", or "Weekend".
 
-### Delete a job
-
-Deleting a job will not delete any transforms.
-
-Deleted jobs can't be restored. If you want to temporarily stop a job from running, consider disabling the job instead.
-
-To delete a job:
-
-1. Go to **Data Studio > Jobs**.
-2. Find the job you want to delete and click the **three dots** icon to the right of the job's name.
-3. Select **Delete**.
-
 ### Disable jobs
 
-You can disable jobs without deleting them. This is useful when you want to temporarily stop transforms from running - for example, for debugging purposes - but you don't want to lose configuration settings like tags and schedules.
+You can disable jobs without deleting them. Unlike deletion (which is permanent), disabling a job just means it won't run until you re-enable it. This is useful when you want to temporarily stop transforms from running - for example, for debugging purposes. This way you don't your lose configuration settings like tags and schedules.
 
 To disable a specific job:
 
@@ -104,7 +92,17 @@ To re-enable all jobs:
 1. Go to **Data studio > Jobs**.
 2. Click the **three dots** icon above the table with all the jobs, and select **Re-enable all**.
 
-   ![Reenable all jobs](../images/re-enable-jobs.png)
+### Delete a job
+
+Deleting a job will not delete any transforms.
+
+Deleted jobs can't be restored. If you want to temporarily stop a job from running, consider disabling the job instead.
+
+To delete a job:
+
+1. Go to **Data Studio > Jobs**.
+2. Find the job you want to delete and click the **three dots** icon to the right of the job's name.
+3. Select **Delete**.
 
 ## Jobs will run all dependent transforms
 
