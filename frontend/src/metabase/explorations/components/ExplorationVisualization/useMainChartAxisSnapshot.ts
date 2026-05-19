@@ -40,6 +40,23 @@ export interface MainChartAxisSnapshot {
    * as `gridLeft`.
    */
   gridRight: number | string | null;
+  /**
+   * Horizontal offset (in CSS pixels) of the ECharts `chart-container`
+   * relative to the main chart's outer container. Non-zero whenever
+   * the cartesian chart renders a side legend (`graph.legend.position
+   * = "right"`) — the legend sits outside the ECharts canvas, so the
+   * canvas itself is narrower than the outer container. The sticky
+   * axis mirrors this offset so its x-axis ticks line up with the
+   * main chart's plot area instead of stretching across the legend.
+   */
+  chartLeftOffset: number;
+  /**
+   * Width (in CSS pixels) of the ECharts `chart-container`, captured
+   * from its `getBoundingClientRect`. Used together with
+   * `chartLeftOffset` to size the sticky axis to the main chart's
+   * actual canvas rather than the full outer container.
+   */
+  chartWidth: number | null;
 }
 
 const EMPTY_SNAPSHOT: MainChartAxisSnapshot = {
@@ -48,6 +65,8 @@ const EMPTY_SNAPSHOT: MainChartAxisSnapshot = {
   xAxisCategories: null,
   gridLeft: null,
   gridRight: null,
+  chartLeftOffset: 0,
+  chartWidth: null,
 };
 
 /**
@@ -249,6 +268,13 @@ export function useMainChartAxisSnapshot(
         (firstGrid?.left as number | string | undefined) ?? null;
       const nextGridRight =
         (firstGrid?.right as number | string | undefined) ?? null;
+
+      const outerRect = mainChartContainerRef.current?.getBoundingClientRect();
+      const chartRect = container.getBoundingClientRect();
+      const nextChartLeftOffset = outerRect
+        ? chartRect.left - outerRect.left
+        : 0;
+      const nextChartWidth = chartRect.width || null;
       // Skip the state update if nothing material changed. The
       // `finished` listener fires on every render pass, so without
       // this guard we'd re-render on every animation frame.
@@ -276,7 +302,9 @@ export function useMainChartAxisSnapshot(
           extentEqual &&
           categoriesEqual &&
           prev.gridLeft === nextGridLeft &&
-          prev.gridRight === nextGridRight
+          prev.gridRight === nextGridRight &&
+          prev.chartLeftOffset === nextChartLeftOffset &&
+          prev.chartWidth === nextChartWidth
         ) {
           return prev;
         }
@@ -286,6 +314,8 @@ export function useMainChartAxisSnapshot(
           xAxisCategories,
           gridLeft: nextGridLeft,
           gridRight: nextGridRight,
+          chartLeftOffset: nextChartLeftOffset,
+          chartWidth: nextChartWidth,
         };
       });
     };

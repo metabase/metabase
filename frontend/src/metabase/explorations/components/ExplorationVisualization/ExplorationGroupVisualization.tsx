@@ -411,6 +411,11 @@ function CartesianPageBody({
             position: "sticky",
             bottom: 0,
             zIndex: 1,
+            marginLeft: mainChartAxisSnapshot.chartLeftOffset || undefined, // When the main cartesian chart renders a side legend, mirror that horizontal box
+            width:
+              mainChartAxisSnapshot.chartWidth != null
+                ? `${mainChartAxisSnapshot.chartWidth}px`
+                : undefined,
           }}
         >
           <StickyXAxisChart
