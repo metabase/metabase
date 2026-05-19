@@ -506,24 +506,37 @@
    The full body is still logged in full and survives into `ex-data` via the decoded `res`."
   500)
 
+(defn- extract-error-message
+  "Pull a human-readable error string out of a structured JSON envelope map. Prefers
+   `[:error :message]`, then `:error`/`:detail`/`:message`. Returns `nil` if the map
+   has none of those — callers fall back to the full logged body for debugging."
+  [m]
+  (some-> (or (get-in m [:error :message])
+              (:error m)
+              (:detail m)
+              (:message m))
+          str
+          not-empty))
+
 (defn- body-preview
   "Build a short, human-readable snippet of an upstream provider's response body for the
    exception message. Prefers structured JSON envelopes (`[:error :message]`, `:error`,
-   `:detail`, `:message`); slurps `InputStream` bodies. Returns `nil` for maps that
-   don't carry a recognised human-readable field — the full body is still logged and
-   stashed in `ex-data`, so users don't see raw `{:request-id ...}` blobs in toasts."
+   `:detail`, `:message`); slurps `InputStream` bodies; probes the first element of
+   JSON arrays. Returns `nil` for anything that doesn't carry a recognised human-readable
+   field — the full body is still logged and stashed in `ex-data`, so users don't see
+   raw `{:request-id ...}` blobs or diagnostic-object arrays in toasts."
   [body]
   (let [s (cond
             (nil? body)                  nil
             (string? body)               body
-            (map? body)                  (some-> (or (get-in body [:error :message])
-                                                     (:error body)
-                                                     (:detail body)
-                                                     (:message body))
-                                                 str
-                                                 not-empty)
+            (map? body)                  (extract-error-message body)
+            (sequential? body)           (let [head (first body)]
+                                           (cond
+                                             (map? head)    (extract-error-message head)
+                                             (string? head) head
+                                             :else          nil))
             (instance? InputStream body) (try (slurp body) (catch Throwable _ nil))
-            :else                        (pr-str body))]
+            :else                        nil)]
     (when-let [trimmed (some-> s str/trim not-empty)]
       (if (<= (count trimmed) max-body-preview-chars)
         trimmed

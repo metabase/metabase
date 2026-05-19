@@ -896,6 +896,19 @@
     (testing "maps without a recognised error field return nil — no internal blobs leak to users"
       (is (nil? (body-preview {:request-id "abc" :trace ["frame1" "frame2"]})))
       (is (nil? (body-preview {}))))
+    (testing "JSON arrays probe their first element symmetrically with maps"
+      (is (= "rate limited"
+             (body-preview [{:error {:message "rate limited"}} {:type "diagnostic"}])))
+      (is (= "first message"
+             (body-preview ["first message" "ignored"])))
+      (is (nil? (body-preview [{:request-id "abc"} {:trace ["frame1"]}]))
+          "arrays of internal diagnostic objects do not leak to users")
+      (is (nil? (body-preview [])))
+      (is (nil? (body-preview [42 :keyword]))))
+    (testing "other non-string scalars return nil rather than pr-str'ing into the toast"
+      (is (nil? (body-preview 500)))
+      (is (nil? (body-preview :error)))
+      (is (nil? (body-preview true))))
     (testing "InputStream bodies get slurped"
       (let [stream (java.io.ByteArrayInputStream. (.getBytes "boom from upstream" "UTF-8"))]
         (is (= "boom from upstream" (body-preview stream)))))
@@ -913,6 +926,15 @@
   (is (= #{:status :reason-phrase :body :api-error :provider :error-code}
          (set (keys data)))
       "ex-data is an explicit allow-list, not a passthrough of the raw clj-http response"))
+
+(defn- assert-rethrow-no-internals-no-body!
+  "Sibling of [[assert-rethrow-no-internals!]] for the no-`:body` branch (network
+   errors, timeouts). Pins the exact key set so an accidental extra `ex-data` key
+   gets caught here too."
+  [data]
+  (is (= #{:api-error :provider :error-code :exception-class}
+         (set (keys data)))
+      "ex-data is an explicit allow-list, not a passthrough of the raw exception"))
 
 (deftest rethrow-api-error!-test
   (testing ":api-error exceptions are rethrown unchanged"
@@ -977,7 +999,8 @@
       (is (= "Anthropic API is not working but not saying why" (ex-message ex))
           "no internal body fields leak into the exception message")
       (is (= {:request-id "abc" :trace ["frame1"]} (get (ex-data ex) :body))
-          "the full body is still preserved in ex-data for debugging")))
+          "the full body is still preserved in ex-data for debugging")
+      (assert-rethrow-no-internals! (ex-data ex))))
   (testing "non-HTTP errors (no :body) fall through to the request-failed branch"
     (let [upstream (java.net.SocketTimeoutException. "Read timed out")
           ex       (try
@@ -990,4 +1013,5 @@
                :provider        "openai"
                :error-code      :provider-request-failed
                :exception-class "java.net.SocketTimeoutException"}
-              (ex-data ex))))))
+              (ex-data ex)))
+      (assert-rethrow-no-internals-no-body! (ex-data ex)))))
