@@ -130,7 +130,7 @@
       (is (= 403 (:status response)))
       (is (= "Origin not allowed" (get-in response [:body :error :message])))))
   (testing "cross-origin browser requests are accepted for configured MCP client origins"
-    (mt/with-temporary-setting-values [mcp-apps-cors-custom-origins "http://127.0.0.1:6274"]
+    (mt/with-temporary-setting-values [mcp.settings/mcp-apps-cors-custom-origins "http://127.0.0.1:6274"]
       (let [response (mcp-request (jsonrpc-request "initialize")
                                   {"host"   "mbtest.poom.dev"
                                    "origin" "http://127.0.0.1:6274"})]

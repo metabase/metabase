@@ -164,7 +164,9 @@
   [origin]
   (or (mcp/sandbox-origin? origin)
       (when-let [approved-origins (not-empty (mcp/cors-origins))]
-        (let [origin-url (mw.security/parse-url origin)]
+        ;; `parse-url` returns nil for malformed Origin values — treat those as
+        ;; not approved rather than passing nil down to `approved-domain?` et al.
+        (when-let [origin-url (mw.security/parse-url origin)]
           (boolean
            (some (fn [approved-origin]
                    (and (mw.security/approved-domain? (:domain origin-url) (:domain approved-origin))
