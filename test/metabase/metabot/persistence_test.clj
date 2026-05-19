@@ -652,17 +652,20 @@
 (deftest finalize-records-used-tables-test
   (testing "finalize-assistant-turn! inserts metabot_used_table rows for successful query-generating tool calls"
     (t2/with-transaction [_conn nil {:rollback-only true}]
-      (let [conversation-id (str (random-uuid))]
-        (mt/with-current-user (mt/user->id :rasta)
-          (let [{:keys [assistant-msg-id]} (metabot-persistence/start-turn!
-                                            conversation-id "internal"
-                                            {:role "user" :content "go"})
-                table-id                   (mt/id :orders)]
-            (metabot-persistence/finalize-assistant-turn!
-             conversation-id assistant-msg-id
-             (into [{:type :text :text "ok"}] (->notebook-parts "c1" table-id)))
-            (is (=? [{:message_id assistant-msg-id :table_id table-id}]
-                    (t2/select :model/MetabotUsedTable :message_id assistant-msg-id)))))))))
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [table-id                   (mt/id :orders)
+              conversation-id            (str (random-uuid))
+              {:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                          conversation-id
+                                          "internal"
+                                          {:role "user" :content "go"})]
+          (metabot-persistence/finalize-assistant-turn!
+           conversation-id
+           assistant-msg-id
+           (into [{:type :text :text "ok"}] (->notebook-parts "c1" table-id)))
+          (is (=? [{:message_id assistant-msg-id
+                    :table_id table-id}]
+                  (t2/select :model/MetabotUsedTable :message_id assistant-msg-id))))))))
 
 (defn- ->transform-python-parts
   "Build a `write_transform_python` tool-input/output pair that declares
