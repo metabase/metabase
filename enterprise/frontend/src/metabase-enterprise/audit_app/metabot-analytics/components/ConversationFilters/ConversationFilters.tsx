@@ -27,7 +27,10 @@ const RELATIVE_TYPE_VALUE = "__date_filter_relative__" as const;
 
 type ActiveDropdown = "default" | "specific" | "relative";
 
-const DROPDOWN_SEED: Record<Exclude<ActiveDropdown, "default">, string> = {
+const CUSTOM_RANGE_DEFAULT: Record<
+  Exclude<ActiveDropdown, "default">,
+  string
+> = {
   specific: serializeDateParameterValue(getOperatorDefaultValue("between")),
   relative: "past30days~",
 };
@@ -99,11 +102,10 @@ function ConversationDateFilter({
     ].filter((group) => group.items.length > 0);
   }, [retentionCutoff]);
 
-  // When `value` is a custom range that doesn't match a known shortcut, we
-  // still want the matching Specific/Relative entry to appear highlighted in
-  // the dropdown so clicking it re-opens the picker. The trigger's displayed
-  // label is overridden separately via `searchValue` so the user still sees
-  // the formatted range.
+  // when `value` is a specific / relative range, we want to show the item
+  // as highlighted and make sure the correct value is populated in the inner
+  // dropdowns, all while presenting this as the expanded time range to the user
+  // in the input label (e.g. March 15 2026 - March 19 2026)
   const parsedValue = value ? deserializeDateParameterValue(value) : null;
   const isKnownItem =
     value != null &&
@@ -139,15 +141,15 @@ function ConversationDateFilter({
       .exhaustive();
   };
 
-  const customRangeSeed = match({
+  const customRangeValue = match({
     activeDropdown,
     parsedType: parsedValue?.type,
   })
     .with({ activeDropdown: "default" }, () => null)
     .with({ activeDropdown: "specific", parsedType: "specific" }, () => value)
     .with({ activeDropdown: "relative", parsedType: "relative" }, () => value)
-    .with({ activeDropdown: "specific" }, () => DROPDOWN_SEED.specific)
-    .with({ activeDropdown: "relative" }, () => DROPDOWN_SEED.relative)
+    .with({ activeDropdown: "specific" }, () => CUSTOM_RANGE_DEFAULT.specific)
+    .with({ activeDropdown: "relative" }, () => CUSTOM_RANGE_DEFAULT.relative)
     .exhaustive();
 
   return (
@@ -180,7 +182,7 @@ function ConversationDateFilter({
       <Popover.Dropdown>
         <DateAllOptionsWidget
           key={activeDropdown}
-          value={customRangeSeed}
+          value={customRangeValue}
           availableOperators={DATE_OPERATORS}
           availableDirections={RELATIVE_DIRECTIONS}
           minDate={retentionCutoff?.toDate()}
