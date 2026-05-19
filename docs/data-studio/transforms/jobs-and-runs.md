@@ -62,7 +62,7 @@ To create a new job:
 
 Deleting a job will not delete any transforms.
 
-Jobs can't be restored. If you want to temporarily stop a job from running, consider disabling it instead.
+Deleted jobs can't be restored. If you want to temporarily stop a job from running, consider disabling the job instead.
 
 To delete a job:
 
