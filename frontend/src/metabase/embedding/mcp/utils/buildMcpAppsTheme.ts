@@ -22,16 +22,44 @@ const MCP_HOST_VAR_TO_SDK_COLOR: Record<
   "--color-text-tertiary": "text-tertiary",
 };
 
-export function buildMcpAppsTheme(
-  hostCssVariables: Record<string, string>,
-  preset: ResolvedColorScheme,
-): MetabaseTheme {
+/**
+ * Per-agent CSS variable overrides, applied on top of what the host sends.
+ * Keyed by `hostContext.userAgent`. Each agent may define `light` and/or `dark`
+ * overrides; both are optional.
+ */
+const AGENT_CSS_VARIABLE_OVERRIDES: Record<
+  string,
+  Partial<Record<ResolvedColorScheme, Record<string, string>>>
+> = {
+  chatgpt: {
+    dark: {
+      "--color-background-primary": "#212121",
+    },
+  },
+};
+
+interface BuildMcpAppsThemeOptions {
+  hostCssVariables: Record<string, string>;
+  preset: ResolvedColorScheme;
+  agentName?: string;
+}
+
+export function buildMcpAppsTheme({
+  hostCssVariables,
+  preset,
+  agentName,
+}: BuildMcpAppsThemeOptions): MetabaseTheme {
+  const agentOverrides =
+    (agentName && AGENT_CSS_VARIABLE_OVERRIDES[agentName]?.[preset]) || {};
+
+  const mergedCssVariables = { ...hostCssVariables, ...agentOverrides };
+
   const colors: MetabaseTheme["colors"] = {};
 
   for (const [cssVarKey, sdkKey] of Object.entries(MCP_HOST_VAR_TO_SDK_COLOR)) {
-    if (hostCssVariables[cssVarKey]) {
+    if (mergedCssVariables[cssVarKey]) {
       colors[sdkKey] = resolveConcreteColor(
-        hostCssVariables[cssVarKey],
+        mergedCssVariables[cssVarKey],
         preset,
       );
     }
