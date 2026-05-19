@@ -60,7 +60,7 @@
        (some? (tool-output->structured (:result output-block)))))
 
 (defn- ->mbql5-query
-  "Convert a raw query (legacy or MBQL 5) into an MBQL 5 query with an metadata provider attached. 
+  "Convert a raw query (legacy or MBQL 5) into an MBQL 5 query with an metadata provider attached.
   We pass [[lib-be/application-database-metadata-provider]] as the metadata-providerable.
   Returns nil on conversion failure."
   [raw-query]
@@ -149,7 +149,7 @@
         nil)))
 
 (defn- sql-starting-query
-  "Starting query for an SQL tool output. 
+  "Starting query for an SQL tool output.
   Prefers the structured output's full `:query` map; falls back to building a native query from the structured
   output's `:database` field plus the tool's raw SQL text."
   [tool-name arguments structured]
