@@ -114,7 +114,10 @@
       (mt/with-premium-features #{:serialization}
         (testing "POST /api/ee/serialization/export"
           (mt/with-empty-h2-app-db!
-            (mt/with-temp [:model/Collection    coll  {:name "API Collection"}
+            ;; The Card defaults wire database_id to an H2 test database, which is now skipped during
+            ;; serdes extract. Create a non-H2 database so the data-model export still contains a Database.
+            (mt/with-temp [:model/Database      _     {:name "Non-H2 DB" :engine :postgres}
+                           :model/Collection    coll  {:name "API Collection"}
                            :model/Dashboard     _     {:collection_id (:id coll)}
                            :model/Card          card  {:collection_id (:id coll)}
                            :model/Collection    coll2 {:name "Other Collection"}
