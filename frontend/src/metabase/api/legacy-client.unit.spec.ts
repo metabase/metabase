@@ -548,4 +548,79 @@ describe("api", () => {
       expect(call?.options?.body).toBeFalsy();
     });
   });
+
+  describe("status-code event emit", () => {
+    let apiInstance: LegacyApi;
+
+    beforeEach(() => {
+      apiInstance = new LegacyApi();
+    });
+
+    afterEach(() => {
+      fetchMock.removeRoutes().clearHistory();
+    });
+
+    it("emits the relative path when basename is empty", async () => {
+      fetchMock.get("path:/api/session/properties", { ok: true });
+      const listener = jest.fn();
+      apiInstance.on("200", listener);
+
+      await apiInstance.request({
+        method: "GET",
+        url: "/api/session/properties",
+      });
+
+      expect(listener).toHaveBeenCalledWith("/api/session/properties");
+    });
+
+    it("strips a subpath basename so listeners see the relative path", async () => {
+      apiInstance.basename = "/metabase";
+      fetchMock.get("path:/metabase/api/session", { ok: true });
+      const listener = jest.fn();
+      apiInstance.on("200", listener);
+
+      await apiInstance.request({ method: "GET", url: "/api/session" });
+
+      expect(listener).toHaveBeenCalledWith("/api/session");
+    });
+
+    it("emits the relative path when basename is a full URL (SDK case)", async () => {
+      apiInstance.basename = "https://metabase.example.com";
+      fetchMock.get("https://metabase.example.com/api/session", { ok: true });
+      const listener = jest.fn();
+      apiInstance.on("200", listener);
+
+      await apiInstance.request({ method: "GET", url: "/api/session" });
+
+      expect(listener).toHaveBeenCalledWith("/api/session");
+    });
+
+    it("includes the querystring in the emitted path", async () => {
+      fetchMock.get("path:/api/search", { items: [] });
+      const listener = jest.fn();
+      apiInstance.on("200", listener);
+
+      await apiInstance.request({
+        method: "GET",
+        url: "/api/search",
+        params: { q: "foo" },
+      });
+
+      expect(listener).toHaveBeenCalledWith("/api/search?q=foo");
+    });
+
+    it("does not emit when noEvent is set", async () => {
+      fetchMock.get("path:/api/session/properties", { ok: true });
+      const listener = jest.fn();
+      apiInstance.on("200", listener);
+
+      await apiInstance.request({
+        method: "GET",
+        url: "/api/session/properties",
+        noEvent: true,
+      });
+
+      expect(listener).not.toHaveBeenCalled();
+    });
+  });
 });
