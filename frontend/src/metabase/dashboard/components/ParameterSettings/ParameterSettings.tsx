@@ -7,7 +7,6 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import type { EmbeddingParameterVisibility } from "metabase/embedding/types";
 import { ParameterValueWidget } from "metabase/parameters/components/ParameterValueWidget";
 import { RequiredParamToggle } from "metabase/parameters/components/RequiredParamToggle";
 import { TemporalUnitSettings } from "metabase/parameters/components/TemporalUnitSettings";
@@ -34,6 +33,7 @@ import {
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   DashboardCard,
+  EmbeddingParameterVisibility,
   Parameter,
   TemporalUnit,
   ValuesQueryType,
