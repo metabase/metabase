@@ -4,7 +4,6 @@ import fetchMock from "fetch-mock";
 import {
   findRequests,
   setupPropertiesEndpoints,
-  setupScimEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
@@ -58,16 +57,16 @@ const setup = async ({
   setupPropertiesEndpoints(settings);
   setupSettingsEndpoints(settingDefinitions);
   if (hasScimToken) {
-    setupScimEndpoints(MOCK_SCIM_TOKEN);
+    fetchMock.get("path:/api/ee/scim/api_key", MOCK_SCIM_TOKEN);
   } else {
     fetchMock.get("path:/api/ee/scim/api_key", 404);
-    fetchMock.post(
-      "path:/api/ee/scim/api_key",
-      tokenGenerationFails
-        ? { status: 500, body: { message: "An error occurred" } }
-        : MOCK_SCIM_TOKEN,
-    );
   }
+  fetchMock.post(
+    "path:/api/ee/scim/api_key",
+    tokenGenerationFails
+      ? { status: 500, body: { message: "An error occurred" } }
+      : MOCK_SCIM_TOKEN,
+  );
   setupUpdateSettingEndpoint();
 
   renderWithProviders(<UserProvisioning />, {
@@ -200,7 +199,7 @@ describe("SCIM User Provisioning Settings", () => {
       expect(screen.getByText("Generate")).toBeInTheDocument();
       expect(screen.queryByText("Regenerate")).not.toBeInTheDocument();
       expect(
-        screen.queryByText("Token failed to generate, please regenerate one."),
+        screen.queryByText("Token failed to generate, Please try again."),
       ).not.toBeInTheDocument();
     });
 
@@ -235,9 +234,7 @@ describe("SCIM User Provisioning Settings", () => {
 
       // the modal is not opened on failure; the form surfaces the error directly
       expect(
-        await screen.findByText(
-          "Token failed to generate, please regenerate one.",
-        ),
+        await screen.findByText("Token failed to generate, Please try again."),
       ).toBeInTheDocument();
       expect(screen.getByText("Retry")).toBeInTheDocument();
       // the generic "needs a token" warning is suppressed in favor of the specific error
@@ -249,6 +246,33 @@ describe("SCIM User Provisioning Settings", () => {
       expect(
         screen.queryByText("Here's what you'll need to set SCIM up"),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("SCIM enabled with a token, regenerate fails", () => {
+    it("should close the regenerate modal and surface the error on the SCIM token field", async () => {
+      await setup({
+        settings: { "scim-enabled": true },
+        tokenGenerationFails: true,
+      });
+
+      await userEvent.click(await screen.findByText("Regenerate"));
+
+      // confirm modal
+      expect(await screen.findByText("Regenerate token?")).toBeInTheDocument();
+      await userEvent.click(await screen.findByText("Regenerate now"));
+
+      // the post-regenerate modal must NOT appear on failure
+      expect(
+        await screen.findByText(
+          "Failed to regenerate token. Please try again.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Regenerate token?")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Copy and save the SCIM token"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("An error occurred")).not.toBeInTheDocument();
     });
   });
 

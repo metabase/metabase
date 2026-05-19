@@ -173,10 +173,41 @@ describe("scenarios > admin > settings > user provisioning", () => {
       H.modal().should("not.exist");
 
       H.main().within(() => {
-        cy.findByText(
-          "Token failed to generate, please regenerate one.",
-        ).should("exist");
+        cy.findByText("Token failed to generate, Please try again.").should(
+          "exist",
+        );
         cy.findByRole("button", { name: /Retry/ }).should("exist");
+      });
+    });
+
+    it("should close the regenerate modal and surface an error on the token field when regenerate fails", () => {
+      // generate an initial token via the UI
+      cy.visit("/admin/settings/authentication/user-provisioning");
+      scimToggle().click();
+      H.modal().within(() => {
+        cy.findByRole("button", { name: /Done/ }).click();
+      });
+
+      // now make subsequent regenerate calls fail
+      cy.intercept("POST", "/api/ee/scim/api_key", {
+        statusCode: 500,
+        body: { message: "An error occurred" },
+      });
+
+      cy.findByRole("button", { name: /Regenerate/ }).click();
+      H.modal().within(() => {
+        cy.findByText("Regenerate token?").should("exist");
+        cy.findByRole("button", { name: /Regenerate now/ }).click();
+      });
+
+      // the post-confirm modal does not appear; error surfaces on the form
+      H.modal().should("not.exist");
+      H.main().within(() => {
+        cy.findByText("Failed to regenerate token. Please try again.").should(
+          "exist",
+        );
+        cy.findByText("An error occurred").should("not.exist");
+        cy.findByRole("button", { name: /Regenerate/ }).should("exist");
       });
     });
 
@@ -193,9 +224,9 @@ describe("scenarios > admin > settings > user provisioning", () => {
           "Generate a SCIM token below to complete the setup.",
         ).should("exist");
         cy.findByRole("button", { name: /Generate/ }).should("exist");
-        cy.findByText(
-          "Token failed to generate, please regenerate one.",
-        ).should("not.exist");
+        cy.findByText("Token failed to generate, Please try again.").should(
+          "not.exist",
+        );
       });
 
       cy.log("warning is removed once a token has been generated");

@@ -89,11 +89,10 @@ export const UserProvisioning = () => {
   );
 
   // A token-generation attempt was made and failed (vs. "no attempt yet"). Used to surface the
-  // real failure on the token input instead of the generic "you need a token" Alert.
+  // failure on the token input — both when no token existed yet (Generate failed) and when a token
+  // exists but regeneration failed.
   const hasTokenGenerationError = Boolean(
-    !isScimInitialized &&
-    regenerateTokenReq.error &&
-    !regenerateTokenReq.isLoading,
+    regenerateTokenReq.error && !regenerateTokenReq.isLoading,
   );
 
   const samlUserProvisioningEnabled = useSetting(
@@ -205,7 +204,9 @@ export const UserProvisioning = () => {
                     w="100%"
                     error={
                       hasTokenGenerationError &&
-                      t`Token failed to generate, please regenerate one.`
+                      (isScimInitialized
+                        ? t`Failed to regenerate token. Please try again.`
+                        : t`Token failed to generate, Please try again.`)
                     }
                     styles={getTextInputStyles({
                       masked: true,
@@ -264,6 +265,8 @@ export const UserProvisioning = () => {
         <UserProvisioningRegenerateTokenModal
           opened={showRegenerateModal}
           onClose={closeRegenerateModal}
+          regenerateToken={regenerateToken}
+          regenerateTokenReq={regenerateTokenReq}
         />
       </SettingsSection>
     </SettingsPageWrapper>
