@@ -114,8 +114,8 @@
                   ...}}
 
    Resolves each database name to a `:model/Database` (rows are populated by the
-   `:databases` section, which runs earlier — see `advanced-config.file/initialize!`)
-   and stores the result in `workspaces.core/workspace-instance-config` keyed by
+   `:databases` section, which runs earlier — see [[metabase-enterprise.advanced-config.file/initialize!]])
+   and stores the result in [[metabase-enterprise.workspaces.core/workspace-instance-config]] keyed by
    db-id. The atom carries `{:input_schemas [String], :output {:db ?, :schema ?}}`.
    `:output` is expanded once at boot via [[expand-output]] so the QP hot path
    doesn't re-run the per-engine case per query."

@@ -25,9 +25,9 @@
     (if-not (.isPlain ev)
       v
       (cond
-        (or (= v "") (= v "~") (= v "null") (= v "Null") (= v "NULL")) nil
-        (or (= v "true") (= v "True") (= v "TRUE")) true
-        (or (= v "false") (= v "False") (= v "FALSE")) false
+        (#{"" "~" "null" "Null" "NULL"} v) nil
+        (#{"true" "True" "TRUE"} v)        true
+        (#{"false" "False" "FALSE"} v)     false
         ;; YAML 1.1 plain int: optional sign + digits.
         (re-matches #"[-+]?\d+" v)                                  (Long/parseLong v)
         ;; YAML 1.1 plain float: optional sign; mantissa is one of
@@ -88,21 +88,21 @@
   "Consume events for one value rooted at `ev`. Used to advance past unrelated
   top-level keys' values without materializing them."
   [^Iterator iter ev]
-  (cond
-    (instance? ScalarEvent ev)        nil
-    (instance? MappingStartEvent ev)  (loop []
-                                        (let [next-ev (.next iter)]
-                                          (when-not (instance? MappingEndEvent next-ev)
-                                            (skip-value! iter (.next iter))
-                                            (recur))))
-    (instance? SequenceStartEvent ev) (loop []
-                                        (let [next-ev (.next iter)]
-                                          (when-not (instance? SequenceEndEvent next-ev)
-                                            (skip-value! iter next-ev)
-                                            (recur))))
-    :else (throw (ex-info (format "Unexpected YAML event %s while skipping"
-                                  (.getSimpleName (class ev)))
-                          {:kind :bad-shape}))))
+  (condp instance? ev
+    ScalarEvent        nil
+    MappingStartEvent  (loop []
+                         (let [next-ev (.next iter)]
+                           (when-not (instance? MappingEndEvent next-ev)
+                             (skip-value! iter (.next iter))
+                             (recur))))
+    SequenceStartEvent (loop []
+                         (let [next-ev (.next iter)]
+                           (when-not (instance? SequenceEndEvent next-ev)
+                             (skip-value! iter next-ev)
+                             (recur))))
+    (throw (ex-info (format "Unexpected YAML event %s while skipping"
+                            (.getSimpleName (class ev)))
+                    {:kind :bad-shape}))))
 
 (defn- advance-to-array!
   "Advance `iter` from start-of-input through the top-level mapping to the
