@@ -550,6 +550,40 @@ describe("documents", () => {
         });
       });
 
+      it("should swap document text/border tokens to light-theme values when printing in dark mode (metabase#68323)", () => {
+        cy.request("PUT", "/api/setting/color-scheme", { value: "dark" });
+        H.visitDocument("@documentId");
+        cy.get('html[data-mantine-color-scheme="dark"]').should("exist");
+
+        const editorSelector = '[data-testid="document-content"] .ProseMirror';
+
+        cy.get(editorSelector).should(
+          "have.css",
+          "color",
+          "rgba(255, 255, 255, 0.95)",
+        );
+
+        cy.then(() =>
+          Cypress.automation("remote:debugger:protocol", {
+            command: "Emulation.setEmulatedMedia",
+            params: { media: "print" },
+          }),
+        );
+
+        cy.get(editorSelector).should(
+          "have.css",
+          "color",
+          "rgba(7, 23, 34, 0.84)",
+        );
+
+        cy.then(() =>
+          Cypress.automation("remote:debugger:protocol", {
+            command: "Emulation.setEmulatedMedia",
+            params: { media: "" },
+          }),
+        );
+      });
+
       it("should handle undo/redo properly, resetting the history whenever a different document is viewed", () => {
         H.visitDocument("@documentId");
         H.getDocumentCard("Orders").should("exist");

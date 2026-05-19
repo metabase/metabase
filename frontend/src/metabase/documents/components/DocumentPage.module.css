@@ -47,6 +47,46 @@
     }
   }
 
+  /* Browsers strip dark backgrounds when printing, leaving dark-mode
+     light text unreadable on white paper. Repoint the document's text
+     and border tokens at their light-theme equivalents so the printed
+     output stays readable.
+
+     Mantine emits each theme color as a chain of aliases: the `c="..."`
+     prop on a parent resolves to `--mantine-color-<key>-text`, while a
+     `<Text>` element's own default color resolves to
+     `--mantine-color-<key>-filled`. Both have to be flipped to keep
+     header text, metadata, and inline icons readable.
+
+     The dark theme has no `border-inverse` token, but
+     `--mb-color-text-secondary-opaque` resolves to the same `orion[20]`
+     value that the light theme uses for `border`, so reuse it.
+     (metabase#68323) */
+  :global(html[data-mantine-color-scheme="dark"]) .documentContainer {
+    --mb-color-text-primary: var(--mb-color-text-primary-inverse);
+    --mb-color-text-secondary: var(--mb-color-text-secondary-inverse);
+    --mb-color-text-tertiary: var(--mb-color-text-tertiary-inverse);
+    --mantine-color-text-primary-text: var(
+      --mantine-color-text-primary-inverse-text
+    );
+    --mantine-color-text-secondary-text: var(
+      --mantine-color-text-secondary-inverse-text
+    );
+    --mantine-color-text-tertiary-text: var(
+      --mantine-color-text-tertiary-inverse-text
+    );
+    --mantine-color-text-primary-filled: var(
+      --mantine-color-text-primary-inverse-filled
+    );
+    --mantine-color-text-secondary-filled: var(
+      --mantine-color-text-secondary-inverse-filled
+    );
+    --mantine-color-text-tertiary-filled: var(
+      --mantine-color-text-tertiary-inverse-filled
+    );
+    --mb-color-border: var(--mb-color-text-secondary-opaque);
+  }
+
   .documentContainer {
     position: absolute;
     visibility: visible;
