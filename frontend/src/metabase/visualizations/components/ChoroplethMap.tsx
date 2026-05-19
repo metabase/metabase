@@ -29,15 +29,14 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
   ColumnSettings,
+  VisualizationDefinition,
   VisualizationProps,
 } from "metabase/visualizations/types";
 import { isMetric, isString } from "metabase-lib/v1/types/utils/isa";
 import type {
   CustomGeoJSONMap,
-  DatasetColumn,
   GeoJSONData,
   RowValue,
-  Series,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -544,13 +543,15 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
   );
 }
 
-const choroplethStatics = {
+const choroplethStatics: Pick<
+  VisualizationDefinition,
+  "minSize" | "defaultSize" | "isSensible" | "checkRenderable"
+> = {
   minSize: getMinSize("map"),
   defaultSize: getDefaultSize("map"),
-  isSensible({ cols }: { cols: DatasetColumn[] }): boolean {
-    return cols.filter(isString).length > 0 && cols.filter(isMetric).length > 0;
-  },
-  checkRenderable(series: Series): void {
+  isSensible: ({ cols }) =>
+    cols.filter(isString).length > 0 && cols.filter(isMetric).length > 0,
+  checkRenderable: (series) => {
     const {
       data: { cols },
     } = series[0];

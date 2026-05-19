@@ -18,7 +18,6 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
-  ComputedVisualizationSettings,
   VisualizationDefinition,
   VisualizationProps,
 } from "metabase/visualizations/types";
@@ -32,7 +31,7 @@ import {
   isNumeric,
   isState,
 } from "metabase-lib/v1/types/utils/isa";
-import type { CustomGeoJSONMap, DatasetData, Series } from "metabase-types/api";
+import type { CustomGeoJSONMap } from "metabase-types/api";
 
 import {
   ChoroplethMap,
@@ -51,42 +50,6 @@ function isPinMapType(value: unknown): value is PinMapValue {
 }
 
 const MAP_DISPLAY_ALIASES = ["state", "country", "pin_map"] as const;
-
-function isSensible({ cols, rows }: DatasetData) {
-  return (
-    PinMap.isSensible({ cols, rows }) ||
-    ChoroplethMap.isSensible({ cols }) ||
-    LeafletGridHeatMap.isSensible({ cols })
-  );
-}
-
-function checkRenderable(
-  _series: Series,
-  settings: ComputedVisualizationSettings,
-) {
-  const type = settings["map.type"];
-
-  if (isPinMapType(type)) {
-    if (!settings["map.longitude_column"] || !settings["map.latitude_column"]) {
-      throw new ChartSettingsError(
-        t`Please select longitude and latitude columns in the chart settings.`,
-        { section: t`Data` },
-      );
-    }
-  } else if (type === "region") {
-    if (!settings["map.region"]) {
-      throw new ChartSettingsError(t`Please select a region map.`, {
-        section: t`Data`,
-      });
-    }
-    if (!settings["map.dimension"] || !settings["map.metric"]) {
-      throw new ChartSettingsError(
-        t`Please select region and metric columns in the chart settings.`,
-        { section: t`Data` },
-      );
-    }
-  }
-}
 
 function MapComponent(props: VisualizationProps) {
   const { settings } = props;
@@ -118,7 +81,10 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
   aliases: [...MAP_DISPLAY_ALIASES],
   minSize: getMinSize("map"),
   defaultSize: getDefaultSize("map"),
-  isSensible,
+  isSensible: (data) =>
+    PinMap.isSensible(data) ||
+    Boolean(ChoroplethMap.isSensible?.(data)) ||
+    LeafletGridHeatMap.isSensible(data),
   hasEmptyState: true,
   settings: {
     ...columnSettings({ getHidden: () => true }),
@@ -358,7 +324,33 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
       getHidden: (_series, vizSettings) => vizSettings["map.type"] !== "heat",
     },
   },
-  checkRenderable,
+  checkRenderable: (_series, settings) => {
+    const type = settings["map.type"];
+
+    if (isPinMapType(type)) {
+      if (
+        !settings["map.longitude_column"] ||
+        !settings["map.latitude_column"]
+      ) {
+        throw new ChartSettingsError(
+          t`Please select longitude and latitude columns in the chart settings.`,
+          { section: t`Data` },
+        );
+      }
+    } else if (type === "region") {
+      if (!settings["map.region"]) {
+        throw new ChartSettingsError(t`Please select a region map.`, {
+          section: t`Data`,
+        });
+      }
+      if (!settings["map.dimension"] || !settings["map.metric"]) {
+        throw new ChartSettingsError(
+          t`Please select region and metric columns in the chart settings.`,
+          { section: t`Data` },
+        );
+      }
+    }
+  },
 };
 
 export const Map = Object.assign(
