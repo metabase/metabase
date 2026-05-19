@@ -5,8 +5,21 @@ summary: Metabase transforms come in two flavors - basic transforms for basic qu
 
 # Transform add-ons
 
-- **Basic transforms**: run [query-based transforms](query-transforms.md) and schedule transform [jobs](jobs-and-runs.md).
-- **Advanced transforms**: both query-based and Python transforms; separate database connection for write operations; transform inspector.
+At a glance:
+
+[**Basic transforms**](#basic-transforms):
+
+- Run [query-based transforms](query-transforms.md)
+- Schedule transform [jobs](jobs-and-runs.md).
+- (Pro/Enterprise only) Configure [permissions for transforms](transforms-overview.md#permissions-for-transforms).
+
+[**Advanced transforms**](#advanced-transforms):
+
+- Run [query-based](query-transforms.md) and [Python transforms](python-transforms.md);
+- Schedule transform [jobs](jobs-and-runs.md).
+- (Pro/Enterprise only) Configure [permissions for transforms](transforms-overview.md#permissions-for-transforms).
+- [Writable connection](../../databases/writable-connection.md): separate database connection used for write operations.
+- [Transform inspector](transform-inspector.md).
 
 Availability and pricing depends on your plan and hosting method.
 
