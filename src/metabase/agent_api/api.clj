@@ -752,11 +752,17 @@
 
 ;;; ------------------------------------------------- Create Question ------------------------------------------------
 
+(mr/def ::card-display
+  "Display types accepted by Card. Validates LLM-passed values so a bogus
+   value (e.g. `\"potato\"`) gets a 400 rather than persisting junk."
+  [:enum "table" "bar" "line" "pie" "scatter" "area" "row" "combo" "pivot"
+   "scalar" "smartscalar" "gauge" "progress" "funnel" "map" "waterfall" "sankey"])
+
 (mr/def ::create-question-request
   [:map
    [:name                   ms/NonBlankString]
    [:query                  ms/NonBlankString]
-   [:display                {:optional true} [:maybe :string]]
+   [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:visualization_settings {:optional true} [:maybe :map]]])
@@ -808,7 +814,7 @@
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-   [:display                {:optional true} [:maybe :string]]
+   [:display                {:optional true} [:maybe ::card-display]]
    [:visualization_settings {:optional true} [:maybe :map]]
    [:archived               {:optional true} [:maybe :boolean]]
    [:query                  {:optional true} [:maybe ms/NonBlankString]]])

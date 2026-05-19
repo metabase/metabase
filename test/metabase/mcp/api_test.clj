@@ -228,9 +228,11 @@
 
 (def ^:private all-tool-names
   #{"construct_query"
+    "create_collection"
     "create_dashboard"
     "create_question"
     "execute_query"
+    "execute_sql"
     "get_metric"
     "get_metric_field_values"
     "get_table"
@@ -238,6 +240,8 @@
     "query"
     "render_drill_through"
     "search"
+    "update_dashboard"
+    "update_question"
     "visualize_query"})
 
 (deftest tools-list-all-tools-declare-required-hints-test
@@ -624,8 +628,9 @@
    fails when they diverge, ensuring no Agent API tool ships without a basic
    invocation check."
   #{"get_table" "get_table_field_values" "get_metric" "get_metric_field_values"
-    "search" "construct_query" "query" "execute_query"
-    "create_question" "create_dashboard"})
+    "search" "construct_query" "query" "execute_query" "execute_sql"
+    "create_question" "create_dashboard"
+    "update_question" "update_dashboard" "create_collection"})
 
 (deftest tools-call-smoke-test
   (testing "every Agent API-backed tool is exercised by the smoke test"
@@ -649,7 +654,8 @@
               ;; Track write-tool outputs in atoms so the `finally` cleanup runs even if an
               ;; assertion in `call-tool` fails partway through the sequence.
               question-id    (atom nil)
-              dash-id        (atom nil)]
+              dash-id        (atom nil)
+              coll-id        (atom nil)]
           (try
             (let [;; Read tools — call-tool helper asserts (not :isError) internally.
                   table-data     (call-tool session-id "get_table" {:id orders-id})
@@ -666,6 +672,9 @@
                   _              (call-tool session-id "query" {:query orders-query})
                   _              (call-tool session-id "execute_query"
                                             {:query_handle (:query_handle construct-data)})
+                  _              (call-tool session-id "execute_sql"
+                                            {:database_id (mt/id)
+                                             :sql         "SELECT 1"})
                   ;; Write tools — record IDs as soon as they're known so the `finally` block
                   ;; can clean up even if a later step throws.
                   question-data  (call-tool session-id "create_question"
@@ -674,12 +683,22 @@
                                                                              (mt/user->id :crowberto)
                                                                              (:query_handle construct-data))})
                   _              (reset! question-id (:id question-data))
+                  _              (call-tool session-id "update_question"
+                                            {:id          (:id question-data)
+                                             :description "Smoke updated description"})
                   dash-data      (call-tool session-id "create_dashboard"
-                                            {:name "Smoke Dashboard"})]
-              (reset! dash-id (:id dash-data)))
+                                            {:name "Smoke Dashboard"})
+                  _              (reset! dash-id (:id dash-data))
+                  _              (call-tool session-id "update_dashboard"
+                                            {:id          (:id dash-data)
+                                             :description "Smoke updated dashboard"})
+                  coll-data      (call-tool session-id "create_collection"
+                                            {:name "Smoke Collection"})]
+              (reset! coll-id (:id coll-data)))
             (finally
               (when-let [qid @question-id] (t2/delete! :model/Card :id qid))
-              (when-let [did @dash-id]     (t2/delete! :model/Dashboard :id did)))))))))
+              (when-let [did @dash-id]     (t2/delete! :model/Dashboard :id did))
+              (when-let [cid @coll-id]     (t2/delete! :model/Collection :id cid)))))))))
 
 (deftest tools-call-visualize-query-direct-test
   (testing "visualize_query returns UI structured content"
@@ -712,6 +731,49 @@
                    :data      {:cols sequential?
                                :rows (fn [rows] (= 5 (count rows)))}}
                   execute-data)))))))
+
+(deftest tools-call-create-question-accepts-query-handle-test
+  (testing "create_question resolves query_handle through the MCP layer instead of requiring raw base64"
+    (let [[session-id _] (initialize!)
+          construct-data (call-tool session-id "construct_query"
+                                    {:source     {:type "table" :id (mt/id :orders)}
+                                     :operations [["limit" 5]]})
+          question-id    (atom nil)]
+      (try
+        (let [question-data (call-tool session-id "create_question"
+                                       {:name         "Handle-Path Question"
+                                        :query_handle (:query_handle construct-data)})]
+          (reset! question-id (:id question-data))
+          (is (pos-int? (:id question-data)))
+          (is (= "Handle-Path Question" (:name question-data)))
+          ;; Card was actually persisted with a dataset_query (handle resolved correctly).
+          (is (some? (t2/select-one-fn :dataset_query :model/Card :id (:id question-data)))))
+        (finally
+          (when-let [qid @question-id] (t2/delete! :model/Card :id qid)))))))
+
+(deftest tools-call-update-question-accepts-query-handle-test
+  (testing "update_question resolves query_handle through the MCP layer"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Card To Re-query via Handle"
+                                              :dataset_query (-> (lib/query (mt/metadata-provider)
+                                                                            (lib.metadata/table (mt/metadata-provider)
+                                                                                                (mt/id :orders)))
+                                                                 (lib/aggregate (lib/count)))
+                                              :display       :table}]
+      (let [products-id     (mt/id :products)
+            [session-id _]  (initialize!)
+            construct-data  (call-tool session-id "construct_query"
+                                       {:source     {:type "table" :id products-id}
+                                        :operations [["limit" 5]]})
+            update-data     (call-tool session-id "update_question"
+                                       {:id           card-id
+                                        :query_handle (:query_handle construct-data)})
+            persisted       (t2/select-one-fn :dataset_query :model/Card :id card-id)
+            persisted-table (some :source-table (:stages persisted))]
+        (is (= card-id (:id update-data)))
+        ;; Handle was resolved and applied to the card.
+        (is (= products-id persisted-table)
+            (str "Expected handle-resolved query's :source-table = products id " products-id
+                 ", got " persisted-table))))))
 
 ;;; ----------------------------------------------- Drill Handles ---------------------------------------------------
 

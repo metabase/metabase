@@ -789,16 +789,21 @@
     (mt/with-temp [:model/Card {card-id :id} {:name          "Card To Re-query"
                                               :dataset_query (orders-count-query)
                                               :display       :table}]
-      (let [new-query    (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                               {:source     {:type "table" :id (mt/id :products)}
+      (let [products-id  (mt/id :products)
+            new-query    (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:source     {:type "table" :id products-id}
                                                 :operations [["limit" 5]]})
             base64-query (:query new-query)
             _resp        (mt/user-http-request :rasta :put 200 (str "agent/v1/question/" card-id)
                                                {:query base64-query})
-            persisted    (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+            persisted    (t2/select-one-fn :dataset_query :model/Card :id card-id)
+            stages       (:stages persisted)
+            source-table (some :source-table stages)]
         ;; Query was replaced - source-table changed from orders to products.
         (is (some? persisted))
-        (is (not= (orders-count-query) persisted)))))
+        (is (= products-id source-table)
+            (str "Expected persisted dataset_query :source-table to be the products table id "
+                 products-id ", got " source-table)))))
 
   (testing "Returns 404 when card does not exist"
     (mt/user-http-request :rasta :put 404 "agent/v1/question/999999"
@@ -812,7 +817,15 @@
                                                              :display       :table
                                                              :collection_id locked-coll-id}]
         (mt/user-http-request :rasta :put 403 (str "agent/v1/question/" card-id)
-                              {:name "Forbidden Rename"})))))
+                              {:name "Forbidden Rename"}))))
+
+  (testing "Rejects unknown :display values with 400"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Card Display Validation"
+                                              :dataset_query (orders-count-query)
+                                              :display       :table}]
+      ;; The Malli enum on ::card-display should reject "potato" with a validation error.
+      (mt/user-http-request :rasta :put 400 (str "agent/v1/question/" card-id)
+                            {:display "potato"}))))
 
 ;;; ---------------------------------------------- Update Dashboard Tests ------------------------------------------
 

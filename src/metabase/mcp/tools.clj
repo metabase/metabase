@@ -314,8 +314,9 @@
             :uri              path
             :metabase-user-id api/*current-user-id*
             :token-scopes     token-scopes}
-     (and (seq params) (= :post method))    (assoc :body params)
-     (and (seq params) (not= :post method)) (assoc :query-params params))
+     ;; POST/PUT/PATCH carry params in the body; GET/DELETE carry them as query params.
+     (and (seq params) (#{:post :put :patch} method))    (assoc :body params)
+     (and (seq params) (not (#{:post :put :patch} method))) (assoc :query-params params))
    (fn [{resp-body :body :as response}]
      (deliver result (if (instance? StreamingResponse resp-body)
                        (capture-streaming-response resp-body)
