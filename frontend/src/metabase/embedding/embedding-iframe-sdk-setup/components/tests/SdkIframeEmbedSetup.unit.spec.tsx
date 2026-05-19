@@ -392,3 +392,34 @@ describe("Embed flow > Pro feature upsell indicators", () => {
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
   });
 });
+
+describe("Embed flow > Metabot", () => {
+  beforeEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
+  });
+
+  afterEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
+  });
+
+  it("toggles the save option for Metabot", async () => {
+    setup({
+      simpleEmbeddingEnabled: true,
+      metabotEnabled: true,
+    });
+
+    // Switch to Metabot experience
+    await userEvent.click(screen.getByRole("radio", { name: /Metabot/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    const saveCheckbox = await screen.findByRole("checkbox", {
+      name: "Allow people to save new questions",
+    });
+
+    expect(saveCheckbox).toBeEnabled();
+    expect(saveCheckbox).not.toBeChecked();
+
+    await userEvent.click(saveCheckbox);
+    expect(saveCheckbox).toBeChecked();
+  });
+});

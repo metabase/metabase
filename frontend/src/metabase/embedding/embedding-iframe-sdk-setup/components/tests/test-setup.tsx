@@ -35,6 +35,7 @@ export const setup = (options?: {
   jwtReady?: boolean;
   initialState?: SdkIframeEmbedSetupModalInitialState;
   hasEmailSetup?: boolean;
+  metabotEnabled?: boolean;
 }) => {
   const { enterprisePlugins } = options ?? {};
 
@@ -59,6 +60,8 @@ export const setup = (options?: {
     "jwt-enabled": options?.jwtReady ?? false,
     "jwt-configured": options?.jwtReady ?? false,
     "jwt-enabled-and-configured": options?.jwtReady ?? false,
+    "embedded-metabot-enabled?": options?.metabotEnabled ?? false,
+    "llm-metabot-configured?": options?.metabotEnabled ?? false,
   });
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);

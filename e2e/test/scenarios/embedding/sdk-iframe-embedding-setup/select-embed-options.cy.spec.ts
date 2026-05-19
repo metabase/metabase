@@ -774,6 +774,31 @@ describe(suiteTitle, () => {
     });
   });
 
+  it("toggles save button for metabot", () => {
+    navigateToEmbedOptionsStep({ experience: "metabot" });
+
+    getEmbedSidebar()
+      .findByLabelText("Allow people to save new questions")
+      .should("not.be.checked");
+
+    cy.log("turn on save option");
+    getEmbedSidebar()
+      .findByLabelText("Allow people to save new questions")
+      .click()
+      .should("be.checked");
+
+    cy.log("snippet should be updated");
+    getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,experience=metabot,authType=sso,isSaveEnabled=true,theme=default",
+    });
+
+    codeBlock().should("contain", 'is-save-enabled="true"');
+  });
+
   it("can toggle read-only setting for browser", () => {
     navigateToEmbedOptionsStep({
       experience: "browser",
@@ -969,7 +994,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=metabot,authType=sso,layout=stacked,theme=default",
+        "settings=custom,experience=metabot,authType=sso,isSaveEnabled=false,layout=stacked,theme=default",
     });
 
     getEmbedSidebar().findByText("Back").click();
@@ -985,7 +1010,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=metabot,authType=sso,layout=sidebar,theme=default",
+        "settings=custom,experience=metabot,authType=sso,isSaveEnabled=false,layout=sidebar,theme=default",
     });
   });
 });

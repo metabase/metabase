@@ -87,6 +87,7 @@ export const getDefaultSdkIframeEmbedSettings = ({
       "metabot",
       (): MetabotEmbedOptions => ({
         componentName: "metabase-metabot",
+        isSaveEnabled: false,
       }),
     )
     .exhaustive();
