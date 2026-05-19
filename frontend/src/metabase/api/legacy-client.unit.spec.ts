@@ -547,6 +547,21 @@ describe("api", () => {
       expect(call?.url).toContain("parameters=");
       expect(call?.options?.body).toBeFalsy();
     });
+
+    it("omits params with undefined values from the querystring", async () => {
+      fetchMock.get("path:/api/search", { items: [] });
+
+      await apiInstance.request({
+        method: "GET",
+        url: "/api/search",
+        params: { q: "foo", limit: undefined, offset: 0 },
+      });
+
+      const call = fetchMock.callHistory.lastCall();
+      expect(call?.url).toContain("q=foo");
+      expect(call?.url).toContain("offset=0");
+      expect(call?.url).not.toContain("limit");
+    });
   });
 
   describe("status-code event emit", () => {
