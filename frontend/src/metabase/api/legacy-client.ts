@@ -35,11 +35,6 @@ type RequestOptions = {
   rawResponse?: boolean;
   headers: Record<string, string>;
   signal?: AbortSignal;
-  // Explicit JSON body content. When set, JSON.stringify'd and sent as the
-  // request body. Takes precedence over the legacy single-data-object merge.
-  body?: unknown;
-  // Explicit querystring params. When set, encoded and appended to the URL.
-  params?: Record<string, unknown>;
 };
 
 const DEFAULT_OPTIONS: RequestOptions = {
@@ -261,34 +256,180 @@ export class LegacyApi extends EventEmitter<EventMap> {
           url += (url.indexOf("?") >= 0 ? "&" : "?") + qs;
         }
 
-        const headers: Record<string, string> = {
-          ...this.getClientHeaders(),
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          ...options.headers,
-        };
-
-        // A `FormData` / `URLSearchParams` body must NOT carry our default
-        // `application/json` Content-Type — the browser sets the correct
-        // value, with the multipart boundary for `FormData`.
+        const headers = this._buildHeaders(options);
         if (body instanceof FormData || body instanceof URLSearchParams) {
           delete headers["Content-Type"];
         }
 
-        if (retry) {
-          return this._makeRequestWithRetries(
-            method,
-            url,
-            headers,
-            body,
-            data,
-            options,
-          );
-        } else {
-          return this._makeRequest(method, url, headers, body, data, options);
-        }
+        return this._dispatch({
+          method,
+          url,
+          headers,
+          body,
+          data,
+          options,
+          retry,
+        });
       };
     };
+  }
+
+  /**
+   * RTK Query entry point with explicit body/params semantics:
+   * - `body`: sent as the request body. `FormData` / `URLSearchParams` are
+   *   forwarded as-is so the browser sets the right Content-Type. Anything
+   *   else is `JSON.stringify`'d. For `GET` it's folded into the querystring.
+   * - `params`: URL `:tag` substitution first, leftover keys become querystring.
+   *
+   * No method-derived guesswork about whether data is body or querystring.
+   */
+  async request({
+    method,
+    url: urlTemplate,
+    body: requestBody,
+    params,
+    signal,
+    noEvent,
+    rawResponse,
+    headers: headerOverrides,
+    raw,
+  }: {
+    method: "GET" | "POST" | "PUT" | "DELETE";
+    url: string;
+    body?: unknown;
+    params?: Record<string, unknown>;
+    signal?: AbortSignal;
+    noEvent?: boolean;
+    rawResponse?: boolean;
+    headers?: Record<string, string>;
+    raw?: Record<string, boolean>;
+  }): Promise<unknown> {
+    const invocationOptions: Partial<RequestOptions> = {
+      signal,
+      ...(noEvent !== undefined ? { noEvent } : {}),
+      ...(rawResponse !== undefined ? { rawResponse } : {}),
+      ...(headerOverrides ? { headers: headerOverrides } : {}),
+      ...(raw ? { raw } : {}),
+    };
+
+    const middlewareResult = await this.apiRequestManipulationMiddleware({
+      url: urlTemplate,
+      method: method as "GET" | "POST",
+      options: {
+        ...DEFAULT_OPTIONS,
+        ...invocationOptions,
+      } as OnBeforeRequestHandlerConfig["options"],
+      data: { ...params },
+    });
+
+    let { url, method: finalMethod } = middlewareResult;
+    const options: RequestOptions = {
+      ...DEFAULT_OPTIONS,
+      ...invocationOptions,
+      ...middlewareResult.options,
+    } as RequestOptions;
+    const { data } = middlewareResult;
+
+    for (const tag of url.match(/:\w+/g) || []) {
+      const paramName = tag.slice(1);
+      let value = data[paramName];
+      delete data[paramName];
+      if (value === undefined) {
+        console.warn("Warning: calling", finalMethod, "without", tag);
+        value = "";
+      }
+      if (!options.raw || !options.raw[paramName]) {
+        value = encodeURIComponent(value as string);
+      }
+      url = url.replace(tag, value as string);
+    }
+    for (const name in data) {
+      if (data[name] === undefined) {
+        delete data[name];
+      }
+    }
+
+    let body: string | FormData | URLSearchParams | undefined;
+    const queryStringRecord: Record<string, unknown> = { ...data };
+    const bodyIsRaw =
+      requestBody instanceof FormData || requestBody instanceof URLSearchParams;
+
+    if (finalMethod === "GET") {
+      // GET cannot carry a body: fold any body content into the querystring.
+      Object.assign(
+        queryStringRecord,
+        requestBody as Record<string, unknown> | undefined,
+      );
+    } else if (bodyIsRaw) {
+      body = requestBody as FormData | URLSearchParams;
+    } else if (requestBody !== undefined) {
+      body = JSON.stringify(requestBody);
+    }
+
+    const qs = querystring.stringify(
+      queryStringRecord as Record<string, string>,
+    );
+    if (qs) {
+      url += (url.indexOf("?") >= 0 ? "&" : "?") + qs;
+    }
+
+    const headers = this._buildHeaders(options);
+    if (bodyIsRaw) {
+      // Let the browser set Content-Type with the multipart boundary
+      // (FormData) or urlencoded charset (URLSearchParams).
+      delete headers["Content-Type"];
+    }
+
+    // RTK callers don't retry; matches the prior behavior where apiQuery never
+    // set `retry: true`.
+    return this._dispatch({
+      method: finalMethod,
+      url,
+      headers,
+      body,
+      data,
+      options,
+      retry: false,
+    });
+  }
+
+  _buildHeaders(options: RequestOptions): Record<string, string> {
+    return {
+      ...this.getClientHeaders(),
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...options.headers,
+    };
+  }
+
+  _dispatch({
+    method,
+    url,
+    headers,
+    body,
+    data,
+    options,
+    retry,
+  }: {
+    method: string;
+    url: string;
+    headers: Record<string, string>;
+    body: string | FormData | URLSearchParams | undefined;
+    data: Record<string, unknown>;
+    options: RequestOptions;
+    retry: boolean;
+  }): Promise<unknown> {
+    if (retry) {
+      return this._makeRequestWithRetries(
+        method,
+        url,
+        headers,
+        body,
+        data,
+        options,
+      );
+    }
+    return this._makeRequest(method, url, headers, body, data, options);
   }
 
   async _makeRequestWithRetries(

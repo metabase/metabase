@@ -319,12 +319,6 @@ describe("api", () => {
     });
   });
 
-  // In test environments (`isTest`) the legacy client routes every request
-  // through `_makeRequestWithFetch`, so these specs cover the fetch path. The
-  // XHR path's empty-body branch mirrors the same `status === 204` check and is
-  // exercised end-to-end by the live app; co-locating both transports' unit
-  // coverage would require a dedicated XHR mock which the spec doesn't
-  // currently set up.
   describe("response body parsing", () => {
     let apiInstance: LegacyApi;
 
@@ -398,6 +392,141 @@ describe("api", () => {
       const call = fetchMock.callHistory.lastCall("path:/api/download");
       const headers = new Headers(call?.options?.headers);
       expect(headers.get("Content-Type")).not.toContain("application/json");
+    });
+  });
+
+  describe("request (RTK entry point)", () => {
+    let apiInstance: LegacyApi;
+
+    beforeEach(() => {
+      apiInstance = new LegacyApi();
+    });
+
+    afterEach(() => {
+      fetchMock.removeRoutes().clearHistory();
+    });
+
+    it("substitutes :tag URL placeholders from `params`", async () => {
+      fetchMock.get("path:/api/card/123/params/abc-def/values", { values: [] });
+
+      await apiInstance.request({
+        method: "GET",
+        url: "/api/card/:cardId/params/:paramId/values",
+        params: { cardId: 123, paramId: "abc-def" },
+      });
+
+      const call = fetchMock.callHistory.lastCall();
+      expect(call?.url).toMatch(/\/api\/card\/123\/params\/abc-def\/values$/);
+    });
+
+    it("appends leftover (non-template) `params` as querystring", async () => {
+      fetchMock.post("path:/api/cache/invalidate", { count: 0 });
+
+      await apiInstance.request({
+        method: "POST",
+        url: "/api/cache/invalidate",
+        params: { include: "overrides", database: 1 },
+      });
+
+      const call = fetchMock.callHistory.lastCall();
+      expect(call?.url).toContain("include=overrides");
+      expect(call?.url).toContain("database=1");
+      expect(call?.options?.body).toBeFalsy();
+    });
+
+    it("substitutes URL :tags and querystrings the leftover keys", async () => {
+      fetchMock.get("path:/api/card/7/params/p/search/foo", { values: [] });
+
+      await apiInstance.request({
+        method: "GET",
+        url: "/api/card/:cardId/params/:paramId/search/:query",
+        params: {
+          cardId: 7,
+          paramId: "p",
+          query: "foo",
+          limit: 10,
+        },
+      });
+
+      const call = fetchMock.callHistory.lastCall();
+      expect(call?.url).toContain("/api/card/7/params/p/search/foo");
+      expect(call?.url).toContain("limit=10");
+    });
+
+    it("sends `body` as JSON for POST", async () => {
+      fetchMock.post("path:/api/card/42/query", { rows: [] });
+
+      await apiInstance.request({
+        method: "POST",
+        url: "/api/card/:cardId/query",
+        params: { cardId: 42 },
+        body: { parameters: ["a"], ignore_cache: true },
+      });
+
+      const call = fetchMock.callHistory.lastCall();
+      expect(call?.url).toMatch(/\/api\/card\/42\/query$/);
+      expect(call?.options?.body).toBe(
+        JSON.stringify({ parameters: ["a"], ignore_cache: true }),
+      );
+    });
+
+    it("sends FormData bodies as-is and strips Content-Type", async () => {
+      fetchMock.post("path:/api/table/9/append-csv", { success: true });
+
+      const formData = new FormData();
+      formData.append("file", new Blob(["a,b\n1,2"]), "x.csv");
+
+      await apiInstance.request({
+        method: "POST",
+        url: "/api/table/:tableId/append-csv",
+        params: { tableId: 9 },
+        body: formData,
+      });
+
+      const call = fetchMock.callHistory.lastCall();
+      // fetchMock serializes the body to string; presence/shape is sufficient.
+      const sentHeaders = call?.options?.headers as
+        | Record<string, string>
+        | Headers
+        | undefined;
+      const contentType =
+        sentHeaders instanceof Headers
+          ? sentHeaders.get("Content-Type")
+          : sentHeaders?.["Content-Type"];
+      expect(contentType).toBeFalsy();
+    });
+
+    it("sends DELETE with a body", async () => {
+      fetchMock.delete("path:/api/cache", {});
+
+      await apiInstance.request({
+        method: "DELETE",
+        url: "/api/cache",
+        body: { model: "question", model_id: [1, 2] },
+      });
+
+      const call = fetchMock.callHistory.lastCall();
+      expect(call?.options?.body).toBe(
+        JSON.stringify({ model: "question", model_id: [1, 2] }),
+      );
+    });
+
+    it("folds body content into the querystring for GET", async () => {
+      // Simulates the embed-override case (POST→GET transform): body content
+      // must end up in the querystring since GET cannot carry a body.
+      fetchMock.get("path:/api/card/5/query", { rows: [] });
+
+      await apiInstance.request({
+        method: "GET",
+        url: "/api/card/:cardId/query",
+        params: { cardId: 5 },
+        body: { parameters: "[]" },
+      });
+
+      const call = fetchMock.callHistory.lastCall();
+      expect(call?.url).toContain("/api/card/5/query");
+      expect(call?.url).toContain("parameters=");
+      expect(call?.options?.body).toBeFalsy();
     });
   });
 });

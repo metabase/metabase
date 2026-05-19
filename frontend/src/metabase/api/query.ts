@@ -30,17 +30,12 @@ export const apiQuery: BaseQueryFn = async (args, ctx, extraOptions) => {
     };
   }
 
-  // `FormData` / `URLSearchParams` bodies are forwarded as-is — spreading would
-  // yield an empty object (their entries aren't enumerable as keys) and erase
-  // the body. Other bodies merge with `params` so a single combined object
-  // reaches the legacy client (which doesn't separate them).
-  const rawData =
-    args?.body instanceof FormData || args?.body instanceof URLSearchParams
-      ? args.body
-      : { ...args?.body, ...args?.params };
-
   try {
-    const response = await api[method](url)(rawData, {
+    const response = await api.request({
+      method,
+      url,
+      body: args?.body,
+      params: args?.params,
       signal: ctx.signal,
       noEvent,
       rawResponse,
