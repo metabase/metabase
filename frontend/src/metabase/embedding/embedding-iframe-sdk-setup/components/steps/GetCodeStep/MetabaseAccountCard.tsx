@@ -38,50 +38,57 @@ export const MetabaseAccountCard = () => {
   };
 
   return (
-    <>
-      <Card p="md">
-        <Stack gap="md" p="xs">
-          <Text size="lg" fw="bold">
-            {
-              // eslint-disable-next-line metabase/no-literal-metabase-strings -- Public Facing string
-              t`Metabase account`
+    <Card p="md">
+      <Stack gap="md" p="xs">
+        <Text size="lg" fw="bold">
+          {
+            // eslint-disable-next-line metabase/no-literal-metabase-strings -- Public Facing string
+            t`Metabase account`
+          }
+        </Text>
+
+        <Radio.Group value={authSubType} onChange={handleAuthSubTypeChange}>
+          <Stack gap="sm">
+            <Radio
+              disabled={!isSsoEnabledAndConfigured}
+              value="sso"
+              label={t`Single sign-on`}
+            />
+
+            <Radio
+              value="user-session"
+              label={t`Existing session (local testing only)`}
+            />
+          </Stack>
+        </Radio.Group>
+
+        {!isSsoEnabledAndConfigured && !!settings.useExistingUserSession && (
+          <Alert
+            icon={
+              <Icon
+                name="warning_triangle_filled"
+                c="text-secondary"
+                size={16}
+              />
             }
-          </Text>
-
-          <Radio.Group value={authSubType} onChange={handleAuthSubTypeChange}>
-            <Stack gap="sm">
-              <Radio
-                disabled={!isSsoEnabledAndConfigured}
-                value="sso"
-                label={t`Single sign-on`}
-              />
-
-              <Radio
-                value="user-session"
-                label={t`Existing session (local testing only)`}
-              />
-            </Stack>
-          </Radio.Group>
-        </Stack>
-      </Card>
-
-      {!isSsoEnabledAndConfigured && !!settings.useExistingUserSession && (
-        <Alert icon={<Icon name="warning" size={16} />} color="warning">
-          <Text size="md" lh="lg">
-            {jt`The code below will only work for local testing. To get production ready code, configure ${(
-              <Anchor
-                key="configure-sso"
-                href={setupSsoUrl}
-                target="_blank"
-                size="md"
-                lh="lg"
-              >
-                {t`JWT SSO or SAML`}
-              </Anchor>
-            )}.`}
-          </Text>
-        </Alert>
-      )}
-    </>
+            color="warning"
+          >
+            <Text size="md" lh="lg">
+              {jt`The code below will only work for local testing. To get production ready code, configure ${(
+                <Anchor
+                  key="configure-sso"
+                  href={setupSsoUrl}
+                  target="_blank"
+                  size="md"
+                  lh="lg"
+                >
+                  {t`JWT SSO or SAML`}
+                </Anchor>
+              )}.`}
+            </Text>
+          </Alert>
+        )}
+      </Stack>
+    </Card>
   );
 };
