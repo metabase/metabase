@@ -461,18 +461,15 @@
   Internal nodes use a `<path>.total` key with the rolled-up `:score` (the root emits as `total`).
   `:score` is omitted when nil; see [[with-score]]."
   [base catalog path node]
-  (let [leaf? (not (:components node))
-        ;; `:total` here is the Snowplow wire-format suffix for rollup nodes, not an in-memory field.
-        key   (if leaf?
-                (apply dotted-key path)
-                (apply dotted-key (conj (vec path) :total)))
+  (let [;; `:total` here is the Snowplow wire-format suffix for rollup nodes, not an in-memory field.
+        key   (apply dotted-key (if (:components node) (conj path :total) path))
         event (cond-> (-> base
                           (assoc :catalog catalog :key key)
                           (with-score (:score node)))
-                (and leaf? (not (:error node))) (assoc :measurement (:measurement node))
-                (:error node)                   (assoc :error (truncate-error (:error node))))]
+                (:measurement node) (assoc :measurement (:measurement node))
+                (:error node)       (assoc :error (truncate-error (:error node))))]
     (cons event
-          (mapcat (fn [[k child]] (node->events base catalog (conj (vec path) k) child))
+          (mapcat (fn [[k child]] (node->events base catalog (conj path k) child))
                   (:components node)))))
 
 (defn- emit-snowplow!
