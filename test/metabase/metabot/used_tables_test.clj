@@ -606,19 +606,22 @@
                   [{:alias "o" :table_id (meta/id :orders) :schema "PUBLIC" :database_id (meta/id)}])]]
       (is (= [] (used-tables/extract-used-tables meta/metadata-provider 99 parts))))))
 
-(deftest ^:parallel transform-and-notebook-tool-calls-combine-test
-  (testing "a turn that mixes write_transform_python with construct_notebook_query yields the union of their tables"
+;;; ---------------------------------------- combined tool calls ----------------------------------------
+
+(deftest ^:parallel notebook-and-sql-tool-calls-combine-test
+  (testing "a turn that mixes construct_notebook_query with create_sql_query yields the union of their tables"
     (let [orders-id (meta/id :orders)
           people-id (meta/id :people)
-          parts [(transform-python-input
-                  "t1"
-                  [{:alias "p" :table_id people-id :schema "PUBLIC" :database_id (meta/id)}])
-                 (transform-python-output "t1")
-                 (notebook-input "n1")
-                 (notebook-output "n1" (table-query orders-id))]
-          rows  (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
-      (is (= #{orders-id people-id}
-             (table-ids rows))))))
+          sql       "SELECT * FROM people"]
+      (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _]
+                                                          {:tables [{:table-id people-id}]})]
+        (let [parts [(notebook-input "n1")
+                     (notebook-output "n1" (table-query orders-id))
+                     (sql-input "s1" "create_sql_query" {:database_id (meta/id) :sql_query sql})
+                     (sql-output "s1" sql (meta/id) (native-query sql))]
+              rows  (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
+          (is (= #{orders-id people-id}
+                 (table-ids rows))))))))
 
 ;;; ---------------------------------------- dedupe / stamping ----------------------------------------
 
