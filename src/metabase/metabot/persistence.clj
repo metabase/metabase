@@ -240,7 +240,7 @@
         pre-strip  (->> parts
                         (remove #(#{:start :usage :finish :error} (:type %)))
                         (filter streaming/persistable-data-part?))
-        used-rows  (seq (used-tables/extract-used-tables assistant-msg-id pre-strip))
+        used-rows  (used-tables/extract-used-tables assistant-msg-id pre-strip)
         content    (mapv strip-tool-output-bloat pre-strip)]
     (analytics/observe! :metabase-metabot/message-persist-bytes
                         {:profile-id (or profile-id "unknown")}
@@ -261,7 +261,7 @@
                     channel-id   (assoc :channel_id channel-id))))
     ;; Runs *after* the message-UPDATE transaction commits so this write cannot fail the turn. For example, in case a
     ;; table is deleted between the time the query was generated and now, resulting in an invalid table_id FK.
-    (when used-rows
+    (when (seq used-rows)
       (try
         (t2/insert! :model/MetabotUsedTable used-rows)
         (catch Exception e
