@@ -308,7 +308,7 @@
                           {:predicate (::decoded row)
                            :source    source
                            :fields    fields
-                           :count     (:total_count row)})))))
+                           :count     (long (:total_count row))})))))
             (take limit))
            enriched))))
 
@@ -336,7 +336,7 @@
                                      :field          (field-idx agg_field_id)
                                      :temporal-field (field-idx temporal_field_id)
                                      :temporal-unit  temporal_unit}
-                       :count       total_count})))
+                       :count       (long total_count)})))
             (take limit))
            rows))))
 
@@ -358,7 +358,7 @@
                          :dimension {:field         field
                                      :temporal-unit temporal_unit
                                      :binning       (decode-binning binning)}
-                         :count     total_count}))))
+                         :count     (long total_count)}))))
             (take limit))
            rows))))
 
@@ -369,13 +369,16 @@
 (def ^:private fim-default-limit 20)
 
 (defn- rows->baskets
-  "Project rollup rows to `{:atoms #{...} :count n}` baskets for mining."
+  "Project rollup rows to `{:atoms #{...} :count n}` baskets for mining.
+
+  Coerces `total_count` to `long` so downstream FIM math (and the `:support` field) stays
+  integer — MariaDB/MySQL return `SUM(int_col)` as `BigDecimal`."
   [rows]
   (into []
         (keep (fn [{:keys [atom_fingerprints total_count]}]
                 (when (>= (count atom_fingerprints) fim-k-min)
                   {:atoms (set atom_fingerprints)
-                   :count total_count})))
+                   :count (long total_count)})))
         rows))
 
 (defn- itemset-support
@@ -571,6 +574,6 @@
                          :basis       source_basis
                          :observation {:type  observation_type
                                        :value observation_value}
-                         :count       total_count}))))
+                         :count       (long total_count)}))))
             (take limit))
            rows))))
