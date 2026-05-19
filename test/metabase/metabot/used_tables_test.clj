@@ -534,8 +534,7 @@
                  rows)))))))
 
 (deftest ^:parallel transform-sql-defensively-reads-source-tables-arg-test
-  (testing "write_transform_sql also picks up `:source_tables` from arguments when present,
-            and dedupes against macaw-derived ids — guards against a future schema relaxation"
+  (testing "write_transform_sql also picks up `:source_tables` from arguments when present"
     (let [orders-id (meta/id :orders)
           people-id (meta/id :people)
           sql       "SELECT * FROM orders"]
@@ -561,8 +560,7 @@
         (is (= [] (used-tables/extract-used-tables meta/metadata-provider 99 parts)))))))
 
 (deftest ^:parallel transform-sql-without-query-source-yields-nothing-test
-  (testing "if the suggested transform has no `[:source :query]`, no macaw walk happens
-            (and with no `:source_tables` argument, no rows at all)"
+  (testing "no rows if the suggested transform has no [:source :query] or :source_tables"
     (let [parts [(transform-sql-input "t1")
                  {:type   :tool-output
                   :id     "t1"
@@ -597,7 +595,8 @@
     (let [parts [(transform-python-input
                   "t1"
                   [{:alias "o" :table_id (meta/id :orders) :schema "PUBLIC" :database_id (meta/id)}])
-                 (assoc (transform-python-output "t1") :error "boom")]]
+                 (-> (transform-python-output "t1")
+                     (assoc :error "boom"))]]
       (is (= [] (used-tables/extract-used-tables meta/metadata-provider 99 parts))))))
 
 (deftest ^:parallel transform-python-orphan-input-yields-nothing-test
@@ -608,8 +607,7 @@
       (is (= [] (used-tables/extract-used-tables meta/metadata-provider 99 parts))))))
 
 (deftest ^:parallel transform-and-notebook-tool-calls-combine-test
-  (testing "a turn that mixes write_transform_python with construct_notebook_query
-            yields the union of their tables"
+  (testing "a turn that mixes write_transform_python with construct_notebook_query yields the union of their tables"
     (let [orders-id (meta/id :orders)
           people-id (meta/id :people)
           parts [(transform-python-input
