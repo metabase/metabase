@@ -8,6 +8,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
+   [metabase.events.core :as events]
    [metabase.explorations.auto-insights :as auto-insights]
    [metabase.explorations.core :as explorations]
    [metabase.explorations.groups :as explorations.groups]
@@ -518,7 +519,10 @@
                                  timeline_ids)))
       (generate-queries! tid metric-rows dimensions)
       (t2/update! :model/ExplorationThread tid {:started_at (t/offset-date-time)})
-      (hydrate-exploration (t2/select-one :model/Exploration :id (:id exploration))))))
+      (let [persisted (t2/select-one :model/Exploration :id (:id exploration))]
+        (events/publish-event! :event/exploration-create
+                               {:object persisted :user-id api/*current-user-id*})
+        (hydrate-exploration persisted)))))
 
 (api.macros/defendpoint :get "/dimensions" :- ::DimensionsResponse
   "Hydrated metrics plus a deduplicated dimension list, for the Exploration data modal.
@@ -563,7 +567,11 @@
         (cascade-collection-id-to-thread-documents! id (:collection_id updates')))
       (when archiving-changing?
         (cascade-archived-to-thread-documents! id (:archived updates'))))
-    (hydrate-exploration (t2/select-one :model/Exploration :id id))))
+    (let [updated (t2/select-one :model/Exploration :id id)]
+      (when (seq updates')
+        (events/publish-event! :event/exploration-update
+                               {:object updated :user-id api/*current-user-id*}))
+      (hydrate-exploration updated))))
 
 (api.macros/defendpoint :delete "/:id"
   "Hard-delete an exploration. Soft delete is `PUT /api/exploration/:id {archived: true}`.

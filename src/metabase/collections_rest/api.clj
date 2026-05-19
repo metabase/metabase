@@ -465,6 +465,35 @@
                     (update :archived_directly api/bit->boolean)))
               :can_write :can_restore :can_delete))
 
+(def ^:private exploration-recent-edits-subquery
+  ;; Per-exploration latest edit, unioning the Exploration's own metadata revisions with
+  ;; revisions of any Document attached to one of its threads. `rn = 1` picks the winner.
+  ;; The Exploration row is mostly inert post-creation; the meat of editing happens in
+  ;; attached Documents, so "Last edited" must reflect both sources.
+  {:select [:exploration_id
+            :timestamp
+            :user_id
+            [[:over [[:row_number] {:partition-by [:exploration_id]
+                                    :order-by     [[:timestamp :desc]]}]] :rn]]
+   :from   [[{:union-all
+              [{:select [[:r.model_id :exploration_id]
+                         [:r.timestamp :timestamp]
+                         [:r.user_id   :user_id]]
+                :from   [[:revision :r]]
+                :where  [:and
+                         [:= :r.model (h2x/literal "Exploration")]
+                         [:= :r.most_recent true]]}
+               {:select [[:et.exploration_id :exploration_id]
+                         [:r.timestamp       :timestamp]
+                         [:r.user_id         :user_id]]
+                :from   [[:revision :r]]
+                :join   [[:document :d]           [:= :d.id :r.model_id]
+                         [:exploration_thread :et] [:= :et.id :d.exploration_thread_id]]
+                :where  [:and
+                         [:= :r.model (h2x/literal "Document")]
+                         [:= :r.most_recent true]]}]}
+             :all_edits]]})
+
 (defmethod collection-children-query :exploration
   [_ collection {:keys [archived? pinned-state]}]
   (-> {:select [:exploration.id
@@ -475,8 +504,18 @@
                 :exploration.collection_position
                 :exploration.archived
                 :exploration.archived_directly
+                [:u.id         :last_edit_user]
+                [:u.email      :last_edit_email]
+                [:u.first_name :last_edit_first_name]
+                [:u.last_name  :last_edit_last_name]
+                [:ere.timestamp :last_edit_timestamp]
                 [(h2x/literal "exploration") :model]]
        :from [[:exploration :exploration]]
+       :left-join [[exploration-recent-edits-subquery :ere]
+                   [:and
+                    [:= :ere.exploration_id :exploration.id]
+                    [:= :ere.rn [:inline 1]]]
+                   [:core_user :u] [:= :u.id :ere.user_id]]
        :where [:and
                (collection/visible-collection-filter-clause :exploration.collection_id {:cte-name :visible_collection_ids})
                (if (collection/is-trash? collection)
