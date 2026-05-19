@@ -138,10 +138,18 @@ export async function runAdhocDatasetQuery(
   );
 
   let isCancelled = false;
-  signal?.addEventListener("abort", () => {
+  const onAbort = () => {
     isCancelled = true;
     action.abort?.();
-  });
+  };
+  // The signal may already be aborted by the time we get here (e.g. the
+  // user cancelled while we were awaiting the dynamic import above). In
+  // that case the "abort" event already fired and a listener won't run.
+  if (signal?.aborted) {
+    onAbort();
+  } else {
+    signal?.addEventListener("abort", onAbort, { once: true });
+  }
 
   return action
     .unwrap()
