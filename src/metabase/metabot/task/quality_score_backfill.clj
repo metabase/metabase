@@ -115,7 +115,7 @@
   ;;
   ;; Usage:
   ;;   (in-ns 'metabase.metabot.task.quality-score-backfill)
-  ;;   (clojure.pprint/pprint (debug-backfill-sample! 5))
+  ;;   (debug-backfill-sample! 5)
   (defn- stack-head [^Throwable t n]
     (->> (.getStackTrace t)
          (take n)
@@ -145,4 +145,4 @@
                    :stack-head (stack-head t 6)})))
             ids)))
 
-  (clojure.pprint/pprint (debug-backfill-sample! 1000)))
+  (debug-backfill-sample! 1000))

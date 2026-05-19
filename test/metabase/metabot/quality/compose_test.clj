@@ -28,7 +28,7 @@
     (is (close-to? 7.5 (compose/signal-contribution :turn-thrash 25)))))
 
 (deftest signal-contribution-excess-test
-  (testing "excess kind: contribution = k × max(0, magnitude − baseline)"
+  (testing "excess kind: contribution = k × max(0, magnitude - baseline)"
     (testing "at baseline → 0"
       (is (= 0.0 (compose/signal-contribution :query-thrash 2))))
     (testing "below baseline → 0 (clamped)"
@@ -54,7 +54,7 @@
 ;; compose-score — single-signal worked examples
 ;;
 ;; Each row's `expected-raw` is the contribution of one signal firing at the
-;; given magnitude (k × m for event-count, k × max(0, m − baseline) for
+;; given magnitude (k × m for event-count, k × max(0, m - baseline) for
 ;; excess); `expected-concern` is `raw / (raw + saturation-C)`.
 ;; ---------------------------------------------------------------------------
 

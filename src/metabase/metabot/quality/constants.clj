@@ -30,7 +30,7 @@
   "Per-signal `k` and `:kind` (plus `:baseline` for `:excess` signals).
 
     :event-count → contribution = k × magnitude
-    :excess      → contribution = k × max(0, magnitude − baseline)
+    :excess      → contribution = k × max(0, magnitude - baseline)
 
   Tier-H magnitude (k = 3.0): one event = Tier-H raw concern.
   Tier-M magnitude (k = 2.0): one event = Tier-M raw concern.

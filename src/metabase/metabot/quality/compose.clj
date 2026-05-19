@@ -5,7 +5,7 @@
 
     `signal-contribution` — turn one signal's raw magnitude into its raw
     concern contribution. Dispatches on `:kind` from `signal-params`:
-    `:event-count` is `k × magnitude`; `:excess` is `k × max(0, m − baseline)`.
+    `:event-count` is `k × magnitude`; `:excess` is `k × max(0, m - baseline)`.
 
     `compose-score` — sum the contributions, soft-saturate to `[0, 1)`, and
     negate. Returns the score plus the intermediate values so callers can
