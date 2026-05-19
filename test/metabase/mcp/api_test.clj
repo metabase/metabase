@@ -254,11 +254,25 @@
           (is (or (contains? required-fields "prompt")
                   (contains? required-fields :prompt)))
           (is (= false (:additionalProperties construct-query-schema)))
+          ;; Prompt is nullable. Either a `:type` union (hand-written form) or an
+          ;; `:anyOf`/`:oneOf` with a {:type "null"} branch (Malli `[:maybe …]`).
           (is (or (= ["string" "null"] (:type prompt-schema))
-                  (= #{"string" "null"} (set (:type prompt-schema)))))
+                  (= #{"string" "null"} (set (:type prompt-schema)))
+                  (some #(= "null" (:type %)) (:anyOf prompt-schema))
+                  (some #(= "null" (:type %)) (:oneOf prompt-schema))))
+          ;; ChatGPT's MCP validator rejects exactly these three JSON-Schema constructs.
+          ;; `:oneOf`/`:minLength`/`:maxLength` are accepted by ChatGPT and not asserted against.
           (is (empty? (select-keys (frequencies @schema-keys)
-                                   [:allOf :oneOf :prefixItems :const :minLength :maxLength])))
-          (is (str/includes? (:description prompt-schema) "exact original message"))
+                                   [:allOf :prefixItems])))
+          ;; `items: false` (tuple closure) must not appear either.
+          (is (not (some #(= false (:items %))
+                         (->> (tree-seq coll? seq construct-query-schema)
+                              (filter map?)))))
+          (is (str/includes? (or (:description prompt-schema)
+                                 (some :description (:anyOf prompt-schema))
+                                 (some :description (:oneOf prompt-schema))
+                                 "")
+                             "exact original message"))
           (is (str/includes? reference "MCP clients should include it whenever they have the user's message"))
           (is (str/includes? reference "{\"query_handle\": \"<uuid>\"}")))))))
 

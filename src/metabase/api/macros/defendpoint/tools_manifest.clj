@@ -304,9 +304,20 @@
                                            (seq all-req) (assoc :required all-req)))))
 
 (defn- tool-input-schema
+  "Resolve a tool's MCP `inputSchema`. Three sources, in priority order:
+
+  1. `:input-schema` set on the tool metadata as a Malli vector — passed through
+     the standard `malli->json-schema` pipeline and the strict transform.
+  2. `:input-schema` set as a JSON Schema map — used verbatim (escape hatch for
+     hand-tuned schemas).
+  3. Implicit — derived from the endpoint's body Malli via `merge-input-schemas`,
+     then run through the strict transform."
   [form]
-  (or (get-in form [:metadata :tool :input-schema])
-      (some-> (merge-input-schemas form) strict-tool-input-schema)))
+  (let [explicit (get-in form [:metadata :tool :input-schema])]
+    (cond
+      (vector? explicit) (-> explicit malli->json-schema strict-tool-input-schema)
+      (map? explicit)    explicit
+      :else              (some-> (merge-input-schemas form) strict-tool-input-schema))))
 
 (defn- response-schema->json-schema
   "Convert an endpoint's response schema to JSON Schema for the tools manifest."
