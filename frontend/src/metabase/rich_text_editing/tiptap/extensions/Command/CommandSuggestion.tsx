@@ -20,7 +20,10 @@ import {
   LoadingSuggestionPaper,
   SuggestionPaper,
 } from "metabase/documents/components/Editor/shared/SuggestionPaper";
-import { getCurrentDocument } from "metabase/documents/selectors";
+import {
+  getCurrentDocument,
+  getDocumentHost,
+} from "metabase/documents/selectors";
 import {
   useMetabotName,
   useUserMetabotPermissions,
@@ -105,6 +108,7 @@ export const CommandSuggestion = forwardRef<
   CommandSuggestionProps
 >(function CommandSuggestionComponent({ command, editor, query }, ref) {
   const document = useSelector(getCurrentDocument);
+  const documentHost = useSelector(getDocumentHost);
   const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
   const metabotName = useMetabotName();
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -117,8 +121,8 @@ export const CommandSuggestion = forwardRef<
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const allCommandSections: CommandSection[] = useMemo(
-    () => getAllCommandSections(isMetabotEnabled, metabotName),
-    [isMetabotEnabled, metabotName],
+    () => getAllCommandSections(isMetabotEnabled, metabotName, documentHost),
+    [isMetabotEnabled, metabotName, documentHost],
   );
 
   const allCommandOptions = useMemo(
@@ -151,7 +155,8 @@ export const CommandSuggestion = forwardRef<
     onSelectItem: setNewQuestionType,
   });
 
-  const areChartsAllowed = !editor.isActive("supportingText");
+  const areChartsAllowed =
+    !editor.isActive("supportingText") && documentHost !== "exploration";
   const canBrowseAll = areChartsAllowed || viewMode === "linkTo";
 
   const canCreateNewQuestion =
