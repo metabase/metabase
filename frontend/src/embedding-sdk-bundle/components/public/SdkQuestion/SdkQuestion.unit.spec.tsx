@@ -112,7 +112,7 @@ function makeMockNavigation(
     currentEntry: undefined,
     previousEntry: undefined,
     initWithDashboard: jest.fn(),
-    isInsideNavigationStack: false,
+    hasNavigatedToEntity: false,
     ...overrides,
   };
 }

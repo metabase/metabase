@@ -148,7 +148,7 @@ const SdkInternalNavigationProviderInner = ({
   const entryIndex = entryToRender ? stack.indexOf(entryToRender) : -1;
   // If the entry is the original entry, we just need to return the children.
   const entryIsOriginalEntity = stack.length === 0 || entryIndex === 0;
-  const isInsideNavigationStack = !entryIsOriginalEntity;
+  const hasNavigatedToEntity = !entryIsOriginalEntity;
 
   const value = useMemo(
     () => ({
@@ -162,9 +162,9 @@ const SdkInternalNavigationProviderInner = ({
       // the breadcrumbs.
       canGoBack: stack.filter((e) => e.type !== "metabase-browser").length > 1,
       initWithDashboard,
-      isInsideNavigationStack,
+      hasNavigatedToEntity,
     }),
-    [stack, push, pop, initWithDashboard, isInsideNavigationStack],
+    [stack, push, pop, initWithDashboard, hasNavigatedToEntity],
   );
 
   const shouldRenderBackButton = match(stack.at(-1)?.type ?? null)

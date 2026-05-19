@@ -388,7 +388,7 @@ const SdkDashboardInner = ({
   // SdkInternalNavigationProvider already wraps with SdkDashboardStyledWrapper
   // carrying user style/className. Skip our own wrapper to avoid double
   // wrapping (which drops user height/sticky/scroll behavior).
-  const skipStyledWrapper = !!sdkNavigation?.isInsideNavigationStack;
+  const skipStyledWrapper = !!sdkNavigation?.hasNavigatedToEntity;
 
   // Initialize navigation stack with dashboard entry when we have the name
   useEffect(() => {

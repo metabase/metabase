@@ -72,7 +72,7 @@ export type SdkInternalNavigationContextValue = {
    * this to skip its own styled wrapper so the outer wrapper from the provider
    * stays the sole styled container (height/sticky/scroll behavior preserved).
    */
-  isInsideNavigationStack: boolean;
+  hasNavigatedToEntity: boolean;
 };
 
 export const SdkInternalNavigationContext =
