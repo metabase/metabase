@@ -104,14 +104,6 @@
 (api-scope/defscope agent-todo-write "agent:todo:write"
   (deferred-tru "Create and edit todos"))
 
-;; Table
-(api-scope/defscope agent-table-read "agent:table:read"
-  (deferred-tru "View table metadata and field values"))
-
-;; Metric
-(api-scope/defscope agent-metric-read "agent:metric:read"
-  (deferred-tru "View metric definitions"))
-
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Metabot permission type definitions
 ;;; ──────────────────────────────────────────────────────────────────

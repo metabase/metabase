@@ -15,15 +15,13 @@
   agent-collection-create
   agent-dashboard-create
   agent-dashboard-update
-  agent-metric-read
   agent-question-create
   agent-question-update
   agent-query-construct
   agent-query-execute
   agent-resource-read
   agent-search
-  agent-sql-execute
-  agent-table-read]
+  agent-sql-execute]
  [metabase.metabot.search-models
   entity-type->search-model
   search-model->entity-type])

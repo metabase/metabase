@@ -726,6 +726,32 @@
             (str "Expected handle-resolved query's :source-table = products id " products-id
                  ", got " persisted-table))))))
 
+(deftest tools-call-update-question-stale-query-handle-test
+  (testing "An unknown query_handle returns a tool-level error rather than 500"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Stale-Handle Target"
+                                              :dataset_query (-> (lib/query (mt/metadata-provider)
+                                                                            (lib.metadata/table (mt/metadata-provider)
+                                                                                                (mt/id :orders)))
+                                                                 (lib/aggregate (lib/count)))
+                                              :display       :table}]
+      (let [[session-id _] (initialize!)
+            response       (mcp-request (jsonrpc-request "tools/call"
+                                                         {:name      "update_question"
+                                                          :arguments {:id           card-id
+                                                                      :query_handle (str (random-uuid))}})
+                                        {"mcp-session-id" session-id})
+            result         (get-in response [:body :result])]
+        ;; JSON-RPC: HTTP 200, result.isError, friendly message.
+        (is (= 200 (:status response)))
+        (is (nil? (get-in response [:body :error])))
+        (is (true? (:isError result)))
+        (is (str/includes? (-> result :content first :text) "Query handle not found")
+            "Stale handle should surface the dedicated message from mcp/tools.clj")
+        ;; Card should be unchanged - still pointed at orders, not whatever the stale handle would have meant.
+        (let [persisted (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+          (is (= (mt/id :orders) (some :source-table (:stages persisted)))
+              "A stale handle must not mutate the card's source table."))))))
+
 (deftest tools-call-update-dashboard-move-without-position-test
   (testing "Missing required field on a discriminated mutation surfaces as a tool error, not a JSON-RPC error"
     (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "MCP move validation"}

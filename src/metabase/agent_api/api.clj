@@ -489,6 +489,14 @@
   (let [query (-> encoded-query
                   u/decode-base64
                   json/decode+kw)]
+    ;; The `mcp-execute-sql-enabled` setting is meant to let an admin turn off LLM-driven
+    ;; raw SQL. `execute_sql` honors it directly; `/v1/execute` accepts an opaque base64
+    ;; payload that could carry `:type :native`, so refuse those here too rather than only
+    ;; gating the dedicated tool name.
+    (when (and (= :native (:type query))
+               (not (agent-api.settings/mcp-execute-sql-enabled)))
+      (throw (ex-info "Native query execution is disabled on this instance"
+                      {:status-code 403})))
     (qp.streaming/streaming-response [rff :api]
       (qp/process-query (prepare-combined-query query) rff))))
 
@@ -907,7 +915,8 @@
         mutations    (:dashcards body)
         result       (t2/with-transaction [_conn]
                        (when (seq updates)
-                         ;; Mirror the cascading behavior of dashboards-rest update-dashboard!:
+                         ;; TODO (GHY-3627): switch to dashboards.core/update-dashboard! when it gets promoted.
+                         ;; Until then, mirror the cascading behavior of dashboards-rest update-dashboard!:
                          ;; archiving the dashboard archives its cards; un-archiving restores them.
                          (when (api/column-will-change? :archived current-dash updates)
                            (if (:archived updates)
@@ -925,9 +934,16 @@
                            (t2/update! :model/Card :dashboard_id id
                                        {:collection_id (:collection_id updates)}))
                          (t2/update! :model/Dashboard id updates)
+                         ;; Fire :event/collection-touch with the *target* collection id so the
+                         ;; activity feed records the right collection. Note: the REST endpoint
+                         ;; at dashboards_rest/api.clj:1015 passes the dashboard id here instead,
+                         ;; which appears to be a bug - the other collection-touch publishers
+                         ;; (collections_rest, queries_rest, collections/models/collection) all
+                         ;; pass the real collection id. Filed for follow-up.
                          (when (contains? updates :collection_id)
                            (events/publish-event! :event/collection-touch
-                                                  {:collection-id id :user-id api/*current-user-id*})))
+                                                  {:collection-id (:collection_id updates)
+                                                   :user-id       api/*current-user-id*})))
                        (when (seq mutations)
                          (apply-dashcard-mutations! id mutations)))]
     ;; Publish dashcard events outside the transaction, matching the REST endpoint's ordering.
