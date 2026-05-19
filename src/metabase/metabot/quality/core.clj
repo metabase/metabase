@@ -88,16 +88,13 @@
    :query-thrash           (signals/query-thrash-magnitude           normalized)})
 
 (defn- had-artifact?
-  "True iff any assistant row in `messages` has `query_count > 0`. Relies on
-  `query_count` having been UPDATEd by `finalize-assistant-turn!` on the
-  just-finalized assistant row before `score-conversation!` reads — which
-  holds because both writes share a transaction."
-  [messages]
-  (boolean
-   (some (fn [m]
-           (and (= :assistant (:role m))
-                (pos? (or (:query_count m) 0))))
-         messages)))
+  "True iff any authoring tool was called anywhere in the conversation. Derived
+  from the normalized tool-events stream so we read the same `:data` parts the
+  rest of the scorer reads — no dependency on denormalized per-message
+  columns, and historical rows (no per-message backfill) score correctly."
+  [normalized]
+  (boolean (some #(contains? constants/authoring-tools (:function %))
+                 (:tool-events normalized))))
 
 (defn compute-conversation-score
   "Pure compute. Input: a seq of `MetabotMessage` maps for one conversation,
@@ -137,7 +134,7 @@
                                 :signals                    magnitudes
                                 :contributions              (:contributions composed)
                                 :context                    {:profile_id                    (:profile-id normalized)
-                                                             :had_artifact                  (had-artifact? safe-messages)
+                                                             :had_artifact                  (had-artifact? normalized)
                                                              :n_messages                    (count safe-messages)
                                                              :n_tool_calls                  (count (:tool-events normalized))
                                                              :outlier_threshold             outlier-threshold

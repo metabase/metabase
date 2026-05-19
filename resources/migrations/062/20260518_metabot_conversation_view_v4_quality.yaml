@@ -1,0 +1,39 @@
+## Project quality_score and quality_breakdown into v_metabot_conversations.
+##
+## Depends on the column additions in 20260516_metabot_quality_score.yaml; runs
+## after them via alphabetical changelog ordering.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/062_update_migrations.yaml
+
+  - changeSet:
+      id: v62.2026-05-18T10:00:00
+      author: tylerplude
+      runOnChange: true
+      comment: Update v_metabot_conversations to v4 - project quality_score and quality_breakdown
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v4/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v4/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v4/h2-metabot_conversations.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v3/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v3/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v3/h2-metabot_conversations.sql
+            relativeToChangelogFile: true

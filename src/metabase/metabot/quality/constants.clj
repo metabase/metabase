@@ -173,9 +173,8 @@
          "read_resource"]))
 
 (def authoring-tools
-  "Tool names that author or modify a query. Used for `query_modified` /
-  `query_count` per-message stats and for the canonical-bypass / query-thrash
-  signals.
+  "Tool names that author or modify a query. Drives the canonical-bypass and
+  query-thrash signals, plus the breakdown's `:context.had_artifact` flag.
 
   The slackbot variant of `construct_notebook_query` registers under the same
   `:tool-name` as the in-app variant, so a single entry covers both."
