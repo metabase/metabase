@@ -58,8 +58,8 @@
 
 ;;; ---------------------------------------- Phase 1: Resolve focal tables ----------------------------------------
 
-(def ^:private ^{:doc "Columns needed for mi/can-read? permission checks on Table."}
-  table-perm-columns
+(def ^:private table-perm-columns
+  "Columns needed for mi/can-read? permission checks on Table."
   [:id :db_id :name :display_name :schema :is_published :collection_id])
 
 (defn- schema-clause
@@ -186,15 +186,15 @@
                          all-fields)]
     (if (empty? target-ids)
       {}
-      (let [fields          (fetch-fields-by-ids target-ids)
-            table-ids       (into #{} (map :table_id) fields)
-            readable-tables (readable-table-ids database-id :table-ids table-ids)]
+      (let [fields                   (fetch-fields-by-ids target-ids)
+            table-ids                 (into #{} (map :table_id) fields)
+            readable-target-table-ids (readable-table-ids database-id :table-ids table-ids)]
         (into {}
-              (comp (filter #(contains? readable-tables (:table_id %)))
+              (comp (filter #(contains? readable-target-table-ids (:table_id %)))
                     (map (juxt :id :table_id)))
               fields)))))
 
-(defn build-erd-field
+(defn- build-erd-field
   "Convert a field to the ERD field shape.
    Nils out FK target references only when the target table is unreadable
    (either missing or the user lacks permission); readable targets outside the
@@ -212,7 +212,7 @@
      :fk_target_field_id (when target-table-id (:fk_target_field_id field))
      :fk_target_table_id target-table-id}))
 
-(defn build-erd-node
+(defn- build-erd-node
   "Build an ERD node for a table with its fields."
   [table fields target-field-id->table-id]
   {:table_id     (:id table)
@@ -222,7 +222,7 @@
    :db_id        (:db_id table)
    :fields       (mapv #(build-erd-field % target-field-id->table-id) fields)})
 
-(defn build-erd-edges
+(defn- build-erd-edges
   "Build ERD edges from fields, filtered to only include edges between visible tables."
   [fields-by-table loaded-field-by-id visible-table-ids]
   (let [all-fields (mapcat val fields-by-table)]
@@ -243,7 +243,7 @@
                                              "many-to-one")}))))))
          vec)))
 
-(defn build-erd-response
+(defn- build-erd-response
   "Build the ERD response from fetched subgraph data."
   [database-id {:keys [tables-by-id fields-by-table loaded-field-by-id]}]
   (let [visible-table-ids          (set (keys tables-by-id))
