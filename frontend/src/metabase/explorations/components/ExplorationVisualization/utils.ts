@@ -1,5 +1,8 @@
+import { t } from "ttag";
+
 import { TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
 import { createSeriesCard } from "metabase/metrics/utils/series";
+import { getAccentColors } from "metabase/ui/colors/groups";
 import { isCartesianChart } from "metabase/visualizations";
 import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
 import { isCountry, isDate, isState } from "metabase-lib/v1/types/utils/isa";
@@ -7,10 +10,13 @@ import type {
   CardDisplayType,
   CardId,
   Dataset,
+  DatasetColumn,
   ExplorationDocument,
   ExplorationQuery,
   ExplorationThread,
   ExplorationThreadMetric,
+  RowValue,
+  RowValues,
   SingleSeries,
   TimelineId,
   VisualizationSettings,
@@ -26,7 +32,10 @@ interface BuildSeriesGroupsParams {
 interface SeriesGroup {
   series: SingleSeries[];
   isTimeseries: boolean;
+  stackCount?: number;
 }
+
+const SHOULD_STACK_CUTOFF = 8;
 
 export function buildSeriesGroups({
   queries,
@@ -37,9 +46,17 @@ export function buildSeriesGroups({
     queries,
     datasets,
   });
-  return queriesWithDatasetGroups.map((queriesWithDatasets) =>
+  const seriesGroups = queriesWithDatasetGroups.map((queriesWithDatasets) =>
     buildSeries({ ...rest, queriesWithDatasets }),
   );
+  // time charts first
+  seriesGroups.sort((a, b) => {
+    if (a.isTimeseries === b.isTimeseries) {
+      return 0;
+    }
+    return a.isTimeseries ? -1 : 1;
+  });
+  return seriesGroups;
 }
 
 interface ExplorationQueryWithDataset extends ExplorationQuery {
@@ -79,6 +96,7 @@ export function buildSeries({
   queryColors,
 }: BuildSeriesParams): SeriesGroup {
   let isTimeseries = false;
+  let stackCount: number | undefined;
 
   const series = queriesWithDatasets.map((queryWithDataset) => {
     const { dataset, ...query } = queryWithDataset;
@@ -86,12 +104,16 @@ export function buildSeries({
       display,
       settings,
       isTimeseries: isTimeseriesForQuery,
-    } = getDisplay(queryWithDataset);
+      stackCount: stackCountForQuery,
+    } = getDisplay(queryWithDataset, queriesWithDatasets.length);
     isTimeseries = isTimeseries || Boolean(isTimeseriesForQuery);
+    // this works because we should always get the same stackCount for all queries in a group
+    // but that's only because we don't run queries for segments and breakouts at the same time
+    // so this is somewhat fragile and will need to be revisited if we ever support that
+    stackCount = stackCountForQuery;
     const isCartesian = isCartesianChart(display);
     const cardSettings: VisualizationSettings = { ...settings };
     if (isCartesian) {
-      cardSettings["graph.split_panels"] = true; // Render every series in its own vertical pane along a shared x-axis
       cardSettings["graph.y_axis.title_text"] = metricsById.get(
         query.card_id,
       )?.card?.name;
@@ -101,37 +123,73 @@ export function buildSeries({
         cardSettings["map.colors"] = getColorplethColorScale(color);
       }
     }
-    const card = createSeriesCard(query.id, query.name, display, cardSettings);
+    const card = createSeriesCard(
+      query.id,
+      query.name,
+      display,
+      cardSettings,
+      query.dataset_query,
+    );
     return { card, data: dataset.data };
   });
 
-  return { series, isTimeseries };
+  return { series, isTimeseries, stackCount };
 }
 
-function getDisplay(queryWithDataset: ExplorationQueryWithDataset): {
+interface GetDisplayResult {
   display: CardDisplayType;
   settings?: VisualizationSettings;
+  stackCount?: number;
   isTimeseries?: boolean;
-} {
-  const cols = queryWithDataset.dataset.data.cols;
+}
+
+function getDisplay(
+  queryWithDataset: ExplorationQueryWithDataset,
+  numQueries: number,
+): GetDisplayResult {
+  const { cols, rows } = queryWithDataset.dataset.data;
   const isTimeseries = cols.some(isDate);
 
   if (cols.length === 3 && isTimeseries) {
     // The second column is the date column and should be the x-axis;
-    // the first column is the breakout. Provide them explicitly,
+    // the first column is the breakout. Provide the dimensions explicitly,
     // otherwise viz settings might swap them based on cardinality.
     const dimensions = [cols[1]?.name, cols[0]?.name].filter(
       (name): name is string => typeof name === "string",
     );
+
+    // here, we use the number of unique breakout values to determine whether to stack
+    let shouldStack = true;
+    const breakoutValues = new Set<RowValue>();
+    for (const row of rows) {
+      breakoutValues.add(row[0]);
+      if (breakoutValues.size > SHOULD_STACK_CUTOFF) {
+        shouldStack = false;
+        break;
+      }
+    }
     return {
       display: "line",
-      settings: { "graph.dimensions": dimensions },
+      settings: {
+        "graph.dimensions": dimensions,
+        "graph.split_panels": shouldStack,
+      },
+      stackCount: shouldStack ? breakoutValues.size : undefined,
       isTimeseries,
     };
   }
 
   if (isTimeseries) {
-    return { display: "line", isTimeseries };
+    // here we use the number of queries (i.e. number of segments) to determine whether to stack
+    const shouldStack = numQueries <= SHOULD_STACK_CUTOFF;
+    return {
+      display: "line",
+      settings: {
+        "graph.split_panels": shouldStack,
+      },
+      stackCount: shouldStack ? numQueries : undefined,
+      isTimeseries,
+    };
   }
 
   if (cols.length === 2 && isState(cols[0])) {
@@ -148,7 +206,81 @@ function getDisplay(queryWithDataset: ExplorationQueryWithDataset): {
     };
   }
 
+  // if we have multiple queries (segments), show a heat map rather than a bar chart
+  if (numQueries > 1) {
+    return { display: "table" };
+  }
   return { display: "bar" };
+}
+
+interface GetHeatMapSeriesParams {
+  series: SingleSeries[];
+}
+
+// the Table viz only supports one series, so we have to combine them
+export function getHeatMapSeries({
+  series,
+}: GetHeatMapSeriesParams): SingleSeries {
+  const { card, data } = series[0];
+  const segmentCol: DatasetColumn = {
+    name: "Segment",
+    display_name: "Segment",
+    source: "breakout",
+  };
+  const cols = [...data.cols, segmentCol];
+  const rows: RowValues[] = [];
+  let minValue: number | undefined;
+  let maxValue: number | undefined;
+  series.forEach((s, i) => {
+    for (const row of s.data.rows) {
+      const segmentName = i === 0 ? t`(All)` : `Segment ${i}`; // TODO: use the segment name
+      rows.push([...row, segmentName]);
+      const value = row[1];
+      if (typeof value !== "number") {
+        continue;
+      }
+      if (minValue == null || value < minValue) {
+        minValue = value;
+      }
+      if (maxValue == null || value > maxValue) {
+        maxValue = value;
+      }
+    }
+  });
+  const settings: VisualizationSettings = {
+    "table.columns": cols.map((col) => ({
+      name: col.name,
+      enabled: true,
+    })),
+    "table.pivot": true,
+    "table.pivot_column": cols[0].name,
+    "table.cell_column": cols[1].name,
+    "table.column_formatting": [
+      {
+        columns: [cols[1].name],
+        type: "range",
+        colors: ["transparent", getAccentColors()[0]],
+        min_type: null,
+        max_type: null,
+        min_value: minValue,
+        max_value: maxValue,
+      },
+    ],
+  };
+  return {
+    card: {
+      ...card,
+      visualization_settings: {
+        ...card.visualization_settings,
+        ...settings,
+      },
+    },
+    data: {
+      ...data,
+      cols,
+      rows,
+    },
+  };
 }
 
 /**
