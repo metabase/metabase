@@ -50,7 +50,8 @@
                        (re-matches #"(metabase/[^/]+/)?metabase-plugin\.yaml" (str zip-entry)))
                      (enumeration-seq (.entries zip-file)))]
       (when (> (count manifests) 1)
-        (throw (ex-info "Driver verification failed: multiple metabase-plugin.yaml files found in JAR")))
+        (throw (ex-info "Driver verification failed: multiple metabase-plugin.yaml files found in JAR"
+                        {:entries (map str manifests)})))
       (first manifests))))
 
 (defn- verify-has-plugin-manifest [driver]
