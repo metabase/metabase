@@ -5,7 +5,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.transforms.models.job-run :as transforms.job-run]
@@ -46,10 +45,9 @@
               (is (= :started (t2/select-one-fn :status :model/TransformRun :id fresh-run-id)))))
 
           (testing "counter bumps {type=transform} once for the stale run"
-            (is (prometheus-test/approx= 1
-                                         (mt/metric-value system
-                                                          :metabase-transforms/timeouts-total
-                                                          {:type "transform"}))))
+            (is (== 1 (mt/metric-value system
+                                       :metabase-transforms/timeouts-total
+                                       {:type "transform"}))))
 
           (testing "histogram observes one positive sample for the stale run"
             (let [hist (mt/metric-value system
@@ -77,10 +75,9 @@
                                               :run_method   :manual
                                               :start_time   (minutes-ago 1)}]
           (is (= 0 (transform-run/timeout-old-runs! 5 :minute)))
-          (is (prometheus-test/approx= 0
-                                       (mt/metric-value system
-                                                        :metabase-transforms/timeouts-total
-                                                        {:type "transform"})))
+          (is (== 0 (mt/metric-value system
+                                     :metabase-transforms/timeouts-total
+                                     {:type "transform"})))
           (is (zero? (long (:count (mt/metric-value system
                                                     :metabase-transforms/timeout-detection-latency-ms
                                                     {:type "transform"})))))))
@@ -95,10 +92,9 @@
                                                                :start_time   (minutes-ago 1)}]
           (transform-run/timeout-run! run-id)
           (is (= :timeout (t2/select-one-fn :status :model/TransformRun :id run-id)))
-          (is (prometheus-test/approx= 1
-                                       (mt/metric-value system
-                                                        :metabase-transforms/timeouts-total
-                                                        {:type "transform"})))
+          (is (== 1 (mt/metric-value system
+                                     :metabase-transforms/timeouts-total
+                                     {:type "transform"})))
           (let [entry (mt/latest-audit-log-entry :transform-run-timeout run-id)]
             (is (some? entry))
             (is (= run-id (:model_id entry)))
@@ -123,10 +119,9 @@
             (is (= 1 (count timed-out)))
             (is (= :timeout (t2/select-one-fn :status :model/TransformJobRun :id old-run-id)))
             (is (= :started (t2/select-one-fn :status :model/TransformJobRun :id fresh-run-id))))
-          (is (prometheus-test/approx= 1
-                                       (mt/metric-value system
-                                                        :metabase-transforms/timeouts-total
-                                                        {:type "job"})))
+          (is (== 1 (mt/metric-value system
+                                     :metabase-transforms/timeouts-total
+                                     {:type "job"})))
           (let [hist (mt/metric-value system
                                       :metabase-transforms/timeout-detection-latency-ms
                                       {:type "job"})]
