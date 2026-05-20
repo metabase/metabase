@@ -254,9 +254,10 @@
   :response-fn (fn [arguments {:keys [session-id]}]
                  (let [query             (:query arguments)
                        handle            (:query_handle arguments)
-                       verified-widget   (mcp.session/verified-widget-session-id
-                                          (:widgetSessionId arguments) api/*current-user-id*)
-                       lookup-session-id (or verified-widget session-id)
+                       widget-id         (:widgetSessionId arguments)
+                       lookup-session-id (if (and widget-id (mcp.session/owned-by-user? widget-id api/*current-user-id*))
+                                           widget-id
+                                           session-id)
                        resolved          (some->> handle (mcp.session/resolve-query-handle lookup-session-id))
                        encoded           (or query (:encoded_query resolved))
                        prompt            (:prompt resolved)]
@@ -307,9 +308,10 @@
                  :required   ["query"]}
   :response-fn (fn [arguments {:keys [session-id]}]
                  (if-let [handle (:handle arguments)]
-                   (let [verified-widget   (mcp.session/verified-widget-session-id
-                                            (:widgetSessionId arguments) api/*current-user-id*)
-                         lookup-session-id (or verified-widget session-id)]
+                   (let [widget-id         (:widgetSessionId arguments)
+                         lookup-session-id (if (and widget-id (mcp.session/owned-by-user? widget-id api/*current-user-id*))
+                                             widget-id
+                                             session-id)]
                      (if-let [encoded (mcp.session/read-handle lookup-session-id handle)]
                        (cond-> {:content           [{:type "text" :text "Rendering drill-through visualization..."}]
                                 :structuredContent (cond-> {:query encoded}
