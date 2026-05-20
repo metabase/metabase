@@ -45,3 +45,29 @@
                            :schema-filters-patterns "x"}
                 :engine   :postgres}]
         (is (driver.s/include-schema? db nil))))))
+
+(deftest ^:parallel workspace-isolation-schemas-are-always-excluded-test
+  (testing "include-schema? unconditionally rejects schemas with the workspace iso prefix (GHY-3489)"
+    (testing "with no user-configured filters (sync everything)"
+      (is (not (driver.s/include-schema? nil nil "mb__isolation_abc_42"))
+          "iso schema must be skipped even when no filters are set")
+      (is (driver.s/include-schema? nil nil "public")
+          "non-iso schemas pass through unchanged"))
+    (testing "with broad inclusion filters that WOULD match the iso prefix"
+      (is (not (driver.s/include-schema? "mb*" nil "mb__isolation_abc_42"))
+          "an inclusion pattern that would otherwise match must still be overridden")
+      (is (driver.s/include-schema? "mb*" nil "mb_user_schema")
+          "user schemas starting with `mb_` (but NOT the iso prefix) still pass"))
+    (testing "with exclusion filters covering OTHER schemas"
+      (is (not (driver.s/include-schema? nil "public" "mb__isolation_abc_42"))
+          "iso skip applies in addition to user-configured exclusions")
+      (is (driver.s/include-schema? nil "other" "public")
+          "non-iso schemas remain subject to user exclusion patterns only"))
+    (testing "exact prefix match required"
+      ;; The check uses `str/starts-with?` on the exact `mb__isolation_` prefix.
+      ;; Customer schemas that happen to start with `mb_` (single underscore) or
+      ;; `mb__` are safe -- only the specific iso prefix is skipped.
+      (is (driver.s/include-schema? nil nil "mb_isolation_typo")
+          "single-underscore variant is NOT the iso prefix; passes through")
+      (is (driver.s/include-schema? nil nil "mb__customer_data")
+          "double-underscore but different suffix is NOT the iso prefix; passes through"))))

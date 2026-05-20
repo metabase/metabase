@@ -74,11 +74,17 @@
 (defn include-schema?
   "Returns true if the given `schema-name` should be included/synced, considering the given `inclusion-patterns` and
   `exclusion-patterns` (either provided explicitly or taken from the driver's connection properties). Patterns are
-  comma-separated, and can contain wildcard characters (`*`)."
+  comma-separated, and can contain wildcard characters (`*`).
+
+  Workspace isolation schemas (`mb__isolation_*`) are ALWAYS excluded -- they are local-side state created
+  by workspace provisioning and must not bleed into parent (stats) instance sync. The skip is unconditional
+  and layered on top of user-configured inclusion/exclusion patterns; a stats instance with broad inclusion
+  patterns will still skip iso schemas. See GHY-3489 for context."
   {:added "0.42.0"}
   ([database schema-name]
    (let [[inclusion-patterns exclusion-patterns] (db-details->schema-filter-patterns database)]
      (include-schema? inclusion-patterns exclusion-patterns schema-name)))
   ([inclusion-patterns exclusion-patterns schema-name]
-   (let [filter-fn (schema-patterns->filter-fn inclusion-patterns exclusion-patterns)]
-     (filter-fn schema-name))))
+   (and (not (driver.u/workspace-isolated-schema? schema-name))
+        (let [filter-fn (schema-patterns->filter-fn inclusion-patterns exclusion-patterns)]
+          (filter-fn schema-name)))))
