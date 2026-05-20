@@ -1805,7 +1805,7 @@
                       "Should log a version mismatch warning only once per load")))))
           (ts/with-db dest-db2
             (testing "No warnings when version in serdes/meta matches current version"
-              (log.capture/with-log-messages-for-level [messages :warn]
+              (log.capture/with-log-messages-for-level [messages [metabase-enterprise.serialization.v2.load :warn]]
                 (serdes.load/load-metabase! (ingestion-in-memory extract))
                 (is (= 0 (count (filter #(str/includes? % "Version mismatch loading") (messages))))))))
           (ts/with-db dest-db3
