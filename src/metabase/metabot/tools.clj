@@ -7,6 +7,7 @@
   is a function that takes the tool arguments and returns a result map."
   (:require
    [metabase.api-scope.core :as api-scope]
+   [metabase.config.core :as config]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.analyze-chart :as tools.analyze-chart]
    [metabase.metabot.tools.autogen-dashboard :as tools.autogen-dashboard]
@@ -16,6 +17,7 @@
    [metabase.metabot.tools.create-alert :as tools.create-alert]
    [metabase.metabot.tools.create-dashboard-subscription :as tools.create-dashboard-subscription]
    [metabase.metabot.tools.document :as tools.document]
+   [metabase.metabot.tools.entity-usage :as entity-usage]
    [metabase.metabot.tools.metadata :as tools.metadata]
    [metabase.metabot.tools.navigation :as tools.navigation]
    [metabase.metabot.tools.resources :as tools.resources]
@@ -118,6 +120,33 @@
                      tool-name required-scope scope/*current-user-scope*)
           {:output "You do not have permission to use this tool."}))))
 
+(def ^:private enforced-tool-types
+  "Tool names that must (a) declare a valid `:tool-type` in metadata and
+  (b) have their results validated against
+  `metabase.metabot.tools.entity-usage/validate-result`. Phase 3 sub-phases
+  of `notes/bot-1569/impl-plan-v2.md` extend this set per tool category;
+  Phase 3e removes the gate entirely so the assertion applies to every
+  registered tool."
+  #{})
+
+(defn- wrap-with-entity-usage-validation
+  "Wrap a tool fn so its returned `:entity-usage` is validated against the
+  tool's declared `:tool-type`. Dev/test: throw on violation so the bug is
+  caught loudly. Prod: warn-log and return the result unchanged so a
+  tool-author bug doesn't break user-visible behavior."
+  [f tool-name tool-type]
+  (fn [args]
+    (let [result (f args)]
+      (when-let [problem (entity-usage/validate-result tool-type result)]
+        (let [msg (str "Tool " tool-name " entity-usage violation")]
+          (log/warnf "%s — tool-type=%s, problem=%s"
+                     msg tool-type (pr-str problem))
+          (when (or config/is-dev? config/is-test?)
+            (throw (ex-info msg {:tool-name tool-name
+                                 :tool-type tool-type
+                                 :problem   problem})))))
+      result)))
+
 (defn wrap-tools-with-state
   "Wrap state-dependent tools with access to the memory atom.
   Tools in `state-dependent-tools` will have access to the memory atom
@@ -133,28 +162,42 @@
   [tools memory-atom metabot-id]
   (reduce-kv
    (fn [acc tool-name tool-var]
-     (let [m          (meta tool-var)
-           base-fn    (if (contains? state-dependent-tools tool-name)
-                        (fn [args]
-                          (binding [shared/*memory-atom* memory-atom
-                                    shared/*metabot-id*  metabot-id]
-                            (tool-var args)))
-                        (fn [args]
-                          (binding [shared/*metabot-id* metabot-id]
-                            (tool-var args))))
-           tool-scope (:scope m)
-           tool-fn    (if tool-scope
-                        (wrap-with-scope-check base-fn tool-name tool-scope)
-                        base-fn)
-           tool-def   {:tool-name            (:tool-name m)
-                       :doc                  (:doc m)
-                       :schema               (:schema m)
-                       :prompt               (:prompt m)
-                       :decode               (:decode m)
-                       :system-instructions  (:system-instructions m)
-                       :capabilities         (:capabilities m)
-                       :scope                (:scope m)
-                       :fn                   tool-fn}]
-       (assoc acc tool-name tool-def)))
+     (let [m         (meta tool-var)
+           tool-type (:tool-type m)
+           enforced? (contains? enforced-tool-types tool-name)]
+       (when enforced?
+         (when-not (contains? entity-usage/tool-types tool-type)
+           (throw (ex-info (str "Tool " tool-name " missing or has invalid :tool-type")
+                           {:tool-name tool-name :tool-type tool-type}))))
+       (let [base-fn    (if (contains? state-dependent-tools tool-name)
+                          (fn [args]
+                            (binding [shared/*memory-atom* memory-atom
+                                      shared/*metabot-id*  metabot-id]
+                              (tool-var args)))
+                          (fn [args]
+                            (binding [shared/*metabot-id* metabot-id]
+                              (tool-var args))))
+             ;; Wrapping order: validation wraps `base-fn` first, then
+             ;; scope-check wraps that. At call time scope-check runs
+             ;; first — its denial response short-circuits before the
+             ;; entity-usage validator runs, so a scope-denied call can't
+             ;; trigger a false "missing entity-usage" violation.
+             validated  (if enforced?
+                          (wrap-with-entity-usage-validation base-fn tool-name tool-type)
+                          base-fn)
+             tool-scope (:scope m)
+             tool-fn    (if tool-scope
+                          (wrap-with-scope-check validated tool-name tool-scope)
+                          validated)
+             tool-def   {:tool-name            (:tool-name m)
+                         :doc                  (:doc m)
+                         :schema               (:schema m)
+                         :prompt               (:prompt m)
+                         :decode               (:decode m)
+                         :system-instructions  (:system-instructions m)
+                         :capabilities         (:capabilities m)
+                         :scope                (:scope m)
+                         :fn                   tool-fn}]
+         (assoc acc tool-name tool-def))))
    {}
    tools))

@@ -888,7 +888,20 @@
            (metabot.persistence/strip-tool-output-bloat
             {:type   :tool-output
              :id     "call-2"
-             :result {:structured-output {:some "data"}}})))))
+             :result {:structured-output {:some "data"}}}))))
+  (testing "preserves :entity-usage inside :structured-output"
+    (let [eu {:input  [{:type "database" :id 1}]
+              :output [{:type "table" :id 9 :metadata {:rank 0}}]}]
+      (is (= {:type   :tool-output
+              :id     "call-eu"
+              :result {:output            "<result>...</result>"
+                       :structured-output {:entity-usage eu}}}
+             (metabot.persistence/strip-tool-output-bloat
+              {:type   :tool-output
+               :id     "call-eu"
+               :result {:output            "<result>...</result>"
+                        :structured-output {:entity-usage eu
+                                            :bulk-bloat   (vec (range 1000))}}}))))))
 
 (defn- legacy-query
   "A legacy inner-query-style map suitable for [[#'api/upgrade-viewing-queries]]."

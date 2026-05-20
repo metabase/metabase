@@ -17,10 +17,14 @@
 (set! *warn-on-reflection* true)
 
 (def persisted-structured-output-keys
-  "Subset of `:structured-output` that must survive persistence so
-  `metabase-enterprise.metabot-analytics.queries` can surface generated
-  queries on the admin detail page."
-  [:query-id :query-content :query :database :chart-type])
+  "Subset of `:structured-output` that must survive persistence. The first
+  five keys are consumed by `metabase-enterprise.metabot-analytics.queries`
+  to surface generated queries on the admin detail page. `:entity-usage` is
+  the structured per-call entity record described in
+  `notes/bot-1569/impl-plan-v2.md` §A — populated by tools (§A.6) and read
+  by downstream observability consumers."
+  [:query-id :query-content :query :database :chart-type
+   :entity-usage])
 
 (defn- trim-structured-output [structured]
   (when (map? structured)
@@ -29,11 +33,12 @@
 (defn strip-tool-output-bloat
   "For :tool-output parts, keep `:output` and a trimmed `:structured-output` in
   the result map. Both LLM adapters only read `(get-in part [:result :output])`
-  when replaying history, so `:output` is all they need. The analytics extractor,
-  however, reads a small subset of `:structured-output` off persisted messages
-  (see `persisted-structured-output-keys`), so we keep those four keys and drop
-  everything else (`:resources`, `:data-parts`, `:reactions`, …) — that's where
-  the bulk of the bloat lives."
+  when replaying history, so `:output` is all they need. The analytics extractor
+  and entity-usage observability consumers, however, read a small subset of
+  `:structured-output` off persisted messages (see
+  `persisted-structured-output-keys`), so we keep those keys and drop everything
+  else (`:resources`, `:data-parts`, `:reactions`, …) — that's where the bulk
+  of the bloat lives."
   [{:keys [type] :as part}]
   (if (= :tool-output type)
     (update part :result
