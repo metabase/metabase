@@ -67,12 +67,6 @@ export const LimitPopover = ({
     }
   }, [isCustom]);
 
-  const applyLimit = () => {
-    if (selectedLimit !== limit) {
-      onChangeLimit(selectedLimit);
-    }
-  };
-
   return (
     <Box className={cx(className, CS.textBold, CS.textMedium)}>
       <Radio
@@ -108,7 +102,6 @@ export const LimitPopover = ({
             onChange={(e: ChangeEvent<HTMLInputElement>) =>
               setValue(e.target.value)
             }
-            onBlur={applyLimit}
             onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
               if (e.nativeEvent.isComposing) {
                 return;
