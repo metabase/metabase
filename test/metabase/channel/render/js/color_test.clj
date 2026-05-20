@@ -123,3 +123,20 @@
             (is (= [[123.456 789 "test"] [123.456 789 "another"]] result))
             (is (every? #(instance? Double (first %)) result))
             (is (every? #(instance? Long (second %)) result))))))))
+
+(deftest bigdecimal-cell-gets-range-color-test
+  (testing "get-background-color applies range colors to BigDecimal cell values (GDGT-2412)"
+    (let [viz      {:table.column_formatting
+                    [{:columns ["pct"] :type "range" :colors ["#ffffff" "#ff0000"]}]}
+          selector (js.color/make-color-selector
+                    {:cols [{:name "pct"}] :rows [[0.0] [0.5] [1.0]]}
+                    viz)
+          color-for (fn [n]
+                      (js.color/get-background-color
+                       selector
+                       (formatter/->NumericWrapper (str n) n)
+                       "pct"
+                       1))]
+      (is (= "rgba(255, 128, 128, 0.75)" (color-for 0.5)))
+      (is (= "rgba(255, 128, 128, 0.75)" (color-for (BigDecimal. "0.5"))))
+      (is (= "rgba(255, 0, 0, 0.75)" (color-for (BigInteger. "1")))))))
