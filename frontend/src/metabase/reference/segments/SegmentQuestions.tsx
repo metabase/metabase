@@ -103,9 +103,11 @@ const SegmentQuestionsInner = ({
             </div>
           ) : (
             <div className={S.empty}>
-              <AdminAwareEmptyState
-                {...emptyStateData(table, segment, metadata)}
-              />
+              {table && segment && metadata && (
+                <AdminAwareEmptyState
+                  {...emptyStateData(table, segment, metadata)}
+                />
+              )}
             </div>
           )
         }

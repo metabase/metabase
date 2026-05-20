@@ -109,7 +109,7 @@ const validate = (values: SegmentDetailFormFields) =>
 interface SegmentDetailProps {
   style: React.CSSProperties;
   entity: StubbedSegment;
-  table: StubbedTable;
+  table: StubbedTable | undefined;
   user: User;
   isEditing?: boolean;
   startEditing: () => void;
@@ -174,25 +174,27 @@ const SegmentDetail = (props: SegmentDetailProps) => {
           revisionMessageFormField={getFormField("revision_message")}
         />
       )}
-      <EditableReferenceHeader
-        entity={entity}
-        type="segment"
-        headerIcon={modelIconMap.segment}
-        headerLink={getQuestionUrl({
-          dbId: table.db_id!,
-          tableId: entity.table_id!,
-          segmentId: entity.id,
-          metadata,
-        })}
-        name={t`Details`}
-        user={user}
-        isEditing={isEditing}
-        hasSingleSchema={false}
-        hasDisplayName={false}
-        startEditing={startEditing}
-        displayNameFormField={getFormField("display_name")}
-        nameFormField={getFormField("name")}
-      />
+      {entity && table && (
+        <EditableReferenceHeader
+          entity={entity}
+          type="segment"
+          headerIcon={modelIconMap.segment}
+          headerLink={getQuestionUrl({
+            dbId: table.db_id!,
+            tableId: entity.table_id!,
+            segmentId: entity.id,
+            metadata,
+          })}
+          name={t`Details`}
+          user={user}
+          isEditing={isEditing}
+          hasSingleSchema={false}
+          hasDisplayName={false}
+          startEditing={startEditing}
+          displayNameFormField={getFormField("display_name")}
+          nameFormField={getFormField("name")}
+        />
+      )}
       <LoadingAndErrorWrapper
         loading={!loadingError && loading}
         error={loadingError}
@@ -266,7 +268,7 @@ const SegmentDetail = (props: SegmentDetailProps) => {
                     field={getFormField("caveats")}
                   />
                 </li>
-                {!isEditing && (
+                {!isEditing && table && (
                   <li className={CS.relative}>
                     <UsefulQuestions
                       questions={interestingQuestions(table, entity, metadata)}
