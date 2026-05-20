@@ -282,23 +282,25 @@ export const NotificationsAdminPage = ({
     (() => {
       if (notificationId === undefined) {
         return {
-          prevNotificationId: null,
-          nextNotificationId: null,
+          prevNotificationId: undefined,
+          nextNotificationId: undefined,
           notificationSummary: undefined,
         };
       }
       const index = notifications.findIndex((n) => n.id === notificationId);
       if (index === -1) {
         return {
-          prevNotificationId: null,
-          nextNotificationId: null,
+          prevNotificationId: undefined,
+          nextNotificationId: undefined,
           notificationSummary: undefined,
         };
       }
       return {
-        prevNotificationId: index > 0 ? notifications[index - 1].id : null,
+        prevNotificationId: index > 0 ? notifications[index - 1].id : undefined,
         nextNotificationId:
-          index < notifications.length - 1 ? notifications[index + 1].id : null,
+          index < notifications.length - 1
+            ? notifications[index + 1].id
+            : undefined,
         notificationSummary: notifications[index],
       };
     })();

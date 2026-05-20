@@ -14,8 +14,8 @@ export type SidebarProps = {
   notificationId: NotificationId;
   notificationSummary: AdminNotification | undefined;
   isBulkLoading: boolean;
-  prevNotificationId: NotificationId | null;
-  nextNotificationId: NotificationId | null;
+  prevNotificationId: NotificationId | undefined;
+  nextNotificationId: NotificationId | undefined;
   onClose: () => void;
   onDelete: (notification: AdminNotification) => void;
 };
@@ -24,8 +24,8 @@ export type SidebarHeaderProps = {
   isBulkLoading: boolean;
   notificationId: NotificationId;
   notification: AdminNotification | undefined;
-  prevNotificationId: NotificationId | null;
-  nextNotificationId: NotificationId | null;
+  prevNotificationId: NotificationId | undefined;
+  nextNotificationId: NotificationId | undefined;
   isQuestionLoading: boolean;
   onClose: () => void;
   onDelete: (notification: AdminNotification) => void;

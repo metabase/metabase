@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { match } from "ts-pattern";
 import { t } from "ttag";
+import _ from "underscore";
 
 import {
   skipToken,
@@ -65,8 +66,9 @@ import type {
 } from "./types";
 import {
   formatChannelSummary,
+  getEmailRecipientLabel,
   getEmailRowText,
-  getUniqueChannelTypes,
+  getSlackChannelLabel,
 } from "./utils";
 
 export const NotificationDetailSidebar = ({
@@ -182,8 +184,8 @@ const SidebarHeader = ({
     dispatch(addUndo({ message: t`Link copied to clipboard` }));
   };
 
-  const handleNavigate = (id: NotificationId | null) => {
-    if (id !== null) {
+  const handleNavigate = (id: NotificationId | undefined) => {
+    if (id !== undefined) {
       dispatch(push(Urls.adminToolsNotificationDetail(id)));
     }
   };
@@ -197,7 +199,7 @@ const SidebarHeader = ({
             size="lg"
             variant="default"
             className={S.navButton}
-            disabled={prevNotificationId === null}
+            disabled={prevNotificationId === undefined}
             onClick={() => handleNavigate(prevNotificationId)}
           >
             <Icon name="chevronup" />
@@ -207,7 +209,7 @@ const SidebarHeader = ({
             size="lg"
             variant="default"
             className={S.navButton}
-            disabled={nextNotificationId === null}
+            disabled={nextNotificationId === undefined}
             onClick={() => handleNavigate(nextNotificationId)}
           >
             <Icon name="chevrondown" />
@@ -266,11 +268,11 @@ const SidebarHeader = ({
       {notification && (
         <Flex align="center" gap="sm">
           <ChannelAvatarStack handlers={notification.handlers} />
-          <Stack gap={2}>
-            <Text size="xs" c="text-secondary">
+          <Stack gap={0}>
+            <Text size="sm" c="text-secondary">
               {t`Alert ${notification.id}`}
             </Text>
-            <Title order={3} lh={1.2} c="text-primary">
+            <Title order={3} c="text-primary">
               {cardName}
             </Title>
           </Stack>
@@ -285,7 +287,9 @@ const ChannelAvatarStack = ({
 }: {
   handlers: NotificationHandler[] | undefined;
 }) => {
-  const channels = getUniqueChannelTypes(handlers);
+  const channels = _.uniq(
+    (handlers ?? []).map((handler) => handler.channel_type),
+  );
 
   return (
     <Flex align="center" className={S.avatarStack}>
@@ -382,13 +386,7 @@ const SidebarBody = ({
         cardId={cardId}
       />
       {emailHandler && emailRecipientCount > 0 && (
-        <SidebarSection
-          title={
-            emailRecipientCount === 1
-              ? t`1 email recipient`
-              : t`${emailRecipientCount} email recipients`
-          }
-        >
+        <SidebarSection title={getEmailRecipientLabel(emailRecipientCount)}>
           <DetailsTable>
             {emailHandler.recipients.map((recipient, index) => {
               const { name, email } = getEmailRowText(recipient);
@@ -416,13 +414,7 @@ const SidebarBody = ({
         </SidebarSection>
       )}
       {slackHandler && slackChannelCount > 0 && (
-        <SidebarSection
-          title={
-            slackChannelCount === 1
-              ? t`1 Slack channel`
-              : t`${slackChannelCount} Slack channels`
-          }
-        >
+        <SidebarSection title={getSlackChannelLabel(slackChannelCount)}>
           <DetailsTable>
             {slackHandler.recipients.map((recipient, index) => (
               <Flex key={recipient.id ?? index} align="center" px="md" py="sm">
@@ -474,7 +466,7 @@ const DetailsSection = ({
                 {cardName}
               </MBLink>
             ) : (
-              (cardName ?? t`Unknown`)
+              t`Unknown`
             )
           }
           bold

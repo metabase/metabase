@@ -1,28 +1,9 @@
 import { t } from "ttag";
 
 import type {
-  NotificationChannelType,
-  NotificationHandler,
   NotificationHandlerHttp,
   NotificationRecipient,
 } from "metabase-types/api";
-
-export const getUniqueChannelTypes = (
-  handlers: NotificationHandler[] | undefined,
-): NotificationChannelType[] => {
-  if (!handlers) {
-    return [];
-  }
-  const seen = new Set<NotificationChannelType>();
-  const result: NotificationChannelType[] = [];
-  for (const handler of handlers) {
-    if (!seen.has(handler.channel_type)) {
-      seen.add(handler.channel_type);
-      result.push(handler.channel_type);
-    }
-  }
-  return result;
-};
 
 export const getEmailRowText = (
   recipient: NotificationRecipient,
@@ -44,6 +25,15 @@ export const getEmailRowText = (
   return { name: t`Group recipient`, email: null };
 };
 
+export const getEmailRecipientLabel = (count: number): string =>
+  count === 1 ? t`1 email recipient` : t`${count} email recipients`;
+
+export const getSlackChannelLabel = (count: number): string =>
+  count === 1 ? t`1 Slack channel` : t`${count} Slack channels`;
+
+export const getWebhookLabel = (count: number): string =>
+  count === 1 ? t`1 webhook` : t`${count} webhooks`;
+
 type ChannelSummaryInput = {
   emailRecipientCount: number;
   slackChannelCount: number;
@@ -57,22 +47,13 @@ export const formatChannelSummary = ({
 }: ChannelSummaryInput): string => {
   const parts: string[] = [];
   if (emailRecipientCount > 0) {
-    parts.push(
-      emailRecipientCount === 1
-        ? t`1 email recipient`
-        : t`${emailRecipientCount} email recipients`,
-    );
+    parts.push(getEmailRecipientLabel(emailRecipientCount));
   }
   if (slackChannelCount > 0) {
-    parts.push(
-      slackChannelCount === 1
-        ? t`1 Slack channel`
-        : t`${slackChannelCount} Slack channels`,
-    );
+    parts.push(getSlackChannelLabel(slackChannelCount));
   }
   if (httpHandler && httpHandler.recipients.length > 0) {
-    const count = httpHandler.recipients.length;
-    parts.push(count === 1 ? t`1 webhook` : t`${count} webhooks`);
+    parts.push(getWebhookLabel(httpHandler.recipients.length));
   }
   return parts.join(", ");
 };
