@@ -49,28 +49,22 @@ export function defineConfig<TSettings extends Record<string, unknown>>(
       initialProps: P,
     ): CustomVisualizationMountHandle<P> {
       const root = createRoot(container);
-      let lastProps = initialProps;
 
-      const render = () => {
+      const render = (props: P) => {
         root.render(
           <PluginErrorBoundary
             label={Component.displayName ?? Component.name ?? "plugin"}
           >
-            <Component {...lastProps} />
+            <Component {...props} />
           </PluginErrorBoundary>,
         );
       };
 
-      render();
+      render(initialProps);
 
       return {
-        update(props: P) {
-          lastProps = props;
-          render();
-        },
-        unmount() {
-          root.unmount();
-        },
+        update: render,
+        unmount: () => root.unmount(),
       };
     },
   };
