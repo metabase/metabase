@@ -27,7 +27,7 @@ export function McpExploreButton({ app, instanceUrl }: McpExploreButtonProps) {
     <UnstyledButton
       onClick={handleExploreClicked}
       disabled={!app || !question || !instanceUrl}
-      c="text-secondary"
+      c="text-primary"
       fz={12}
       fw={400}
       lh="normal"

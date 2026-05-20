@@ -142,6 +142,7 @@ function McpUiAppRouteContent({
 
   const footerStyle: CSSProperties = {
     boxSizing: "border-box",
+    borderTop: "1px solid var(--mb-color-border)",
     paddingRight: Math.max(safeAreaPadding.right, FOOTER_HORIZONTAL_PADDING),
     paddingTop: safeAreaPadding.bottom,
     paddingBottom: safeAreaPadding.bottom,
