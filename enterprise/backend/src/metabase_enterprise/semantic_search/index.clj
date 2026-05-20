@@ -66,6 +66,8 @@
      [:official_collection :boolean]
      [:pinned :boolean]
      [:verified :boolean]
+     [:collection_type :text]
+     [:data_layer :text]
      [:dashboardcard_count :int]
      [:view_count :int]
      [:created_at :timestamp-with-time-zone [:default [:raw "CURRENT_TIMESTAMP"]] :not-null]
@@ -150,7 +152,7 @@
   "Convert a document to a database record with a provided embedding."
   [owner-ids {:keys [model id embedding searchable_text embeddable_text native_query created_at creator_id updated_at
                      last_editor_id archived verified official_collection database_id collection_id display_type legacy_input
-                     pinned dashboardcard_count view_count last_viewed_at] :as doc}]
+                     pinned dashboardcard_count view_count last_viewed_at collection_type data_layer] :as doc}]
   {:model               model
    :model_id            id
    :collection_id       collection_id
@@ -165,6 +167,8 @@
    :official_collection (some-> official_collection to-boolean)
    :pinned              (some-> pinned to-boolean)
    :verified            (some-> verified to-boolean)
+   :collection_type     collection_type
+   :data_layer          data_layer
    :dashboardcard_count dashboardcard_count
    :view_count          view_count
    :model_created_at    (some-> created_at to-instant)
@@ -280,7 +284,7 @@
   (let [table-name (or table-name (model-table-name embedding-model))]
     {:embedding-model embedding-model
      :table-name table-name
-     :version 2}))
+     :version 3}))
 
 (defn- upsert-embedding!-fn [connectable index text->docs]
   (fn [text->embedding]
@@ -580,6 +584,8 @@
    [:official_collection :official_collection]
    [:pinned :pinned]
    [:verified :verified]
+   [:collection_type :collection_type]
+   [:data_layer :data_layer]
    [:dashboardcard_count :dashboardcard_count]
    [:view_count :view_count]
    [:model_created_at :model_created_at]
@@ -708,7 +714,12 @@
 (defn- decode-legacy-input
   "Decode `row`s `:legacy_input` JSONB PGobject into a Clojure map."
   [row]
-  (update row :legacy_input decode-pgobject))
+  ;; BOT-1543: some existing rows have legacy_input stored as a JSON string rather than a JSON
+  ;; object, so one decode yields a string; decode once more in that case.
+  (update row :legacy_input
+          (fn [pgo]
+            (let [decoded (decode-pgobject pgo)]
+              (cond-> decoded (string? decoded) json/decode+kw)))))
 
 ;; Search-models whose `mi/can-read?` is a pure function of `:collection_id`, which is
 ;; already denormalized on the index row. Values are the Toucan model whose `can-read?`

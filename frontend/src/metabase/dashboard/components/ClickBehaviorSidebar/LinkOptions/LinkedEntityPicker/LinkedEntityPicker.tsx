@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetCardQuery, useGetDashboardQuery } from "metabase/api";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
 import { isPublicCollection } from "metabase/collections/utils";
 import { DashboardName } from "metabase/common/components/DashboardName";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -15,7 +16,6 @@ import {
   clickTargetObjectType,
 } from "metabase/dashboard/components/ClickMappings";
 import { getDashboard } from "metabase/dashboard/selectors";
-import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import { Questions } from "metabase/entities/questions";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";

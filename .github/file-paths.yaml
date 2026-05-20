@@ -1,3 +1,8 @@
+# Catch-all filter — emits the full changed-files list as `all_changed_files`
+# so create-test-plan in run-tests.yml can reuse dorny's diff.
+all_changed:
+  - "**"
+
 default: &default
   - "locales/**"
   - "bin/**/!(*.md)"
@@ -76,6 +81,19 @@ frontend_loki_ci: &frontend_loki_ci
   - ".github/workflows/loki.yml"
   - ".loki/**"
   - ".storybook/**"
+
+frontend_unit_infra: &frontend_unit_infra
+  - *frontend_configs
+  - *frontend_ci
+  - "jest.config.js"
+  - "jest.tz.unit.conf.json"
+  - "frontend/test/**"
+  - "frontend/**/__mocks__/**"
+
+frontend_loki_infra: &frontend_loki_infra
+  - *frontend_configs
+  - *shared_ci
+  - *frontend_loki_ci
 
 backend_ci: &backend_ci
   - *shared_ci

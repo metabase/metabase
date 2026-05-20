@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
-  setupDatabasesEndpoints,
+  setupCardsEndpoints,
   setupTablesEndpoints,
 } from "__support__/server-mocks";
 import {
@@ -13,18 +13,18 @@ import {
   within,
 } from "__support__/ui";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Databases } from "metabase/entities/databases";
+import { Questions } from "metabase/entities/questions";
 import { Tables } from "metabase/entities/tables";
 import { useDispatch } from "metabase/redux";
 import { delay } from "metabase/utils/promise";
-import type Database from "metabase-lib/v1/metadata/Database";
+import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { TableListQuery } from "metabase-types/api";
-import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+import { createMockCard, createMockTable } from "metabase-types/api/mocks";
 
 import { useEntityListQuery } from "./use-entity-list-query";
 
-const TEST_DB = createMockDatabase();
+const TEST_CARD = createMockCard();
 const TEST_TABLE = createMockTable();
 
 const TestComponent = ({ testId }: { testId?: string }) => {
@@ -32,20 +32,20 @@ const TestComponent = ({ testId }: { testId?: string }) => {
     data = [],
     isLoading,
     error,
-  } = useEntityListQuery<Database>(
+  } = useEntityListQuery<Question>(
     {},
     {
-      fetchList: Databases.actions.fetchList,
-      getList: Databases.selectors.getList,
-      getLoading: Databases.selectors.getLoading,
-      getLoaded: Databases.selectors.getLoaded,
-      getError: Databases.selectors.getError,
-      getListMetadata: Databases.selectors.getListMetadata,
+      fetchList: Questions.actions.fetchList,
+      getList: Questions.selectors.getList,
+      getLoading: Questions.selectors.getLoading,
+      getLoaded: Questions.selectors.getLoaded,
+      getError: Questions.selectors.getError,
+      getListMetadata: Questions.selectors.getListMetadata,
     },
   );
 
   const dispatch = useDispatch();
-  const handleInvalidate = () => dispatch(Databases.actions.invalidateLists());
+  const handleInvalidate = () => dispatch(Questions.actions.invalidateLists());
 
   if (isLoading || error) {
     return (
@@ -59,9 +59,9 @@ const TestComponent = ({ testId }: { testId?: string }) => {
 
   return (
     <div data-testid={testId}>
-      <button onClick={handleInvalidate}>Invalidate databases</button>
-      {data.map((database) => (
-        <div key={database.id}>{database.name}</div>
+      <button onClick={handleInvalidate}>Invalidate questions</button>
+      {data.map((question) => (
+        <div key={question.id()}>{question.displayName()}</div>
       ))}
       <TestInnerComponent />
     </div>
@@ -105,7 +105,7 @@ const TestInnerComponent = () => {
 };
 
 const setup = () => {
-  setupDatabasesEndpoints([TEST_DB]);
+  setupCardsEndpoints([TEST_CARD]);
   setupTablesEndpoints([TEST_TABLE]);
   return renderWithProviders(<TestComponent />);
 };
@@ -122,9 +122,9 @@ describe("useEntityListQuery", () => {
 
     await waitForLoaderToBeRemoved();
 
-    expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
+    expect(screen.getByText(TEST_CARD.name)).toBeInTheDocument();
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
-    expect(fetchMock.callHistory.calls("path:/api/database")).toHaveLength(1);
+    expect(fetchMock.callHistory.calls("path:/api/card")).toHaveLength(1);
     expect(fetchMock.callHistory.calls("path:/api/table")).toHaveLength(1);
   });
 
@@ -134,9 +134,9 @@ describe("useEntityListQuery", () => {
     await waitForLoaderToBeRemoved();
     rerender(<TestComponent />);
 
-    expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
+    expect(screen.getByText(TEST_CARD.name)).toBeInTheDocument();
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
-    expect(fetchMock.callHistory.calls("path:/api/database")).toHaveLength(1);
+    expect(fetchMock.callHistory.calls("path:/api/card")).toHaveLength(1);
     expect(fetchMock.callHistory.calls("path:/api/table")).toHaveLength(1);
   });
 
@@ -148,9 +148,9 @@ describe("useEntityListQuery", () => {
     rerender(<TestComponent />);
     await waitForLoaderToBeRemoved();
 
-    expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
+    expect(screen.getByText(TEST_CARD.name)).toBeInTheDocument();
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
-    expect(fetchMock.callHistory.calls("path:/api/database")).toHaveLength(1);
+    expect(fetchMock.callHistory.calls("path:/api/card")).toHaveLength(1);
     expect(fetchMock.callHistory.calls("path:/api/table")).toHaveLength(2);
   });
 
@@ -158,12 +158,12 @@ describe("useEntityListQuery", () => {
     setup();
 
     await waitForLoaderToBeRemoved();
-    await userEvent.click(screen.getByText("Invalidate databases"));
+    await userEvent.click(screen.getByText("Invalidate questions"));
 
     await waitFor(() => {
-      expect(fetchMock.callHistory.calls("path:/api/database")).toHaveLength(2);
+      expect(fetchMock.callHistory.calls("path:/api/card")).toHaveLength(2);
     });
-    expect(await screen.findByText(TEST_DB.name)).toBeInTheDocument();
+    expect(await screen.findByText(TEST_CARD.name)).toBeInTheDocument();
   });
 
   it("should reload data when the reload flag is on and it is explicitly invalidated", async () => {
@@ -182,14 +182,14 @@ describe("useEntityListQuery", () => {
 
   it("should not remove loader in case second api call is cached", async () => {
     const { rerender } = setup();
-    fetchMock.modifyRoute("database-list", {
+    fetchMock.modifyRoute("cards-list", {
       response: async () => {
         await delay(100);
-        return [TEST_DB];
+        return [TEST_CARD];
       },
     });
     await waitFor(() => {
-      expect(fetchMock.callHistory.calls("path:/api/database")).toHaveLength(1);
+      expect(fetchMock.callHistory.calls("path:/api/card")).toHaveLength(1);
     });
 
     rerender(
@@ -200,7 +200,7 @@ describe("useEntityListQuery", () => {
     );
 
     // second component should not create extra request, make sure that caching works as expected
-    expect(fetchMock.callHistory.calls("path:/api/database")).toHaveLength(1);
+    expect(fetchMock.callHistory.calls("path:/api/card")).toHaveLength(1);
 
     expect(
       within(screen.getByTestId("test2")).getByTestId("loading-indicator"),
@@ -210,7 +210,7 @@ describe("useEntityListQuery", () => {
 
     await delay(0); // trigger extra event loop to make sure React state has been updated
 
-    expect(fetchMock.callHistory.calls("path:/api/database")).toHaveLength(1);
+    expect(fetchMock.callHistory.calls("path:/api/card")).toHaveLength(1);
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
   });
 });

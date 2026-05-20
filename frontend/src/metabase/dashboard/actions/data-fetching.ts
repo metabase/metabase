@@ -27,17 +27,18 @@ import {
 import { entityCompatibleQuery } from "metabase/entities/utils";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
-import { addFields } from "metabase/redux/metadata";
+import { updateMetadata } from "metabase/redux/metadata";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
+import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   AutoApi,
   DashboardApi,
   EmbedApi,
-  MetabaseApi,
   PublicApi,
   maybeUsePivotEndpoint,
+  runAdhocDatasetQuery,
   shouldUsePivotEndpoint,
 } from "metabase/services";
 import {
@@ -379,11 +380,13 @@ export const fetchCardDataAction = createAsyncThunk<
       )) as Dataset | { error: unknown };
     } else if (dashboardType === "transient" || dashboardType === "inline") {
       result = (await fetchDataOrError(
-        maybeUsePivotEndpoint(
-          MetabaseApi.dataset,
+        runAdhocDatasetQuery(
+          dispatch,
           card,
           metadata,
-        )({ ...datasetQuery, ignore_cache: ignoreCache }, queryOptions),
+          { ...datasetQuery, ignore_cache: ignoreCache },
+          deferred,
+        ),
       )) as Dataset | { error: unknown };
     } else {
       const dashcardBeforeEditing = getDashCardBeforeEditing(
@@ -827,7 +830,11 @@ export const fetchDashboard = createAsyncThunk(
       }
 
       if (result.param_fields) {
-        await dispatch(addFields(Object.values(result.param_fields).flat()));
+        await dispatch(
+          updateMetadata(Object.values(result.param_fields).flat(), [
+            FieldSchema,
+          ]),
+        );
       }
 
       const lastUsedParametersValues = result["last_used_param_values"] ?? {};

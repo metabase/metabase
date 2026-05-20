@@ -11,7 +11,6 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
    [metabase.driver.snowflake :as driver.snowflake]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -190,7 +189,7 @@
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
     (with-redefs [test.data.snowflake/qualified-db-name (constantly "v4_test-data")]
       (testing "Create DB DDL statements"
-        (is (= "DROP DATABASE IF EXISTS \"v4_test-data\"; CREATE DATABASE \"v4_test-data\";"
+        (is (= "CREATE DATABASE IF NOT EXISTS \"v4_test-data\";"
                (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition defs/test-data)))))
       (testing "Create Table DDL statements"
         (is (= (map
@@ -978,7 +977,7 @@
     (qp.store/with-metadata-provider meta/metadata-provider
       (is (= {:replacement-snippet     "'2014-08-02'::date"
               :prepared-statement-args nil}
-             (sql.params.substitution/->replacement-snippet-info :snowflake (params/->Date "2014-08-02")))))))
+             (sql.params.substitution/->replacement-snippet-info :snowflake (lib/parsed-date-param "2014-08-02")))))))
 
 (deftest report-timezone-test
   (mt/test-driver :snowflake

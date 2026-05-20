@@ -108,7 +108,7 @@
                                                       :last_name  "Analyst"
                                                       :email      "sandboxed-analyst@metabase.com"
                                                       :is_data_analyst true}]
-        (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
+        (mt/with-dynamic-fn-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
           (let [result (:data (mt/user-http-request analyst :get 200 "user"))]
             (is (= ["sandboxed-analyst@metabase.com"]
                    (map :email result)))))))))
@@ -253,7 +253,7 @@
                             (map :email))))
 
                 (testing "But returns self if the user is sandboxed"
-                  (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
+                  (mt/with-dynamic-fn-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
                     (is (= [rasta]
                            (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
                                 (map :email)))))))))

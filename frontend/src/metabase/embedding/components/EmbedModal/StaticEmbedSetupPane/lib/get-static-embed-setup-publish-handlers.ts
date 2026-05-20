@@ -5,10 +5,8 @@ import {
   trackStaticEmbedUnpublished,
 } from "metabase/embedding/lib/analytics";
 import { countEmbeddingParameterOptions } from "metabase/embedding/lib/count-embedding-parameter-options";
-import type {
-  EmbedResourceParameter,
-  EmbeddingParameters,
-} from "metabase/embedding/types";
+import type { EmbedResourceParameter } from "metabase/embedding/types";
+import type { EmbeddingParameters } from "metabase-types/api";
 
 import { getDefaultEmbeddingParams } from "./get-default-embedding-params";
 

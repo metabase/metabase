@@ -55,15 +55,15 @@
 
 (deftest extract-sample-database-test
   (testing "The Sample Database is copied out of the JAR into the plugins directory before the DB details are saved."
-    (with-redefs [sync/sync-database! (constantly nil)]
+    (mt/with-dynamic-fn-redefs [sync/sync-database! (constantly nil)]
       (with-temp-sample-database-db [db]
         (let [db-path (get-in db [:details :db])]
           (is (re-matches extracted-db-path-regex db-path))))))
 
   (testing "If the plugins directory is not creatable or writable, we fall back to reading from the DB in the JAR"
     (memoize/memo-clear! @#'plugins/plugins-dir*)
-    (let [original-var u.files/create-dir-if-not-exists!]
-      (with-redefs [u.files/create-dir-if-not-exists! (fn [_] (throw (Exception.)))]
+    (let [original-var (mt/original-fn #'u.files/create-dir-if-not-exists!)]
+      (mt/with-dynamic-fn-redefs [u.files/create-dir-if-not-exists! (fn [_] (throw (Exception.)))]
         (with-temp-sample-database-db [db]
           (let [db-path (get-in db [:details :db])]
             (is (not (str/includes? db-path "plugins"))))
