@@ -1760,7 +1760,7 @@
    ;; `:query` for reasons I do not fully remember (perhaps to make it easier to differentiate them from MBQL source
    ;; queries).
    [:native [:ref ::NativeSourceQuery]]
-   [:mbql   [:ref ::MBQLQuery]]])
+   [:mbql   [:ref ::MBQLInnerQuery]]])
 
 (defn- normalize-legacy-column
   "Normalize legacy column metadata when using [[metabase.lib.normalize/normalize]]."
@@ -2060,7 +2060,7 @@
                 (into #{} (map without-temporal-unit) breakout)
                 (into #{} (map without-temporal-unit) fields))))]))
 
-(mr/def ::MBQLQuery
+(mr/def ::MBQLInnerQuery
   [:and
    [:map
     {:decode/normalize lib.schema.common/normalize-map}
@@ -2104,7 +2104,9 @@
      :type               "An inner query must not include :type, this will cause us to mix it up with an outer query"
      :aggregation-idents ":aggregation-idents is deprecated and should not be used"
      :breakout-idents    ":breakout-idents is deprecated and should not be used"
-     :expression-idents  ":expression-idents is deprecated and should not be used"})])
+     :expression-idents  ":expression-idents is deprecated and should not be used"
+     :query              "An inner query should not itself contain :query -- something must have been nested improperly"
+     :native             "An inner MBQL query should not have :native -- this is only for inner native queries"})])
 
 (mr/def ::WidgetType
   "Schema for valid values of `:widget-type` for a `::TemplateTag.FieldFilter`."
@@ -2210,7 +2212,7 @@
       :query :native]]
 
     [:native     {:optional true} [:ref ::NativeQuery]]
-    [:query      {:optional true} [:ref ::MBQLQuery]]
+    [:query      {:optional true} [:ref ::MBQLInnerQuery]]
     [:parameters {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]
     ;;
     ;; OPTIONS

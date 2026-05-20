@@ -340,7 +340,7 @@
 
 (def MBQLQuery
   "Schema for a legacy MBQL inner query."
-  ::mbql.s/MBQLQuery)
+  ::mbql.s/MBQLInnerQuery)
 
 (def Join
   "Schema for a legacy MBQL join."

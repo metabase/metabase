@@ -87,7 +87,13 @@
      ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
      ;; Only restriction is that, if present, it is non-nil.
      ;; It is valid to have a blank query like `{:type :native}` in legacy.
-     [:native {:optional true} some?]
+     [:native {:optional true} [:and
+                                some?
+                                [:fn
+                                 {:error/message ":native should not be a map with :query -- this likely means a legacy inner query was converted incorrectly"}
+                                 (fn [x]
+                                   (or (not (map? x))
+                                       (not (:query x))))]]]
      ;; any parameters that should be passed in along with the query to the underlying query engine, e.g. for JDBC these
      ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
      ;; nil.
@@ -363,7 +369,8 @@
    (common/disallowed-keys
     {:source-metadata "A query stage should not have :source-metadata, the prior stage should have :lib/stage-metadata instead"
      :source-query    ":source-query is not allowed in MBQL 5 queries."
-     :type            ":type is not allowed in a query stage in any version of MBQL"})])
+     :type            ":type is not allowed in a query stage in any version of MBQL"
+     :database        ":database is not allowed in a query stage, only at the top level of a query."})])
 
 (mr/def ::stage.initial
   [:multi {:dispatch      lib-type

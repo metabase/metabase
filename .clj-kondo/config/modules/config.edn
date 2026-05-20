@@ -1749,6 +1749,7 @@
               metabase.query-processor.middleware.permissions
               metabase.query-processor.parameters.dates
               metabase.query-processor.parameters.operators
+              metabase.query-processor.parameters.values
               metabase.query-processor.pipeline
               metabase.query-processor.pivot
               metabase.query-processor.preprocess
@@ -2645,6 +2646,7 @@
            driver
            events
            lib
+           lib-be
            models
            query-processor
            util

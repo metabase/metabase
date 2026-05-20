@@ -319,6 +319,7 @@
                            (wrap-value-literals-in-clause nil nil clause)))
                         first)))))
 
+;; NOCOMMIT - we can remove this now
 (mu/defn wrap-value-literals-in-mbql :- [:cat :keyword [:* :any]]
   "Wrapper around `wrap-value-literals-in-mbql5` that converts the clause back to legacy MBQL.
   DEPRECATED: This is for legacy compatibility and should not be used in new code."

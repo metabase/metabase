@@ -29,6 +29,15 @@ title: Driver interface changelog
   `metabase.driver-api.core/simplify-compound-filter`, deprecated in 0.57.0, have been removed; use the
   `metabase.lib.core` versions instead. The new versions operate on MBQL 5 instead of MBQL 4.
 
+- The `metabase.driver.common.parameters.values` namespace, deprecated in 0.57.0, has been removed. Use the equivalent
+  QP namespace, `metabase.query-processor.parameters.values`, instead. Note that this namespace operates on MBQL 5
+  rather than MBQL 4.
+
+- `metabase.driver/substitute-native-parameters` has been deprecated; `substitute-native-parameters-in-stage-method`
+  replaces it. The new method operates on MBQL 5 rather than MBQL 4. `substitute-native-parameters` is no longer
+  called in Metabase 0.62.0+; on the off chance that you implemented it, please implement
+  `substitute-native-parameters-in-stage-method` instead as soon as possible.
+
 ## Metabase 0.61.0
 
 - Added the following driver multimethods to support MBQL5 compilation migration:
