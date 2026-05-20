@@ -38,6 +38,12 @@ export const NotificationsSearchInput = ({
 
   const showLoader = isLoading || query !== debounced;
 
+  const handleClear = () => {
+    setQuery("");
+    lastPushedRef.current = "";
+    onChangeRef.current("");
+  };
+
   const renderRightSection = () => {
     if (showLoader) {
       return <Loader size="xs" />;
@@ -45,9 +51,7 @@ export const NotificationsSearchInput = ({
     if (query === "") {
       return null;
     }
-    return (
-      <Input.ClearButton c="text-secondary" onClick={() => setQuery("")} />
-    );
+    return <Input.ClearButton c="text-secondary" onClick={handleClear} />;
   };
 
   return (
