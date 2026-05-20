@@ -3,12 +3,14 @@
   (:require
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
+   [metabase.driver :as driver]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.field-values.union-distinct :as union-distinct]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -20,22 +22,6 @@
                "Deleting FieldValues...")
     (field-values/clear-field-values-for-field! field)
     ::field-values/fv-deleted))
-
-(mu/defn- update-field-values-for-field!
-  [field :- i/FieldInstance]
-  (log/debug (u/format-color 'green "Looking into updating FieldValues for %s" (sync-util/name-for-logging field)))
-  (let [field-values (field-values/get-latest-full-field-values (u/the-id field))]
-    (cond
-      (not field-values)
-      (log/infof "%s does not have FieldValues. Skipping..."
-                 (sync-util/name-for-logging field))
-
-      (field-values/inactive? field-values)
-      (log/infof "%s has not been used since %s. Skipping..."
-                 (sync-util/name-for-logging field) (t/format "yyyy-MM-dd" (t/local-date-time (:last_used_at field-values))))
-
-      :else
-      (field-values/create-or-update-full-field-values! field :field-values field-values))))
 
 (defn- update-field-value-stats-count [counts-map result]
   (if (instance? Exception result)
@@ -54,17 +40,101 @@
   [table]
   (t2/select :model/Field :table_id (u/the-id table), :active true, :visibility_type "normal"))
 
+(defn- sql-driver?
+  "Does this `table`'s database use a SQL-derived driver? Determines whether we can use the
+   single-query UNION path or have to fall back to per-field DISTINCT queries (e.g. for Mongo)."
+  [table]
+  (let [engine (:engine (t2/select-one :model/Database :id (:db_id table)))]
+    (isa? driver/hierarchy engine :sql)))
+
+(defn- empty-counts [] {:errors 0, :created 0, :updated 0, :deleted 0})
+
+(defn- update-field-values-for-table-union!
+  "Bulk-fetch distinct values for `fields-to-sync` via one UNION ALL query, then persist per field.
+   If the bulk query fails, every field in the batch is reported as an error (no per-field
+   fallback — by design)."
+  [table fields-to-sync fvs-map]
+  (let [results (sync-util/with-error-handling
+                 (format "Error fetching union distinct values for %s" (sync-util/name-for-logging table))
+                  (union-distinct/union-distinct-values (u/the-id table) fields-to-sync))]
+    (if (or (nil? results) (instance? Throwable results))
+      (assoc (empty-counts) :errors (count fields-to-sync))
+      (reduce (fn [counts field]
+                (let [field-id        (u/the-id field)
+                      existing-fv     (get fvs-map field-id)
+                      {:keys [values raw-count]} (get results field-id {:values [] :raw-count 0})
+                      {capped-values :values
+                       cap-hit?      :has_more_values} (field-values/limit-values values)
+                      row-limit-hit?  (>= raw-count union-distinct/*distinct-limit*)
+                      has-more-values (boolean (or cap-hit? row-limit-hit?))
+                      result          (sync-util/with-error-handling
+                                       (format "Error updating field values for %s"
+                                               (sync-util/name-for-logging field))
+                                        (field-values/persist-field-values!
+                                         field existing-fv capped-values has-more-values))]
+                  (update-field-value-stats-count counts result)))
+              (empty-counts)
+              fields-to-sync))))
+
+(defn- update-field-values-for-table-per-field!
+  "Sequential per-field fallback for non-SQL drivers that can't run the UNION query (e.g. Mongo).
+   Matches master's behavior — one DISTINCT per field, no batching."
+  [_table fields-to-sync fvs-map]
+  (reduce (fn [counts field]
+            (let [existing-fv (get fvs-map (u/the-id field))
+                  result      (sync-util/with-error-handling
+                               (format "Error updating field values for %s"
+                                       (sync-util/name-for-logging field))
+                                (field-values/create-or-update-full-field-values!
+                                 field :field-values existing-fv))]
+              (update-field-value-stats-count counts result)))
+          (empty-counts)
+          fields-to-sync))
+
 (mu/defn update-field-values-for-table!
-  "Update the FieldValues for all Fields (as needed) for `table`."
+  "Update the FieldValues for all Fields (as needed) for `table`.
+   SQL drivers use a single UNION ALL query covering every list-eligible field with an active
+   FieldValues row. Non-SQL drivers fall back to sequential per-field DISTINCT queries."
   [table :- i/TableInstance]
-  (reduce (fn [fv-change-counts field]
-            (let [result (sync-util/with-error-handling (format "Error updating field values for %s" (sync-util/name-for-logging field))
-                           (if (field-values/field-should-have-field-values? field)
-                             (update-field-values-for-field! field)
-                             (clear-field-values-for-field! field)))]
-              (update-field-value-stats-count fv-change-counts result)))
-          {:errors 0, :created 0, :updated 0, :deleted 0}
-          (table->fields-to-scan table)))
+  (let [all-fields                        (table->fields-to-scan table)
+        {to-sync  true
+         to-clear false}                  (group-by #(boolean (field-values/field-should-have-field-values? %))
+                                                    all-fields)
+        clear-counts                      (reduce (fn [counts field]
+                                                    (let [result (sync-util/with-error-handling
+                                                                  (format "Error clearing field values for %s"
+                                                                          (sync-util/name-for-logging field))
+                                                                   (clear-field-values-for-field! field))]
+                                                      (update-field-value-stats-count counts result)))
+                                                  (empty-counts)
+                                                  to-clear)]
+    (if (empty? to-sync)
+      clear-counts
+      (let [fvs-map        (field-values/batched-get-latest-full-field-values (map u/the-id to-sync))
+            fields-to-sync (filterv (fn [field]
+                                      (let [fv (get fvs-map (u/the-id field))]
+                                        (cond
+                                          (not fv)
+                                          (do (log/infof "%s does not have FieldValues. Skipping..."
+                                                         (sync-util/name-for-logging field))
+                                              false)
+
+                                          (field-values/inactive? fv)
+                                          (do (log/infof "%s has not been used since %s. Skipping..."
+                                                         (sync-util/name-for-logging field)
+                                                         (t/format "yyyy-MM-dd"
+                                                                   (t/local-date-time (:last_used_at fv))))
+                                              false)
+
+                                          :else true)))
+                                    to-sync)
+            sync-counts    (cond
+                             (empty? fields-to-sync) (empty-counts)
+                             (sql-driver? table)     (update-field-values-for-table-union!
+                                                      table fields-to-sync fvs-map)
+                             :else                   (update-field-values-for-table-per-field!
+                                                      table fields-to-sync fvs-map))]
+        (merge-with + clear-counts sync-counts)))))
 
 (mu/defn- update-field-values-for-database!
   [database :- i/DatabaseInstance]

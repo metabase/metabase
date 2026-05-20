@@ -371,6 +371,32 @@
            (reduced (assoc result ::reached-char-len-limit true))
            (rf result row)))))))
 
+(defn limit-values
+  "Dedup, sort, and apply the `*total-max-length*` character cap to a sequence of scalar `values`.
+   Returns `{:values sorted-vec, :has_more_values bool}` where `:has_more_values` reflects only
+   the char-length cap (i.e. there are more distinct values beyond what fit in the byte budget).
+
+   Used by the bulk / UNION distinct-fetching paths to finalize per-field value sets in memory."
+  [values]
+  (loop [str-length 0
+         acc        (sorted-set)
+         values     values]
+    (cond
+      (empty? values)
+      {:values (vec acc) :has_more_values false}
+
+      (nil? (first values)) ; skip NULLs
+      (recur str-length acc (rest values))
+
+      (contains? acc (first values))
+      (recur str-length acc (rest values))
+
+      :else
+      (let [new-str-length (+ str-length (count (str (first values))))]
+        (if (> new-str-length *total-max-length*)
+          {:values (vec acc) :has_more_values true}
+          (recur new-str-length (conj acc (first values)) (rest values)))))))
+
 ;;; TODO -- move into [[metabase.warehouse-schema.metadata-from-qp]] ??
 (mu/defn distinct-values
   "Fetch a sequence of distinct values for `field` that are below the [[*total-max-length*]] threshold. If the values
@@ -454,54 +480,70 @@
    (when (seq field-ids)
      (t2/select :model/FieldValues :field_id [:in field-ids] :type :full :hash_key nil))))
 
-(defn create-or-update-full-field-values!
-  "Create or update the full FieldValues object for `field`. If the FieldValues object already exists, then update values for
-   it; otherwise create a new FieldValues object with the newly fetched values. Returns whether the field values were
-   created/updated/deleted as a result of this call.
+(defn persist-field-values!
+  "Persist pre-fetched distinct values for a single field. Compares against `existing-fv` and
+   creates / updates / skips / deletes as appropriate. Returns one of `::fv-skipped`,
+   `::fv-updated`, `::fv-created`, or `::fv-deleted`.
 
-  Note that if the full FieldValues are create/updated/deleted, it'll delete all the Advanced FieldValues of the same `field`."
-  [field & {:keys [field-values human-readable-values]}]
+   - `existing-fv`: the current FieldValues row for this field, or `nil` if none exists.
+   - `values`: the new collection of scalar distinct values for the field (already char-length
+     capped and sorted by the caller).
+   - `has_more_values`: boolean — whether `values` is known to be a subset of all possible values.
+
+   Note that this only persists *Full* FieldValues. Advanced FieldValues for the same field are
+   deleted as a side effect of `clear-field-values-for-field!` when `values` is empty."
+  [field existing-fv values has_more_values]
+  (let [field-name (or (:name field) (:id field))]
+    (cond
+      (empty? values)
+      (do
+        (clear-field-values-for-field! field)
+        ::fv-deleted)
+
+      ;; if FieldValues object doesn't exist create one
+      (nil? existing-fv)
+      (do
+        (log/debugf "Storing FieldValues for Field %s..." field-name)
+        (app-db/select-or-insert! :model/FieldValues {:field_id (u/the-id field), :type :full}
+                                  (constantly {:has_more_values       has_more_values
+                                               :values                values
+                                               :human_readable_values nil}))
+        ::fv-created)
+
+      ;; if existing FieldValues won't change, skip it
+      (and (= (:values existing-fv) values)
+           (= (:has_more_values existing-fv) has_more_values))
+      (do
+        (log/debugf "FieldValues for Field %s remain unchanged. Skipping..." field-name)
+        ::fv-skipped)
+
+      ;; otherwise the FieldValues object already exists; update values in it
+      :else
+      (do
+        (log/debugf "Storing updated FieldValues for Field %s..." field-name)
+        (t2/update! :model/FieldValues (u/the-id existing-fv)
+                    (m/remove-vals nil?
+                                   {:has_more_values       has_more_values
+                                    :values                values
+                                    :human_readable_values (fixup-human-readable-values existing-fv values)}))
+        ::fv-updated))))
+
+(defn create-or-update-full-field-values!
+  "Create or update the full FieldValues object for `field`. If the FieldValues object already
+   exists, then update values for it; otherwise create a new FieldValues object with the newly
+   fetched values. Returns whether the field values were created / updated / deleted as a result
+   of this call.
+
+   Note that if the full FieldValues are create / updated / deleted, it'll delete all the
+   Advanced FieldValues of the same `field`."
+  [field & {:keys [field-values]}]
   (if (field-should-have-field-values? field)
-    (let [field-values              (or field-values (get-latest-full-field-values (u/the-id field)))
+    (let [existing-fv               (or field-values (get-latest-full-field-values (u/the-id field)))
           {unwrapped-values :values
            :keys [has_more_values]} (distinct-values field)
           ;; unwrapped-values are 1-tuples, so we need to unwrap their values for storage
-          values                    (seq (map first unwrapped-values))
-          field-name                (or (:name field) (:id field))]
-      (cond
-        (and values
-             (= (:values field-values) values)
-             (= (:has_more_values field-values) has_more_values))
-        (do
-          (log/debugf "FieldValues for Field %s remain unchanged. Skipping..." field-name)
-          ::fv-skipped)
-
-        ;; if the FieldValues object already exists then update values in it
-        (and field-values values)
-        (do
-          (log/debugf "Storing updated FieldValues for Field %s..." field-name)
-          (t2/update! :model/FieldValues (u/the-id field-values)
-                      (m/remove-vals nil?
-                                     {:has_more_values       has_more_values
-                                      :values                values
-                                      :human_readable_values (fixup-human-readable-values field-values values)}))
-          ::fv-updated)
-
-        ;; if FieldValues object doesn't exist create one
-        values
-        (do
-          (log/debugf "Storing FieldValues for Field %s..." field-name)
-          (app-db/select-or-insert! :model/FieldValues {:field_id (u/the-id field), :type :full}
-                                    (constantly {:has_more_values       has_more_values
-                                                 :values                values
-                                                 :human_readable_values human-readable-values}))
-          ::fv-created)
-
-        ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist
-        :else
-        (do
-          (clear-field-values-for-field! field)
-          ::fv-deleted)))
+          values                    (seq (map first unwrapped-values))]
+      (persist-field-values! field existing-fv values has_more_values))
     (do
       (clear-field-values-for-field! field)
       ::fv-deleted)))
@@ -509,13 +551,12 @@
 (defn get-or-create-full-field-values!
   "Create FieldValues for a `Field` if they *should* exist but don't already exist. Returns the existing or newly
   created FieldValues for `Field`. Updates :last_used_at so sync will know this is active."
-  {:arglists '([field] [field human-readable-values])}
-  [{field-id :id field-values :values :as field} & [human-readable-values]]
+  [{field-id :id field-values :values :as field}]
   {:pre [(integer? field-id)]}
   (when (field-should-have-field-values? field)
     (let [existing (or (not-empty field-values) (get-latest-full-field-values field-id))]
       (if (or (not existing) (inactive? existing))
-        (case (create-or-update-full-field-values! field :human-readable-values human-readable-values)
+        (case (create-or-update-full-field-values! field)
           ::fv-deleted
           nil
 
@@ -548,21 +589,35 @@
     (into {} (for [table-id table-ids]
                [table-id (-> table-id table-id->db-id db-id->is-on-demand?)]))))
 
+(def ^:private ^:dynamic *on-demand-select-batch-size*
+  "Chunk size when fetching :model/Field rows for on-demand updates. Keeps a single SQL `IN (…)`
+   clause under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100)."
+  500)
+
 (defn update-field-values-for-on-demand-dbs!
   "Update the FieldValues for any Fields with `field-ids` if the Field should have FieldValues and it belongs to a
-  Database that is set to do 'On-Demand' syncing."
+  Database that is set to do 'On-Demand' syncing.
+
+  Groups fields by table and uses the UNION-distinct path (one warehouse query per table) on SQL
+  drivers; non-SQL drivers fall back to per-field queries."
   [field-ids]
   (let [fields (when (seq field-ids)
-                 (filter field-should-have-field-values?
-                         (t2/select ['Field :name :id :base_type :effective_type :coercion_strategy
-                                     :semantic_type :visibility_type :table_id :has_field_values]
-                                    :id [:in field-ids])))
-        table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))]
-    (doseq [{table-id :table_id, :as field} fields]
-      (when (table-id->is-on-demand? table-id)
-        (log/debugf "Field %s '%s' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
-                    (u/the-id field) (:name field))
-        (create-or-update-full-field-values! field)))))
+                 (->> field-ids
+                      (partition-all *on-demand-select-batch-size*)
+                      (mapcat (fn [batch]
+                                (t2/select ['Field :name :id :base_type :effective_type :coercion_strategy
+                                            :semantic_type :visibility_type :table_id :has_field_values]
+                                           :id [:in batch])))
+                      (filter field-should-have-field-values?)))
+        table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))
+        on-demand-fields        (filter #(table-id->is-on-demand? (:table_id %)) fields)]
+    (when (seq on-demand-fields)
+      (log/debugf "Updating FieldValues for %d on-demand fields across %d tables"
+                  (count on-demand-fields) (count (set (map :table_id on-demand-fields))))
+      ;; `requiring-resolve` breaks the namespace cycle between
+      ;; `warehouse-schema.field-values.union-distinct` (which requires this namespace) and us.
+      ((requiring-resolve 'metabase.warehouse-schema.field-values.union-distinct/sync-fields-grouped-by-table!)
+       on-demand-fields))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Serialization                                                     |

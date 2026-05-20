@@ -489,3 +489,87 @@
   (testing "Ambiguous queries are upgraded to ensure invalid rows are filtered"
     (is (= {:type :full, :hash_key nil} (#'field-values/add-mismatched-hash-filter {:type :full})))
     (is (= {:type :sandbox, :hash_key [:not= nil]} (#'field-values/add-mismatched-hash-filter {:type :sandbox})))))
+
+;;; ----------------------------------- limit-values ------------------------------------
+
+(deftest ^:parallel limit-values-empty-test
+  (is (= {:values [] :has_more_values false} (field-values/limit-values []))))
+
+(deftest ^:parallel limit-values-skips-nils-test
+  (is (= {:values ["a" "b"] :has_more_values false}
+         (field-values/limit-values [nil "a" nil "b" nil]))))
+
+(deftest ^:parallel limit-values-dedupes-and-sorts-test
+  (is (= {:values [1 2 3] :has_more_values false}
+         (field-values/limit-values [3 1 2 1 3 2])))
+  (is (= {:values ["a" "b" "c"] :has_more_values false}
+         (field-values/limit-values ["b" "a" "c" "a"]))))
+
+(deftest limit-values-applies-char-cap-test
+  (binding [field-values/*total-max-length* 10]
+    (testing "Values fitting under the cap come through unchanged"
+      (is (= {:values ["ab" "cd" "ef"] :has_more_values false}
+             (field-values/limit-values ["ab" "cd" "ef"]))))
+    (testing "Values exceeding the cap trigger has_more_values=true"
+      (let [{:keys [values has_more_values]} (field-values/limit-values
+                                              ["aaa" "bbb" "ccc" "ddddd" "eeeee" "fffff"])]
+        (is (true? has_more_values))
+        (is (< (transduce (map (comp count str)) + 0 values) 11)
+            "Returned values' total char length stays under the cap")))))
+
+;;; ----------------------------------- persist-field-values! ----------------------------
+
+(deftest persist-field-values!-creates-test
+  (testing "nil existing-fv → ::fv-created and a row is written"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {tbl-id :id} {:db_id db-id, :name "t"}
+                   :model/Field    {field-id :id :as field} {:table_id tbl-id, :name "f"
+                                                             :has_field_values :list}]
+      (is (= ::field-values/fv-created
+             (field-values/persist-field-values! field nil ["a" "b"] false)))
+      (let [fv (t2/select-one :model/FieldValues :field_id field-id :type :full)]
+        (is (= ["a" "b"] (:values fv)))
+        (is (false? (:has_more_values fv)))))))
+
+(deftest persist-field-values!-skips-when-unchanged-test
+  (testing "Values + has_more_values both match → ::fv-skipped, no DB write"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {tbl-id :id} {:db_id db-id, :name "t"}
+                   :model/Field    {field-id :id :as field} {:table_id tbl-id, :name "f"
+                                                             :has_field_values :list}
+                   :model/FieldValues fv  {:field_id field-id, :type :full, :values ["a" "b"], :has_more_values false}]
+      (is (= ::field-values/fv-skipped
+             (field-values/persist-field-values! field fv ["a" "b"] false))))))
+
+(deftest persist-field-values!-updates-when-values-differ-test
+  (testing "Different values → ::fv-updated and the row is rewritten"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {tbl-id :id} {:db_id db-id, :name "t"}
+                   :model/Field    {field-id :id :as field} {:table_id tbl-id, :name "f"
+                                                             :has_field_values :list}
+                   :model/FieldValues fv  {:field_id field-id, :type :full, :values ["a"], :has_more_values false}]
+      (is (= ::field-values/fv-updated
+             (field-values/persist-field-values! field fv ["a" "b" "c"] false)))
+      (is (= ["a" "b" "c"]
+             (:values (t2/select-one :model/FieldValues :field_id field-id :type :full)))))))
+
+(deftest persist-field-values!-updates-when-has-more-changes-test
+  (testing "Same values but has_more_values flipped → ::fv-updated"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {tbl-id :id} {:db_id db-id, :name "t"}
+                   :model/Field    {field-id :id :as field} {:table_id tbl-id, :name "f"
+                                                             :has_field_values :list}
+                   :model/FieldValues fv  {:field_id field-id, :type :full, :values ["a"], :has_more_values false}]
+      (is (= ::field-values/fv-updated
+             (field-values/persist-field-values! field fv ["a"] true))))))
+
+(deftest persist-field-values!-deletes-when-empty-test
+  (testing "Empty values → ::fv-deleted and the FieldValues row is removed"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {tbl-id :id} {:db_id db-id, :name "t"}
+                   :model/Field    {field-id :id :as field} {:table_id tbl-id, :name "f"
+                                                             :has_field_values :list}
+                   :model/FieldValues _  {:field_id field-id, :type :full, :values ["a"], :has_more_values false}]
+      (is (= ::field-values/fv-deleted
+             (field-values/persist-field-values! field {:id 1 :values ["a"] :has_more_values false} [] false)))
+      (is (false? (t2/exists? :model/FieldValues :field_id field-id :type :full))))))

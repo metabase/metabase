@@ -6,17 +6,27 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
+   [metabase.warehouse-schema.field-values.union-distinct :as union-distinct]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (defn- do-with-mocked-field-values-updating!
-  "Run F the function responsible for updating FieldValues bound to a mock function that instead just records the names
-  of Fields that should have been updated. Returns the set of updated Field names."
+  "Run `f` with the on-demand FieldValues update entry points stubbed out to just record which
+   field names would have been refreshed. Returns the set of updated Field names.
+
+   On-demand uses [[union-distinct/sync-fields-grouped-by-table!]] on SQL drivers and falls
+   back to [[field-values/create-or-update-full-field-values!]] on non-SQL drivers; the mock
+   covers both so behavioural tests work regardless of the temp database's driver."
   [f]
   (let [updated-field-names (atom #{})]
-    (mt/with-dynamic-fn-redefs [field-values/create-or-update-full-field-values! (fn [field]
-                                                                                   (swap! updated-field-names conj (:name field)))]
+    (mt/with-dynamic-fn-redefs [field-values/create-or-update-full-field-values!
+                                (fn [field & _]
+                                  (swap! updated-field-names conj (:name field)))
+
+                                union-distinct/sync-fields-grouped-by-table!
+                                (fn [fields]
+                                  (swap! updated-field-names into (map :name fields)))]
       (f updated-field-names)
       @updated-field-names)))
 
