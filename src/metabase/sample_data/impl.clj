@@ -2,7 +2,6 @@
   "Code related to adding the Sample Database on launch, or adding it back programmatically (used by the REST API)."
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [metabase.plugins.core :as plugins]
    [metabase.sync.core :as sync]
    [metabase.util.files :as u.files]
@@ -16,7 +15,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private ^String sample-database-name     "Sample Database")
-(def ^:private ^String sample-database-filename "sample-database.db.mv.db")
+(def ^:private ^String sample-database-filename "sample-database.sqlite")
 
 (defn- sample-db-dir-from-env
   "Change the folder from which we load the sample database, used locally to avoid E2E to use the same file used for local development"
@@ -33,45 +32,33 @@
     (u.files/append-to-path base-dir sample-database-filename)))
 
 (defn- process-sample-db-path
+  "SQLite `:details` only need a filesystem path. URL-decode in case the path
+   gets URL-encoded when sourced from a JAR `URL`."
   [base-path]
-  (-> base-path
-      (str/replace #"\.mv\.db$" "")        ; strip the .mv.db suffix from the path
-      codec/url-decode                     ; for some reason the path can get URL-encoded so we decode it here
-      (str ";USER=GUEST;PASSWORD=guest"))) ; specify the GUEST user account created for the DB
-
-(defn- jar-db-details
-  [^URL resource]
-  (-> (.getPath resource)
-      (str/replace #"^file:" "zip:") ; to connect to an H2 DB inside a JAR just replace file: with zip: (this doesn't
-                                     ;   do anything when running from the Clojure CLI, which has no `file:` prefix)
-      process-sample-db-path))
+  (codec/url-decode base-path))
 
 (defn- extract-sample-database!
   []
   (u.files/with-open-path-to-resource [sample-db-path sample-database-filename]
     (let [dest-path (target-path)]
       (u.files/copy-file! sample-db-path dest-path)
-      (-> (str "file:" dest-path)
-          process-sample-db-path))))
+      (process-sample-db-path (str dest-path)))))
 
 (defn- try-to-extract-sample-database!
-  "Tries to extract the sample database out of the JAR (for performance) and then returns a db-details map
-   containing a path to the copied database."
+  "Extracts the sample database out of the JAR to the plugins dir and returns a
+   db-details map containing the filesystem path. SQLite-JDBC requires a real
+   file on disk; unlike H2 it cannot read straight from a JAR, so the
+   plugins-dir-must-be-writable assumption is now load-bearing."
   []
-  (let [resource (io/resource sample-database-filename)]
+  (let [^URL resource (io/resource sample-database-filename)]
     (when-not resource
-      (throw (Exception. (trs "Sample database DB file ''{0}'' cannot be found."
-                              sample-database-filename))))
-    {:db
-     (if-not (:temp (plugins/plugins-dir-info))
-       (extract-sample-database!)
-       (do
-         ;; If the plugins directory is a temp directory, fall back to reading the DB directly from the JAR until a
-         ;; working plugins directory is available. (We want to ensure the sample DB is in a stable location.)
-         (log/warn (str "Sample database could not be extracted to the plugins directory,"
-                        "which may result in slow startup times. "
-                        "Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."))
-         (jar-db-details resource)))}))
+      (throw (ex-info (trs "Sample database file ''{0}'' cannot be found."
+                           sample-database-filename)
+                      {:filename sample-database-filename})))
+    (when (:temp (plugins/plugins-dir-info))
+      (log/warn (str "Plugins directory is a temp directory; the sample database will be re-extracted on every startup. "
+                     "Set MB_PLUGINS_DIR to a writable directory to make this stable.")))
+    {:db (extract-sample-database!)}))
 
 (defn extract-and-sync-sample-database!
   "Adds the sample database as a Metabase DB if it doesn't already exist. If it does exist in the app DB,
@@ -85,7 +72,7 @@
                (first (t2/insert-returning-instances! :model/Database
                                                       :name      sample-database-name
                                                       :details   details
-                                                      :engine    :h2
+                                                      :engine    :sqlite
                                                       :is_sample true)))]
       (log/debug "Syncing Sample Database...")
       (sync/sync-database! db))
