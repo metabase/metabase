@@ -102,12 +102,14 @@
       (serdes.backfill/has-entity-id? model))))
 
 (defn- warn-if-version-mismatch
-  "Checks if the version in the exported entity's serdes/meta differs from the current Metabase version.
-  Logs a warning if there is a mismatch."
+  "Checks if the version in the exported entity differs from the current Metabase version.
+  Logs a warning if there is a mismatch. Entities without a `:metabase_version` (eg. Settings,
+  which are bundled into settings.yaml without per-entity metadata) are skipped."
   [ingested path]
-  (when (or (nil? *warned-version-mismatch*) (not @*warned-version-mismatch*))
-    (let [current-version config/mb-version-string
-          exported-version (or (:metabase_version ingested) "UNKNOWN")]
+  (when (and (or (nil? *warned-version-mismatch*) (not @*warned-version-mismatch*))
+             (:metabase_version ingested))
+    (let [current-version  config/mb-version-string
+          exported-version (:metabase_version ingested)]
       (when (not= exported-version current-version)
         (log/warnf "Version mismatch loading %s: exported with: %s, current version: %s"
                    path
