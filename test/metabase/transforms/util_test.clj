@@ -481,7 +481,9 @@
 
 (deftest statement-or-prepared-statement-round-trips-query-timeout-test
   (testing "statement-or-prepared-statement creates a Statement whose .getQueryTimeout reflects the currently
-            bound *query-timeout-ms*, for every SQL-JDBC driver supported in CI."
+            bound *query-timeout-ms*, for every SQL-JDBC driver in CI that supports `:jdbc/set-query-timeout`.
+            Drivers that opt out (e.g. SparkSQL — Hive's Thrift transport breaks if setQueryTimeout is called) are
+            excluded; we just verify the Statement was created."
     (mt/test-drivers (into #{} (filter #(isa? driver/hierarchy % :sql-jdbc)) (mt/normal-drivers))
       (sql-jdbc.execute/do-with-connection-with-options
        driver/*driver* (mt/db) {:write? false}
@@ -490,8 +492,11 @@
            (binding [driver.settings/*query-timeout-ms* (u/minutes->ms minutes)]
              (with-open [^java.sql.Statement stmt (sql-jdbc.execute/statement-or-prepared-statement
                                                    driver/*driver* conn "SELECT 1" [] nil)]
-               (is (= (* minutes 60) (.getQueryTimeout stmt))
-                   (str "driver " driver/*driver* " did not round-trip " minutes "min via setQueryTimeout"))))))))))
+               (if (driver/database-supports? driver/*driver* :jdbc/set-query-timeout nil)
+                 (is (= (* minutes 60) (.getQueryTimeout stmt))
+                     (str "driver " driver/*driver* " did not round-trip " minutes "min via setQueryTimeout"))
+                 (is (some? stmt)
+                     (str "driver " driver/*driver* " opted out of :jdbc/set-query-timeout; just confirming a Statement was returned")))))))))))
 
 (deftest run-cancelable-transform!-propagates-timeout-to-driver-test
   (testing "run-cancelable-transform! rebinds *query-timeout-ms* for the whole transform body, so any driver that
