@@ -491,7 +491,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                     </Box>
                     <FormSwitch
                       label={t`Auto-sync with git`}
-                      description={t`Periodically check the connected branch for changes and import them automatically. When off, you'll need to pull changes manually.`}
+                      description={t`Periodically import changes from the sync branch. When auto-sync is off, you'll need to pull changes from the sync branch manually.`}
                       mb="0.6125rem"
                       name={AUTO_IMPORT_KEY}
                       size="sm"
