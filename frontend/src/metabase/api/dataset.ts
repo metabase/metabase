@@ -1,5 +1,4 @@
 import { updateMetadata } from "metabase/redux/metadata";
-import type { Dispatch } from "metabase/redux/store";
 import { QueryMetadataSchema } from "metabase/schema";
 import type {
   CardQueryMetadata,
@@ -29,29 +28,6 @@ interface RefetchDeps {
 interface IgnorableError {
   ignore_error?: boolean;
 }
-
-const getAdhocQueryMetadataDefinition = {
-  query: (body: DatasetQuery) => ({
-    method: "POST" as const,
-    url: "/api/dataset/query_metadata",
-    body,
-  }),
-  providesTags: (metadata: CardQueryMetadata | undefined) =>
-    metadata ? provideAdhocQueryMetadataTags(metadata) : [],
-  onQueryStarted: (
-    _: DatasetQuery,
-    {
-      queryFulfilled,
-      dispatch,
-    }: {
-      queryFulfilled: Promise<{ data: CardQueryMetadata }>;
-      dispatch: Dispatch;
-    },
-  ) =>
-    handleQueryFulfilled(queryFulfilled, (data) =>
-      dispatch(updateMetadata(data, QueryMetadataSchema)),
-    ),
-};
 
 export type DownloadDatasetArgs = {
   method: "GET" | "POST";
@@ -130,15 +106,19 @@ export const datasetApi = Api.injectEndpoints({
       providesTags: () => provideAdhocDatasetTags(),
       keepUnusedDataFor: 0,
     }),
-    getAdhocQueryMetadata: builder.query<CardQueryMetadata, DatasetQuery>(
-      getAdhocQueryMetadataDefinition,
-    ),
-    getAdhocQueryMetadataCached: builder.query<CardQueryMetadata, DatasetQuery>(
-      {
-        ...getAdhocQueryMetadataDefinition,
-        keepUnusedDataFor: 30 * 60,
-      },
-    ),
+    getAdhocQueryMetadata: builder.query<CardQueryMetadata, DatasetQuery>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/dataset/query_metadata",
+        body,
+      }),
+      providesTags: (metadata) =>
+        metadata ? provideAdhocQueryMetadataTags(metadata) : [],
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, QueryMetadataSchema)),
+        ),
+    }),
     getNativeDataset: builder.query<NativeDatasetResponse, DatasetQuery>({
       query: (body) => ({
         method: "POST",
@@ -167,7 +147,6 @@ export const {
   useLazyGetAdhocQueryQuery,
   useGetAdhocPivotQueryQuery,
   useGetAdhocQueryMetadataQuery,
-  useGetAdhocQueryMetadataCachedQuery,
   useLazyGetAdhocQueryMetadataQuery,
   useGetNativeDatasetQuery,
   useGetRemappedParameterValueQuery,

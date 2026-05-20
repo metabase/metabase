@@ -1,10 +1,11 @@
 (ns metabase.explorations.interestingness
   "Bridge between the explorations worker and `metabase.interestingness.core`.
 
-  Each `:model/ExplorationQuery` is exactly one breakout dimension by one
-  aggregation, so its QP result has two columns: the dim and the measure. This
-  namespace converts that result into the `chart-config` shape that
-  `metabase.interestingness.chart/chart-interestingness` consumes."
+  Most `:model/ExplorationQuery` rows are a single breakout dimension by one aggregation, so
+  their QP result has two columns: the dim and the measure. The time-faceted variant additionally
+  carries a categorical-vs-temporal pair of breakouts → three columns, rendered as a multi-series
+  line chart. This namespace normalizes either shape into the `chart-config` consumed by
+  `metabase.interestingness.chart/chart-interestingness`."
   (:require
    [metabase.types.core]))
 
@@ -27,13 +28,33 @@
   [col]
   (some-> (or (:effective_type col) (:base_type col)) keyword (isa? :type/Number)))
 
+(defn- temporal-col?
+  [col]
+  (some-> (or (:effective_type col) (:base_type col)) keyword (isa? :type/Temporal)))
+
 (defn- pick-indices
-  "With exactly two cols, pick the metric (numeric) and dim (the other).
-  Returns `[dim-idx metric-idx]` or nil when no numeric col exists."
+  "Pick column roles given 2 or 3 result columns.
+
+    - 2 cols → `{:dim-idx <i> :metric-idx <i>}`
+    - 3 cols → `{:dim-idx <temporal-idx> :metric-idx <numeric-idx> :series-idx <remaining-idx>}`
+
+  Returns nil when no numeric column exists, or — for 3 cols — when no temporal column exists."
   [cols]
-  (let [metric-idx (first (keep-indexed (fn [i c] (when (numeric-col? c) i)) cols))]
+  (let [n          (count cols)
+        metric-idx (first (keep-indexed (fn [i c] (when (numeric-col? c) i)) cols))]
     (when metric-idx
-      [(- 1 metric-idx) metric-idx])))
+      (case n
+        2 {:dim-idx (- 1 metric-idx) :metric-idx metric-idx}
+        3 (let [temporal-idx (first (keep-indexed
+                                     (fn [i c]
+                                       (when (and (not= i metric-idx) (temporal-col? c)) i))
+                                     cols))
+                series-idx   (first (filter #(and (not= % metric-idx)
+                                                  (not= % temporal-idx))
+                                            (range n)))]
+            (when (and temporal-idx series-idx)
+              {:dim-idx temporal-idx :metric-idx metric-idx :series-idx series-idx}))
+        nil))))
 
 (defn- pair-filter
   "Drop rows whose metric value isn't a number; preserve x/y alignment."
@@ -54,29 +75,68 @@
     (if (#{"datetime" "date" "time"} dim-chart-type) "line" "bar")
     display))
 
+(defn- two-col-chart-config
+  [exploration-query cols rows dim-idx metric-idx]
+  (let [dim-col             (nth cols dim-idx)
+        metric-col          (nth cols metric-idx)
+        dim-chart-type      (col->chart-type dim-col)
+        [x-values y-values] (pair-filter rows dim-idx metric-idx)]
+    (when (seq y-values)
+      (let [series-name (or (:display_name metric-col) (:name metric-col) "value")]
+        {:display_type (effective-display-type (:display exploration-query) dim-chart-type)
+         :title        (:name exploration-query)
+         :series       {series-name
+                        {:x            {:name (or (:display_name dim-col) (:name dim-col))
+                                        :type dim-chart-type}
+                         :y            {:name series-name
+                                        :type "number"}
+                         :x_values     x-values
+                         :y_values     y-values
+                         :display_name series-name}}}))))
+
+(defn- three-col-chart-config
+  "Build a multi-series line chart-config: one series per distinct categorical value, x = temporal
+  breakout, y = metric. Categorical nulls collapse to `\"(empty)\"`; non-string values are
+  stringified to satisfy the `:map-of :string ::series-config` schema."
+  [exploration-query cols rows dim-idx metric-idx series-idx]
+  (let [dim-col        (nth cols dim-idx)
+        metric-col     (nth cols metric-idx)
+        dim-chart-type (col->chart-type dim-col)
+        metric-name    (or (:display_name metric-col) (:name metric-col) "value")
+        x-meta         {:name (or (:display_name dim-col) (:name dim-col))
+                        :type dim-chart-type}
+        y-meta         {:name metric-name :type "number"}
+        grouped        (->> rows
+                            (keep (fn [r]
+                                    (let [y (nth r metric-idx nil)]
+                                      (when (number? y)
+                                        (let [series-val (nth r series-idx nil)]
+                                          [(if (nil? series-val) "(empty)" (str series-val))
+                                           (nth r dim-idx nil)
+                                           y])))))
+                            (group-by first))]
+    (when (seq grouped)
+      {:display_type "line"
+       :title        (:name exploration-query)
+       :series       (into {}
+                           (map (fn [[series-key triples]]
+                                  [series-key
+                                   {:x            x-meta
+                                    :y            y-meta
+                                    :x_values     (mapv #(nth % 1) triples)
+                                    :y_values     (mapv #(nth % 2) triples)
+                                    :display_name series-key}]))
+                           grouped)})))
+
 (defn qp-result->chart-config
-  "Build a `metabase.interestingness.chart.types/chart-config` from an
-  `:model/ExplorationQuery` row and its in-memory QP result. Returns nil when
-  the result can't be reasonably scored: no rows, no numeric column, or fewer
-  than two cols."
+  "Build a `metabase.interestingness.chart.types/chart-config` from an `:model/ExplorationQuery`
+  row and its in-memory QP result. Returns nil when the result can't be scored: no rows, no
+  numeric column, fewer than two cols, or — for the 3-col faceted shape — no temporal column."
   [exploration-query qp-result]
   (let [cols (get-in qp-result [:data :cols])
         rows (get-in qp-result [:data :rows])]
-    (when (and (= 2 (count cols)) (seq rows))
-      (when-let [[dim-idx metric-idx] (pick-indices cols)]
-        (let [dim-col          (nth cols dim-idx)
-              metric-col       (nth cols metric-idx)
-              dim-chart-type   (col->chart-type dim-col)
-              [x-values y-values] (pair-filter rows dim-idx metric-idx)]
-          (when (seq y-values)
-            (let [series-name (or (:display_name metric-col) (:name metric-col) "value")]
-              {:display_type (effective-display-type (:display exploration-query) dim-chart-type)
-               :title        (:name exploration-query)
-               :series       {series-name
-                              {:x            {:name (or (:display_name dim-col) (:name dim-col))
-                                              :type dim-chart-type}
-                               :y            {:name series-name
-                                              :type "number"}
-                               :x_values     x-values
-                               :y_values     y-values
-                               :display_name series-name}}})))))))
+    (when (and (#{2 3} (count cols)) (seq rows))
+      (when-let [{:keys [dim-idx metric-idx series-idx]} (pick-indices cols)]
+        (case (count cols)
+          2 (two-col-chart-config exploration-query cols rows dim-idx metric-idx)
+          3 (three-col-chart-config exploration-query cols rows dim-idx metric-idx series-idx))))))

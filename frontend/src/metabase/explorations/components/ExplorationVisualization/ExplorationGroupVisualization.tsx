@@ -2,20 +2,12 @@ import { useElementSize } from "@mantine/hooks";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useGetAdhocQueryMetadataCachedQuery } from "metabase/api/dataset";
 import { useGetExplorationQueryResultQuery } from "metabase/api/exploration";
-import { getGroupDatasetQueryForMetadata } from "metabase/explorations/utils";
-import { createSeriesCard } from "metabase/metrics/utils/series";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Ellipsified, Group, Icon, Stack, Text } from "metabase/ui";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { isCartesianChart } from "metabase/visualizations";
-import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { LEGEND_ITEM_FONT_SIZE } from "metabase/visualizations/components/legend/LegendItem.styled";
-import * as Lib from "metabase-lib";
-import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   CardId,
   Exploration,
@@ -27,7 +19,6 @@ import type {
   Timeline,
   TimelineEvent,
   TimelineId,
-  VisualizationSettings,
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
@@ -35,13 +26,10 @@ import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
 import S from "./ExplorationVisualization.module.css";
 import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader";
 import { StickyXAxisChart } from "./StickyXAxisChart";
-import {
-  type MainChartAxisSnapshot,
-  useMainChartAxisSnapshot,
-} from "./useMainChartAxisSnapshot";
-import { getDimensions } from "./utils";
+import { useMainChartAxisSnapshot } from "./useMainChartAxisSnapshot";
+import { buildSeriesGroups } from "./utils";
 
-const MIN_PANEL_HEIGHT_PX = 300;
+const MIN_PANEL_HEIGHT_PX = 200;
 const STICKY_AXIS_HEIGHT_PX = 60;
 
 interface ExplorationGroupVisualizationProps {
@@ -60,10 +48,17 @@ export function ExplorationGroupVisualization(
   props: ExplorationGroupVisualizationProps,
 ) {
   return (
-    <Stack flex={1} h="100%" mih={0} py="3rem" pr="3rem" align="center">
+    <Stack
+      flex={1}
+      h="100%"
+      mih={0}
+      py="3rem"
+      pr="3rem"
+      align="center"
+      style={{ overflowY: "auto" }}
+    >
       <Stack
         flex={1}
-        mih={0}
         w="100%"
         bg="background-primary"
         bd="1px solid border"
@@ -152,21 +147,16 @@ function ExplorationGroupVisualizationChart({
   // RTKQ caches each per-query result for 30 minutes, so revisiting a
   // `page` group is instant.
   /* eslint-disable react-hooks/rules-of-hooks */
-  const datasets = queries.map((q) => useGetExplorationQueryResultQuery(q.id));
-  /* eslint-enable react-hooks/rules-of-hooks */
-
-  const { isLoading: isMetadataLoading } = useGetAdhocQueryMetadataCachedQuery(
-    getGroupDatasetQueryForMetadata(queries),
+  const datasetQueries = queries.map((q) =>
+    useGetExplorationQueryResultQuery(q.id),
   );
-  const metadata = useSelector(getMetadata);
+  /* eslint-enable react-hooks/rules-of-hooks */
 
   const groupName = group.name ?? t`Group`;
 
-  // Stable, length-tracked dependency for the series memo: the array of
-  // dataset references. Spreading directly into `useMemo`'s deps is
-  // disallowed (variable-length deps), so we collapse it to a single
-  // value that changes whenever any dataset reference changes.
-  const datasetRefs = datasets.map((d) => d.currentData);
+  // Extract the identity-stable dataset references so they can be
+  // individually tracked in the useMemo dependency array below.
+  const datasets = datasetQueries.map((q) => q.currentData);
 
   const metricsById: Map<CardId, ExplorationThreadMetric> = useMemo(() => {
     return new Map(
@@ -181,63 +171,28 @@ function ExplorationGroupVisualizationChart({
     [queries],
   );
 
-  const series = useMemo(() => {
-    if (datasetRefs.some((d) => !d) || isMetadataLoading) {
+  const seriesGroups = useMemo(() => {
+    const filteredDatasets = datasets.filter((d) => d !== undefined);
+    if (filteredDatasets.length < datasets.length) {
       return undefined;
     }
-    const baseLibQuery = Lib.fromJsQueryAndMetadata(
-      metadata,
-      queries[0].dataset_query,
-    );
-    const { display, settings } = Lib.defaultDisplay(baseLibQuery);
-    const baseDisplay = display === "table" ? "bar" : display;
-    const cartesian = isCartesianChart(baseDisplay);
-    return queries.map((q, i) => {
-      const dataset = datasetRefs[i]!;
-      const cardSettings: VisualizationSettings = { ...settings };
-      if (cartesian) {
-        cardSettings["graph.dimensions"] = getDimensions(dataset);
-        cardSettings["graph.split_panels"] = true; // Render every series in its own vertical pane along a shared x-axis
-        cardSettings["graph.y_axis.title_text"] = metricsById.get(
-          q.card_id,
-        )?.card?.name;
-      } else if (baseDisplay === "map") {
-        const color = queryColors[String(q.id)];
-        if (color) {
-          cardSettings["map.colors"] = getColorplethColorScale(color);
-        }
-      }
-      return {
-        card: createSeriesCard(q.id, q.name, baseDisplay, cardSettings),
-        data: dataset.data,
-      };
+    return buildSeriesGroups({
+      queries,
+      datasets: filteredDatasets,
+      metricsById,
+      queryColors,
     });
-    // datasetRefs is reconstructed every render but its identity-stable
+    // datasets is reconstructed every render but its identity-stable
     // entries make this safe; including the array directly would cause
     // an unstable dep warning.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queries, isMetadataLoading, metadata, queryColors, ...datasetRefs]);
-
-  const display = useMemo(() => series?.[0]?.card?.display, [series]);
-
-  const isCartesian = useMemo(
-    () => (display ? isCartesianChart(display) : false),
-    [display],
-  );
+  }, [queries, metricsById, queryColors, ...datasets]);
 
   const showTimelineDropdown = useMemo(() => {
-    const firstSeries = series?.[0];
-    const col = firstSeries?.data?.cols[0];
-    return firstSeries?.card?.display === "line" && col && isDate(col);
-  }, [series]);
+    return seriesGroups?.some((group) => group.isTimeseries);
+  }, [seriesGroups]);
 
-  // Extract the live x-axis option from the main chart's ECharts
-  // instance so the sticky axis below it uses the exact same font,
-  // tick formatter, axis name, and grid.left.
-  const { mainChartContainerRef, mainChartAxisSnapshot } =
-    useMainChartAxisSnapshot(isCartesian, series);
-
-  if (!series) {
+  if (!seriesGroups) {
     return (
       <ExplorationChartSkeleton
         name={groupName}
@@ -259,66 +214,77 @@ function ExplorationGroupVisualizationChart({
         groupQueries={queries}
         interestingTimelineIds={interestingTimelineIds}
       />
-      {isCartesian ? (
-        <CartesianPageBody
-          series={series}
-          queries={queries}
-          timelineEvents={timelineEvents}
-          mainChartContainerRef={mainChartContainerRef}
-          mainChartAxisSnapshot={mainChartAxisSnapshot}
-        />
-      ) : (
-        // Non-cartesian (e.g. `map`): render each query as its own
-        // chart, stacked vertically. Each chart gets a small header
-        // row (color dot + chart name) consolidated in a single
-        // wrap-flex legend at the top.
-        <Stack gap="md" flex={1} mih={0} style={{ overflowY: "auto" }}>
-          {queries.length > 1 && (
-            <Group
-              gap="0.75rem"
-              wrap="nowrap"
-              role="list"
-              aria-label={t`Legend`}
-            >
-              {series.map((s) => {
-                const color = queryColors[s.card.id];
-                return (
-                  <Group
-                    key={s.card.id}
-                    gap="xs"
-                    align="center"
-                    wrap="nowrap"
-                    role="listitem"
-                    p="0.125rem"
-                    miw={0}
-                  >
-                    <Box
-                      aria-hidden
-                      w="0.5rem"
-                      h="0.5rem"
-                      bdrs="50%"
-                      flex="none"
-                      style={{ background: color }}
-                    />
-                    <Ellipsified
-                      fw="bold"
-                      size="sm"
-                      fz={LEGEND_ITEM_FONT_SIZE}
-                      lh="normal"
+      {seriesGroups.map(({ series }) =>
+        isCartesianChart(series[0].card.display) ? (
+          <CartesianPageBody
+            key={series[0].card.id}
+            series={series}
+            timelineEvents={timelineEvents}
+          />
+        ) : (
+          // Non-cartesian (e.g. `map`): render each query as its own
+          // chart, stacked vertically. Each chart gets a small header
+          // row (color dot + chart name) consolidated in a single
+          // wrap-flex legend at the top.
+          <Stack
+            key={series[0].card.id}
+            gap="md"
+            flex={1}
+            mih={0}
+            style={{ overflowY: "auto" }}
+          >
+            {series.length > 1 && (
+              <Group
+                gap="0.75rem"
+                wrap="nowrap"
+                role="list"
+                aria-label={t`Legend`}
+              >
+                {series.map((s) => {
+                  const color = queryColors[s.card.id];
+                  return (
+                    <Group
+                      key={s.card.id}
+                      gap="xs"
+                      align="center"
+                      wrap="nowrap"
+                      role="listitem"
+                      p="0.125rem"
+                      miw={0}
                     >
-                      {s.card.name}
-                    </Ellipsified>
-                  </Group>
-                );
-              })}
-            </Group>
-          )}
-          {series.map((s) => (
-            <Box key={s.card.id} flex={1} mih="10rem" style={{ flexShrink: 0 }}>
-              <Visualization rawSeries={[s]} className={S.chart} />
-            </Box>
-          ))}
-        </Stack>
+                      <Box
+                        aria-hidden
+                        w="0.5rem"
+                        h="0.5rem"
+                        bdrs="50%"
+                        flex="none"
+                        style={{ background: color }}
+                      />
+                      <Ellipsified
+                        fw="bold"
+                        size="sm"
+                        fz={LEGEND_ITEM_FONT_SIZE}
+                        lh="normal"
+                      >
+                        {s.card.name}
+                      </Ellipsified>
+                    </Group>
+                  );
+                })}
+              </Group>
+            )}
+            {series.map((s) => (
+              <Box
+                key={s.card.id}
+                flex={1}
+                mih="10rem"
+                style={{ flexShrink: 0 }}
+              >
+                <Visualization rawSeries={[s]} className={S.chart} />
+              </Box>
+            ))}
+          </Stack>
+        ),
       )}
     </>
   );
@@ -326,23 +292,20 @@ function ExplorationGroupVisualizationChart({
 
 interface CartesianPageBodyProps {
   series: SingleSeries[];
-  queries: ExplorationQuery[];
   timelineEvents: TimelineEvent[];
-  mainChartContainerRef: React.RefObject<HTMLDivElement>;
-  mainChartAxisSnapshot: MainChartAxisSnapshot;
 }
 
-function CartesianPageBody({
-  series,
-  queries,
-  timelineEvents,
-  mainChartContainerRef,
-  mainChartAxisSnapshot,
-}: CartesianPageBodyProps) {
+function CartesianPageBody({ series, timelineEvents }: CartesianPageBodyProps) {
+  // Extract the live x-axis option from the main chart's ECharts
+  // instance so the sticky axis below it uses the exact same font,
+  // tick formatter, axis name, and grid.left.
+  const { mainChartContainerRef, mainChartAxisSnapshot } =
+    useMainChartAxisSnapshot(true, series);
+
   const { ref: scrollContainerRef, height: scrollContainerHeight } =
     useElementSize();
 
-  const naturalChartHeight = queries.length * MIN_PANEL_HEIGHT_PX;
+  const naturalChartHeight = series.length * MIN_PANEL_HEIGHT_PX;
   const shouldShowStickyAxis =
     scrollContainerHeight > 0 &&
     naturalChartHeight > scrollContainerHeight - STICKY_AXIS_HEIGHT_PX;
@@ -387,6 +350,7 @@ function CartesianPageBody({
       ref={scrollContainerRef}
       flex={1}
       mih={0}
+      mah={MIN_PANEL_HEIGHT_PX * 2.5}
       style={{
         overflowY: "auto",
         position: "relative",

@@ -106,12 +106,21 @@ export function isSettledExplorationQueryStatus(
   return SETTLED_EXPLORATION_QUERY_STATUSES.has(status);
 }
 
+export type ExplorationQueryType =
+  | "default"
+  | "day-of-week"
+  | "month-of-year"
+  | "hour-of-day"
+  | "time-facet";
+
 export interface ExplorationQuery {
   id: ExplorationQueryId;
   exploration_thread_id: ExplorationThreadId;
   card_id: CardId;
   dimension_id: string;
   dimension_name: string;
+  query_type: ExplorationQueryType;
+  display: string | null;
   name: string | null;
   position: number;
   status: ExplorationQueryStatus;

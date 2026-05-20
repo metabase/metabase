@@ -551,6 +551,13 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: query_type
+                  type: varchar(32)
+                  defaultValue: default
+                  remarks: Generator variant — one of default, day-of-week, month-of-year, hour-of-day, time-facet
+                  constraints:
+                    nullable: false
+              - column:
                   name: display
                   type: varchar(64)
                   remarks: Chart display type (line, bar, etc.)
