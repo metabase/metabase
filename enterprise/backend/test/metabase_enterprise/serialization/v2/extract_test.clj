@@ -2458,20 +2458,18 @@
                             :target {:database db-id
                                      :type "table"
                                      :schema "public"
-                                     :name "transform_output"}}
-
-                           :model/Table
-                           {table-id :id}
-                           {:name "transform_output"
-                            :db_id db-id
-                            :schema "public"
-                            :transform_id transform-id}]
-          (let [ser (ts/extract-one "Table" table-id)]
-            (testing "transform_id is transformed to entity_id"
-              (is (= transform-eid (:transform_id ser))))
-            (testing "depends on the transform"
-              (is (contains? (set (serdes/dependencies ser))
-                             [{:model "Transform" :id transform-eid}])))))))))
+                                     :name "transform_output"}}]
+          ;; Transform's before-insert (pre-#73741) already inserted a metabase_table row
+          ;; via upsert-target-table!; adopt that row instead of inserting a duplicate.
+          (let [table-id (t2/select-one-pk :model/Table
+                                           :db_id db-id :schema "public" :name "transform_output")]
+            (t2/update! :model/Table table-id {:transform_id transform-id, :active true})
+            (let [ser (ts/extract-one "Table" table-id)]
+              (testing "transform_id is transformed to entity_id"
+                (is (= transform-eid (:transform_id ser))))
+              (testing "depends on the transform"
+                (is (contains? (set (serdes/dependencies ser))
+                               [{:model "Transform" :id transform-eid}]))))))))))
 
 (deftest transform-job-extraction-test
   (testing "TransformJob extraction and serialization"
