@@ -258,9 +258,18 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
   const details = getDetails(settings);
   const geoJsonPath = details ? getMapUrl(details, props) : null;
 
-  const [state, setState] = useState<ChoroplethMapState>({
-    geoJson: null,
-    geoJsonPath: null,
+  const [state, setState] = useState<ChoroplethMapState>(() => {
+    if (geoJsonPath) {
+      const cached = geoJsonCache.get(geoJsonPath);
+      if (cached) {
+        return {
+          geoJson: cached,
+          geoJsonPath,
+          minimalBounds: computeMinimalBounds(getFeatures(cached)),
+        };
+      }
+    }
+    return { geoJson: null, geoJsonPath: null };
   });
 
   useEffect(() => {
