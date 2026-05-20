@@ -6,8 +6,9 @@
 
 (defprotocol QueueBackend
   "A queue backend handles durable storage, delivery, and retry semantics for queue messages."
-  (publish!          [this queue-name messages]
-    "Publishes messages to the given queue. `messages` is always a vector of messages.")
+  (publish!          [this queue-name payload]
+    "Publishes a payload to the given queue. `payload` is an opaque, already-encoded string
+    (see `metabase.mq.payload`); the backend stores/transports it without looking inside.")
   (batch-successful! [this queue-name batch-id]
     "Marks a batch as successfully processed.")
   (batch-failed!     [this queue-name batch-id]

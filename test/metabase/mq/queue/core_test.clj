@@ -5,6 +5,7 @@
    [metabase.mq.core :as mq]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.listener :as listener]
+   [metabase.mq.payload :as payload]
    [metabase.mq.publish :as mq.publish]
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.registry :as q.registry]
@@ -272,11 +273,11 @@
       (mq.tu/listen! queue-name
                      (fn [_] (.await latch))) ; Block listener until released
       (testing "First submission succeeds and marks the channel as busy"
-        (is (true? (mq.impl/submit-delivery! queue-name ["msg1"] nil nil nil)))
+        (is (true? (mq.impl/submit-delivery! queue-name (payload/encode ["msg1"]) nil nil nil)))
         (Thread/sleep 50) ; Give worker thread time to start and block on latch
         (is (true? (mq.impl/channel-busy? queue-name))))
       (testing "Second submission returns false while channel is busy"
-        (is (false? (mq.impl/submit-delivery! queue-name ["msg2"] nil nil nil))))
+        (is (false? (mq.impl/submit-delivery! queue-name (payload/encode ["msg2"]) nil nil nil))))
       (.countDown latch) ; Release the listener
       (Thread/sleep 100) ; Wait for delivery to complete and active-handlers to clear
       (testing "Channel is no longer busy after delivery completes"

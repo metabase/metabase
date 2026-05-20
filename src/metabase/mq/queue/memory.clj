@@ -14,8 +14,8 @@
 (defrecord MemoryQueueBackend [layer]
   q.backend/QueueBackend
 
-  (publish! [_this queue-name messages]
-    (memory/publish! layer queue-name messages))
+  (publish! [_this queue-name payload]
+    (memory/publish! layer queue-name payload))
 
   (batch-successful! [_this queue-name batch-id]
     (swap! (:batch-registry layer) dissoc batch-id)
@@ -24,7 +24,7 @@
   (batch-failed! [_this queue-name batch-id]
     (let [registry      (:batch-registry layer)
           failures-atom (:channel-failures layer)]
-      (when-let [{:keys [messages failures]} (get @registry batch-id)]
+      (when-let [{:keys [payload failures]} (get @registry batch-id)]
         (swap! registry dissoc batch-id)
         (let [new-failures (inc failures)]
           (if (>= new-failures (mq.settings/queue-max-retries))
@@ -35,8 +35,8 @@
             (do
               (swap! failures-atom assoc queue-name new-failures)
               (analytics/inc! :metabase-mq/queue-batch-retries {:channel (name queue-name)})
-              ;; Re-queue messages for retry — register-batch! will pick up the bumped count
-              (memory/publish! layer queue-name messages)))))))
+              ;; Re-queue the payload for retry — register-batch! will pick up the bumped count
+              (memory/publish! layer queue-name payload)))))))
 
   (start! [this]
     (reset! (:queue-backend layer) this)

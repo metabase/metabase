@@ -38,6 +38,15 @@ publish.
 
 4. **Deduplication.** Before dispatch, duplicate messages in the same batch are removed.
 
+## Message serialization
+
+Messages must be JSON-serializable. A batch is encoded to a JSON string once, at the publish
+boundary (`mq.transport/publish!` → `mq.payload/encode`), and decoded once, at the delivery
+boundary (`mq.impl/deliver!` → `mq.payload/decode`). In between, backends move the opaque string
+around and never look inside it — so encoding is not a backend concern, and every backend
+delivers an identical shape. Decoding keywordizes map keys, but values pass through JSON:
+keyword values become strings, sets become vectors, dates become strings.
+
 ## Queue semantics
 
 |               | Queue                                       |

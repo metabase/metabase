@@ -109,3 +109,20 @@
        (is (>= (get @calls-by-msg "retry-me" 0) 2)
            "Message delivered at least twice (retry-after-failure or chaos duplication)")
        (mq/unlisten! queue-name)))))
+
+(deftest queue-normalizes-message-shape-test
+  (testing "Every backend delivers messages in the same canonical JSON-normalized shape:
+            keyword keys preserved, keyword/symbol values and other non-JSON-native
+            values collapsed to their JSON form."
+    (run-parity!
+     :queue/parity-shape
+     (fn [ctx queue-name]
+       (let [received (atom [])]
+         (mq.tu/listen! queue-name #(swap! received conj %))
+         (mq/with-queue queue-name [q]
+           (mq/put q {:id 1 :status :active :nested {:flag true}}))
+         (mq.tu/eventually! ctx #(seq @received) scenario-timeout-ms)
+         (is (= #{{:id 1 :status "active" :nested {:flag true}}}
+                (set @received))
+             "Message delivered in canonical shape regardless of backend")
+         (mq/unlisten! queue-name))))))

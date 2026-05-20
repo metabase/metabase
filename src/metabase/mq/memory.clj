@@ -2,14 +2,15 @@
   "Shared in-memory message store used by the memory queue backend.
   Each `layer` is a self-contained bundle of channel state, batch-registry, and a
   poll thread — tests can construct isolated layers with [[make-layer]] instead of
-  rebinding dynamic vars."
+  rebinding dynamic vars.
+
+  Each channel queue holds opaque payload strings (one per publish); the backend never looks
+  inside them — decoding happens once at delivery in [[metabase.mq.impl/deliver!]]."
   (:require
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.listener :as listener]
-   [metabase.mq.polling :as mq.polling]
-   [metabase.mq.queue.registry :as q.registry])
+   [metabase.mq.polling :as mq.polling])
   (:import
-   (java.util ArrayList)
    (java.util.concurrent LinkedBlockingQueue)))
 
 (set! *warn-on-reflection* true)
@@ -48,48 +49,36 @@
 ;;; ------------------------------------------- Publish / Drain -------------------------------------------
 
 (defn publish!
-  "Adds messages to the channel's queue and wakes the polling thread."
-  [{:keys [poll-state] :as layer} channel-name messages]
+  "Adds an opaque payload string to the channel's queue and wakes the polling thread.
+  One payload per publish — the memory backend does not coalesce across publishes (the
+  publish buffer already does that upstream)."
+  [{:keys [poll-state] :as layer} channel-name payload]
   (let [^LinkedBlockingQueue q (ensure-channel! layer channel-name)]
-    (doseq [msg messages]
-      (.offer q msg)))
+    (.offer q payload))
   (when-not (mq.impl/channel-busy? channel-name)
     (mq.polling/notify! poll-state)))
 
-(defn- drain!
-  "Removes and returns up to `max-elements` messages currently in the channel's queue,
-   or nil if empty. If `max-elements` is nil or non-positive, drains everything."
-  [{:keys [channels]} channel-name max-elements]
-  (when-let [^LinkedBlockingQueue q (get @channels channel-name)]
-    (when-not (.isEmpty q)
-      (let [batch (ArrayList.)]
-        (if (and max-elements (pos? (int max-elements)))
-          (.drainTo q batch (int max-elements))
-          (.drainTo q batch))
-        (when-not (.isEmpty batch)
-          (vec batch))))))
-
 (defn- register-batch!
-  "Registers a batch in the layer's batch registry for retry tracking.
+  "Registers a payload in the layer's batch registry for retry tracking.
   Inherits the failure count tracked for the channel — `batch-failed!` re-publishes
-  the messages and bumps the counter, so a new batch on the same channel must see
+  the payload and bumps the counter, so a new batch on the same channel must see
   the accumulated count rather than starting from zero."
-  [{:keys [batch-registry channel-failures]} batch-id channel-name messages]
+  [{:keys [batch-registry channel-failures]} batch-id channel-name payload]
   (let [failures (get @channel-failures channel-name 0)]
-    (swap! batch-registry assoc batch-id {:messages messages :failures failures})))
+    (swap! batch-registry assoc batch-id {:payload payload :failures failures})))
 
 ;;; ------------------------------------------- Polling -------------------------------------------
 
 (defn- poll-once!
-  "Drains all non-busy queue channels and submits messages for delivery.
+  "Submits one pending payload per non-busy queue channel for delivery.
   Generates a batch-id and passes the layer's registered queue backend."
-  [{:keys [queue-backend] :as layer}]
+  [{:keys [queue-backend channels] :as layer}]
   (doseq [channel-name (remove mq.impl/channel-busy? (listener/queue-names))]
-    (let [max-elements (q.registry/max-batch-messages channel-name)]
-      (when-let [messages (drain! layer channel-name max-elements)]
+    (when-let [^LinkedBlockingQueue q (get @channels channel-name)]
+      (when-let [payload (.poll q)]
         (let [batch-id (str (random-uuid))]
-          (register-batch! layer batch-id channel-name messages)
-          (mq.impl/submit-delivery! channel-name messages batch-id @queue-backend
+          (register-batch! layer batch-id channel-name payload)
+          (mq.impl/submit-delivery! channel-name payload batch-id @queue-backend
                                     {:batch-id batch-id}))))))
 
 (defn start!

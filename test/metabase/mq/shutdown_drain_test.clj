@@ -33,7 +33,7 @@
           (let [rows (t2/select :queue_message_batch :queue_name (name queue-name))]
             (is (= 1 (count rows))
                 "Exactly one row should exist after the graceful shutdown drain")
-            (is (= ["drain-me"] (json/decode (:messages (first rows))))
+            (is (= ["drain-me"] (json/decode (:payload (first rows))))
                 "The buffered message should have been persisted on shutdown")))
         (finally
           (t2/delete! :queue_message_batch :queue_name (name queue-name)))))))

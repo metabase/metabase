@@ -3,6 +3,7 @@
   (:require
    [metabase.analytics-interface.core :as analytics]
    [metabase.mq.listener :as listener]
+   [metabase.mq.payload :as payload]
    [metabase.mq.polling :as mq.polling]
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.backend :as q.backend]
@@ -111,10 +112,11 @@
                         (q.backend/batch-failed! backend channel bid)))})))
 
 (defn deliver!
-  "Called by backends when messages are ready for delivery.
-   Passes messages directly to handle! for processing."
-  [channel messages batch-id backend]
-  (handle! channel (if batch-id {batch-id backend} {}) messages))
+  "Called by backends when a payload is ready for delivery. Decodes the opaque payload
+   string (the single point where messages re-enter the typed world) and hands the messages
+   to handle! for processing."
+  [channel payload batch-id backend]
+  (handle! channel (if batch-id {batch-id backend} {}) (payload/decode payload)))
 
 (defn submit-delivery!
   "Submits a delivery to the shared worker pool for non-blocking processing.
@@ -125,7 +127,7 @@
    The busy-check and registration are atomic via a single swap!.
    A generation counter prevents a completed future's cleanup from clobbering a
    re-submission that won the slot between the finally and the dissoc."
-  [channel messages batch-id backend metadata]
+  [channel payload batch-id backend metadata]
   (let [gen     (Object.)
         [old _] (swap-vals! active-handlers
                             (fn [handlers]
@@ -136,7 +138,7 @@
       false
       (let [^Callable task (bound-fn []
                              (try
-                               (deliver! channel messages batch-id backend)
+                               (deliver! channel payload batch-id backend)
                                (finally
                                  ;; Only remove if this generation still owns the slot
                                  (swap! active-handlers

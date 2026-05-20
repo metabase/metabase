@@ -56,8 +56,8 @@ databaseChangeLog:
                   name: owner
                   type: varchar(36)
               - column:
-                  remarks: JSON-encoded array of messages
-                  name: messages
+                  remarks: JSON-encoded payload
+                  name: payload
                   type: ${text.type}
                   constraints:
                     nullable: false

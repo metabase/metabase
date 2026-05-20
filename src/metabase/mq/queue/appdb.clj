@@ -10,7 +10,6 @@
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.registry :as q.registry]
    [metabase.mq.settings :as mq.settings]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import (java.sql Timestamp)
@@ -57,7 +56,7 @@
 
 (defn- fetch!
   "Fetches the oldest pending row for each of the given queue names.
-  Returns a seq of maps with :batch-id, :queue, and :messages keys, or nil if no messages
+  Returns a seq of maps with :batch-id, :queue, and :payload keys, or nil if no messages
   are available.
 
   Implemented as a per-queue loop inside one transaction rather than a single LATERAL query
@@ -88,7 +87,7 @@
                                         (when-let [row (fetch-one-pending! conn qn owner-id)]
                                           {:batch-id (:id row)
                                            :queue     (keyword "queue" (:queue_name row))
-                                           :messages  (json/decode (:messages row))})))
+                                           :payload   (:payload row)})))
                                 fetchable-names)]
               (when (seq batches) batches))))))))
 
@@ -177,17 +176,17 @@
   (boolean
    (when-let [available-queues (seq (remove mq.impl/channel-busy? (listener/queue-names)))]
      (when-let [batches (seq (fetch! owner-id available-queues))]
-       (doseq [{:keys [batch-id queue messages]} batches]
-         (mq.impl/submit-delivery! queue messages batch-id this {:batch-id batch-id}))
+       (doseq [{:keys [batch-id queue payload]} batches]
+         (mq.impl/submit-delivery! queue payload batch-id this {:batch-id batch-id}))
        true))))
 
 (defrecord AppDbQueueBackend
            [owner-id poll-state last-stale-check-ms last-heartbeat-ms last-cleanup-ms last-depth-gauge-ms]
   q.backend/QueueBackend
-  (publish! [_this queue messages]
+  (publish! [_this queue payload]
     (t2/insert! :queue_message_batch
                 {:queue_name (name queue)
-                 :messages   (json/encode messages)})
+                 :payload    payload})
     (when-not (mq.impl/channel-busy? queue)
       (mq.polling/notify! poll-state)))
 
