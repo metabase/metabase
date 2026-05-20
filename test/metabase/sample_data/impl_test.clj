@@ -71,7 +71,7 @@
       ;; Manually activate Field values since they are not created during sync (#53387)
       (field-values/get-or-create-full-field-values! (field db "PEOPLE" "NAME"))
       (is (= {:description      "The name of the user who owns an account"
-              :database_type    "TEXT"
+              :database_type    "CHARACTER VARYING"
               :semantic_type    :type/Name
               :name             "NAME"
               :has_field_values :list

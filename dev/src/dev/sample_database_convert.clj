@@ -43,23 +43,38 @@
        (map (juxt :TABLE_SCHEMA :TABLE_NAME))))
 
 (defn- h2-type->sqlite
-  "Map H2 JDBC type code to a SQLite column affinity. SQLite is dynamically
-  typed; affinity is purely advisory but downstream Metabase sync uses
-  `DATABASE_TYPE` (the declared type string) for base-type inference, so picking
-  recognizable names matters."
+  "Pass the H2 declared type name through verbatim. SQLite stores the declared
+  type string in `sqlite_master` / `PRAGMA table_info` and Metabase's
+  `database-type->base-type` mapping for SQLite is regex-based on that string
+  (`#\"BIGINT\"` -> `:type/BigInteger`, `#\"CHAR\"` -> `:type/Text`,
+  `#\"DOUB\"` -> `:type/Float`, etc.). Preserving H2's names means sync
+  produces the same `:database_type` and `:base_type` values as the H2
+  original, which keeps `resources/sample-content.edn` consistent without
+  rewriting every field entry. JDBC type code is the disambiguator only when
+  the H2 metadata returns a blank type name."
   [^long jdbc-type ^String h2-type-name]
-  (cond
-    (#{Types/INTEGER Types/BIGINT Types/SMALLINT Types/TINYINT} jdbc-type) "INTEGER"
-    (#{Types/BOOLEAN Types/BIT} jdbc-type) "INTEGER"
-    (#{Types/REAL Types/FLOAT Types/DOUBLE} jdbc-type) "REAL"
-    (#{Types/DECIMAL Types/NUMERIC} jdbc-type) "NUMERIC"
-    (#{Types/DATE} jdbc-type) "DATE"
-    (#{Types/TIME} jdbc-type) "TIME"
-    (#{Types/TIMESTAMP Types/TIMESTAMP_WITH_TIMEZONE} jdbc-type) "TIMESTAMP"
-    (#{Types/VARBINARY Types/BINARY Types/BLOB} jdbc-type) "BLOB"
-    :else
-    ;; Default to TEXT for VARCHAR / CLOB / CHAR / unknown.
-    (if (str/blank? h2-type-name) "TEXT" "TEXT")))
+  (if (str/blank? h2-type-name)
+    (case (int jdbc-type)
+      4 "INTEGER"        ;; Types/INTEGER
+      -5 "BIGINT"        ;; Types/BIGINT
+      5 "SMALLINT"       ;; Types/SMALLINT
+      -6 "TINYINT"       ;; Types/TINYINT
+      16 "BOOLEAN"       ;; Types/BOOLEAN
+      -7 "BOOLEAN"       ;; Types/BIT
+      7 "REAL"           ;; Types/REAL
+      6 "FLOAT"          ;; Types/FLOAT
+      8 "DOUBLE PRECISION" ;; Types/DOUBLE
+      3 "DECIMAL"        ;; Types/DECIMAL
+      2 "NUMERIC"        ;; Types/NUMERIC
+      91 "DATE"          ;; Types/DATE
+      92 "TIME"          ;; Types/TIME
+      93 "TIMESTAMP"     ;; Types/TIMESTAMP
+      2014 "TIMESTAMP"   ;; Types/TIMESTAMP_WITH_TIMEZONE
+      2004 "BLOB"        ;; Types/BLOB
+      -3 "BLOB"          ;; Types/VARBINARY
+      -2 "BLOB"          ;; Types/BINARY
+      "TEXT")
+    h2-type-name))
 
 (defn- column-defs
   "Return [{:name col-name :sqlite-type ... :jdbc-type long}] for the given
@@ -153,3 +168,6 @@
     (doseq [[schema table] tables]
       (copy-table! h2 sqlite schema table))
     (println "Done. Output:" (.getAbsolutePath (io/file sqlite-target-path)))))
+
+(comment
+  (convert!))
