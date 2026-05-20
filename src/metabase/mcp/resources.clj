@@ -124,6 +124,7 @@
                     [:description :string]
                     [:inputSchema :map]
                     [:outputSchema {:optional true} :map]
+                    [:annotations {:optional true} :map]
                     [:response-fn fn?]]]
   (if-let [uri (get-in @registry [:key->uri resource-key])]
     (let [scope (get-in @registry [:uri->resource uri :scope])
@@ -251,6 +252,10 @@
                               :widgetSessionId {:type        "string" :format "uuid"
                                                 :description "Session id under which the handle resolved — re-emitted so ChatGPT can thread it to subsequent calls."}}
                  :required   ["query"]}
+  :annotations {:readOnlyHint    true
+                :destructiveHint false
+                :idempotentHint  true
+                :openWorldHint   false}
   :response-fn (fn [arguments {:keys [session-id]}]
                  (let [query             (:query arguments)
                        handle            (:query_handle arguments)
@@ -306,6 +311,10 @@
                               :widgetSessionId {:type        "string" :format "uuid"
                                                 :description "Session id under which the handle resolved — re-emitted so ChatGPT can thread it to subsequent calls."}}
                  :required   ["query"]}
+  :annotations {:readOnlyHint    true
+                :destructiveHint false
+                :idempotentHint  true
+                :openWorldHint   false}
   :response-fn (fn [arguments {:keys [session-id]}]
                  (if-let [handle (:handle arguments)]
                    (let [widget-id         (:widgetSessionId arguments)
