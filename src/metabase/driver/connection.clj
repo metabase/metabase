@@ -61,15 +61,18 @@
 ;;  - (let [{{:keys [user]} :details} database])
 
 (mr/def ::connection-type
-  [:enum :default :write-data])
+  [:enum :default :write-data :transform])
 
 (def ^:dynamic *connection-type*
   "Which connection details [[effective-details]] should resolve.
 
    - `:default` — primary `:details`
    - `:write-data` — `:write-data-details` merged over `:details` (if configured)
+   - `:transform` — primary `:details`, but resolved through a separate connection pool
+     whose c3p0 leak-detector tolerates transform-length runtimes. Set by
+     [[with-transform-connection]] from the transform runner.
 
-   Bind via [[with-write-connection]], not directly."
+   Bind via [[with-write-connection]] or [[with-transform-connection]], not directly."
   :default)
 
 (defmacro with-write-connection
@@ -79,6 +82,16 @@
    into account (if configured) instead of only primary `:details`."
   [& body]
   `(binding [*connection-type* :write-data]
+     ~@body))
+
+(defmacro with-transform-connection
+  "Establishes a transform-connection context for body.
+
+   Routes queries through a separate connection pool keyed on `:transform`, sharing the
+   primary `:details` with `:default` but carrying its own c3p0 pool properties. See
+   [[*connection-type*]] for the rationale."
+  [& body]
+  `(binding [*connection-type* :transform]
      ~@body))
 
 (def ^:dynamic ^:private *suppress-resolution-telemetry*
@@ -98,6 +111,15 @@
   metabase-enterprise.writable-connection.core
   [_database]
   nil)
+
+(defn- resolve-connection-type
+  "Resolution rule from `*connection-type*` (+ already-resolved `write-details`) to the effective
+  pool key. Centralized so [[effective-details]] and [[effective-connection-type]] cannot drift."
+  [write-details]
+  (cond
+    (= *connection-type* :transform) :transform
+    write-details                    :write-data
+    :else                            :default))
 
 (defn effective-details
   "Returns the connection details map appropriate for the current context.
@@ -122,7 +144,7 @@
         (try (analytics/inc! :metabase-db-connection/type-resolved {:connection-type "write-data"})
              (catch Exception _ nil)))
       (-> (driver.w/maybe-swap-details (:id database) base)
-          (assoc ::effective-connection-type (if write-details :write-data :default))
+          (assoc ::effective-connection-type (resolve-connection-type write-details))
           (assoc ::database-id (u/id database))))))
 
 (defn details-for-exact-type
@@ -135,7 +157,8 @@
   (let [database (driver.u/ensure-lib-database database)]
     (case connection-type
       :default    (:details database)
-      :write-data (database-write-data-details database))))
+      :write-data (database-write-data-details database)
+      :transform  (:details database))))
 
 (defn write-connection-requested?
   "True if currently executing within a [[with-write-connection]] scope."
@@ -143,18 +166,17 @@
   (= *connection-type* :write-data))
 
 (defn effective-connection-type
-  "Returns the connection type actually in effect for the given database. Return value
-  matches malli schema [[::connection-type]].
+  "Returns the effective pool key for the given database. Return value matches malli schema
+  [[::connection-type]].
 
-   Returns `:write-data` only when a write connection is both *requested*
-   ([[with-write-connection]]) and *configured* (the database has `:write-data-details`).
-   Otherwise returns `:default`, avoiding duplicate resource allocation (e.g. connection
-   pools) when the requested type would resolve identically to `:default`."
+   `:write-data` only when both *requested* ([[with-write-connection]]) and *configured*
+   (the database has `:write-data-details`); otherwise falls back to `:default` to avoid a
+   duplicate pool. `:transform` always resolves to `:transform` — the transform pool is
+   distinguished by its pool properties, not its details. See [[*connection-type*]]."
   [database]
-  (if (and (= *connection-type* :write-data)
-           (some? (database-write-data-details (driver.u/ensure-lib-database database))))
-    :write-data
-    :default))
+  (let [write-details (when (= *connection-type* :write-data)
+                        (database-write-data-details (driver.u/ensure-lib-database database)))]
+    (resolve-connection-type write-details)))
 
 (defn track-connection-acquisition!
   "Increments a Prometheus counter tracking connection acquisitions by connection type

@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
@@ -413,28 +414,40 @@
         (let [hydrated (t2/hydrate table :transform)]
           (is (nil? (:transform hydrated))))))))
 
-(deftest jdbc-unreturned-connection-timeout-covers-transform-timeout-test
-  (testing "the c3p0 unreturnedConnectionTimeout default is at least as long as transform-timeout.
-            Per-query timeouts are enforced via Statement.setQueryTimeout; this pool setting only acts as a
-            leak-detector, so it must not undercut a legitimate long transform."
-    ;; transform-timeout is premium-gated; without the feature flag its getter returns the default regardless of
-    ;; any `with-temporary-setting-values` override, which would silently defeat these assertions.
-    (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temporary-setting-values [jdbc-data-warehouse-unreturned-connection-timeout-seconds nil]
-        (binding [driver.settings/*query-timeout-ms* (u/minutes->ms 20)]
-          (testing "transform-timeout larger than query-timeout -> transform-timeout wins"
-            (mt/with-temporary-setting-values [transform-timeout 240]
+(deftest transform-pool-uses-its-own-leak-detector-test
+  (testing "Inside a `with-transform-connection` scope, the data-warehouse pool's
+            `unreturnedConnectionTimeout` default tracks the transform's bound `*query-timeout-ms*` — not the
+            ambient `MB_DB_QUERY_TIMEOUT_MINUTES`. This is what makes transforms safe without weakening the leak
+            detector on the default pool: the `:transform` pool is created with a different value (transform-timeout)
+            than the `:default` pool (db-query-timeout)."
+    (mt/with-temporary-setting-values [jdbc-data-warehouse-unreturned-connection-timeout-seconds nil]
+      (binding [driver.settings/*query-timeout-ms* (u/minutes->ms 20)]
+        (testing "outside `with-transform-connection`, the default is db-query-timeout in seconds"
+          (is (= (* 20 60)
+                 (driver.settings/jdbc-data-warehouse-unreturned-connection-timeout-seconds))))
+        (testing "inside `with-transform-connection` with the transform rebinding *query-timeout-ms*, the default
+                  rises to transform-timeout in seconds — so the `:transform` pool created in this scope picks up
+                  the longer leak-detector"
+          (driver.conn/with-transform-connection
+            (binding [driver.settings/*query-timeout-ms* (u/minutes->ms 240)]
               (is (= (* 240 60)
-                     (driver.settings/jdbc-data-warehouse-unreturned-connection-timeout-seconds)))))
-          (testing "query-timeout larger than transform-timeout -> query-timeout wins"
-            (binding [driver.settings/*query-timeout-ms* (u/minutes->ms 60)]
-              (mt/with-temporary-setting-values [transform-timeout 10]
-                (is (= (* 60 60)
-                       (driver.settings/jdbc-data-warehouse-unreturned-connection-timeout-seconds)))))))
-        (testing "an explicit override still wins over the computed default"
-          (mt/with-temporary-setting-values [jdbc-data-warehouse-unreturned-connection-timeout-seconds 15
-                                             transform-timeout                                         240]
-            (is (= 15 (driver.settings/jdbc-data-warehouse-unreturned-connection-timeout-seconds)))))))))
+                     (driver.settings/jdbc-data-warehouse-unreturned-connection-timeout-seconds))))))
+        (testing "an explicit env-var/setting override still wins over the computed default"
+          (mt/with-temporary-setting-values [jdbc-data-warehouse-unreturned-connection-timeout-seconds 15]
+            (driver.conn/with-transform-connection
+              (binding [driver.settings/*query-timeout-ms* (u/minutes->ms 240)]
+                (is (= 15 (driver.settings/jdbc-data-warehouse-unreturned-connection-timeout-seconds)))))))))))
+
+(deftest transform-connection-type-is-distinct-pool-key-test
+  (testing "The pool cache key derived from `*connection-type*` distinguishes `:transform` from `:default`, so the
+            two contexts get separate c3p0 pools with separate properties. This is the core mechanism that keeps the
+            default pool's leak detector tight on non-transform instances."
+    (mt/with-temp [:model/Database db {:engine :h2}]
+      (is (= :default
+             (driver.conn/effective-connection-type db)))
+      (driver.conn/with-transform-connection
+        (is (= :transform
+               (driver.conn/effective-connection-type db)))))))
 
 ;; Not ^:parallel: the kondo linter flags `set-statement-query-timeout!` (`!`-suffixed, so classified "destructive")
 ;; when used inside a parallel test. The call site here only mutates a local proxy Statement and is safe, but marking
