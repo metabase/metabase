@@ -45,19 +45,10 @@ const getDefaultPluginCustomViz = () => ({
   isCustomVizDisplay,
 
   /**
-   * Predicate used by ChartSettingsWidget to decide whether the `widget`
-   * field is a custom-viz mount handle (drive lifecycle imperatively) or a
-   * plain React component (render directly). Always false in OSS — there
-   * is no plugin to produce a mount handle.
+   *  Always false in OSS as there is no plugin to produce a mount handle.
    */
   isTrustedWidgetMount: (_value: unknown): _value is WidgetMount => false,
 
-  /**
-   * Host driver that renders a custom-viz setting widget by calling the
-   * plugin's mount/update/unmount handle through the near-membrane
-   * boundary. Placeholder in OSS — never invoked because
-   * `isTrustedWidgetMount` always returns false there.
-   */
   CustomVizSettingWidget: PluginPlaceholder<{
     mount: WidgetMount;
     widgetProps: Record<string, unknown>;
