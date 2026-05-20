@@ -20,7 +20,7 @@
 (defn- trim-old-usage-data!
   []
   (let [retention-days (metabot.settings/ai-usage-max-retention-days)]
-    (if (infinite? retention-days)
+    (if (nil? retention-days)
       (log/info "Skipping AI usage log cleanup; ai-usage-max-retention-days is 0 (infinite retention).")
       (do
         (log/infof "Trimming AI usage log rows older than %d days." (long retention-days))
