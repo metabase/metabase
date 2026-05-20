@@ -24,6 +24,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)))
@@ -799,28 +800,43 @@
                                 :exploration_thread_id thread-id
                                 :archived false)))
 
-(defn- append-card-embed
-  "Append a static `cardEmbed` node referencing both `card-id` (the per-document materialized
-  Card carrying display / visualization_settings / dataset_query) and `stored-result-id` (the
-  cached snapshot the static renderer reads bytes from) to the end of a prose-mirror document
-  body. Wrapped in a `resizeNode` to match the FE schema for all `cardEmbed` nodes (live and
-  static). Tolerates a missing/non-doc root by replacing it with an empty doc."
-  [doc card-id stored-result-id]
+(defn- chart-page-url
+  "Relative URL of a chart's leaf-group page in the exploration detail view. The group id
+  follows [[metabase.explorations.groups/leaf-group-id]]; the route segment is
+  percent-encoded to match the client's `encodeURIComponent`."
+  [exploration-id card-id dimension-id]
+  (str "/question/research/" exploration-id
+       "/group/" (codec/url-encode (explorations.groups/leaf-group-id card-id dimension-id))))
+
+(defn- append-chart-nodes
+  "Append a paragraph holding a plain hyperlink to the chart's page in the exploration,
+  followed by a static `cardEmbed` node referencing both `card-id` (the per-document
+  materialized Card carrying display / visualization_settings / dataset_query) and
+  `stored-result-id` (the cached snapshot the static renderer reads bytes from), to the end
+  of a prose-mirror document body. The embed is wrapped in a `resizeNode` to match the FE
+  schema for all `cardEmbed` nodes (live and static). Tolerates a missing/non-doc root by
+  replacing it with an empty doc."
+  [doc card-id stored-result-id chart-href chart-name]
   (let [base  (if (and (map? doc) (= "doc" (:type doc)))
                 doc
                 {:type "doc" :content []})
-        embed {:type "resizeNode"
+        embed {:type    "resizeNode"
                :content [{:type  "cardEmbed"
-                          :attrs {:id card-id :name nil :stored_result_id stored-result-id}}]}]
-    (update base :content (fnil conj []) embed)))
+                          :attrs {:id card-id :name nil :stored_result_id stored-result-id}}]}
+        link  {:type    "paragraph"
+               :content [{:type  "text"
+                          :text  chart-name
+                          :marks [{:type "link" :attrs {:href chart-href}}]}]}]
+    (update base :content (fnil into []) [link embed])))
 
 (api.macros/defendpoint :post "/thread/:thread-id/documents/:document-id/append" :- ::ExplorationDocument
-  "Append a static `cardEmbed` for `exploration_query_id` to the end of the document body.
-  Resolves the EQ's `stored_result_id` via the EQR FK chain, materializes a `report_card` for
-  this particular document embed (carrying display / visualization_settings / dataset_query),
-  and writes both ids into the node attrs. Each append produces a fresh Card — the same
-  snapshot can be embedded multiple times, possibly across documents, and each embed gets its
-  own Card so settings can diverge later without touching the others."
+  "Append a static `cardEmbed` for `exploration_query_id` to the end of the document body,
+  preceded by a plain hyperlink back to that chart's page in the exploration. Resolves the
+  EQ's `stored_result_id` via the EQR FK chain, materializes a `report_card` for this
+  particular document embed (carrying display / visualization_settings / dataset_query), and
+  writes both ids into the node attrs. Each append produces a fresh Card — the same snapshot
+  can be embedded multiple times, possibly across documents, and each embed gets its own Card
+  so settings can diverge later without touching the others."
   [{:keys [thread-id document-id]} :- [:map
                                        [:thread-id   ms/PositiveInt]
                                        [:document-id ms/PositiveInt]]
@@ -828,15 +844,18 @@
    {:keys [exploration_query_id]} :- [:map
                                       [:exploration_query_id ms/PositiveInt]]]
   (write-check-thread thread-id)
-  (let [doc      (get-thread-document-or-404 thread-id document-id)
-        eq       (api/check-404 (t2/select-one :model/ExplorationQuery :id exploration_query_id))
-        _        (api/check-404 (= thread-id (:exploration_thread_id eq)))
-        sr-id    (api/check-404
-                  (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
-                                    :exploration_query_id exploration_query_id))
-        card-id  (eqr/create-card-for-stored-result!
-                  sr-id (:id doc) (:collection_id doc) @api/*current-user*)
-        new-body (append-card-embed (:document doc) card-id sr-id)]
+  (let [doc        (get-thread-document-or-404 thread-id document-id)
+        eq         (api/check-404 (t2/select-one :model/ExplorationQuery :id exploration_query_id))
+        _          (api/check-404 (= thread-id (:exploration_thread_id eq)))
+        sr-id      (api/check-404
+                    (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
+                                      :exploration_query_id exploration_query_id))
+        card-id    (eqr/create-card-for-stored-result!
+                    sr-id (:id doc) (:collection_id doc) @api/*current-user*)
+        exp-id     (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread-id)
+        chart-href (chart-page-url exp-id (:card_id eq) (:dimension_id eq))
+        chart-name (or (:name eq) (tru "Chart"))
+        new-body   (append-chart-nodes (:document doc) card-id sr-id chart-href chart-name)]
     (t2/update! :model/Document (:id doc) {:document new-body})
     (t2/select-one (into [:model/Document] document-summary-columns) :id (:id doc))))
 
