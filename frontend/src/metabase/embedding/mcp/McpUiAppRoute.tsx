@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useMemo, useState } from "react";
+import { type CSSProperties, useEffect, useMemo } from "react";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
@@ -9,7 +9,7 @@ import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 
 import { McpCardFooter } from "./McpCardFooter";
 import { McpFeedbackArea } from "./McpFeedbackArea";
-import { McpQuestionView } from "./McpQuestionView";
+import { MCP_CONTENT_HEIGHT, McpQuestionView } from "./McpQuestionView";
 import { getMcpDeserializedCard } from "./McpUiAppRoute.utils";
 import { useHandleMcpDrillThrough } from "./hooks/useHandleMcpDrillThrough";
 import { type McpAppState, useMcpApp } from "./hooks/useMcpApp";
@@ -20,10 +20,8 @@ import { buildMcpAppsTheme } from "./utils/buildMcpAppsTheme";
 const store = getSdkStore();
 
 const DEFAULT_INSETS = { top: 0, right: 0, bottom: 0, left: 0 };
-const CONTENT_HEIGHT = "500px";
 const FOOTER_HEIGHT = "50px";
 const FOOTER_HORIZONTAL_PADDING = 16;
-const QUERY_BAR_RESERVED_HEIGHT = "calc(2rem + var(--mantine-spacing-sm))";
 
 interface McpUiAppRouteContentProps {
   app: McpAppState["app"];
@@ -93,8 +91,6 @@ function McpUiAppRouteContent({
   query,
   sessionToken,
 }: McpUiAppRouteContentProps) {
-  const [isTimeControlsVisible, setIsTimeControlsVisible] = useState(false);
-
   const handleDrillThrough = useHandleMcpDrillThrough(app);
 
   const { mcpSessionId = "" } =
@@ -132,11 +128,7 @@ function McpUiAppRouteContent({
     }
   }, [isReady, userAndSettingsFetchError]);
 
-  const height = `calc(${CONTENT_HEIGHT} + ${FOOTER_HEIGHT})`;
-
-  const visualizationHeight = isTimeControlsVisible
-    ? `calc(${CONTENT_HEIGHT} - 8.5rem)`
-    : `calc(${CONTENT_HEIGHT} - 8.5rem + ${QUERY_BAR_RESERVED_HEIGHT})`;
+  const height = `calc(${MCP_CONTENT_HEIGHT} + ${FOOTER_HEIGHT})`;
 
   const safeAreaPadding = {
     top: Math.max(safeAreaInsets.top, 0),
@@ -147,13 +139,6 @@ function McpUiAppRouteContent({
 
   const containerStyle: CSSProperties = {
     height,
-  };
-
-  const contentStyle: CSSProperties = {
-    boxSizing: "border-box",
-    paddingTop: `calc(var(--mantine-spacing-lg) + ${safeAreaPadding.top}px)`,
-    paddingRight: safeAreaPadding.right,
-    paddingLeft: safeAreaPadding.left,
   };
 
   const feedbackContentStyle: CSSProperties = {
@@ -200,11 +185,7 @@ function McpUiAppRouteContent({
 
     return (
       <>
-        <McpQuestionView
-          contentStyle={contentStyle}
-          onTimeControlsVisibilityChange={setIsTimeControlsVisible}
-          visualizationHeight={visualizationHeight}
-        />
+        <McpQuestionView safeAreaPaddingTop={safeAreaPadding.top} />
 
         <McpCardFooter
           app={app}

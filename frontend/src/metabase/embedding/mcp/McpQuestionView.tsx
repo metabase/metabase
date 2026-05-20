@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect } from "react";
+import type { CSSProperties } from "react";
 
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { Box, Divider, Flex } from "metabase/ui";
@@ -9,19 +9,16 @@ import { TimeGranularityControl } from "./TimeControlBar/TimeGranularityControl"
 import { TimeRangeControl } from "./TimeControlBar/TimeRangeControl";
 import { useMcpQueryControls } from "./hooks/useMcpQueryControls";
 
-export interface McpQuestionViewProps {
-  contentStyle: CSSProperties;
-  visualizationHeight: string;
+export const MCP_CONTENT_HEIGHT = "500px";
 
-  onTimeControlsVisibilityChange: (isVisible: boolean) => void;
+const QUERY_BAR_RESERVED_HEIGHT = "calc(2rem + var(--mantine-spacing-sm))";
+const RECLAIMED_CONTENT_BOTTOM_PADDING = "var(--mantine-spacing-lg)";
+
+export interface McpQuestionViewProps {
+  safeAreaPaddingTop: number;
 }
 
-export function McpQuestionView({
-  contentStyle,
-  visualizationHeight,
-
-  onTimeControlsVisibilityChange,
-}: McpQuestionViewProps) {
+export function McpQuestionView({ safeAreaPaddingTop }: McpQuestionViewProps) {
   const {
     hasChartTypeSelector,
     hasTimeControls,
@@ -32,19 +29,40 @@ export function McpQuestionView({
     onChartTypeChange,
   } = useMcpQueryControls();
 
-  // This is used to adjust the parent's visualization height.
-  // We leave more room for the visualization when there are no time control.
-  useEffect(() => {
-    onTimeControlsVisibilityChange(hasTimeControls);
-  }, [hasTimeControls, onTimeControlsVisibilityChange]);
+  const isTableVisualization = currentChartType === "table";
+
+  // When table has no time controls, we can remove vertical padding and increase height.
+  const shouldUseFullHeightTable = isTableVisualization && !hasTimeControls;
+
+  const baseVisualizationHeight = hasTimeControls
+    ? `calc(${MCP_CONTENT_HEIGHT} - 8.5rem)`
+    : `calc(${MCP_CONTENT_HEIGHT} - 8.5rem + ${QUERY_BAR_RESERVED_HEIGHT})`;
+
+  const tableVisualizationHeight = `calc(${baseVisualizationHeight} + ${RECLAIMED_CONTENT_BOTTOM_PADDING} + ${safeAreaPaddingTop}px)`;
+
+  const resolvedVisualizationHeight = shouldUseFullHeightTable
+    ? tableVisualizationHeight
+    : baseVisualizationHeight;
+
+  // We cannot reduce top padding when chart type selector is shown,
+  // as switching between them will cause layout shift due to height change.
+  const shouldReduceTopPadding =
+    shouldUseFullHeightTable && !hasChartTypeSelector;
+
+  const contentStyle: CSSProperties = {
+    boxSizing: "border-box",
+    paddingTop: shouldReduceTopPadding
+      ? "calc(var(--mantine-spacing-lg) + 0px)"
+      : `calc(var(--mantine-spacing-lg) + ${safeAreaPaddingTop}px)`,
+  };
 
   return (
     <Flex
       direction="column"
       justify="space-between"
-      h="500px"
-      py="lg"
+      h={MCP_CONTENT_HEIGHT}
       gap="sm"
+      pb={shouldUseFullHeightTable ? undefined : "lg"}
       style={contentStyle}
     >
       <Flex
@@ -70,7 +88,9 @@ export function McpQuestionView({
       </Flex>
 
       <Flex px="xs" flex={1} style={{ overflow: "hidden" }}>
-        <SdkQuestion.QuestionVisualization height={visualizationHeight} />
+        <SdkQuestion.QuestionVisualization
+          height={resolvedVisualizationHeight}
+        />
       </Flex>
 
       {hasTimeControls && (
