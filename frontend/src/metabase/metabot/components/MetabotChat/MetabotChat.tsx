@@ -193,7 +193,6 @@ export const MetabotChat = ({
               }
               isDoingScience={metabot.isDoingScience}
               debug={metabot.debugMode}
-              showFeedbackButtons
             />
             {/* loading */}
             {metabot.isDoingScience && (
