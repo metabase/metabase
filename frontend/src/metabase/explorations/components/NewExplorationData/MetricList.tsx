@@ -6,7 +6,7 @@ import { t } from "ttag";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import { Box, Checkbox, Stack, Text, UnstyledButton } from "metabase/ui";
 
-import S from "./AddMetricsModal.module.css";
+import S from "./ItemList.module.css";
 
 const METRIC_ITEM_HEIGHT = 70;
 const METRIC_ITEM_GAP = 8;

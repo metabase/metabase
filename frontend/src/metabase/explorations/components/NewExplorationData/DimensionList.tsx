@@ -3,27 +3,30 @@ import cx from "classnames";
 import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 
-import { Box, Text, UnstyledButton } from "metabase/ui";
+import { Box, Checkbox, Stack, Text, UnstyledButton } from "metabase/ui";
 import type { DimensionId, MetricDimension } from "metabase-types/api";
 
-import S from "./AddMetricsModal.module.css";
+import S from "./ItemList.module.css";
 import { groupDimensionsBySemanticType } from "./utils";
 
-const DIMENSION_ITEM_HEIGHT = 36;
-const DIMENSION_ITEM_GAP = 4;
+const DIMENSION_CARD_HEIGHT = 70;
+const DIMENSION_CARD_GAP = 8;
 
 interface DimensionListProps {
   dimensions: MetricDimension[];
   isSelected: (dimensionId: DimensionId) => boolean;
   onToggle: (dimension: MetricDimension) => void;
-  className?: string;
 }
 
+/**
+ * Virtualized list of dimension rows — wide cards with a checkbox,
+ * title and optional source name, matching `MetricList`. Rendered by
+ * the Browse → Dimensions panel.
+ */
 export function DimensionList({
   dimensions,
   isSelected,
   onToggle,
-  className,
 }: DimensionListProps) {
   const rows = useMemo(
     () => groupDimensionsBySemanticType(dimensions),
@@ -34,11 +37,11 @@ export function DimensionList({
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: useCallback(() => parentRef.current, []),
-    estimateSize: useCallback(() => DIMENSION_ITEM_HEIGHT, []),
+    estimateSize: useCallback(() => DIMENSION_CARD_HEIGHT, []),
     measureElement: useCallback(
       (el: Element | null) =>
-        (el?.getBoundingClientRect().height ?? DIMENSION_ITEM_HEIGHT) +
-        DIMENSION_ITEM_GAP,
+        (el?.getBoundingClientRect().height ?? DIMENSION_CARD_HEIGHT) +
+        DIMENSION_CARD_GAP,
       [],
     ),
     overscan: 5,
@@ -53,7 +56,7 @@ export function DimensionList({
   }
 
   return (
-    <Box ref={parentRef} className={cx(className, S.scrollContainer)}>
+    <Box ref={parentRef} className={S.scrollContainer}>
       <Box
         role="list"
         style={{
@@ -104,17 +107,30 @@ export function DimensionList({
               data-interestingness={
                 dimension.dimension_interestingness || "null"
               }
-              className={cx(S.dimensionChip, {
-                [S.dimensionChipSelected]: selected,
+              className={cx(S.metricItem, {
+                [S.metricItemSelected]: selected,
               })}
               style={{
-                width: "auto",
                 transform: `translateY(${virtualRow.start}px)`,
               }}
               onClick={() => onToggle(dimension)}
             >
-              {sourceName && sourceName + " - "}
-              {dimension.display_name}
+              <Checkbox
+                checked={selected}
+                onChange={() => onToggle(dimension)}
+                onClick={(event) => event.stopPropagation()}
+                aria-label={dimension.display_name}
+              />
+              <Stack gap="xs" flex={1}>
+                <Text fw="bold" lh="1.25" lineClamp={1}>
+                  {dimension.display_name}
+                </Text>
+                {sourceName && (
+                  <Text size="sm" lh="1rem" c="text-secondary" lineClamp={1}>
+                    {sourceName}
+                  </Text>
+                )}
+              </Stack>
             </UnstyledButton>
           );
         })}

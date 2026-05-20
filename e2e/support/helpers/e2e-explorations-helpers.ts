@@ -2,7 +2,6 @@ import type { StaticResponse } from "cypress/types/net-stubbing";
 
 import { updateSetting } from "./api";
 import { activateToken } from "./e2e-token-helpers";
-import { modal } from "./e2e-ui-elements-helpers";
 
 export function enableExplorations(): void {
   activateToken("pro-self-hosted");
@@ -27,45 +26,41 @@ export interface AddMetricsAndDimensionsOptions {
 }
 
 /**
- * Open the `AddMetricsModal`, tick the named metrics + dimensions,
- * and click `Done`. Assumes `visitNewExploration()` registered the
- * `@getDimensions` intercept already.
+ * Pick metrics + dimensions through the Browse tab. The right pane's
+ * section "+" buttons deep-link into the matching Browse picker; each
+ * checkbox commits to the exploration immediately (no modal, no Done).
+ * Assumes `visitNewExploration()` registered the `@getDimensions`
+ * intercept already.
  */
 export function addMetricsAndDimensions({
   metrics,
   dimensions = [],
 }: AddMetricsAndDimensionsOptions): void {
-  cy.findByRole("button", { name: /Add metrics and dimensions/i }).click();
-  modal().within(() => {
-    cy.wait("@getDimensions");
-    for (const name of metrics) {
+  cy.findByRole("button", { name: "Add metrics" }).click();
+  cy.wait("@getDimensions");
+  for (const name of metrics) {
+    cy.findByRole("checkbox", { name }).check({ force: true });
+  }
+  if (dimensions.length > 0) {
+    cy.findByRole("button", { name: "Add dimensions" }).click();
+    for (const name of dimensions) {
       cy.findByRole("checkbox", { name }).check({ force: true });
     }
-    for (const name of dimensions) {
-      cy.findByRole("listitem", { name: new RegExp(name, "i") }).click();
-    }
-    cy.findByRole("button", { name: "Done" }).click();
-  });
+  }
 }
 
 /**
- * Open the `AddTimelinesModal`, tick the named timelines (one or
- * many), and click `Done`.
- *
- * Each row is an `UnstyledButton` with `role="listitem"` wrapping
- * a `Checkbox` whose `aria-label` is the timeline name (see
- * `AddTimelinesModal.tsx`), so we drive selection through the
- * checkbox just like in `addMetricsAndDimensions`.
+ * Pick the named timelines (one or many) through the Browse →
+ * Timelines tab. Each row is an `UnstyledButton` with `role="listitem"`
+ * wrapping a `Checkbox` whose `aria-label` is the timeline name (see
+ * `TimelineList.tsx`), so we drive selection through the checkbox.
  */
 export function addTimelinesToExploration(names: string | string[]): void {
   const list = Array.isArray(names) ? names : [names];
-  cy.findByRole("button", { name: /Add timelines/i }).click();
-  modal().within(() => {
-    for (const name of list) {
-      cy.findByRole("checkbox", { name }).check({ force: true });
-    }
-    cy.findByRole("button", { name: "Done" }).click();
-  });
+  cy.findByRole("button", { name: "Add timelines" }).click();
+  for (const name of list) {
+    cy.findByRole("checkbox", { name }).check({ force: true });
+  }
 }
 
 /**

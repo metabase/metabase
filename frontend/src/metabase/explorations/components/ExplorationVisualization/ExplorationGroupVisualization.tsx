@@ -1,4 +1,3 @@
-import { useElementSize } from "@mantine/hooks";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -31,6 +30,7 @@ import { buildSeriesGroups } from "./utils";
 
 const MIN_PANEL_HEIGHT_PX = 200;
 const STICKY_AXIS_HEIGHT_PX = 60;
+const NUM_PANELS_BEFORE_STICKY_AXIS = 2;
 
 interface ExplorationGroupVisualizationProps {
   group: ExplorationQueryGroup;
@@ -302,13 +302,8 @@ function CartesianPageBody({ series, timelineEvents }: CartesianPageBodyProps) {
   const { mainChartContainerRef, mainChartAxisSnapshot } =
     useMainChartAxisSnapshot(true, series);
 
-  const { ref: scrollContainerRef, height: scrollContainerHeight } =
-    useElementSize();
-
   const naturalChartHeight = series.length * MIN_PANEL_HEIGHT_PX;
-  const shouldShowStickyAxis =
-    scrollContainerHeight > 0 &&
-    naturalChartHeight > scrollContainerHeight - STICKY_AXIS_HEIGHT_PX;
+  const shouldShowStickyAxis = series.length > NUM_PANELS_BEFORE_STICKY_AXIS;
 
   // When the sticky axis is active, hide the main chart's bottom
   // x-axis entirely (ticks + line + title) so we don't render the
@@ -347,10 +342,10 @@ function CartesianPageBody({ series, timelineEvents }: CartesianPageBodyProps) {
 
   return (
     <Box
-      ref={scrollContainerRef}
       flex={1}
       mih={0}
-      mah={MIN_PANEL_HEIGHT_PX * 2.5}
+      // some of the next panel should be visible to indicate that there are more panels to scroll through
+      mah={MIN_PANEL_HEIGHT_PX * (NUM_PANELS_BEFORE_STICKY_AXIS + 0.5)}
       style={{
         overflowY: "auto",
         position: "relative",

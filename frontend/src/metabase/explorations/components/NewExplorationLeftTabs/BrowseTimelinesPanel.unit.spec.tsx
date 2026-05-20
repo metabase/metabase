@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { useEffect, useImperativeHandle, useRef } from "react";
 
 import { setupTimelinesEndpoints } from "__support__/server-mocks/timeline";
 import {
@@ -8,13 +9,15 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import type { ExplorationSelection } from "metabase/explorations/hooks";
+import { useExplorationSelection } from "metabase/explorations/hooks";
 import type { Timeline } from "metabase-types/api";
 import {
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks/timeline";
 
-import { AddTimelinesModal } from "./AddTimelinesModal";
+import { BrowseTimelinesPanel } from "./BrowseTimelinesPanel";
 
 const releases = createMockTimeline({
   id: 1,
@@ -43,29 +46,54 @@ interface SetupOpts {
   initialTimelines?: Timeline[];
 }
 
+function Harness({
+  initialTimelines,
+  selectionRef,
+}: {
+  initialTimelines: Timeline[];
+  selectionRef: React.MutableRefObject<ExplorationSelection | null>;
+}) {
+  const selection = useExplorationSelection();
+
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (seededRef.current) {
+      return;
+    }
+    seededRef.current = true;
+    if (initialTimelines.length > 0) {
+      selection.setTimelines(initialTimelines);
+    }
+  }, [initialTimelines, selection]);
+
+  useImperativeHandle(selectionRef, () => selection, [selection]);
+
+  return <BrowseTimelinesPanel selection={selection} />;
+}
+
 function setup({ initialTimelines = [] }: SetupOpts = {}) {
   setupTimelinesEndpoints([releases, incidents, empty]);
 
-  const onSelectedItemsChange = jest.fn();
-  const onClose = jest.fn();
+  const selectionRef: React.MutableRefObject<ExplorationSelection | null> = {
+    current: null,
+  };
 
   renderWithProviders(
-    <AddTimelinesModal
-      opened
-      onClose={onClose}
-      selectedTimelines={initialTimelines}
-      onSelectedItemsChange={onSelectedItemsChange}
-    />,
+    <Harness initialTimelines={initialTimelines} selectionRef={selectionRef} />,
   );
 
-  return { onSelectedItemsChange, onClose };
+  return {
+    getSelection: () => {
+      const sel = selectionRef.current;
+      if (!sel) {
+        throw new Error("Selection ref was not populated");
+      }
+      return sel;
+    },
+  };
 }
 
-async function clickDone() {
-  await userEvent.click(screen.getByRole("button", { name: "Done" }));
-}
-
-describe("AddTimelinesModal", () => {
+describe("BrowseTimelinesPanel", () => {
   beforeAll(() => {
     mockGetBoundingClientRect({ height: 600, width: 600 });
   });
@@ -81,53 +109,24 @@ describe("AddTimelinesModal", () => {
     expect(screen.getByText("Incidents")).toBeInTheDocument();
   });
 
-  it("toggles do not call onSelectedItemsChange until Done is clicked", async () => {
-    const { onSelectedItemsChange } = setup();
+  it("checking a timeline commits it to the selection immediately", async () => {
+    const { getSelection } = setup();
 
     const checkbox = await screen.findByRole("checkbox", { name: "Releases" });
     await userEvent.click(checkbox);
 
-    expect(onSelectedItemsChange).not.toHaveBeenCalled();
+    expect(getSelection().timelines.map((t) => t.id)).toEqual([releases.id]);
   });
 
-  it("Done commits the checked timeline and closes the modal", async () => {
-    const { onSelectedItemsChange, onClose } = setup();
-
-    const checkbox = await screen.findByRole("checkbox", { name: "Releases" });
-    await userEvent.click(checkbox);
-    await clickDone();
-
-    expect(onSelectedItemsChange).toHaveBeenCalledTimes(1);
-    expect(onSelectedItemsChange.mock.calls[0][0]).toEqual([
-      expect.objectContaining({ id: releases.id }),
-    ]);
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it("Done commits removal of an unchecked timeline", async () => {
-    const { onSelectedItemsChange } = setup({
+  it("unchecking an already-selected timeline removes it from the selection immediately", async () => {
+    const { getSelection } = setup({
       initialTimelines: [releases, incidents],
     });
 
     const checkbox = await screen.findByRole("checkbox", { name: "Releases" });
     await userEvent.click(checkbox);
-    await clickDone();
 
-    expect(onSelectedItemsChange).toHaveBeenCalledTimes(1);
-    expect(onSelectedItemsChange.mock.calls[0][0]).toEqual([
-      expect.objectContaining({ id: incidents.id }),
-    ]);
-  });
-
-  it("closing without Done discards in-flight edits", async () => {
-    const { onSelectedItemsChange, onClose } = setup();
-
-    const checkbox = await screen.findByRole("checkbox", { name: "Releases" });
-    await userEvent.click(checkbox);
-    await userEvent.click(screen.getByRole("button", { name: "Close" }));
-
-    expect(onSelectedItemsChange).not.toHaveBeenCalled();
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(getSelection().timelines.map((t) => t.id)).toEqual([incidents.id]);
   });
 
   it("filters timelines by search query against name and description", async () => {
@@ -136,7 +135,7 @@ describe("AddTimelinesModal", () => {
     await screen.findByText("Releases");
 
     await userEvent.type(
-      screen.getByPlaceholderText("Search for timelines"),
+      screen.getByPlaceholderText("Search for a timeline"),
       "outage",
     );
 
