@@ -1791,7 +1791,7 @@
         (is (= 4 (coll-count)))))))
 
 (deftest warn-if-version-mismatch-test
-  (ts/with-dbs [source-db dest-db dest-db2]
+  (ts/with-dbs [source-db dest-db dest-db2 dest-db3]
     (ts/with-db source-db
       (mt/with-temp [:model/Collection _ {:name "col-1"}]
         (let [extract (into [] (serdes.extract/extract {:no-settings true}))]
@@ -1807,7 +1807,14 @@
             (testing "No warnings when version in serdes/meta matches current version"
               (log.capture/with-log-messages-for-level [messages :warn]
                 (serdes.load/load-metabase! (ingestion-in-memory extract))
-                (is (= 0 (count (filter #(str/includes? % "Version mismatch loading") (messages)))))))))))))
+                (is (= 0 (count (filter #(str/includes? % "Version mismatch loading") (messages))))))))
+          (ts/with-db dest-db3
+            (testing "No warnings when entities have no :metabase_version (eg. legacy exports or Settings)"
+              (let [no-version-extract (map #(dissoc % :metabase_version) extract)]
+                (log.capture/with-log-messages-for-level [messages [metabase-enterprise.serialization.v2.load :warn]]
+                  (serdes.load/load-metabase! (ingestion-in-memory no-version-extract))
+                  (is (= 0 (count (filter #(str/includes? % "Version mismatch loading") (messages))))
+                      "Missing :metabase_version should be treated as unknown, not as a mismatch"))))))))))
 
 (deftest import-published-table-with-existing-database-test
   (testing "Importing a published table works when database already exists on target"
