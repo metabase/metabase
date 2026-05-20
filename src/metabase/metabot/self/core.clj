@@ -539,7 +539,7 @@
    - Otherwise uses the provider's BYOK `auth`."
   [provider-slug llm-type auth ai-proxy?]
   (let [proxy-auth (when-let [base (llm/llm-proxy-base-url)]
-                     {:url     (str (str/replace base #"/+$" "") "/" provider-slug)
+                     {:url     (str (str/replace base #"/+$" "") "/llm/" provider-slug)
                       :headers {"x-metabase-instance-token" (premium-features/premium-embedding-token)}})]
     (if ai-proxy?
       (or proxy-auth

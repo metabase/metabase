@@ -216,8 +216,19 @@
                {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
     (let [start-ms             (u/start-timer)
           {:keys [usage data]} (-> (http/post endpoint
-                                              {:headers {"Content-Type"  "application/json"
-                                                         "Authorization" (str "Bearer " api-key)}
+                                              {:headers (merge {"Content-Type"  "application/json"}
+                                                               (cond (= "openai" provider)
+                                                                     ;; tbh i do not know whether the following
+                                                                     ;; is correct. when you start using openai
+                                                                     ;; as provider you should check that first.
+                                                                     {"Authorization" (str "Bearer " api-key)}
+                                                                     ;; following is correct, empirically
+                                                                     ;; confirmed.
+                                                                     (= "ai-service" provider)
+                                                                     {"x-metabase-instance-token" api-key}
+                                                                     :else
+                                                                     (throw (ex-info "Unsupported provider."
+                                                                                     {:provider provider}))))
                                                :body    (json/encode (merge {:model           model-name
                                                                              :input           texts
                                                                              :encoding_format "base64"}
