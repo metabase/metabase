@@ -10,11 +10,12 @@ import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { CreateOrEditQuestionAlertModalWithQuestion } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal";
 import { ALERT_TYPE_ROWS, getAlertType } from "metabase/notifications/utils";
-import { zoomInRow } from "metabase/query_builder/actions";
+import { resetRowZoom, zoomInRow } from "metabase/query_builder/actions";
 import {
   getIsShowingRawTable,
   getRowIndexToPKMap,
   getUiControls,
+  getZoomedObjectId,
 } from "metabase/query_builder/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -43,14 +44,20 @@ export function VisualizationResult(props) {
     (state) => getUiControls(state)?.scrollToLastColumn ?? false,
   );
   // Resolve the clicked row index to the source table's primary key value (the
-  // map disambiguates joined queries with multiple PK columns), then zoom.
+  // map disambiguates joined queries with multiple PK columns), then toggle the
+  // object detail: clicking the already-open row closes it, otherwise zoom in.
   const rowIndexToPkMap = useSelector(getRowIndexToPKMap);
+  const zoomedObjectId = useSelector(getZoomedObjectId);
   const onZoomRow = useCallback(
-    (rowIndex) =>
-      dispatch(
-        zoomInRow({ objectId: rowIndexToPkMap?.[rowIndex] ?? rowIndex }),
-      ),
-    [dispatch, rowIndexToPkMap],
+    (rowIndex) => {
+      const objectId = rowIndexToPkMap?.[rowIndex] ?? rowIndex;
+      if (objectId === zoomedObjectId) {
+        dispatch(resetRowZoom());
+      } else {
+        dispatch(zoomInRow({ objectId }));
+      }
+    },
+    [dispatch, rowIndexToPkMap, zoomedObjectId],
   );
   return (
     <VisualizationResultInner
