@@ -33,7 +33,6 @@
   that may succeed on retry. Walks the full exception cause chain."
   [db-type ^Throwable e]
   (boolean
-   (or (when (instance? SQLException e)
-         (transient-error?* db-type e))
-       (when-let [cause (ex-cause e)]
-         (transient-error? db-type cause)))))
+   (some #(and (instance? SQLException %)
+               (transient-error?* db-type %))
+         (take-while some? (iterate ex-cause e)))))
