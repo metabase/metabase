@@ -35,7 +35,7 @@
                                 (< attempt max-retries))
                          (do (log/warnf "Transient DB error on attempt %d/%d, retrying: %s"
                                         attempt max-retries (ex-message e))
-                             (Thread/sleep (* base-delay-ms (bit-shift-left 1 (dec attempt))))
+                             (Thread/sleep (long (* base-delay-ms (bit-shift-left 1 (dec attempt)))))
                              ::retry)
                          (throw e))))]
         (if (= result ::retry)
