@@ -692,7 +692,9 @@ export const fetchDashboardCardData =
     dispatch(
       fetchDashboardCardDataAction({
         currentTime: performance.now(),
-        loadingIds: isRefreshing ? loadingIds.concat(newLoadingIds) : newLoadingIds,
+        loadingIds: isRefreshing
+          ? loadingIds.concat(newLoadingIds)
+          : newLoadingIds,
       }),
     );
 

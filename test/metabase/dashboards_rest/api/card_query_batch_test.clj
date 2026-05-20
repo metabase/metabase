@@ -2,6 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -29,6 +31,17 @@
 
 (defn- batch-url [dashboard-id]
   (format "dashboard/%d/card-query-batch" dashboard-id))
+
+(defn- query-for-card
+  "Build a Lib query over `table-kw` (optionally limited) and compile to legacy MBQL for storage
+  as a Card's `:dataset_query`."
+  ([table-kw]
+   (query-for-card table-kw nil))
+  ([table-kw limit]
+   (let [mp (mt/metadata-provider)]
+     (lib/->legacy-MBQL
+      (cond-> (lib/query mp (lib.metadata/table mp (mt/id table-kw)))
+        limit (lib/limit limit))))))
 
 (defn- batch-request!
   "Make a batch card query request. Returns parsed NDJSON lines.
@@ -90,10 +103,10 @@
     (mt/dataset test-data
       (mt/with-temp [:model/Card          {card-1-id :id} {:database_id   (mt/id)
                                                            :table_id      (mt/id :orders)
-                                                           :dataset_query (mt/mbql-query orders {:limit 5})}
+                                                           :dataset_query (query-for-card :orders 5)}
                      :model/Card          {card-2-id :id} {:database_id   (mt/id)
                                                            :table_id      (mt/id :people)
-                                                           :dataset_query (mt/mbql-query people {:limit 5})}
+                                                           :dataset_query (query-for-card :people 5)}
                      :model/Dashboard     {dash-id :id}   {}
                      :model/DashboardCard {dc-1-id :id}   {:dashboard_id dash-id :card_id card-1-id}
                      :model/DashboardCard _               {:dashboard_id dash-id :card_id card-2-id}]
@@ -121,9 +134,9 @@
 (deftest batch-query-omit-cards-runs-all-test
   (testing "omitting cards param runs all non-virtual dashcards"
     (mt/dataset test-data
-      (mt/with-temp [:model/Card          {c1 :id} {:database_id (mt/id) :dataset_query (mt/mbql-query orders {:limit 1})}
-                     :model/Card          {c2 :id} {:database_id (mt/id) :dataset_query (mt/mbql-query people {:limit 1})}
-                     :model/Card          {c3 :id} {:database_id (mt/id) :dataset_query (mt/mbql-query products {:limit 1})}
+      (mt/with-temp [:model/Card          {c1 :id} {:database_id (mt/id) :dataset_query (query-for-card :orders 1)}
+                     :model/Card          {c2 :id} {:database_id (mt/id) :dataset_query (query-for-card :people 1)}
+                     :model/Card          {c3 :id} {:database_id (mt/id) :dataset_query (query-for-card :products 1)}
                      :model/Dashboard     {d :id}  {}
                      :model/DashboardCard _        {:dashboard_id d :card_id c1}
                      :model/DashboardCard _        {:dashboard_id d :card_id c2}
@@ -136,8 +149,8 @@
 (deftest batch-query-invalid-card-test
   (testing "card not in dashboard returns card-error"
     (mt/dataset test-data
-      (mt/with-temp [:model/Card          {c1 :id}  {:database_id (mt/id) :dataset_query (mt/mbql-query orders {:limit 1})}
-                     :model/Card          {c2 :id}  {:database_id (mt/id) :dataset_query (mt/mbql-query people {:limit 1})}
+      (mt/with-temp [:model/Card          {c1 :id}  {:database_id (mt/id) :dataset_query (query-for-card :orders 1)}
+                     :model/Card          {c2 :id}  {:database_id (mt/id) :dataset_query (query-for-card :people 1)}
                      :model/Dashboard     {d :id}   {}
                      :model/DashboardCard {dc :id}  {:dashboard_id d :card_id c1}]
         (testing "wrong card_id for a valid dashcard"
@@ -162,7 +175,7 @@
   (testing "dashboard read permission required"
     (mt/dataset test-data
       (mt/with-temp [:model/Collection    {coll-id :id} {}
-                     :model/Card          {c :id}  {:database_id (mt/id) :dataset_query (mt/mbql-query orders {:limit 1})}
+                     :model/Card          {c :id}  {:database_id (mt/id) :dataset_query (query-for-card :orders 1)}
                      :model/Dashboard     {d :id}  {:collection_id coll-id}
                      :model/DashboardCard _        {:dashboard_id d :card_id c}]
         (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
@@ -172,7 +185,7 @@
 
   (testing "blocked view-data permission results in card-error per card"
     (mt/dataset test-data
-      (mt/with-temp [:model/Card          {c :id}  {:database_id (mt/id) :dataset_query (mt/mbql-query orders {:limit 1})}
+      (mt/with-temp [:model/Card          {c :id}  {:database_id (mt/id) :dataset_query (query-for-card :orders 1)}
                      :model/Dashboard     {d :id}  {}
                      :model/DashboardCard {dc :id} {:dashboard_id d :card_id c}]
         (mt/with-no-data-perms-for-all-users!
@@ -214,7 +227,7 @@
     (mt/dataset test-data
       (mt/with-temp [:model/Card          {card-id :id}
                      {:database_id   (mt/id)
-                      :dataset_query (mt/mbql-query venues)}
+                      :dataset_query (query-for-card :venues)}
                      :model/Dashboard     {dash-id :id}
                      {:parameters [{:id        "abc123"
                                     :name      "ID"
@@ -245,7 +258,7 @@
     (mt/dataset test-data
       (mt/with-temp [:model/Card          {card-id :id} {:database_id   (mt/id)
                                                          :table_id      (mt/id :venues)
-                                                         :dataset_query (mt/mbql-query venues)}
+                                                         :dataset_query (query-for-card :venues)}
                      :model/Dashboard     {dash-id :id} {:parameters [{:name "Price"
                                                                        :slug "price"
                                                                        :id   "_PRICE_"
@@ -268,8 +281,8 @@
 (deftest batch-query-serial-thread-pool-test
   (testing "batch queries work with :serial thread pool (single-threaded)"
     (mt/dataset test-data
-      (mt/with-temp [:model/Card          {c1 :id} {:database_id (mt/id) :dataset_query (mt/mbql-query orders {:limit 1})}
-                     :model/Card          {c2 :id} {:database_id (mt/id) :dataset_query (mt/mbql-query people {:limit 1})}
+      (mt/with-temp [:model/Card          {c1 :id} {:database_id (mt/id) :dataset_query (query-for-card :orders 1)}
+                     :model/Card          {c2 :id} {:database_id (mt/id) :dataset_query (query-for-card :people 1)}
                      :model/Dashboard     {d :id}  {}
                      :model/DashboardCard _        {:dashboard_id d :card_id c1}
                      :model/DashboardCard _        {:dashboard_id d :card_id c2}]
@@ -282,9 +295,9 @@
 (deftest batch-query-reduces-db-calls-test
   (testing "batch endpoint uses fewer appdb calls than N individual requests"
     (mt/dataset test-data
-      (mt/with-temp [:model/Card          {c1 :id} {:database_id (mt/id) :dataset_query (mt/mbql-query orders {:limit 1})}
-                     :model/Card          {c2 :id} {:database_id (mt/id) :dataset_query (mt/mbql-query people {:limit 1})}
-                     :model/Card          {c3 :id} {:database_id (mt/id) :dataset_query (mt/mbql-query products {:limit 1})}
+      (mt/with-temp [:model/Card          {c1 :id} {:database_id (mt/id) :dataset_query (query-for-card :orders 1)}
+                     :model/Card          {c2 :id} {:database_id (mt/id) :dataset_query (query-for-card :people 1)}
+                     :model/Card          {c3 :id} {:database_id (mt/id) :dataset_query (query-for-card :products 1)}
                      :model/Dashboard     {d :id}  {}
                      :model/DashboardCard {dc1 :id} {:dashboard_id d :card_id c1}
                      :model/DashboardCard {dc2 :id} {:dashboard_id d :card_id c2}
@@ -316,11 +329,11 @@
 (deftest batch-query-scaling-test
   (testing "batch endpoint's per-card marginal cost is lower than individual requests"
     (mt/dataset test-data
-      (mt/with-temp [:model/Card          {c1 :id} {:database_id (mt/id) :dataset_query (mt/mbql-query orders {:limit 1})}
-                     :model/Card          {c2 :id} {:database_id (mt/id) :dataset_query (mt/mbql-query people {:limit 1})}
-                     :model/Card          {c3 :id} {:database_id (mt/id) :dataset_query (mt/mbql-query products {:limit 1})}
-                     :model/Card          {c4 :id} {:database_id (mt/id) :dataset_query (mt/mbql-query reviews {:limit 1})}
-                     :model/Card          {c5 :id} {:database_id (mt/id) :dataset_query (mt/mbql-query orders {:limit 2})}
+      (mt/with-temp [:model/Card          {c1 :id} {:database_id (mt/id) :dataset_query (query-for-card :orders 1)}
+                     :model/Card          {c2 :id} {:database_id (mt/id) :dataset_query (query-for-card :people 1)}
+                     :model/Card          {c3 :id} {:database_id (mt/id) :dataset_query (query-for-card :products 1)}
+                     :model/Card          {c4 :id} {:database_id (mt/id) :dataset_query (query-for-card :reviews 1)}
+                     :model/Card          {c5 :id} {:database_id (mt/id) :dataset_query (query-for-card :orders 2)}
                      :model/Dashboard     {d :id}  {}
                      :model/DashboardCard _        {:dashboard_id d :card_id c1}
                      :model/DashboardCard _        {:dashboard_id d :card_id c2}
@@ -354,13 +367,13 @@
   (let [extract-source-card-ids #'qp.dashboard-batch/extract-source-card-ids]
     (testing "card with no source-card refs returns empty set"
       (mt/with-temp [:model/Card {card-id :id} {:database_id   (mt/id)
-                                                :dataset_query (mt/mbql-query venues {:limit 1})}]
+                                                :dataset_query (query-for-card :venues 1)}]
         (let [card (t2/select-one :model/Card :id card-id)]
           (is (= #{} (extract-source-card-ids [card]))))))
 
     (testing "card based on another card returns that card's ID"
       (mt/with-temp [:model/Card {source-id :id} {:database_id   (mt/id)
-                                                  :dataset_query (mt/mbql-query venues)}
+                                                  :dataset_query (query-for-card :venues)}
                      :model/Card {card-id :id}   {:database_id   (mt/id)
                                                   :dataset_query {:database (mt/id)
                                                                   :type     :query
@@ -375,12 +388,12 @@
   (let [resolve-all-transitive-card-ids #'qp.dashboard-batch/resolve-all-transitive-card-ids]
     (testing "no transitive refs — returns just input card IDs"
       (mt/with-temp [:model/Card {c1 :id :as card1} {:database_id   (mt/id)
-                                                     :dataset_query (mt/mbql-query venues {:limit 1})}]
+                                                     :dataset_query (query-for-card :venues 1)}]
         (is (= #{c1} (resolve-all-transitive-card-ids {c1 card1})))))
 
     (testing "transitive chain: card A → card B → card C"
       (mt/with-temp [:model/Card {c-id :id}              {:database_id   (mt/id)
-                                                          :dataset_query (mt/mbql-query venues)}
+                                                          :dataset_query (query-for-card :venues)}
                      :model/Card {b-id :id}             {:database_id   (mt/id)
                                                          :dataset_query {:database (mt/id)
                                                                          :type     :query
