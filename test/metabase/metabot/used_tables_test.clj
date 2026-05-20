@@ -623,6 +623,27 @@
           (is (= #{orders-id people-id}
                  (table-ids rows))))))))
 
+(deftest ^:parallel cross-pair-card-resolved-once-test
+  (testing "a card referenced from multiple tool-call pairs is resolved at most once per extraction"
+    (let [c-id  1
+          mp    (mp+cards [(mock-card c-id (table-query (meta/id :orders)))])
+          parts [(notebook-input "n1")
+                 (notebook-output "n1" (card-query mp c-id))
+                 (notebook-input "n2")
+                 (notebook-output "n2" (card-query mp c-id))
+                 (notebook-input "n3")
+                 (notebook-output "n3" (card-query mp c-id))]
+          calls (atom [])
+          orig  (mt/original-fn #'used-tables/card-query)]
+      (mt/with-dynamic-fn-redefs [used-tables/card-query (fn [m cid]
+                                                           (swap! calls conj cid)
+                                                           (orig m cid))]
+        (let [rows (used-tables/extract-used-tables mp 99 parts)]
+          (is (= [{:message_id 99
+                   :table_id   (meta/id :orders)}]
+                 rows))
+          (is (= [c-id] @calls)))))))
+
 ;;; ---------------------------------------- dedupe / stamping ----------------------------------------
 
 (deftest ^:parallel dedupes-within-message-test

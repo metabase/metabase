@@ -12,6 +12,9 @@
 
   - Collects table and card ids via [[metabase.lib.core/all-referenced-entity-ids]]. The metadata provider is shared
     across the whole extraction via [[metabase.lib-be.core/with-metadata-provider-cache]].
+  - All tool-call pairs in a single message feed into one shared BFS, so a card referenced from multiple pairs is
+    resolved at most once per extraction. This matters for iterative-refinement patterns where the agent regenerates
+    the same query shape and sources or template-tags the same upstream card on each pass.
   - Treats `:metric` refs as cards for recursion. Enqueueing their `:dataset_query` collapses metric references down
     to their underlying source tables alongside questions and models.
   - For native stages, runs the macaw parser via [[metabase.metabot.query-analyzer/tables-for-native]] to recover
@@ -36,12 +39,10 @@
   #{transform-sql-tool-name transform-python-tool-name})
 
 (def ^:private tracked-tool-names
-  "Union of every tool name whose successful invocation we mine for table
-  references. We keep the transform tools out of
-  [[metabase.metabot.tools/query-generation-tool-names]] because the
-  metabot_analytics module makes shape assumptions about that set
-  (`:query-content`/`:database`/etc. in structured-output) that transform
-  outputs do not satisfy."
+  "Union of every tool name whose successful invocation we mine for table references. We keep the transform tools
+  out of [[metabase.metabot.tools/query-generation-tool-names]] because the metabot_analytics module makes shape
+  assumptions about that set (`:query-content`/`:database`/etc. in structured-output) that transform outputs do not
+  satisfy."
   (into transform-tool-names metabot.tools/query-generation-tool-names))
 
 (defn- tool-output->structured
@@ -51,8 +52,7 @@
         (:structured_output result))))
 
 (defn- successful-tracked-output?
-  "True when `tool-input`/`tool-output` is a successful invocation of a tool
-  whose output we mine for table references."
+  "Is this a successful invocation of a tool in tracked-tool-names?"
   [input-block output-block]
   (and output-block
        (contains? tracked-tool-names (:function input-block))
@@ -102,8 +102,8 @@
       {:tables #{} :cards #{}})))
 
 (defn- card-query
-  "Look up the Card with `card-id` via `metadata-providerable` and return its underlying query.
-  Warns and returns nil if the card is missing or the conversion fails."
+  "Look up the Card with `card-id` via `metadata-providerable` and return its underlying query. Warns and returns
+  nil if the card is missing or the conversion fails."
   [metadata-providerable card-id]
   (try
     (if-let [card (lib.metadata/card metadata-providerable card-id)]
@@ -116,7 +116,12 @@
 
 (defn- collect-tables
   "BFS over a queue of MBQL queries, accumulating referenced table ids.
-  Tracks visited card ids to break cycles."
+
+  Tracks visited card ids to break cycles and to skip redundant work when the same card is referenced from multiple
+  seed queries.
+
+  Called once per [[extract-used-tables]] invocation with seed queries gathered from every tool-call pair, so the
+  `visited` set is shared across pairs."
   [initial-queries]
   (loop [tables  #{}
          queue   (vec initial-queries)
@@ -169,12 +174,20 @@
            (->mbql5-query metadata-providerable)))
 
 (defn- transform-declared-table-ids
-  "Read `:table_id` values from a write_transform_* tool's `:source_tables`argument. 
+  "Read `:table_id` values from a `write_transform_*` tool's `:source_tables` argument.
   Required by the Python tool's schema; absent from the SQL tool's schema."
   [arguments]
   (into #{} (keep :table_id) (:source_tables arguments)))
 
-(defn- pair->table-ids
+(def ^:private empty-seeds {:queries [] :tables #{}})
+
+(defn- pair->seeds
+  "Return `{:queries [...] :tables #{...}}` for one `(tool-input, tool-output)` pair.
+
+  `:queries` are MBQL queries to feed into the shared BFS in [[extract-used-tables]]. 
+
+  `:tables` are already-known table ids. Currently only populated by the Python transform tool, which declares its
+  sources in the `:source_tables` argument rather than embedding them in a query."
   [metadata-providerable input-block output-block]
   (let [tool-name  (:function input-block)
         arguments  (:arguments input-block)
@@ -182,22 +195,22 @@
     (cond
       (= tool-name notebook-tool-name)
       (if-let [start (notebook-starting-query metadata-providerable structured)]
-        (collect-tables [start])
-        #{})
+        {:queries [start] :tables #{}}
+        empty-seeds)
 
       (= tool-name transform-sql-tool-name)
-      (let [declared  (transform-declared-table-ids arguments)
-            sql-start (transform-sql-starting-query metadata-providerable structured)]
-        (cond-> declared
-          sql-start (into (collect-tables [sql-start]))))
+      {:queries (if-let [start (transform-sql-starting-query metadata-providerable structured)]
+                  [start]
+                  [])
+       :tables  (transform-declared-table-ids arguments)}
 
       (= tool-name transform-python-tool-name)
-      (transform-declared-table-ids arguments)
+      {:queries [] :tables (transform-declared-table-ids arguments)}
 
       :else
       (if-let [start (sql-starting-query metadata-providerable tool-name arguments structured)]
-        (collect-tables [start])
-        #{}))))
+        {:queries [start] :tables #{}}
+        empty-seeds))))
 
 (defn- ->rows
   [message-id table-ids]
@@ -207,11 +220,14 @@
 (defn extract-used-tables
   "Walk the `parts` vector and return rows for `metabot_used_table`.
 
-  One row per distinct `(message-id, table-id)` pair.  Returns `[]` when nothing was referenced.
+  One row per distinct `(message-id, table-id)` pair. Returns `[]` when nothing was referenced.
+
+  Runs a single BFS across all tool-call pairs, so a card referenced from multiple pairs is resolved at most once per
+  call.
 
   Must run on the pre-strip `parts` before [[metabase.metabot.persistence/strip-tool-output-bloat]] trims tool-output;
-  the transform path needs the un-trimmed `:transform` key, which is not in
-  [[metabase.metabot.persistence/persisted-structured-output-keys]]."
+  the transform path needs the un-trimmed `:transform` key, which is not
+  in [[metabase.metabot.persistence/persisted-structured-output-keys]]."
   ([message-id parts]
    (lib-be/with-metadata-provider-cache
      (extract-used-tables lib-be/application-database-metadata-provider message-id parts)))
@@ -225,8 +241,13 @@
                                     (let [output (get outputs-by-id (:id input))]
                                       (when (successful-tracked-output? input output)
                                         [input output])))))
-         all-tables    (reduce (fn [acc [input output]]
-                                 (into acc (pair->table-ids metadata-providerable input output)))
-                               #{}
-                               pairs)]
+         {:keys [queries tables]}
+         (reduce (fn [acc [input output]]
+                   (let [seeds (pair->seeds metadata-providerable input output)]
+                     (-> acc
+                         (update :queries into (:queries seeds))
+                         (update :tables into (:tables seeds)))))
+                 empty-seeds
+                 pairs)
+         all-tables (into tables (collect-tables queries))]
      (->rows message-id all-tables))))
