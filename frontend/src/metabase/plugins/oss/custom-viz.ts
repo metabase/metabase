@@ -58,7 +58,7 @@ const getDefaultPluginCustomViz = () => ({
    * boundary. Placeholder in OSS — never invoked because
    * `isTrustedWidgetMount` always returns false there.
    */
-  SettingWidget: PluginPlaceholder as ComponentType<{
+  CustomVizSettingWidget: PluginPlaceholder<{
     mount: WidgetMount;
     widgetProps: Record<string, unknown>;
   }>,

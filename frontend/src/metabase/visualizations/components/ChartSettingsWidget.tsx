@@ -75,7 +75,7 @@ const ChartSettingsWidget = ({
       )}
       {Widget &&
         (PLUGIN_CUSTOM_VIZ.isTrustedWidgetMount(Widget) ? (
-          <PLUGIN_CUSTOM_VIZ.SettingWidget
+          <PLUGIN_CUSTOM_VIZ.CustomVizSettingWidget
             mount={Widget}
             widgetProps={{ ...extraWidgetProps, ...props }}
           />

@@ -28,7 +28,7 @@ export function initializePlugin() {
       useCustomVizPluginsIcon,
       isCustomVizDisplay,
       isTrustedWidgetMount,
-      SettingWidget: CustomVizSettingWidget,
+      CustomVizSettingWidget,
     });
   }
 }
