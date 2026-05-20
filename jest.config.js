@@ -34,10 +34,52 @@ const swcJestTransform = [
   },
 ];
 
+const swcTransform = {
+  "^.+\\.[jt]sx?$": swcJestTransform,
+};
+
+const frontendUnitTestMatch = [
+  "<rootDir>/frontend/src/metabase/**/*.unit.spec.{js,jsx,ts,tsx}",
+  "<rootDir>/frontend/src/metabase-lib/**/*.unit.spec.{js,jsx,ts,tsx}",
+  "<rootDir>/enterprise/frontend/src/metabase-enterprise/**/*.unit.spec.{js,jsx,ts,tsx}",
+  "<rootDir>/enterprise/frontend/src/embedding/**/*.unit.spec.{js,jsx,ts,tsx}",
+  "<rootDir>/frontend/test/**/*.unit.spec.{js,jsx,ts,tsx}",
+];
+
+const toolingUnitTestMatch = [
+  "<rootDir>/.github/**/*.unit.spec.js",
+  "<rootDir>/bin/**/*.unit.spec.{js,ts}",
+  "<rootDir>/frontend/build/**/*.unit.spec.{js,ts}",
+];
+
+const frontendUnitTestRoots = [
+  "<rootDir>/frontend/src",
+  "<rootDir>/frontend/test",
+  "<rootDir>/enterprise/frontend/src",
+];
+
+const toolingUnitTestRoots = [
+  "<rootDir>/.github",
+  "<rootDir>/bin",
+  "<rootDir>/frontend/build",
+];
+
+const ignoredGeneratedPaths = [
+  "<rootDir>/.clj-kondo/.cache/",
+  "<rootDir>/.lsp/.cache/",
+  "<rootDir>/coverage/",
+  "<rootDir>/e2e/embedding-sdk-host-apps/.*/dist/",
+  "<rootDir>/e2e/embedding-sdk-host-apps/.*/node_modules/",
+  "<rootDir>/modules/.*/target/",
+  "<rootDir>/release/node_modules/",
+  "<rootDir>/resources/embedding-sdk/dist/",
+  "<rootDir>/resources/frontend_client/",
+  "<rootDir>/storybook-static/",
+  "<rootDir>/target/",
+];
+
 const baseConfig = {
-  transform: {
-    "^.+\\.[jt]sx?$": swcJestTransform,
-  },
+  transform: swcTransform,
   moduleNameMapper: {
     // Force jose to use Node.js runtime instead of browser runtime in jsdom environment.
     // The browser runtime expects CryptoKey to be globally available, which jsdom doesn't provide.
@@ -46,7 +88,7 @@ const baseConfig = {
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
-    "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
+    "^cljs/(.*)$": "<rootDir>/target/cljs_release/$1",
     "\\.svg\\?(component|source)":
       "<rootDir>/frontend/test/__mocks__/svgMock.tsx",
     "csv-parse/browser/esm/sync":
@@ -86,15 +128,14 @@ const baseConfig = {
     `<rootDir>/node_modules/(?:\\.bun/(?!(${esmPackages.join("|")})@)|(?!\\.bun)(?!(${esmPackages.join("|")})/))`,
     // CLJS files are already compiled CJS — skip transform entirely
     "<rootDir>/target/cljs_dev/",
+    "<rootDir>/target/cljs_release/",
   ],
   testPathIgnorePatterns: [
     "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",
     "<rootDir>/release/.*",
   ],
-  testMatch: [
-    "<rootDir>/**/*.unit.spec.js",
-    "<rootDir>/**/*.unit.spec.{js,jsx,ts,tsx}",
-  ],
+  testMatch: frontendUnitTestMatch,
+  roots: frontendUnitTestRoots,
   modulePaths: [
     "<rootDir>/frontend/test",
     "<rootDir>/frontend/src",
@@ -139,6 +180,7 @@ const baseConfig = {
 const config = {
   reporters: ["default", "jest-junit"],
   coverageReporters: ["html", "lcov"],
+  watchPathIgnorePatterns: ignoredGeneratedPaths,
   watchPlugins: [
     "jest-watch-typeahead/filename",
     "jest-watch-typeahead/testname",
@@ -169,19 +211,19 @@ const config = {
     {
       ...baseConfig,
       displayName: "core",
-      testPathIgnorePatterns: [
-        ...(baseConfig.testPathIgnorePatterns || []),
-        "<rootDir>/frontend/src/embedding-sdk-bundle",
-        "<rootDir>/frontend/src/embedding-sdk-shared",
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-package",
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-ee",
-        "<rootDir>/enterprise/frontend/src/custom-viz",
-        "<rootDir>/frontend/lint/tests",
-      ],
     },
     {
       displayName: "lint-rules",
       testMatch: ["<rootDir>/frontend/lint/tests/**/*.unit.spec.js"],
+      roots: ["<rootDir>/frontend/lint"],
+      testEnvironment: "node",
+      transform: baseConfig.transform,
+      transformIgnorePatterns: baseConfig.transformIgnorePatterns,
+    },
+    {
+      displayName: "tooling",
+      testMatch: toolingUnitTestMatch,
+      roots: toolingUnitTestRoots,
       testEnvironment: "node",
       transform: baseConfig.transform,
       transformIgnorePatterns: baseConfig.transformIgnorePatterns,
