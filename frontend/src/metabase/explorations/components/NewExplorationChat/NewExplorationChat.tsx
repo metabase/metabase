@@ -101,9 +101,17 @@ export function NewExplorationChat({
           ) as GetExplorationDataResponse;
           newMetrics.push(...metrics);
           newDimensions.push(
-            ...dimension_groups.flatMap((group) =>
-              group.dimensions.filter(isInterestingDimension),
-            ),
+            ...dimension_groups.flatMap((group) => {
+              const interestingDimensions = group.dimensions.filter(
+                isInterestingDimension,
+              );
+              if (interestingDimensions.length > 0) {
+                return interestingDimensions;
+              }
+              // if there are no interesting dimensions, return all dimensions
+              // this guards against possible issues with the interestingness scoring
+              return group.dimensions;
+            }),
           );
         }
 
