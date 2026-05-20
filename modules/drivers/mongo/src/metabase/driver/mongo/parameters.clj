@@ -4,11 +4,11 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.driver-api.core :as driver-api]
-   [metabase.driver.common.parameters.dates :as params.dates]
-   [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.lib.core :as lib]
+   [metabase.query-processor.parameters.dates :as params.dates]
+   [metabase.query-processor.parameters.operators :as params.ops]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -129,7 +129,6 @@
       (let [no-value? (= (:value v) lib/parsed-param-no-value-placeholder)]
         (cond
           (params.ops/operator? (get-in v [:value :type]))
-          #_{:clj-kondo/ignore [:deprecated-var]}
           (let [param (:value v)
                 field-name (if (str/blank? (:alias v))
                              (mongo.qp/field->name (:field v) ".")
@@ -140,11 +139,24 @@
                                             [:field field-name
                                              {:base-type (get-in v [:field :base-type])}]])
                                     params.ops/to-clause
-                                    ;; desugar only impacts :does-not-contain -> [:not [:contains ... but it prevents
-                                    ;; an optimization of [:= 'field 1 2 3] -> [:in 'field [1 2 3]] since that
-                                    ;; desugars to [:or [:= 'field 1] ...].
-                                    driver-api/desugar-filter-clause
-                                    driver-api/wrap-value-literals-in-mbql
+                                    ;; desugar only impacts
+                                    ;;
+                                    ;;    :does-not-contain -> [:not [:contains ...]]
+                                    ;;
+                                    ;; but it prevents an optimization of
+                                    ;;
+                                    ;;    [:= <field> 1 2 3] -> [:in <field> [1 2 3]]
+                                    ;;
+                                    ;; since that desugars to
+                                    ;;
+                                    ;;    [:or [:= <field> 1] ...].
+                                    lib/desugar-filter-clause
+                                    driver-api/wrap-value-literals-in-mbql5
+                                    ;;
+                                    ;; TODO (Cam 2026-05-14) -- remove once we convert the MongoDB driver to use MBQL
+                                    ;; 5 natively
+                                    ;;
+                                    lib/->legacy-MBQL
                                     mongo.qp/compile-filter
                                     json/encode)]
             [(conj acc compiled-clause) missing])

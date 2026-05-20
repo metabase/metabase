@@ -162,13 +162,12 @@
   (or (isa? base-type :type/Temporal)
       (isa? base-type :type/Number)))
 
-(defn first-incremental-run?
-  "True when `transform` is configured as `:table-incremental` but has not yet recorded a watermark.
-  First incremental runs behave like full runs — they drop-and-recreate the target table rather than
-  appending — so call sites that branch on incremental semantics need to special-case them.
-
-  Note: this stays true across failed first attempts until one successfully persists a watermark,
-  since the predicate only inspects `:last_checkpoint_value`."
+(defn full-incremental-run?
+  "True when an incremental transform should drop-and-recreate the target rather than append.
+  Fires whenever `last_checkpoint_value` is nil — covers the literal first run, and any run after the
+  `:model/Transform` before-update hook clears the watermark on a `checkpoint-filter-field-id`
+  change. Stays true across failed attempts since the predicate only inspects
+  `:last_checkpoint_value`."
   [{:keys [target last_checkpoint_value]}]
   (and (= :table-incremental (keyword (:type target)))
        (nil? last_checkpoint_value)))

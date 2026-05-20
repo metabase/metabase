@@ -250,3 +250,123 @@ describe("issue 64368", () => {
       .should("contain.text", "Doohickey");
   });
 });
+
+describe("issue 73448", () => {
+  const productCategories = ["Doohickey", "Gadget", "Gizmo", "Widget"];
+
+  const categoryParameter = createMockActionParameter({
+    id: "category",
+    name: "Category",
+    slug: "category",
+    type: "string/=",
+    sectionId: "string",
+  });
+
+  const questionDetails: StructuredQuestionDetails = {
+    name: "Orders by Category",
+    display: "bar",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        [
+          "field",
+          PRODUCTS.CATEGORY,
+          { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+        ],
+      ],
+      limit: 5,
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("updates a dashboard filter from a bar chart dimension click behavior (#73448)", () => {
+    H.createQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails: {
+        parameters: [categoryParameter],
+      },
+    }).then(({ body: dashcard }) => {
+      H.addOrUpdateDashboardCard({
+        dashboard_id: dashcard.dashboard_id,
+        card_id: dashcard.card_id,
+        card: {
+          id: dashcard.id,
+          parameter_mappings: [
+            {
+              card_id: dashcard.card_id,
+              parameter_id: categoryParameter.id,
+              target: [
+                "dimension",
+                [
+                  "field",
+                  PRODUCTS.CATEGORY,
+                  {
+                    "base-type": "type/Text",
+                    "source-field": ORDERS.PRODUCT_ID,
+                  },
+                ],
+              ],
+            },
+          ],
+          visualization_settings: {
+            column_settings: {
+              '["name","CATEGORY"]': {
+                click_behavior: {
+                  type: "crossfilter",
+                  parameterMapping: {
+                    [categoryParameter.id]: {
+                      id: categoryParameter.id,
+                      source: {
+                        type: "column",
+                        id: "CATEGORY",
+                        name: "Product → Category",
+                      },
+                      target: {
+                        type: "parameter",
+                        id: categoryParameter.id,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      H.visitDashboard(dashcard.dashboard_id);
+    });
+
+    cy.location("pathname").as("dashboardPath");
+
+    H.chartPathWithFillColor("#509EE3")
+      .should("have.length", 4)
+      .first()
+      .click();
+
+    cy.log("dashboard filter updates with the clicked category value");
+    H.filterWidget()
+      .invoke("text")
+      .should((text) => {
+        expect(
+          productCategories.some((category) => text.includes(category)),
+        ).to.equal(true);
+      });
+    cy.location("search").should((search) => {
+      expect(new URLSearchParams(search).get("category")).to.be.oneOf(
+        productCategories,
+      );
+    });
+
+    cy.log("drill-through popover is not shown and navigation stays put");
+    cy.get(H.POPOVER_ELEMENT).should("not.exist");
+    cy.get("@dashboardPath").then((dashboardPath) => {
+      cy.location("pathname").should("eq", dashboardPath);
+    });
+  });
+});

@@ -16,13 +16,13 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest ^:parallel field->field-filter-clause-test
+(deftest ^:parallel field->field-ref-test
   (is (=? [:field
-           (meta/id :venues :id)
            {:base-type                                                           :type/BigInteger
             :metabase.query-processor.util.add-alias-info/source-table           (meta/id :venues)
-            :metabase.driver.sql.parameters.substitution/compiling-field-filter? true}]
-          (#'sql.params.substitution/field->field-filter-clause
+            :metabase.driver.sql.parameters.substitution/compiling-field-filter? true}
+           (meta/id :venues :id)]
+          (#'sql.params.substitution/field->field-ref
            :h2
            (meta/field-metadata :venues :id)
            :number/=

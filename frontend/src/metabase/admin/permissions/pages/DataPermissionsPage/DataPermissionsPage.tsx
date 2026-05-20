@@ -6,10 +6,11 @@ import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
 import {
   skipToken,
   useGetDatabaseMetadataQuery,
+  useListDatabasesQuery,
   useListPermissionsGroupsQuery,
 } from "metabase/api";
-import { Databases } from "metabase/entities/databases";
 import { useDispatch, useSelector } from "metabase/redux";
+import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { Center, Loader } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -30,17 +31,22 @@ type DataPermissionsPageProps = {
   params: {
     databaseId: DatabaseId;
   };
-  databases: Database[];
 };
 
 const EMPTY_GROUP_LIST: GroupInfo[] = [];
+const EMPTY_DATABASE_LIST: Database[] = [];
 
 function DataPermissionsPage({
   children,
   route,
   params,
-  databases,
 }: DataPermissionsPageProps) {
+  const { isLoading: isLoadingDatabases } = useListDatabasesQuery();
+  const databases = useSelector(
+    (state) =>
+      (getMetadataUnfiltered(state).databasesList() as Database[]) ??
+      EMPTY_DATABASE_LIST,
+  );
   const { data, isLoading: isLoadingGroups } = useListPermissionsGroupsQuery(
     {},
   );
@@ -83,6 +89,7 @@ function DataPermissionsPage({
   );
 
   if (
+    isLoadingDatabases ||
     isLoadingGroups ||
     isLoadingAllUsers ||
     isLoadingAdminstrators ||
@@ -112,6 +119,4 @@ function DataPermissionsPage({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Databases.loadList({
-  selectorName: "getListUnfiltered",
-})(DataPermissionsPage);
+export default DataPermissionsPage;

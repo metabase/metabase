@@ -26,20 +26,20 @@
                 {:name "Routing transform"}
                 (mt/db)))))))))
 
-(deftest ^:parallel first-incremental-run?-test
+(deftest ^:parallel full-incremental-run?-test
   (testing "true for an incremental transform with no checkpoint yet"
-    (is (true? (transforms-base.u/first-incremental-run?
+    (is (true? (transforms-base.u/full-incremental-run?
                 {:target {:type "table-incremental"} :last_checkpoint_value nil}))))
   (testing "false for an incremental transform that has already recorded a watermark"
-    (is (false? (transforms-base.u/first-incremental-run?
+    (is (false? (transforms-base.u/full-incremental-run?
                  {:target {:type "table-incremental"} :last_checkpoint_value "42"}))))
   (testing "false for non-incremental targets regardless of checkpoint value"
-    (is (false? (transforms-base.u/first-incremental-run?
+    (is (false? (transforms-base.u/full-incremental-run?
                  {:target {:type "table"} :last_checkpoint_value nil})))
-    (is (false? (transforms-base.u/first-incremental-run?
+    (is (false? (transforms-base.u/full-incremental-run?
                  {:target {:type :table} :last_checkpoint_value nil}))))
   (testing "accepts both string and keyword target types"
-    (is (true? (transforms-base.u/first-incremental-run?
+    (is (true? (transforms-base.u/full-incremental-run?
                 {:target {:type :table-incremental} :last_checkpoint_value nil})))))
 
 (deftest ^:parallel checkpoint-span-attrs-test

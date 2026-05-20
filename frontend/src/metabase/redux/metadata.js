@@ -1,15 +1,23 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
-import { cardApi, dashboardApi, datasetApi, segmentApi } from "metabase/api";
-import { Databases } from "metabase/entities/databases";
-import { Fields } from "metabase/entities/fields";
+import {
+  cardApi,
+  dashboardApi,
+  databaseApi,
+  datasetApi,
+  fieldApi,
+  segmentApi,
+} from "metabase/api";
 import { Tables } from "metabase/entities/tables";
 import { entityCompatibleQuery } from "metabase/entities/utils";
 import { isProduction } from "metabase/env";
 import { createThunkAction } from "metabase/redux";
+import { DatabaseSchema, FieldSchema } from "metabase/schema";
 import { RevisionsApi } from "metabase/services";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
+
+import { updateMetadata } from "./metadata-typed";
 
 export * from "metabase/redux/metadata-typed";
 
@@ -39,20 +47,40 @@ export const updateSegment = (segment) => (dispatch) => {
   );
 };
 
-export const fetchRealDatabases = (reload = false) => {
-  deprecated("metabase/redux/metadata fetchRealDatabases");
-  return Databases.actions.fetchList({ include: "tables" }, { reload });
-};
+export const fetchRealDatabases =
+  (reload = false) =>
+  (dispatch) => {
+    deprecated("metabase/redux/metadata fetchRealDatabases");
+    return entityCompatibleQuery(
+      { include: "tables" },
+      dispatch,
+      databaseApi.endpoints.listDatabases,
+      { forceRefetch: reload },
+    );
+  };
 
-export const fetchDatabaseMetadata = (dbId, reload = false) => {
-  deprecated("metabase/redux/metadata fetchDatabaseMetadata");
-  return Databases.actions.fetchDatabaseMetadata({ id: dbId }, { reload });
-};
+export const fetchDatabaseMetadata =
+  (dbId, reload = false) =>
+  (dispatch) => {
+    deprecated("metabase/redux/metadata fetchDatabaseMetadata");
+    return entityCompatibleQuery(
+      { id: dbId },
+      dispatch,
+      databaseApi.endpoints.getDatabaseMetadata,
+      { forceRefetch: reload },
+    );
+  };
 
-export const updateDatabase = (database) => {
+export const updateDatabase = (database) => async (dispatch) => {
   deprecated("metabase/redux/metadata updateDatabase");
   const slimDatabase = _.omit(database, "tables", "tables_lookup");
-  return Databases.actions.update(slimDatabase);
+  const result = await entityCompatibleQuery(
+    slimDatabase,
+    dispatch,
+    databaseApi.endpoints.updateDatabase,
+  );
+  dispatch(updateMetadata(result, DatabaseSchema));
+  return result;
 };
 
 export const updateTable = (table) => {
@@ -73,51 +101,51 @@ export const fetchTableMetadata = (id, reload = false) => {
   return Tables.actions.fetchMetadataAndForeignTables({ id }, { reload });
 };
 
-export const METADATA_FETCH_FIELD = "metabase/metadata/FETCH_FIELD";
-export const fetchField = createThunkAction(
-  METADATA_FETCH_FIELD,
-  (id, reload = false) => {
-    deprecated("metabase/redux/metadata fetchField");
-    return async (dispatch) => {
-      const action = await dispatch(Fields.actions.fetch({ id }, { reload }));
-      const field = Fields.HACK_getObjectFromAction(action);
-      if (field?.dimensions?.[0]?.human_readable_field_id != null) {
-        await dispatch(
-          Fields.actions.fetch(
-            { id: field.dimensions?.[0]?.human_readable_field_id },
-            { reload },
-          ),
-        );
-      }
-    };
-  },
-);
-
-export const updateFieldValues = (fieldId, fieldValuePairs) => {
+export const updateFieldValues = (fieldId, fieldValuePairs) => (dispatch) => {
   deprecated("metabase/redux/metadata updateFieldValues");
-  return Fields.actions.updateFieldValues({ id: fieldId }, fieldValuePairs);
+  return entityCompatibleQuery(
+    { id: fieldId, values: fieldValuePairs },
+    dispatch,
+    fieldApi.endpoints.updateFieldValues,
+  );
 };
 
-export { ADD_FIELDS } from "metabase/entities/fields";
-export const addFields = (fields) => {
-  return Fields.actions.addFields(fields);
-};
-
-export const updateField = (field) => {
+export const updateField = (field) => async (dispatch) => {
   deprecated("metabase/redux/metadata updateField");
   const slimField = _.omit(field, "filter_operators_lookup");
-  return Fields.actions.update(slimField);
+  const result = await entityCompatibleQuery(
+    slimField,
+    dispatch,
+    fieldApi.endpoints.updateField,
+  );
+  dispatch(updateMetadata(result, FieldSchema));
+  return result;
 };
 
-export const deleteFieldDimension = (fieldId) => {
+export const deleteFieldDimension = (fieldId) => async (dispatch) => {
   deprecated("metabase/redux/metadata deleteFieldDimension");
-  return Fields.actions.deleteFieldDimension({ id: fieldId });
+  const result = await entityCompatibleQuery(
+    fieldId,
+    dispatch,
+    fieldApi.endpoints.deleteFieldDimension,
+  );
+  dispatch(updateMetadata({ id: fieldId, dimensions: [] }, FieldSchema));
+  return result;
 };
 
-export const updateFieldDimension = (fieldId, dimension) => {
-  deprecated("metabase/redux/metadata updateFieldDimension");
-  return Fields.actions.updateFieldDimension({ id: fieldId }, dimension);
-};
+export const updateFieldDimension =
+  (fieldId, dimension) => async (dispatch) => {
+    deprecated("metabase/redux/metadata updateFieldDimension");
+    const result = await entityCompatibleQuery(
+      { id: fieldId, ...dimension },
+      dispatch,
+      fieldApi.endpoints.createFieldDimension,
+    );
+    dispatch(
+      updateMetadata({ id: fieldId, dimensions: [result] }, FieldSchema),
+    );
+    return result;
+  };
 
 export const FETCH_REVISIONS = "metabase/metadata/FETCH_REVISIONS";
 export const fetchRevisions = createThunkAction(FETCH_REVISIONS, (type, id) => {
@@ -176,9 +204,13 @@ export const fetchSegmentRevisions = createThunkAction(
   },
 );
 
-export const addRemappings = (fieldId, remappings) => {
+export const addRemappings = (fieldId, remappings) => (dispatch, getState) => {
   deprecated("metabase/redux/metadata addRemappings");
-  return Fields.actions.addRemappings({ id: fieldId }, remappings);
+  const existing = getState().entities.fields?.[fieldId]?.remappings ?? [];
+  const merged = Array.from(new Map(existing.concat(remappings)));
+  return dispatch(
+    updateMetadata({ id: fieldId, remappings: merged }, FieldSchema),
+  );
 };
 
 const FETCH_REMAPPING = "metabase/metadata/FETCH_REMAPPING";

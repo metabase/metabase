@@ -88,9 +88,9 @@
     (let [db (get-in source [:query :database])
           {driver :engine :as database} (t2/select-one :model/Database db)
           _ (transforms-base.u/throw-if-db-routing-enabled! transform database)
-          ;; First incremental run (no checkpoint) should behave like non-incremental
-          ;; to drop and recreate the table rather than appending to existing data.
-          effective-transform-type (if (transforms-base.u/first-incremental-run? transform)
+          ;; Full incremental runs (no watermark — either the first ever, or one that follows a
+          ;; checkpoint-config reset) drop and recreate the table rather than appending.
+          effective-transform-type (if (transforms-base.u/full-incremental-run? transform)
                                      :table
                                      (keyword (:type target)))
           transform-details {:db-id db

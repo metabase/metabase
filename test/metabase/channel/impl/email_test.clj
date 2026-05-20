@@ -12,8 +12,8 @@
 (deftest bcc-enabled-test
   (testing "When bcc is not enabled, return an email that uses to:"
     (let [sent-message (atom nil)]
-      (with-redefs [email/send-email! (fn [_ message]
-                                        (reset! sent-message message))]
+      (mt/with-dynamic-fn-redefs [email/send-email! (fn [_ message]
+                                                      (reset! sent-message message))]
         (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"
                                            email-smtp-host    "fake_smtp_host"
                                            email-smtp-port    587
@@ -36,7 +36,7 @@
                                   :dashboard_card_id 100
                                   :include_csv true
                                   :include_xls true}
-            result (with-redefs [render.util/is-visualizer-dashcard? (constantly true)]
+            result (mt/with-dynamic-fn-redefs [render.util/is-visualizer-dashcard? (constantly true)]
                      (#'email.impl/assoc-attachment-booleans [matching-part-config] [visualizer-part]))]
 
         (is (true? (-> result first :card :include_csv))
@@ -117,6 +117,18 @@
         (is (= 1.0 (mt/metric-value system :metabase-notification/template-render
                                     {:template-type :email/handlebars-resource
                                      :channel-type  :channel/email})))))))
+
+(deftest notification-recipients-skips-api-key-users-test
+  (testing "API-key users are filtered out of notification recipients (GDGT-2402)"
+    (let [recipients [{:type :notification-recipient/group
+                       :permissions_group {:members [{:email "alice@metabase.com"   :type :personal}
+                                                     {:email "api-key-user-abc@api-key.invalid" :type :api-key}]}}
+                      {:type :notification-recipient/user
+                       :user {:email "api-key-user-def@api-key.invalid" :type :api-key}}
+                      {:type :notification-recipient/raw-value
+                       :details {:value "ops@metabase.com"}}]]
+      (is (= ["alice@metabase.com" "ops@metabase.com"]
+             (#'email.impl/notification-recipients->emails recipients {}))))))
 
 (deftest render-body-logging-test
   (testing "rendering a user-provided template logs the template body at debug level"
