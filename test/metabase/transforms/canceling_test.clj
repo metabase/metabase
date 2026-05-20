@@ -96,6 +96,41 @@
           (is (pos? (:count (mt/metric-value system :metabase-transforms/cancelation-latency-ms {:outcome "timeout"}))))
           (is (= :canceled (t2/select-one-fn :status :model/TransformRun :id run-id)))))
 
+      (testing "cancel-old-transform-runs! does not count rows already transitioned by another path"
+        ;; Race guard: SELECT FOR UPDATE inside `cancel-old-canceling-runs!` returns only still-active rows,
+        ;; so the sweep emits `outcome=timeout` only for rows it actually transitioned — never for runs that
+        ;; another path (cancel-run!, timeout-run!) had already finished.
+        (prometheus/clear! :metabase-transforms/cancelation-completed)
+        ;; Two separate transforms because there's a unique partial index forbidding two active runs
+        ;; for the same transform_id (IDX_UNIQUE_ACTIVE_TRANSFORM_RUN_INDEX_C).
+        (mt/with-temp [:model/Transform    {t1 :id} {}
+                       :model/Transform    {t2 :id} {}
+                       :model/TransformRun {r1 :id} (assoc run-defaults :transform_id t1 :status "canceling")
+                       :model/TransformRun {r2 :id} (assoc run-defaults :transform_id t2 :status "canceling")]
+          (let [old (.minusMinutes (OffsetDateTime/now) 5)]
+            (t2/insert! :model/TransformRunCancelation {:run_id r1 :time old})
+            (t2/insert! :model/TransformRunCancelation {:run_id r2 :time old}))
+          ;; Simulate r2 already finished by a concurrent path before the sweep fires.
+          (t2/update! :model/TransformRun :id r2 {:is_active nil :status :canceled})
+          (@#'canceling/cancel-old-transform-runs! nil)
+          (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "timeout"})))
+          (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))
+          (is (= :canceled (t2/select-one-fn :status :model/TransformRun :id r1)))))
+
+      (testing "cancel-old-transform-runs! bumps a single {outcome=error} when the transactional update throws"
+        (prometheus/clear! :metabase-transforms/cancelation-completed)
+        (mt/with-temp [:model/Transform    {transform-id :id} {}
+                       :model/TransformRun {run-id :id}       (assoc run-defaults
+                                                                     :transform_id transform-id
+                                                                     :status "canceling")]
+          (t2/insert! :model/TransformRunCancelation
+                      {:run_id run-id :time (.minusMinutes (OffsetDateTime/now) 5)})
+          (with-redefs [t2/update! (fn [& _] (throw (ex-info "boom" {})))]
+            (@#'canceling/cancel-old-transform-runs! nil))
+          ;; Aggregate error: we don't know per-row magnitude after a rollback, just that the sweep failed.
+          (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))
+          (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "timeout"})))))
+
       (testing "telemetry failure in record-completion! does not double-count"
         (prometheus/clear! :metabase-transforms/cancelation-completed)
         (mt/with-temp [:model/Transform    {transform-id :id} {}

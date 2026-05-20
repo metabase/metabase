@@ -1,8 +1,6 @@
 (ns metabase.transforms.models.transform-run-cancelation
   (:require
    [metabase.analytics-interface.core :as analytics]
-   [metabase.app-db.core :as mdb]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -39,20 +37,6 @@
   "Return a reducible sequence of local canceled runs."
   []
   (t2/reducible-select :model/TransformRunCancelation))
-
-(defn stale-canceling-cancelations
-  "Return the cancelation rows whose runs are still active and whose request time is older than `age` `unit`.
-  Used by the CancelOldTransformRuns sweep to observe the runs that are about to be force-canceled."
-  [age unit]
-  (t2/select :model/TransformRunCancelation
-             {:select [:trc.run_id :trc.time]
-              :from   [[:transform_run_cancelation :trc]]
-              :join   [[:transform_run :wr] [:= :wr.id :trc.run_id]]
-              :where  [:and
-                       [:= :wr.is_active true]
-                       [:<
-                        :trc.time
-                        (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]]}))
 
 (defn delete-cancelation!
   "Delete a cancelation once it has been handled."

@@ -147,20 +147,35 @@
     (cancel/delete-old-canceling-runs!)))
 
 (defn cancel-old-canceling-runs!
-  "Cancel all canceling runs older than the specified age."
+  "Atomically force-cancels active runs whose cancelation requests are older than `age` `unit`. Returns the
+  pre-update run rows we transitioned, each augmented with `:request_time` from its cancelation row, so callers
+  can emit observability only for runs we actually changed.
+
+  Race-free per app-db semantics: SELECT … FOR UPDATE row-locks the chosen runs across the transaction, so
+  concurrent writers (`cancel-run!`, `timeout-run!`) block until we commit and the matching UPDATE-by-id hits
+  exactly the locked rows. Rows another writer already transitioned (no longer `is_active`) simply drop out of
+  the lock set and are not reported."
   [age unit]
-  (u/prog1 (t2/update! :model/TransformRun
-                       :is_active true
-                       :id [:in {:select :run_id
-                                 :from   :transform_run_cancelation
-                                 :where  [:<
-                                          :transform_run_cancelation.time
-                                          (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]}]
-                       {:status    :canceled
-                        :end_time  :%now
-                        :is_active nil
-                        :message   "Canceled by user but could not guarantee run stopped."})
-    (cancel/delete-old-canceling-runs!)))
+  (t2/with-transaction [_conn]
+    (let [cutoff (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)
+          times  (into {} (map (juxt :run_id :time))
+                       (t2/select :model/TransformRunCancelation
+                                  {:select [:run_id :time]
+                                   :where  [:< :time cutoff]}))
+          locked (when (seq times)
+                   (t2/select :model/TransformRun
+                              {:where [:and [:= :is_active true] [:in :id (keys times)]]
+                               :for   :update}))]
+      (when (seq locked)
+        (t2/update! :model/TransformRun
+                    :id        [:in (mapv :id locked)]
+                    :is_active true
+                    {:status    :canceled
+                     :end_time  :%now
+                     :is_active nil
+                     :message   "Canceled by user but could not guarantee run stopped."})
+        (cancel/delete-old-canceling-runs!))
+      (mapv #(assoc % :request_time (times (:id %))) locked))))
 
 (defn running-run-for-transform-id
   "Return a single active transform run or nil."
