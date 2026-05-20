@@ -62,9 +62,7 @@
 ;;  - (let [{{:keys [user]} :details} database])
 
 (def connection-types
-  "All valid values for [[*connection-type*]], ordered by ascending privilege:
-   `:default` (read-only) < `:write-data` (DML) < `:admin` (DDL/ownership).
-   New types should be inserted at the position matching their privilege level."
+  "All valid values for [[*connection-type*]]."
   [:default :write-data :admin])
 
 (mr/def ::connection-type
