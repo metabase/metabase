@@ -15,6 +15,7 @@ import {
 } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
+import type { VisualizationProps } from "metabase/visualizations/types";
 import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockEmbedDataset,
@@ -26,40 +27,39 @@ import { PublicOrEmbeddedQuestion } from "../PublicOrEmbeddedQuestion";
 
 registerStaticVisualizations();
 
+function VisualizationMock({
+  onUpdateVisualizationSettings,
+  rawSeries,
+}: VisualizationProps) {
+  const [
+    {
+      card,
+      data: { rows },
+    },
+  ] = rawSeries;
+
+  return (
+    <div>
+      <div>
+        {rows[0].map((value, i) => (
+          <span key={i}>
+            {typeof value === "object" ? JSON.stringify(value) : value}
+          </span>
+        ))}
+      </div>
+      <div data-testid="settings">
+        {JSON.stringify(card.visualization_settings)}
+      </div>
+      <button onClick={() => onUpdateVisualizationSettings({ foo: "bar" })}>
+        update settings
+      </button>
+    </div>
+  );
+}
+
 jest.mock(
   "metabase/visualizations/components/Visualization",
-  () =>
-    function VisualizationMock({
-      onUpdateVisualizationSettings,
-      rawSeries,
-    }: any) {
-      const [
-        {
-          card,
-          data: { rows },
-        },
-      ] = rawSeries;
-
-      return (
-        <div>
-          <div>
-            {rows[0].map((value: unknown, i: number) => (
-              <span key={i}>
-                {typeof value === "object"
-                  ? JSON.stringify(value)
-                  : String(value)}
-              </span>
-            ))}
-          </div>
-          <div data-testid="settings">
-            {JSON.stringify(card.visualization_settings)}
-          </div>
-          <button onClick={() => onUpdateVisualizationSettings({ foo: "bar" })}>
-            update settings
-          </button>
-        </div>
-      );
-    },
+  () => VisualizationMock,
 );
 
 export type SetupOpts = {
