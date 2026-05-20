@@ -26,7 +26,6 @@
   `mode=ro` query parameter on the JDBC URL, not via Metabase details, so we
   drop that toggle here and rely on `mt/with-temp` cleanup."
   [_read-write?]
-  ; TODO Why is this var-referenced, instead of referenced by symbol only?
   {:details (#'sample-data/try-to-extract-sample-database!)
    :engine  :sqlite
    :name    "Sample Database"})
