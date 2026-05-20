@@ -27,7 +27,6 @@ export type SidebarHeaderProps = {
   prevNotificationId: NotificationId | null;
   nextNotificationId: NotificationId | null;
   isQuestionLoading: boolean;
-  canEdit: boolean;
   onClose: () => void;
   onDelete: (notification: AdminNotification) => void;
   onEdit: () => void;

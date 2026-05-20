@@ -134,7 +134,6 @@ export const NotificationDetailSidebar = ({
             prevNotificationId={prevNotificationId}
             nextNotificationId={nextNotificationId}
             isQuestionLoading={isCardLoading}
-            canEdit={question !== undefined}
             onClose={onClose}
             onDelete={onDelete}
             onEdit={() => setIsEditModalOpen(true)}
@@ -170,7 +169,6 @@ const SidebarHeader = ({
   prevNotificationId,
   nextNotificationId,
   isQuestionLoading,
-  canEdit,
   onClose,
   onDelete,
   onEdit,
@@ -245,22 +243,15 @@ const SidebarHeader = ({
               )}
             </Menu.Dropdown>
           </Menu>
-          {isQuestionLoading && (
-            <Flex w={34} h={34} align="center" justify="center">
-              <Loader size="sm" />
-            </Flex>
-          )}
-          {!isQuestionLoading && canEdit && (
-            <ActionIcon
-              aria-label={t`Edit`}
-              size="lg"
-              c="icon-primary"
-              disabled={isBulkLoading}
-              onClick={onEdit}
-            >
-              <Icon name="pencil" />
-            </ActionIcon>
-          )}
+          <ActionIcon
+            aria-label={t`Edit`}
+            size="lg"
+            c="icon-primary"
+            disabled={isQuestionLoading || isBulkLoading}
+            onClick={!isQuestionLoading ? onEdit : undefined}
+          >
+            {isQuestionLoading ? <Loader size="sm" /> : <Icon name="pencil" />}
+          </ActionIcon>
           <ActionIcon
             aria-label={t`Close`}
             size="lg"
