@@ -21,6 +21,7 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.llm.startup :as llm.startup]
    [metabase.logger.core :as logger]
+   [metabase.metrics.core :as metrics]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.plugins.core :as plugins]
@@ -216,7 +217,10 @@
         ;; add the sample database DB for fresh installs
         (sample-data/extract-and-sync-sample-database!)
         ;; otherwise update if appropriate
-        (sample-data/update-sample-database-if-needed!)))
+        (sample-data/update-sample-database-if-needed!))
+      ;; Sample-content metrics are inserted via raw SQL and so never Card after-insert hooks.
+      (when-let [sample-db-id (sample-data/sample-database-id)]
+        (metrics/sync-metric-dimensions-for-database! sample-db-id)))
     (init-status/set-progress! 0.8))
   (ensure-audit-db-installed!)
   (notification/seed-notification!)

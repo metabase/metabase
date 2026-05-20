@@ -93,6 +93,11 @@
     (catch Throwable e
       (log/error e "Failed to load sample database"))))
 
+(defn sample-database-id
+  "ID of the Sample Database if it exists, otherwise nil."
+  []
+  (t2/select-one-pk :model/Database :is_sample true))
+
 (defn update-sample-database-if-needed!
   "Update the path to the sample database DB if it exists in case the JAR has moved."
   ([]

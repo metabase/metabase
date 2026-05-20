@@ -54,7 +54,7 @@
 (deftest metric-sync-dimensions-persists-on-first-read-test
   (testing "sync-dimensions! persists dimensions and mappings to database for metrics"
     ;; Suppress the Card after-insert auto-sync (UXW-4083) so we can verify sync-dimensions! itself.
-    (binding [#'card/*syncing-metric-dimensions* true]
+    (with-bindings {#'card/*syncing-metric-dimensions* true}
       (mt/with-temp [:model/Card metric {:name "Test Metric"
                                          :type :metric
                                          :database_id (mt/id)
@@ -95,7 +95,7 @@
 
 (deftest metric-sync-dimensions-no-op-without-query-test
   (testing "sync-dimensions! is a no-op when dataset_query is empty for metrics"
-    (binding [#'card/*syncing-metric-dimensions* true]
+    (with-bindings {#'card/*syncing-metric-dimensions* true}
       (mt/with-temp [:model/Card metric {:name "Test Metric"
                                          :type :metric
                                          :database_id (mt/id)
@@ -172,3 +172,23 @@
 
 ;; Note: There's no test for "no-op without definition" for measures
 ;; because measures have a NOT NULL constraint on the definition column - they must always have a definition.
+
+;;; ------------------------------------------ Database-wide backfill ------------------------------------------
+
+(deftest sync-metric-dimensions-for-database-backfills-empty-test
+  (testing "sync-metric-dimensions-for-database! backfills metrics whose dimensions were never synced"
+    ;; Suppress the Card after-insert auto-sync so the metric starts with empty dimensions, mirroring
+    ;; the sample-content metrics inserted via raw SQL in the CreateSampleContentV2 migration.
+    (with-bindings {#'card/*syncing-metric-dimensions* true}
+      (mt/with-temp [:model/Card metric {:name          "Backfill Metric"
+                                         :type          :metric
+                                         :database_id   (mt/id)
+                                         :table_id      (mt/id :venues)
+                                         :dataset_query (metric-query)}]
+        (is (nil? (:dimensions (t2/select-one :model/Card :id (:id metric))))
+            "precondition: dimensions empty before backfill")
+        (metrics/sync-metric-dimensions-for-database! (mt/id))
+        (is (seq (:dimensions (t2/select-one :model/Card :id (:id metric))))
+            "backfill populates dimensions for the metric")
+        (is (seq (:dimension_mappings (t2/select-one :model/Card :id (:id metric))))
+            "backfill populates dimension_mappings for the metric")))))
