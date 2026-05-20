@@ -4,7 +4,6 @@ import type { LocationDescriptorObject } from "history";
 import { createMockEntitiesState } from "__support__/store";
 import { snippetApi } from "metabase/api";
 import * as CardLib from "metabase/common/utils/card";
-import { Databases } from "metabase/entities/databases";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import * as sharedQB from "metabase/redux/query-builder";
@@ -639,10 +638,6 @@ describe("QB Actions > initializeQB", () => {
         });
 
         it("does not load snippets if missing DB write permissions", async () => {
-          Databases.selectors.getObject = jest.fn().mockReturnValue({
-            native_permissions: "none",
-          });
-
           const { initiateSpy } = await setupSnippets({
             hasDatabaseWritePermission: false,
           });

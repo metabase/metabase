@@ -1,11 +1,15 @@
 import _ from "underscore";
 
-import { invalidateNotificationsApiCache, revisionApi } from "metabase/api";
+import {
+  databaseApi,
+  invalidateNotificationsApiCache,
+  revisionApi,
+} from "metabase/api";
+import { listTag } from "metabase/api/tags";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
 } from "metabase/common/utils/card";
-import { Databases } from "metabase/entities/databases";
 import { Questions } from "metabase/entities/questions";
 import { entityCompatibleQuery } from "metabase/entities/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
@@ -32,12 +36,7 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type {
-  Card,
-  DashboardTabId,
-  Database,
-  DatasetQuery,
-} from "metabase-types/api";
+import type { Card, DashboardTabId, DatasetQuery } from "metabase-types/api";
 
 import { trackNewQuestionSaved } from "../../analytics";
 import { updateModelIndexes } from "../../model-indexes/actions";
@@ -237,9 +236,9 @@ export const apiCreateQuestion = (
       options,
     );
 
-    const databases: Database[] = Databases.selectors.getList(getState());
+    const databases = getMetadata(getState()).databasesList();
     if (databases && !databases.some((d) => d.is_saved_questions)) {
-      dispatch({ type: Databases.actionTypes.INVALIDATE_LISTS_ACTION });
+      dispatch(databaseApi.util.invalidateTags([listTag("database")]));
     }
 
     trackNewQuestionSaved(
