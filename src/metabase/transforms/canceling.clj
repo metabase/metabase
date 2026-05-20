@@ -105,32 +105,25 @@
           (throw t))))))
 
 (defn- cancel-old-transform-runs! [_ctx]
-  ;; Preselect the rows we're about to force-cancel so we can emit per-row observability.
-  ;; Small race vs. the bulk update below: a run that completes cleanly between the select and update will
-  ;; be double-counted as a timeout. Acceptable for directional metrics.
-  (let [stale (try (wr.cancelation/stale-canceling-cancelations 2 :minute)
-                   (catch Throwable t
-                     (log/error t "Error selecting stale transform run cancelations.")
-                     []))]
-    (when (seq stale)
-      (log/infof "Force-canceling %d transform run(s) that have been canceling for more than 2 minutes."
-                 (count stale))
-      ;; If the bulk update throws, report each preselected row as `error` so operators see the failure
-      ;; in metrics rather than only in logs.
-      (let [outcome (try
-                      (transform-run/cancel-old-canceling-runs! 2 :minute)
-                      ;; "timeout" = the *cancelation attempt* exceeded 2 min and we had to force-finish it.
-                      ;; Distinct from transform-execution timeout (`timeout-run!`), which never reaches this counter.
-                      "timeout"
-                      (catch Throwable t
-                        (log/error t "Error force-canceling stale transform runs.")
-                        "error"))]
-        (doseq [{run-id :run_id request-time :time} stale]
+  ;; `cancel-old-canceling-runs!` does a transactional select-then-update-by-id under row locks, so it returns
+  ;; *only* the runs this sweep actually transitioned — `outcome=timeout` cannot overcount rows another path
+  ;; (cancel-run!, timeout-run!) had already finished. "timeout" here = the *cancelation attempt* exceeded 2 min;
+  ;; distinct from transform-execution timeout (`timeout-run!`), which never reaches this counter.
+  (try
+    (let [transitioned (transform-run/cancel-old-canceling-runs! 2 :minute)]
+      (when (seq transitioned)
+        (log/infof "Force-canceled %d transform run(s) that were canceling for more than 2 minutes."
+                   (count transitioned))
+        (doseq [{run-id :id request-time :request_time :as run} transitioned]
           (try
-            (let [run (t2/select-one :model/TransformRun :id run-id)]
-              (record-completion! run-id run request-time outcome))
+            (record-completion! run-id run request-time "timeout")
             (catch Throwable t
-              (log/error t (str "Error recording completion for transform run " run-id)))))))))
+              (log/error t (str "Error recording completion for transform run " run-id)))))))
+    (catch Throwable t
+      (log/error t "Error force-canceling stale transform runs.")
+      ;; Transaction rolled back — the row count is unrecoverable, so emit one aggregate error so the failure
+      ;; is at least visible in metrics. Magnitude can be inferred from log volume if needed.
+      (analytics/inc! :metabase-transforms/cancelation-completed {:outcome "error"}))))
 
 (task/defjob  ^{:doc "Cancel items that haven't been canceled in two minutes"
                 org.quartz.DisallowConcurrentExecution true}
