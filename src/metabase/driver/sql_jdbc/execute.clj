@@ -577,14 +577,15 @@
   "Set `Statement.setQueryTimeout` to the current `*query-timeout-ms*`. Applied uniformly to every SQL-JDBC statement
   so each query carries its own server-side timeout, rather than relying on the pool-wide c3p0
   `unreturnedConnectionTimeout` to kill long queries. Transforms rebind `*query-timeout-ms*` so their statements get
-  the transform timeout instead of the shorter default. Drivers that don't implement `setQueryTimeout` (a small
-  legacy tail — SparkSQL, SQLite, some old Oracle versions) may throw `AbstractMethodError` here; the c3p0
-  leak-detector remains the fallback. Catches `Throwable` deliberately to swallow such `Error`s."
-  [^Statement stmt]
-  (try
-    (.setQueryTimeout stmt (long (/ driver.settings/*query-timeout-ms* 1000)))
-    (catch Throwable e
-      (log/debug e "Error setting statement query timeout"))))
+  the transform timeout instead of the shorter default. Drivers that opt out via the `:jdbc/set-query-timeout`
+  feature flag (e.g. SparkSQL — calling it closes the Hive Thrift transport) skip the call entirely; for the rest,
+  individual implementations that throw fall back to the c3p0 leak-detector via the `catch Throwable`."
+  [driver ^Statement stmt]
+  (when (driver/database-supports? driver :jdbc/set-query-timeout nil)
+    (try
+      (.setQueryTimeout stmt (long (/ driver.settings/*query-timeout-ms* 1000)))
+      (catch Throwable e
+        (log/debug e "Error setting statement query timeout")))))
 
 (defn- prepared-statement*
   ^PreparedStatement [driver conn sql params canceled-chan]
@@ -592,25 +593,27 @@
   ;; classification used in [[execute-reducible-query]] below: such errors should surface to the
   ;; user as :invalid-query (HTTP 4xx with the underlying database message), not :driver
   ;; (HTTP 5xx "We're experiencing server issues"). See #71637.
-  (doto (try
-          (prepared-statement driver conn sql params)
-          (catch Throwable e
-            (throw (ex-info (tru "Error preparing statement: {0}" (ex-message e))
-                            {:driver driver
-                             :type   driver-api/qp.error-type.invalid-query
-                             :sql    (str/split-lines (driver/prettify-native-form driver sql))
-                             :params params}
-                            e))))
-    (set-statement-query-timeout!)
-    (wire-up-canceled-chan-to-cancel-Statement! canceled-chan)))
+  (let [stmt (try
+               (prepared-statement driver conn sql params)
+               (catch Throwable e
+                 (throw (ex-info (tru "Error preparing statement: {0}" (ex-message e))
+                                 {:driver driver
+                                  :type   driver-api/qp.error-type.invalid-query
+                                  :sql    (str/split-lines (driver/prettify-native-form driver sql))
+                                  :params params}
+                                 e))))]
+    (set-statement-query-timeout! driver stmt)
+    (wire-up-canceled-chan-to-cancel-Statement! stmt canceled-chan)
+    stmt))
 
 (defn- use-statement? [driver params]
   (and (driver/database-supports? driver :jdbc/statements nil) (empty? params)))
 
 (defn- statement* ^Statement [driver conn canceled-chan]
-  (doto (statement driver conn)
-    (set-statement-query-timeout!)
-    (wire-up-canceled-chan-to-cancel-Statement! canceled-chan)))
+  (let [stmt (statement driver conn)]
+    (set-statement-query-timeout! driver stmt)
+    (wire-up-canceled-chan-to-cancel-Statement! stmt canceled-chan)
+    stmt))
 
 (defn statement-or-prepared-statement
   "Create a statement or a prepared statement. Should be called from [[with-open]]."

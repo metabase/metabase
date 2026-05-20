@@ -462,16 +462,22 @@
           set-timeout!     @#'sql-jdbc.execute/set-statement-query-timeout!]
       (testing "default dynamic scope"
         (binding [driver.settings/*query-timeout-ms* (u/minutes->ms 3)]
-          (set-timeout! mock-stmt)
+          (set-timeout! :h2 mock-stmt)
           (is (= (* 3 60) @captured-seconds))))
       (testing "transform-scope rebinding lands in the Statement"
         (binding [driver.settings/*query-timeout-ms* (u/minutes->ms 90)]
-          (set-timeout! mock-stmt)
+          (set-timeout! :h2 mock-stmt)
           (is (= (* 90 60) @captured-seconds))))
       (testing "a throwing driver does not propagate the exception"
         (let [throwing-stmt (proxy [java.sql.Statement] []
                               (setQueryTimeout [_] (throw (java.sql.SQLFeatureNotSupportedException.))))]
-          (is (nil? (set-timeout! throwing-stmt))))))))
+          (is (nil? (set-timeout! :h2 throwing-stmt)))))
+      (testing "drivers that opt out via :jdbc/set-query-timeout=false skip the call entirely"
+        (reset! captured-seconds :not-called)
+        (with-redefs [driver/database-supports? (fn [_ feature _] (not= feature :jdbc/set-query-timeout))]
+          (binding [driver.settings/*query-timeout-ms* (u/minutes->ms 3)]
+            (set-timeout! :sparksql mock-stmt)
+            (is (= :not-called @captured-seconds))))))))
 
 (deftest statement-or-prepared-statement-round-trips-query-timeout-test
   (testing "statement-or-prepared-statement creates a Statement whose .getQueryTimeout reflects the currently
