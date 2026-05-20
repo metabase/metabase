@@ -425,8 +425,8 @@ export function MetabotSetupInner({
             .with({ isModal: true, isCurrentConfigured: true }, () => (
               <Button
                 variant="filled"
-                loading={isLoading}
-                disabled={isLoading}
+                loading={isMutating}
+                disabled={isMutating}
                 onClick={onClose}
               >
                 {t`Done`}
@@ -437,8 +437,8 @@ export function MetabotSetupInner({
               () => (
                 <Button
                   c="danger"
-                  loading={isLoading}
-                  disabled={isLoading}
+                  loading={isMutating}
+                  disabled={isMutating}
                   onClick={handleDisconnect}
                 >
                   {t`Disconnect`}
@@ -451,8 +451,8 @@ export function MetabotSetupInner({
               () => (
                 <Button
                   variant="filled"
-                  loading={isLoading}
-                  disabled={isLoading || !isConnectButtonEnabled}
+                  loading={isMutating}
+                  disabled={isMutating || !isConnectButtonEnabled}
                   onClick={handleConnect}
                 >
                   {t`Connect`}

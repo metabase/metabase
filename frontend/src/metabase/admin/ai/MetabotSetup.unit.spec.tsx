@@ -546,6 +546,37 @@ describe("MetabotSetup", () => {
     sessionPropertiesDeferred.resolve({});
   });
 
+  it("BOT-1429: keeps the Disconnect button stable while session-properties refetches in the background", async () => {
+    const { store } = await setup();
+    const disconnectButton = await screen.findByRole("button", {
+      name: "Disconnect",
+    });
+    expect(disconnectButton).toBeEnabled();
+    expect(disconnectButton).not.toHaveAttribute("data-loading", "true");
+
+    const sessionPropertiesDeferred = defer<unknown>();
+    fetchMock.removeRoute("get-session-properties");
+    fetchMock.get(
+      "path:/api/session/properties",
+      () => sessionPropertiesDeferred.promise,
+    );
+
+    act(() => {
+      store.dispatch(Api.util.invalidateTags(["session-properties"]));
+    });
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/session/properties").length,
+      ).toBeGreaterThan(1);
+    });
+
+    expect(disconnectButton).toBeEnabled();
+    expect(disconnectButton).not.toHaveAttribute("data-loading", "true");
+
+    sessionPropertiesDeferred.resolve({});
+  });
+
   it("shows the connected badge with the saved provider and model", async () => {
     await setup();
     await screen.findByLabelText("API key");
