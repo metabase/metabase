@@ -1,4 +1,5 @@
 import type { WidgetMount } from "custom-viz";
+import type { ComponentType } from "react";
 
 import type { CustomVizPluginId } from "metabase-types/api";
 
@@ -23,7 +24,7 @@ type TrustedMount = WidgetMount & {
 export function stampPluginWidget(
   pluginWidget: WidgetMount,
   pluginId: CustomVizPluginId,
-): WidgetMount {
+): TrustedMount {
   const mount: TrustedMount = (container, initialProps) =>
     pluginWidget(container, initialProps);
 
@@ -35,7 +36,14 @@ export function stampPluginWidget(
   return mount;
 }
 
-export function isTrustedWidgetMount(value: unknown): value is TrustedMount {
+export function isTrustedWidgetMount(
+  value:
+    | string
+    | WidgetMount
+    | ComponentType<{
+        id: string;
+      }>,
+): value is TrustedMount {
   return typeof value === "function" && HOST_TRUSTED_MOUNT_PLUGIN_ID in value;
 }
 
