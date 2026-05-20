@@ -73,6 +73,13 @@
   "The value of the `:type` field for collections that only allow metrics."
   "library-metrics")
 
+(def library-collection-types
+  "All library `:type` values — collections users curate as the canonical place to find content.
+   Kept as a set so callers (e.g. search ranking) can enumerate them without hard-coding strings."
+  #{library-collection-type
+    library-data-collection-type
+    library-metrics-collection-type})
+
 (def ^:constant tenant-specific-root-collection-type
   "The value of the `:type` field for root collections that belong to a single tenant"
   "tenant-specific-root-collection")
@@ -181,6 +188,47 @@
   "Get the 'library' collection, if it exists."
   []
   (t2/select-one :model/Collection :type library-collection-type))
+
+(def ^{:arglists '([id])} root-collection-type-by-id
+  "Return the `:type` of the top-level (root) collection with the given `id`, or `nil` if no
+   top-level collection has that id. Caching is keyed by `[app-db-id collection-id]` per the
+   `metabase.app-db.core/memoize-for-application-db` docstring — different ids never share cache
+   entries, which keeps tests isolated even when other tests run ingestion in parallel.
+
+   Top-level collections change infrequently, so a 1-hour TTL is fine."
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [[id]] [(mdb/unique-identifier) id])}
+   (fn [id]
+     (when id
+       (t2/select-one-fn :type :model/Collection :id id :location "/")))
+   :ttl/threshold (* 60 60 1000)))
+
+(defn root-collection-type
+  "Return the `:type` of the top-level ancestor collection given a collection's materialized path and
+   its own type/id. Used by the search ranking spec to power the `:library` scorer for items nested
+   inside library trees.
+
+   Resolution rules:
+     - `:collection_id` `nil`  →  `nil` (item has no collection)
+     - location is `\"/\"` or `nil`  →  the collection's own `:collection_type` (it IS a root)
+     - otherwise  →  parse the first id out of the materialized path and look up its type
+
+   Reads `:collection_id`, `:collection_location`, `:collection_type` from the ingestion record map."
+  [{:keys [collection_id collection_location collection_type]}]
+  (cond
+    (nil? collection_id)
+    nil
+
+    (or (nil? collection_location) (= "/" collection_location))
+    collection_type
+
+    :else
+    (when-let [root-id (some-> collection_location
+                               (str/split #"/")
+                               (->> (remove str/blank?))
+                               first
+                               parse-long)]
+      (root-collection-type-by-id root-id))))
 
 (def library-entity-id
   "The entity_id for the Library collection."
@@ -2407,20 +2455,25 @@
 
 (search.spec/define-spec "collection"
   {:model        :model/Collection
-   :attrs        {:collection-id :id
-                  :creator-id    false
-                  :database-id   false
-                  :archived      true
-                  :created-at    true
+   :attrs        {:collection-id        :id
+                  :collection-type      :type
+                  :collection-location  :location
+                  :root-collection-type {:fn root-collection-type}
+                  :creator-id           false
+                  :database-id          false
+                  :archived             true
+                  :created-at           true
                   ;; intentionally not tracked
-                  :updated-at    false}
+                  :updated-at           false}
    :search-terms [:name]
    :render-terms {:archived-directly          true
                   ;; Why not make this a search term? I suspect it was just overlooked before.
                   :description                true
                   :collection_authority_level :authority_level
                   :collection_name            :name
-                  :collection_type            :type
+                  ;; `:location` is read by the toucan2 effective-location hydration when collection
+                  ;; results pass through `metabase.search.impl/add-collection-effective-location`.
+                  ;; Keep the snake_case `location` key flowing alongside the indexed `collection_location`.
                   :location                   true}
    :where [:or [:= :namespace nil]
            [:= :namespace "analytics"]

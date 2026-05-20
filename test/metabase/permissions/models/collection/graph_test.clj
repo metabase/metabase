@@ -89,7 +89,7 @@
   (testing "Check that the audit collection has :read for admins (sparse - no :none entries)."
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection collection {:namespace "analytics"}]
-        (with-redefs [audit/default-audit-collection (constantly collection)]
+        (mt/with-dynamic-fn-redefs [audit/default-audit-collection (constantly collection)]
           (is (= {:revision 0
                   :groups {(u/the-id (perms-group/admin)) {:root :write, :COLLECTION :read}}}
                  (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection])))))))))
@@ -100,7 +100,7 @@
     (testing "Cannot set write permissiosn with no feature flag"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection collection {:namespace "analytics"}]
-          (with-redefs [audit/default-audit-collection (constantly collection)]
+          (mt/with-dynamic-fn-redefs [audit/default-audit-collection (constantly collection)]
             (graph/update-graph! {:revision 0 :groups {(u/the-id (perms-group/all-users)) {(u/the-id collection) :write}}})
             (is (= {:revision 0
                     :groups {(u/the-id (perms-group/admin)) {:root :write, :COLLECTION :read}}}
@@ -108,7 +108,7 @@
     (testing "Cannot set read permissiosn with no feature flag"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection collection {:namespace "analytics"}]
-          (with-redefs [audit/default-audit-collection (constantly collection)]
+          (mt/with-dynamic-fn-redefs [audit/default-audit-collection (constantly collection)]
             (graph/update-graph! {:revision 0 :groups {(u/the-id (perms-group/all-users)) {(u/the-id collection) :read}}})
             (is (= {:revision 0
                     :groups {(u/the-id (perms-group/admin)) {:root :write, :COLLECTION :read}}}

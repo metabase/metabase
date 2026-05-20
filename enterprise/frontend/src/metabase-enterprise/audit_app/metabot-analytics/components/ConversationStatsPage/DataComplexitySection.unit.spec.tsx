@@ -11,37 +11,68 @@ import { DataComplexitySection } from "./ConversationStatsPage";
 
 const mockScores: DataComplexityScoresResponse = {
   library: {
-    total: 18,
+    score: 18,
     components: {
-      entity_count: { measurement: 1, score: 10 },
-      name_collisions: { measurement: 0, score: 0 },
-      synonym_pairs: { measurement: 0, score: 0 },
-      field_count: { measurement: 8, score: 8 },
-      repeated_measures: { measurement: 0, score: 0 },
+      size: {
+        score: 18,
+        components: {
+          entity_count: { measurement: 1, score: 10 },
+          field_count: { measurement: 8, score: 8 },
+        },
+      },
+      ambiguity: {
+        score: 0,
+        components: {
+          name_collisions: { measurement: 0, score: 0 },
+          synonym_pairs: { measurement: 0, score: 0 },
+          repeated_measures: { measurement: 0, score: 0 },
+        },
+      },
     },
   },
   universe: {
-    total: 54,
+    score: 54,
     components: {
-      entity_count: { measurement: 2, score: 20 },
-      name_collisions: { measurement: 0, score: 0 },
-      synonym_pairs: { measurement: 0, score: 0 },
-      field_count: { measurement: 24, score: 24 },
-      repeated_measures: { measurement: 5, score: 10 },
+      size: {
+        score: 44,
+        components: {
+          entity_count: { measurement: 2, score: 20 },
+          field_count: { measurement: 24, score: 24 },
+        },
+      },
+      ambiguity: {
+        score: 10,
+        components: {
+          name_collisions: { measurement: 0, score: 0 },
+          synonym_pairs: { measurement: 0, score: 0 },
+          repeated_measures: { measurement: 5, score: 10 },
+        },
+      },
     },
   },
   metabot: {
-    total: 30,
+    score: 30,
     components: {
-      entity_count: { measurement: 1, score: 10 },
-      name_collisions: { measurement: 0, score: 0 },
-      synonym_pairs: { measurement: 0, score: 0 },
-      field_count: { measurement: 20, score: 20 },
-      repeated_measures: { measurement: 0, score: 0 },
+      size: {
+        score: 30,
+        components: {
+          entity_count: { measurement: 1, score: 10 },
+          field_count: { measurement: 20, score: 20 },
+        },
+      },
+      ambiguity: {
+        score: 0,
+        components: {
+          name_collisions: { measurement: 0, score: 0 },
+          synonym_pairs: { measurement: 0, score: 0 },
+          repeated_measures: { measurement: 0, score: 0 },
+        },
+      },
     },
   },
   meta: {
     formula_version: 3,
+    format_version: 1,
     synonym_threshold: 0.9,
   },
 };

@@ -9,6 +9,7 @@ import {
   useGetCollectionQuery,
 } from "metabase/api";
 import { getDashboard } from "metabase/dashboard/selectors";
+import { NavbarPromoSlot } from "metabase/nav/components/NavbarPromoSlot";
 import { connect } from "metabase/redux";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
 import type { State } from "metabase/redux/store";
@@ -139,6 +140,7 @@ function MainNavbar({
           onChangeLocation={onChangeLocation}
           {...props}
         />
+        <NavbarPromoSlot />
       </NavRoot>
     </Sidebar>
   );

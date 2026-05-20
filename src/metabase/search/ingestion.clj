@@ -140,7 +140,7 @@
                         (update :archived boolean)
                         (assoc
                          :display_data (display-data m)
-                         :legacy_input (json/encode (dissoc m :pinned :view_count :last_viewed_at :native_query :dataset_query :exploration_thread_id))
+                         :legacy_input (json/encode (apply dissoc m search.spec/legacy-input-excluded-keys))
                          :searchable_text (searchable-text m)
                          :embeddable_text (embeddable-text m)))]
     (merge fn-results sql-results)))

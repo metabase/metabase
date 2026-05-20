@@ -39,7 +39,6 @@ export type EntityType =
   | "bookmarks"
   | "databases"
   | "documents"
-  | "fields"
   | "pulses"
   | "questions"
   | "revisions"
