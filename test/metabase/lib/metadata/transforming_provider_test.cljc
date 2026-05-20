@@ -22,6 +22,7 @@
 (deftest ^:parallel transforms-tables-test
   (testing "transform function is applied to table metadata"
     (let [mp (lib.metadata/transforming-metadata-provider
+              ::test-id
               (tables-transform #(assoc % :schema "transformed"))
               meta/metadata-provider)]
       (is (= "transformed" (:schema (lib.metadata/table mp (meta/id :venues))))))))
@@ -29,6 +30,7 @@
 (deftest ^:parallel non-table-metadata-passes-through-test
   (testing "non-table metadata is passed through the transform unchanged"
     (let [mp (lib.metadata/transforming-metadata-provider
+              ::test-id
               (tables-transform #(assoc % :schema "transformed"))
               meta/metadata-provider)]
       (is (=? {:name "ID"}
@@ -37,6 +39,7 @@
 (deftest ^:parallel database-delegates-test
   (testing "database metadata delegates to parent"
     (let [mp (lib.metadata/transforming-metadata-provider
+              ::test-id
               (tables-transform identity)
               meta/metadata-provider)]
       (is (=? {:id (meta/id)}
@@ -45,6 +48,7 @@
 (deftest ^:parallel setting-delegates-test
   (testing "settings delegate to parent"
     (let [mp (lib.metadata/transforming-metadata-provider
+              ::test-id
               (tables-transform identity)
               meta/metadata-provider)]
       ;; just verify it doesn't throw — test metadata may not have settings
@@ -53,6 +57,7 @@
 (deftest ^:parallel identity-transform-test
   (testing "identity transform returns tables unchanged"
     (let [mp (lib.metadata/transforming-metadata-provider
+              ::test-id
               (fn [_metadata-spec results] results)
               meta/metadata-provider)]
       (is (=? {:name "VENUES"}
@@ -61,16 +66,20 @@
 (deftest ^:parallel equality-test
   (let [f  (fn [_spec results] results)
         mp meta/metadata-provider]
-    (testing "equal when f and parent are equal"
-      (is (= (lib.metadata/transforming-metadata-provider f mp)
-             (lib.metadata/transforming-metadata-provider f mp))))
+    (testing "equal when transform-id, f, and parent are equal"
+      (is (= (lib.metadata/transforming-metadata-provider ::test-id f mp)
+             (lib.metadata/transforming-metadata-provider ::test-id f mp))))
     (testing "not equal when f differs"
-      (is (not= (lib.metadata/transforming-metadata-provider f mp)
-                (lib.metadata/transforming-metadata-provider (fn [_spec results] results) mp))))))
+      (is (not= (lib.metadata/transforming-metadata-provider ::test-id f mp)
+                (lib.metadata/transforming-metadata-provider ::test-id (fn [_spec results] results) mp))))
+    (testing "not equal when transform-id differs"
+      (is (not= (lib.metadata/transforming-metadata-provider ::id-a f mp)
+                (lib.metadata/transforming-metadata-provider ::id-b f mp))))))
 
 (deftest ^:parallel all-tables-transformed-test
   (testing "all tables from `tables` are transformed, not just single lookups"
     (let [mp (lib.metadata/transforming-metadata-provider
+              ::test-id
               (tables-transform #(assoc % :schema "ws"))
               meta/metadata-provider)]
       (is (every? #(= "ws" (:schema %)) (lib.metadata/tables mp))))))
@@ -87,6 +96,7 @@
         (is (= "VENUES" (:name (first (lib.metadata.protocols/cached-metadatas cached-mp :metadata/table [1]))))))
       ;; now wrap with a transform
       (let [transformed-mp (lib.metadata/transforming-metadata-provider
+                            ::test-id
                             (tables-transform #(assoc % :schema "workspace_schema" :name "workspace_venues"))
                             cached-mp)]
         (testing "metadatas path returns transformed values"

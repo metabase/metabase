@@ -129,6 +129,7 @@
    row with `from_schema = \"public\"` matches the literal value)."
   [mp remappings]
   (let [remapping-mp (lib.metadata/transforming-metadata-provider
+                      (hash remappings)
                       (table-transform (table-remapper remappings))
                       mp)]
     (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
