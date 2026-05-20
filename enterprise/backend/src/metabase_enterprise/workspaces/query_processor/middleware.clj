@@ -78,7 +78,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftype TableRemappingMetadataProvider [f parent-metadata-provider]
+(deftype TableMappingMetadataProvider [f parent-metadata-provider]
   lib.metadata.protocols/MetadataProvider
   (database [_this]
     (lib.metadata.protocols/database parent-metadata-provider))
@@ -89,11 +89,10 @@
   (setting [_this setting-key]
     (lib.metadata.protocols/setting parent-metadata-provider setting-key)))
 
-(defn- remapping-provider [f mp]
-  (->TableRemappingMetadataProvider f mp))
-
 (defn- table-remapper
-  "A table remapper that will only run on `{:lib/type :metadata/table ,,,}`"
+  "Build a function that remaps table metadata according to `remappings`.
+   The returned fn merges `:db`, `:schema`, and `:name` overrides onto any table whose
+   `(:schema, :name)` matches a `from` spec."
   [remappings]
   (let [schema-table-index (into {}
                                  (map (fn [[from-spec to-spec]]
@@ -104,13 +103,11 @@
                                            {:db     (ws.table-remapping/denormalize-level to-db)
                                             :schema (ws.table-remapping/denormalize-level to-schema)
                                             :name   to-name}])))
-                                 remappings)
-        remapped-for (fn remapping-lookup [table]
-                       (get schema-table-index [(ws.table-remapping/denormalize-level (:schema table))
-                                                (ws.table-remapping/denormalize-level (:name table))]))]
+                                 remappings)]
     (fn [table-metadata]
       (merge table-metadata
-             (remapped-for table-metadata)))))
+             (get schema-table-index [(ws.table-remapping/denormalize-level (:schema table-metadata))
+                                      (ws.table-remapping/denormalize-level (:name table-metadata))])))))
 
 ;;; ------------------------------------------------- Helpers --------------------------------------------------
 ;;;
@@ -135,8 +132,7 @@
    schema-less driver's `:metadata/table.:schema = nil` (and a Postgres remapping
    row with `from_schema = \"public\"` matches the literal value)."
   [mp remappings]
-  (let [remapper     (table-remapper remappings)
-        remapping-mp (-> (remapping-provider remapper mp)
+  (let [remapping-mp (-> (->TableMappingMetadataProvider (table-remapper remappings) mp)
                          lib.metadata.cached-provider/cached-metadata-provider
                          ;; this creates a new tracker that doesn't carry over previous stats. This is fine for now as any
                          ;; instance using table remapping is a workspace instance and this doesn't matter
