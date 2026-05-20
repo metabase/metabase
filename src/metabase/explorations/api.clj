@@ -268,7 +268,6 @@
   [card dim-label query-type]
   (case query-type
     "day-of-week"   (tru "{0} by {1} (day of week)"   (:name card) dim-label)
-    "month-of-year" (tru "{0} by {1} (month of year)" (:name card) dim-label)
     "hour-of-day"   (tru "{0} by {1} (hour of day)"   (:name card) dim-label)))
 
 (defn- temporal-pattern-candidate
@@ -284,15 +283,14 @@
      :dataset_query (lib/breakout base-query (lib/with-temporal-bucket ref-clause unit))}))
 
 (defn- temporal-pattern-candidates
-  "Vector of temporal-pattern variants applicable to `dim`. Day-of-Week and Month-of-Year apply
+  "Vector of temporal-pattern variants applicable to `dim`. Day-of-Week applies
   to any temporal dim (date or datetime). Hour-of-Day applies only to datetime — pure dates have
   no time-of-day component."
   [mp card target dim dim-label]
   (let [pairs (cond-> []
                 (or (dim-type-isa? dim :type/DateTime)
                     (dim-type-isa? dim :type/Date))
-                (conj ["day-of-week"   :day-of-week]
-                      ["month-of-year" :month-of-year])
+                (conj ["day-of-week"   :day-of-week])
                 (dim-type-isa? dim :type/DateTime)
                 (conj ["hour-of-day"   :hour-of-day]))]
     (for [[query-type unit] pairs]
@@ -396,7 +394,9 @@
                                 dim-label  (exploration-query-dim-label dim ambiguous?)
                                 candidates (candidates-for-pair mp card target dim dim-label)]
                          candidate candidates
-                         seg       (cons nil segments)]
+                         seg       (if (= "time-facet" (:query_type candidate))
+                                     [nil]
+                                     (cons nil segments))]
                      {:exploration_thread_id thread-id
                       :card_id               (:card_id metric)
                       :segment_id            (:id seg)

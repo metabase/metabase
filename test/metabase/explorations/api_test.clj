@@ -476,6 +476,31 @@
         (is (= #{"default"} (query-types queries))
             "people.email has ~2500 distinct values → exceeds the cardinality gate")))))
 
+(deftest exploration-create-time-facet-skips-segments-test
+  (testing "POST / time-facet variant does NOT fan out across segments (category + time + segment filter is too noisy to surface)"
+    (mt/with-temp [:model/User u {:email "facet-no-seg@example.com"}
+                   :model/Card metric (assoc (products-monthly-metric-card (:id u)) :name "Sales")
+                   :model/Segment s {:name       "premium"
+                                     :table_id   (mt/id :products)
+                                     :definition (mt/mbql-query products {:filter [:> $price 50]})}]
+      (let [mapping [{:dimension_id "cat"
+                      :table_id     (mt/id :products)
+                      :target       ["field" {} (mt/id :products :category)]}]
+            body    {:name       "facet-no-seg"
+                     :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
+                     :dimensions [{:dimension_id "cat" :display_name "Category"}]}
+            queries (-> (mt/user-http-request u :post 200 "exploration" body)
+                        :threads first :queries)
+            by-type (group-by :query_type queries)]
+        (testing "default still fans out: 1 base + 1 segment"
+          (is (= 2 (count (get by-type "default"))))
+          (is (= #{nil (:id s)} (set (map :segment_id (get by-type "default"))))))
+        (testing "time-facet has exactly one unsegmented row"
+          (is (= 1 (count (get by-type "time-facet"))))
+          (is (nil? (:segment_id (first (get by-type "time-facet")))))
+          (testing "and its dataset_query carries no :segment filter"
+            (is (empty? (segment-filters (:dataset_query (first (get by-type "time-facet"))))))))))))
+
 (deftest exploration-create-segments-multiply-every-variant-test
   (testing "Segment fan-out applies uniformly to each candidate variant"
     (mt/with-temp [:model/User u {:email "seg-multiply@example.com"}
