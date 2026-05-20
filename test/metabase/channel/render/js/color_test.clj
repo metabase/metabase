@@ -122,7 +122,13 @@
                 result (convert-fn data)]
             (is (= [[123.456 789 "test"] [123.456 789 "another"]] result))
             (is (every? #(instance? Double (first %)) result))
-            (is (every? #(instance? Long (second %)) result))))))))
+            (is (every? #(instance? Long (second %)) result))))
+
+        (testing "values that overflow primitive ranges become nil rather than silently truncating"
+          (let [too-big-int (.shiftLeft (BigInteger. "1") 65) ; doesn't fit in long
+                too-big-dec (.scaleByPowerOfTen (BigDecimal. "1") 400)] ; beyond Double range
+            (is (= [[nil] [42]] (convert-fn [[too-big-int] [(BigInteger. "42")]])))
+            (is (= [[nil] [1.5]] (convert-fn [[too-big-dec] [(BigDecimal. "1.5")]])))))))))
 
 (deftest bigdecimal-cell-gets-range-color-test
   (testing "get-background-color applies range colors to BigDecimal cell values (GDGT-2412)"

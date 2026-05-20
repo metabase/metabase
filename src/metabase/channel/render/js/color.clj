@@ -33,11 +33,19 @@
    [:rows [:sequential [:sequential :any]]]])
 
 (defn- ->js-number
-  "Coerce BigDecimal/BigInteger to primitive double/long so Graal's JS context sees them as numbers, not host objects."
+  "Coerce BigDecimal/BigInteger to primitive double/long so Graal's JS context sees them as numbers, not host objects.
+   Returns nil when the value would overflow — BigInteger too wide for long, or BigDecimal magnitude beyond Double's
+   finite range — since silently truncating would feed wrong values into gradient/comparison logic."
   [v]
   (cond
-    (instance? BigDecimal v) (.doubleValue ^BigDecimal v)
-    (instance? BigInteger v) (.longValue ^BigInteger v)
+    (instance? BigDecimal v)
+    (let [d (.doubleValue ^BigDecimal v)]
+      (when (Double/isFinite d) d))
+
+    (instance? BigInteger v)
+    (when (<= (.bitLength ^BigInteger v) 63)
+      (.longValue ^BigInteger v))
+
     :else v))
 
 (defn- convert-bignumbers-by-column
