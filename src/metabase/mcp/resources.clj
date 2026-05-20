@@ -86,8 +86,7 @@
     {:ui {:prefersBorder true
           :domain        url
           :csp           {:connectDomains  [url]
-                          :resourceDomains [url]
-                          :frameDomains    [url]}}}))
+                          :resourceDomains [url]}}}))
 
 (mu/defn register-resource!
   "Register an MCP resource. Overwrites any existing entry with the same `:uri`."
