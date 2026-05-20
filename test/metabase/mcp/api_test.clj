@@ -118,7 +118,10 @@
 (defn- call-tool
   "Call an MCP tool within an initialized session. Returns the parsed MCP result
    content (the JSON-decoded text from the first content block).
-   Records test failures if the response status is not 200 or the tool returns an error."
+   Records test failures if the response status is not 200 or the tool returns an error.
+   Also enforces the MCP spec contract: every successful tool result with content
+   must include `structuredContent` (because every tool in our manifest declares
+   `outputSchema`, and the spec mandates structuredContent for those)."
   [session-id tool-name arguments]
   (let [response (mcp-request (jsonrpc-request "tools/call"
                                                {:name tool-name :arguments arguments})
@@ -129,6 +132,9 @@
     (is (not (:isError result))
         (str "Tool " tool-name " error: " (some-> result :content first :text)))
     (when-not (:isError result)
+      (is (contains? result :structuredContent)
+          (str "Tool " tool-name " declared an outputSchema in tools/list but did "
+               "not return structuredContent — MCP spec violation."))
       (json/decode+kw (:text (first (:content result)))))))
 
 ;;; ---------------------------------------------------- Tests -----------------------------------------------------
@@ -241,6 +247,38 @@
         (is (contains? annotations :readOnlyHint)    (str name " missing :readOnlyHint"))
         (is (contains? annotations :destructiveHint) (str name " missing :destructiveHint"))
         (is (contains? annotations :openWorldHint)   (str name " missing :openWorldHint"))))))
+
+(deftest text-content-includes-structured-content-for-maps-test
+  (testing "text-content emits structuredContent for map values — MCP spec requires it for tools with outputSchema"
+    (let [text-content (var-get #'mcp.tools/text-content)]
+      (testing "map → both content and structuredContent"
+        (let [result (text-content {:foo "bar"})]
+          (is (= {:foo "bar"} (:structuredContent result)))
+          (is (= "{\"foo\":\"bar\"}" (-> result :content first :text)))))
+      (testing "sequential → structuredContent is the collection"
+        (is (= [1 2 3] (:structuredContent (text-content [1 2 3])))))
+      (testing "string → no structuredContent (nothing to structure)"
+        (let [result (text-content "ok")]
+          (is (not (contains? result :structuredContent)))
+          (is (= "ok" (-> result :content first :text))))))))
+
+(deftest tool-result-emits-structured-content-test
+  (testing "tools that declare outputSchema emit structuredContent — guards the regression where Claude Desktop got 500s because we declared outputSchema without matching structuredContent"
+    (let [[session-id _] (initialize!)
+          response       (mcp-request (jsonrpc-request "tools/call"
+                                                       {:name      "get_table"
+                                                        :arguments {:id (mt/id :orders)}})
+                                      {"mcp-session-id" session-id})
+          result         (get-in response [:body :result])]
+      (is (= 200 (:status response)))
+      (is (not (:isError result))
+          (str "get_table should succeed: " (some-> result :content first :text)))
+      (is (contains? result :structuredContent)
+          "get_table declares outputSchema → MUST emit structuredContent")
+      (is (map? (:structuredContent result))
+          "structuredContent should be the parsed response object, not a string")
+      (is (= "ORDERS" (-> result :structuredContent :name))
+          "structuredContent should mirror the endpoint response shape"))))
 
 (deftest tools-list-test
   (testing "tools/list returns the agent and UI tools"
