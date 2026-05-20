@@ -332,41 +332,13 @@ export class LegacyApi extends EventEmitter<EventMap> {
       throw new Error("Invalid HTTP method");
     }
 
-    // Usually we hand the caller's signal straight to `fetch`. The exception is
-    // a signal that is *already* aborted by the time we reach the transport.
-    // Handing an already-aborted signal to `fetch` makes it reject synchronously
-    // *before the request is dispatched*, so the server never sees it. The old
-    // XHR transport instead `send()`-ed first and only then honored `abort()`,
-    // so the request always went out. We preserve that by handing `fetch` a
-    // fresh signal and deferring the abort to the next microtask: the request is
-    // dispatched this tick, then aborted.
-    //
-    // Why a signal can already be aborted here - the only `await` between a
-    // caller receiving its `AbortController` and us building the `Request` is
-    // `apiRequestManipulationMiddleware`, and the only handler that awaits long
-    // enough for an abort to race in is the embedding-SDK session-token refresh
-    // (`PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler`
-    // -> `getOrRefreshSession`). It parks every in-flight request on a shared,
-    // deduped `refreshTokenPromise` while the token renews. While requests are
-    // parked, a newer query can supersede an older one and abort its controller:
-    //   - `useLoadQuestion`'s `nextSignal()` (InteractiveQuestion re-queries),
-    //   - dashboard `cancelFetchCardData` (`entry.controller.abort()`),
-    //   - an RTK Query abort/unsubscribe (`dispatch(endpoint.initiate()).abort()`),
-    //     which aborts the `ctx.signal` we forward as `options.signal`.
-    // When the refresh resolves, the superseded-but-parked request arrives here
-    // aborted and still has to go out with the refreshed token. (The other
-    // middleware handlers (public/static/guest embed URL rewrites) are
-    // synchronous, so they never open this window.)
-    //
-    // Pinned by the SDK token-refresh test in
-    // e2e/test-component/scenarios/embedding-sdk/requests.cy.spec.tsx, which
-    // asserts both parked `/api/dataset` requests fire with the new session id.
-    let signal = options.signal;
-    if (signal?.aborted) {
-      const controller = new AbortController();
-      queueMicrotask(() => controller.abort());
-      signal = controller.signal;
-    }
+    // An already-aborted signal makes `fetch` reject before the request is
+    // dispatched, so a request the caller has already cancelled never reaches
+    // the server. That's the behavior we want: a superseded request (e.g. a
+    // query aborted via `useLoadQuestion`'s `nextSignal()` while parked in the
+    // embedding-SDK token refresh) should simply not go out. Only reads are ever
+    // cancelled this way, so nothing durable is lost.
+    const { signal } = options;
 
     // We wrap the fetch args in an explicit `Request` (instead of just calling
     // `fetch(url, init)`) so fetch-mock populates `call.request` on every

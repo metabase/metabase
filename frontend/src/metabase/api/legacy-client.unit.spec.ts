@@ -564,6 +564,56 @@ describe("api", () => {
     });
   });
 
+  describe("request cancellation", () => {
+    let apiInstance: LegacyApi;
+
+    beforeEach(() => {
+      apiInstance = new LegacyApi();
+    });
+
+    afterEach(() => {
+      fetchMock.removeRoutes().clearHistory();
+    });
+
+    // An already-aborted signal makes the real `fetch` reject before the request
+    // is dispatched, so a request the caller has already cancelled never reaches
+    // the server and never resolves with data. We can't assert the "never
+    // dispatched" part here (fetch-mock records the attempt before honoring the
+    // abort), but the cancelled rejection is the contract callers depend on.
+    it("rejects an already-aborted request as cancelled", async () => {
+      fetchMock.get("path:/api/card/1/query", { rows: [] });
+
+      const controller = new AbortController();
+      controller.abort();
+
+      await expect(
+        apiInstance.request({
+          method: "GET",
+          url: "/api/card/:cardId/query",
+          params: { cardId: 1 },
+          signal: controller.signal,
+        }),
+      ).rejects.toEqual({ isCancelled: true });
+    });
+
+    it("rejects as cancelled when the signal aborts while the request is in flight", async () => {
+      const controller = new AbortController();
+      fetchMock.get("path:/api/card/1/query", async () => {
+        controller.abort();
+        return { rows: [] };
+      });
+
+      await expect(
+        apiInstance.request({
+          method: "GET",
+          url: "/api/card/:cardId/query",
+          params: { cardId: 1 },
+          signal: controller.signal,
+        }),
+      ).rejects.toEqual({ isCancelled: true });
+    });
+  });
+
   describe("status-code event emit", () => {
     let apiInstance: LegacyApi;
 
