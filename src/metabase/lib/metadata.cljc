@@ -3,9 +3,8 @@
   (:require
    [medley.core :as m]
    [metabase.lib.metadata.cache :as lib.metadata.cache]
-   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
-   [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.metadata.transforming-provider :as lib.metadata.transforming-provider]
    [metabase.lib.metadata.util :as lib.metadata.util]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -30,7 +29,9 @@
 
 (shared.ns/import-fns
  [lib.metadata.util
-  ->metadata-provider])
+  ->metadata-provider]
+ [lib.metadata.transforming-provider
+  transforming-metadata-provider])
 
 (mu/defn database :- ::lib.schema.metadata/database
   "Get metadata about the Database we're querying."
@@ -324,25 +325,3 @@
         v)
       v)))
 
-;;; --------------------------------- TransformingMetadataProvider -------------------------------------------
-
-(deftype TransformingMetadataProvider [f parent-metadata-provider]
-  lib.metadata.protocols/MetadataProvider
-  (database [_this]
-    (lib.metadata.protocols/database parent-metadata-provider))
-  (metadatas [_this metadata-spec]
-    (f metadata-spec (lib.metadata.protocols/metadatas parent-metadata-provider metadata-spec)))
-  (setting [_this setting-key]
-    (lib.metadata.protocols/setting parent-metadata-provider setting-key)))
-
-(defn transforming-metadata-provider
-  "Wrap `parent-metadata-provider` with a transform function `f`. `f` receives `(f metadata-spec results)`
-   for every call to `metadatas` and should return the (possibly transformed) results.
-   The returned provider is wrapped in a fresh cache and invocation tracker."
-  [f parent-metadata-provider]
-  (-> (->TransformingMetadataProvider f parent-metadata-provider)
-      ;; this deliberately ditches any prior cache so transformed values are seen
-      lib.metadata.cached-provider/cached-metadata-provider
-      ;; this unfortunately tosses away invocation information. But shouldn't be hard to grab the tracker from the
-      ;; underlying (if present) and seed into the new tracker
-      lib.metadata.invocation-tracker/invocation-tracker-provider))
