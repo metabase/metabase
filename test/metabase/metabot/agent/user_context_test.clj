@@ -464,8 +464,10 @@
   (testing "transform sources with a structured MBQL `:query` are rendered as a portable repr JSON code block, not pprint'd pMBQL"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [source {:type  "query"
-                      :query (mt/mbql-query venues {:limit 5})}
+        (let [mp     (mt/metadata-provider)
+              source {:type  "query"
+                      :query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                 (lib/limit 5))}
               text   (user-context/format-transform-source
                       (assoc source :transform-source-type :query))]
           (is (string? text))

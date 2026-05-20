@@ -344,14 +344,15 @@
 
   (testing "Rejects a first-stage source-card the current user cannot read"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection _collection {}
-                     :model/Card       card        {:name          "Protected Question"
-                                                    :collection_id (:id _collection)
-                                                    :database_id   (mt/id)
-                                                    :dataset_query (mt/mbql-query orders)}]
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :post 403 "agent/v2/construct-query"
-                                     {:query (source-card-query (:entity_id card))}))))))
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Collection _collection {}
+                       :model/Card       card        {:name          "Protected Question"
+                                                      :collection_id (:id _collection)
+                                                      :database_id   (mt/id)
+                                                      :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "agent/v2/construct-query"
+                                       {:query (source-card-query (:entity_id card))})))))))
 
   (testing "Rejects a metric aggregation the current user cannot read"
     (mt/with-non-admin-groups-no-root-collection-perms
