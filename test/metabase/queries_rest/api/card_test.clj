@@ -4412,7 +4412,8 @@
                    :collection_id forbidden-coll-id
                    :id other-dash-id
                    :description nil
-                   :archived false}]
+                   :archived false
+                   :enable_embedding false}]
                  (:in_dashboards (t2/hydrate (t2/select-one :model/Card :id card-id) :in_dashboards))))
           (is (nil? (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id))))))))
 
@@ -4441,7 +4442,8 @@
                    :model/Card {card-id :id} {}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
       (is (= [{:id dash-id
-               :name "My Dashboard"}]
+               :name "My Dashboard"
+               :enable_embedding false}]
              (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards")))))))
 
 (deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in-2
@@ -4457,8 +4459,8 @@
                    :model/Card {card-id :id} {}
                    :model/DashboardCard _ {:dashboard_id dash-id1 :card_id card-id}
                    :model/DashboardCard _ {:dashboard_id dash-id2 :card_id card-id}]
-      (is (= [{:id dash-id1 :name "Dashboard One"}
-              {:id dash-id2 :name "Dashboard Two"}]
+      (is (= [{:id dash-id1 :name "Dashboard One" :enable_embedding false}
+              {:id dash-id2 :name "Dashboard Two" :enable_embedding false}]
              (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards")))))))
 
 (deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in-4
@@ -4467,7 +4469,7 @@
                    :model/Card {card-id :id} {}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-      (is (= [{:id dash-id :name "My Dashboard"}]
+      (is (= [{:id dash-id :name "My Dashboard" :enable_embedding false}]
              (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards")))))))
 
 (deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in-5
@@ -4476,12 +4478,24 @@
                    :model/Card {card-id :id} {}
                    :model/DashboardCard {dc-id :id} {:dashboard_id dash-id}
                    :model/DashboardCardSeries _ {:dashboardcard_id dc-id :card_id card-id}]
-      (is (= [{:id dash-id :name "My Dashboard"}]
+      (is (= [{:id dash-id :name "My Dashboard" :enable_embedding false}]
              (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards")))))))
 
 (deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in-6
   (testing "nonexistent card"
     (mt/user-http-request :rasta :get 404 "card/invalid-id/dashboards")))
+
+(deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in-includes-enable_embedding
+  (testing "Response exposes enable_embedding so the frontend can warn before converting embedded questions to SQL"
+    (mt/with-temp [:model/Dashboard {embedded-dash-id :id} {:name "Embedded Dashboard"
+                                                            :enable_embedding true}
+                   :model/Dashboard {plain-dash-id :id} {:name "Plain Dashboard"}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id embedded-dash-id :card_id card-id}
+                   :model/DashboardCard _ {:dashboard_id plain-dash-id :card_id card-id}]
+      (is (= [{:id embedded-dash-id :name "Embedded Dashboard" :enable_embedding true}
+              {:id plain-dash-id :name "Plain Dashboard" :enable_embedding false}]
+             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards")))))))
 
 (deftest we-can-get-a-list-of-dashboards-a-card-appears-in-7
   (testing "Don't have permissions on all the dashboards involved"
