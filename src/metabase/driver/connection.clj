@@ -72,7 +72,8 @@
      whose c3p0 leak-detector tolerates transform-length runtimes. Set by
      [[with-transform-connection]] from the transform runner.
 
-   Bind via [[with-write-connection]] or [[with-transform-connection]], not directly."
+   Bind via [[with-write-connection]], [[with-default-connection]], or
+   [[with-transform-connection]], not directly."
   :default)
 
 (defmacro with-write-connection
@@ -82,6 +83,14 @@
    into account (if configured) instead of only primary `:details`."
   [& body]
   `(binding [*connection-type* :write-data]
+     ~@body))
+
+(defmacro with-default-connection
+  "Establishes a default-connection context for body.
+
+   Use this to compile or execute a read query from inside a broader write-connection context."
+  [& body]
+  `(binding [*connection-type* :default]
      ~@body))
 
 (defmacro with-transform-connection

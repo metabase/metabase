@@ -71,7 +71,7 @@ export function TransformRevisionHistorySidebar({
                 entity: "transform",
                 id: transform.id,
                 revision_id: revision.id,
-              })
+              }).unwrap()
             }
             entity="transform"
             canWrite={!readOnly}

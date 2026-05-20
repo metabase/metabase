@@ -573,28 +573,17 @@
           (log/debug "Query canceled, calling Statement.cancel()")
           (.cancel stmt))))))
 
-(defonce ^:private ^{:doc "Set of `(Statement-class, Throwable-class)` pairs we've already warned about for failures
-  in [[set-statement-query-timeout!]]. We log the first failure at WARN so a misbehaving driver is visible to
-  operators, but suppress repeat warnings — `set-statement-query-timeout!` runs on every statement, and a driver
-  that doesn't support `Statement.setQueryTimeout` would otherwise flood the logs."}
-  set-query-timeout-warned-pairs
-  (atom #{}))
-
 (defn- set-statement-query-timeout!
   "Set `Statement.setQueryTimeout` to the current `*query-timeout-ms*`. Applied uniformly to every SQL-JDBC statement
   so each query carries its own server-side timeout, rather than relying on the pool-wide c3p0
   `unreturnedConnectionTimeout` to kill long queries. Transforms rebind `*query-timeout-ms*` so their statements get
-  the transform timeout instead of the shorter default."
+  the transform timeout instead of the shorter default. Drivers that don't implement `setQueryTimeout` (a small
+  legacy tail — SparkSQL, SQLite, some old Oracle versions) throw here; the c3p0 leak-detector remains the fallback."
   [^Statement stmt]
   (try
     (.setQueryTimeout stmt (long (/ driver.settings/*query-timeout-ms* 1000)))
     (catch Exception e
-      (let [pair [(class stmt) (class e)]]
-        (when (not (contains? @set-query-timeout-warned-pairs pair))
-          (swap! set-query-timeout-warned-pairs conj pair)
-          (log/warnf e "Statement.setQueryTimeout not supported by %s (%s) — relying on c3p0 unreturnedConnectionTimeout instead. This warning is logged once per JVM per (statement, exception) pair."
-                     (class stmt) (.getName (class e))))
-        nil))))
+      (log/debug e "Error setting statement query timeout"))))
 
 (defn- prepared-statement*
   ^PreparedStatement [driver conn sql params canceled-chan]

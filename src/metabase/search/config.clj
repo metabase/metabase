@@ -107,7 +107,15 @@
    {:model/table    1
     :model/dataset  1
     :model/metric   1
-    :model/question 0}})
+    :model/question 0}
+   :metabot
+   {:library             100
+    :official-collection 80
+    :verified            80
+    :data-layer          1     ; overall multiplier; per-tier weights live under :data-layer/* below
+    :data-layer/final    33
+    :data-layer/internal 10
+    :data-layer/hidden   1}})
 
 (def ^:private FilterDef
   "A relaxed definition, capturing how we can write the filter - with some fields omitted."
