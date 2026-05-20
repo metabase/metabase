@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import { isEqual } from "underscore";
@@ -30,14 +30,17 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
 import {
+  Badge,
   Button,
   Flex,
+  Group,
   Modal,
   Paper,
   Select,
   Stack,
   Switch,
   Text,
+  Textarea,
   rem,
 } from "metabase/ui";
 import { getResponseErrorMessage } from "metabase/utils/errors";
@@ -45,12 +48,14 @@ import type Question from "metabase-lib/v1/Question";
 import type {
   CreateAlertNotificationRequest,
   Notification,
+  NotificationCardRowDiffSendMode,
   NotificationCardSendCondition,
   NotificationCronSubscription,
   NotificationHandler,
   ScheduleType,
   UpdateAlertNotificationRequest,
 } from "metabase-types/api";
+import type { Field } from "metabase-types/api/field";
 
 import { ChannelSetupModal } from "../ChannelSetupModal";
 import { NotificationChannelsPicker } from "../components/NotificationChannelsPicker";
@@ -58,11 +63,17 @@ import { NotificationChannelsPicker } from "../components/NotificationChannelsPi
 import { AlertTriggerIcon } from "./AlertTriggerIcon";
 import { AlertModalSettingsBlock } from "./components/AlertModalSettingsBlock/AlertModalSettingsBlock";
 import { NotificationSchedule } from "./components/NotificationSchedule/NotificationSchedule";
-import type { NotificationTriggerOption } from "./types";
+import type {
+  NotificationTriggerOption,
+  NotificationTriggerValue,
+} from "./types";
 
 function getAlertTriggerOptionsMap(
   question: Question | undefined,
-): Record<NotificationCardSendCondition, NotificationTriggerOption> {
+): Record<
+  NotificationCardSendCondition | "watch_new_rows",
+  NotificationTriggerOption
+> {
   const isMetric = question?.type() === "metric";
   return {
     has_result: {
@@ -78,6 +89,10 @@ function getAlertTriggerOptionsMap(
     goal_below: {
       value: "goal_below" as const,
       label: t`When results go below the goal`,
+    },
+    watch_new_rows: {
+      value: "watch_new_rows" as const,
+      label: t`When new rows appear`,
     },
   };
 }
@@ -155,7 +170,10 @@ export const CreateOrEditQuestionAlertModal = ({
     CreateAlertNotificationRequest | UpdateAlertNotificationRequest | null
   >(null);
 
+  const templateTextareaRef = useRef<HTMLTextAreaElement>(null);
+
   const questionId = question?.id();
+  const resultColumns: Field[] = question?.card()?.result_metadata ?? [];
   const isEditMode = !!editingNotification;
   const subscription = notification?.subscriptions[0];
 
@@ -176,10 +194,11 @@ export const CreateOrEditQuestionAlertModal = ({
 
   const triggerOptions = useMemo(() => {
     const optionsMap = getAlertTriggerOptionsMap(question);
-    return getAlertTriggerOptions({
+    const conditionOptions = getAlertTriggerOptions({
       question,
       visualizationSettings,
     }).map((trigger) => optionsMap[trigger]);
+    return [...conditionOptions, optionsMap["watch_new_rows"]];
   }, [question, visualizationSettings]);
 
   const hasSingleTriggerOption = triggerOptions.length === 1;
@@ -303,6 +322,11 @@ export const CreateOrEditQuestionAlertModal = ({
     return null;
   }
 
+  const currentTriggerValue: NotificationTriggerValue =
+    notification.payload_type === "notification/card-row-diff"
+      ? "watch_new_rows"
+      : notification.payload.send_condition;
+
   const isValid = alertIsValid(notification, channelSpec);
   const hasChanges = !isEqual(editingNotification, notification);
   const hasError = errorCreating || errorUpdating;
@@ -353,17 +377,33 @@ export const CreateOrEditQuestionAlertModal = ({
               <Select
                 data-testid="alert-goal-select"
                 data={triggerOptions}
-                value={notification.payload.send_condition}
+                value={currentTriggerValue}
                 w={276}
-                onChange={(value) =>
-                  setNotification({
-                    ...notification,
-                    payload: {
-                      ...notification.payload,
-                      send_condition: value as NotificationCardSendCondition,
-                    },
-                  })
-                }
+                onChange={(value: string | null) => {
+                  if (!value) {
+                    return;
+                  }
+                  if (value === "watch_new_rows") {
+                    setNotification({
+                      ...notification,
+                      payload_type: "notification/card-row-diff",
+                      payload: {
+                        card_id: notification.payload.card_id,
+                        send_mode: "per-row",
+                      },
+                    });
+                  } else {
+                    setNotification({
+                      ...notification,
+                      payload_type: "notification/card",
+                      payload: {
+                        card_id: notification.payload.card_id,
+                        send_condition: value as NotificationCardSendCondition,
+                        send_once: false,
+                      },
+                    });
+                  }
+                }}
               />
             )}
           </Flex>
@@ -404,27 +444,127 @@ export const CreateOrEditQuestionAlertModal = ({
         )}
 
         <AlertModalSettingsBlock title={t`More options`}>
-          <Switch
-            label={t`Delete this Alert after it's triggered`}
-            styles={{
-              label: {
-                lineHeight: "1.5rem",
-              },
-            }}
-            labelPosition="right"
-            size="sm"
-            checked={notification.payload.send_once}
-            onChange={(e) =>
-              setNotification({
-                ...notification,
-                payload: {
-                  ...notification.payload,
-                  send_once: e.target.checked,
+          {notification.payload_type === "notification/card-row-diff" ? (
+            <Select
+              label={t`Delivery format`}
+              data={[
+                { value: "per-row", label: t`One message per new row` },
+                { value: "digest", label: t`One message for all new rows` },
+              ]}
+              value={notification.payload.send_mode}
+              onChange={(value: string | null) => {
+                if (
+                  !value ||
+                  notification.payload_type !== "notification/card-row-diff"
+                ) {
+                  return;
+                }
+                setNotification({
+                  ...notification,
+                  payload: {
+                    ...notification.payload,
+                    send_mode: value as NotificationCardRowDiffSendMode,
+                  },
+                });
+              }}
+            />
+          ) : (
+            <Switch
+              label={t`Delete this Alert after it's triggered`}
+              styles={{
+                label: {
+                  lineHeight: "1.5rem",
                 },
-              })
-            }
-          />
+              }}
+              labelPosition="right"
+              size="sm"
+              checked={notification.payload.send_once}
+              onChange={(e) =>
+                setNotification({
+                  ...notification,
+                  payload: {
+                    ...notification.payload,
+                    send_once: e.target.checked,
+                  },
+                })
+              }
+            />
+          )}
         </AlertModalSettingsBlock>
+
+        {notification.payload_type === "notification/card-row-diff" && (
+          <AlertModalSettingsBlock title={t`Message template (optional)`}>
+            <Stack gap="xs">
+              <Textarea
+                ref={templateTextareaRef}
+                placeholder={t`e.g. "Yesterday we sold {{count}} of {{product}}"`}
+                autosize
+                minRows={2}
+                value={notification.payload.message_template ?? ""}
+                onChange={(e) =>
+                  setNotification({
+                    ...notification,
+                    payload: {
+                      ...notification.payload,
+                      message_template: e.target.value || null,
+                    },
+                  })
+                }
+              />
+              {resultColumns.length > 0 && (
+                <Group gap="xs">
+                  <Text size="xs" c="text-secondary">{t`Insert column:`}</Text>
+                  {resultColumns.map((col) => (
+                    <Badge
+                      key={col.name}
+                      variant="outline"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => {
+                        const el = templateTextareaRef.current;
+                        const placeholder = `{{${col.name}}}`;
+                        if (!el) {
+                          setNotification({
+                            ...notification,
+                            payload: {
+                              ...notification.payload,
+                              message_template:
+                                (notification.payload.message_template ?? "") +
+                                placeholder,
+                            },
+                          });
+                          return;
+                        }
+                        const start = el.selectionStart ?? el.value.length;
+                        const end = el.selectionEnd ?? el.value.length;
+                        const current = el.value;
+                        const next =
+                          current.slice(0, start) +
+                          placeholder +
+                          current.slice(end);
+                        setNotification({
+                          ...notification,
+                          payload: {
+                            ...notification.payload,
+                            message_template: next || null,
+                          },
+                        });
+                        requestAnimationFrame(() => {
+                          el.focus();
+                          el.setSelectionRange(
+                            start + placeholder.length,
+                            start + placeholder.length,
+                          );
+                        });
+                      }}
+                    >
+                      {col.display_name}
+                    </Badge>
+                  ))}
+                </Group>
+              )}
+            </Stack>
+          </AlertModalSettingsBlock>
+        )}
       </Stack>
       <Flex
         justify="space-between"

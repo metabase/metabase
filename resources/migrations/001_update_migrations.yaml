@@ -11776,6 +11776,111 @@ databaseChangeLog:
               - column:
                   name: match_status
 
+  - changeSet:
+      id: v55.2026-05-20T10:00:00
+      author: conorreid
+      comment: create the notification_card_row_diff table for card row diff notifications
+      changes:
+        - createTable:
+            tableName: notification_card_row_diff
+            remarks: Configuration for card-row-diff notifications
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: the card to watch for new rows
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_card_row_diff_card_id
+                    deleteCascade: true
+              - column:
+                  name: send_mode
+                  type: varchar(32)
+                  remarks: per-row or digest
+                  defaultValue: per-row
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v55.2026-05-20T10:00:01
+      author: conorreid
+      comment: create the notification_row_diff_snapshot table for storing row snapshots
+      changes:
+        - createTable:
+            tableName: notification_row_diff_snapshot
+            remarks: Stores last-seen row snapshots for card-row-diff notifications
+            columns:
+              - column:
+                  name: notification_id
+                  type: bigint
+                  remarks: FK to notification; also the primary key (1:1 relation)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    referencedTableName: notification
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_row_diff_snapshot_notification_id
+                    deleteCascade: true
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: the card whose rows were snapshotted
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_row_diff_snapshot_card_id
+                    deleteCascade: true
+              - column:
+                  name: snapshot
+                  type: text
+                  remarks: JSON array of rows from the last run
+                  constraints:
+                    nullable: false
+              - column:
+                  name: captured_at
+                  type: ${timestamp_type}
+                  remarks: when the snapshot was taken
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v55.2026-05-20T10:00:02
+      author: conorreid
+      comment: add message_template column to notification_card_row_diff
+      changes:
+        - addColumn:
+            tableName: notification_card_row_diff
+            columns:
+              - column:
+                  name: message_template
+                  type: text
+                  remarks: optional mustache-style template e.g. "Sold {{count}} of {{product}}"
+                  constraints:
+                    nullable: true
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

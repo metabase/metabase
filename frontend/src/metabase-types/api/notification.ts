@@ -11,6 +11,8 @@ export type NotificationCardSendCondition =
   | "goal_below"
   | "has_result";
 
+export type NotificationCardRowDiffSendMode = "per-row" | "digest";
+
 //#region Payload union type
 type NotificationCardPayload = {
   payload_type: "notification/card";
@@ -27,7 +29,24 @@ type NotificationCardPayload = {
   payload_id?: number;
 };
 
-type NotificationPayload = NotificationCardPayload; // will be populated with more variants later on
+type NotificationCardRowDiffPayload = {
+  payload_type: "notification/card-row-diff";
+  payload: {
+    card_id: CardId;
+    card?: Card;
+    send_mode: NotificationCardRowDiffSendMode;
+    message_template?: string | null;
+
+    id?: number;
+    created_at?: string;
+    updated_at?: string;
+  };
+  payload_id?: number;
+};
+
+type NotificationPayload =
+  | NotificationCardPayload
+  | NotificationCardRowDiffPayload;
 
 //#endregion
 
@@ -138,19 +157,31 @@ export interface ListNotificationsRequest extends PaginationRequest {
   permission_group_id?: number;
 }
 
-export type CreateAlertNotificationRequest = NotificationCardPayload & {
-  handlers: NotificationHandler[];
-  subscriptions: NotificationCronSubscription[];
-};
+export type CreateAlertNotificationRequest =
+  | (NotificationCardPayload & {
+      handlers: NotificationHandler[];
+      subscriptions: NotificationCronSubscription[];
+    })
+  | (NotificationCardRowDiffPayload & {
+      handlers: NotificationHandler[];
+      subscriptions: NotificationCronSubscription[];
+    });
 
 export type CreateNotificationRequest = CreateAlertNotificationRequest; // will be populated with more variants later on
 
-export type UpdateAlertNotificationRequest = NotificationCardPayload & {
-  id: NotificationId;
-  active: boolean;
-  handlers: NotificationHandler[];
-  subscriptions: NotificationCronSubscription[];
-};
+export type UpdateAlertNotificationRequest =
+  | (NotificationCardPayload & {
+      id: NotificationId;
+      active: boolean;
+      handlers: NotificationHandler[];
+      subscriptions: NotificationCronSubscription[];
+    })
+  | (NotificationCardRowDiffPayload & {
+      id: NotificationId;
+      active: boolean;
+      handlers: NotificationHandler[];
+      subscriptions: NotificationCronSubscription[];
+    });
 
 export type UpdateNotificationRequest = UpdateAlertNotificationRequest; // will be populated with more variants later on
 

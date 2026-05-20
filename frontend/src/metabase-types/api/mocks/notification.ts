@@ -9,27 +9,53 @@ import { createMockUserInfo } from "metabase-types/api/mocks/user";
 
 export const createMockNotification = (
   opts?: Partial<Notification>,
-): Notification => ({
-  payload_id: 7,
-  payload: {
-    id: 7,
-    card_id: 1,
-    send_once: false,
-    send_condition: "has_result",
-    created_at: "2025-01-07T18:40:47.245205+03:00",
+): Notification =>
+  ({
+    payload_id: 7,
+    payload: {
+      id: 7,
+      card_id: 1,
+      send_once: false,
+      send_condition: "has_result",
+      created_at: "2025-01-07T18:40:47.245205+03:00",
+      updated_at: "2025-01-07T18:40:47.245205+03:00",
+    },
+    creator: createMockUserInfo({ ...opts?.creator }),
+    payload_type: "notification/card",
+    handlers: [createMockNotificationHandlerEmail()],
+    creator_id: 3,
+    subscriptions: [createMockNotificationCronSubscription()],
     updated_at: "2025-01-07T18:40:47.245205+03:00",
-  },
-  creator: createMockUserInfo({ ...opts?.creator }),
-  payload_type: "notification/card",
-  handlers: [createMockNotificationHandlerEmail()],
-  creator_id: 3,
-  subscriptions: [createMockNotificationCronSubscription()],
-  updated_at: "2025-01-07T18:40:47.245205+03:00",
-  active: true,
-  id: 10,
-  created_at: "2025-01-07T18:40:47.245205+03:00",
-  ...opts,
-});
+    active: true,
+    id: 10,
+    created_at: "2025-01-07T18:40:47.245205+03:00",
+    ...opts,
+  }) as Notification;
+
+export const createMockNotificationCardRowDiff = (
+  opts?: Partial<Notification>,
+): Notification =>
+  ({
+    payload_id: 8,
+    payload: {
+      id: 8,
+      card_id: 1,
+      send_mode: "per-row",
+      message_template: null,
+      created_at: "2025-01-07T18:40:47.245205+03:00",
+      updated_at: "2025-01-07T18:40:47.245205+03:00",
+    },
+    creator: createMockUserInfo({ ...opts?.creator }),
+    payload_type: "notification/card-row-diff",
+    handlers: [createMockNotificationHandlerEmail()],
+    creator_id: 3,
+    subscriptions: [createMockNotificationCronSubscription()],
+    updated_at: "2025-01-07T18:40:47.245205+03:00",
+    active: true,
+    id: 11,
+    created_at: "2025-01-07T18:40:47.245205+03:00",
+    ...opts,
+  }) as Notification;
 
 export const createMockNotificationHandlerEmail = (
   opts?: Partial<NotificationHandlerEmail>,

@@ -118,7 +118,8 @@ export const getDefaultQuestionAlertRequest = ({
   availableTriggerOptions: NotificationTriggerOption[];
   userCanAccessSettings: boolean;
 }): CreateAlertNotificationRequest => {
-  const sendCondition = availableTriggerOptions[0].value;
+  const sendCondition = availableTriggerOptions[0]
+    .value as NotificationCardSendCondition;
 
   return {
     payload_type: "notification/card",

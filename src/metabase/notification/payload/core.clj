@@ -63,6 +63,10 @@
                        [:include_xls   {:optional true} [:maybe ms/BooleanValue]]
                        [:format_rows   {:optional true} [:maybe ms/BooleanValue]]
                        [:pivot_results {:optional true} [:maybe ms/BooleanValue]]]]]]]]]
+    [:notification/card-row-diff
+     [:map
+      [:payload_id {:optional true} [:maybe ms/PositiveInt]]
+      [:creator_id {:optional true} ms/PositiveInt]]]
     ;; for testing only
     [:notification/testing :map]]])
 
@@ -99,6 +103,16 @@
                  [:style             :map]
                  [:notification_card ::models.notification/NotificationCard]
                  [:subscriptions     [:sequential ::models.notification/NotificationSubscription]]]]]]
+    [:notification/card-row-diff
+     [:map
+      [:payload [:map
+                 [:card                                    :map]
+                 [:card_part                               [:maybe :map]]
+                 [:columns                                 [:sequential :map]]
+                 [:new_rows                                [:sequential :any]]
+                 [:send_mode                               [:enum :per-row :digest]]
+                 [:message_template {:optional true}       [:maybe :string]]
+                 [:is_first_run                            :boolean]]]]]
     [:notification/testing   :map]]])
 
 (defn- logo-url

@@ -87,7 +87,14 @@
                                    [:and
                                     [:= :notification_card.id :notification.payload_id]
                                     [:= :notification.payload_type "notification/card"]])
-                                  (sql.helpers/where [:= :notification_card.card_id card_id]))
+                                  (sql.helpers/left-join
+                                   :notification_card_row_diff
+                                   [:and
+                                    [:= :notification_card_row_diff.id :notification.payload_id]
+                                    [:= :notification.payload_type "notification/card-row-diff"]])
+                                  (sql.helpers/where [:or
+                                                      [:= :notification_card.card_id card_id]
+                                                      [:= :notification_card_row_diff.card_id card_id]]))
 
                               (and (nil? legacy-active) (not (true? include_inactive)))
                               (sql.helpers/where [:= :notification.active true])
