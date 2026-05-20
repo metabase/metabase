@@ -71,7 +71,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
-   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.query-processor.store :as qp.store]))
 
 (set! *warn-on-reflection* true)
