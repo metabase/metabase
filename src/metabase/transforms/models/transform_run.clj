@@ -155,7 +155,7 @@
          (publish-timeout-event! run))))))
 
 (defn timeout-old-runs!
-  "Time out all active runs older than the specified age. Returns the number of runs timed out.
+  "Time out all active runs older than the specified age. Returns the rows that were timed out.
   See [[metabase.transforms.models.timeout-util/timeout-rows!]] for atomicity rationale."
   [age unit]
   (let [cutoff      (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)
@@ -179,7 +179,7 @@
                                              :message   "Timed out by metabase")))
             timed-out))
     (cancel/delete-old-canceling-runs!)
-    (count timed-out)))
+    timed-out))
 
 (defn cancel-old-canceling-runs!
   "Cancel all canceling runs older than the specified age."

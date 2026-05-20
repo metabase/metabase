@@ -38,9 +38,9 @@
                                                                      :is_active    true
                                                                      :run_method   :manual
                                                                      :start_time   (minutes-ago 1)}]
-          (let [n-timed-out (transform-run/timeout-old-runs! 5 :minute)]
+          (let [timed-out (transform-run/timeout-old-runs! 5 :minute)]
             (testing "only the stale run is timed out"
-              (is (= 1 n-timed-out))
+              (is (= 1 (count timed-out)))
               (is (= :timeout (t2/select-one-fn :status :model/TransformRun :id old-run-id)))
               (is (= :started (t2/select-one-fn :status :model/TransformRun :id fresh-run-id)))))
 
@@ -74,7 +74,7 @@
                                               :is_active    true
                                               :run_method   :manual
                                               :start_time   (minutes-ago 1)}]
-          (is (= 0 (transform-run/timeout-old-runs! 5 :minute)))
+          (is (empty? (transform-run/timeout-old-runs! 5 :minute)))
           (is (== 0 (mt/metric-value system
                                      :metabase-transforms/timeouts-total
                                      {:type "transform"})))
