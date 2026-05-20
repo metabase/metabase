@@ -187,6 +187,13 @@ export function MetricsViewerTabContent({
     [onTabUpdate, tab.visualizationSettings],
   );
 
+  const handleShowColumnLabelsChange = useCallback(
+    (showColumnLabels: boolean) => {
+      onTabUpdate({ showColumnLabels });
+    },
+    [onTabUpdate],
+  );
+
   const handleBrush = useCallback(
     ({ start, end }: { start: number; end: number }) => {
       updateProjectionConfig({
@@ -217,6 +224,7 @@ export function MetricsViewerTabContent({
       : item.availableOptions.length > 0,
   );
   const hideDimensionPill = tabConfig.minDimensions === 0 && !hasAnyOptions;
+  const showColumnLabels = tab.showColumnLabels !== false;
 
   const mappedDimensionCount = getObjectValues(tab.dimensionMapping).filter(
     isNotNull,
@@ -238,7 +246,7 @@ export function MetricsViewerTabContent({
         queriesAreLoading={queriesAreLoading}
         queriesError={queriesError}
       />
-      {!hideDimensionPill && (
+      {!hideDimensionPill && showColumnLabels && (
         <Box mt="sm">
           <DimensionPillBar
             items={dimensionItems}
@@ -267,6 +275,9 @@ export function MetricsViewerTabContent({
             onBinningChange={handleBinningChange}
             onAddTab={onAddTab}
             showStackSeries={showStackSeries}
+            canToggleColumnLabels={!hideDimensionPill}
+            showColumnLabels={showColumnLabels}
+            onShowColumnLabelsChange={handleShowColumnLabelsChange}
             visualizationSettings={tab.visualizationSettings}
             onVisualizationSettingsChange={handleVisualizationSettingsChange}
           />
