@@ -198,7 +198,7 @@ type FilterSectionProps = {
 
 const FilterSection = ({ label, children }: FilterSectionProps) => (
   <Stack gap="sm">
-    <Text fw={700} fz="md" c="text-primary">
+    <Text fw="bold" fz="md" c="text-primary">
       {label}
     </Text>
     <Flex gap="sm" wrap="wrap">
@@ -225,7 +225,7 @@ const FilterPill = ({ icon, label, selected, onClick }: FilterPillProps) => (
   >
     <Flex gap="sm" align="center">
       <Icon name={icon} size={16} c="text-secondary" />
-      <Text fz="md" c="text-primary" lh="16px">
+      <Text fz="md" c="text-primary" lh="sm">
         {label}
       </Text>
     </Flex>
