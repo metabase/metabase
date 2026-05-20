@@ -34,6 +34,12 @@ interface McpUiAppRouteContentProps {
   sessionToken: string;
 }
 
+interface McpMetabaseConfig {
+  instanceUrl: string;
+  sessionToken: string;
+  mcpSessionId: string;
+}
+
 // CSS for .mcp-loading and .mcp-spinner is defined globally in embed-mcp.html.
 const SimpleLoader = () => (
   <div className="mcp-loading">
@@ -45,11 +51,7 @@ export function McpUiAppRoute() {
   const { app, hostContext, prompt, query } = useMcpApp();
 
   const { instanceUrl = "", sessionToken = "" } =
-    (window.metabaseConfig as {
-      instanceUrl: string;
-      sessionToken: string;
-      mcpSessionId: string;
-    }) ?? {};
+    (window.metabaseConfig as McpMetabaseConfig) ?? {};
 
   const scheme: ResolvedColorScheme =
     hostContext?.theme === "dark" ? "dark" : "light";
@@ -96,11 +98,7 @@ function McpUiAppRouteContent({
   const handleDrillThrough = useHandleMcpDrillThrough(app);
 
   const { mcpSessionId = "" } =
-    (window.metabaseConfig as {
-      instanceUrl: string;
-      sessionToken: string;
-      mcpSessionId: string;
-    }) ?? {};
+    (window.metabaseConfig as McpMetabaseConfig) ?? {};
 
   const safeAreaInsets = hostContext?.safeAreaInsets ?? DEFAULT_INSETS;
 

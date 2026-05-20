@@ -54,17 +54,13 @@ export function useMcpQueryControls() {
         }
       : undefined;
 
-  const hasChartTypeSelector =
-    !!question &&
-    !!queryResults &&
-    !hasOnlyTable &&
-    sensibleChartTypes.length > 0;
+  const hasQueryResults = !!question && !!queryResults;
+  const canShowChartControls = hasQueryResults && !hasOnlyTable;
 
-  const hasTimeControls =
-    !!question &&
-    !!queryResults &&
-    !hasOnlyTable &&
-    !!(timeRange || timeGranularity);
+  const hasChartTypeSelector =
+    canShowChartControls && sensibleChartTypes.length > 0;
+
+  const hasTimeControls = hasQueryResults && !!(timeRange || timeGranularity);
 
   return {
     chartTypes: sensibleChartTypes,

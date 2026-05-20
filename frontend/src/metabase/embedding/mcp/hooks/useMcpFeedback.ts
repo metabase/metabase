@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
+import type { McpAppsFeedback } from "metabase-types/api";
 
 import type {
   McpFeedbackAreaValues,
@@ -42,8 +44,7 @@ export function useMcpFeedback({
 
   const [sendToast] = useToast();
 
-  const feedbackContextRef = useRef({ prompt, query });
-  feedbackContextRef.current = { prompt, query };
+  const feedbackContextRef = useLatest({ prompt, query });
 
   useEffect(() => {
     setSubmittedFeedback(null);
@@ -58,7 +59,7 @@ export function useMcpFeedback({
     const submittedContext = feedbackContextRef.current;
     const positive = selectedFeedback === "positive";
 
-    const payload = {
+    const payload: McpAppsFeedback = {
       feedback: {
         positive,
         message_id: crypto.randomUUID(),
@@ -66,7 +67,7 @@ export function useMcpFeedback({
         freeform_feedback: values.freeform_feedback || undefined,
       },
       conversation_data: { source: "mcp", ...submittedContext },
-    } as const;
+    };
 
     try {
       setIsSubmittingFeedback(true);
