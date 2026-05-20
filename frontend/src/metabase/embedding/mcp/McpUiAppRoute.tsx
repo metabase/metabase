@@ -137,13 +137,8 @@ function McpUiAppRouteContent({
     left: Math.max(safeAreaInsets.left, 0),
   };
 
-  const containerStyle: CSSProperties = {
-    height,
-  };
-
-  const feedbackContentStyle: CSSProperties = {
-    boxSizing: "border-box",
-  };
+  const containerStyle: CSSProperties = { height };
+  const feedbackContainerStyle: CSSProperties = { boxSizing: "border-box" };
 
   const footerStyle: CSSProperties = {
     boxSizing: "border-box",
@@ -172,7 +167,7 @@ function McpUiAppRouteContent({
       return (
         // Keep the feedback overlay inside SdkQuestion's container because
         // it relies on the style from PublicComponentStyleWrapper
-        <Flex h={height} w="100%" style={feedbackContentStyle}>
+        <Flex h={height} w="100%" style={feedbackContainerStyle}>
           <McpFeedbackArea
             feedback={selectedFeedback}
             isSubmitting={isSubmittingFeedback}

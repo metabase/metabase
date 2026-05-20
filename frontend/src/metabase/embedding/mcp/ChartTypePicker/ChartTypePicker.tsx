@@ -1,17 +1,17 @@
 import { ActionIcon, Flex, Icon } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
+import type { CardDisplayType, IconName } from "metabase-types/api";
 
 import S from "./ChartTypePicker.module.css";
 
 type ChartTypeOption = {
-  type: string;
+  type: CardDisplayType;
   icon: IconName;
 };
 
 type ChartTypePickerProps = {
   chartTypes: ChartTypeOption[];
-  value: string;
-  onChange: (type: string) => void;
+  value: CardDisplayType | "";
+  onChange: (type: CardDisplayType) => void;
 };
 
 export function ChartTypePicker({
