@@ -81,24 +81,23 @@ describe("TransformHeader", () => {
   });
 
   describe("inspect tab upsell", () => {
-    it("should always render the Inspect tab", () => {
+    it("should not render the Inspect tab for oss", () => {
       setup();
 
-      expect(screen.getByText("Inspect")).toBeInTheDocument();
+      expect(screen.queryByText("Inspect")).not.toBeInTheDocument();
     });
 
-    it("should show upsell gem when transforms-python is not enabled", () => {
+    it("should not render the Inspect tab when transforms-python is not enabled", () => {
+      setupEnterprisePlugins();
       setup();
 
-      const inspectLink = screen.getByRole("link", { name: /Inspect/ });
-      expect(inspectLink).toBeInTheDocument();
-
-      expect(within(inspectLink).getByTestId("upsell-gem")).toBeInTheDocument();
+      expect(screen.queryByText("Inspect")).not.toBeInTheDocument();
     });
 
     it("should not show upsell gem when transforms-python is enabled", () => {
       setupEnterprisePlugins();
       PLUGIN_TRANSFORMS_PYTHON.isEnabled = true;
+      PLUGIN_TRANSFORMS_PYTHON.shouldShowInspectTab = true;
 
       setup();
 
