@@ -98,7 +98,7 @@ export const LimitPopover = ({
               }
               applyLimit();
             }}
-            onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => {
+            onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
               if (e.nativeEvent.isComposing) {
                 return;
               }

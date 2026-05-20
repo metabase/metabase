@@ -181,7 +181,7 @@ describe("QuestionRowCount", () => {
           );
           const input = await screen.findByPlaceholderText("Pick a limit");
           fireEvent.change(input, { target: { value: "25" } });
-          fireEvent.keyPress(input, { key: "Enter", charCode: 13 });
+          fireEvent.keyDown(input, { key: "Enter" });
 
           await waitFor(() => {
             expect(rowCount).toHaveTextContent("Show 25 rows");
@@ -214,7 +214,7 @@ describe("QuestionRowCount", () => {
           await userEvent.click(rowCount);
           const input = await screen.findByDisplayValue("25");
           fireEvent.change(input, { target: { value: "400" } });
-          fireEvent.keyPress(input, { key: "Enter", charCode: 13 });
+          fireEvent.keyDown(input, { key: "Enter" });
 
           await waitFor(() => {
             expect(rowCount).toHaveTextContent("Show 400 rows");
