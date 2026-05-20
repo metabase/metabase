@@ -21,7 +21,10 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent ArrayBlockingQueue BlockingQueue ExecutorService Executors ThreadFactory)
+   (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
 
 (set! *warn-on-reflection* true)
 
@@ -108,98 +111,107 @@
             (recur))))
       (transforms.job-run/add-run-activity! run-id))))
 
+(defn- named-thread-factory ^ThreadFactory [pattern]
+  (.build (doto (BasicThreadFactory$Builder.)
+            (.namingPattern pattern)
+            (.daemon true))))
+
 (defn- submit-transform!
-  [^java.util.concurrent.ExecutorService executor
-   ^java.util.concurrent.BlockingQueue completions
+  [^ExecutorService executor
+   ^BlockingQueue completions
    run-id run-method user-id transform]
-  ;; `bound-fn` propagates the coordinator thread's dynamic bindings (*current-user-id*, QP
-  ;; bindings, etc.) to the worker thread.
   (let [task (bound-fn []
-               (let [result (try
-                              (run-transform! run-id run-method user-id transform)
-                              {::status :succeeded}
-                              (catch Throwable t
-                                {::status :failed
-                                 ::message (or (ex-message t) (str t))}))]
-                 (.put completions (assoc result ::transform transform))))]
+               (let [tid        (:id transform)
+                     completion (try
+                                  (run-transform! run-id run-method user-id transform)
+                                  {::status :succeeded}
+                                  (catch Throwable t
+                                    (log/errorf t "Transform %s in run %s failed"
+                                                (pr-str tid) (pr-str run-id))
+                                    {::status  :failed
+                                     ::message (or (ex-message t) (str t))}))]
+                 (.put completions (assoc completion ::transform transform))))]
     (.submit executor ^Runnable task)))
-
-(defn- make-lane
-  "A dispatch lane bundles an executor, the set of transform ids currently running on it, and the
-  max number of concurrent transforms it accepts."
-  [executor capacity]
-  {:executor  executor
-   :in-flight (volatile! #{})
-   :capacity  capacity})
-
-(defn- has-room? [{:keys [in-flight capacity]}]
-  (< (count @in-flight) capacity))
-
-(defn- busy? [{:keys [in-flight]}]
-  (seq @in-flight))
 
 (defn run-transforms!
   "Run a series of transforms and their dependencies.
 
   SQL transforms are dispatched concurrently up to `transform-run-job-sql-concurrency`, respecting
-  the DAG: a transform is only started once all of its dependencies have succeeded. Python
-  transforms run in a separate single-slot lane regardless of the SQL pool size, because the
-  python-runner service has only one worker; oversubscribing it would just queue requests against
-  their own per-call timeouts. If a dependency failed, dependents are recorded as failures
-  (transitively) without being executed.
+  the DAG: a transform is only started once all of its dependencies have succeeded.
+
+  Python transforms run in a separate single-slot lane regardless of the SQL pool size, because
+  the python-runner service has only one worker; oversubscribing it would just queue requests
+  against their own per-call timeouts.
+
+  If a dependency failed, dependents are recorded as failures (transitively) without being
+  executed.
 
   Updates the transform-job-run specified by run-id after every completion.
   Returns a map with :status and a collection of :failures if failed."
   [run-id transform-ids-to-run {:keys [run-method start-promise user-id]}]
   (let [{plan :order deps :deps} (get-plan transform-ids-to-run)
-        n           (max 1 (transforms.settings/transform-run-job-sql-concurrency))
-        sql-lane    (make-lane (java.util.concurrent.Executors/newFixedThreadPool n) n)
-        py-lane     (make-lane (java.util.concurrent.Executors/newSingleThreadExecutor) 1)
-        lanes       [sql-lane py-lane]
-        lane-for    (fn [t] (if (transforms-base.u/python-transform? t) py-lane sql-lane))
-        in-flight?  (fn [id] (some #(@(:in-flight %) id) lanes))
-        succeeded   (volatile! #{})
-        failed      (volatile! #{})
-        failures    (volatile! [])
-        completions (java.util.concurrent.LinkedBlockingQueue.)
-        record-dep-failure!
-        (fn [t]
-          (vswap! failed conj (:id t))
-          (vswap! failures conj {::transform t
-                                 ::message (i18n/trs "Failed to run because one or more of the transforms it depends on failed.")}))
-        ;; Walk plan in topological order: skip dep-failed, dispatch ready ones that fit their lane.
-        ;; Because deps appear before dependents, a cascade of dep-failures propagates in a single pass.
-        dispatch!
-        (fn []
-          (doseq [t     plan
-                  :let  [id (:id t), dep-ids (get deps id), lane (lane-for t)]
-                  :when (not (or (@succeeded id) (@failed id) (in-flight? id)))]
-            (cond
-              (some @failed dep-ids)
-              (record-dep-failure! t)
+        n            (max 1 (transforms.settings/transform-run-job-sql-concurrency))
+        sql-executor (Executors/newFixedThreadPool n (named-thread-factory "transforms-sql-worker-%d"))
+        py-executor  (Executors/newSingleThreadExecutor (named-thread-factory "transforms-python-worker-%d"))
+        lanes        {:sql {:executor sql-executor :capacity n}
+                      :py  {:executor py-executor  :capacity 1}}
+        lane-for     (fn [t] (if (transforms-base.u/python-transform? t) :py :sql))
+        completions  (ArrayBlockingQueue. (max 2 (inc n)))
+        state        (volatile! {:succeeded #{}
+                                 :failed    #{}
+                                 :failures  []
+                                 :in-flight {:sql #{} :py #{}}})
+        busy?        (fn [{:keys [in-flight]}] (some seq (vals in-flight)))
+        ;; Plan is topo-sorted, so a single pass propagates the full cascade of dep-failures.
+        dispatch!    (fn [st]
+                       (reduce
+                        (fn [{:keys [succeeded failed] :as st'} t]
+                          (let [id            (:id t)
+                                dep-ids       (get deps id)
+                                lane-key      (lane-for t)
+                                {:keys [^ExecutorService executor capacity]} (get lanes lane-key)
+                                in-flight-now (get-in st' [:in-flight lane-key])]
+                            (cond
+                              (or (succeeded id) (failed id) (in-flight-now id))
+                              st'
 
-              (and (every? @succeeded dep-ids) (has-room? lane))
-              (do (vswap! (:in-flight lane) conj id)
-                  (submit-transform! (:executor lane) completions run-id run-method user-id t)))))]
-    (when start-promise
-      (deliver start-promise :started))
+                              (some failed dep-ids)
+                              (-> st'
+                                  (update :failed conj id)
+                                  (update :failures conj
+                                          {::transform t
+                                           ::message (i18n/trs "Failed to run because one or more of the transforms it depends on failed.")}))
+
+                              (and (every? succeeded dep-ids)
+                                   (< (count in-flight-now) capacity))
+                              (do (submit-transform! executor completions run-id run-method user-id t)
+                                  (update-in st' [:in-flight lane-key] conj id))
+
+                              :else st')))
+                        st
+                        plan))]
+    (when start-promise (deliver start-promise :started))
     (try
-      (dispatch!)
-      (while (some busy? lanes)
+      (vreset! state (dispatch! @state))
+      (while (busy? @state)
         (let [{::keys [transform status message]} (.take completions)
-              id (:id transform)]
-          (vswap! (:in-flight (lane-for transform)) disj id)
-          (case status
-            :succeeded (vswap! succeeded conj id)
-            :failed    (do (vswap! failed conj id)
-                           (vswap! failures conj {::transform transform
-                                                  ::message message})))
-          (dispatch!)))
+              id       (:id transform)
+              lane-key (lane-for transform)]
+          (vswap! state
+                  (fn [st]
+                    (let [st' (update-in st [:in-flight lane-key] disj id)]
+                      (case status
+                        :succeeded (update st' :succeeded conj id)
+                        :failed    (-> st'
+                                       (update :failed conj id)
+                                       (update :failures conj
+                                               {::transform transform ::message message}))))))
+          (vreset! state (dispatch! @state))))
       (finally
-        (doseq [{:keys [^java.util.concurrent.ExecutorService executor]} lanes]
-          (.shutdown executor))))
-    (if (seq @failures)
-      {::status :failed ::failures @failures}
+        (.shutdown sql-executor)
+        (.shutdown py-executor)))
+    (if (seq (:failures @state))
+      {::status :failed ::failures (:failures @state)}
       {::status :succeeded})))
 
 (defn- job-transform-ids [job-id]

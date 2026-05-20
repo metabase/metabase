@@ -573,20 +573,16 @@
 (deftest run-transforms-parallel-dispatch-test
   (mt/with-premium-features #{:transforms-basic}
     (testing "Independent transforms dispatch concurrently up to the configured limit"
-      (let [plan     [{:id 1} {:id 2} {:id 3} {:id 4}]
-            deps     {1 #{} 2 #{} 3 #{} 4 #{}}
-            live     (atom 0)
-            max-live (atom 0)
-            bump     (fn [] (let [n (swap! live inc)] (swap! max-live max n)))]
+      (let [plan    [{:id 1} {:id 2} {:id 3} {:id 4}]
+            deps    {1 #{} 2 #{} 3 #{} 4 #{}}
+            barrier (CyclicBarrier. 4)]
         (mt/with-temporary-setting-values [transforms.settings/transform-run-job-sql-concurrency 4]
           (with-redefs [jobs/get-plan       (fn [_] {:order plan :deps deps})
-                        jobs/run-transform! (fn [_run-id _run-method _user-id _transform]
-                                              (bump)
-                                              (Thread/sleep 150)
-                                              (swap! live dec))]
-            (let [result (jobs/run-transforms! 0 #{1 2 3 4} {:run-method :manual})]
-              (is (= {::jobs/status :succeeded} result))
-              (is (= 4 @max-live) "all four independents should be in flight at once"))))))
+                        jobs/run-transform! (fn [_ _ _ _]
+                                              (.await barrier 5 TimeUnit/SECONDS))]
+            (is (= {::jobs/status :succeeded}
+                   (jobs/run-transforms! 0 #{1 2 3 4} {:run-method :manual}))
+                "all four independents must reach the barrier (i.e. be live simultaneously)")))))
 
     (testing "Dependents wait for their dependencies even when concurrency > 1"
       (let [plan  [{:id 1} {:id 2}]
@@ -615,16 +611,19 @@
                   "a failed, b & c skipped as dep-failed"))))))
 
     (testing "Concurrency is capped by the setting"
-      (let [plan     (mapv (fn [i] {:id i}) (range 1 9))
-            deps     (into {} (map (fn [i] [i #{}]) (range 1 9)))
-            live     (atom 0)
-            max-live (atom 0)
-            bump     (fn [] (let [n (swap! live inc)] (swap! max-live max n)))]
+      (let [plan       (mapv (fn [i] {:id i}) (range 1 9))
+            deps       (into {} (map (fn [i] [i #{}]) (range 1 9)))
+            ;; 2-party barrier: workers must pair up before either can exit. This gives
+            ;; deterministic "two alive" windows we can observe via the live counter — no sleeps.
+            partner-up (CyclicBarrier. 2)
+            live       (atom 0)
+            max-live   (atom 0)]
         (mt/with-temporary-setting-values [transforms.settings/transform-run-job-sql-concurrency 2]
           (with-redefs [jobs/get-plan       (fn [_] {:order plan :deps deps})
                         jobs/run-transform! (fn [_ _ _ _]
-                                              (bump)
-                                              (Thread/sleep 50)
+                                              (let [n (swap! live inc)]
+                                                (swap! max-live max n))
+                                              (.await partner-up 5 TimeUnit/SECONDS)
                                               (swap! live dec))]
             (jobs/run-transforms! 0 (set (range 1 9)) {:run-method :manual})
             (is (= 2 @max-live) "should never exceed the concurrency setting")))))
@@ -634,37 +633,38 @@
             plan     [(py 1) (py 2) (py 3) (py 4)]
             deps     {1 #{} 2 #{} 3 #{} 4 #{}}
             live     (atom 0)
-            max-live (atom 0)
-            bump     (fn [] (let [n (swap! live inc)] (swap! max-live max n)))]
+            max-live (atom 0)]
         (mt/with-temporary-setting-values [transforms.settings/transform-run-job-sql-concurrency 4]
           (with-redefs [jobs/get-plan       (fn [_] {:order plan :deps deps})
                         jobs/run-transform! (fn [_ _ _ _]
-                                              (bump)
-                                              (Thread/sleep 100)
+                                              (let [n (swap! live inc)]
+                                                (swap! max-live max n))
+                                              ;; A short sleep gives any (hypothetical) parallel
+                                              ;; python worker a window to show up in the counter.
+                                              (Thread/sleep 50)
                                               (swap! live dec))]
             (jobs/run-transforms! 0 #{1 2 3 4} {:run-method :manual})
             (is (= 1 @max-live)
                 "python transforms must run one at a time even with concurrency=4")))))
 
     (testing "SQL and Python lanes run in parallel without contending for slots"
-      (let [py        (fn [id] {:id id :source {:type :python}})
-            sql       (fn [id] {:id id})
-            plan      [(sql 1) (sql 2) (sql 3) (py 4) (py 5)]
-            deps      {1 #{} 2 #{} 3 #{} 4 #{} 5 #{}}
-            sql-live  (atom 0) max-sql  (atom 0)
-            py-live   (atom 0) max-py   (atom 0)
-            bump-sql! (fn [] (let [n (swap! sql-live inc)] (swap! max-sql max n)))
-            bump-py!  (fn [] (let [n (swap! py-live  inc)] (swap! max-py  max n)))]
+      (let [py          (fn [id] {:id id :source {:type :python}})
+            sql         (fn [id] {:id id})
+            plan        [(sql 1) (sql 2) (sql 3) (py 4) (py 5)]
+            deps        {1 #{} 2 #{} 3 #{} 4 #{} 5 #{}}
+            sql-barrier (CyclicBarrier. 3)
+            py-live     (atom 0)
+            max-py      (atom 0)]
         (mt/with-temporary-setting-values [transforms.settings/transform-run-job-sql-concurrency 3]
           (with-redefs [jobs/get-plan       (fn [_] {:order plan :deps deps})
                         jobs/run-transform! (fn [_ _ _ transform]
                                               (if (= :python (-> transform :source :type))
-                                                (do (bump-py!)
-                                                    (Thread/sleep 150)
-                                                    (swap! py-live dec))
-                                                (do (bump-sql!)
+                                                (do (let [n (swap! py-live inc)]
+                                                      (swap! max-py max n))
                                                     (Thread/sleep 50)
-                                                    (swap! sql-live dec))))]
-            (jobs/run-transforms! 0 #{1 2 3 4 5} {:run-method :manual})
-            (is (= 3 @max-sql) "all three SQL transforms run in parallel")
-            (is (= 1 @max-py)  "python lane stays single-slot")))))))
+                                                    (swap! py-live dec))
+                                                (.await sql-barrier 5 TimeUnit/SECONDS)))]
+            (is (= {::jobs/status :succeeded}
+                   (jobs/run-transforms! 0 #{1 2 3 4 5} {:run-method :manual}))
+                "all three SQL transforms reach the barrier (run in parallel)")
+            (is (= 1 @max-py) "python lane stays single-slot")))))))
