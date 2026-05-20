@@ -968,6 +968,25 @@
                    {:card     (mapcat :content card-header-els)
                     :dashcard (mapcat :content dash-header-els)}))))))))
 
+(deftest table-renders-range-conditional-formatting-on-decimal-columns
+  (testing "range/gradient formatting colors BigDecimal cells in the email renderer (GDGT-2412)"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {card-id :id}
+                     {:display :table
+                      :dataset_query (mt/native-query
+                                      {:query "SELECT * FROM (VALUES (CAST(0.1 AS DECIMAL(10,4))), (0.5), (0.9)) t(pct)"})
+                      :visualization_settings
+                      {:table.column_formatting
+                       [{:columns ["PCT"]
+                         :type "range"
+                         :min_type "custom" :min_value 0
+                         :max_type "custom" :max_value 1
+                         :colors ["#ffffff" "#ff0000"]
+                         :id 0}]}}]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [cells (hik.s/select (hik.s/tag :td) (render.tu/render-card-as-hickory! card-id))]
+            (is (every? #(some-> % :attrs :style (str/includes? "background-color")) cells))))))))
+
 (deftest table-renders-respect-conditional-formatting
   (testing "Rendered Tables respect the conditional formatting on a card."
     (let [ids-to-colour [1 2 3 5 8 13]]
