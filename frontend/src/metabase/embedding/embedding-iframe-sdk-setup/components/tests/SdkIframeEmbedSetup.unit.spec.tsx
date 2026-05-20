@@ -157,6 +157,17 @@ describe("Embed flow > forward and backward navigation", () => {
     expect(ssoIndex).toBeLessThan(guestIndex);
   });
 
+  it("selects Guest when initialState.isGuest is true, even with SSO configured", () => {
+    setup({
+      simpleEmbeddingEnabled: true,
+      jwtReady: true,
+      initialState: { isGuest: true, useExistingUserSession: true },
+    });
+
+    expect(screen.getByDisplayValue("guest-embed")).toBeChecked();
+    expect(screen.getByDisplayValue("sso")).not.toBeChecked();
+  });
+
   describe("SSO not configured warnings", () => {
     const warningText =
       /This embed will only work for local testing\. To get production ready code, configure/;

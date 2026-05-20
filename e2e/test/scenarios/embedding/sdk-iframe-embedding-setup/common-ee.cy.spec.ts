@@ -50,6 +50,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      preselectGuest: true,
     });
 
     H.publishChanges("dashboard");
