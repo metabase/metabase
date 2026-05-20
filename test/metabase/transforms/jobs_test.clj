@@ -344,6 +344,7 @@
     (mt/with-model-cleanup [:model/Notification
                             :model/TransformJobRun]
       (mt/with-fake-inbox
+        (mt/fetch-user :crowberto)
         (notification.seed/seed-notification!)
         (mt/with-temp [:model/TransformJob job {:name "stalled-cron-job"
                                                 :schedule "0 0 * * * ? *"}]
@@ -370,6 +371,7 @@
     (mt/with-model-cleanup [:model/Notification
                             :model/TransformJobRun]
       (mt/with-fake-inbox
+        (mt/fetch-user :crowberto)
         (notification.seed/seed-notification!)
         (mt/with-temp [:model/TransformJob job {:name "stalled-manual-job"
                                                 :schedule "0 0 * * * ? *"}]
