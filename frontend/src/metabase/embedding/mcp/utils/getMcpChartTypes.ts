@@ -61,8 +61,7 @@ export function getMcpChartTypes({
     defaultDisplay,
 
     // Slot 2: sensible visualization that isn't already the default
-    candidates.find((type) => sensibleVisualizations.includes(type)) ??
-      candidates[0],
+    candidates.find((type) => sensibleVisualizations.includes(type)) ?? null,
 
     // Slot 3: show table if we can, otherwise show area as the fallback
     canShowTable ? "table" : "area",

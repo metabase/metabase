@@ -30,19 +30,19 @@ describe("getMcpChartTypes", () => {
     ).toEqual(["pie", "bar", "table"]);
   });
 
-  it("falls back to bar chart when there is no alternatives", () => {
+  it("does not add a chart type that is not sensible", () => {
     expect(
       getChartTypes({
         defaultDisplay: "scalar",
         sensibleVisualizations: ["scalar"],
       }),
-    ).toEqual(["scalar", "bar", "table"]);
+    ).toEqual(["scalar", "table"]);
   });
 
-  it("uses another fallback when the visualization is already a bar chart", () => {
+  it("does not add a fallback chart when the visualization is already a bar chart", () => {
     expect(
       getChartTypes({ defaultDisplay: "bar", sensibleVisualizations: ["bar"] }),
-    ).toEqual(["bar", "line", "table"]);
+    ).toEqual(["bar", "table"]);
   });
 
   it("shows area instead of table when table is not visible", () => {

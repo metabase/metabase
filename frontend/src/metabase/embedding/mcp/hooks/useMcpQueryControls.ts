@@ -58,7 +58,7 @@ export function useMcpQueryControls() {
   const canShowChartControls = hasQueryResults && !hasOnlyTable;
 
   const hasChartTypeSelector =
-    canShowChartControls && sensibleChartTypes.length > 0;
+    canShowChartControls && sensibleChartTypes.length > 1;
 
   const hasTimeControls = hasQueryResults && !!(timeRange || timeGranularity);
 
