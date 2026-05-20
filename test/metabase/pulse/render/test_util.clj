@@ -93,10 +93,10 @@
 
 (defn- img-node-with-svg?
   [loc]
-  (let [[tag {:keys [src]}] (zip/node loc)]
-    (and
-     (= tag :img)
-     (str/starts-with? src "<svg"))))
+  (let [[tag attrs] (zip/node loc)]
+    (and (= tag :img)
+         (map? attrs)
+         (some-> ^String (:src attrs) (str/starts-with? "<svg")))))
 
 (def ^:private parse-svg #'js.svg/parse-svg-string)
 
