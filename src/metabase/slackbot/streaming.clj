@@ -178,6 +178,16 @@
            request-prompt team-id thread-ts]}]
   (let [message         (metabot.envelope/user-message prompt)
         ai-proxy?       (metabot/metabase-provider? (metabot.settings/llm-metabot-provider))
+        capabilities    (compute-capabilities)
+        ;; Enrich context *before* `start-turn!` so the user-row's
+        ;; prompt-context block reflects the post-enrichment shape. Slack flows
+        ;; don't populate `:user_is_viewing`, but `:mentioned_refs` (parsed
+        ;; from the prompt text) lands on the row either way.
+        context         (metabot.context/create-context
+                         {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
+                          :capabilities               capabilities
+                          :slack_channel_id           channel-id}
+                         {:metabot-id metabot.config/slackbot-metabot-id})
         ;; Persist a placeholder assistant row up front so its `created_at` pins
         ;; turn ordering before any retry can sneak in earlier-timestamped rows.
         ;; `:user-id` stamps the author on both rows so participation-based
@@ -189,17 +199,12 @@
                                          :slack-thread-ts thread-ts
                                          :slack-msg-id    req-slack-msg-id
                                          :user-id         api/*current-user-id*
-                                         :ai-proxy?       ai-proxy?)
+                                         :ai-proxy?       ai-proxy?
+                                         :context         context)
         data-idx        (volatile! -1)
         request-message (metabot.envelope/user-message (or request-prompt prompt))
-        capabilities    (compute-capabilities)
         thread-history  (thread->history thread bot-user-id conversation-id)
         history         (into (vec thread-history) extra-history)
-        context         (metabot.context/create-context
-                         {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
-                          :capabilities               capabilities
-                          :slack_channel_id           channel-id}
-                         {:metabot-id metabot.config/slackbot-metabot-id})
         messages        (conj (vec history) request-message)
         parts-atom      (atom [])
         ;; Sibling capture for throwables that escape the agent loop's own

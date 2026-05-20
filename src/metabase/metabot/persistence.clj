@@ -1,6 +1,7 @@
 (ns metabase.metabot.persistence
   "Persistence for Metabot conversations and messages."
   (:require
+   [clojure.string :as str]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
@@ -116,6 +117,131 @@
              (do (vreset! pending part)
                  (if prev (rf result prev) result)))))))))
 
+;;; ---------------------------------------- Prompt-context snapshot ----------------------------------------
+;;;
+;;; A snapshot of what the LLM saw via context injection at the start of a turn.
+;;; Persisted as the second element of the user-row's `:data` vector — a typed
+;;; `{:type "prompt-context" ...}` block — so the user message remains
+;;; `data[0]` (the existing single-element shape) and chat rendering stays
+;;; unchanged (the block falls through `convert-content-block` to nil).
+;;;
+;;; See `notes/bot-1569/impl-plan-v2.md` §B for the strategy.
+
+(def ^:private viewing-item-keep-keys
+  "Top-level keys preserved when projecting a `:user_is_viewing` item for
+  persistence. Drops the bulk fields: `:query` (the raw MBQL/native query
+  map), `:chart_configs` (per-chart query duplicates), and any
+  enrichment metadata not in this list."
+  [:type :id :name :description :sql_engine :database_id :error :source_type])
+
+(def ^:private viewing-source-keep-keys
+  "Sub-keys preserved from a transform item's `:source` map. Drops the body
+  (`:query`, `:body`) and table-detail fields; the `:source-tables` and
+  `:source-database` references are enough to identify what the LLM saw."
+  [:type :source-database :source-tables])
+
+(defn- project-used-table
+  "Project a `:used_tables` entry down to a small reference shape — drops the
+  hydrated `:fields` and `:metrics` lists, which are the bulk of the entry."
+  [t]
+  (when (map? t)
+    (cond-> {}
+      (some? (:id t))              (assoc :id (:id t))
+      (some? (:name t))            (assoc :name (:name t))
+      (some? (:database_schema t)) (assoc :schema (:database_schema t)))))
+
+(defn- project-viewing-item
+  "Project a single `:user_is_viewing` item into its persistence shape."
+  [item]
+  (when (map? item)
+    (cond-> (select-keys item viewing-item-keep-keys)
+      (seq (:used_tables item))
+      (assoc :used_tables (into [] (keep project-used-table) (:used_tables item)))
+
+      (map? (:source item))
+      (assoc :source (select-keys (:source item) viewing-source-keep-keys)))))
+
+(defn project-viewing-context-for-persist
+  "Drop bulk fields (`:query` map, per-field `:fields` lists, `:chart_configs`)
+  from `:user_is_viewing` items before persistence. Returns a vector (possibly
+  empty) so consumers don't have to distinguish nil from absent."
+  [user-is-viewing]
+  (into [] (keep project-viewing-item) user-is-viewing))
+
+(defn project-recent-views-for-persist
+  "Pass-through projection — `add-recent-views` already produces the
+  `{:id :name :description :type}` shape this snapshot uses. Helper exists
+  so the call site reads symmetric with the viewing-context projection
+  and so future shape drift has an obvious choke point."
+  [user-recently-viewed]
+  (into [] (keep #(when (map? %)
+                    (select-keys % [:id :name :description :type])))
+        user-recently-viewed))
+
+(def ^:private metabase-uri-re
+  "Matches `metabase://<entity-type>/<id>` URIs anywhere in user-message text.
+  The 8 entity types mirror the FE's `METABASE_PROTOCOL_ENTITY_MODELS`
+  (`frontend/src/metabase/metabot/utils/links.ts`); this list must stay in
+  sync with that constant. The regex deliberately catches both
+  markdown-link form (`[label](metabase://card/42)`, FE-serialized
+  `@`-mentions) and bare-URI form (a user typing `metabase://card/42`
+  themselves) — both are prompt-side entity references and recording
+  them is correct."
+  #"metabase://(question|dashboard|collection|document|model|database|table|transform)/(\d+)")
+
+(defn parse-mentioned-refs
+  "Pull `metabase://type/id` references out of a user-message text body.
+  Tolerates nil / non-string / empty input. Returns a vector of
+  `{:type \"...\" :id N}` maps in source order; duplicates are preserved
+  so consumers can count references."
+  [user-message-content]
+  (if (string? user-message-content)
+    (->> (re-seq metabase-uri-re user-message-content)
+         (mapv (fn [[_ entity-type id-str]]
+                 {:type entity-type
+                  :id   (Long/parseLong id-str)})))
+    []))
+
+(defn- user-message->text
+  "Extract a plain-text body from a user-message map. Supports both the simple
+  `{:content \"...\"}` shape and the OpenAI-style content-parts vector
+  (`{:content [{:type \"text\" :text \"...\"}]}`). Returns an empty string
+  when nothing extractable is present so `parse-mentioned-refs` sees a
+  stable type."
+  [user-message]
+  (let [c (:content user-message)]
+    (cond
+      (string? c) c
+      (sequential? c)
+      (->> c
+           (keep (fn [part]
+                   (cond
+                     (string? part)           part
+                     (map? part)              (:text part))))
+           (str/join " "))
+      :else "")))
+
+(defn build-prompt-context-block
+  "Compose the `prompt-context` block for the user-row's `:data` vector.
+  Returns nil when `context` is nil so callers can short-circuit on the
+  block insertion.
+
+  Three regimes:
+  - `context` is nil → returns nil (block omitted entirely).
+  - `context` is non-nil with empty sub-channels → block is present with
+     `:user_is_viewing []`, `:user_recently_viewed []`,
+     `:mentioned_refs []`. Distinguishes \"we recorded an empty context\"
+     from \"we never recorded this.\"
+  - `context` is populated → block carries the projected data."
+  [context user-message]
+  (when (some? context)
+    {:type                 "prompt-context"
+     :user_is_viewing      (project-viewing-context-for-persist
+                            (:user_is_viewing context))
+     :user_recently_viewed (project-recent-views-for-persist
+                            (:user_recently_viewed context))
+     :mentioned_refs       (parse-mentioned-refs (user-message->text user-message))}))
+
 (defn start-turn!
   "Atomically begin a turn: upsert the conversation row, insert the user-message row,
   and insert a placeholder assistant row. The placeholder's `created_at` is pinned
@@ -142,12 +268,20 @@
      it so the assistant row's `user_id` stays NULL. Falls back to
      `api/*current-user-id*` when omitted.
   - `:ai-proxy?` — override; otherwise derived from `llm-metabot-provider`.
+  - `:context` — the *enriched* per-turn context map (i.e. the one
+     `metabase.metabot.context/create-context` returns). When non-nil, a
+     `{:type \"prompt-context\" ...}` block is appended as `data[1]` on the
+     user row — a snapshot of what was injected into the LLM at turn start.
+     The user message itself stays at `data[0]`, so chat rendering is
+     unchanged (the block falls through `convert-content-block` to nil and
+     is filtered out). See `build-prompt-context-block`.
 
   Returns `{:assistant-msg-id <pk> :assistant-external-id <uuid-str>}`."
   [conversation-id profile-id user-message
    & {:keys [hostname pii-info
              channel-id slack-msg-id slack-team-id slack-thread-ts
-             user-id ai-proxy?]}]
+             user-id ai-proxy?
+             context]}]
   (let [;; Originator: explicit `:user-id` wins; otherwise fall back to the
         ;; auth-bound dynamic. Used for both the conversation `user_id` (on
         ;; first insert) and the user-message row's `user_id`.
@@ -155,7 +289,10 @@
         ai-proxy?              (if (some? ai-proxy?)
                                  ai-proxy?
                                  (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider)))
-        assistant-external-id  (str (random-uuid))]
+        assistant-external-id  (str (random-uuid))
+        prompt-context-block   (build-prompt-context-block context user-message)
+        user-row-data          (cond-> [user-message]
+                                 prompt-context-block (conj prompt-context-block))]
     (analytics/inc! :metabase-metabot/turn-started
                     {:profile-id (or profile-id "unknown")})
     ;; The user-message and assistant-placeholder rows share `created_at` because
@@ -186,7 +323,7 @@
                                     (assoc :slack_thread_ts slack-thread-ts))))
       (t2/insert! :model/MetabotMessage
                   (cond-> {:conversation_id conversation-id
-                           :data            [user-message]
+                           :data            user-row-data
                            :role            :user
                            :profile_id      profile-id
                            :external_id     (str (random-uuid))

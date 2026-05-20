@@ -77,10 +77,17 @@
                     (is (str/includes? (last lines) "promptTokens")))
                   (is (=? {:user_id (mt/user->id :rasta)}
                           conv))
-              ;; Native agent stores parts in raw format
+              ;; Native agent stores parts in raw format. The user row's `:data`
+              ;; carries a second `prompt-context` block (a snapshot of the
+              ;; enriched context the LLM saw at turn start) — the request body
+              ;; passed `:context {}` so all sub-channels are empty.
                   (is (=? [{:total_tokens 0
                             :role         :user
-                            :data         [{:role "user" :content (:content question)}]}
+                            :data         [{:role "user" :content (:content question)}
+                                           {:type                 "prompt-context"
+                                            :user_is_viewing      []
+                                            :user_recently_viewed []
+                                            :mentioned_refs       []}]}
                            {:total_tokens pos-int?
                             :role         :assistant
                             :data         [{:type "text" :text "Hello from native agent!"}]}]

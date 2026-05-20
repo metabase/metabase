@@ -93,14 +93,20 @@
   When `:debug?` is true, enables debug logging which emits a `debug_log` data
   part at the end of the stream with full LLM request/response data per iteration.
 
+  `:context` MUST already be the post-`create-context` enriched form — the
+  caller (`streaming-request`) runs the enrichment before `start-turn!` so the
+  user-row's prompt-context snapshot reflects what the LLM actually saw.
+  Re-running `create-context` here would not be idempotent (`set-user-time`
+  would re-stamp against `OffsetDateTime/now`, and `add-recent-views` would
+  perform a second activity-feed IO call).
+
   `:assistant-msg-id` is the PK of the placeholder assistant row created by
   [[metabot.persistence/start-turn!]]; the finally block UPDATEs that row.
   `:external-id` is the assistant row's `external_id`, threaded into the AI-SDK
   line protocol so the client can correlate streamed messages with feedback."
   [{:keys [metabot-id profile-id message context history conversation-id state debug?
            assistant-msg-id external-id]}]
-  (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id})
-        messages         (concat history [message])]
+  (let [messages (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
       (let [parts-atom (atom [])
             canceled?  (volatile! false)
@@ -122,7 +128,7 @@
                                :state         state
                                :metabot-id    metabot-id
                                :profile-id    (keyword profile-id)
-                               :context       enriched-context
+                               :context       context
                                :tracking-opts {:session-id conversation-id}}
                         debug? (assoc :debug? true))))
           (catch org.eclipse.jetty.io.EofException _
@@ -169,28 +175,37 @@
   `request-info` is a map of `{:origin :referer :user-agent :ip-address}`. We split
   it into:
     - `hostname`: extracted from the origin URL, always recorded.
-    - `pii-info`: gated by `analytics-pii-retention-enabled` — nil when off."
+    - `pii-info`: gated by `analytics-pii-retention-enabled` — nil when off.
+
+  Enriches `:context` via `metabot.context/create-context` *before* calling
+  `start-turn!` so the user-row's persisted prompt-context snapshot reflects
+  the post-enrichment shape the LLM will actually see (`:used_tables`,
+  `:user_recently_viewed`, source-type annotations on transform drafts).
+  The enriched form is then handed to `native-agent-streaming-request`,
+  which must not re-run enrichment — see that fn's docstring."
   [{:keys [metabot_id profile_id message context history conversation_id state debug]} request-info]
-  (let [message    (metabot.envelope/user-message message)
-        metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
-        _          (metabot.config/check-metabot-enabled! metabot-id)
-        _          (metabot.usage/check-metabase-managed-free-limit!)
-        profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
+  (let [message          (metabot.envelope/user-message message)
+        metabot-id       (metabot.config/resolve-dynamic-metabot-id metabot_id)
+        _                (metabot.config/check-metabot-enabled! metabot-id)
+        _                (metabot.usage/check-metabase-managed-free-limit!)
+        profile-id       (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
         ;; Only allow debug mode in dev — never in production
-        debug?     (and config/is-dev? (boolean debug))
-        hostname   (analytics.core/extract-hostname (:origin request-info))
-        pii-info   (analytics.core/pii-fields-from request-info)]
+        debug?           (and config/is-dev? (boolean debug))
+        hostname         (analytics.core/extract-hostname (:origin request-info))
+        pii-info         (analytics.core/pii-fields-from request-info)
+        enriched-context (metabot.context/create-context context {:metabot-id metabot-id})]
     (check-conversation-access! conversation_id)
     (let [{:keys [assistant-msg-id assistant-external-id]}
           (metabot.persistence/start-turn! conversation_id profile-id message
                                            :hostname hostname
-                                           :pii-info pii-info)]
+                                           :pii-info pii-info
+                                           :context  enriched-context)]
       (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
       (native-agent-streaming-request
        {:metabot-id       metabot-id
         :profile-id       profile-id
         :message          message
-        :context          context
+        :context          enriched-context
         :history          history
         :conversation-id  conversation_id
         :state            state

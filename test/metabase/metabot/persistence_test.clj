@@ -620,3 +620,221 @@
                  (mapv :message (metabot-persistence/messages->chat-messages
                                  [user-msg errored] {:include-errored? true})))
               "audit read keeps both rows; the empty-data stub renders so the FE has somewhere to hang the error alert"))))))
+
+;;; ---------------------------------------- Prompt-context block ----------------------------------------
+
+(deftest project-viewing-context-strips-bulk-fields-test
+  (testing "raw :query map, :chart_configs, and per-field :fields lists are dropped;
+            :used_tables is projected to {:id :name :schema}"
+    (let [item   {:type          "adhoc"
+                  :id            "q1"
+                  :name          "Recent orders"
+                  :description   nil
+                  :sql_engine    "postgres"
+                  :database_id   3
+                  :query         {:database 3 :type :native :native {:query "SELECT * FROM orders"}}
+                  :chart_configs [{:query {:database 3 :type :native}}]
+                  :used_tables   [{:id              9
+                                   :name            "orders"
+                                   :database_id     3
+                                   :database_schema "public"
+                                   :fields          [{:id 1 :name "id"} {:id 2 :name "total"}]
+                                   :metrics         []}
+                                  {:id              17
+                                   :name            "customers"
+                                   :database_schema "public"
+                                   :fields          [{:id 99}]}]}
+          projected (metabot-persistence/project-viewing-context-for-persist [item])]
+      (is (= 1 (count projected)))
+      (let [p (first projected)]
+        (is (not (contains? p :query)))
+        (is (not (contains? p :chart_configs)))
+        (is (= "adhoc"       (:type p)))
+        (is (= "q1"          (:id p)))
+        (is (= "Recent orders" (:name p)))
+        (is (= "postgres"    (:sql_engine p)))
+        (is (= 3             (:database_id p)))
+        (is (= [{:id 9 :name "orders" :schema "public"}
+                {:id 17 :name "customers" :schema "public"}]
+               (:used_tables p))
+            ":used_tables is projected; :fields and :metrics drop out"))))
+  (testing "transform :source map is projected down to {:type :source-database :source-tables}"
+    (let [item     {:type        "transform"
+                    :id          "t1"
+                    :source_type "sql"
+                    :source      {:type            "sql"
+                                  :source-database 5
+                                  :source-tables   [{:table_id 12}]
+                                  :query           {:database 5 :native {:query "..."}}
+                                  :body            "...lots of text..."}}
+          projected (first (metabot-persistence/project-viewing-context-for-persist [item]))]
+      (is (= {:type            "sql"
+              :source-database 5
+              :source-tables   [{:table_id 12}]}
+             (:source projected)))
+      (is (not (contains? (:source projected) :query)))
+      (is (not (contains? (:source projected) :body)))))
+  (testing "non-map items and nil input are tolerated"
+    (is (= [] (metabot-persistence/project-viewing-context-for-persist nil)))
+    (is (= [] (metabot-persistence/project-viewing-context-for-persist [])))
+    (is (= [] (metabot-persistence/project-viewing-context-for-persist ["not-a-map" 42]))))
+  (testing "items with no :used_tables / :source pass through with the keep-list applied"
+    (is (= [{:type "dashboard"}]
+           (metabot-persistence/project-viewing-context-for-persist
+            [{:type "dashboard" :extra "discard"}])))))
+
+(deftest project-recent-views-for-persist-test
+  (testing "passes through {:id :name :description :type}; drops other keys"
+    (is (= [{:id 42 :name "Q3 Revenue" :description nil :type "question"}
+            {:id 7  :name "orders"     :type         "table"}]
+           (metabot-persistence/project-recent-views-for-persist
+            [{:id 42 :name "Q3 Revenue" :description nil :type "question" :extra "drop"}
+             {:id 7  :name "orders"     :type "table" :model :table}]))))
+  (testing "nil and empty inputs return empty vectors"
+    (is (= [] (metabot-persistence/project-recent-views-for-persist nil)))
+    (is (= [] (metabot-persistence/project-recent-views-for-persist [])))))
+
+(deftest parse-mentioned-refs-test
+  (testing "markdown-link form (FE-serialized @-mention)"
+    ;; FE writes `[label](metabase://question/N)` for saved-question mentions
+    ;; via `createMetabaseProtocolLink`; the regex extracts the inner URI.
+    (is (= [{:type "question" :id 42}]
+           (metabot-persistence/parse-mentioned-refs
+            "show me [Q3 revenue](metabase://question/42) trends"))))
+  (testing "all 8 entity types from FE METABASE_PROTOCOL_ENTITY_MODELS are recognized"
+    (is (= [{:type "question"   :id 1}
+            {:type "dashboard"  :id 2}
+            {:type "collection" :id 3}
+            {:type "document"   :id 4}
+            {:type "model"      :id 5}
+            {:type "database"   :id 6}
+            {:type "table"      :id 7}
+            {:type "transform"  :id 8}]
+           (metabot-persistence/parse-mentioned-refs
+            (str "metabase://question/1 metabase://dashboard/2 "
+                 "metabase://collection/3 metabase://document/4 "
+                 "metabase://model/5 metabase://database/6 "
+                 "metabase://table/7 metabase://transform/8")))))
+  (testing "bare URI form (user typed metabase://card/42 themselves)"
+    (is (= [{:type "table" :id 9}]
+           (metabot-persistence/parse-mentioned-refs "use metabase://table/9"))))
+  (testing "multiple refs in source order, duplicates preserved"
+    (is (= [{:type "card-question" :id 1} ;; intentionally won't match
+            {:type "table"          :id 9}
+            {:type "table"          :id 9}]
+           ;; The first won't be matched (entity type "card-question" isn't in the regex enum).
+           ;; The two duplicates of metabase://table/9 are preserved.
+           (cons {:type "card-question" :id 1}
+                 (metabot-persistence/parse-mentioned-refs
+                  "see metabase://table/9 and metabase://table/9")))))
+  (testing "unknown entity types are not matched (vs. silently coerced)"
+    (is (= [] (metabot-persistence/parse-mentioned-refs
+               "metabase://unknown/1 metabase://action/42"))))
+  (testing "tolerates nil, empty, and non-string inputs"
+    (is (= [] (metabot-persistence/parse-mentioned-refs nil)))
+    (is (= [] (metabot-persistence/parse-mentioned-refs "")))
+    (is (= [] (metabot-persistence/parse-mentioned-refs 42)))
+    (is (= [] (metabot-persistence/parse-mentioned-refs {:not "a string"}))))
+  (testing "OpenAI-style content-parts text bodies are flattened by the build helper"
+    ;; build-prompt-context-block is the seam; verify the helper supports both shapes.
+    (let [block (metabot-persistence/build-prompt-context-block
+                 {} ;; non-nil context so block is built
+                 {:role "user"
+                  :content [{:type "text" :text "see metabase://table/9"}
+                            {:type "text" :text "and metabase://card-x/0"}]})]
+      (is (= [{:type "table" :id 9}] (:mentioned_refs block))))))
+
+(deftest build-prompt-context-block-test
+  (testing "nil context → nil (block omitted entirely)"
+    (is (nil? (metabot-persistence/build-prompt-context-block nil {:role "user" :content "hi"}))))
+  (testing "empty context (non-nil) → block with empty sub-channels"
+    (is (= {:type                 "prompt-context"
+            :user_is_viewing      []
+            :user_recently_viewed []
+            :mentioned_refs       []}
+           (metabot-persistence/build-prompt-context-block
+            {} {:role "user" :content "no refs"}))))
+  (testing "populated context → projected and parsed sub-channels"
+    (let [context {:user_is_viewing      [{:type "dashboard" :id 7 :extra "drop"}]
+                   :user_recently_viewed [{:id 42 :name "X" :type "question" :description nil}]
+                   :other                "ignored"}]
+      (is (= {:type                 "prompt-context"
+              :user_is_viewing      [{:type "dashboard" :id 7}]
+              :user_recently_viewed [{:id 42 :name "X" :type "question" :description nil}]
+              :mentioned_refs       [{:type "table" :id 9}]}
+             (metabot-persistence/build-prompt-context-block
+              context
+              {:role "user" :content "look at metabase://table/9"}))))))
+
+(deftest start-turn-appends-prompt-context-block-test
+  (testing "when :context is passed, the user row's :data is [user-message prompt-context-block]"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [conversation-id (str (random-uuid))
+            context         {:user_is_viewing      [{:type "adhoc"
+                                                     :id "q1"
+                                                     :name "Recent orders"
+                                                     :database_id 3
+                                                     :query {:database 3 :type :native}}]
+                             :user_recently_viewed [{:id 42 :name "Q3 Revenue"
+                                                     :description nil :type "question"}]}
+            user-message    {:role "user" :content "compare to metabase://card/99"}]
+        (mt/with-current-user (mt/user->id :rasta)
+          (metabot-persistence/start-turn!
+           conversation-id "internal" user-message
+           :context context))
+        (let [[user-row _] (t2/select :model/MetabotMessage
+                                      :conversation_id conversation-id
+                                      {:order-by [[:created_at :asc] [:id :asc]]})
+              data         (:data user-row)]
+          (is (= 2 (count data)) "user row has 2 elements: message + prompt-context block")
+          (is (= user-message (first data)))
+          (testing "second element is the projected prompt-context block"
+            (let [block (second data)]
+              (is (= "prompt-context" (:type block)))
+              (is (= [{:type "adhoc" :id "q1" :name "Recent orders" :database_id 3}]
+                     (:user_is_viewing block))
+                  ":query is dropped; allowed top-level keys retained")
+              (is (= [{:id 42 :name "Q3 Revenue" :description nil :type "question"}]
+                     (:user_recently_viewed block)))
+              (is (= [] (:mentioned_refs block))
+                  "regex requires a known entity-type token; \"card\" is not in the FE enum")))))))
+  (testing "without :context, the user row's :data is unchanged ([user-message])"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [conversation-id (str (random-uuid))
+            user-message    {:role "user" :content "hi"}]
+        (mt/with-current-user (mt/user->id :rasta)
+          (metabot-persistence/start-turn!
+           conversation-id "internal" user-message))
+        (let [[user-row _] (t2/select :model/MetabotMessage
+                                      :conversation_id conversation-id
+                                      {:order-by [[:created_at :asc] [:id :asc]]})]
+          (is (= [user-message] (:data user-row)))))))
+  (testing "empty :context still appends a block (signals 'recorded but empty')"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [conversation-id (str (random-uuid))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (metabot-persistence/start-turn!
+           conversation-id "internal" {:role "user" :content "x"}
+           :context {}))
+        (let [[user-row _] (t2/select :model/MetabotMessage
+                                      :conversation_id conversation-id
+                                      {:order-by [[:created_at :asc] [:id :asc]]})
+              [_ block]    (:data user-row)]
+          (is (= "prompt-context" (:type block)))
+          (is (= [] (:user_is_viewing block)))
+          (is (= [] (:user_recently_viewed block)))
+          (is (= [] (:mentioned_refs block))))))))
+
+(deftest user-row-with-prompt-context-renders-as-single-user-message-test
+  (testing "convert-content-block's :else nil fallthrough keeps the prompt-context block invisible
+            to chat rendering — the user row produces exactly one user-text chat message"
+    (let [user-msg {:role "user" :content "show me orders"}
+          block    {:type                 "prompt-context"
+                    :user_is_viewing      []
+                    :user_recently_viewed []
+                    :mentioned_refs       [{:type "table" :id 9}]}
+          out      (metabot-persistence/message->chat-messages
+                    {:role :user :data [user-msg block]})]
+      (is (= 1 (count out)))
+      (is (= {:role "user" :type "text" :message "show me orders"}
+             (select-keys (first out) [:role :type :message]))))))
