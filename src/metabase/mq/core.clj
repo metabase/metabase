@@ -5,22 +5,22 @@
   one listener and removed after successful processing.  Failed messages are retried up to a
   configurable limit.
 
-  Listeners are declared with `def-listener!`. The macro adds the listener to a registry;
-  `mq.init/start!` later activates everything in that registry at the right point in startup.
-  The listener body always receives a vec of messages — use `(doseq [m messages] ...)` for
-  per-message processing.
+  A queue is declared once with `def-queue!` — this is the source of truth for what queues
+  exist and where all queue config lives (exclusivity, batch size, dedup). The consumer-side
+  handler is added with `def-listener!`. Splitting the two means publishers can route to
+  queues declared anywhere and listeners can live on any node, with queue config taking
+  effect at publish time on every node regardless of where listeners are registered.
 
+      (mq/def-queue! :queue/simple-task)
       (mq/def-listener! :queue/simple-task [messages]
         (doseq [msg messages] (process msg)))
 
-  Optional config controls batch size, exclusivity, and dedup:
-       (mq/def-listener! :queue/my-task
-         {:max-batch-messages 10 :exclusive true}
-         [messages]
+  Queue-level config:
+       (mq/def-queue! :queue/search-reindex {:exclusive true :max-batch-messages 50})
+       (mq/def-listener! :queue/search-reindex [messages]
          (process-batch messages))
 
-  See [[metabase.mq.listener/def-listener!]] for the full set of options and the rationale
-  behind the deferred-registration design.
+  See [[metabase.mq.queue.registry/def-queue!]] for the full set of queue options.
 
   Publishing is done using `with-queue` which binds a queue you can put messages on.
   When the body finishes successfully, the message(s) in the bound queue actually publishes the messages.
@@ -35,7 +35,7 @@
    [metabase.mq.queue.appdb :as q.appdb]
    [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.queue.memory :as q.memory]
-   [metabase.mq.queue.transport-impl :as q.transport-impl]
+   [metabase.mq.queue.registry :as q.registry]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
@@ -48,7 +48,7 @@
   q.appdb/keep-me
   q.impl/keep-me
   q.memory/keep-me
-  q.transport-impl/keep-me)
+  q.registry/keep-me)
 
 (p/import-vars
  [mq.listener
@@ -67,4 +67,7 @@
   stop!]
 
  [q.impl
-  with-queue])
+  with-queue]
+
+ [q.registry
+  def-queue!])

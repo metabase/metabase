@@ -6,7 +6,8 @@
   (:require
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.listener :as listener]
-   [metabase.mq.polling :as mq.polling])
+   [metabase.mq.polling :as mq.polling]
+   [metabase.mq.queue.registry :as q.registry])
   (:import
    (java.util ArrayList)
    (java.util.concurrent LinkedBlockingQueue)))
@@ -84,7 +85,7 @@
   Generates a batch-id and passes the layer's registered queue backend."
   [{:keys [queue-backend] :as layer}]
   (doseq [channel-name (remove mq.impl/channel-busy? (listener/queue-names))]
-    (let [max-elements (:max-batch-messages (listener/get-listener channel-name))]
+    (let [max-elements (q.registry/max-batch-messages channel-name)]
       (when-let [messages (drain! layer channel-name max-elements)]
         (let [batch-id (str (random-uuid))]
           (register-batch! layer batch-id channel-name messages)

@@ -7,6 +7,7 @@
    [metabase.mq.queue.appdb :as q.appdb]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.memory :as q.memory]
+   [metabase.mq.queue.registry :as q.registry]
    [metabase.mq.settings :as mq.settings]
    [metabase.startup.core :as startup]
    [metabase.util.log :as log]))
@@ -47,6 +48,7 @@
         prev-queue-be      q.backend/*backend*]
     (alter-var-root #'q.backend/*backend* (constantly queue-instance))
     (log/infof "Queue backend: %s" queue-be)
+    (q.registry/register-queues!)
     (listener/register-listeners!)
     (let [owns-buffer-flush? (publish-buffer/start-publish-buffer-flush!)
           owns-worker-pool?  (mq.impl/start-worker-pool!)]

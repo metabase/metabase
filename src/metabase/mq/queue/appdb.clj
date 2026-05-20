@@ -8,7 +8,7 @@
    [metabase.mq.listener :as listener]
    [metabase.mq.polling :as mq.polling]
    [metabase.mq.queue.backend :as q.backend]
-   [metabase.mq.queue.impl :as q.impl]
+   [metabase.mq.queue.registry :as q.registry]
    [metabase.mq.settings :as mq.settings]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -68,7 +68,7 @@
   which is small."
   [owner-id queue-names]
   (when (seq queue-names)
-    (let [exclusive-names (q.impl/exclusive-queue-names)]
+    (let [exclusive-names (q.registry/exclusive-queue-names)]
       (t2/with-transaction [conn]
         (let [blocked-queues  (when (seq exclusive-names)
                                 (into #{}

@@ -4,8 +4,8 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.mq.impl :as mq.impl]
-   [metabase.mq.listener :as listener]
    [metabase.mq.publish-buffer :as publish-buffer]
+   [metabase.mq.queue.registry :as q.registry]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -25,7 +25,7 @@
   "Publishes messages to a channel. Applies dedup-fn if registered, buffers,
    publishes to the appropriate backend, and records analytics."
   [channel messages]
-  (let [{:keys [dedup-fn]} (listener/get-listener channel)
+  (let [dedup-fn     (q.registry/dedup-fn channel)
         before-count (count messages)
         messages     (if dedup-fn (dedup-fn messages) messages)]
     (when (and dedup-fn (< (count messages) before-count))
@@ -70,8 +70,6 @@
 (defn run-with-buffer
   "Runs `body-fn` with a MessageBuffer. On success, publishes collected messages —
    deferred if inside a transaction, immediate via publish! otherwise.
-   Channels with `:sync-local-delivery true` in their listener config always publish
-   immediately, even inside a transaction.
    On exception, discards buffered messages and rethrows."
   [channel error-label body-fn]
   (let [buffer     (atom [])
@@ -81,8 +79,7 @@
       (let [result (body-fn msg-buffer)
             msgs   @buffer]
         (when (seq msgs)
-          (if (and (mdb/transaction-state)
-                   (not (:sync-local-delivery (listener/get-listener channel))))
+          (if (mdb/transaction-state)
             (defer-in-transaction! channel msgs)
             (publish! channel msgs)))
         result)

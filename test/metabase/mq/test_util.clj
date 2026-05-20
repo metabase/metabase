@@ -21,7 +21,8 @@
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.appdb :as q.appdb]
    [metabase.mq.queue.backend :as q.backend]
-   [metabase.mq.queue.memory :as q.memory])
+   [metabase.mq.queue.memory :as q.memory]
+   [metabase.mq.queue.registry :as q.registry])
   (:import
    (java.util.concurrent LinkedBlockingQueue)))
 
@@ -116,33 +117,45 @@
   "Test helper — registers a per-message listener by wrapping `listener-fn` so it's called
   once per message in each batch, with error isolation. Production code should use
   [[metabase.mq.core/def-listener!]] instead; this is for ad-hoc test registration where
-  declaring at namespace-load time isn't convenient."
-  [channel opts listener-fn]
+  declaring at namespace-load time isn't convenient.
+
+  As a convenience, auto-declares the queue (with default config) if it hasn't been declared
+  yet. Tests that need queue-level config (e.g. `:exclusive`) should call
+  [[q.registry/register-queue!]] explicitly before calling this."
+  [channel listener-fn]
+  (when (and (= "queue" (namespace channel))
+             (nil? (q.registry/get-queue channel)))
+    (q.registry/register-queue! channel {}))
   (listener/batch-listen! channel
                           (fn [messages]
                             (let [error (volatile! nil)]
                               (doseq [m messages]
                                 (try (listener-fn m)
                                      (catch Throwable e (vreset! error e))))
-                              (when-let [e @error] (throw e))))
-                          (or opts {})))
+                              (when-let [e @error] (throw e))))))
 
 (defn- merge-listeners!
   "Merges a user-supplied listener map on top of whatever listeners
   `register-listeners!` already registered. Values can be plain single-message
   fns (wrapped to match the vec-of-messages contract that `handle!` expects)
   or full config maps with `:listener` etc. Map-form values are passed through
-  as-is — their `:listener` must already accept a vec of messages."
+  as-is — their `:listener` must already accept a vec of messages.
+
+  Auto-declares the queue for any `:queue/*` channel that isn't already declared, matching
+  the convenience semantics of [[listen!]]."
   [listeners]
   (when (seq listeners)
+    (doseq [k (keys listeners)
+            :when (and (= "queue" (namespace k))
+                       (nil? (q.registry/get-queue k)))]
+      (q.registry/register-queue! k {}))
     (swap! listener/*listeners*
            (fn [current]
              (reduce-kv (fn [m k v]
                           (assoc m k (if (fn? v)
                                        (if-let [existing (get current k)]
                                          (assoc existing :listener (partial run! v))
-                                         {:listener           (partial run! v)
-                                          :max-batch-messages 1})
+                                         {:listener (partial run! v)})
                                        v)))
                         current
                         listeners)))))
@@ -194,6 +207,7 @@
   ([opts f]
    (let [{:keys [backend listeners duplicate-delivery?] :or {backend :memory}} opts]
      (binding [listener/*listeners*               (atom {})
+               q.registry/*queues*                    (atom {})
                publish-buffer/*publish-buffer*    (atom {})
                publish-buffer/*publish-buffer-ms* 0]
        (let [backends (make-fixture-backends backend)
@@ -249,7 +263,7 @@
   (testing "With :duplicate-delivery? true, the queue backend delivers each message twice"
     (with-test-mq [ctx {:duplicate-delivery? true}]
       (let [received (atom [])]
-        (listen! :queue/chaos-smoke {} #(swap! received conj %))
+        (listen! :queue/chaos-smoke #(swap! received conj %))
         (mq/with-queue :queue/chaos-smoke [q]
           (mq/put q "hello"))
         (eventually! ctx #(= 2 (count @received)) 5000)
@@ -261,7 +275,7 @@
   (testing "The default fixture delivers each message exactly once"
     (with-test-mq [ctx]
       (let [received (atom [])]
-        (listen! :queue/chaos-default {} #(swap! received conj %))
+        (listen! :queue/chaos-default #(swap! received conj %))
         (mq/with-queue :queue/chaos-default [q]
           (mq/put q "once"))
         (eventually! ctx #(>= (count @received) 1) 5000)

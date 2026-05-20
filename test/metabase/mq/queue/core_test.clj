@@ -7,6 +7,7 @@
    [metabase.mq.listener :as listener]
    [metabase.mq.publish :as mq.publish]
    [metabase.mq.publish-buffer :as publish-buffer]
+   [metabase.mq.queue.registry :as q.registry]
    [metabase.mq.test-util :as mq.tu])
   (:import (clojure.lang ExceptionInfo)
            (java.util.concurrent CountDownLatch CyclicBarrier)))
@@ -66,7 +67,7 @@
     {:queue/test (fn [_] nil)}
     (testing "Registering a second listener on the same queue throws"
       (is (thrown-with-msg? ExceptionInfo #"Listener already registered"
-                            (mq.tu/listen! :queue/test {} (fn [_] nil)))))))
+                            (mq.tu/listen! :queue/test (fn [_] nil)))))))
 
 (deftest concurrent-listen-throws-test
   (mq.tu/with-test-mq [_test-mq]
@@ -79,7 +80,7 @@
                               (let [f (bound-fn []
                                         (.await barrier)
                                         (try
-                                          (mq.tu/listen! queue-name {} (fn [_] nil))
+                                          (mq.tu/listen! queue-name (fn [_] nil))
                                           (swap! results conj :ok)
                                           (catch ExceptionInfo _
                                             (swap! results conj :error))))]
@@ -94,10 +95,8 @@
 (deftest exclusive-listen-test
   (let [heard-messages (atom [])]
     (mq.tu/with-test-mq [test-mq]
-      {:queue/exclusive-test {:listener           (fn [messages]
-                                                    (run! #(swap! heard-messages conj %) messages))
-                              :max-batch-messages 1
-                              :exclusive          true}}
+      (q.registry/register-queue! :queue/exclusive-test {:exclusive true :max-batch-messages 1})
+      (mq.tu/listen! :queue/exclusive-test #(swap! heard-messages conj %))
       (testing "Exclusive queue processes messages via the async memory backend"
         (mq/with-queue :queue/exclusive-test [q]
           (mq/put q "msg1")
@@ -108,9 +107,9 @@
 (deftest batch-listen-exclusive-test
   (let [heard-batches (atom [])]
     (mq.tu/with-test-mq [test-mq]
+      (q.registry/register-queue! :queue/batch-exclusive {:exclusive true :max-batch-messages 10})
       (listener/batch-listen! :queue/batch-exclusive
-                              (fn [batch] (swap! heard-batches conj batch))
-                              {:max-batch-messages 10 :exclusive true})
+                              (fn [batch] (swap! heard-batches conj batch)))
       (testing "Exclusive batch-listen! registers and processes"
         (mq/with-queue :queue/batch-exclusive [q]
           (mq/put q "a")
@@ -196,9 +195,9 @@
 (deftest buffering-combines-messages-test
   (let [heard (atom [])]
     (mq.tu/with-test-mq [test-mq]
+      (q.registry/register-queue! :queue/test {:max-batch-messages 50})
       (listener/batch-listen! :queue/test
-                              (fn [batch] (swap! heard into batch))
-                              {:max-batch-messages 50})
+                              (fn [batch] (swap! heard into batch)))
       (binding [publish-buffer/*publish-buffer-ms* 100
                 publish-buffer/*publish-buffer*    (atom {})]
         (testing "buffered-publish! buffers when *publish-buffer-ms* > 0"
@@ -236,9 +235,9 @@
 (deftest buffering-flush-delivers-test
   (let [heard (atom [])]
     (mq.tu/with-test-mq [test-mq]
+      (q.registry/register-queue! :queue/test {:max-batch-messages 3})
       (listener/batch-listen! :queue/test
-                              (fn [batch] (swap! heard into batch))
-                              {:max-batch-messages 3})
+                              (fn [batch] (swap! heard into batch)))
       (binding [publish-buffer/*publish-buffer-ms*  1
                 publish-buffer/*publish-buffer-max-ms* 0
                 publish-buffer/*publish-buffer*     (atom {})]
@@ -270,7 +269,7 @@
   (mq.tu/with-test-mq [_test-mq]
     (let [queue-name :queue/exclusive-concurrency-test
           latch      (CountDownLatch. 1)]
-      (mq.tu/listen! queue-name {:exclusive true}
+      (mq.tu/listen! queue-name
                      (fn [_] (.await latch))) ; Block listener until released
       (testing "First submission succeeds and marks the channel as busy"
         (is (true? (mq.impl/submit-delivery! queue-name ["msg1"] nil nil nil)))

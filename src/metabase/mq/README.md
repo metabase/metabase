@@ -6,7 +6,10 @@ unified API.
 ## Quick Start
 
 ```clojure
-;; Register a listener
+;; Declare the queue (its broker-side identity and properties)
+(mq/def-queue! :queue/my-task)
+
+;; Register a listener (the consumer-side handler)
 (mq/def-listener! :queue/my-task
   [msg]
   (do-work! msg))
@@ -16,6 +19,12 @@ unified API.
   (mq/with-queue :queue/my-task [q]
     (mq/put q {:key "value"})))
 ```
+
+All queue config — `:exclusive`, `:max-batch-messages`, `:dedup-fn` — belongs on `def-queue!`,
+because it takes effect at publish time on every node, regardless of where listeners are
+registered. `def-listener!` only wires up the consumer-side handler. A listener registration
+throws if its queue hasn't been declared yet — typos are caught at startup, not at first
+publish.
 
 ## Publishing Semantics
 

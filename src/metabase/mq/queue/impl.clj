@@ -1,7 +1,10 @@
 (ns metabase.mq.queue.impl
-  "Internal implementation for the queue messaging system"
+  "Publish-surface helpers for the queue messaging system.
+
+  Queue declarations (the [[metabase.mq.queue.registry/def-queue!]] macro and `*queues*`
+  registry) live in their own namespace so they can be referenced from `metabase.mq.listener`
+  without forming a cycle through `metabase.mq.publish`."
   (:require
-   [metabase.mq.listener :as listener]
    [metabase.mq.publish :as publish]
    [metabase.util.malli.registry :as mr]))
 
@@ -10,19 +13,6 @@
 (mr/def :metabase.mq.queue/queue-name
   [:and :keyword [:fn {:error/message "Queue name must be namespaced to 'queue'"}
                   #(= "queue" (namespace %))]])
-
-(defn exclusive?
-  "Returns true if the given queue name is registered with `:exclusive true`."
-  [queue-name]
-  (:exclusive (listener/get-listener queue-name)))
-
-(defn exclusive-queue-names
-  "Returns the set of queue names (as strings) that are registered with `:exclusive true`."
-  []
-  (into #{}
-        (comp (filter (fn [[_k v]] (:exclusive v)))
-              (map (fn [[k _v]] (name k))))
-        @listener/*listeners*))
 
 (defmacro with-queue
   "Runs the body with the ability to add messages to the given queue.

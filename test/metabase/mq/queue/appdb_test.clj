@@ -6,6 +6,7 @@
    [metabase.mq.listener :as listener]
    [metabase.mq.queue.appdb :as q.appdb]
    [metabase.mq.queue.backend :as q.backend]
+   [metabase.mq.queue.registry :as q.registry]
    [metabase.mq.settings :as mq.settings]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
@@ -79,8 +80,10 @@
 (deftest exclusive-fetch-test
   (let [exclusive-q (keyword "queue" (str "exclusive-" (random-uuid)))
         normal-q    (keyword "queue" (str "normal-" (random-uuid)))]
-    (binding [listener/*listeners* (atom {exclusive-q {:listener identity :exclusive true}
-                                          normal-q    {:listener identity :exclusive false}})]
+    (binding [listener/*listeners* (atom {exclusive-q {:listener identity}
+                                          normal-q    {:listener identity}})
+              q.registry/*queues*  (atom {exclusive-q {:exclusive true}
+                                          normal-q    {}})]
       (try
         (t2/with-connection [_conn]
           (testing "With no processing rows, exclusive queue messages are fetched normally"

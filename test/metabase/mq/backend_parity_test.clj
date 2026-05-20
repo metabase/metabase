@@ -77,7 +77,7 @@
    :queue/parity-delivery
    (fn [ctx queue-name]
      (let [received (atom [])]
-       (mq.tu/listen! queue-name {} #(swap! received conj %))
+       (mq.tu/listen! queue-name #(swap! received conj %))
        (mq/with-queue queue-name [q]
          (mq/put q "a")
          (mq/put q "b")
@@ -96,7 +96,7 @@
    :queue/parity-retry
    (fn [ctx queue-name]
      (let [calls-by-msg (atom {})]
-       (mq.tu/listen! queue-name {}
+       (mq.tu/listen! queue-name
                       (fn [msg]
                         (let [n (get (swap! calls-by-msg update msg (fnil inc 0)) msg)]
                           (when (= 1 n)

@@ -6,6 +6,7 @@
    [metabase.mq.polling :as mq.polling]
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.backend :as q.backend]
+   [metabase.mq.queue.registry :as q.registry]
    [metabase.mq.transport :as transport]
    [metabase.util.log :as log])
   (:import
@@ -82,13 +83,12 @@
    For queues, batches use all-or-nothing ACK semantics: if ANY message in the batch
    fails, the ENTIRE batch is nacked and will be retried. This means successfully
    processed messages may be re-delivered. Queue listeners MUST be idempotent.
-   The :dedup-fn option on listeners helps mitigate duplicate processing on retry."
+   The queue's :dedup-fn helps mitigate duplicate processing on retry."
   [channel message-batches messages]
   (swap! last-activity* assoc channel (System/nanoTime))
-  (let [{:keys [max-batch-messages]} (listener/get-listener channel)
-        batch-size                   (or max-batch-messages 1)
-        transport                    (namespace channel)
-        labels                       {:transport transport :channel (name channel)}]
+  (let [batch-size (q.registry/max-batch-messages channel)
+        transport  (namespace channel)
+        labels     {:transport transport :channel (name channel)}]
     (analytics/inc! :metabase-mq/messages-received labels (count messages))
     (invoke-listener!
      {:channel      channel

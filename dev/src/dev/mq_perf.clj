@@ -28,6 +28,7 @@
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.appdb :as q.appdb]
    [metabase.mq.queue.backend :as q.backend]
+   [metabase.mq.queue.registry :as q.registry]
    [toucan2.core :as t2])
   (:import
    (java.lang.reflect InvocationHandler Method Proxy)
@@ -138,6 +139,8 @@
 
 (defonce ^:private started? (atom false))
 
+(declare declare-shared-queues!)
+
 (defn start-mq!
   "Minimal startup: connects to app DB and starts the MQ subsystem.
   No Jetty, no scheduler, no sample data. Idempotent."
@@ -160,13 +163,30 @@
   ;; Restart poll threads if they died (e.g., from InterruptedException during a previous benchmark).
   ;; start! is idempotent and start-polling! detects dead futures.
   (let [start-transports! (requiring-resolve 'metabase.mq.impl/start-transports)]
-    (start-transports!)))
+    (start-transports!))
+  ;; Benchmarks register listeners on the shared queues, which now requires the queues to be
+  ;; declared first.
+  (declare-shared-queues!))
 
 ;;; ------------------------------------------------ Utilities ------------------------------------------------
 
 (def ^:private shared-queues
   "Fixed set of 10 shared queue names used across all nodes for cross-node contention testing."
   (mapv #(keyword "queue" (str "bench-shared-" %)) (range 10)))
+
+(defn- ensure-queue!
+  "Declares `ch` in the queue registry (default config unless given) if not already declared.
+  Listeners require their queue to be declared first, so benchmarks call this before
+  `batch-listen!`. Idempotent for identical config."
+  ([ch] (ensure-queue! ch {}))
+  ([ch config]
+   (when-not (q.registry/get-queue ch)
+     (q.registry/register-queue! ch config))))
+
+(defn- declare-shared-queues!
+  "Declares all shared benchmark queues with default config."
+  []
+  (run! ensure-queue! shared-queues))
 
 (defn- run-id
   "Generates an 8-character unique identifier for a benchmark run."
@@ -335,8 +355,7 @@
                                              publish-ns (get msg "publish-ns")]
                                          (when publish-ns
                                            (swap! latencies conj (/ (- receive-ns (double publish-ns)) 1e6))))
-                                       (swap! received inc)))
-                                   {})))
+                                       (swap! received inc))))))
        (let [msgs-sec (rate->msgs-sec rate)
              start    (System/nanoTime)]
          ;; Publish to random shared channels
@@ -403,8 +422,7 @@
                                              publish-ns (get msg "publish-ns")]
                                          (when publish-ns
                                            (swap! latencies conj (/ (- receive-ns (double publish-ns)) 1e6)))
-                                         (swap! received inc))))
-                                   {})))
+                                         (swap! received inc)))))))
        (let [msgs-sec   (rate->msgs-sec rate)
              start      (System/nanoTime)
              pub-thread (Thread.
@@ -467,18 +485,21 @@
    (ensure-started!)
    (let [results (atom [])]
      (doseq [bs batch-sizes]
-       (let [received (atom 0)]
+       (let [received (atom 0)
+             ;; `:max-batch-messages` is now an immutable per-queue property, so each batch
+             ;; size gets its own dedicated set of queues declared with that config.
+             channels (mapv #(keyword "queue" (str "bench-batch-" bs "-" %))
+                            (range (count shared-queues)))]
          (try
-           ;; Register listeners on all shared queues
-           (doseq [ch shared-queues]
+           (doseq [ch channels]
+             (ensure-queue! ch {:max-batch-messages bs})
              (when-not (listener/get-listener ch)
                (listener/batch-listen! ch
                                        (fn [msgs]
-                                         (swap! received + (count msgs)))
-                                       {:max-batch-messages bs})))
-           ;; Publish all messages randomly to shared queues
+                                         (swap! received + (count msgs))))))
+           ;; Publish all messages randomly across this batch size's queues
            (dotimes [i n]
-             (mq/with-queue (random-shared-queue) [q]
+             (mq/with-queue (nth channels (rand-int (count channels))) [q]
                (mq/put q {:seq i})))
            (publish-buffer/flush-publish-buffer!)
            ;; Wait for messages to be consumed
@@ -492,9 +513,10 @@
                       [(str bs) (str @received) (fmt elapsed-ms)
                        (fmt (/ @received (/ elapsed-ms 1000.0)))])))
            (finally
-             (doseq [ch shared-queues]
+             (doseq [ch channels]
                (when (listener/get-listener ch)
-                 (mq/unlisten! ch)))))))
+                 (mq/unlisten! ch))
+               (t2/delete! :queue_message_batch :queue_name (name ch)))))))
      (print-table!
       (str "Batch Listener Comparison (n=" n ")")
       ["Max Batch" "Received" "Process ms" "Msgs/sec"]
@@ -523,8 +545,7 @@
              (when-not (listener/get-listener ch)
                (listener/batch-listen! ch
                                        (fn [msgs]
-                                         (swap! received + (count msgs)))
-                                       {})))
+                                         (swap! received + (count msgs))))))
            ;; Publish to the queues
            (let [start (System/nanoTime)]
              (doseq [ch channels]
@@ -583,6 +604,7 @@
              duplicates            (atom 0)
              backends              (vec (repeatedly c q.appdb/make-backend))
              listener-atoms        (vec (repeatedly c #(atom {})))]
+         (ensure-queue! queue-name)
          (try
            (doseq [i (range c)]
              (binding [listener/*listeners* (nth listener-atoms i)]
@@ -593,17 +615,13 @@
                                              (when (contains? @seen-batch-ids bid)
                                                (swap! duplicates inc))
                                              (swap! seen-batch-ids conj bid)))
-                                         (swap! (nth per-consumer-received i) + (count msgs)))
-                                       {})
+                                         (swap! (nth per-consumer-received i) + (count msgs))))
                (q.backend/start! (nth backends i))))
            (let [start (System/nanoTime)]
-             ;; Publish via root listener atom (so the buffer flush sees them). Bypass the
-             ;; time-windowed publish buffer (set *publish-buffer-ms* to 0) so each `put`
-             ;; becomes its own DB row — otherwise all `n` messages collapse into one row
+             ;; Bypass the time-windowed publish buffer (set *publish-buffer-ms* to 0) so each
+             ;; `put` becomes its own DB row — otherwise all `n` messages collapse into one row
              ;; and there's nothing for multiple consumers to fetch in parallel.
-             (binding [listener/*listeners* (atom {queue-name {:listener identity
-                                                               :max-batch-messages 100}})
-                       publish-buffer/*publish-buffer-ms* 0]
+             (binding [publish-buffer/*publish-buffer-ms* 0]
                (dotimes [i n]
                  (mq/with-queue queue-name [q]
                    (mq/put q {:id i})))
@@ -722,6 +740,7 @@
          latencies   (atom [])
          stop?       (atom false)
          publisher-published (atom 0)]
+     (ensure-queue! queue-name)
      (try
        (listener/batch-listen! queue-name
                                (fn [msgs]
@@ -729,8 +748,7 @@
                                    (doseq [m msgs]
                                      (when-let [pub-ns (get m "publish-ns")]
                                        (swap! latencies conj (/ (- now (double pub-ns)) 1e6))))
-                                   (swap! received + (count msgs))))
-                               {})
+                                   (swap! received + (count msgs)))))
        (let [pub-runnable (bound-fn []
                             (let [interval-ns (long (/ 1e9 pub-rate-msgs-sec))
                                   stop-at-ns  (+ (System/nanoTime) (* 1e9 duration-sec))]

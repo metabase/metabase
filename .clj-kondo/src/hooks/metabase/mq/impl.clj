@@ -5,16 +5,10 @@
 (defn def-listener
   "Kondo hook for `mq/def-listener`. Rewrites to a `fn` form so kondo can analyze bindings.
 
-   Forms:
-     (mq/def-listener! :topic/foo [msg] body...)
-     (mq/def-listener! :queue/bar {:config map} [msgs] body...)"
+   Form:
+     (mq/def-listener! :queue/bar [msgs] body...)"
   [{:keys [node]}]
-  (let [[_ _channel-name & args] (:children node)
-        ;; skip optional config map
-        args (if (hooks/map-node? (first args))
-               (rest args)
-               args)
-        [bindings & body] args
+  (let [[_ _channel-name bindings & body] (:children node)
         ;; rewrite as: (fn [bindings...] body...)
         new-node (hooks/list-node
                   (list*

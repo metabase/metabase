@@ -3,7 +3,7 @@
    and flushes them on a background scheduled thread."
   (:require
    [metabase.analytics-interface.core :as analytics]
-   [metabase.mq.listener :as listener]
+   [metabase.mq.queue.registry :as q.registry]
    [metabase.mq.transport :as transport]
    [metabase.util.log :as log])
   (:import
@@ -30,8 +30,7 @@
   (atom {}))
 
 (defn- max-batch-size [channel]
-  (let [n (:max-batch-messages (listener/get-listener channel))]
-    (when (and n (pos? n)) n)))
+  (q.registry/max-batch-messages channel))
 
 (defn buffered-publish!
   "Routes messages through *publish-buffer* or publishes immediately based on `*publish-buffer-ms*`.
@@ -46,10 +45,8 @@
   [channel messages]
   (let [max-size (max-batch-size channel)]
     (if (zero? *publish-buffer-ms*)
-      (if max-size
-        (doseq [chunk (partition-all max-size messages)]
-          (transport/publish! channel (vec chunk)))
-        (transport/publish! channel (vec messages)))
+      (doseq [chunk (partition-all max-size messages)]
+        (transport/publish! channel (vec chunk)))
       (let [[_ new] (swap-vals! *publish-buffer*
                                 (fn [buf]
                                   (let [now (System/currentTimeMillis)]
@@ -58,7 +55,7 @@
                                               (-> (or entry {:messages [] :deadline-ms 0 :created-ms now})
                                                   (update :messages into messages)
                                                   (assoc :deadline-ms (+ now *publish-buffer-ms*))))))))]
-        (when (and max-size (>= (count (get-in new [channel :messages])) max-size))
+        (when (>= (count (get-in new [channel :messages])) max-size)
           ;; Buffer reached the per-channel max-batch limit. Trip its deadline so the next
           ;; background flush tick drains it. Other channels' deadlines are left untouched.
           ;; The publisher does not flush synchronously — that would block on a backend write.
