@@ -62,32 +62,19 @@
      - Phase 2: ~150ms per query when remappings exist (SQLGlot via GraalPy roundtrip).
        Amortized against query execution time, which is usually >150ms anyway."
   (:require
-   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
-   [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
+   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.query-processor.store :as qp.store]))
 
 (set! *warn-on-reflection* true)
-
-(deftype TableMappingMetadataProvider [f parent-metadata-provider]
-  lib.metadata.protocols/MetadataProvider
-  (database [_this]
-    (lib.metadata.protocols/database parent-metadata-provider))
-  (metadatas [_this {mt :lib/type :as metadata-spec}]
-    (cond->> (lib.metadata.protocols/metadatas parent-metadata-provider metadata-spec)
-      (= mt :metadata/table)
-      (into [] (map f))))
-  (setting [_this setting-key]
-    (lib.metadata.protocols/setting parent-metadata-provider setting-key)))
 
 (defn- table-remapper
   "Build a function that remaps table metadata according to `remappings`.
@@ -132,11 +119,9 @@
    schema-less driver's `:metadata/table.:schema = nil` (and a Postgres remapping
    row with `from_schema = \"public\"` matches the literal value)."
   [mp remappings]
-  (let [remapping-mp (-> (->TableMappingMetadataProvider (table-remapper remappings) mp)
-                         lib.metadata.cached-provider/cached-metadata-provider
-                         ;; this creates a new tracker that doesn't carry over previous stats. This is fine for now as any
-                         ;; instance using table remapping is a workspace instance and this doesn't matter
-                         lib.metadata.invocation-tracker/invocation-tracker-provider)]
+  (let [remapping-mp (lib.metadata/table-mapping-metadata-provider
+                      (table-remapper remappings)
+                      mp)]
     (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
       ;; this has no body so it looks like this is a no-op. But the with-metadata-provider sets the metadata provider and then
       ;; doesn't pop it. We could use the private function that this uses: qp.store/set-metadata-provider!, or we could use the

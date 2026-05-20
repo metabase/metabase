@@ -762,7 +762,7 @@
   [mp & spec-pairs]
   (let [remappings (into {} (map (fn [[from to]] [(->spec from) (->spec to)])) spec-pairs)
         remapper   (#'ws.middleware/table-remapper remappings)]
-    (#'ws.middleware/->TableMappingMetadataProvider remapper mp)))
+    (lib.metadata/table-mapping-metadata-provider remapper mp)))
 
 (defn- tables-by-id
   "Return `{id {:schema s :name n}}` for all tables visible through `mp`."

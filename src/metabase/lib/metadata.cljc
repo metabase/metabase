@@ -3,6 +3,8 @@
   (:require
    [medley.core :as m]
    [metabase.lib.metadata.cache :as lib.metadata.cache]
+   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
+   [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.metadata.util :as lib.metadata.util]
    [metabase.lib.schema :as lib.schema]
@@ -321,3 +323,25 @@
         (lib.metadata.protocols/cache-value! mp ks v)
         v)
       v)))
+
+;;; ---------------------------------------- TableMappingMetadataProvider ------------------------------------------
+
+(deftype TableMappingMetadataProvider [f parent-metadata-provider]
+  lib.metadata.protocols/MetadataProvider
+  (database [_this]
+    (lib.metadata.protocols/database parent-metadata-provider))
+  (metadatas [_this {mt :lib/type :as metadata-spec}]
+    (cond->> (lib.metadata.protocols/metadatas parent-metadata-provider metadata-spec)
+      (= mt :metadata/table)
+      (into [] (map f))))
+  (setting [_this setting-key]
+    (lib.metadata.protocols/setting parent-metadata-provider setting-key)))
+
+(defn table-mapping-metadata-provider
+  "Wrap `parent-metadata-provider` so that every `:metadata/table` result is transformed by `f`.
+   The returned provider is wrapped in a fresh cache and invocation tracker. Also wraps with a cache mp and an
+  invocation tracker. Intended for the table remapping for workspaces."
+  [f parent-metadata-provider]
+  (-> (->TableMappingMetadataProvider f parent-metadata-provider)
+      lib.metadata.cached-provider/cached-metadata-provider
+      lib.metadata.invocation-tracker/invocation-tracker-provider))
