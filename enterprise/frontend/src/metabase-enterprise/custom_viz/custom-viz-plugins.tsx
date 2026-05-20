@@ -40,7 +40,7 @@ import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 import { trackCustomVizSelected } from "./analytics";
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
-import { wrapPluginWidget } from "./widget-mount";
+import { stampPluginWidget } from "./widget-mount";
 
 // Track which plugins have already been loaded to avoid re-execution.
 // Maps plugin id → { identifier, hash } so we can detect when a re-uploaded
@@ -482,7 +482,7 @@ function wrapPluginSettingWidgets(
     if (typeof widget === "function") {
       out[settingId] = {
         ...(def as object),
-        widget: wrapPluginWidget(widget as WidgetMount, pluginId),
+        widget: stampPluginWidget(widget as WidgetMount, pluginId),
       };
     } else {
       // String widget names and any other shape: spread to a fresh

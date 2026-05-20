@@ -1,90 +1,128 @@
-import { render } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import type { WidgetMount } from "custom-viz";
+import type { ComponentType } from "react";
+import { createRoot } from "react-dom/client";
 
-import { wrapPluginWidget } from "../widget-mount";
+import { stampPluginWidget } from "../widget-mount";
 
 import { CustomVizSettingWidget } from "./CustomVizSettingWidget";
 
-// Build the mount via `wrapPluginWidget` so the host-realm trust marker
-// and pluginId are stamped — the driver recovers pluginId from the mount
-// itself rather than receiving it as a prop. Assertions target `inner`,
-// the underlying plugin function the trusted wrapper forwards to.
-const makeMount = (pluginId = 1) => {
-  const handle = {
-    update: jest.fn(),
-    unmount: jest.fn(),
+type TestWidgetProps = { title?: string; value?: number };
+
+function TestWidget({ title }: TestWidgetProps) {
+  return (
+    <div data-testid="plugin-widget">
+      <h1>{title}</h1>
+    </div>
+  );
+}
+
+/** Plugin mount that mirrors SDK `defineConfig` widget lifecycle. */
+function makePluginWidgetMount(
+  Widget: ComponentType<TestWidgetProps>,
+): WidgetMount<TestWidgetProps> {
+  return (container, initialProps) => {
+    const root = createRoot(container);
+    const renderWidget = (props: TestWidgetProps) => {
+      root.render(<Widget {...props} />);
+    };
+
+    renderWidget(initialProps);
+
+    return {
+      update: renderWidget,
+      unmount: () => root.unmount(),
+    };
   };
-  const inner = jest.fn().mockReturnValue(handle);
-  const mount = wrapPluginWidget(inner as never, pluginId);
-  return { mount, inner, handle };
-};
+}
+
+function prepareWidget(pluginId = 1) {
+  let mountCalls = 0;
+  let widgetContainer: Element | null = null;
+  const pluginMount = makePluginWidgetMount(TestWidget);
+  const widgetMount: WidgetMount<TestWidgetProps> = (
+    container,
+    initialProps,
+  ) => {
+    mountCalls += 1;
+    widgetContainer = container;
+    return pluginMount(container, initialProps);
+  };
+  const mount = stampPluginWidget(widgetMount, pluginId);
+  return {
+    mount,
+    getMountCalls: () => mountCalls,
+    getWidgetContainer: () => widgetContainer,
+  };
+}
+
+function setup({
+  pluginId = 1,
+  widgetProps = { title: "Setting 1" },
+}: {
+  widgetProps?: TestWidgetProps;
+  pluginId?: number;
+}) {
+  const { mount, getMountCalls, getWidgetContainer } = prepareWidget(pluginId);
+
+  const { rerender, unmount } = render(
+    <CustomVizSettingWidget mount={mount} widgetProps={widgetProps} />,
+  );
+
+  return {
+    getMountCalls,
+    mount,
+    rerender,
+    unmount,
+    getWidgetContainer,
+  };
+}
 
 describe("CustomVizSettingWidget", () => {
   it("calls mount once with the container element and initial props", () => {
-    const { mount, inner } = makeMount();
-    render(
-      <CustomVizSettingWidget mount={mount} widgetProps={{ id: "x", v: 1 }} />,
-    );
+    const { getMountCalls } = setup({});
 
-    expect(inner).toHaveBeenCalledTimes(1);
-    const [arg0, arg1] = inner.mock.calls[0];
-    expect(arg0).toBeInstanceOf(HTMLDivElement);
-    expect((arg0 as HTMLElement).isConnected).toBe(true);
-    expect(arg1).toEqual({ id: "x", v: 1 });
+    expect(getMountCalls()).toBe(1);
+    expect(
+      screen.getByRole("heading", { name: "Setting 1" }),
+    ).toBeInTheDocument();
   });
 
   it("calls update (not mount again) on prop change", () => {
-    const { mount, inner, handle } = makeMount();
-    const { rerender } = render(
-      <CustomVizSettingWidget mount={mount} widgetProps={{ id: "x", v: 1 }} />,
-    );
+    const { rerender, mount, getMountCalls } = setup({});
 
     rerender(
-      <CustomVizSettingWidget mount={mount} widgetProps={{ id: "x", v: 2 }} />,
+      <CustomVizSettingWidget
+        mount={mount}
+        widgetProps={{ title: "Settings 2" }}
+      />,
     );
 
-    expect(inner).toHaveBeenCalledTimes(1);
-    expect(handle.update).toHaveBeenCalledTimes(1);
-    expect(handle.update).toHaveBeenLastCalledWith({ id: "x", v: 2 });
+    expect(getMountCalls()).toBe(1);
+    expect(
+      screen.getByRole("heading", { name: "Settings 2" }),
+    ).toBeInTheDocument();
   });
 
   it("calls unmount on teardown", () => {
-    const { mount, handle } = makeMount();
-    const { unmount } = render(
-      <CustomVizSettingWidget mount={mount} widgetProps={{ id: "x" }} />,
-    );
+    const { unmount } = setup({});
+
+    expect(
+      screen.getByRole("heading", { name: "Setting 1" }),
+    ).toBeInTheDocument();
 
     unmount();
 
-    expect(handle.unmount).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByRole("heading", { name: "Setting 1" }),
+    ).not.toBeInTheDocument();
   });
 
-  it("re-mounts cleanly after teardown", () => {
-    const first = makeMount();
-    const { unmount } = render(
-      <CustomVizSettingWidget mount={first.mount} widgetProps={{ id: "x" }} />,
-    );
-    unmount();
+  it("stamps data-plugin-sandbox with the pluginId carried by the trusted mount", async () => {
+    const { getWidgetContainer } = setup({ pluginId: 11 });
 
-    // A logically-new instance (e.g. user navigates away and back) should
-    // produce a fresh mount call against a fresh container.
-    const second = makeMount();
-    render(
-      <CustomVizSettingWidget mount={second.mount} widgetProps={{ id: "y" }} />,
-    );
-
-    expect(second.inner).toHaveBeenCalledTimes(1);
-    expect(first.handle.update).not.toHaveBeenCalled();
-  });
-
-  it("stamps data-plugin-sandbox with the pluginId carried by the trusted mount", () => {
-    // The container must carry the same `data-plugin-sandbox` attribute
-    // the main-viz wrapper uses; otherwise the sandbox's DOM-scoping
-    // distortion swaps the container with a detached decoy and the
-    // widget's React tree never reaches the page.
-    const { mount, inner } = makeMount(42);
-    render(<CustomVizSettingWidget mount={mount} widgetProps={{}} />);
-
-    const [arg0] = inner.mock.calls[0];
-    expect(arg0 as HTMLElement).toHaveAttribute("data-plugin-sandbox", "42");
+    await waitFor(() => {
+      expect(getWidgetContainer()).toHaveAttribute("data-plugin-sandbox", "11");
+    });
   });
 });

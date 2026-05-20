@@ -1,12 +1,12 @@
 import {
   getWidgetMountPluginId,
   isTrustedWidgetMount,
-  wrapPluginWidget,
+  stampPluginWidget,
 } from "./widget-mount";
 
 describe("widget-mount host trust boundary", () => {
   it("isTrustedWidgetMount only accepts host-allocated mounts", () => {
-    const wrapped = wrapPluginWidget(
+    const wrapped = stampPluginWidget(
       (() => ({
         update() {},
         unmount() {},
@@ -53,7 +53,7 @@ describe("widget-mount host trust boundary", () => {
       update: jest.fn(),
       unmount: jest.fn(),
     });
-    const wrapped = wrapPluginWidget(inner as never, 7);
+    const wrapped = stampPluginWidget(inner as never, 7);
     const container = document.createElement("div");
     const props = { id: "x" };
 
@@ -64,7 +64,7 @@ describe("widget-mount host trust boundary", () => {
   });
 
   it("getWidgetMountPluginId recovers the pluginId from a trusted mount", () => {
-    const wrapped = wrapPluginWidget(
+    const wrapped = stampPluginWidget(
       (() => ({ update() {}, unmount() {} })) as never,
       99,
     );

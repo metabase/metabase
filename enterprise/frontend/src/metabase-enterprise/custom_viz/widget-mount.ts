@@ -20,7 +20,7 @@ type TrustedMount = WidgetMount & {
  * Stamp a plugin-supplied function-shaped widget into a host-trusted
  * `WidgetMount`.
  */
-export function wrapPluginWidget(
+export function stampPluginWidget(
   pluginWidget: WidgetMount,
   pluginId: CustomVizPluginId,
 ): WidgetMount {

@@ -3,7 +3,7 @@ import type { CustomVisualization, WidgetMount } from "custom-viz";
 import type { Visualization } from "metabase/visualizations/types/visualization";
 import type { CustomVizPluginId } from "metabase-types/api";
 
-import { wrapPluginWidget } from "./widget-mount";
+import { stampPluginWidget } from "./widget-mount";
 
 /**
  * Assign properties derived from a vizDef onto a Visualization component
@@ -78,7 +78,7 @@ function sanitizePluginSettings(
     } else if (typeof widget === "function") {
       out[key] = {
         ...(def as object),
-        widget: wrapPluginWidget(widget as WidgetMount, pluginId),
+        widget: stampPluginWidget(widget as WidgetMount, pluginId),
       };
     } else {
       out[key] = { ...(def as object), widget: undefined };
