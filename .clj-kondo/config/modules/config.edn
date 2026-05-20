@@ -806,8 +806,6 @@
   {:team "Querying Platform"
    :api  #{metabase.driver
            metabase.driver.common
-           metabase.driver.common.parameters
-           metabase.driver.common.parameters.parse
            metabase.driver.connection
            metabase.driver.ddl.interface
            metabase.driver.h2
@@ -2248,7 +2246,8 @@
   {:team "DevEx"
    :api  #{metabase.tracing.core
            metabase.tracing.init}
-   :uses #{events
+   :uses #{config
+           events
            settings
            task
            util}}
@@ -2665,6 +2664,7 @@
            api-keys
            app-db
            driver
+           lib
            permissions
            premium-features
            settings
@@ -3261,6 +3261,7 @@
    :api  #{metabase-enterprise.security-center.api
            metabase-enterprise.security-center.init}
    :uses #{analytics
+           analytics-interface
            api
            app-db
            channel
@@ -3307,6 +3308,7 @@
    :api  #{metabase-enterprise.serialization.api
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core
+           metabase-enterprise.serialization.init
            metabase-enterprise.serialization.v2.backfill-ids}
    :uses #{analytics
            api
@@ -3323,7 +3325,9 @@
            search
            server
            setup
-           util}
+           sync
+           util
+           warehouse-schema}
    :model-imports :bypass}
 
   enterprise/snippet-collections
@@ -3446,6 +3450,7 @@
            permissions
            query-processor
            settings
+           tracing
            transforms
            transforms-base
            util}

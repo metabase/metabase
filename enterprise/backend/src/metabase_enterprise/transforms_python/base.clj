@@ -168,9 +168,9 @@
   [driver {db-id :id :as db}
    {:keys [target] :as transform}
    metadata temp-file]
-  ;; First incremental run: no checkpoint exists yet, behave like non-incremental
-  ;; to drop and recreate the table rather than appending to existing data.
-  (if (nil? (:last_checkpoint_value transform))
+  ;; Full incremental run (no watermark — first ever or after a checkpoint-config reset): behave
+  ;; like non-incremental and drop-and-recreate rather than appending.
+  (if (transforms-base.u/full-incremental-run? transform)
     ((get-method transfer-file-to-db :table) driver db transform metadata temp-file)
     ;; Normal incremental: append if table exists, create if it doesn't
     (let [table-name (transforms-base.u/qualified-table-name driver target)

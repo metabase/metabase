@@ -20,8 +20,8 @@
                   ", modal-setting-value: " modal-setting-value)
       (mt/with-current-user (mt/user->id :crowberto)
         (permissions.settings/show-updated-permission-modal! modal-setting-value)
-        (with-redefs [permissions.settings/instance-create-time (constantly instance-creation-time)
-                      permissions.settings/v-fifty-migration-time (constantly fifty-migration-time)]
+        (mt/with-dynamic-fn-redefs [permissions.settings/instance-create-time (constantly instance-creation-time)
+                                    permissions.settings/v-fifty-migration-time (constantly fifty-migration-time)]
           (let [expected-modal-value (get ->expected
                                           {:new-admin? (t/after? instance-creation-time fifty-migration-time)
                                            :setting-value modal-setting-value})]
@@ -36,8 +36,8 @@
                   ", banner-setting-value: " banner-setting-value)
       (mt/with-current-user (mt/user->id :crowberto)
         (permissions.settings/show-updated-permission-banner! banner-setting-value)
-        (with-redefs [permissions.settings/instance-create-time (constantly instance-creation-time)
-                      permissions.settings/v-fifty-migration-time (constantly fifty-migration-time)]
+        (mt/with-dynamic-fn-redefs [permissions.settings/instance-create-time (constantly instance-creation-time)
+                                    permissions.settings/v-fifty-migration-time (constantly fifty-migration-time)]
           (let [expected-banner-value (get ->expected
                                            {:new-admin? (t/after? instance-creation-time fifty-migration-time)
                                             :setting-value banner-setting-value})]

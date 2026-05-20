@@ -59,6 +59,7 @@ const elements = [
   createElement({ type: "shared", name: "palette", enforceOutgoing: true }),
   createElement({ type: "shared", name: "querying" }),
   createElement({ type: "shared", name: "visualizations" }),
+  createElement({ type: "shared", name: "visualizer", enforceOutgoing: true }),
   createElement({ type: "shared", name: "account", enforceOutgoing: true }),
   createElement({ type: "shared", name: "archive", enforceOutgoing: true }),
   createElement({ type: "shared", name: "auth", enforceOutgoing: true }),

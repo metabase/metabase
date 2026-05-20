@@ -106,34 +106,50 @@ export type ConversationDetail = {
 };
 
 export type DataComplexityCatalogId = "library" | "universe" | "metabot";
-export type DataComplexityComponentId =
-  | "entity_count"
+export type DataComplexityGroupId = "size" | "ambiguity";
+
+export type DataComplexitySizeComponentId = "entity_count" | "field_count";
+export type DataComplexityAmbiguityComponentId =
   | "name_collisions"
   | "synonym_pairs"
-  | "field_count"
   | "repeated_measures";
+export type DataComplexityComponentId =
+  | DataComplexitySizeComponentId
+  | DataComplexityAmbiguityComponentId;
 
 export type DataComplexitySubScore =
-  | {
-      measurement: null;
-      score: null;
-      error: string;
-    }
-  | {
-      measurement: number;
-      score: number;
-    };
+  | { error: string }
+  | { measurement: number; score: number };
+
+export type DataComplexitySizeGroup = {
+  score: number | null;
+  components: Record<DataComplexitySizeComponentId, DataComplexitySubScore>;
+};
+
+export type DataComplexityAmbiguityGroup = {
+  score: number | null;
+  components: Record<
+    DataComplexityAmbiguityComponentId,
+    DataComplexitySubScore
+  >;
+};
+
+export type DataComplexityGroup =
+  | DataComplexitySizeGroup
+  | DataComplexityAmbiguityGroup;
 
 export type DataComplexityCatalog = {
-  total: number | null;
+  score: number | null;
   components: {
-    [K in DataComplexityComponentId]: DataComplexitySubScore;
+    size: DataComplexitySizeGroup;
+    ambiguity: DataComplexityAmbiguityGroup;
   };
 };
 
 export type DataComplexityScoresResponse = {
   meta: {
     formula_version: number;
+    format_version: number;
     synonym_threshold: number;
     calculated_at?: string;
     embedding_model?: {

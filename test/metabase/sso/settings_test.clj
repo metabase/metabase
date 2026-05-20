@@ -10,11 +10,11 @@
   (ldap.test/with-ldap-server!
     (testing "`ldap-enabled` setting validates currently saved LDAP settings"
       (mt/with-temporary-setting-values [ldap-enabled false]
-        (with-redefs [ldap/test-current-ldap-details (constantly {:status :ERROR :message "test error"})]
+        (mt/with-dynamic-fn-redefs [ldap/test-current-ldap-details (constantly {:status :ERROR :message "test error"})]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                 #"Unable to connect to LDAP server"
                                 (sso.settings/ldap-enabled! true))))
-        (with-redefs [ldap/test-current-ldap-details (constantly {:status :SUCCESS})]
+        (mt/with-dynamic-fn-redefs [ldap/test-current-ldap-details (constantly {:status :SUCCESS})]
           (sso.settings/ldap-enabled! true)
           (is (sso.settings/ldap-enabled))
 
