@@ -632,12 +632,20 @@
               :is_sample        false
               :uploads_enabled  false}})
 
+(def ^:dynamic *include-h2-in-extract?*
+  "When false (the default), [[serdes/extract-query]] skips H2 databases because they are rejected at import time
+  by [[assert-not-h2!]]. Round-trip tests that exercise H2 throughout — and rebind `assert-not-h2!` accordingly —
+  may rebind this to `true` to keep the H2 databases in the extract."
+  false)
+
 (defmethod serdes/extract-query "Database"
   [model-name {:keys [where]}]
   (t2/reducible-select (keyword "model" model-name)
-                       {:where [:and
-                                (or where true)
-                                [:= :router_database_id nil]]}))
+                       {:where (cond-> [:and
+                                        (or where true)
+                                        [:= :router_database_id nil]]
+                                 (not *include-h2-in-extract?*)
+                                 (conj [:not= :engine "h2"]))}))
 
 (defmethod serdes/entity-id "Database"
   [_ {:keys [name]}]
