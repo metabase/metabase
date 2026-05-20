@@ -142,3 +142,53 @@
               (doseq [field-kw (keys declared-defaults)]
                 (testing (format "`%s.%s` in :defaults is a serialized field" m (name field-kw))
                   (is (contains? serialized-fields field-kw)))))))))))
+
+(def ^:private auto-synthesized-fk-targets
+  "FK target models whose importers auto-create a stub entity if the target is missing, so
+  they don't have to be declared in `serdes/dependencies`. Everything else MUST be declared
+  — otherwise `*import-fk*` throws \"Could not find foreign key target\" and aborts the
+  whole import (see GDGT-2444 for an example)."
+  #{:model/User :model/Table :model/Field})
+
+(defn- direct-fks
+  "Return a seq of `[field target-model]` for every entry in `transform-spec` that is a
+  plain `(serdes/fk ...)` declaration whose target needs a `dependencies` entry. Nested
+  child specs are NOT walked — their FKs flow through the parent's bespoke `dependencies`
+  method which knows how to dig into the nested data, and verifying that takes a
+  parent-by-parent treatment that's out of scope here."
+  [transform-spec]
+  (for [[field transform] transform-spec
+        :when             (and (map? transform)
+                               (::serdes/fk transform)
+                               (not (::serdes/nested transform)))
+        :let              [target (::serdes/fk-model transform)]
+        :when             (and target
+                               (not (auto-synthesized-fk-targets target)))]
+    [field target]))
+
+(deftest ^:parallel serialization-direct-fk-dependencies-completeness-test
+  (testing (str "Every direct FK declared via `(serdes/fk ...)` in a loadable (non-inlined) "
+                "model's `make-spec` is surfaced in that model's `serdes/dependencies` — "
+                "otherwise `*import-fk*` will throw \"Could not find foreign key target\" at "
+                "import time (see GDGT-2444).")
+    (let [inlined? (set serdes.models/inlined-models)]
+      (doseq [m (-> (methods serdes/make-spec) (dissoc :default) keys)
+              ;; Inlined children are loaded inside their parent, so the FK-resolution
+              ;; check applies to the parent's `dependencies`, not theirs. Out of scope.
+              :when (not (inlined? m))
+              :let [fks (direct-fks (:transform (serdes/make-spec m nil)))]
+              :when (seq fks)]
+        (testing (format "%s\n" m)
+          (let [entity     (into {:serdes/meta [{:model m :id "self"}]}
+                                 (for [[field _] fks]
+                                   [field (str "fake-eid-" (name field))]))
+                deps       (set (serdes/dependencies entity))
+                dep-models (set (keep (comp :model peek) deps))]
+            (doseq [[field target] fks]
+              (testing (format "FK `%s` -> `%s` must appear in `(serdes/dependencies)`"
+                               field target)
+                (is (contains? dep-models (name target))
+                    (format (str "`(serdes/dependencies %s)` did not include a `%s` entry "
+                                 "when `%s` was populated. Add the FK to the model's "
+                                 "`dependencies` method (see Table/Transform for an example).")
+                            m (name target) field))))))))))
