@@ -39,7 +39,9 @@ describe("RemoteSyncSettingsForm", () => {
       setup({ remoteSyncType: "read-only" });
 
       expect(screen.getByText("Branch to sync with")).toBeInTheDocument();
-      expect(screen.getByLabelText(/Sync branch/i)).toBeInTheDocument();
+      expect(
+        screen.getByRole("textbox", { name: "Sync branch" }),
+      ).toBeInTheDocument();
       expect(screen.getByLabelText(/Auto-sync with git/i)).toBeInTheDocument();
     });
 
@@ -718,7 +720,9 @@ describe("RemoteSyncSettingsForm", () => {
         ).toBeInTheDocument();
       });
 
-      expect(screen.getByLabelText(/Sync branch/i)).toHaveAttribute("readonly");
+      expect(
+        screen.getByRole("textbox", { name: "Sync branch" }),
+      ).toHaveAttribute("readonly");
     });
   });
 
