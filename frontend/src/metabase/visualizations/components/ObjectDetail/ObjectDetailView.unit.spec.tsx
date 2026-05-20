@@ -10,11 +10,13 @@ import {
 import { testDataset } from "__support__/testDataset";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { getNextId } from "__support__/utils";
+import { ActionsApi } from "metabase/services";
 import { checkNotNull } from "metabase/utils/types";
-import type { WritebackAction } from "metabase-types/api";
+import type { DatasetData, WritebackAction } from "metabase-types/api";
 import {
   createMockCard,
   createMockDatabase,
+  createMockDatasetData,
   createMockField,
   createMockImplicitQueryAction,
   createMockQueryAction,
@@ -233,6 +235,15 @@ const actionsFromDatabaseWithDisabledActions = actions.map((action) => ({
   ...action,
   database_id: databaseWithActionsDisabled.id,
 }));
+
+const testDatasetWithCustomPk: DatasetData = createMockDatasetData({
+  cols: testDataset.cols.map((col) =>
+    col.semantic_type === "type/PK"
+      ? { ...col, name: "contract_number", display_name: "Contract Number" }
+      : col,
+  ),
+  rows: testDataset.rows,
+});
 
 function setupPrefetch() {
   fetchMock.get(`path:/api/action/${implicitUpdateAction.id}/execute`, {});
@@ -514,6 +525,118 @@ describe("ObjectDetailView", () => {
     expect(within(modal).getByTestId("modal-header")).toHaveTextContent(
       "Are you sure you want to delete this row?",
     );
+  });
+
+  it("should use actual PK column name when prefetching update action values", async () => {
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
+    setupActionsEndpoints(actions);
+    const prefetchSpy = jest
+      .spyOn(ActionsApi, "prefetchValues")
+      .mockResolvedValue({});
+    setup({
+      question: mockDataset,
+      data: testDatasetWithCustomPk,
+      zoomedRow: testDatasetWithCustomPk.rows[0],
+      zoomedRowID: 0,
+    });
+
+    const action = await findActionInActionMenu(implicitUpdateAction);
+    await userEvent.click(action!);
+
+    await waitFor(() => {
+      expect(prefetchSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          parameters: expect.stringContaining("contract_number"),
+        }),
+      );
+    });
+
+    expect(prefetchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        parameters: expect.not.stringContaining('"id"'),
+      }),
+    );
+
+    prefetchSpy.mockRestore();
+  });
+
+  it("should pass PK column name to delete modal for non-id PK", async () => {
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
+    setupActionsEndpoints(actions);
+    const executeSpy = jest.spyOn(ActionsApi, "execute").mockResolvedValue({});
+    setup({
+      question: mockDataset,
+      data: testDatasetWithCustomPk,
+      zoomedRow: testDatasetWithCustomPk.rows[0],
+      zoomedRowID: 0,
+    });
+
+    const action = await findActionInActionMenu(implicitDeleteAction);
+    action?.click();
+
+    const modal = await screen.findByTestId("delete-object-modal");
+    const deleteButton = within(modal).getByRole("button", {
+      name: "Delete forever",
+    });
+
+    await userEvent.click(deleteButton);
+
+    await waitFor(() => {
+      expect(executeSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          parameters: expect.objectContaining({ contract_number: 0 }),
+        }),
+      );
+    });
+
+    expect(executeSpy).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        parameters: expect.objectContaining({ id: expect.anything() }),
+      }),
+    );
+
+    executeSpy.mockRestore();
+  });
+
+  it("should hide PK field in update action form", async () => {
+    const updateActionWithParams = createMockImplicitQueryAction({
+      ...implicitUpdateAction,
+      parameters: [
+        {
+          id: "ID",
+          name: "ID",
+          type: "type/Integer",
+          target: ["variable", ["template-tag", "ID"]],
+          "display-name": "ID",
+          slug: "ID",
+        },
+        {
+          id: "EAN",
+          name: "EAN",
+          type: "type/Text",
+          target: ["variable", ["template-tag", "EAN"]],
+          "display-name": "Ean",
+          slug: "EAN",
+        },
+      ],
+    });
+    const actionsWithParams = actions.map((a) =>
+      a.id === implicitUpdateAction.id ? updateActionWithParams : a,
+    );
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
+    setupActionsEndpoints(actionsWithParams);
+    setup({ question: mockDataset });
+    setupPrefetch();
+
+    const action = await findActionInActionMenu(updateActionWithParams);
+    await userEvent.click(action!);
+
+    const modal = await screen.findByTestId("action-execute-modal");
+
+    await waitFor(() => {
+      expect(within(modal).queryByLabelText("ID")).not.toBeInTheDocument();
+    });
+    expect(within(modal).getByLabelText("Ean")).toBeInTheDocument();
   });
 
   describe("keyboard bindings", () => {
