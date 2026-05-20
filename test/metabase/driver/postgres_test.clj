@@ -1368,10 +1368,7 @@
                                                 :table_id (t2/select-one-pk :model/Table :db_id (u/the-id database)))
                 ;; Strip extended interestingness stats — this test covers the core TIME fingerprint
                 ;; shape (#5911), not the interestingness metrics.
-                extended-keys [:hour-distribution :weekday-distribution :skewness
-                               :mode-fraction :top-3-fraction
-                               :mode-fraction-by-weekday :mode-fraction-by-hour
-                               :min-length :max-length :percent-blank]
+                extended-keys [:skewness :mode-fraction :top-3-fraction :percent-blank]
                 trim-type     (fn [fp]
                                 (update fp :type
                                         (fn [types]

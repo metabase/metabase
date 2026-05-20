@@ -98,8 +98,6 @@
                                                       :percent-email  0.0
                                                       :percent-state  0.0
                                                       :average-length 13.532
-                                                      :max-length     23.0
-                                                      :min-length     7.0
                                                       :mode-fraction  4.0E-4
                                                       :top-3-fraction 0.0012
                                                       :percent-blank  0.0}}}
