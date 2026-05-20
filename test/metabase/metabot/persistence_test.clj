@@ -668,7 +668,7 @@
                   (t2/select :model/MetabotUsedTable :message_id assistant-msg-id))))))))
 
 (defn- ->transform-python-parts
-  "Build a `write_transform_python` tool-input/output pair that declares `table-id` as its single source table. 
+  "Build a `write_transform_python` tool-input/output pair that declares `table-id` as its single source table.
   Used to verify the end-to-end transform extraction path."
   [call-id table-id]
   [{:type      :tool-input
@@ -690,7 +690,7 @@
 
 (defn- ->transform-sql-parts
   "Build a `write_transform_sql` tool-input/output pair whose suggested transform's `[:source :query]` is a native query.
-  The structured-output's `:transform` key is dropped by `strip-tool-output-bloat`, so this pair exercises finalize's 
+  The structured-output's `:transform` key is dropped by `strip-tool-output-bloat`, so this pair exercises finalize's
   pre-strip extraction path."
   [call-id db-id sql]
   (let [query (lib/native-query (mt/metadata-provider) sql)]

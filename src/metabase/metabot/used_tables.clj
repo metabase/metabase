@@ -184,7 +184,7 @@
 (defn- pair->seeds
   "Return `{:queries [...] :tables #{...}}` for one `(tool-input, tool-output)` pair.
 
-  `:queries` are MBQL queries to feed into the shared BFS in [[extract-used-tables]]. 
+  `:queries` are MBQL queries to feed into the shared BFS in [[extract-used-tables]].
 
   `:tables` are already-known table ids. Currently only populated by the Python transform tool, which declares its
   sources in the `:source_tables` argument rather than embedding them in a query."
