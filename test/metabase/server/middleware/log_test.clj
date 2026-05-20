@@ -33,3 +33,17 @@
       (is (not (#'mw.log/should-log-request? {:uri "/api/health"})))
       (is (not (#'mw.log/should-log-request? {:uri "/livez"})))
       (is (not (#'mw.log/should-log-request? {:uri "/readyz"}))))))
+
+(deftest log-api-call-captures-user-id-from-response-metadata-test
+  (testing "log-api-call reads :metabase-user-id from response metadata (#74017)"
+    (let [logged-user-id (promise)
+          handler        (mw.log/log-api-call
+                          (fn [_request respond _raise]
+                            (respond (with-meta {:status 200 :body "ok"}
+                                                {:metabase-user-id 42}))))]
+      (with-redefs [mw.log/log-info (fn [info]
+                                      (deliver logged-user-id (get-in info [:log-context :metabase-user-id])))]
+        (handler {:request-method :post :uri "/api/session"}
+                 identity
+                 identity)
+        (is (= 42 (deref logged-user-id 1000 :timed-out)))))))

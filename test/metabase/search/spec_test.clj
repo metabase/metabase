@@ -101,7 +101,8 @@
                                {:search-model "table",
                                 :fields
                                 #{:active :description :schema :name :id :db_id :initial_sync_status :display_name
-                                  :visibility_type :view_count :created_at :updated_at :collection_id :is_published}
+                                  :visibility_type :view_count :created_at :updated_at :collection_id :is_published
+                                  :data_layer}
                                 :where        [:= :updated.id :this.id]}},
                  :Database   #{{:search-model "table"
                                 :fields #{:name :router_database_id}

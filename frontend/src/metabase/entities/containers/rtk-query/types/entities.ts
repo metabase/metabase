@@ -37,7 +37,6 @@ export type ReloadIntervalSelector<Entity> = (
 export type EntityType =
   | "alerts"
   | "bookmarks"
-  | "databases"
   | "documents"
   | "pulses"
   | "questions"

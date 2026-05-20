@@ -75,7 +75,7 @@
    - `:write-data` — `:write-data-details` merged over `:details` (if configured)
    - `:admin` — `:admin-details` merged over `:details` (if configured)
 
-   Bind via [[with-write-connection]] or [[with-admin-connection]], not directly."
+   Bind via [[with-write-connection]], [[with-default-connection]], or [[with-admin-connection]], not directly."
   :default)
 
 (defmacro with-write-connection
@@ -101,6 +101,14 @@
        (log/infof "Entering admin connection scope (from %s)" prior#))
      (binding [*connection-type* :admin]
        ~@body)))
+
+(defmacro with-default-connection
+  "Establishes a default-connection context for body.
+
+   Use this to compile or execute a read query from inside a broader write-connection context."
+  [& body]
+  `(binding [*connection-type* :default]
+     ~@body))
 
 (def ^:dynamic ^:private *suppress-resolution-telemetry*
   false)

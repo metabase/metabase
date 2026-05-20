@@ -1,15 +1,19 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { useListDatabaseSchemasQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetDatabaseQuery,
+  useListDatabaseSchemasQuery,
+} from "metabase/api";
 import { TableBrowser } from "metabase/browse/tables/TableBrowser";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { Databases } from "metabase/entities/databases";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import type { DatabaseId } from "metabase-types/api";
 
 import { BrowseCard } from "../components/BrowseCard";
 import S from "../components/BrowseContainer.module.css";
@@ -17,6 +21,13 @@ import { BrowseDataHeader } from "../components/BrowseDataHeader";
 import { BrowseGrid } from "../components/BrowseGrid";
 
 type Schema = { id: string; name: string };
+
+const DatabaseName = ({ id }: { id: DatabaseId | null | undefined }) => {
+  const { data: database } = useGetDatabaseQuery(
+    id != null ? { id } : skipToken,
+  );
+  return <>{database?.name ?? ""}</>;
+};
 
 const BrowseSchemasContainer = ({
   schemas,
@@ -55,7 +66,7 @@ const BrowseSchemasContainer = ({
                 <BrowserCrumbs
                   crumbs={[
                     { title: t`Databases`, to: "/browse/databases" },
-                    { title: <Databases.Name id={dbId} /> },
+                    { title: <DatabaseName id={dbId} /> },
                   ]}
                 />
               </Flex>
