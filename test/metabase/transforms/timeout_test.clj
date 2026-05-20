@@ -4,6 +4,7 @@
   [[metabase.transforms.models.job-run/timeout-old-runs!]])."
   (:require
    [clojure.test :refer :all]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -66,21 +67,21 @@
                 (is (= "timeout" (some-> entry :details :status))))))))
 
       (testing "no metric activity when there are no stale runs"
-        (prometheus/clear! :metabase-transforms/timeouts-total)
-        (prometheus/clear! :metabase-transforms/timeout-detection-latency-ms)
-        (mt/with-temp [:model/Transform    {transform-id :id} {}
-                       :model/TransformRun _ {:transform_id transform-id
-                                              :status       :started
-                                              :is_active    true
-                                              :run_method   :manual
-                                              :start_time   (minutes-ago 1)}]
-          (is (empty? (transform-run/timeout-old-runs! 5 :minute)))
-          (is (== 0 (mt/metric-value system
-                                     :metabase-transforms/timeouts-total
-                                     {:type "transform"})))
-          (is (zero? (long (:count (mt/metric-value system
-                                                    :metabase-transforms/timeout-detection-latency-ms
-                                                    {:type "transform"})))))))
+        (let [inc-calls     (atom [])
+              observe-calls (atom [])]
+          (mt/with-dynamic-fn-redefs [analytics/inc!     (fn [metric & _] (swap! inc-calls conj metric))
+                                      analytics/observe! (fn [metric & _] (swap! observe-calls conj metric))]
+            (mt/with-temp [:model/Transform    {transform-id :id} {}
+                           :model/TransformRun _ {:transform_id transform-id
+                                                  :status       :started
+                                                  :is_active    true
+                                                  :run_method   :manual
+                                                  :start_time   (minutes-ago 1)}]
+              (is (empty? (transform-run/timeout-old-runs! 5 :minute)))
+              (is (not-any? #{:metabase-transforms/timeouts-total} @inc-calls)
+                  "sweeper did not increment :metabase-transforms/timeouts-total")
+              (is (not-any? #{:metabase-transforms/timeout-detection-latency-ms} @observe-calls)
+                  "sweeper did not observe :metabase-transforms/timeout-detection-latency-ms")))))
 
       (testing "single-run timeout-run! bumps counter and publishes audit event"
         (prometheus/clear! :metabase-transforms/timeouts-total)
