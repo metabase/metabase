@@ -106,24 +106,39 @@
 
 (deftest measure->xml-test
   (testing "formats measure with all attributes"
-    (let [measure {:id 1
+    (let [;; The new contract: `:definition` is a portable aggregation clause vector,
+          ;; produced by `convert-measure-or-segment` via `repr.resolve/export-query`.
+          ;; `:portable-entity-id` is the 21-char NanoID the agent pastes into
+          ;; `["measure", {}, "<pid>"]` clauses.
+          measure {:id 1
                    :name "total_revenue"
                    :display-name "Total Revenue"
                    :description "Sum of all revenue"
-                   :definition {:database 1 :type :query :query {:source-table 5 :aggregation [[:sum [:field 10 nil]]]}}
-                   :definition-description "Sum of Price"}
+                   :portable-entity-id "Xagv1NMQROhFqne5Z3l3N"
+                   :definition [["sum" {} ["field" {} ["DB" "PUBLIC" "ORDERS" "TOTAL"]]]]
+                   :definition-description "Sum of Total"}
           xml (llm-shape/measure->xml measure)]
       (is (str/starts-with? xml "<measure"))
       (is (str/includes? xml "measure_id=\"1\""))
       (is (str/includes? xml "name=\"total_revenue\""))
       (is (str/includes? xml "display_name=\"Total Revenue\""))
+      (is (str/includes? xml "portable_entity_id=\"Xagv1NMQROhFqne5Z3l3N\""))
       (is (str/includes? xml "Sum of all revenue"))
       ;; The human-prose `Definition: <description>` line is gone. The structured
       ;; `<definition>...</definition>` block below carries the same information for the LLM.
-      (is (not (str/includes? xml "Definition: Sum of Price")))
+      (is (not (str/includes? xml "Definition: Sum of Total")))
       (is (str/includes? xml "<definition>"))
-      (is (str/includes? xml ":source-table 5"))
+      (testing "definition renders as a fenced JSON code block"
+        (is (str/includes? xml "```json"))
+        (is (str/includes? xml "\"sum\""))
+        (is (str/includes? xml "\"ORDERS\""))
+        (is (str/includes? xml "\"TOTAL\"")))
       (is (str/ends-with? (str/trim xml) "</measure>"))))
+
+  (testing "omits portable_entity_id attribute when not present (legacy / unsaved measure)"
+    (let [measure {:id 99 :name "no_pid"}
+          xml (llm-shape/measure->xml measure)]
+      (is (not (str/includes? xml "portable_entity_id")))))
 
   (testing "handles measure without description or definition"
     (let [measure {:id 2 :name "count_orders"}
@@ -142,12 +157,15 @@
 
 (deftest segment->xml-test
   (testing "formats segment with all attributes"
-    (let [segment {:id 1
+    (let [;; The new contract: `:definition` is a portable filter clause vector;
+          ;; `:portable-entity-id` is the NanoID the agent pastes into `["segment", {}, "<pid>"]`.
+          segment {:id 1
                    :name "active_customers"
                    :display-name "Active Customers"
                    :description "Customers who made a purchase in the last 30 days"
-                   :definition {:database 1 :type :query :query {:source-table 5 :filter [:> [:field 10 nil] 0]}}
-                   :definition-description "Price is greater than 0"}
+                   :portable-entity-id "SU_Ge6qwCh_-2XE10h11p"
+                   :definition [[">" {} ["field" {} ["DB" "PUBLIC" "ORDERS" "TOTAL"]] 0]]
+                   :definition-description "Total is greater than 0"}
           xml (llm-shape/segment->xml segment)]
       (is (str/starts-with? xml "<segment"))
       ;; The `<segment id=...>` attribute is named `id` (not `segment_id`) for consistency with
@@ -155,13 +173,23 @@
       (is (str/includes? xml "id=\"1\""))
       (is (str/includes? xml "name=\"active_customers\""))
       (is (str/includes? xml "display_name=\"Active Customers\""))
+      (is (str/includes? xml "portable_entity_id=\"SU_Ge6qwCh_-2XE10h11p\""))
       (is (str/includes? xml "Customers who made a purchase in the last 30 days"))
       ;; The human-prose `Definition: <description>` line is gone. The structured
       ;; `<definition>...</definition>` block below carries the same information for the LLM.
-      (is (not (str/includes? xml "Definition: Price is greater than 0")))
+      (is (not (str/includes? xml "Definition: Total is greater than 0")))
       (is (str/includes? xml "<definition>"))
-      (is (str/includes? xml ":source-table 5"))
+      (testing "definition renders as a fenced JSON code block"
+        (is (str/includes? xml "```json"))
+        (is (str/includes? xml "\">\""))
+        (is (str/includes? xml "\"ORDERS\""))
+        (is (str/includes? xml "\"TOTAL\"")))
       (is (str/ends-with? (str/trim xml) "</segment>"))))
+
+  (testing "omits portable_entity_id attribute when not present"
+    (let [segment {:id 99 :name "no_pid"}
+          xml (llm-shape/segment->xml segment)]
+      (is (not (str/includes? xml "portable_entity_id")))))
 
   (testing "handles segment without description or definition-description"
     (let [segment {:id 2 :name "new_users"}

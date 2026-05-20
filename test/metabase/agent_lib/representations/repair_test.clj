@@ -2377,23 +2377,18 @@
                           "limit"        10}]}]
       (is (some? (repair/repair trivial-mp q))))))
 
-;;; ----- E4: sexp-legacy `measure` head ----------------------------------------------
+;;; ----- E4: `[measure, ...]` was historically rejected; now a first-class clause -----
 
-(deftest friendly-error-sexp-legacy-measure-test
-  (testing "`[measure, ...]` clause head raises clean :agent-error?"
+(deftest measure-clause-passes-repair-test
+  (testing (str "`[measure, {}, <portable_entity_id>]` is a first-class aggregation clause "
+                "(was rejected by the now-deleted E4 sexp-legacy-measure-error! check). "
+                "Lookup/resolution happens in the resolve layer, not repair.")
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
              "stages"   [{"lib/type"     "mbql.stage/mbql"
                           "source-table" ["Sample" "PUBLIC" "ORDERS"]
                           "aggregation"  [["measure" {} "@card-1"]]}]}]
-      (try
-        (repair/repair trivial-mp q)
-        (is false "should have thrown")
-        (catch clojure.lang.ExceptionInfo e
-          (let [data (ex-data e)]
-            (is (true? (:agent-error? data)))
-            (is (= :sexp-legacy-measure (:error data)))
-            (is (re-find #"metric" (ex-message e)))))))))
+      (is (some? (repair/repair trivial-mp q))))))
 
 (deftest friendly-error-canonical-metric-passes-test
   (testing "canonical `[metric, {}, <portable_entity_id>]` does NOT trigger E4"

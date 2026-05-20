@@ -56,21 +56,22 @@
         (when (seq path-segments)
           (str "/" (str/join "/" (map encode-uri-segment path-segments)))))))
 
-(defn- query-json->llm-block
-  "Render a portable repr-form `query-json` map (or already-rendered string) as a JSON code
-  block embedded inside the `<query>` tag of `<metabase_question>` / `<metabase-model>`. The
-  triple-backtick fence gives the LLM the same syntactic frame it would in a tool description
-  or assistant turn. Returns `nil` when the input is empty so the selmer template can omit the
-  block entirely."
-  [query-json]
+(defn- repr-data->llm-block
+  "Render portable repr-form data (a map or a vector of clauses) as a JSON code block. Used
+  inside `<query>` for a whole query, and inside `<definition>` for a measure's aggregation
+  array or a segment's filter array. The triple-backtick fence gives the LLM the same
+  syntactic frame it would in a tool description or assistant turn. Accepts a pre-rendered
+  string passthrough; returns `nil` when the input is empty so the selmer template can omit
+  the block entirely."
+  [data]
   (cond
-    (and (string? query-json)
-         (not (str/blank? query-json)))
-    query-json
+    (and (string? data)
+         (not (str/blank? data)))
+    data
 
-    (and (map? query-json)
-         (seq query-json))
-    (str "```json\n" (json/encode query-json {:pretty true}) "\n```")))
+    (and (or (map? data) (vector? data))
+         (seq data))
+    (str "```json\n" (json/encode data {:pretty true}) "\n```")))
 
 (defn- escape-xml
   "Escape XML special characters in a string.
@@ -199,26 +200,30 @@
 
 (defn measure->xml
   "Format a measure for LLM consumption."
-  [{:keys [id name display-name description definition definition-description]}]
+  [{:keys [id name display-name description definition definition-description
+           portable-entity-id portable_entity_id]}]
   (render-llm-template
    :measure
-   {:measure_id           (str id)
-    :measure_name         (or name "")
-    :measure_display_name (or display-name name "")
-    :measure_description  description
-    :measure_definition   (when definition (pr-str definition))
+   {:measure_id                 (str id)
+    :measure_name               (or name "")
+    :measure_display_name       (or display-name name "")
+    :measure_description        description
+    :measure_portable_entity_id (or portable-entity-id portable_entity_id)
+    :measure_definition         (repr-data->llm-block definition)
     :measure_definition_description definition-description}))
 
 (defn segment->xml
   "Format a segment for LLM consumption."
-  [{:keys [id name display-name description definition definition-description]}]
+  [{:keys [id name display-name description definition definition-description
+           portable-entity-id portable_entity_id]}]
   (render-llm-template
    :segment
-   {:segment_id           (str id)
-    :segment_name         (or name "")
-    :segment_display_name (or display-name name "")
-    :segment_description  description
-    :segment_definition   (when definition (pr-str definition))
+   {:segment_id                 (str id)
+    :segment_name               (or name "")
+    :segment_display_name       (or display-name name "")
+    :segment_description        description
+    :segment_portable_entity_id (or portable-entity-id portable_entity_id)
+    :segment_definition         (repr-data->llm-block definition)
     :segment_definition_description definition-description}))
 
 (defn- related-table->xml
@@ -322,7 +327,7 @@
       :model_fqn                fqn
       :model_description        description
       :model_portable_entity_id portable_entity_id
-      :model_query_json         (query-json->llm-block query_json)
+      :model_query_json         (repr-data->llm-block query_json)
       :model_fields_xml         (when (seq fields)
                                   (str/join "\n" (map field->xml fields)))
       :model_related_tables_xml (when (seq related_tables)
@@ -426,7 +431,7 @@
     :question_portable_entity_id portable_entity_id
     :question_collection_xml (when collection (collection->xml collection))
     :question_visualization_xml (when visualization (visualization->xml visualization))
-    :question_query_json (query-json->llm-block query_json)
+    :question_query_json (repr-data->llm-block query_json)
     :question_fields_xml (when (seq fields)
                            (str/join "\n" (map field->xml fields)))}))
 

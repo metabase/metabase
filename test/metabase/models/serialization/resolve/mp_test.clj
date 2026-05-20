@@ -6,14 +6,20 @@
 
   Phase-2 additions (step 11): `import-fk` for `Card` by entity_id."
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
+
+;; Needed for the measure/segment happy-path tests below — `(mt/id :orders :total)` requires
+;; the test-data dataset to be fully synced (table + fields).
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 ;;; ============================================================
 ;;; Mock fixtures
@@ -350,9 +356,9 @@
 
 (deftest not-implemented-phase1-test
   (let [er (resolve.mp/export-resolver mp-simple)]
-    (testing "export-fk for non-Card models still throws :not-implemented-yet"
+    (testing "export-fk for non-(Card/Measure/Segment) models still throws :not-implemented-yet"
       (try
-        (resolve/export-fk er 1 'Segment)
+        (resolve/export-fk er 1 'NativeQuerySnippet)
         (is false "expected throw")
         (catch clojure.lang.ExceptionInfo e
           (is (= :not-implemented-yet (:error (ex-data e)))))))
@@ -418,10 +424,118 @@
               (is (= :cross-database-card (:error d)))
               (is (= other-db-id (:card-database-id d))))))))))
 
-(deftest import-fk-non-card-models-still-not-implemented-test
-  (testing "models other than Card still throw :not-implemented-yet"
+;;; ============================================================
+;;; import-fk / export-fk - Measure & Segment by entity_id
+;;; ============================================================
+
+(deftest import-fk-measure-happy-path-test
+  (testing "resolves a measure's entity_id to its numeric id when the measure's table is in the same database"
+    (mt/with-temp [:model/Measure {measure-id :id measure-eid :entity_id}
+                   {:name "Test Measure"
+                    :table_id (mt/id :orders)
+                    :definition {:lib/type :mbql/query
+                                 :database (mt/id)
+                                 :stages [{:lib/type :mbql.stage/mbql
+                                           :source-table (mt/id :orders)
+                                           :aggregation [[:count {:lib/uuid (str (random-uuid))}]]}]}}]
+      (let [mp (lib-be/application-database-metadata-provider (mt/id))
+            ir (resolve.mp/import-resolver mp)]
+        (is (= measure-id (resolve/import-fk ir measure-eid 'Measure)))
+        (is (= measure-id (resolve/import-fk ir measure-eid :model/Measure)))))))
+
+(deftest import-fk-segment-happy-path-test
+  (testing "resolves a segment's entity_id to its numeric id when the segment's table is in the same database"
+    (let [mp        (lib-be/application-database-metadata-provider (mt/id))
+          ;; Look up the field id via lib metadata rather than `(mt/id :orders :total)` —
+          ;; mp_test's fixture set syncs tables but not fields eagerly.
+          orders-id (mt/id :orders)
+          total-id  (-> (filter #(= "TOTAL" (:name %))
+                                (lib.metadata.protocols/fields mp orders-id))
+                        first :id)]
+      (mt/with-temp [:model/Segment {segment-id :id segment-eid :entity_id}
+                     {:name "Test Segment"
+                      :table_id orders-id
+                      :definition {:lib/type :mbql/query
+                                   :database (mt/id)
+                                   :stages [{:lib/type :mbql.stage/mbql
+                                             :source-table orders-id
+                                             :filters [[:> {:lib/uuid (str (random-uuid))}
+                                                        [:field {:lib/uuid (str (random-uuid))} total-id]
+                                                        100]]}]}}]
+        (let [ir (resolve.mp/import-resolver mp)]
+          (is (= segment-id (resolve/import-fk ir segment-eid 'Segment)))
+          (is (= segment-id (resolve/import-fk ir segment-eid :model/Segment))))))))
+
+(deftest import-fk-measure-unknown-test
+  (testing "unknown measure entity_id throws :unknown-measure with :agent-error?"
+    (mt/with-empty-h2-app-db!
+      (let [mp (lib-be/application-database-metadata-provider (mt/id))
+            ir (resolve.mp/import-resolver mp)]
+        (try
+          (resolve/import-fk ir "nonexistent_measure_id_x" 'Measure)
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d (ex-data e)]
+              (is (true? (:agent-error? d)))
+              (is (= :unknown-measure (:error d)))
+              (is (= "nonexistent_measure_id_x" (:entity-id d))))))))))
+
+(deftest import-fk-segment-unknown-test
+  (testing "unknown segment entity_id throws :unknown-segment with :agent-error?"
+    (mt/with-empty-h2-app-db!
+      (let [mp (lib-be/application-database-metadata-provider (mt/id))
+            ir (resolve.mp/import-resolver mp)]
+        (try
+          (resolve/import-fk ir "nonexistent_segment_id_x" 'Segment)
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d (ex-data e)]
+              (is (true? (:agent-error? d)))
+              (is (= :unknown-segment (:error d))))))))))
+
+(deftest export-fk-measure-happy-path-test
+  (testing "exports a measure's numeric id back to its portable entity_id"
+    (mt/with-temp [:model/Measure {measure-id :id measure-eid :entity_id}
+                   {:name "Round-trip Measure"
+                    :table_id (mt/id :orders)
+                    :definition {:lib/type :mbql/query
+                                 :database (mt/id)
+                                 :stages [{:lib/type :mbql.stage/mbql
+                                           :source-table (mt/id :orders)
+                                           :aggregation [[:count {:lib/uuid (str (random-uuid))}]]}]}}]
+      (let [mp (lib-be/application-database-metadata-provider (mt/id))
+            er (resolve.mp/export-resolver mp)]
+        (is (= measure-eid (resolve/export-fk er measure-id 'Measure)))
+        (is (= measure-eid (resolve/export-fk er measure-id :model/Measure)))))))
+
+(deftest export-fk-segment-happy-path-test
+  (testing "exports a segment's numeric id back to its portable entity_id"
+    (let [mp        (lib-be/application-database-metadata-provider (mt/id))
+          orders-id (mt/id :orders)
+          total-id  (-> (filter #(= "TOTAL" (:name %))
+                                (lib.metadata.protocols/fields mp orders-id))
+                        first :id)]
+      (mt/with-temp [:model/Segment {segment-id :id segment-eid :entity_id}
+                     {:name "Round-trip Segment"
+                      :table_id orders-id
+                      :definition {:lib/type :mbql/query
+                                   :database (mt/id)
+                                   :stages [{:lib/type :mbql.stage/mbql
+                                             :source-table orders-id
+                                             :filters [[:> {:lib/uuid (str (random-uuid))}
+                                                        [:field {:lib/uuid (str (random-uuid))} total-id]
+                                                        0]]}]}}]
+        (let [er (resolve.mp/export-resolver mp)]
+          (is (= segment-eid (resolve/export-fk er segment-id 'Segment)))
+          (is (= segment-eid (resolve/export-fk er segment-id :model/Segment))))))))
+
+(deftest import-fk-non-supported-models-still-not-implemented-test
+  (testing "models we haven't wired up still throw :not-implemented-yet"
     (let [ir (resolve.mp/import-resolver mp-simple)]
-      (doseq [model ['Segment 'Metric 'NativeQuerySnippet :model/Segment]]
+      ;; Card, Measure, Segment are wired up — see their happy-path tests below.
+      ;; NativeQuerySnippet and Metric (the older standalone-metric concept, distinct from
+      ;; metric-cards) remain unimplemented.
+      (doseq [model ['NativeQuerySnippet 'Metric]]
         (testing (str "model " model)
           (try
             (resolve/import-fk ir "someentityid_some_xyz" model)
@@ -472,11 +586,17 @@
 
 (defn- map-content-store
   "Build an in-memory [[ContentStore]] from `entity-id->card` (a map). Cards must include
-  `:id` and `:database_id` so the resolver can do the cross-DB check."
+  `:id` and `:database_id` so the resolver can do the cross-DB check. Measure / segment
+  lookups always return nil — extend the reify or use a richer fixture when those paths
+  need to be exercised."
   [entity-id->card]
   (reify resolve.mp/ContentStore
     (card-by-entity-id [_ entity-id]
-      (get entity-id->card entity-id))))
+      (get entity-id->card entity-id))
+    (measure-by-entity-id [_ _entity-id] nil)
+    (segment-by-entity-id [_ _entity-id] nil)
+    (measure-by-id [_ _measure-id] nil)
+    (segment-by-id [_ _segment-id] nil)))
 
 (deftest import-fk-card-via-custom-content-store-happy-path-test
   (testing "a custom ContentStore lets the resolver work without an app DB"

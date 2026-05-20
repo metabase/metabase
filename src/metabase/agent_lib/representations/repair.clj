@@ -2182,33 +2182,6 @@
      node)
    form))
 
-;;; ----- E4: sexp-legacy `measure` head ----------------------------------------------
-
-(defn- sexp-legacy-measure-error!
-  "Detect any `[measure, …]` clause head. `measure` was a sexp-pipeline aggregation
-  helper (a metabase-internal concept that wrapped a metric and exposed it as an
-  aggregation under a different identifier). It has no equivalent in repr; metrics are
-  just an aggregation form: `[metric, <opts>, <portable_entity_id>]`. Without this
-  diagnostic the head is silently treated as an unknown clause and the query produces
-  wrong results or fails downstream.
-
-  Carried over from the sexp pipeline's `validate/operators.clj/validate-operator-specific!`
-  `measure` branch."
-  [form]
-  (walk/postwalk
-   (fn [node]
-     (when (and (vector? node)
-                (not (map-entry? node))
-                (>= (count node) 1)
-                (= "measure" (nth node 0)))
-       (throw (ex-info
-               (tru "`measure` is not a clause in repr. It was a sexp-only aggregation helper. Use `[metric, <opts>, <portable_entity_id>]` directly inside a stage''s `aggregation:` block to reference a metric.")
-               {:agent-error? true
-                :error        :sexp-legacy-measure
-                :clause       node})))
-     node)
-   form))
-
 ;;; ----- E5: blank `[expression, opts, ""]` reference --------------------------------
 
 (defn- blank-expression-ref-error!
@@ -2279,7 +2252,6 @@
         (aggregation-entry-not-aggregation-error! stage idx)))
     (case-default-in-opts-error! query)
     (sexp-legacy-op-as-clause-error! query)
-    (sexp-legacy-measure-error! query)
     (blank-expression-ref-error! query)
     (numeric-field-id-error! query))
   query)

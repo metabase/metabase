@@ -45,7 +45,8 @@
    [metabase.models.serialization.resolve :as resolve]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [potemkin.types :as p.types]))
+   [potemkin.types :as p.types]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -348,21 +349,48 @@
   contexts without an application database (e.g. the serdes checker, in-memory tests)."
   (card-by-entity-id [this entity-id]
     "Return the card row for the given portable `entity_id`, or nil. The returned map must at
-    least carry `:id` and `:database_id` so the resolver can perform cross-database checks."))
+    least carry `:id` and `:database_id` so the resolver can perform cross-database checks.")
+  (measure-by-entity-id [this entity-id]
+    "Return the measure row for the given portable `entity_id`, or nil. The returned map must
+    at least carry `:id` and `:table_id` so the resolver can perform cross-database checks via
+    the metadata provider.")
+  (segment-by-entity-id [this entity-id]
+    "Return the segment row for the given portable `entity_id`, or nil. Same contract as
+    `measure-by-entity-id`.")
+  (measure-by-id [this measure-id]
+    "Return the measure row for the given numeric id, or nil. Same contract as
+    `measure-by-entity-id`; used by the export direction (`[:measure {} <id>]` →
+    `[:measure {} \"<entity_id>\"]`). The returned map must carry `:entity_id` (or
+    `:entity-id`) and `:table_id` (or `:table-id`).")
+  (segment-by-id [this segment-id]
+    "Return the segment row for the given numeric id, or nil. Same contract as
+    `measure-by-id`."))
 
 (def app-db-content-store
   "Default [[ContentStore]] backed by the Metabase application database via
   `serdes/lookup-by-id`. Use this in production code paths that already have an app DB; pass a
   different store implementation when running without one (checker, isolated tests).
 
-  Gated on [[resolve/entity-id?]]: `serdes/lookup-by-id` falls through to a full Card-table
-  scan via `find-by-identity-hash` for non-NanoID strings. LLM-authored `source-card:` values
-  are untrusted, so anything that isn't a 21-char NanoID short-circuits to `nil` and the
-  caller surfaces `:unknown-card`."
+  Gated on [[resolve/entity-id?]]: `serdes/lookup-by-id` falls through to a full-table scan via
+  `find-by-identity-hash` for non-NanoID strings. LLM-authored entity-id values are untrusted,
+  so anything that isn't a 21-char NanoID short-circuits to `nil` and the caller surfaces a
+  clear `:unknown-…` agent error."
   (reify ContentStore
     (card-by-entity-id [_ entity-id]
       (when (resolve/entity-id? entity-id)
-        (serdes/lookup-by-id 'Card entity-id)))))
+        (serdes/lookup-by-id 'Card entity-id)))
+    (measure-by-entity-id [_ entity-id]
+      (when (resolve/entity-id? entity-id)
+        (serdes/lookup-by-id 'Measure entity-id)))
+    (segment-by-entity-id [_ entity-id]
+      (when (resolve/entity-id? entity-id)
+        (serdes/lookup-by-id 'Segment entity-id)))
+    (measure-by-id [_ measure-id]
+      (when measure-id
+        (t2/select-one [:model/Measure :id :entity_id :table_id] :id measure-id)))
+    (segment-by-id [_ segment-id]
+      (when segment-id
+        (t2/select-one [:model/Segment :id :entity_id :table_id] :id segment-id)))))
 
 ;;; ============================================================
 ;;; Resolver implementations
@@ -405,6 +433,20 @@
 
 (defn- card-model? [model]
   (or (= model 'Card) (= model :model/Card)))
+
+(defn- measure-model? [model]
+  (or (= model 'Measure) (= model :model/Measure)))
+
+(defn- segment-model? [model]
+  (or (= model 'Segment) (= model :model/Segment)))
+
+(defn- table-belongs-to-current-database?
+  "True when the table with `table-id` is known to the metadata provider — measures and segments
+  are scoped to a table, so this is the cross-database guard for measure/segment refs. Returns
+  the table when found so callers can pull its `:db-id` for error messages."
+  [metadata-provider table-id]
+  (when table-id
+    (lib.metadata.protocols/table metadata-provider table-id)))
 
 (defn- export-card-by-id
   "Resolve a saved question / model / metric by numeric id to its portable `entity_id`.
@@ -480,6 +522,139 @@
       :else
       (:id card))))
 
+(defn- import-measure-by-entity-id
+  "Resolve a measure by its portable `entity_id` to its numeric id.
+
+  Measures are scoped to a table, so the cross-database guard works through the metadata
+  provider: a measure whose `:table_id` is not known to the provider belongs to a different
+  database. Same pattern as [[import-card-by-entity-id]]."
+  [metadata-provider content-store entity-id]
+  (let [measure         (measure-by-entity-id content-store entity-id)
+        measure-table-id (when measure (or (:table-id measure) (:table_id measure)))
+        measure-table    (when measure-table-id
+                           (table-belongs-to-current-database? metadata-provider measure-table-id))
+        current-db-id    (:id (lib.metadata/database metadata-provider))]
+    (cond
+      (nil? measure)
+      (throw (ex-info (tru "No measure found with entity_id {0}. Do not invent or guess entity_ids: call `entity_details` on the table that owns the measure and copy the exact `portable_entity_id` from the `<measure>` tag."
+                           (pr-str entity-id))
+                      {:agent-error? true
+                       :status-code  400
+                       :error        :unknown-measure
+                       :entity-id    entity-id}))
+
+      (nil? measure-table)
+      (throw (ex-info (tru "Measure {0} belongs to a table in a different database than this query (target database id {1}). Cross-database queries are not supported."
+                           (pr-str entity-id) (pr-str current-db-id))
+                      {:agent-error?      true
+                       :status-code       400
+                       :error             :cross-database-measure
+                       :entity-id         entity-id
+                       :measure-table-id  measure-table-id
+                       :expected-database current-db-id}))
+
+      :else
+      (:id measure))))
+
+(defn- export-measure-by-id
+  "Resolve a measure by numeric id to its portable `entity_id`. Validates that the measure's
+  table belongs to the metadata provider's database (cross-database guard)."
+  [metadata-provider content-store measure-id]
+  (when measure-id
+    (let [measure          (measure-by-id content-store measure-id)
+          measure-table-id (when measure (or (:table-id measure) (:table_id measure)))
+          measure-table    (when measure-table-id
+                             (table-belongs-to-current-database? metadata-provider measure-table-id))
+          entity-id        (when measure (or (:entity-id measure) (:entity_id measure)))]
+      (cond
+        (nil? measure)
+        (throw (ex-info (tru "No measure found with id {0}." measure-id)
+                        {:status-code 400
+                         :error       :unknown-measure-id
+                         :measure-id  measure-id}))
+
+        (nil? measure-table)
+        (throw (ex-info (tru "Measure id {0} belongs to a table outside this metadata provider''s database."
+                             measure-id)
+                        {:status-code 400
+                         :error       :cross-database-measure
+                         :measure-id  measure-id}))
+
+        (not (and (string? entity-id) (seq entity-id)))
+        (throw (ex-info (tru "Measure id {0} does not have an entity_id, so it cannot be exported as a portable representation."
+                             measure-id)
+                        {:status-code 400
+                         :error       :missing-measure-entity-id
+                         :measure-id  measure-id}))
+
+        :else
+        entity-id))))
+
+(defn- export-segment-by-id
+  "Resolve a segment by numeric id to its portable `entity_id`. Same pattern as
+  [[export-measure-by-id]]."
+  [metadata-provider content-store segment-id]
+  (when segment-id
+    (let [segment          (segment-by-id content-store segment-id)
+          segment-table-id (when segment (or (:table-id segment) (:table_id segment)))
+          segment-table    (when segment-table-id
+                             (table-belongs-to-current-database? metadata-provider segment-table-id))
+          entity-id        (when segment (or (:entity-id segment) (:entity_id segment)))]
+      (cond
+        (nil? segment)
+        (throw (ex-info (tru "No segment found with id {0}." segment-id)
+                        {:status-code 400
+                         :error       :unknown-segment-id
+                         :segment-id  segment-id}))
+
+        (nil? segment-table)
+        (throw (ex-info (tru "Segment id {0} belongs to a table outside this metadata provider''s database."
+                             segment-id)
+                        {:status-code 400
+                         :error       :cross-database-segment
+                         :segment-id  segment-id}))
+
+        (not (and (string? entity-id) (seq entity-id)))
+        (throw (ex-info (tru "Segment id {0} does not have an entity_id, so it cannot be exported as a portable representation."
+                             segment-id)
+                        {:status-code 400
+                         :error       :missing-segment-entity-id
+                         :segment-id  segment-id}))
+
+        :else
+        entity-id))))
+
+(defn- import-segment-by-entity-id
+  "Resolve a segment by its portable `entity_id` to its numeric id. Same pattern as
+  [[import-measure-by-entity-id]]."
+  [metadata-provider content-store entity-id]
+  (let [segment          (segment-by-entity-id content-store entity-id)
+        segment-table-id (when segment (or (:table-id segment) (:table_id segment)))
+        segment-table    (when segment-table-id
+                           (table-belongs-to-current-database? metadata-provider segment-table-id))
+        current-db-id    (:id (lib.metadata/database metadata-provider))]
+    (cond
+      (nil? segment)
+      (throw (ex-info (tru "No segment found with entity_id {0}. Do not invent or guess entity_ids: call `entity_details` on the table that owns the segment and copy the exact `portable_entity_id` from the `<segment>` tag."
+                           (pr-str entity-id))
+                      {:agent-error? true
+                       :status-code  400
+                       :error        :unknown-segment
+                       :entity-id    entity-id}))
+
+      (nil? segment-table)
+      (throw (ex-info (tru "Segment {0} belongs to a table in a different database than this query (target database id {1}). Cross-database queries are not supported."
+                           (pr-str entity-id) (pr-str current-db-id))
+                      {:agent-error?      true
+                       :status-code       400
+                       :error             :cross-database-segment
+                       :entity-id         entity-id
+                       :segment-table-id  segment-table-id
+                       :expected-database current-db-id}))
+
+      :else
+      (:id segment))))
+
 (defn import-resolver
   "Build a `SerdesImportResolver` backed by `metadata-provider` (warehouse metadata) and
   `content-store` (Metabase content / assets).
@@ -501,9 +676,11 @@
    (reify resolve/SerdesImportResolver
      (import-fk       [_ eid model]
        (cond
-         (nil? eid)          nil
-         (card-model? model) (import-card-by-entity-id metadata-provider content-store eid)
-         :else               (not-implemented! :import-fk)))
+         (nil? eid)             nil
+         (card-model? model)    (import-card-by-entity-id metadata-provider content-store eid)
+         (measure-model? model) (import-measure-by-entity-id metadata-provider content-store eid)
+         (segment-model? model) (import-segment-by-entity-id metadata-provider content-store eid)
+         :else                  (not-implemented! :import-fk)))
      (import-fk-keyed [_ portable model field]
        (cond
          (and (or (= model :model/Database) (= model 'Database))
@@ -527,41 +704,46 @@
     * `export-table-fk`, `export-field-fk` for warehouse metadata.
     * `export-fk-keyed` for `:model/Database` by `:name`.
     * `export-fk` for `Card` / `:model/Card` by `entity_id` (source-card and metric refs).
+    * `export-fk` for `:model/Measure` and `:model/Segment` by `entity_id`.
 
   Other methods throw `:not-implemented-yet`."
-  [metadata-provider]
-  (reify resolve/SerdesExportResolver
-    (export-fk       [_ id model]
-      (cond
-        (nil? id)          nil
-        (card-model? model) (export-card-by-id metadata-provider id)
-        :else              (not-implemented! :export-fk)))
-    (export-fk-keyed [_ id model field]
-      (cond
-        (nil? id) nil
+  ([metadata-provider]
+   (export-resolver metadata-provider app-db-content-store))
+  ([metadata-provider content-store]
+   (reify resolve/SerdesExportResolver
+     (export-fk       [_ id model]
+       (cond
+         (nil? id)              nil
+         (card-model? model)    (export-card-by-id metadata-provider id)
+         (measure-model? model) (export-measure-by-id metadata-provider content-store id)
+         (segment-model? model) (export-segment-by-id metadata-provider content-store id)
+         :else                  (not-implemented! :export-fk)))
+     (export-fk-keyed [_ id model field]
+       (cond
+         (nil? id) nil
 
-        (and (or (= model :model/Database) (= model 'Database))
-             (= field :name))
-        (export-database-name metadata-provider id)
+         (and (or (= model :model/Database) (= model 'Database))
+              (= field :name))
+         (export-database-name metadata-provider id)
 
-        :else
-        (not-implemented! :export-fk-keyed)))
-    (export-user     [_ _id]               (not-implemented! :export-user))
-    (export-table-fk [_ table-id]
-      (when table-id
-        (let [t (lib.metadata.protocols/table metadata-provider table-id)]
-          (when-not t
-            (throw (ex-info (tru "No table with id {0} in metadata provider." table-id)
-                            {:status-code 400
-                             :error       :unknown-table-id
-                             :table-id    table-id})))
-          [(db-name metadata-provider) (:schema t) (:name t)])))
-    (export-field-fk [_ field-id]
-      (when field-id
-        (let [f (lib.metadata.protocols/field metadata-provider field-id)]
-          (when-not f
-            (throw (ex-info (tru "No field with id {0} in metadata provider." field-id)
-                            {:status-code 400
-                             :error       :unknown-field-id
-                             :field-id    field-id})))
-          (export-field-path metadata-provider f))))))
+         :else
+         (not-implemented! :export-fk-keyed)))
+     (export-user     [_ _id]               (not-implemented! :export-user))
+     (export-table-fk [_ table-id]
+       (when table-id
+         (let [t (lib.metadata.protocols/table metadata-provider table-id)]
+           (when-not t
+             (throw (ex-info (tru "No table with id {0} in metadata provider." table-id)
+                             {:status-code 400
+                              :error       :unknown-table-id
+                              :table-id    table-id})))
+           [(db-name metadata-provider) (:schema t) (:name t)])))
+     (export-field-fk [_ field-id]
+       (when field-id
+         (let [f (lib.metadata.protocols/field metadata-provider field-id)]
+           (when-not f
+             (throw (ex-info (tru "No field with id {0} in metadata provider." field-id)
+                             {:status-code 400
+                              :error       :unknown-field-id
+                              :field-id    field-id})))
+           (export-field-path metadata-provider f)))))))

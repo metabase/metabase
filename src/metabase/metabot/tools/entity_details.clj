@@ -19,12 +19,38 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- entity-id-for-measure-or-segment
+  "Look up the portable `entity_id` for a measure or segment by numeric id. The lib metadata
+  view of measures and segments doesn't carry `:entity-id`, so we hit the app DB directly.
+  `model-key` is `:model/Measure` or `:model/Segment`."
+  [model-key id]
+  (when id
+    (t2/select-one-fn :entity_id model-key :id id)))
+
 (defn- convert-measure-or-segment
   "Convert a measure or segment metadata object to the format expected by the API.
-   `definition-key` is `:aggregation` for measures and `:filters` for segments."
+   `definition-key` is `:aggregation` for measures and `:filters` for segments.
+
+   `:definition` on the result is the portable representations form of the relevant inner
+   clause array (a vector of one aggregation clause for measures, a vector of one or more
+   filter clauses for segments). `:portable-entity-id` is the 21-char NanoID the agent can
+   paste verbatim into a `[measure, {}, <pid>]` / `[segment, {}, <pid>]` clause — this is
+   the preferred form when the agent wants to use the measure/segment as-is. The
+   `:definition` array remains useful when the agent wants to compose on top of it (e.g.
+   add an extra filter that the segment doesn't include). See
+   `resources/metabot/prompts/tools/construct_notebook_query.md`."
   [metadata definition-key]
-  (let [definition (:definition metadata)]
+  (let [definition  (:definition metadata)
+        model-key   (case definition-key
+                      :aggregation :model/Measure
+                      :filters     :model/Segment)
+        ;; Lib-metadata maps reject snake_case lookups (snake-hating-map). Try kebab first;
+        ;; fall back to a direct t2 lookup since the lib metadata view doesn't include
+        ;; `:entity-id` for measures/segments (verified via REPL — only cards include it).
+        entity-id   (or (:entity-id metadata)
+                        (entity-id-for-measure-or-segment model-key (:id metadata)))]
     (-> (select-keys metadata [:id :name :display-name :description])
+        (assoc :portable-entity-id entity-id)
         (assoc :definition-description
                (when definition
                  (try
@@ -33,8 +59,13 @@
         (assoc :definition
                (when definition
                  (try
-                   (lib/prepare-for-serialization definition)
-                   (catch Exception _ nil)))))))
+                   (let [mp       (lib-be/application-database-metadata-provider (:database definition))
+                         exported (repr.resolve/export-query mp definition)]
+                     (get-in exported ["stages" 0 (name definition-key)]))
+                   (catch Exception e
+                     (log/warn e "Failed to export measure/segment definition to portable form"
+                               {:id (:id metadata) :key definition-key})
+                     nil)))))))
 
 (defn verified-review?
   "Return true if the most recent ModerationReview for the given item id/type is verified."

@@ -1,13 +1,17 @@
 {% if is_measure %}
-<measure measure_id="{{measure_id}}" name="{{measure_name}}" display_name="{{measure_display_name}}">{% if measure_description %}
+<measure measure_id="{{measure_id}}" name="{{measure_name}}" display_name="{{measure_display_name}}"{% if measure_portable_entity_id %} portable_entity_id="{{measure_portable_entity_id}}"{% endif %}>{% if measure_description %}
 {{measure_description}}{% endif %}{% if measure_definition %}
-<definition>{{measure_definition}}</definition>{% endif %}
+<definition>
+{{measure_definition|safe}}
+</definition>{% endif %}
 </measure>
 {% endif %}
 {% if is_segment %}
-<segment id="{{segment_id}}" name="{{segment_name}}" display_name="{{segment_display_name}}">{% if segment_description %}
+<segment id="{{segment_id}}" name="{{segment_name}}" display_name="{{segment_display_name}}"{% if segment_portable_entity_id %} portable_entity_id="{{segment_portable_entity_id}}"{% endif %}>{% if segment_description %}
 {{segment_description}}{% endif %}{% if segment_definition %}
-<definition>{{segment_definition}}</definition>{% endif %}
+<definition>
+{{segment_definition|safe}}
+</definition>{% endif %}
 </segment>
 {% endif %}
 {% if is_field %}
