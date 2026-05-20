@@ -75,9 +75,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
     mockAuthProviderAndJwtSignIn();
 
     cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests();
   });
 
   it("should be able to display custom question layout when clicking on dashboard cards", () => {

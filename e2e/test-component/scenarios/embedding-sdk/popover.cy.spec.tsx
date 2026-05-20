@@ -25,9 +25,7 @@ const ORDERS_TOTAL_FIELD: ConcreteFieldReference = [
 
 describe("scenarios > embedding-sdk > popovers", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests();
 
     signInAsAdminAndEnableEmbeddingSdk();
 

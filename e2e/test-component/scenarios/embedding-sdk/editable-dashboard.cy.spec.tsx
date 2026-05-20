@@ -67,9 +67,7 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
 
     mockAuthProviderAndJwtSignIn();
     cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests();
   });
 
   it("Should not open sidesheet when clicking last edit info (metabase#48354)", () => {

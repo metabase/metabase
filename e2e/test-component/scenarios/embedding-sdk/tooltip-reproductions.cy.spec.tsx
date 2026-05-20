@@ -45,9 +45,7 @@ describe("scenarios > embedding-sdk > tooltip-reproductions", () => {
     mockAuthProviderAndJwtSignIn();
 
     cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests();
   });
 
   it("should have the correct tooltip position and z-index (metabase#51904, metabase#52732)", () => {

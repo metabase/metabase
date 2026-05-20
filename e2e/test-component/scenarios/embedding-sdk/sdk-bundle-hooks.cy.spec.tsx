@@ -22,10 +22,6 @@ import {
 
 describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
-
     signInAsAdminAndEnableEmbeddingSdk();
 
     cy.signOut();
