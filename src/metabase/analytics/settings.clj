@@ -46,8 +46,8 @@
 
 (defsetting metaplow-tracking-enabled
   (deferred-tru
-   (str "Boolean indicating whether analytics events are being sent to Snowplow. "
-        "True if anonymous tracking is enabled for this instance, and a Snowplow collector is available."))
+   (str "Boolean indicating whether analytics events are being sent to Metaplow. "
+        "True if anonymous tracking is enabled for this instance, and a Metaplow collector URL is set."))
   :type       :boolean
   :getter     (fn [] (boolean (and (anon-tracking-enabled)
                                    (setting/get-value-of-type :string :metaplow-url))))
