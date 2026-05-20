@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -18,6 +19,11 @@ import { getScalarTabLabel } from "../../../utils/tabs";
 
 import S from "./AddDimensionPopover.module.css";
 
+type RenderTriggerArgs = {
+  toggle: () => void;
+  isOpen: boolean;
+};
+
 type AddDimensionPopoverProps = {
   availableDimensions: AvailableDimensionsResult;
   sourceOrder: MetricSourceId[];
@@ -25,6 +31,7 @@ type AddDimensionPopoverProps = {
   hasMultipleSources: boolean;
   canAddScalarTab: boolean;
   onAddTab: (tabInfo: TabInfo) => void;
+  renderTrigger?: (args: RenderTriggerArgs) => ReactElement;
 };
 
 export function AddDimensionPopover({
@@ -34,8 +41,10 @@ export function AddDimensionPopover({
   hasMultipleSources,
   onAddTab,
   canAddScalarTab,
+  renderTrigger,
 }: AddDimensionPopoverProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const toggle = useCallback(() => setIsOpen((open) => !open), []);
 
   const sections = useMemo(
     () =>
@@ -85,14 +94,18 @@ export function AddDimensionPopover({
   return (
     <Popover opened={isOpen} onChange={setIsOpen} position="bottom-start">
       <Popover.Target>
-        <ActionIcon
-          className={S.addButton}
-          ml="xs"
-          aria-label={t`Add dimension tab`}
-          onClick={() => setIsOpen(true)}
-        >
-          <Icon name="add" c="icon-primary" />
-        </ActionIcon>
+        {renderTrigger ? (
+          renderTrigger({ toggle, isOpen })
+        ) : (
+          <ActionIcon
+            className={S.addButton}
+            ml="xs"
+            aria-label={t`Add dimension tab`}
+            onClick={toggle}
+          >
+            <Icon name="add" c="icon-primary" />
+          </ActionIcon>
+        )}
       </Popover.Target>
       <Popover.Dropdown p={0} className={S.dropdown}>
         <AccordionList

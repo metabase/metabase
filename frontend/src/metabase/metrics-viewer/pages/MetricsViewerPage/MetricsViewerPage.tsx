@@ -91,6 +91,8 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
   const hasLoadedDefinitions = Object.values(definitions).some(
     (entry) => entry.definition != null,
   );
+  const hasMultipleSources = sourceOrder.length > 1;
+  const canAddScalarTab = !tabs.some((tab) => tab.type === "scalar");
 
   return (
     <Stack px="3rem" h="100%" gap={0} className={S.root}>
@@ -149,6 +151,11 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
                   series={series}
                   cardIdToEntityIndex={cardIdToEntityIndex}
                   sourceColors={sourceColors}
+                  availableDimensions={availableDimensions}
+                  sourceOrder={sourceOrder}
+                  sourceDataById={sourceDataById}
+                  hasMultipleSources={hasMultipleSources}
+                  canAddScalarTab={canAddScalarTab}
                   onTabUpdate={updateActiveTab}
                   onDimensionChange={(slotIndex, dim) =>
                     changeTabDimension(activeTab.id, slotIndex, dim)
@@ -156,6 +163,7 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
                   onDimensionRemove={(slotIndex) =>
                     removeTabDimension(activeTab.id, slotIndex)
                   }
+                  onAddTab={addAndSelectTab}
                 />
               ) : hasLoadedDefinitions ? (
                 <MetricsViewerNoTabsEmptyState />
