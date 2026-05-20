@@ -1,3 +1,4 @@
+import type { BaseQueryFn } from "@reduxjs/toolkit/query/react";
 import {
   buildCreateApi,
   coreModule,
@@ -10,10 +11,29 @@ import {
   createStoreHook,
 } from "react-redux";
 
+import api from "metabase/api/legacy-client";
 import { metabaseReduxContext } from "metabase/redux";
 
-import { apiQuery } from "./query";
 import { TAG_TYPES } from "./tags";
+
+// Adapts our legacy API client to RTK Query's `BaseQueryFn` contract: pull the
+// abort signal off the query lifecycle context and turn the client's
+// resolve/throw into RTK's `{ data } | { error }` shape. All request-shaping and
+// validation lives in the client itself.
+const baseQuery: BaseQueryFn = async (args, ctx, extraOptions) => {
+  const requestArgs = typeof args === "string" ? { url: args } : args;
+  try {
+    const data = await api.request({
+      method: "GET",
+      ...requestArgs,
+      signal: ctx.signal,
+      ...extraOptions,
+    });
+    return { data };
+  } catch (error) {
+    return { error };
+  }
+};
 
 const createApi = buildCreateApi(
   coreModule(),
@@ -29,7 +49,7 @@ const createApi = buildCreateApi(
 export const Api = createApi({
   reducerPath: "metabase-api",
   tagTypes: TAG_TYPES,
-  baseQuery: apiQuery,
+  baseQuery,
   endpoints: () => ({}),
 });
 
