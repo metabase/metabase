@@ -6,6 +6,9 @@ const swcJestTransform = [
   "@swc/jest",
   {
     jsc: {
+      // Jest runs on Node so we can target a modern engine and skip a bunch
+      // of polyfills/transforms that `env.targets: ["defaults"]` would emit.
+      target: "es2022",
       loose: true,
       parser: {
         syntax: "typescript",
@@ -19,7 +22,7 @@ const swcJestTransform = [
       experimental: {
         plugins: [
           ["swc_mut_cjs_exports", {}],
-          ["@swc/plugin-emotion", { sourceMap: true }],
+          ["@swc/plugin-emotion", { sourceMap: false }],
         ],
       },
     },
@@ -28,9 +31,6 @@ const swcJestTransform = [
     },
     sourceMaps: "inline",
     minify: false,
-    env: {
-      targets: ["defaults"],
-    },
   },
 ];
 
@@ -102,6 +102,7 @@ const baseConfig = {
   ],
   modulePathIgnorePatterns: [
     "<rootDir>/target/cljs_release/.*",
+    "<rootDir>/target/classes/.*",
     "<rootDir>/resources/frontend_client",
     "<rootDir>/.*/__mocks__",
     "<rootDir>/enterprise/frontend/src/custom-viz",
