@@ -13,7 +13,7 @@ export const ParametersCard = () => {
   }
 
   return (
-    <Card p="md">
+    <Card p="md" data-testid="parameters-card">
       <Text size="lg" fw="bold" mb="xs">
         {t`Parameters`}
       </Text>

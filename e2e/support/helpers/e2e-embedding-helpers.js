@@ -313,7 +313,7 @@ export function unpublishChanges(apiPath, callback) {
 }
 
 export function getParametersContainer() {
-  return cy.findByLabelText("Configuring parameters");
+  return cy.findByTestId("parameters-card");
 }
 
 export function setEmbeddingParameter(name, value) {

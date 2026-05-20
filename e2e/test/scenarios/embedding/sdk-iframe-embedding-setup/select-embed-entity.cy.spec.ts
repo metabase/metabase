@@ -99,6 +99,10 @@ describe(suiteTitle, () => {
       getResourceSelectorButton().should("contain", FIRST_DASHBOARD_NAME);
     });
 
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("Guest").click();
+    });
+
     cy.log("selected dashboard should be shown in the preview");
     cy.wait("@dashboard");
     H.getSimpleEmbedIframeContent().within(() => {
