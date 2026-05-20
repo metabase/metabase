@@ -6,7 +6,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]
-   [metabase.warehouses.core :as warehouses]
    [methodical.core :as methodical]))
 
 (derive ::event :metabase/event)
@@ -17,7 +16,7 @@
   [topic {database :object :as _event}]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
-    (when (and database (not (warehouses/disable-auto-sync)))
+    (when database
       ;; just kick off a sync on another thread
       (quick-task/submit-task!
        (fn []

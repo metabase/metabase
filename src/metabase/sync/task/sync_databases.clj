@@ -28,7 +28,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.core :as warehouses]
    [toucan2.core :as t2])
   (:import
    (org.quartz
@@ -108,11 +107,7 @@
   "The sync and analyze database job, as a function that can be used in a test"
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
-    (cond
-      (warehouses/disable-auto-sync)
-      (log/debugf "Skipping scheduled sync for Database %d: disable-auto-sync is on." database-id)
-
-      (= audit/audit-db-id database-id)
+    (if (= audit/audit-db-id database-id)
       (do
         (log/warn "Cannot sync Database: It is the audit db.")
         (when-not config/is-prod?
@@ -120,8 +115,6 @@
                           {:database-id database-id
                            :raw-job-context job-context
                            :job-context (pr-str job-context)}))))
-
-      :else
       (sync-and-analyze-database*! database-id))))
 
 (task/defjob ^{org.quartz.DisallowConcurrentExecution true
@@ -133,17 +126,14 @@
   "The update field values job, as a function that can be used in a test"
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
-    (if (warehouses/disable-auto-sync)
-      (log/debugf "Skipping scheduled field-values update for Database %d: disable-auto-sync is on." database-id)
-      (do
-        (log/infof "Update Field values task triggered for Database %d." database-id)
-        (when-let [database (or (t2/select-one :model/Database :id database-id)
-                                (do
-                                  (unschedule-tasks-for-db! (mi/instance :model/Database {:id database-id}))
-                                  (log/warnf "Cannot update Field values for Database %d: Database does not exist." database-id)))]
-          (if (:is_full_sync database)
-            (sync.field-values/update-field-values! database)
-            (log/infof "Skipping update, automatic Field value updates are disabled for Database %d." database-id)))))))
+    (log/infof "Update Field values task triggered for Database %d." database-id)
+    (when-let [database (or (t2/select-one :model/Database :id database-id)
+                            (do
+                              (unschedule-tasks-for-db! (mi/instance :model/Database {:id database-id}))
+                              (log/warnf "Cannot update Field values for Database %d: Database does not exist." database-id)))]
+      (if (:is_full_sync database)
+        (sync.field-values/update-field-values! database)
+        (log/infof "Skipping update, automatic Field value updates are disabled for Database %d." database-id)))))
 
 (task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Update field values"}

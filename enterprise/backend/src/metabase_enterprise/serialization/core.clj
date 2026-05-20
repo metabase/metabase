@@ -2,9 +2,6 @@
   (:require
    [metabase-enterprise.serialization.dump]
    [metabase-enterprise.serialization.export]
-   ;; Required (without alias) so loading `serialization.core` populates the malli
-   ;; registry — callers can then refer to `::serialization.schema/...` keywords.
-   [metabase-enterprise.serialization.schema]
    [metabase-enterprise.serialization.v2.extract]
    [metabase-enterprise.serialization.v2.ingest]
    [metabase-enterprise.serialization.v2.load]
