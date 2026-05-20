@@ -834,7 +834,7 @@
                                                           :status "updated"
                                                           :status_changed_at (java.time.OffsetDateTime/now)}]
         (with-redefs [source/source-from-settings (constantly mock-source)
-                      impl/async-export!          (fn [_ _ _] (assoc remote-sync :calls (swap! export-calls inc)))]
+                      impl/async-export!          (fn [_ _ _ & _opts] (assoc remote-sync :calls (swap! export-calls inc)))]
           (is (=? {:status "success"
                    :message "Stashing to feature-branch"}
                   (mt/user-http-request :crowberto :post 200 "ee/remote-sync/stash"

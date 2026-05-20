@@ -34,7 +34,7 @@ jobs:
       commit: ${{ steps.compute.outputs.commit }}
       should_release: ${{ steps.compute.outputs.should_release }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             release
