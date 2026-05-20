@@ -10,8 +10,6 @@ import { Box } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
-const DEFAULT_LIMIT = 2000;
-
 interface LimitPopoverProps {
   limit: number | null;
   onChangeLimit: (limit: number | null) => void;
@@ -27,7 +25,7 @@ export const LimitPopover = ({
 }: LimitPopoverProps) => {
   const [isCustom, setIsCustom] = useState(limit != null);
   const [value, setValue] = useState(
-    limit != null ? String(limit) : String(DEFAULT_LIMIT),
+    limit != null ? String(limit) : String(HARD_ROW_LIMIT),
   );
   const inputRef = useRef<HTMLInputElement>(null);
   const didMountRef = useRef(false);
@@ -36,9 +34,7 @@ export const LimitPopover = ({
   const selectedLimit = isCustom && parsedValue > 0 ? parsedValue : null;
 
   // Apply the typed value when the popover is dismissed (unmounted), but only
-  // when it differs from the current limit. This applies the value on close
-  // whether the user clicks inside or outside the popover, and avoids an extra
-  // data table reload when nothing changed.
+  // when it differs from the current limit
   const selectedLimitRef = useRef(selectedLimit);
   selectedLimitRef.current = selectedLimit;
   const limitRef = useRef(limit);
@@ -88,7 +84,7 @@ export const LimitPopover = ({
             onChangeLimit(null);
           } else {
             setIsCustom(true);
-            onChangeLimit(parsedValue > 0 ? parsedValue : DEFAULT_LIMIT);
+            onChangeLimit(parsedValue > 0 ? parsedValue : HARD_ROW_LIMIT);
           }
         }}
       />
