@@ -1666,7 +1666,8 @@ jobs:
               }));
 
             // are all jobs skipped or successful?
-            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success' || job.name == 'be-tests-starburst-ee'))) {
+            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success' ||
+                job.name == 'be-tests-starburst-ee' || job.name == 'be-tests-bigquery-cloud-sdk-ee'))) {
                 console.log("");
                 console.log("        _------.        ");
                 console.log("       /  ,     \_      ");
