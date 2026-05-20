@@ -159,9 +159,13 @@
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------
 
 (defn- text-content
-  "Wrap a value as MCP text content."
+  "Wrap a value as an MCP tool-call result. Map/sequential values are surfaced
+  as `structuredContent` — MCP spec requires this for any tool that declares an
+  `outputSchema`. The `content` array carries a text serialization for clients
+  that don't consume structuredContent."
   [v]
-  {:content [{:type "text" :text (if (string? v) v (json/encode v))}]})
+  (cond-> {:content [{:type "text" :text (if (string? v) v (json/encode v))}]}
+    (or (map? v) (sequential? v)) (assoc :structuredContent v)))
 
 (defn- error-content
   "Wrap an error message as MCP error content."
