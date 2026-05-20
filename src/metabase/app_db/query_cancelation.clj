@@ -11,8 +11,7 @@
   [_db-type ^java.sql.SQLException e]
   (= (.getErrorCode e) org.h2.api.ErrorCode/STATEMENT_WAS_CANCELED))
 
-(defn sql-state
-  "Extract the first non-nil SQL state from a chain of SQL exceptions. Returns nil if none is set."
+(defn- sql-state
   [^java.sql.SQLException e]
   (loop [exception e]
     (if-let [sql-state (.getSQLState exception)]

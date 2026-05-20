@@ -3,6 +3,7 @@
   See the detailed breakdown of the (de)serialization processes in [[metabase.models.serialization]]."
   (:require
    [clojure.string :as str]
+   [diehard.core :as dh]
    [medley.core :as m]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
@@ -27,20 +28,14 @@
   via [[metabase.app-db.transient-error/transient-error?]]."
   [max-retries base-delay-ms f]
   (let [db-type (mdb/db-type)]
-    (loop [attempt 1]
-      (let [result (try
-                     {:ok (f)}
-                     (catch Exception e
-                       (if (and (transient-error/transient-error? db-type e)
-                                (< attempt max-retries))
-                         (do (log/warnf "Transient DB error on attempt %d/%d, retrying: %s"
-                                        attempt max-retries (ex-message e))
-                             (Thread/sleep (long (* base-delay-ms (bit-shift-left 1 (dec attempt)))))
-                             ::retry)
-                         (throw e))))]
-        (if (= result ::retry)
-          (recur (inc attempt))
-          (:ok result))))))
+    (dh/with-retry {:max-retries max-retries
+                    :backoff-ms  [base-delay-ms (* base-delay-ms (bit-shift-left 1 max-retries)) 2.0]
+                    :retry-if    (fn [_result exception]
+                                   (transient-error/transient-error? db-type exception))
+                    :on-retry    (fn [_result exception]
+                                   (log/warnf "Transient DB error, retrying: %s"
+                                              (ex-message exception)))}
+      (f))))
 
 (def ^:private model->circular-dependency-keys
   "Sometimes models have circular dependencies. For example, a card for a Dashboard Question has a `dashboard_id`
