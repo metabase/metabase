@@ -231,6 +231,17 @@
     "search"
     "visualize_query"})
 
+(deftest tools-list-all-tools-declare-required-hints-test
+  (testing "every tool advertises readOnlyHint, destructiveHint, openWorldHint (some MCP clients reject tools that omit them)"
+    (let [[session-id _] (initialize!)
+          response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+          tools          (get-in response [:body :result :tools])]
+      (is (seq tools) "tools/list should return at least one tool")
+      (doseq [{:keys [name annotations]} tools]
+        (is (contains? annotations :readOnlyHint)    (str name " missing :readOnlyHint"))
+        (is (contains? annotations :destructiveHint) (str name " missing :destructiveHint"))
+        (is (contains? annotations :openWorldHint)   (str name " missing :openWorldHint"))))))
+
 (deftest tools-list-test
   (testing "tools/list returns the agent and UI tools"
     (let [[session-id _] (initialize!)
