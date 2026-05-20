@@ -100,7 +100,7 @@ describe("EmbeddingHub", () => {
 
   it("creates and saves an x-ray dashboard when a table is picked", async () => {
     const xrayDashboard = createMockDashboard({
-      id: "/auto/dashboard/table/10" as unknown as number,
+      id: 10,
       name: "A look at Foo Bar Table",
     });
     const savedDashboard = createMockDashboard({
