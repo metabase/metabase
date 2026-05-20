@@ -378,7 +378,7 @@ export function MetabotSetupInner({
             data={providerOptions}
             value={provider}
             onChange={setProvider}
-            disabled={isEnvSetting || isLoading}
+            disabled={isEnvSetting || isMutating}
             renderOption={({ option }) => (
               <Group
                 gap="xs"
