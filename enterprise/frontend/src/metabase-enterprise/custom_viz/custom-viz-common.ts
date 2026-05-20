@@ -28,7 +28,12 @@ export function applyDefaultVisualizationProps(
   },
 ) {
   Object.assign(Component, {
-    settings: sanitizePluginSettings(vizDef.settings, settings.pluginId) ?? {},
+    settings:
+      sanitizePluginSettings(
+        vizDef.settings,
+        vizDef.mount,
+        settings.pluginId,
+      ) ?? {},
     checkRenderable: vizDef.checkRenderable,
     noHeader: vizDef.noHeader ?? false,
     canSavePng: vizDef.canSavePng ?? false,

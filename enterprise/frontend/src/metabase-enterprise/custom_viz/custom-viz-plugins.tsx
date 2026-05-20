@@ -327,7 +327,11 @@ export async function loadCustomVizPlugin(
     // Build a Metabase-compatible identifier, prefixed to avoid collisions
     const identifier = getCustomPluginIdentifier(plugin);
 
-    const Wrapper = createCustomVizWrapper(vizDef.mount, plugin.id);
+    const Wrapper = createCustomVizWrapper(
+      vizDef.mount,
+      vizDef.VisualizationComponent,
+      plugin.id,
+    );
 
     // Attach the required static properties onto the component function
     const Component = ExplicitSize<VisualizationProps>({ wrapped: true })(
@@ -407,6 +411,7 @@ function isValidVizDefinition(value: unknown): value is GenericVizDefinition {
 
 function createCustomVizWrapper(
   mount: GenericVizMount,
+  VisualizationComponent: GenericVizDefinition["VisualizationComponent"],
   pluginId: CustomVizPluginId,
 ) {
   return function CustomVizWrapper({
@@ -440,7 +445,11 @@ function createCustomVizWrapper(
         return;
       }
       if (!handleRef.current) {
-        handleRef.current = mount(containerRef.current, pluginProps);
+        handleRef.current = mount(
+          VisualizationComponent,
+          containerRef.current,
+          pluginProps,
+        );
       } else {
         handleRef.current.update(pluginProps);
       }

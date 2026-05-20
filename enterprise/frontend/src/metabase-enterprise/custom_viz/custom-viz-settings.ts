@@ -1,22 +1,25 @@
 import type {
   CustomVisualization,
+  CustomVisualizationMount,
   CustomVisualizationSettingDefinition,
-  WidgetMount,
 } from "custom-viz";
+import type { ComponentType } from "react";
 
 import type { CustomVizPluginId } from "metabase-types/api";
 
 import { stampPluginWidget } from "./widget-mount";
 
 /**
- * Walk a plugin's `vizDef.settings` and replace every function-shaped
- * widget with a host-trusted `WidgetMount` allocated by the host. Built-in
- * `WidgetName` strings pass through unchanged.
+ * Walk a plugin's `vizDef.settings` and rewrite every Component-shaped
+ * `widget` into a host-trusted `WidgetMount` whose body delegates to the
+ * plugin's shared `mount` function (i.e., its sandbox-side `createRoot`
+ * render path). Built-in `WidgetName` strings pass through unchanged.
  */
 export function sanitizePluginSettings(
   settings:
     | CustomVisualization<Record<string, unknown>>["settings"]
     | undefined,
+  mount: CustomVisualizationMount,
   pluginId: CustomVizPluginId,
 ): CustomVisualization<Record<string, unknown>>["settings"] {
   if (!settings) {
@@ -33,10 +36,11 @@ export function sanitizePluginSettings(
     }
 
     if ("widget" in value && typeof value.widget === "function") {
+      const Widget = value.widget as ComponentType<Record<string, unknown>>;
       sanitizedSettings[settingId] = {
         ...value,
         widget: stampPluginWidget(
-          value.widget as unknown as WidgetMount,
+          (container, initialProps) => mount(Widget, container, initialProps),
           pluginId,
         ),
       } as unknown as CustomVisualizationSettingDefinition<

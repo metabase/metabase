@@ -41,31 +41,36 @@ class PluginErrorBoundary extends Component<
 export function defineConfig<TSettings extends Record<string, unknown>>(
   opts: CustomVisualizationOpts<TSettings>,
 ): CustomVisualization<TSettings> {
-  const { VisualizationComponent, settings, ...rest } = opts;
-
   return {
-    ...rest,
-    settings,
-    VisualizationComponent,
-    mount(
+    ...opts,
+    mount<P extends object>(
+      Component: ComponentType<P>,
       container: Element,
-      initial: CustomVisualizationProps<TSettings>,
-    ): CustomVisualizationMountHandle<CustomVisualizationProps<TSettings>> {
+      initialProps: P,
+    ): CustomVisualizationMountHandle<P> {
       const root = createRoot(container);
+      let lastProps = initialProps;
 
-      const render = (props: CustomVisualizationProps<TSettings>) => {
+      const render = () => {
         root.render(
-          <PluginErrorBoundary label="visualization">
-            <VisualizationComponent {...props} />
+          <PluginErrorBoundary
+            label={Component.displayName ?? Component.name ?? "plugin"}
+          >
+            <Component {...lastProps} />
           </PluginErrorBoundary>,
         );
       };
 
-      render(initial);
+      render();
 
       return {
-        update: render,
-        unmount: () => root.unmount(),
+        update(props: P) {
+          lastProps = props;
+          render();
+        },
+        unmount() {
+          root.unmount();
+        },
       };
     },
   };

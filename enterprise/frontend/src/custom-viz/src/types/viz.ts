@@ -82,11 +82,12 @@ export type CustomVisualization<TSettings extends Record<string, unknown>> = {
   ) => void | never;
 
   /**
-   * Mount the visualization into the container. Called once per visualization
-   * instance. Return a handle whose update() receives new props and unmount()
-   * tears down the React tree.
+   * Mount a plugin-supplied React component into the host-provided
+   * container. The host uses this to render both the visualization itself
+   * and per-setting widgets; in all cases the render uses the plugin's
+   * React instance (because `mount` is constructed inside the sandbox).
    */
-  mount: CustomVisualizationMount<TSettings>;
+  mount: CustomVisualizationMount;
 
   /**
    * Static visualization renderer (server-side PNG/PDF path, not sandboxed).
@@ -137,15 +138,15 @@ export type CustomVisualizationMountHandle<TProps> = {
 };
 
 /**
- * Mount adapter signature. Plugin owns its React tree and renders into
- * the host-provided container. All DOM writes originate sandbox-side.
+ * Generic mount adapter. The plugin owns its React tree and renders the
+ * supplied `Component` into the host-provided container using the
+ * plugin's React. Reused for the visualization and per-setting widgets.
  */
-export type CustomVisualizationMount<
-  TSettings extends Record<string, unknown>,
-> = (
+export type CustomVisualizationMount = <P extends object>(
+  Component: ComponentType<P>,
   container: Element,
-  initialProps: CustomVisualizationProps<TSettings>,
-) => CustomVisualizationMountHandle<CustomVisualizationProps<TSettings>>;
+  initialProps: P,
+) => CustomVisualizationMountHandle<P>;
 
 export type ClickObject<TSettings extends Record<string, unknown>> = {
   /** The raw value of the clicked cell. */
