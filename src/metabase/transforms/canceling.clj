@@ -119,6 +119,8 @@
       ;; in metrics rather than only in logs.
       (let [outcome (try
                       (transform-run/cancel-old-canceling-runs! 2 :minute)
+                      ;; "timeout" = the *cancelation attempt* exceeded 2 min and we had to force-finish it.
+                      ;; Distinct from transform-execution timeout (`timeout-run!`), which never reaches this counter.
                       "timeout"
                       (catch Throwable t
                         (log/error t "Error force-canceling stale transform runs.")
