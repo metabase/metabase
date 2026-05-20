@@ -509,7 +509,7 @@ const AIProviderSetup = ({
   const connectHandler =
     !isCurrentConfigured || hasDirtyApiKey ? onConnect : null;
 
-  const { isLoading, isMutating } = useMetabotSetupContext(connectHandler);
+  const { isMutating } = useMetabotSetupContext(connectHandler);
 
   const { details: providerApiKeyDetails } = useAdminSettings([
     "llm-anthropic-api-key",
@@ -596,7 +596,7 @@ const AIProviderSetup = ({
         value={displayApiKeyValue}
         error={apiKeyError}
         onChange={handleApiKeyChange}
-        disabled={isLoading || isEnvSetting || !!apiKeyEnvSettingName}
+        disabled={isMutating || isEnvSetting || !!apiKeyEnvSettingName}
         w="100%"
       />
 
