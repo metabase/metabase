@@ -6,8 +6,6 @@ import type {
   CustomVisualizationSettingDefinition,
   ClickObject as CustomVizClickObject,
   HoverObject as CustomVizHoverObject,
-  WidgetMount,
-  Widgets,
 } from "custom-viz";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useUnmount } from "react-use";
@@ -40,7 +38,6 @@ import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 import { trackCustomVizSelected } from "./analytics";
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
-import { stampPluginWidget } from "./widget-mount";
 
 // Track which plugins have already been loaded to avoid re-execution.
 // Maps plugin id → { identifier, hash } so we can detect when a re-uploaded
@@ -327,9 +324,6 @@ export async function loadCustomVizPlugin(
       );
     }
 
-    assertValidSettingWidgets(vizDef.settings);
-    vizDef.settings = wrapPluginSettingWidgets(vizDef.settings, plugin.id);
-
     // Build a Metabase-compatible identifier, prefixed to avoid collisions
     const identifier = getCustomPluginIdentifier(plugin);
 
@@ -409,89 +403,6 @@ type GenericVizMountHandle =
 
 function isValidVizDefinition(value: unknown): value is GenericVizDefinition {
   return isObject(value) && typeof value.mount === "function";
-}
-
-const ALLOWED_WIDGET_NAMES: Array<keyof Widgets> = [
-  "input",
-  "number",
-  "radio",
-  "select",
-  "toggle",
-  "segmentedControl",
-  "field",
-  "fields",
-  "color",
-  "multiselect",
-] as const;
-
-function assertValidSettingWidgets(
-  settings: GenericVizDefinition["settings"] | undefined,
-): void {
-  if (!settings) {
-    return;
-  }
-  for (const [settingId, def] of Object.entries(settings)) {
-    const widget = (def as { widget?: unknown }).widget;
-    if (typeof widget === "string") {
-      if (!ALLOWED_WIDGET_NAMES.some((w) => w === widget)) {
-        throw new Error(
-          t`Setting "${settingId}" has unsupported widget "${widget}". Use one of: ${ALLOWED_WIDGET_NAMES.join(", ")}, or a custom React component.`,
-        );
-      }
-      continue;
-    }
-    if (typeof widget === "function") {
-      // Custom React component / mount handle from the plugin. Wrapped at
-      // the membrane boundary by `wrapPluginSettingWidgets` below.
-      continue;
-    }
-    throw new Error(
-      t`Setting "${settingId}" has unsupported widget. Use one of: ${ALLOWED_WIDGET_NAMES.join(", ")}, or a custom React component.`,
-    );
-  }
-}
-
-/**
- * Walk a plugin's `vizDef.settings` and replace every function-shaped
- * widget with a host-trusted `WidgetMount` allocated by the host. Built-in
- * `WidgetName` strings pass through unchanged. After this step, the host
- * can rely on `isTrustedWidgetMount` (host-realm symbol) to distinguish mount
- * handles from React components without trusting any plugin-controlled
- * brand.
- *
- * Co-located with `assertValidSettingWidgets` because both run at the
- * same boundary: right after the plugin factory returns its `vizDef`,
- * before any host code stores it in the visualization registry.
- */
-function wrapPluginSettingWidgets(
-  settings: GenericVizDefinition["settings"] | undefined,
-  pluginId: CustomVizPluginId,
-): GenericVizDefinition["settings"] {
-  if (!settings) {
-    return settings;
-  }
-  const out: Record<string, unknown> = {};
-  for (const [settingId, def] of Object.entries(
-    settings as Record<string, unknown>,
-  )) {
-    if (!def || typeof def !== "object") {
-      out[settingId] = def;
-      continue;
-    }
-    const widget = (def as { widget?: unknown }).widget;
-    if (typeof widget === "function") {
-      out[settingId] = {
-        ...(def as object),
-        widget: stampPluginWidget(widget as WidgetMount, pluginId),
-      };
-    } else {
-      // String widget names and any other shape: spread to a fresh
-      // host-allocated object so the resulting `settings` map is wholly
-      // host-controlled at the top level.
-      out[settingId] = { ...(def as object) };
-    }
-  }
-  return out as GenericVizDefinition["settings"];
 }
 
 function createCustomVizWrapper(
