@@ -2930,3 +2930,14 @@
                                                   :access_granted false
                                                   :created_at     :%now
                                                   :updated_at     :%now}))))))))
+
+(deftest dependency-status-segment-handles-missing-column-migration-test
+  (testing "Migration v60.2026-04-02T00:00:09 MARK_RANs when segment.dependency_analysis_version is missing (issue #74443)"
+    (impl/test-migrations ["v60.2026-04-02T00:00:09" "v60.2026-04-02T00:00:09"] [migrate!]
+      ;; Simulate the broken partial-migration state: source column gone before the data-migration runs.
+      (t2/query "ALTER TABLE segment DROP COLUMN dependency_analysis_version")
+      (migrate!)
+      (testing "T00:00:09 is recorded as MARK_RAN"
+        (is (= "MARK_RAN"
+               (:exectype (liquibase/changelog-by-id mdb.connection/*application-db*
+                                                     "v60.2026-04-02T00:00:09"))))))))
