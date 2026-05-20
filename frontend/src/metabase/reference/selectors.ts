@@ -58,7 +58,7 @@ export const getSegmentId = (
 export const getSegment = createSelector(
   [getSegmentId, getSegments],
   (segmentId, segments): StubbedSegment =>
-    segments[segmentId] || { id: segmentId },
+    segments?.[segmentId] || { id: segmentId },
 );
 
 export const getDatabaseId = (
@@ -69,7 +69,7 @@ export const getDatabaseId = (
 export const getDatabase = createSelector(
   [getDatabaseId, getDatabases],
   (databaseId, databases): StubbedDatabase =>
-    databases[databaseId] || { id: databaseId },
+    databases?.[databaseId] || { id: databaseId },
 );
 
 export const getTableId = (
@@ -87,13 +87,15 @@ export const getTablesByDatabase = createSelector(
 export const getTableBySegment = createSelector(
   [getSegment, getTables],
   (segment, tables): StubbedTable =>
-    segment.table_id ? tables[segment.table_id] : { id: 0 },
+    segment.table_id && tables?.[segment.table_id]
+      ? tables[segment.table_id]
+      : { id: 0 },
 );
 export const getTable = createSelector(
   [getTableId, getTables, getSegmentId, getTableBySegment],
   (tableId, tables, segmentId, tableBySegment): StubbedTable =>
     tableId
-      ? tables[tableId] || { id: tableId }
+      ? tables?.[tableId] || { id: tableId }
       : segmentId
         ? tableBySegment
         : { id: 0 },
@@ -119,7 +121,7 @@ export const getFieldsBySegment = createSelector(
 );
 export const getField = createSelector(
   [getFieldId, getFields],
-  (fieldId, fields): StubbedField => fields[fieldId] || { id: fieldId },
+  (fieldId, fields): StubbedField => fields?.[fieldId] || { id: fieldId },
 );
 export const getFieldBySegment = createSelector(
   [getFieldId, getFieldsBySegment],
