@@ -189,7 +189,7 @@ describe("QuestionRowCount", () => {
           expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
         });
 
-        it("applies the limit when the input is blurred (metabase#71276)", async () => {
+        it("applies the typed value when the input loses focus (metabase#71276)", async () => {
           const { rowCount } = await setup({ question: getCard() });
 
           await userEvent.click(rowCount);
@@ -198,7 +198,28 @@ describe("QuestionRowCount", () => {
           );
           const input = await screen.findByPlaceholderText("Pick a limit");
           fireEvent.change(input, { target: { value: "25" } });
+          // blur without leaving the popover (e.g. clicking inside it)
           fireEvent.blur(input);
+
+          await waitFor(() => {
+            expect(rowCount).toHaveTextContent("Show 25 rows");
+          });
+          // the popover stays open
+          expect(screen.getByRole("dialog")).toBeInTheDocument();
+        });
+
+        it("applies the typed value when the popover is dismissed (metabase#71276)", async () => {
+          const { rowCount } = await setup({ question: getCard() });
+
+          await userEvent.click(rowCount);
+          await userEvent.click(
+            await screen.findByRole("radio", { name: /Set custom limit/i }),
+          );
+          const input = await screen.findByPlaceholderText("Pick a limit");
+          fireEvent.change(input, { target: { value: "25" } });
+
+          // dismiss the popover without pressing Enter
+          await userEvent.click(rowCount);
 
           await waitFor(() => {
             expect(rowCount).toHaveTextContent("Show 25 rows");

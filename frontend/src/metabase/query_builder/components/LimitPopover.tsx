@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ChangeEvent, FocusEvent, KeyboardEvent } from "react";
+import type { ChangeEvent, KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
@@ -29,9 +29,30 @@ export const LimitPopover = ({
   const [value, setValue] = useState(
     limit != null ? String(limit) : String(DEFAULT_LIMIT),
   );
-  const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const didMountRef = useRef(false);
+
+  const parsedValue = parseInt(value, 10);
+  const selectedLimit = isCustom && parsedValue > 0 ? parsedValue : null;
+
+  // Apply the typed value when the popover is dismissed (unmounted), but only
+  // when it differs from the current limit. This applies the value on close
+  // whether the user clicks inside or outside the popover, and avoids an extra
+  // data table reload when nothing changed.
+  const selectedLimitRef = useRef(selectedLimit);
+  selectedLimitRef.current = selectedLimit;
+  const limitRef = useRef(limit);
+  limitRef.current = limit;
+  const onChangeLimitRef = useRef(onChangeLimit);
+  onChangeLimitRef.current = onChangeLimit;
+
+  useEffect(() => {
+    return () => {
+      if (selectedLimitRef.current !== limitRef.current) {
+        onChangeLimitRef.current(selectedLimitRef.current);
+      }
+    };
+  }, []);
 
   // Focus and select the input only when the user actively switches to the
   // custom option, not when the popover opens with a custom limit already set.
@@ -47,16 +68,13 @@ export const LimitPopover = ({
   }, [isCustom]);
 
   const applyLimit = () => {
-    const parsed = parseInt(value, 10);
-    onChangeLimit(parsed > 0 ? parsed : null);
-    onClose();
+    if (selectedLimit !== limit) {
+      onChangeLimit(selectedLimit);
+    }
   };
 
   return (
-    <Box
-      ref={containerRef}
-      className={cx(className, CS.textBold, CS.textMedium)}
-    >
+    <Box className={cx(className, CS.textBold, CS.textMedium)}>
       <Radio
         vertical
         value={isCustom ? "custom" : "maximum"}
@@ -76,8 +94,7 @@ export const LimitPopover = ({
             onChangeLimit(null);
           } else {
             setIsCustom(true);
-            const parsed = parseInt(value, 10);
-            onChangeLimit(parsed > 0 ? parsed : DEFAULT_LIMIT);
+            onChangeLimit(parsedValue > 0 ? parsedValue : DEFAULT_LIMIT);
           }
         }}
       />
@@ -91,19 +108,13 @@ export const LimitPopover = ({
             onChange={(e: ChangeEvent<HTMLInputElement>) =>
               setValue(e.target.value)
             }
-            onBlur={(e: FocusEvent<HTMLInputElement>) => {
-              const nextFocused = e.relatedTarget as Node | null;
-              if (containerRef.current?.contains(nextFocused)) {
-                return;
-              }
-              applyLimit();
-            }}
+            onBlur={applyLimit}
             onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
               if (e.nativeEvent.isComposing) {
                 return;
               }
               if (e.key === "Enter") {
-                applyLimit();
+                onClose();
               }
             }}
           />
