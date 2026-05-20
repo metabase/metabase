@@ -15,36 +15,38 @@ export function getModifiedGroupsPermissionsGraphParts(
   originalDataPermissions: GroupsPermissions,
   allGroupIds: string[],
   externallyModifiedGroupIds: string[],
-) {
+): GroupsPermissions {
   const externallyModifiedGroupIdsSet = new Set(externallyModifiedGroupIds);
-  const dataPermissionsModifiedGroups = Object.fromEntries(
-    allGroupIds
-      .map((groupId) => {
-        const groupPermissions = dataPermissions[groupId];
+  const dataPermissionsModifiedGroups: GroupsPermissions = {};
 
-        if (externallyModifiedGroupIdsSet.has(groupId)) {
-          return [groupId, groupPermissions];
-        }
+  for (const groupId of allGroupIds) {
+    const groupPermissions = dataPermissions[groupId];
 
-        const modifiedDatabasePermissions = Object.fromEntries(
-          Object.entries(groupPermissions ?? {}).filter(
-            ([databaseIdString, value]) => {
-              const databaseId = Number(databaseIdString);
+    if (externallyModifiedGroupIdsSet.has(groupId)) {
+      if (!_.isEmpty(groupPermissions)) {
+        dataPermissionsModifiedGroups[groupId] = groupPermissions;
+      }
 
-              return !_.isEqual(
-                value,
-                originalDataPermissions[groupId]?.[databaseId],
-              );
-            },
-          ),
-        );
+      continue;
+    }
 
-        return [groupId, modifiedDatabasePermissions];
-      })
-      .filter(([_groupId, groupPermissions]) => {
-        return !_.isEmpty(groupPermissions);
-      }),
-  );
+    const originalGroupPermissions = originalDataPermissions[groupId];
+    const modifiedDatabasePermissions: GroupsPermissions[string] = {};
+
+    for (const [databaseIdString, value] of Object.entries(
+      groupPermissions ?? {},
+    )) {
+      const databaseId = Number(databaseIdString);
+
+      if (!_.isEqual(value, originalGroupPermissions?.[databaseId])) {
+        modifiedDatabasePermissions[databaseId] = value;
+      }
+    }
+
+    if (!_.isEmpty(modifiedDatabasePermissions)) {
+      dataPermissionsModifiedGroups[groupId] = modifiedDatabasePermissions;
+    }
+  }
 
   return dataPermissionsModifiedGroups;
 }
