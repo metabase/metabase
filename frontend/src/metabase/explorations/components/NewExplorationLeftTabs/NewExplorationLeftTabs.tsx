@@ -1,8 +1,10 @@
 import cx from "classnames";
-import { useState } from "react";
 import { t } from "ttag";
 
-import type { ExplorationSelection } from "metabase/explorations/hooks";
+import type {
+  ExplorationNavigation,
+  ExplorationSelection,
+} from "metabase/explorations/hooks";
 import { Tabs } from "metabase/ui";
 
 import { NewExplorationChat } from "../NewExplorationChat";
@@ -10,29 +12,29 @@ import { NewExplorationChat } from "../NewExplorationChat";
 import { NewExplorationBrowse } from "./NewExplorationBrowse";
 import S from "./NewExplorationLeftTabs.module.css";
 
-type LeftTab = "chat" | "browse";
-
 export interface NewExplorationLeftTabsProps {
   selection: ExplorationSelection;
+  navigation: ExplorationNavigation;
 }
 
 /**
  * Left half of `/question/research`. Wraps the existing chat editor +
  * the new manual-picker (Browse) into a single two-tab container so
  * users can switch between agent-driven and manual flows without losing
- * the right-panel pills (both feed the same `selection` state).
+ * the right-panel pills (both feed the same `selection` state). The
+ * outer tab is controlled by `navigation` so the right pane's "+"
+ * buttons can switch to Browse.
  */
 export function NewExplorationLeftTabs({
   selection,
+  navigation,
 }: NewExplorationLeftTabsProps) {
-  const [activeTab, setActiveTab] = useState<LeftTab>("chat");
-
   return (
     <Tabs
-      value={activeTab}
+      value={navigation.leftTab}
       onChange={(value) => {
         if (value === "chat" || value === "browse") {
-          setActiveTab(value);
+          navigation.setLeftTab(value);
         }
       }}
       classNames={{ root: S.tabsRoot }}
@@ -50,7 +52,7 @@ export function NewExplorationLeftTabs({
         />
       </Tabs.Panel>
       <Tabs.Panel value="browse" className={S.tabPanel}>
-        <NewExplorationBrowse selection={selection} />
+        <NewExplorationBrowse selection={selection} navigation={navigation} />
       </Tabs.Panel>
     </Tabs>
   );

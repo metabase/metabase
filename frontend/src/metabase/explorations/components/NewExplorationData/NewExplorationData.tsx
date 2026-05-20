@@ -1,11 +1,13 @@
-import type { MouseEvent } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCreateExplorationMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
-import type { ExplorationSelection } from "metabase/explorations/hooks";
+import type {
+  ExplorationNavigation,
+  ExplorationSelection,
+} from "metabase/explorations/hooks";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useDispatch } from "metabase/redux";
@@ -21,6 +23,7 @@ import {
   ScrollArea,
   Stack,
   Text,
+  Title,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
@@ -31,8 +34,6 @@ import type {
 
 import { EXPLORATIONS_AGENT_ID } from "../NewExplorationChat/NewExplorationChat";
 
-import { AddMetricsModal } from "./AddMetricsModal";
-import { AddTimelinesModal } from "./AddTimelinesModal";
 import S from "./NewExplorationData.module.css";
 import {
   type DimensionPillGroup,
@@ -41,14 +42,8 @@ import {
 } from "./utils";
 
 export interface NewExplorationDataProps {
-  /**
-   * Single source of truth for the exploration's draft selection.
-   * Lives in `useExplorationSelection()` on the page, and is also
-   * threaded into the Browse tab and the agent chat — so toggles from
-   * any entry point update the same arrays this panel renders pills
-   * from.
-   */
   selection: ExplorationSelection;
+  navigation: ExplorationNavigation;
 }
 
 function buildCreateExplorationRequest(
@@ -76,7 +71,10 @@ function buildCreateExplorationRequest(
   };
 }
 
-export function NewExplorationData({ selection }: NewExplorationDataProps) {
+export function NewExplorationData({
+  selection,
+  navigation,
+}: NewExplorationDataProps) {
   const {
     metrics,
     setMetrics,
@@ -88,9 +86,6 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
   } = selection;
   const dispatch = useDispatch();
   const [sendToast] = useToast();
-
-  const [isAddMetricsModalOpen, setIsAddMetricsModalOpen] = useState(false);
-  const [isAddTimelinesModalOpen, setIsAddTimelinesModalOpen] = useState(false);
 
   const [createExploration, { isLoading: isStarting }] =
     useCreateExplorationMutation();
@@ -138,18 +133,6 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
     [dimensions],
   );
 
-  const hasMetricsOrDimensions = metrics.length > 0 || dimensions.length > 0;
-  const hasTimelines = timelines.length > 0;
-
-  const handleOpenMetricsModal = useCallback((event?: MouseEvent) => {
-    event?.stopPropagation();
-    setIsAddMetricsModalOpen(true);
-  }, []);
-  const handleOpenTimelinesModal = useCallback((event?: MouseEvent) => {
-    event?.stopPropagation();
-    setIsAddTimelinesModalOpen(true);
-  }, []);
-
   const handleRemoveMetric = useCallback(
     (id: number | string) => {
       const { metrics: nextMetrics, dimensions: nextDimensions } =
@@ -187,135 +170,138 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
   );
 
   return (
-    <>
-      <Stack
-        className={S.container}
-        gap={0}
-        bg="background-secondary"
-        flex={0.68}
-        maw="37.5rem"
-        miw="28.75rem"
-        h="100%"
-      >
-        <Stack gap={0} flex={1} mih={0} style={{ overflowY: "auto" }}>
-          <SectionHeader
-            title={t`Data`}
-            ariaLabel={t`Add metrics and dimensions`}
-            onAdd={handleOpenMetricsModal}
-          />
-          {hasMetricsOrDimensions ? (
-            <Accordion
-              multiple
-              defaultValue={["metrics", "dimensions"]}
-              chevronPosition="left"
-              classNames={{
-                root: S.accordionRoot,
-                item: S.accordionItem,
-                control: S.accordionControl,
-                content: S.accordionContent,
-                panel: S.accordionPanel,
-                label: S.accordionLabel,
-                chevron: S.accordionChevron,
-              }}
-            >
-              <Accordion.Item value="metrics">
-                <Accordion.Control>{t`Metrics`}</Accordion.Control>
-                <Accordion.Panel>
-                  {metrics.length > 0 ? (
-                    <PillList items={metrics} onRemove={handleRemoveMetric} />
-                  ) : (
-                    <Text size="md" c="text-secondary">
-                      {t`No metrics yet. Click + to add some.`}
-                    </Text>
-                  )}
-                </Accordion.Panel>
-              </Accordion.Item>
-              <Accordion.Item value="dimensions">
-                <Accordion.Control>{t`Dimensions`}</Accordion.Control>
-                <Accordion.Panel>
-                  {dimensionCategories.length > 0 ? (
-                    <Box pl="0.25rem">
-                      <DimensionCategoryList
-                        categories={dimensionCategories}
-                        onRemove={handleRemoveDimensionPill}
-                      />
-                    </Box>
-                  ) : (
-                    <Text size="md" c="text-secondary">
-                      {t`No dimensions yet. Click + to add some.`}
-                    </Text>
-                  )}
-                </Accordion.Panel>
-              </Accordion.Item>
-            </Accordion>
-          ) : (
-            <Box px="xl" pb="md" flex={1}>
-              <Text size="md" c="text-secondary" lh="1.25rem" w="18rem">
-                {t`Add metrics and dimensions you'd like to see specifically or have the agent help you assemble.`}
+    <Stack
+      className={S.container}
+      data-testid="research-content"
+      gap="md"
+      bg="background-secondary"
+      flex={0.68}
+      p="md"
+      maw="37.5rem"
+      miw="28.75rem"
+      h="100%"
+    >
+      <Box flex={1} mih={0} style={{ overflowY: "auto" }}>
+        <Title order={4} fs="1rem" lh={1.5} p="md">{t`Research content`}</Title>
+        <Accordion
+          multiple
+          defaultValue={["metrics", "dimensions", "timelines"]}
+          chevronPosition="left"
+          classNames={{
+            root: S.accordionRoot,
+            item: S.accordionItem,
+            control: S.accordionControl,
+            content: S.accordionContent,
+            panel: S.accordionPanel,
+            label: S.accordionLabel,
+            chevron: S.accordionChevron,
+          }}
+        >
+          <SectionItem
+            value="metrics"
+            title={t`Metrics`}
+            addLabel={t`Add metrics`}
+            onAdd={() => navigation.openBrowse("metrics")}
+          >
+            {metrics.length > 0 ? (
+              <PillList items={metrics} onRemove={handleRemoveMetric} />
+            ) : (
+              <Text size="md" c="text-secondary">
+                {t`Add metrics you’re interested in or ask the agent to help find metrics relevant to your question.`}
               </Text>
-            </Box>
-          )}
+            )}
+          </SectionItem>
 
-          <SectionHeader
+          <SectionItem
+            value="dimensions"
+            title={t`Dimensions`}
+            addLabel={t`Add dimensions`}
+            onAdd={() => navigation.openBrowse("dimensions")}
+          >
+            {dimensionCategories.length > 0 ? (
+              <Box pl="0.25rem">
+                <DimensionCategoryList
+                  categories={dimensionCategories}
+                  onRemove={handleRemoveDimensionPill}
+                />
+              </Box>
+            ) : (
+              <Text size="md" c="text-secondary">
+                {t`Not sure which metrics to add but know you’re interested in place, or time? You can also work backwards by specifying a dimension you care about and we’ll bring in metrics that have that dimension for you.`}
+              </Text>
+            )}
+          </SectionItem>
+
+          <SectionItem
+            value="timelines"
             title={t`Timelines`}
-            ariaLabel={t`Add timelines`}
-            onAdd={handleOpenTimelinesModal}
-          />
-          <Box mih={0} px="xl">
-            {hasTimelines ? (
+            addLabel={t`Add timelines`}
+            onAdd={() => navigation.openBrowse("timelines")}
+          >
+            {timelines.length > 0 ? (
               <PillList items={timelines} onRemove={handleRemoveTimeline} />
             ) : (
-              <Text size="md" pb="md" c="text-secondary" lh="1.25rem" w="18rem">
+              <Text size="md" c="text-secondary" lh="1.25rem">
                 {t`Add timelines to see if events shed light on data movement.`}
               </Text>
             )}
-          </Box>
-        </Stack>
-        <Button
-          flex="none"
-          mx="xl"
-          my="lg"
-          size="sm"
-          variant="filled"
-          loading={isStarting}
-          disabled={!canStart || isStarting}
-          onClick={handleStart}
-        >{t`Begin research`}</Button>
-      </Stack>
-      <AddMetricsModal
-        opened={isAddMetricsModalOpen}
-        onClose={() => setIsAddMetricsModalOpen(false)}
-        selection={selection}
-      />
-      <AddTimelinesModal
-        opened={isAddTimelinesModalOpen}
-        onClose={() => setIsAddTimelinesModalOpen(false)}
-        selection={selection}
-      />
-    </>
+          </SectionItem>
+        </Accordion>
+      </Box>
+      <Button
+        className={S.beginButton}
+        flex="none"
+        size="sm"
+        w="100%"
+        maw="25rem"
+        mx="2rem"
+        variant="filled"
+        loading={isStarting}
+        disabled={!canStart || isStarting}
+        onClick={handleStart}
+      >{t`Begin research`}</Button>
+    </Stack>
   );
 }
 
-interface SectionHeaderProps {
+interface SectionItemProps {
+  value: string;
   title: string;
-  ariaLabel: string;
+  addLabel: string;
   onAdd: () => void;
+  children: React.ReactNode;
 }
 
-function SectionHeader({ title, ariaLabel, onAdd }: SectionHeaderProps) {
+/**
+ * One accordion section — a collapsible Metrics/Dimensions/Timelines
+ * panel. The "+" sits beside the collapse control (not inside it, to
+ * avoid nesting `<button>`s) and deep-links into the Browse picker.
+ */
+function SectionItem({
+  value,
+  title,
+  addLabel,
+  onAdd,
+  children,
+}: SectionItemProps) {
   return (
-    <Group justify="space-between" align="center" px="xl" py="md">
-      <Text fw="bold">{title}</Text>
-      <ActionIcon
-        className={S.sectionAddIcon}
-        bg="background-primary"
-        bd="1px solid border"
-        aria-label={ariaLabel}
-        onClick={onAdd}
-      >
-        <Icon name="add" size={12} c="icon-primary" />
-      </ActionIcon>
-    </Group>
+    <Accordion.Item value={value}>
+      <Box className={S.accordionControlRow}>
+        <Accordion.Control>{title}</Accordion.Control>
+        <ActionIcon
+          className={S.sectionAddIcon}
+          ml="lg"
+          mr="0.75rem"
+          bg="background-primary"
+          bd="1px solid border"
+          aria-label={addLabel}
+          onClick={onAdd}
+        >
+          <Icon name="add" size={12} c="icon-primary" />
+        </ActionIcon>
+      </Box>
+      <Accordion.Panel>{children}</Accordion.Panel>
+    </Accordion.Item>
   );
 }
 

@@ -3,19 +3,29 @@ import cx from "classnames";
 import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 
-import { Box, Text, UnstyledButton } from "metabase/ui";
+import { Box, Checkbox, Stack, Text, UnstyledButton } from "metabase/ui";
 import type { DimensionId, MetricDimension } from "metabase-types/api";
 
-import S from "./AddMetricsModal.module.css";
+import S from "./ItemList.module.css";
 import { groupDimensionsBySemanticType } from "./utils";
 
-const DIMENSION_ITEM_HEIGHT = 36;
+const DIMENSION_CHIP_HEIGHT = 36;
+const DIMENSION_CARD_HEIGHT = 70;
 const DIMENSION_ITEM_GAP = 4;
+const DIMENSION_CARD_GAP = 8;
+
+/**
+ * `chip` — compact pill rows.
+ * `card` — wide rows with a checkbox, title and optional description,
+ * matching `MetricList`. Used by the Browse → Dimensions panel.
+ */
+type DimensionListVariant = "chip" | "card";
 
 interface DimensionListProps {
   dimensions: MetricDimension[];
   isSelected: (dimensionId: DimensionId) => boolean;
   onToggle: (dimension: MetricDimension) => void;
+  variant?: DimensionListVariant;
   className?: string;
 }
 
@@ -23,6 +33,7 @@ export function DimensionList({
   dimensions,
   isSelected,
   onToggle,
+  variant = "chip",
   className,
 }: DimensionListProps) {
   const rows = useMemo(
@@ -30,16 +41,19 @@ export function DimensionList({
     [dimensions],
   );
 
+  const baseHeight =
+    variant === "card" ? DIMENSION_CARD_HEIGHT : DIMENSION_CHIP_HEIGHT;
+  const gap = variant === "card" ? DIMENSION_CARD_GAP : DIMENSION_ITEM_GAP;
+
   const parentRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: useCallback(() => parentRef.current, []),
-    estimateSize: useCallback(() => DIMENSION_ITEM_HEIGHT, []),
+    estimateSize: useCallback(() => baseHeight, [baseHeight]),
     measureElement: useCallback(
       (el: Element | null) =>
-        (el?.getBoundingClientRect().height ?? DIMENSION_ITEM_HEIGHT) +
-        DIMENSION_ITEM_GAP,
-      [],
+        (el?.getBoundingClientRect().height ?? baseHeight) + gap,
+      [baseHeight, gap],
     ),
     overscan: 5,
   });
@@ -93,6 +107,45 @@ export function DimensionList({
           const dimension = row.dimension;
           const selected = isSelected(dimension.id);
           const sourceName = dimension.group?.display_name;
+
+          if (variant === "card") {
+            return (
+              <UnstyledButton
+                key={virtualRow.key}
+                ref={virtualizer.measureElement}
+                role="listitem"
+                data-index={virtualRow.index}
+                aria-pressed={selected}
+                data-interestingness={
+                  dimension.dimension_interestingness || "null"
+                }
+                className={cx(S.metricItem, {
+                  [S.metricItemSelected]: selected,
+                })}
+                style={{
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+                onClick={() => onToggle(dimension)}
+              >
+                <Checkbox
+                  checked={selected}
+                  onChange={() => onToggle(dimension)}
+                  onClick={(event) => event.stopPropagation()}
+                  aria-label={dimension.display_name}
+                />
+                <Stack gap="xs" flex={1}>
+                  <Text fw="bold" lh="1.25" lineClamp={1}>
+                    {dimension.display_name}
+                  </Text>
+                  {sourceName && (
+                    <Text size="sm" lh="1rem" c="text-secondary" lineClamp={1}>
+                      {sourceName}
+                    </Text>
+                  )}
+                </Stack>
+              </UnstyledButton>
+            );
+          }
 
           return (
             <UnstyledButton

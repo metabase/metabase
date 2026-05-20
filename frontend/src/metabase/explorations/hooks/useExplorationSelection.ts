@@ -23,8 +23,7 @@ import { removeMetricFromSelection } from "../components/NewExplorationData/util
  * Context the `toggleMetric` helper needs to apply the auto-toggle rule
  * (selecting a metric auto-adds its "interesting" dimensions to the
  * exploration). Callers compute it from the currently visible
- * `/api/exploration/dimensions` response, so the same map serves both
- * the Browse panel and `AddMetricsModal`.
+ * `/api/exploration/dimensions` response.
  */
 export interface ToggleMetricContext {
   /** Flat map of every dimension across every group currently visible. */
@@ -37,8 +36,8 @@ export interface ToggleMetricContext {
  *   - drop any metric that loses its last matching dimension on removal.
  *
  * The `group` matches what `groupByRowId.get(dimension.id)` returns in
- * `AddMetricsModal` — the structural source of truth for "which
- * dimensions does this picker row stand in for".
+ * the Browse Dimensions panel — the structural source of truth for
+ * "which dimensions does this picker row stand in for".
  */
 export interface ToggleDimensionContext {
   /** The group this dimension row represents. `null` if the row is a
@@ -90,9 +89,8 @@ export interface ExplorationSelection {
  * Owns the lifted state for `/question/research`'s new-exploration page:
  * metrics, dimensions, timelines, and the exploration name. Returns
  * granular `toggle…` helpers that bake in the bidirectional metric ↔
- * dimension auto-toggle rules (originally inlined in `AddMetricsModal`),
- * so the Browse tab and the right-panel modals share one source of
- * truth and stay in sync.
+ * dimension auto-toggle rules, so the Browse tab and the agent chat
+ * share one source of truth and stay in sync.
  */
 export function useExplorationSelection(): ExplorationSelection {
   const [metrics, setMetrics] = useState<ExplorationMetric[]>([]);

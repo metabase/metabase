@@ -17,7 +17,7 @@ import {
   createMockTimelineEvent,
 } from "metabase-types/api/mocks/timeline";
 
-import { AddTimelinesModal } from "./AddTimelinesModal";
+import { BrowseTimelinesPanel } from "./BrowseTimelinesPanel";
 
 const releases = createMockTimeline({
   id: 1,
@@ -49,11 +49,9 @@ interface SetupOpts {
 function Harness({
   initialTimelines,
   selectionRef,
-  onClose,
 }: {
   initialTimelines: Timeline[];
   selectionRef: React.MutableRefObject<ExplorationSelection | null>;
-  onClose: () => void;
 }) {
   const selection = useExplorationSelection();
 
@@ -70,27 +68,21 @@ function Harness({
 
   useImperativeHandle(selectionRef, () => selection, [selection]);
 
-  return <AddTimelinesModal opened onClose={onClose} selection={selection} />;
+  return <BrowseTimelinesPanel selection={selection} />;
 }
 
 function setup({ initialTimelines = [] }: SetupOpts = {}) {
   setupTimelinesEndpoints([releases, incidents, empty]);
 
-  const onClose = jest.fn();
   const selectionRef: React.MutableRefObject<ExplorationSelection | null> = {
     current: null,
   };
 
   renderWithProviders(
-    <Harness
-      initialTimelines={initialTimelines}
-      selectionRef={selectionRef}
-      onClose={onClose}
-    />,
+    <Harness initialTimelines={initialTimelines} selectionRef={selectionRef} />,
   );
 
   return {
-    onClose,
     getSelection: () => {
       const sel = selectionRef.current;
       if (!sel) {
@@ -101,7 +93,7 @@ function setup({ initialTimelines = [] }: SetupOpts = {}) {
   };
 }
 
-describe("AddTimelinesModal", () => {
+describe("BrowseTimelinesPanel", () => {
   beforeAll(() => {
     mockGetBoundingClientRect({ height: 600, width: 600 });
   });
@@ -137,33 +129,13 @@ describe("AddTimelinesModal", () => {
     expect(getSelection().timelines.map((t) => t.id)).toEqual([incidents.id]);
   });
 
-  it("closing the modal keeps the toggles already applied (no draft to discard)", async () => {
-    const { getSelection, onClose } = setup();
-
-    const checkbox = await screen.findByRole("checkbox", { name: "Releases" });
-    await userEvent.click(checkbox);
-    await userEvent.click(screen.getByRole("button", { name: "Close" }));
-
-    expect(getSelection().timelines.map((t) => t.id)).toEqual([releases.id]);
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it("Done button just closes the modal — it doesn't replay any commits", async () => {
-    const { onClose } = setup();
-
-    await screen.findByText("Releases");
-    await userEvent.click(screen.getByRole("button", { name: "Done" }));
-
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
   it("filters timelines by search query against name and description", async () => {
     setup();
 
     await screen.findByText("Releases");
 
     await userEvent.type(
-      screen.getByPlaceholderText("Search for timelines"),
+      screen.getByPlaceholderText("Search for a timeline"),
       "outage",
     );
 

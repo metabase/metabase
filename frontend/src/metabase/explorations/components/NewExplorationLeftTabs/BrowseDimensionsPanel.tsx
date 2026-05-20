@@ -23,9 +23,9 @@ export interface BrowseDimensionsPanelProps {
 }
 
 /**
- * Browse → Dimensions tab. Renders the same group-headed list
- * `AddMetricsModal` uses for its right column, but wires each toggle
- * straight into `selection.toggleDimension`.
+ * Browse → Dimensions tab. Renders the group-headed dimension list as
+ * wide cards (matching the Metrics panel), wiring each toggle straight
+ * into `selection.toggleDimension`.
  */
 export function BrowseDimensionsPanel({
   selection,
@@ -49,8 +49,7 @@ export function BrowseDimensionsPanel({
   );
 
   // Group representative row: take the first dimension as the row's
-  // anchor (matches `AddMetricsModal`'s `groupRows` shape, so
-  // `DimensionList` renders the same way).
+  // anchor so `DimensionList` can render one row per group.
   const groupRows = useMemo<MetricDimension[]>(
     () =>
       visibleGroups.map((g) => {
@@ -102,7 +101,7 @@ export function BrowseDimensionsPanel({
   };
 
   return (
-    <Stack className={S.browsePanel}>
+    <Stack className={S.browsePanel} data-testid="browse-panel">
       <TextInput
         className={S.browseSearch}
         value={search}
@@ -117,6 +116,7 @@ export function BrowseDimensionsPanel({
           style={{ height: "100%" }}
         >
           <DimensionList
+            variant="card"
             dimensions={groupRows}
             isSelected={isSelected}
             onToggle={(dimension) =>

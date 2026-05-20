@@ -14,7 +14,7 @@ import {
   EXPLORATION_NAME_MAX_LENGTH,
   getDefaultExplorationName,
 } from "../constants";
-import { useExplorationSelection } from "../hooks";
+import { useExplorationNavigation, useExplorationSelection } from "../hooks";
 
 export function NewExplorationPage(props: { location?: Location }) {
   return <NewExplorationPageInner key={props.location?.key} />;
@@ -22,6 +22,7 @@ export function NewExplorationPage(props: { location?: Location }) {
 
 function NewExplorationPageInner() {
   const selection = useExplorationSelection();
+  const navigation = useExplorationNavigation();
   const { metrics, dimensions, timelines, name, setName } = selection;
 
   // Wipe the agent's conversation for this profile every time the page mounts
@@ -76,8 +77,11 @@ function NewExplorationPageInner() {
             bdrs="md"
             gap={0}
           >
-            <NewExplorationLeftTabs selection={selection} />
-            <NewExplorationData selection={selection} />
+            <NewExplorationLeftTabs
+              selection={selection}
+              navigation={navigation}
+            />
+            <NewExplorationData selection={selection} navigation={navigation} />
           </Group>
         </Paper>
       </Center>

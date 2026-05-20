@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useEffect, useImperativeHandle, useRef } from "react";
 
-import { setupMetricsEndpoints } from "__support__/server-mocks/metric";
+import { setupExplorationDataEndpoint } from "__support__/server-mocks/metric";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -19,7 +19,7 @@ import {
   createMockMetricDimension,
 } from "metabase-types/api/mocks/metric";
 
-import { AddMetricsModal } from "./AddMetricsModal";
+import { BrowseMetricsPanel } from "./BrowseMetricsPanel";
 
 const dimRevenue = createMockMetricDimension({
   id: "dim-revenue",
@@ -84,30 +84,22 @@ interface SetupOpts {
   extraMetrics?: ExplorationMetric[];
 }
 
-interface SelectionRef {
-  current: ExplorationSelection | null;
-}
-
 /**
- * Test harness that owns the real `useExplorationSelection` hook so the
- * tests exercise the modal end-to-end against the production toggle
- * rules (auto-add interesting dimensions, orphan-metric drop on
- * dimension removal, etc.). Tests read the live selection via the
- * `selectionRef.current` getter — easier than re-mocking React state.
+ * Harness owning the real `useExplorationSelection` hook so the Browse
+ * Metrics panel is exercised end-to-end against the production toggle
+ * rules (auto-add interesting dimensions, orphan-metric drop). Tests
+ * read the live selection via `selectionRef.current`.
  */
 function Harness({
   initialMetrics,
   initialDimensions,
   selectionRef,
-  onClose,
 }: {
   initialMetrics: ExplorationMetric[];
   initialDimensions: MetricDimension[];
   selectionRef: React.MutableRefObject<ExplorationSelection | null>;
-  onClose: () => void;
 }) {
   const selection = useExplorationSelection();
-  selectionRef.current = selection;
 
   const seededRef = useRef(false);
   useEffect(() => {
@@ -123,12 +115,9 @@ function Harness({
     }
   }, [initialMetrics, initialDimensions, selection]);
 
-  // Re-expose the latest snapshot on every render — toggles produce
-  // new arrays so test assertions can read post-click state via
-  // `selectionRef.current!.metrics`.
   useImperativeHandle(selectionRef, () => selection, [selection]);
 
-  return <AddMetricsModal opened onClose={onClose} selection={selection} />;
+  return <BrowseMetricsPanel selection={selection} />;
 }
 
 function setup({
@@ -136,29 +125,26 @@ function setup({
   initialDimensions = [],
   extraMetrics = [],
 }: SetupOpts = {}) {
-  setupMetricsEndpoints([
+  setupExplorationDataEndpoint([
     metricRevenue,
     metricChurn,
     metricLibrary,
     ...extraMetrics,
   ]);
 
-  const onClose = jest.fn();
-  const selectionRef: SelectionRef = { current: null };
+  const selectionRef: React.MutableRefObject<ExplorationSelection | null> = {
+    current: null,
+  };
 
   renderWithProviders(
     <Harness
       initialMetrics={initialMetrics}
       initialDimensions={initialDimensions}
-      selectionRef={
-        selectionRef as React.MutableRefObject<ExplorationSelection | null>
-      }
-      onClose={onClose}
+      selectionRef={selectionRef}
     />,
   );
 
   return {
-    onClose,
     getSelection: () => {
       const sel = selectionRef.current;
       if (!sel) {
@@ -169,11 +155,7 @@ function setup({
   };
 }
 
-async function clickClose() {
-  await userEvent.click(screen.getByRole("button", { name: "Done" }));
-}
-
-describe("AddMetricsModal", () => {
+describe("BrowseMetricsPanel", () => {
   beforeAll(() => {
     mockGetBoundingClientRect({ height: 600, width: 600 });
   });
@@ -182,17 +164,14 @@ describe("AddMetricsModal", () => {
     jest.restoreAllMocks();
   });
 
-  it("renders metrics and the union of their dimensions", async () => {
+  it("renders the metrics fetched from the API", async () => {
     setup();
 
     expect(
       await screen.findByText("Monthly recurring revenue"),
     ).toBeInTheDocument();
     expect(screen.getByText("Churn rate")).toBeInTheDocument();
-
-    expect(screen.getByText("Customer size")).toBeInTheDocument();
-    expect(screen.getByText("Plan")).toBeInTheDocument();
-    expect(screen.getByText("Country")).toBeInTheDocument();
+    expect(screen.getByText("Active users")).toBeInTheDocument();
   });
 
   it("checking a metric commits it + its interesting dimensions immediately", async () => {
@@ -230,66 +209,13 @@ describe("AddMetricsModal", () => {
     ).toEqual([dimChurn.id, dimShared.id].sort());
   });
 
-  it("clicking a dimension commits it + every metric connected to it", async () => {
-    const { getSelection } = setup();
-
-    await screen.findByText("Country");
-    await userEvent.click(screen.getByText("Country"));
-
-    expect(getSelection().dimensions.map((d) => d.id)).toEqual([dimShared.id]);
-    expect(
-      getSelection()
-        .metrics.map((m) => m.id)
-        .sort(),
-    ).toEqual([metricRevenue.id, metricChurn.id].sort());
-  });
-
-  it("deselecting a shared dimension orphans every metric that loses its last matching dimension", async () => {
-    const { getSelection } = setup({
-      initialMetrics: [revenueAsMetric, churnAsMetric],
-      initialDimensions: [dimShared],
-    });
-
-    await screen.findByText("Country");
-    await userEvent.click(screen.getByText("Country"));
-
-    expect(getSelection().metrics).toEqual([]);
-    expect(getSelection().dimensions).toEqual([]);
-  });
-
-  it("deselecting a dimension keeps a metric whose other dimension is still selected", async () => {
-    const { getSelection } = setup({
-      initialMetrics: [revenueAsMetric, churnAsMetric],
-      initialDimensions: [dimRevenue, dimShared],
-    });
-
-    await screen.findByText("Country");
-    await userEvent.click(screen.getByText("Country"));
-
-    expect(getSelection().dimensions.map((d) => d.id)).toEqual([dimRevenue.id]);
-    expect(getSelection().metrics.map((m) => m.id)).toEqual([metricRevenue.id]);
-  });
-
-  it("closing the modal keeps the toggles already applied (no draft to discard)", async () => {
-    const { getSelection, onClose } = setup();
-
-    const checkbox = await screen.findByRole("checkbox", {
-      name: "Monthly recurring revenue",
-    });
-    await userEvent.click(checkbox);
-    await userEvent.click(screen.getByRole("button", { name: "Close" }));
-
-    expect(getSelection().metrics.map((m) => m.id)).toEqual([metricRevenue.id]);
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it("filters metrics and the derived dimension list by search query", async () => {
+  it("filters metrics by search query", async () => {
     setup();
 
     await screen.findByText("Monthly recurring revenue");
 
     await userEvent.type(
-      screen.getByPlaceholderText("Search for metrics or dimensions"),
+      screen.getByPlaceholderText("Search for a metric"),
       "churn",
     );
 
@@ -302,22 +228,6 @@ describe("AddMetricsModal", () => {
       },
       { timeout: 3000 },
     );
-
-    expect(screen.queryByText("Customer size")).not.toBeInTheDocument();
-    expect(screen.getByText("Plan")).toBeInTheDocument();
-    expect(screen.getByText("Country")).toBeInTheDocument();
-  });
-
-  it("Done button just closes the modal — it doesn't replay any commits", async () => {
-    const { onClose } = setup({
-      initialMetrics: [revenueAsMetric],
-      initialDimensions: [dimRevenue],
-    });
-
-    await screen.findByText("Monthly recurring revenue");
-    await clickClose();
-
-    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it("renders metric description alongside the name", async () => {
@@ -350,8 +260,8 @@ describe("AddMetricsModal", () => {
     await userEvent.click(checkbox);
 
     expect(getSelection().metrics.map((m) => m.id)).toEqual([metricMixed.id]);
-    // Only the high-score dim (dimRevenue, 0.9) is auto-picked. The low-score
-    // dim (dimBoring, 0.2) is left out.
+    // Only the high-score dim (dimRevenue, 0.9) is auto-picked. The
+    // low-score dim (dimBoring, 0.2) is left out.
     expect(getSelection().dimensions.map((d) => d.id)).toEqual([dimRevenue.id]);
   });
 });

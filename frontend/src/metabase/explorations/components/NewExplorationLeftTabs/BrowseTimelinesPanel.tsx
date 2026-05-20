@@ -9,7 +9,7 @@ import { Box, Icon, Stack, TextInput } from "metabase/ui";
 import {
   TimelineList,
   filterTimelinesBySearch,
-} from "../NewExplorationData/AddTimelinesModal";
+} from "../NewExplorationData/TimelineList";
 
 import S from "./NewExplorationLeftTabs.module.css";
 
@@ -17,11 +17,6 @@ export interface BrowseTimelinesPanelProps {
   selection: ExplorationSelection;
 }
 
-/**
- * Browse → Timelines tab. Mirrors `AddTimelinesModal`'s body — same
- * search filter, same `TimelineList` rows — but commits each toggle to
- * `selection.toggleTimeline` directly.
- */
 export function BrowseTimelinesPanel({ selection }: BrowseTimelinesPanelProps) {
   const { timelines: selectedTimelines, toggleTimeline } = selection;
 
@@ -44,7 +39,7 @@ export function BrowseTimelinesPanel({ selection }: BrowseTimelinesPanelProps) {
   );
 
   return (
-    <Stack className={S.browsePanel}>
+    <Stack className={S.browsePanel} data-testid="browse-panel">
       <TextInput
         className={S.browseSearch}
         value={search}

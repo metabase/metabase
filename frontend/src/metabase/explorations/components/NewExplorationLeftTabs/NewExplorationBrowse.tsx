@@ -1,7 +1,9 @@
-import { useState } from "react";
 import { t } from "ttag";
 
-import type { ExplorationSelection } from "metabase/explorations/hooks";
+import type {
+  ExplorationNavigation,
+  ExplorationSelection,
+} from "metabase/explorations/hooks";
 import { Tabs } from "metabase/ui";
 
 import { BrowseDimensionsPanel } from "./BrowseDimensionsPanel";
@@ -9,31 +11,33 @@ import { BrowseMetricsPanel } from "./BrowseMetricsPanel";
 import { BrowseTimelinesPanel } from "./BrowseTimelinesPanel";
 import S from "./NewExplorationLeftTabs.module.css";
 
-type BrowseTab = "metrics" | "dimensions" | "timelines";
-
 export interface NewExplorationBrowseProps {
   selection: ExplorationSelection;
+  navigation: ExplorationNavigation;
 }
 
 /**
  * Inner-tabs container for the Browse panel: Metrics, Dimensions,
  * Timelines. Each sub-panel renders its own search input + virtualized
- * list and commits to `selection` on every checkbox click.
+ * list and commits to `selection` on every checkbox click. The active
+ * sub-tab is controlled by `navigation` so the right pane's "+" buttons
+ * can deep-link into a specific picker.
  */
-export function NewExplorationBrowse({ selection }: NewExplorationBrowseProps) {
-  const [activeTab, setActiveTab] = useState<BrowseTab>("metrics");
-
+export function NewExplorationBrowse({
+  selection,
+  navigation,
+}: NewExplorationBrowseProps) {
   return (
     <Tabs
       variant="pills"
-      value={activeTab}
+      value={navigation.browseTab}
       onChange={(value) => {
         if (
           value === "metrics" ||
           value === "dimensions" ||
           value === "timelines"
         ) {
-          setActiveTab(value);
+          navigation.setBrowseTab(value);
         }
       }}
       classNames={{ root: S.tabsRoot }}

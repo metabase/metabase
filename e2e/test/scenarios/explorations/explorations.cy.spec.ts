@@ -67,14 +67,17 @@ describe("scenarios > explorations > new research > manual flow", () => {
     }).should("be.visible");
 
     H.explorationsMetabotPromptInput().should("be.visible");
-    // Two top-level section headers — Data + Timelines.
-    cy.findByRole("main").findByText("Data").should("be.visible");
-    cy.findByRole("main").findByText("Timelines").should("be.visible");
-    // Metrics / Dimensions accordion items only appear once data
-    // has been picked (the `hasMetricsOrDimensions` branch in
-    // `NewExplorationData.tsx`); confirm they're absent right now.
-    cy.findByRole("main").findByText("Metrics").should("not.exist");
-    cy.findByRole("main").findByText("Dimensions").should("not.exist");
+    // The right pane always shows the three accordion sections —
+    // Metrics, Dimensions, Timelines — each with a "+" button.
+    cy.findByTestId("research-content")
+      .findByText("Metrics")
+      .should("be.visible");
+    cy.findByTestId("research-content")
+      .findByText("Dimensions")
+      .should("be.visible");
+    cy.findByTestId("research-content")
+      .findByText("Timelines")
+      .should("be.visible");
     // CTA disabled until metrics + dimensions are both selected.
     cy.findByRole("button", { name: /Begin research/i }).should("be.disabled");
   });
@@ -104,12 +107,18 @@ describe("scenarios > explorations > new research > manual flow", () => {
       metrics: ["Count of orders"],
     });
 
-    // After the modal Done, the right panel transitions from the
-    // empty 2-card layout to the 3-section accordion.
-    cy.findByRole("main").findByText("Metrics").should("be.visible");
-    cy.findByRole("main").findByText("Dimensions").should("be.visible");
-    // Metric pill is rendered.
-    cy.findByRole("main").findByText("Count of orders").should("be.visible");
+    // Picking the metric in the Browse tab commits it immediately —
+    // the right pane's Metrics section shows the new pill (and the
+    // metric's interesting dimensions auto-fill the Dimensions one).
+    cy.findByTestId("research-content")
+      .findByText("Metrics")
+      .should("be.visible");
+    cy.findByTestId("research-content")
+      .findByText("Dimensions")
+      .should("be.visible");
+    cy.findByTestId("research-content")
+      .findByText("Count of orders")
+      .should("be.visible");
 
     H.beginResearch().then((id) => {
       // Detail page (`/question/research/:id`) renders. The BE
@@ -122,7 +131,7 @@ describe("scenarios > explorations > new research > manual flow", () => {
     });
   });
 
-  it("filters the picker by typing into the search inputs of the metrics + timelines modals", () => {
+  it("filters the Browse pickers by typing into their search inputs", () => {
     cy.request("POST", "/api/timeline", {
       name: "Releases",
       collection_id: null,
@@ -138,80 +147,68 @@ describe("scenarios > explorations > new research > manual flow", () => {
 
     H.visitNewExploration();
 
-    // --- Metrics modal search ---
-    cy.findByRole("button", { name: /Add metrics and dimensions/i }).click();
-    H.modal().within(() => {
-      // Seeded names are "Count of orders" + "Count of orders over time".
-      cy.wait("@getDimensions");
-      cy.findByRole("checkbox", { name: "Count of orders" }).should("exist");
-      cy.findByRole("checkbox", { name: "Count of orders over time" }).should(
-        "exist",
-      );
+    // --- Browse → Metrics search ---
+    // The right pane's "+" deep-links the left pane into Browse → Metrics.
+    cy.findByRole("button", { name: "Add metrics" }).click();
+    // Seeded names are "Count of orders" + "Count of orders over time".
+    cy.wait("@getDimensions");
+    cy.findByRole("checkbox", { name: "Count of orders" }).should("exist");
+    cy.findByRole("checkbox", { name: "Count of orders over time" }).should(
+      "exist",
+    );
 
-      // Type a substring that only matches the timeseries metric.
-      cy.findByPlaceholderText("Search for metrics or dimensions").type(
-        "over time",
-      );
-      // Debounced refetch.
-      cy.wait("@getDimensions");
-      cy.findByRole("checkbox", { name: "Count of orders over time" }).should(
-        "exist",
-      );
-      cy.findByRole("checkbox", { name: "Count of orders" }).should(
-        "not.exist",
-      );
+    // Type a substring that only matches the timeseries metric.
+    cy.findByPlaceholderText("Search for a metric").type("over time");
+    // Debounced refetch.
+    cy.wait("@getDimensions");
+    cy.findByRole("checkbox", { name: "Count of orders over time" }).should(
+      "exist",
+    );
+    cy.findByRole("checkbox", { name: "Count of orders" }).should("not.exist");
 
-      // Clear the input → both rows return. We don't `cy.wait` on
-      // `@getDimensions` here because RTK Query caches the
-      // empty-`q` response from the initial mount and skips the
-      // network round-trip; we assert on the visible result
-      // instead.
-      cy.findByPlaceholderText("Search for metrics or dimensions").clear();
-      cy.findByRole("checkbox", { name: "Count of orders" }).should("exist");
-      cy.findByRole("checkbox", { name: "Count of orders over time" }).should(
-        "exist",
-      );
+    // Clear the input → both rows return. We don't `cy.wait` on
+    // `@getDimensions` here because RTK Query caches the empty-`q`
+    // response from the initial mount and skips the network
+    // round-trip; we assert on the visible result instead.
+    cy.findByPlaceholderText("Search for a metric").clear();
+    cy.findByRole("checkbox", { name: "Count of orders" }).should("exist");
+    cy.findByRole("checkbox", { name: "Count of orders over time" }).should(
+      "exist",
+    );
 
-      // Search for something that matches no metric → empty state copy.
-      cy.findByPlaceholderText("Search for metrics or dimensions").type(
-        "zzz no such metric",
-      );
-      cy.wait("@getDimensions");
-      cy.findByText("No metrics found").should("be.visible");
+    // Search for something that matches no metric → empty state copy.
+    cy.findByPlaceholderText("Search for a metric").type("zzz no such metric");
+    cy.wait("@getDimensions");
+    cy.findByTestId("browse-panel")
+      .findByText("No metrics found")
+      .should("be.visible");
 
-      cy.findByRole("button", { name: "Close" }).click();
-    });
+    // --- Browse → Timelines search ---
+    cy.findByRole("button", { name: "Add timelines" }).click();
+    cy.findByRole("checkbox", { name: "Releases" }).should("exist");
+    cy.findByRole("checkbox", { name: "Marketing campaigns" }).should("exist");
 
-    // --- Timelines modal search ---
-    cy.findByRole("button", { name: /Add timelines/i }).click();
-    H.modal().within(() => {
-      cy.findByRole("checkbox", { name: "Releases" }).should("exist");
-      cy.findByRole("checkbox", { name: "Marketing campaigns" }).should(
-        "exist",
-      );
+    // Filter to just one timeline by name fragment.
+    cy.findByPlaceholderText("Search for a timeline").type("release");
+    cy.findByRole("checkbox", { name: "Releases" }).should("exist");
+    cy.findByRole("checkbox", { name: "Marketing campaigns" }).should(
+      "not.exist",
+    );
 
-      // Filter to just one timeline by name fragment.
-      cy.findByPlaceholderText("Search for timelines").type("release");
-      cy.findByRole("checkbox", { name: "Releases" }).should("exist");
-      cy.findByRole("checkbox", { name: "Marketing campaigns" }).should(
-        "not.exist",
-      );
+    // Clear → both return.
+    cy.findByPlaceholderText("Search for a timeline").clear();
+    cy.findByRole("checkbox", { name: "Releases" }).should("exist");
+    cy.findByRole("checkbox", { name: "Marketing campaigns" }).should("exist");
 
-      // Clear → both return.
-      cy.findByPlaceholderText("Search for timelines").clear();
-      cy.findByRole("checkbox", { name: "Releases" }).should("exist");
-      cy.findByRole("checkbox", { name: "Marketing campaigns" }).should(
-        "exist",
-      );
-
-      // No match → empty-state copy (`AddTimelinesModal.tsx`
-      // line 147).
-      cy.findByPlaceholderText("Search for timelines").type("zzz");
-      cy.findByText("No timelines found").should("be.visible");
-    });
+    // No match → empty-state copy (`No timelines found. Add one` in
+    // `TimelineList.tsx`).
+    cy.findByPlaceholderText("Search for a timeline").type("zzz");
+    cy.findByTestId("browse-panel")
+      .findByText("No timelines found", { exact: false })
+      .should("be.visible");
   });
 
-  it("picks one or more timelines via the AddTimelinesModal and POSTs them with the exploration", () => {
+  it("picks one or more timelines via the Browse tab and POSTs them with the exploration", () => {
     function createTimeline(name: string, icon: string) {
       return cy
         .request("POST", "/api/timeline", {
@@ -230,14 +227,16 @@ describe("scenarios > explorations > new research > manual flow", () => {
         // `canStart` gate from `NewExplorationData.tsx`.
         H.addMetricsAndDimensions({ metrics: ["Count of orders"] });
 
-        // Pick two timelines in a single modal session.
+        // Pick two timelines via the Browse → Timelines tab.
         H.addTimelinesToExploration(["Releases", "Marketing campaigns"]);
 
-        // Both timeline pills now live under the `Timelines`
-        // section in the right panel (see the `PillList` branch in
+        // Both timeline pills now live under the right pane's
+        // `Timelines` accordion section (see `PillList` in
         // `NewExplorationData.tsx`).
-        cy.findByRole("main").findByText("Releases").should("be.visible");
-        cy.findByRole("main")
+        cy.findByTestId("research-content")
+          .findByText("Releases")
+          .should("be.visible");
+        cy.findByTestId("research-content")
           .findByText("Marketing campaigns")
           .should("be.visible");
 

@@ -26,12 +26,6 @@
   border-color: var(--mb-color-brand);
 }
 
-.dimensionsSection {
-  background: var(--mb-color-background-secondary);
-  padding: 1rem;
-  border-radius: 0.5rem;
-}
-
 .dimensionGroupHeader {
   padding-top: 1rem;
 

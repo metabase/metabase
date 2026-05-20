@@ -19,9 +19,8 @@ export interface BrowseMetricsPanelProps {
 }
 
 /**
- * Browse → Metrics tab. Search input + virtualized list, identical to
- * `AddMetricsModal`'s left column but committing each click to
- * `selection.toggleMetric` directly (no draft state, no Done button).
+ * Browse → Metrics tab. Search input + virtualized list; each click
+ * commits to `selection.toggleMetric` immediately.
  */
 export function BrowseMetricsPanel({ selection }: BrowseMetricsPanelProps) {
   const { metrics: selectedMetrics, toggleMetric } = selection;
@@ -44,7 +43,7 @@ export function BrowseMetricsPanel({ selection }: BrowseMetricsPanelProps) {
 
   // The toggle helper needs every dimension across every group so it
   // can attach the metric's "interesting" dimensions when the user
-  // selects it — same map `AddMetricsModal` builds.
+  // selects it.
   const dimensionsById = useMemo(() => {
     const map = new Map<DimensionId, MetricDimension>();
     for (const group of response?.dimension_groups ?? []) {
@@ -61,7 +60,7 @@ export function BrowseMetricsPanel({ selection }: BrowseMetricsPanelProps) {
   );
 
   return (
-    <Stack className={S.browsePanel}>
+    <Stack className={S.browsePanel} data-testid="browse-panel">
       <TextInput
         className={S.browseSearch}
         value={search}
