@@ -89,7 +89,7 @@
 (defmethod sql.tx/create-db-sql :snowflake
   [driver dbdef]
   (let [db (sql.tx/qualify-and-quote driver (qualified-db-name dbdef))]
-    (format "DROP DATABASE IF EXISTS %s; CREATE DATABASE %s;" db db)))
+    (format "CREATE DATABASE IF NOT EXISTS %s;" db)))
 
 (defn- no-db-connection-spec
   "Connection spec for connecting to our Snowflake instance without specifying a DB."
