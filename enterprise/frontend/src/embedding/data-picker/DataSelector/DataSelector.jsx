@@ -16,6 +16,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import CS from "metabase/css/core/index.css";
 import { Questions } from "metabase/entities/questions";
 import { Tables } from "metabase/entities/tables";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import { connect } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -963,7 +964,12 @@ const DataSelector = _.compose(
     },
     (dispatch) => ({
       fetchDatabases: () =>
-        dispatch(databaseApi.endpoints.listDatabases.initiate({ saved: true })),
+        entityCompatibleQuery(
+          { saved: true },
+          dispatch,
+          databaseApi.endpoints.listDatabases,
+          { forceRefetch: false },
+        ),
       fetchFields: (tableId) =>
         dispatch(Tables.actions.fetchMetadata({ id: tableId })),
       fetchQuestion: (id) =>
