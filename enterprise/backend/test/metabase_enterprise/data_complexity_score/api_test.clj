@@ -56,26 +56,40 @@
            (mt/user-http-request :rasta :get 403 endpoint :force-recalculation true)))))
 
 (def ^:private sample-score
-  {:library  {:total 18
-              :components {:entity-count      {:measurement 1.0 :score 10}
-                           :name-collisions   {:measurement 0.0 :score 0}
-                           :synonym-pairs     {:measurement 0.0 :score 0}
-                           :field-count       {:measurement 8.0 :score 8}
-                           :repeated-measures {:measurement 0.0 :score 0}}}
-   :universe {:total 54
-              :components {:entity-count      {:measurement 2.0 :score 20}
-                           :name-collisions   {:measurement 0.0 :score 0}
-                           :synonym-pairs     {:measurement 0.0 :score 0}
-                           :field-count       {:measurement 24.0 :score 24}
-                           :repeated-measures {:measurement 5.0 :score 10}}}
-   :metabot  {:total 30
-              :components {:entity-count      {:measurement 1.0 :score 10}
-                           :name-collisions   {:measurement 0.0 :score 0}
-                           :synonym-pairs     {:measurement 0.0 :score 0}
-                           :field-count       {:measurement 20.0 :score 20}
-                           :repeated-measures {:measurement 0.0 :score 0}}}
-   :meta     {:formula-version 3
+  "Raw shape — what `complexity-scores` returns and what persistence stores.
+  The API decorates this with rating fields on the way out."
+  {:library  {:score 18
+              :components {:size      {:score      18
+                                       :components {:entity-count {:measurement 1.0 :score 10}
+                                                    :field-count  {:measurement 8.0 :score 8}}}
+                           :ambiguity {:score      0
+                                       :components {:name-collisions   {:measurement 0.0 :score 0}
+                                                    :synonym-pairs     {:measurement 0.0 :score 0}
+                                                    :repeated-measures {:measurement 0.0 :score 0}}}}}
+   :universe {:score 54
+              :components {:size      {:score      44
+                                       :components {:entity-count {:measurement  2.0 :score 20}
+                                                    :field-count  {:measurement 24.0 :score 24}}}
+                           :ambiguity {:score      10
+                                       :components {:name-collisions   {:measurement 0.0 :score 0}
+                                                    :synonym-pairs     {:measurement 0.0 :score 0}
+                                                    :repeated-measures {:measurement 5.0 :score 10}}}}}
+   :metabot  {:score 30
+              :components {:size      {:score      30
+                                       :components {:entity-count {:measurement  1.0 :score 10}
+                                                    :field-count  {:measurement 20.0 :score 20}}}
+                           :ambiguity {:score      0
+                                       :components {:name-collisions   {:measurement 0.0 :score 0}
+                                                    :synonym-pairs     {:measurement 0.0 :score 0}
+                                                    :repeated-measures {:measurement 0.0 :score 0}}}}}
+   :meta     {:formula-version   3
+              :format-version    1
               :synonym-threshold 0.9}})
+
+(defn- expected-response
+  "Apply the same decoration + snake-casing the API does, to compare against an `mt/user-http-request` body."
+  [score]
+  (m.util/deep-snake-keys (complexity/decorate-with-ratings score)))
 
 (def ^:private sample-calculated-at "2026-04-23T12:00:00Z")
 
@@ -94,12 +108,15 @@
         (let [resp (mt/user-http-request :crowberto :get 200 endpoint)]
           (is (= "api-test-fp" @captured-fingerprint)
               "API passes the cron fingerprint through; source=\"appdb\" defaulting is covered by latest-score-filters-by-source-test")
-          (is (= (m.util/deep-snake-keys (with-sample-calculated-at sample-score)) resp))
+          (is (= (expected-response (with-sample-calculated-at sample-score)) resp))
           (is (contains? (:meta resp) :formula_version))
           (is (= sample-calculated-at (get-in resp [:meta :calculated_at])))
           (is (not (contains? (:meta resp) :formula-version)))
-          (is (contains? (get-in resp [:library :components]) :entity_count))
-          (is (not (contains? (get-in resp [:library :components]) :entity-count))))))))
+          (is (contains? (get-in resp [:library :components]) :size)
+              "groups appear at the catalog level")
+          (is (contains? (get-in resp [:library :components :size :components]) :entity_count)
+              "leaf sub-scores live one level down and are snake-cased")
+          (is (not (contains? (get-in resp [:library :components :size :components]) :entity-count))))))))
 
 (deftest complexity-endpoint-404s-when-no-score-has-been-persisted-yet-test
   (testing "the endpoint 404s until the background scorer has produced its first snapshot"
@@ -116,7 +133,7 @@
                     data-complexity-score/record-score!       (fn [fingerprint source stored-score]
                                                                 (reset! persisted? [fingerprint source stored-score])
                                                                 (with-sample-calculated-at stored-score))]
-        (is (= (m.util/deep-snake-keys (with-sample-calculated-at sample-score))
+        (is (= (expected-response (with-sample-calculated-at sample-score))
                (mt/user-http-request :crowberto :get 200 endpoint :force-recalculation true)))
         (is (= ["api-test-fp" "appdb" sample-score] @persisted?)
             "API recompute path must stamp source=\"appdb\"")))))
@@ -156,7 +173,7 @@
                     task.complexity-score/current-fingerprint (constantly "api-test-fp")
                     complexity/complexity-scores              (fn [& _] sample-score)
                     data-complexity-score/record-score!       (fn [& _] nil)]
-        (is (= (m.util/deep-snake-keys sample-score)
+        (is (= (expected-response sample-score)
                (mt/user-http-request :crowberto :get 200 endpoint :force-recalculation true)))))))
 
 (deftest ^:sequential complexity-endpoint-force-recalculation-superuser-gets-consistent-totals-test
@@ -169,8 +186,16 @@
                                 (constantly {:embedder random-synonym-embedder})]
       (with-redefs [data-complexity-score/record-score! (fn [& _] nil)]
         (let [resp             (mt/user-http-request :crowberto :get 200 endpoint :force-recalculation true)
-              measurement      (fn [cat k] (get-in resp [cat :components k :measurement]))
-              component-score  (fn [cat k] (get-in resp [cat :components k :score]))
+              leaf-path        {:entity_count      [:size      :entity_count]
+                                :field_count       [:size      :field_count]
+                                :name_collisions   [:ambiguity :name_collisions]
+                                :synonym_pairs     [:ambiguity :synonym_pairs]
+                                :repeated_measures [:ambiguity :repeated_measures]}
+              leaf-field       (fn [cat k field]
+                                 (let [[group leaf] (leaf-path k)]
+                                   (get-in resp [cat :components group :components leaf field])))
+              measurement      (fn [cat k] (leaf-field cat k :measurement))
+              component-score  (fn [cat k] (leaf-field cat k :score))
               ;; NOTE: `:synonym_pairs` is intentionally included here even though it's *theoretically*
               ;; non-monotonic — `score-synonym-pairs` dedupes by normalized name and keeps whichever
               ;; embedding the provider returns for that name, so adding universe-only entities that
@@ -181,13 +206,15 @@
               ;; invariant holds, and asserting it keeps us honest about regressions in the common
               ;; case. If the edge case ever actually trips this, *that* is the surprising thing we
               ;; want to see and we'll deal with it then.
-              component-keys   [:entity_count :name_collisions :synonym_pairs
-                                :field_count :repeated_measures]]
-          (testing ":total equals the sum of its component :score values"
+              component-keys   (keys leaf-path)]
+          (testing ":score at every node equals the sum of its children's :score values"
             (doseq [catalog [:library :universe :metabot]
-                    :let [{:keys [total components]} (get resp catalog)]]
-              (is (= total (reduce + (map :score (vals components))))
-                  (format "%s :total should equal sum of component :score values" catalog))))
+                    :let    [{catalog-score :score :keys [components]} (get resp catalog)]]
+              (is (= catalog-score (reduce + (map :score (vals components))))
+                  (format "%s :score should equal sum of group :score values" catalog))
+              (doseq [[group {grp-score :score grp-components :components}] components]
+                (is (= grp-score (reduce + (map :score (vals grp-components))))
+                    (format "%s.%s :score should equal sum of leaf :score values" catalog group)))))
           (testing "universe is a superset of library: every measurement and score >= library's"
             (doseq [k      component-keys
                     getter [measurement component-score]
@@ -228,8 +255,8 @@
                                  {:use_verified_content true :collection_id nil}
           (with-redefs [data-complexity-score/record-score! (fn [& _] nil)]
             (let [resp (mt/user-http-request :crowberto :get 200 endpoint :force-recalculation true)]
-              (is (< (get-in resp [:metabot  :components :entity_count :measurement])
-                     (get-in resp [:universe :components :entity_count :measurement]))
+              (is (< (get-in resp [:metabot  :components :size :components :entity_count :measurement])
+                     (get-in resp [:universe :components :size :components :entity_count :measurement]))
                   ":metabot entity-count must be strictly < :universe when verified-only filters out the injected Card"))))))))
 
 (deftest ^:sequential complexity-endpoint-force-recalculation-metabot-collection-scope-test
@@ -275,8 +302,8 @@
                                                             :collection_id cid}
                                     (with-redefs [data-complexity-score/record-score! (fn [& _] nil)]
                                       (let [resp (mt/user-http-request :crowberto :get 200 endpoint :force-recalculation true)]
-                                        {:metabot  (get-in resp [:metabot  :components :entity_count :measurement])
-                                         :universe (get-in resp [:universe :components :entity_count :measurement])}))))
+                                        {:metabot  (get-in resp [:metabot  :components :size :components :entity_count :measurement])
+                                         :universe (get-in resp [:universe :components :size :components :entity_count :measurement])}))))
               empty-counts   (counts-with-scope empty-id)
               parent-counts  (counts-with-scope parent-id)
               sibling-counts (counts-with-scope sibling-id)
@@ -305,15 +332,18 @@
                 ":universe must be unscoped regardless of Metabot.collection_id")))))))
 
 (def ^:private empty-catalog
-  {:total 0 :components {:entity-count      {:measurement 0.0 :score 0}
-                         :name-collisions   {:measurement 0.0 :score 0}
-                         :synonym-pairs     {:measurement 0.0 :score 0}
-                         :field-count       {:measurement 0.0 :score 0}
-                         :repeated-measures {:measurement 0.0 :score 0}}})
+  {:score 0
+   :components {:size      {:score      0
+                            :components {:entity-count {:measurement 0.0 :score 0}
+                                         :field-count  {:measurement 0.0 :score 0}}}
+                :ambiguity {:score      0
+                            :components {:name-collisions   {:measurement 0.0 :score 0}
+                                         :synonym-pairs     {:measurement 0.0 :score 0}
+                                         :repeated-measures {:measurement 0.0 :score 0}}}}})
 
 (def ^:private stub-scores
   {:library empty-catalog :universe empty-catalog :metabot empty-catalog
-   :meta {:formula-version 1 :synonym-threshold 0.0}})
+   :meta {:formula-version 1 :format-version 1 :synonym-threshold 0.0}})
 
 (deftest ^:sequential complexity-endpoint-force-recalculation-allows-active-scheduled-claim-test
   (testing "manual API recalculation does not share the cron/boot scoring claim"
@@ -329,7 +359,7 @@
                       (fn [& _]
                         (reset! scoring-ran? true)
                         stub-scores)]
-          (is (= (m.util/deep-snake-keys stub-scores)
+          (is (= (expected-response stub-scores)
                  (mt/user-http-request :crowberto :get 200 endpoint :force-recalculation true)))
           (is (true? @scoring-ran?)
               "force recalculation should compute independently of scheduled claims")

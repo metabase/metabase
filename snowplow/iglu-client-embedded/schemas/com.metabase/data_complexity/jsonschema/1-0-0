@@ -57,7 +57,7 @@
             "maximum": 2147483647
         },
         "measurement": {
-            "description": "Raw pre-score measurement (absent on aggregates; null on uncomputed leaves). Number, not integer, to future-proof.",
+            "description": "Raw pre-score measurement (absent on aggregates and on error leaves). Number, not integer, to future-proof.",
             "type": [
                 "number",
                 "null"

@@ -517,7 +517,21 @@
         (is (= :ingested (t2/select-one-fn :data_source :model/Table :id table-id))))
       (testing "can also change it to nil"
         (is (some? (t2/update! :model/Table table-id {:data_source nil})))
-        (is (nil? (t2/select-one-fn :data_source :model/Table :id table-id)))))))
+        (is (nil? (t2/select-one-fn :data_source :model/Table :id table-id))))))
+
+  (testing "data_source guard is relaxed for nil -> metabase-transform during deserialization (GDGT-2445)"
+    (testing "can set data_source to metabase-transform on an existing synced table"
+      (mt/with-temp [:model/Table {table-id :id} {:data_source nil}]
+        (binding [mi/*deserializing?* true]
+          (is (some? (t2/update! :model/Table table-id {:data_source :metabase-transform}))))
+        (is (= :metabase-transform (t2/select-one-fn :data_source :model/Table :id table-id)))))
+    (testing "reverse direction stays blocked even during deserialization"
+      (mt/with-temp [:model/Table {table-id :id} {:data_source :metabase-transform}]
+        (binding [mi/*deserializing?* true]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Cannot change data_source from metabase-transform"
+               (t2/update! :model/Table table-id {:data_source nil}))))))))
 
 (deftest is-published-and-collection-id-test
   (testing "is_published defaults to false"

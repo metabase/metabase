@@ -23,12 +23,15 @@
    [metabase.warehouses.models.database :as models.database]
    [toucan2.core :as t2]))
 
-;; `reindex!` below is ok in a parallel test since it's not actually executing anything
+;; `reindex!` below is ok in a parallel test since it's not actually executing anything.
+;; Many tests here use the H2 test-data database (Card defaults), so we keep the H2 guard off
+;; and re-enable H2 in the extract (production keeps it filtered).
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)
                                                   models.database/assert-not-h2! (constantly nil)]
-                        (thunk))))
+                        (binding [models.database/*include-h2-in-extract?* true]
+                          (thunk)))))
 
 (defn- no-labels [path]
   (mapv #(dissoc % :label) path))
@@ -2003,6 +2006,40 @@
                     db        (t2/select-one :model/Database :name "my-db")]
                 (is (some? transform))
                 (is (= (:id db) (:source_database_id transform)))))))))))
+
+(deftest table-created-by-transform-load-test
+  (testing "Table created by a Transform can be imported via serialization (GDGT-2444)"
+    (mt/with-premium-features #{:transforms-basic}
+      (let [serialized (atom nil)]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (t2/delete! :model/TransformTag)
+            (let [db        (ts/create! :model/Database :name "my-db")
+                  transform (ts/create! :model/Transform
+                                        :name "Hello Transform"
+                                        :source {:query {:database (:id db)
+                                                         :type "native"
+                                                         :native {:query "select 'hello' message"}}
+                                                 :type "query"}
+                                        :target {:database (:id db)
+                                                 :type "table"
+                                                 :schema "public"
+                                                 :name "hello_transforms_world"})]
+              (ts/create! :model/Table
+                          :name "hello_transforms_world"
+                          :db_id (:id db)
+                          :schema "public"
+                          :transform_id (:id transform))
+              (reset! serialized (into [] (serdes.extract/extract {})))))
+
+          (ts/with-db dest-db
+            (t2/delete! :model/TransformTag)
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (let [transform (t2/select-one :model/Transform :name "Hello Transform")
+                  table     (t2/select-one :model/Table :name "hello_transforms_world")]
+              (is (some? transform))
+              (is (some? table))
+              (is (= (:id transform) (:transform_id table))))))))))
 
 (deftest dashboard-minimal-required-properties-test
   (testing "Dashboard deserialized with only: serdes/meta, entity_id, name, creator_id"

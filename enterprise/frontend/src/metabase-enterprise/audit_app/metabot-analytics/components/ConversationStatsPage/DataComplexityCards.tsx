@@ -26,7 +26,25 @@ import type {
   DataComplexityCatalog,
   DataComplexityCatalogId,
   DataComplexityComponentId,
+  DataComplexityGroup,
+  DataComplexityGroupId,
+  DataComplexitySubScore,
 } from "../../types";
+
+// Each group only carries its own component IDs (size: entity_count/field_count;
+// ambiguity: name_collisions/synonym_pairs/repeated_measures). The data-driven
+// iteration over COMPONENT_GROUPS uses the wide union, so cast to a permissive
+// view for the lookup — missing keys yield undefined.
+function getSubScore(
+  group: DataComplexityGroup,
+  componentId: DataComplexityComponentId,
+): DataComplexitySubScore | undefined {
+  return (
+    group.components as Partial<
+      Record<DataComplexityComponentId, DataComplexitySubScore>
+    >
+  )[componentId];
+}
 
 const CATALOG_IDS: DataComplexityCatalogId[] = [
   "library",
@@ -34,10 +52,8 @@ const CATALOG_IDS: DataComplexityCatalogId[] = [
   "metabot",
 ];
 
-type DataComplexityComponentGroupId = "size" | "ambiguity";
-
 const COMPONENT_GROUPS: {
-  groupId: DataComplexityComponentGroupId;
+  groupId: DataComplexityGroupId;
   componentIds: DataComplexityComponentId[];
 }[] = [
   {
@@ -97,11 +113,11 @@ function DataComplexityCard({
           <Icon name="chevronright" size={12} c="text-tertiary" />
         </Flex>
         <Text c="text-secondary">{subtitle}</Text>
-        {match(catalog.total)
-          .with(P.number, (total) => (
+        {match(catalog.score)
+          .with(P.number, (score) => (
             <Stack align="center" gap="sm" my="sm">
               <Text size="4rem" fw={700}>
-                {formatNumber(total, { maximumFractionDigits: 0 })}
+                {formatNumber(score, { maximumFractionDigits: 0 })}
               </Text>
               <Text c="text-secondary">{t`Lower is better`}</Text>
             </Stack>
@@ -134,7 +150,7 @@ function DataComplexityBreakdown({
 }: {
   catalog: DataComplexityCatalog;
 }) {
-  const hasError = catalog.total == null;
+  const hasError = catalog.score == null;
 
   return (
     <Stack gap="lg">
@@ -155,6 +171,7 @@ function DataComplexityBreakdown({
             description: t`Signals that similar or repeated names could make answers harder to trust.`,
           }))
           .exhaustive();
+        const group = catalog.components[groupId];
 
         return (
           <Box key={groupId}>
@@ -164,13 +181,19 @@ function DataComplexityBreakdown({
             </Text>
 
             <Stack gap="sm" mt="md">
-              {componentIds.map((componentId) => (
-                <DataComplexityComponentItem
-                  key={componentId}
-                  componentId={componentId}
-                  catalog={catalog}
-                />
-              ))}
+              {componentIds.map((componentId) => {
+                const component = getSubScore(group, componentId);
+                if (!component) {
+                  return null;
+                }
+                return (
+                  <DataComplexityComponentItem
+                    key={componentId}
+                    componentId={componentId}
+                    component={component}
+                  />
+                );
+              })}
             </Stack>
           </Box>
         );
@@ -181,13 +204,12 @@ function DataComplexityBreakdown({
 
 function DataComplexityComponentItem({
   componentId,
-  catalog,
+  component,
 }: {
   componentId: DataComplexityComponentId;
-  catalog: DataComplexityCatalog;
+  component: DataComplexitySubScore;
 }) {
-  const component = catalog.components[componentId];
-  const measurement = component.measurement;
+  const measurement = "measurement" in component ? component.measurement : null;
 
   const { title, description, count } = match(componentId)
     .with("entity_count", () => ({
@@ -263,7 +285,7 @@ function DataComplexityComponentItem({
             <Text size="sm" c="text-secondary">
               {description}
             </Text>
-            {component.score === null && (
+            {"error" in component && (
               <Text mt="sm" size="sm" c="error" role="alert">
                 {component.error}
               </Text>

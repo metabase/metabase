@@ -1898,6 +1898,20 @@ describe("documents", () => {
       cy.findByTestId("document-history-list")
         .findByText(/reverted to an earlier version/)
         .should("be.visible");
+
+      cy.log("Surface backend error when a revert fails (UXW-310)");
+      cy.intercept("POST", "/api/revision/revert", {
+        statusCode: 500,
+        body: { message: "Cannot revert: missing document" },
+      }).as("failedRevert");
+
+      cy.findByTestId("document-history-list")
+        .findAllByTestId("question-revert-button")
+        .first()
+        .click();
+      cy.wait("@failedRevert");
+
+      H.undoToast().should("contain.text", "Cannot revert: missing document");
     });
   });
 });

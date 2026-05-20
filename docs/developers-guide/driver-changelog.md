@@ -4,6 +4,31 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.62.0
+
+- `sql.params.substitution/field->clause`, `to-clause`, `desugar-filter-clause`, `wrap-value-literals-in-mbql`, and
+  `date-string->filter`, introduced in 0.61.0, have been removed; they are no longer necessary. They have been
+  replaced by a single method, `sql.params.substitution/->honeysql`, which compiles an MBQL 5 clause to HoneySQL with
+  the given options.
+
+- The `metabase.driver.commmon.parameters` and `metabase.driver.commmon.parameters.parse` namespaces, deprecated in
+  0.57.0, have been removed. Please use the Lib implementations instead. Relevant functions are aliased in
+  `metabase.lib.core`, for example `metabase.lib.core/parse-parameters`, `metabase.lib.core/parsed-parameter`, and
+  `metabase.lib.core/parsed-parameter?`.
+
+- The `metabase.driver.common.parameters.dates` and `metabase.driver.common.parameters.operators` namespaces,
+  deprecated in 0.57.0, have been removed. Use the equivalent QP namespaces instead:
+  `metabase.query-processor.parameters.dates` and `metabase.query-processor.parameters.operators`, respectively. These
+  namespaces return MBQL 5 clauses rather than MBQL 4; use `metabase.lib.core/->legacy-MBQL` if needed until your
+  driver has been fully updated to MBQL 5.
+
+- `metabase.driver.sql.parameters.substitution/align-temporal-unit-with-param-type`, deprecated in 0.49.0, has been
+  removed.
+
+- `metabase.driver-api.core/desugar-filter-clause`, `metabase.driver-api.core/negate-filter-clause`, and
+  `metabase.driver-api.core/simplify-compound-filter`, deprecated in 0.57.0, have been removed; use the
+  `metabase.lib.core` versions instead. The new versions operate on MBQL 5 instead of MBQL 4.
+
 ## Metabase 0.61.0
 
 - Added the following driver multimethods to support MBQL5 compilation migration:
@@ -34,14 +59,6 @@ title: Driver interface changelog
 - `metabase.driver.sql/set-role-statement` has been deprecated in favor of
   `metabase.driver.sql-jdbc/set-role-statement`, which takes an additional `java.sql.Connection` parameter, so you use
   the connection to call `quote_ident()` or similar for identifier quoting/escaping purposes.
-
-- The `metabase.driver.commmon.parameters` and `metabase.driver.commmon.parameters.parse` namespaces, deprecated in
-  0.57.0, have been removed. Please use the Lib implementations instead. Relevant functions are aliased in
-  `metabase.lib.core`, for example `metabase.lib.core/parse-parameters`, `metabase.lib.core/parsed-parameter`, and
-  `metabase.lib.core/parsed-parameter?`.
-
-- `metabase.driver.sql.parameters.substitution/align-temporal-unit-with-param-type`, deprecated in 0.49.0, has been
-  removed.
 
 ## Metabase 0.60.0
 
