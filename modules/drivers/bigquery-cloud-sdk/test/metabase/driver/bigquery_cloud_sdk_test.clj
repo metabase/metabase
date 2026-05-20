@@ -31,7 +31,7 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
-   (com.google.cloud.bigquery BigQuery TableResult)
+   (com.google.cloud.bigquery BigQuery QueryJobConfiguration TableResult)
    (com.google.cloud.http HttpTransportOptions)))
 
 (set! *warn-on-reflection* true)
@@ -990,6 +990,43 @@
               (is (= "Query cancelled" (.getMessage e)))
               ;; make sure that the fake exception was thrown
               (is (true? @fake-execute-called)))))))))
+
+(deftest ^:parallel build-bigquery-request-maximum-bytes-billed-test
+  (let [build-fn @#'bigquery/build-bigquery-request]
+    (testing "maximum-bytes-billed is set when present in database details"
+      (let [^QueryJobConfiguration request (build-fn "SELECT 1" [] {:maximum-bytes-billed "1099511627776"})]
+        (is (= (Long/valueOf 1099511627776) (.getMaximumBytesBilled request)))))
+    (testing "maximum-bytes-billed is not set when absent from database details"
+      (let [^QueryJobConfiguration request (build-fn "SELECT 1" [] {})]
+        (is (nil? (.getMaximumBytesBilled request)))))
+    (testing "maximum-bytes-billed is not set when blank"
+      (let [^QueryJobConfiguration request (build-fn "SELECT 1" [] {:maximum-bytes-billed ""})]
+        (is (nil? (.getMaximumBytesBilled request)))))
+    (testing "maximum-bytes-billed accepts numeric values (e.g. from API clients)"
+      (let [^QueryJobConfiguration request (build-fn "SELECT 1" [] {:maximum-bytes-billed 1099511627776})]
+        (is (= (Long/valueOf 1099511627776) (.getMaximumBytesBilled request)))))
+    (testing "maximum-bytes-billed ignores non-numeric strings instead of throwing"
+      (let [^QueryJobConfiguration request (build-fn "SELECT 1" [] {:maximum-bytes-billed "not-a-number"})]
+        (is (nil? (.getMaximumBytesBilled request)))))))
+
+(deftest maximum-bytes-billed-query-execution-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "queries against a database with maximum-bytes-billed set actually pass the limit to BigQuery"
+      (testing "an unrealistically low limit causes BigQuery to reject the query"
+        (mt/with-temp [:model/Database db {:engine  :bigquery-cloud-sdk
+                                           :details (assoc (:details (mt/db))
+                                                           :maximum-bytes-billed 1)}]
+          (mt/with-db db
+            (let [result (qp/process-query (mt/mbql-query venues {:limit 1}))]
+              (is (= :failed (:status result)))
+              (is (re-find #"(?i)would be billed|maximum.*bytes.*billed|exceeded"
+                           (or (:error result) "")))))))
+      (testing "a generous limit lets the query run"
+        (mt/with-temp [:model/Database db {:engine  :bigquery-cloud-sdk
+                                           :details (assoc (:details (mt/db))
+                                                           :maximum-bytes-billed 1099511627776)}]
+          (mt/with-db db
+            (is (seq (mt/rows (mt/run-mbql-query venues {:limit 1}))))))))))
 
 (defn- future-thread-names []
   ;; kinda hacky but we don't control this thread pool
