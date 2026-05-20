@@ -535,7 +535,13 @@
                         :labels [:type]})
    (prometheus/counter :metabase-export/errors
                        {:description "Number of errors during data export."
-                        :labels [:format]})])
+                        :labels [:format]})
+   ;; security center metrics
+   (prometheus/gauge :metabase-security-center/last-sync-timestamp-seconds
+                     {:description "Unix timestamp (seconds since epoch) of the last successful Security Center."})
+   (prometheus/gauge :metabase-security-center/vulnerable-advisories
+                     {:description "Number of advisories where this Metabase instance is potentially affected."
+                      :labels [:severity :acknowledged]})])
 
 (defn- quartz-collectors
   []
