@@ -1,9 +1,21 @@
-// FIXME: how to get a unique id?
 import Settings from "metabase/utils/settings";
 
 const METAPLOW_WEBSITE_ID = "23eefa30-4c4f-490e-aa4f-084cd23b1561";
 const anonymizedHostname = "anonymous.metabase.com";
 const anonymizedOrigin = `http://${anonymizedHostname}`;
+
+type MetaplowPayload = {
+  website: string;
+  url: string;
+  referrer: string;
+  title: string;
+  hostname: string;
+  screen: string;
+  language: string;
+  tag: string;
+  name: string;
+  data?: Record<string, unknown>;
+};
 
 const getSanitizedUrl = (url: string) => {
   const parsed = new URL(url, window.location.origin);
@@ -14,7 +26,7 @@ const getSanitizedUrl = (url: string) => {
   return anonymizedOrigin + pathWithoutSlug;
 };
 
-function getBasePayload(url: string) {
+function getBasePayload(url: string): Omit<MetaplowPayload, "name" | "data"> {
   return {
     website: METAPLOW_WEBSITE_ID,
     url: getSanitizedUrl(url),
@@ -27,7 +39,7 @@ function getBasePayload(url: string) {
   };
 }
 
-async function send(payload: object): Promise<void> {
+async function send(payload: MetaplowPayload): Promise<void> {
   const metaplowUrl = Settings.get("metaplow-url");
   if (!metaplowUrl) {
     return;
@@ -45,8 +57,8 @@ async function send(payload: object): Promise<void> {
 }
 
 export function trackMetaplowEvent(
-  name: string,
-  data: Record<string, unknown>,
+  name: MetaplowPayload["name"],
+  data: MetaplowPayload["data"] = {},
 ): void {
   send({
     ...getBasePayload(window.location.href),
@@ -55,8 +67,8 @@ export function trackMetaplowEvent(
   }).catch(() => undefined);
 }
 
-export function trackMetaplowPageView(url: string): void {
-  send({
+export function trackMetaplowPageView(url: string): Promise<void> {
+  return send({
     ...getBasePayload(url),
     name: "pageview",
   }).catch(() => undefined);
