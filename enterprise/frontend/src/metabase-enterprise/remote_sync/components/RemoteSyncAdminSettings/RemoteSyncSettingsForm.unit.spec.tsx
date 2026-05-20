@@ -94,7 +94,7 @@ describe("RemoteSyncSettingsForm", () => {
         screen.getByRole("heading", { name: "Branch to sync with" }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("switch", { name: "Auto-sync with git" }),
+        screen.getByRole("switch", { name: /Auto-sync with git/ }),
       ).toBeInTheDocument();
     });
   });
