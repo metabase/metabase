@@ -9,6 +9,8 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.test-util.metadata-providers.mock :as mock]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -327,26 +329,6 @@
 ;;; both phases must still operate correctly. They consume schema/table strings from the remapping store; nothing
 ;;; should require a hydrated `:model/Table` on the to-side.
 
-(deftest phase-1-handles-to-side-without-model-table-test
-  (testing "Phase 1 mutates the from-side metadata even when the to-side has no :model/Table"
-    (mt/with-premium-features #{:workspaces}
-      (qp.store/with-metadata-provider (mt/id)
-        (let [venues-table    (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))
-              original-schema (:schema venues-table)
-              original-name   (:name venues-table)
-              to-schema       "ws_unsynced"
-              to-table        "remapped_venues_no_sync"]
-          (with-remappings (mt/id) {[original-schema original-name] [to-schema to-table]}
-            (let [query (-> (lib/query (qp.store/metadata-provider) venues-table)
-                            (assoc :database (mt/id)))]
-              ;; Should not throw — the to-side strings are written into the from-side metadata in place.
-              (#'ws.middleware/apply-workspace-remapping query)
-              (let [table-after (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))]
-                (is (= to-schema (:schema table-after))
-                    "Phase 1 wrote the to-side schema even with no :model/Table for it")
-                (is (= to-table (:name table-after))
-                    "Phase 1 wrote the to-side name even with no :model/Table for it")))))))))
-
 (deftest phase-2-handles-to-side-without-model-table-test
   (testing "Phase 2 rewrites SQL using to-side strings even when no :model/Table exists for the to-side"
     (mt/with-premium-features #{:workspaces}
@@ -485,23 +467,6 @@
             "ORDERS inside the correlated subquery is rewritten")
         (is (re-find #"(?i)PUBLIC\.USERS" rewritten)
             "USERS in the outer query keeps its canonical ref")))))
-
-(deftest mbql-phase-1-metadata-override-test
-  (testing "MBQL preprocess (Phase 1) overrides table metadata so HoneySQL emits workspace identifiers"
-    (mt/with-premium-features #{:workspaces}
-      (qp.store/with-metadata-provider (mt/id)
-        (let [venues          (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))
-              original-schema (:schema venues)
-              original-name   (:name venues)]
-          (with-remappings (mt/id) {[original-schema original-name] ["ws_alice" "venues_workspace"]}
-            (let [query (-> (lib/query (qp.store/metadata-provider) venues)
-                            (assoc :database (mt/id)))]
-              (#'ws.middleware/apply-workspace-remapping query)
-              (let [after (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))]
-                (is (= "ws_alice"         (:schema after))
-                    "Phase 1 wrote the workspace schema into the cached metadata")
-                (is (= "venues_workspace" (:name after))
-                    "Phase 1 wrote the workspace table name into the cached metadata")))))))))
 
 (deftest card-execution-path-test
   (testing "a Card whose dataset_query targets a remapped table compiles to workspace SQL"
@@ -776,3 +741,112 @@
           (wrapped query identity)
           (is (re-find #"(?i)ws_alice" (get-in @called-with [:qp/compiled :query]))
               "Phase 2 must engage on a workspace child even before the :workspaces token is installed"))))))
+
+;;; -------------------------------- Unit tests: TableRemappingMetadataProvider --------------------------------
+;;;
+;;; These tests exercise the remapping layer in isolation using mock metadata
+;;; providers — no QP store, no DB fixtures, no premium-feature gating.
+
+(def ^:private test-db {:id 1 :name "test-db" :engine :h2})
+
+(defn- make-table
+  ([id table-name]        (make-table id table-name nil))
+  ([id table-name schema] {:id id :name table-name :schema schema :db-id 1}))
+
+(defn- make-field [id field-name table-id]
+  {:id id :name field-name :table-id table-id :base-type :type/Integer})
+
+(defn- remap-provider
+  "Wrap `mp` with a remapping layer. Each spec-pair is `[from to]` where from/to
+   are `[schema table]` 2-tuples or `[db schema table]` 3-tuples."
+  [mp & spec-pairs]
+  (let [remappings (into {} (map (fn [[from to]] [(->spec from) (->spec to)])) spec-pairs)
+        remapper   (#'ws.middleware/table-remapper remappings)]
+    (#'ws.middleware/remapping-provider remapper mp)))
+
+(defn- tables-by-id
+  "Return `{id {:schema s :name n}}` for all tables visible through `mp`."
+  [mp]
+  (into {} (map (juxt :id #(select-keys % [:schema :name]))) (lib.metadata/tables mp)))
+
+(deftest ^:parallel remapping-provider-test
+  (let [mp  (mock/mock-metadata-provider
+             {:database test-db
+              :tables   [(make-table 1 "VENUES" "PUBLIC")
+                         (make-table 2 "ORDERS" "PUBLIC")
+                         (make-table 3 "USERS"  "PUBLIC")]})
+        rmp (remap-provider mp
+                            [["PUBLIC" "VENUES"] ["workspace_schema" "workspace_venues"]]
+                            [["PUBLIC" "ORDERS"] ["workspace_schema" "workspace_orders"]])]
+    (testing "matched tables are remapped, unmatched pass through"
+      (is (= {1 {:schema "workspace_schema" :name "workspace_venues"}
+              2 {:schema "workspace_schema" :name "workspace_orders"}
+              3 {:schema "PUBLIC"           :name "USERS"}}
+             (tables-by-id rmp))))
+    (testing "merge preserves keys the remapping doesn't touch"
+      (is (=? {:id 1 :db-id 1}
+              (lib.metadata/table rmp 1))))))
+
+(deftest ^:parallel remapping-provider-nil-schema-test
+  (testing "schema-less driver: nil in metadata matches the \"\" storage sentinel"
+    (let [mp  (mock/mock-metadata-provider
+               {:database test-db
+                :tables   [(make-table 1 "VENUES")]})
+          rmp (remap-provider mp [["" "VENUES"] ["workspace_schema" "workspace_venues"]])]
+      (is (=? {:schema "workspace_schema" :name "workspace_venues"}
+              (lib.metadata/table rmp 1))))))
+
+(deftest ^:parallel remapping-provider-db-override-test
+  (testing "3-tuple to-spec writes :db onto the remapped table (cross-DB workspaces)"
+    (let [mp  (mock/mock-metadata-provider
+               {:database test-db
+                :tables   [(make-table 1 "VENUES" "PUBLIC")]})
+          rmp (remap-provider mp [["PUBLIC" "VENUES"] ["other_database" "workspace_schema" "workspace_venues"]])]
+      (is (=? {:db "other_database" :schema "workspace_schema" :name "workspace_venues"}
+              (lib.metadata/table rmp 1))))))
+
+(deftest ^:parallel remapping-provider-non-table-metadata-test
+  (testing "fields pass through the remapping layer unchanged"
+    (let [mp  (mock/mock-metadata-provider
+               {:database test-db
+                :tables   [(make-table 1 "VENUES" "PUBLIC")]
+                :fields   [(make-field 10 "PRICE" 1)]})
+          rmp (remap-provider mp [["PUBLIC" "VENUES"] ["workspace_schema" "workspace_venues"]])]
+      (is (=? {:name "PRICE" :table-id 1}
+              (lib.metadata/field rmp 10)))))
+  (testing "database and settings delegate to parent"
+    (let [mp  (mock/mock-metadata-provider
+               {:database test-db
+                :settings {:site-name "My Instance"}})
+          rmp (remap-provider mp [["PUBLIC" "VENUES"] ["workspace_schema" "workspace_venues"]])]
+      (is (= "test-db"     (:name (lib.metadata.protocols/database rmp))))
+      (is (= "My Instance" (lib.metadata.protocols/setting rmp :site-name))))))
+
+(deftest ^:parallel remapping-provider-case-sensitive-test
+  (testing "match is case-sensitive: \"public\" does not match \"PUBLIC\""
+    (let [mp  (mock/mock-metadata-provider
+               {:database test-db
+                :tables   [(make-table 1 "VENUES" "PUBLIC")]})
+          rmp (remap-provider mp [["public" "VENUES"] ["workspace_schema" "workspace_venues"]])]
+      (is (= "PUBLIC" (:schema (lib.metadata/table rmp 1)))))))
+
+(deftest ^:parallel remapping-provider-stacks-test
+  (testing "two remapping layers compose — each rewrites independently"
+    (let [mp   (mock/mock-metadata-provider
+                {:database test-db
+                 :tables   [(make-table 1 "VENUES" "PUBLIC")
+                            (make-table 2 "ORDERS" "PUBLIC")]})
+          rmp1 (remap-provider mp   [["PUBLIC" "VENUES"] ["alice_schema" "alice_venues"]])
+          rmp2 (remap-provider rmp1 [["PUBLIC" "ORDERS"] ["bob_schema"   "bob_orders"]])]
+      (is (= {1 {:schema "alice_schema" :name "alice_venues"}
+              2 {:schema "bob_schema"   :name "bob_orders"}}
+             (tables-by-id rmp2))))))
+
+(deftest ^:parallel remapping-provider-no-remappings-identity-test
+  (testing "empty remappings = identity"
+    (let [mp  (mock/mock-metadata-provider
+               {:database test-db
+                :tables   [(make-table 1 "VENUES" "PUBLIC")]})
+          rmp (remap-provider mp)]
+      (is (=? {:schema "PUBLIC" :name "VENUES"}
+              (lib.metadata/table rmp 1))))))

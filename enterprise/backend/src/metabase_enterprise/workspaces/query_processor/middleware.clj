@@ -62,17 +62,55 @@
      - Phase 2: ~150ms per query when remappings exist (SQLGlot via GraalPy roundtrip).
        Amortized against query execution time, which is usually >150ms anyway."
   (:require
+   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
+   [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]))
+   [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
+   [metabase.query-processor.store :as qp.store]))
 
 (set! *warn-on-reflection* true)
+
+(deftype TableRemappingMetadataProvider [f parent-metadata-provider]
+  lib.metadata.protocols/MetadataProvider
+  (database [_this]
+    (lib.metadata.protocols/database parent-metadata-provider))
+  (metadatas [_this {mt :lib/type :as metadata-spec}]
+    (cond->> (lib.metadata.protocols/metadatas parent-metadata-provider metadata-spec)
+      (= mt :metadata/table)
+      (into [] (map f))))
+  (setting [_this setting-key]
+    (lib.metadata.protocols/setting parent-metadata-provider setting-key)))
+
+(defn- remapping-provider [f mp]
+  (->TableRemappingMetadataProvider f mp))
+
+(defn- table-remapper
+  "A table remapper that will only run on `{:lib/type :metadata/table ,,,}`"
+  [remappings]
+  (let [schema-table-index (into {}
+                                 (map (fn [[from-spec to-spec]]
+                                        (let [{from-schema :schema from-name :table}       from-spec
+                                              {to-db :db to-schema :schema to-name :table} to-spec]
+                                          [[(ws.table-remapping/denormalize-level from-schema)
+                                            (ws.table-remapping/denormalize-level from-name)]
+                                           {:db     (ws.table-remapping/denormalize-level to-db)
+                                            :schema (ws.table-remapping/denormalize-level to-schema)
+                                            :name   to-name}])))
+                                 remappings)
+        remapped-for (fn remapping-lookup [table]
+                       (get schema-table-index [(ws.table-remapping/denormalize-level (:schema table))
+                                                (ws.table-remapping/denormalize-level (:name table))]))]
+    (fn [table-metadata]
+      (merge table-metadata
+             (remapped-for table-metadata)))))
 
 ;;; ------------------------------------------------- Helpers --------------------------------------------------
 ;;;
@@ -81,7 +119,7 @@
 ;;; alongside the `::table-spec` shape they consume. The native-transform exec hook
 ;;; needs the same primitives outside this QP middleware path.
 
-(defn- remap-mbql-table-metadata!
+(defn- install-remapped-metadata-provider!
   "Override `:db`, `:schema`, and `:name` on table metadata in the CachedMetadataProvider
    for each remapping. Downstream HoneySQL compilation will read the overridden values.
 
@@ -96,25 +134,19 @@
    the schema comparison, so a remapping row with `from_schema = \"\"` matches a
    schema-less driver's `:metadata/table.:schema = nil` (and a Postgres remapping
    row with `from_schema = \"public\"` matches the literal value)."
-  [metadata-provider remappings]
-  (doseq [[from-spec to-spec] remappings
-          :let [{from-schema :schema from-name :table} from-spec
-                {to-db :db to-schema :schema to-name :table} to-spec
-                from-schema-match (ws.table-remapping/denormalize-level from-schema)
-                candidates        (lib.metadata.protocols/metadatas
-                                   metadata-provider
-                                   {:lib/type :metadata/table, :name #{from-name}})
-                table             (some #(when (= (ws.table-remapping/denormalize-level (:schema %))
-                                                  from-schema-match)
-                                           %)
-                                        candidates)]
-          :when table]
-    (lib.metadata.protocols/store-metadata!
-     metadata-provider
-     (assoc table
-            :db     (ws.table-remapping/denormalize-level to-db)
-            :schema (ws.table-remapping/denormalize-level to-schema)
-            :name to-name))))
+  [mp remappings]
+  (let [remapper     (table-remapper remappings)
+        remapping-mp (-> (remapping-provider remapper mp)
+                         lib.metadata.cached-provider/cached-metadata-provider
+                         ;; this creates a new tracker that doesn't carry over previous stats. This is fine for now as any
+                         ;; instance using table remapping is a workspace instance and this doesn't matter
+                         lib.metadata.invocation-tracker/invocation-tracker-provider)]
+    (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
+      ;; this has no body so it looks like this is a no-op. But the with-metadata-provider sets the metadata provider and then
+      ;; doesn't pop it. We could use the private function that this uses: qp.store/set-metadata-provider!, or we could use the
+      ;; public function `(qp.store/store-miscellaneous-value! ::qp.store/metadata-provider remapping-mp)`. But the former is
+      ;; private and the latter is too general. We want this usage to really stand out.
+      (qp.store/with-metadata-provider remapping-mp))))
 
 ;;; --------------------------------------- Phase 1: Preprocessing (MBQL only) ------------------------------------
 
@@ -152,7 +184,7 @@
       (if (empty? remappings)
         query
         (do
-          (remap-mbql-table-metadata! mp remappings)
+          (install-remapped-metadata-provider! mp remappings)
           query)))))
 
 ;;; ----------------------------- Phase 2: Post-Compilation SQL Rewrite (authoritative) ----------------------------
