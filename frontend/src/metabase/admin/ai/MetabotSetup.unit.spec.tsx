@@ -996,6 +996,44 @@ describe("MetabotSetup", () => {
     );
   });
 
+  it("BOT-1429: keeps the terms checkbox enabled while session-properties refetches in the background", async () => {
+    const { store } = await setup({
+      isHosted: true,
+      savedProviderValue: null,
+      isConfigured: false,
+      isStoreUser: true,
+      tokenStatusFeatures: [],
+    });
+
+    await selectProvider("Metabase");
+
+    const termsCheckbox = await screen.findByRole("checkbox", {
+      name: /I agree with the Metabase AI Service/i,
+    });
+    expect(termsCheckbox).toBeEnabled();
+
+    const sessionPropertiesDeferred = defer<unknown>();
+    fetchMock.removeRoute("get-session-properties");
+    fetchMock.get(
+      "path:/api/session/properties",
+      () => sessionPropertiesDeferred.promise,
+    );
+
+    act(() => {
+      store.dispatch(Api.util.invalidateTags(["session-properties"]));
+    });
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/session/properties").length,
+      ).toBeGreaterThan(1);
+    });
+
+    expect(termsCheckbox).toBeEnabled();
+
+    sessionPropertiesDeferred.resolve({});
+  });
+
   it("calls onClose after directly connecting to the Metabase provider in modal mode", async () => {
     const onClose = jest.fn();
 
