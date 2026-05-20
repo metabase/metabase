@@ -19,7 +19,7 @@
    :is_sample true,
    :id 1,
    :is_on_demand false,
-   :engine "h2",
+   :engine "sqlite",
    :initial_sync_status "complete",
    :is_audit false,
    :dbms_version "{}",
