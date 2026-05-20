@@ -62,7 +62,9 @@
 ;;  - (let [{{:keys [user]} :details} database])
 
 (def connection-types
-  "All valid values for [[*connection-type*]], in canonical order."
+  "All valid values for [[*connection-type*]], ordered by ascending privilege:
+   `:default` (read-only) < `:write-data` (DML) < `:admin` (DDL/ownership).
+   New types should be inserted at the position matching their privilege level."
   [:default :write-data :admin])
 
 (mr/def ::connection-type
@@ -98,7 +100,7 @@
   [& body]
   `(let [prior# *connection-type*]
      (when (not= prior# :admin)
-       (log/infof "Entering admin connection scope (from %s)" prior#))
+       (log/infof "Entering :admin connection scope (from %s)" prior#))
      (binding [*connection-type* :admin]
        ~@body)))
 
