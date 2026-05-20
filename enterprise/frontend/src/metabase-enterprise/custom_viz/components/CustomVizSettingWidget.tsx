@@ -1,7 +1,6 @@
-import type { WidgetMount, WidgetMountHandle } from "custom-viz";
-import { useEffect, useRef } from "react";
-import { useUnmount } from "react-use";
+import type { WidgetMount } from "custom-viz";
 
+import { usePluginMount } from "../use-plugin-mount";
 import { getWidgetMountPluginId } from "../widget-mount";
 
 type Props = {
@@ -14,26 +13,7 @@ type Props = {
  */
 export function CustomVizSettingWidget({ mount, widgetProps }: Props) {
   const pluginId = getWidgetMountPluginId(mount);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const handleRef = useRef<WidgetMountHandle<Record<string, unknown>> | null>(
-    null,
-  );
-
-  useEffect(() => {
-    if (!containerRef.current) {
-      return;
-    }
-    if (!handleRef.current) {
-      handleRef.current = mount(containerRef.current, widgetProps);
-    } else {
-      handleRef.current.update(widgetProps);
-    }
-  });
-
-  useUnmount(() => {
-    handleRef.current?.unmount();
-    handleRef.current = null;
-  });
+  const containerRef = usePluginMount(mount, widgetProps);
 
   return (
     <div

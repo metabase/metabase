@@ -1,14 +1,12 @@
 import type {
   CreateCustomVisualizationProps,
   CustomVisualization,
-  CustomVisualizationMountHandle,
   CustomVisualizationProps,
   CustomVisualizationSettingDefinition,
   ClickObject as CustomVizClickObject,
   HoverObject as CustomVizHoverObject,
 } from "custom-viz";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useUnmount } from "react-use";
 import { t } from "ttag";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
@@ -38,6 +36,7 @@ import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 import { trackCustomVizSelected } from "./analytics";
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
+import { usePluginMount } from "./use-plugin-mount";
 
 // Track which plugins have already been loaded to avoid re-execution.
 // Maps plugin id → { identifier, hash } so we can detect when a re-uploaded
@@ -402,8 +401,6 @@ export const useCustomVizPluginsIcon = () => {
 type GenericVizDefinition = CustomVisualization<Record<string, unknown>>;
 type GenericVizMount = GenericVizDefinition["mount"];
 type GenericVizPluginProps = CustomVisualizationProps<Record<string, unknown>>;
-type GenericVizMountHandle =
-  CustomVisualizationMountHandle<GenericVizPluginProps>;
 
 function isValidVizDefinition(value: unknown): value is GenericVizDefinition {
   return isObject(value) && typeof value.mount === "function";
@@ -423,8 +420,6 @@ function createCustomVizWrapper(
     onHoverChange,
   }: VisualizationProps) {
     const { resolvedColorScheme } = useColorScheme();
-    const containerRef = useRef<HTMLDivElement | null>(null);
-    const handleRef = useRef<GenericVizMountHandle | null>(null);
 
     const pluginProps: GenericVizPluginProps = {
       width,
@@ -440,25 +435,10 @@ function createCustomVizWrapper(
       ) => void,
     };
 
-    useEffect(() => {
-      if (!containerRef.current) {
-        return;
-      }
-      if (!handleRef.current) {
-        handleRef.current = mount(
-          VisualizationComponent,
-          containerRef.current,
-          pluginProps,
-        );
-      } else {
-        handleRef.current.update(pluginProps);
-      }
-    });
-
-    useUnmount(() => {
-      handleRef.current?.unmount();
-      handleRef.current = null;
-    });
+    const containerRef = usePluginMount<GenericVizPluginProps>(
+      (container, props) => mount(VisualizationComponent, container, props),
+      pluginProps,
+    );
 
     return (
       <div
