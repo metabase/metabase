@@ -230,11 +230,12 @@ export type CreateDefineSetting<TSettings extends Record<string, unknown>> =
     eraseDependencies?: string[];
 
     /**
-     * Widget to render for this setting. Must be one of the built-in widget
-     * names (see `WidgetName`). Custom React components are not supported:
+     * Widget to render for this setting: either a built-in widget name
+     * (`WidgetName`) or a custom React component (`React.ComponentType<P>`).
      *
-     * When using a custom component, `getProps` should return only the non-base props;
-     * base widget props are provided by the settings renderer.
+     * When using a custom component, `getProps` should return only the
+     * non-base props; base widget props are provided by the settings
+     * renderer.
      *
      * Custom-component widgets are rewritten internally to a `WidgetMount`
      * before the definition leaves the plugin sandbox, so the host never
@@ -290,7 +291,7 @@ export type CreateDefineSetting<TSettings extends Record<string, unknown>> =
      * The return type is inferred from the `widget` value: props of the named
      * built-in widget when `widget` is a `WidgetName`, or the component's own
      * props (minus the base props the engine injects) when `widget` is a custom
-     * built-in widget. Omit `getProps` entirely when the widget has no
+     * React component. Omit `getProps` entirely when the widget has no
      * configurable props (`ToggleProps` is `never`).
      *
      * @param series - The current query result (rows + column metadata).
