@@ -1,6 +1,7 @@
 (ns metabase.explorations.api-test
   (:require
    [clojure.test :refer :all]
+   [metabase.explorations.api :as explorations.api]
    [metabase.explorations.groups :as explorations.groups]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
@@ -1057,6 +1058,47 @@
             url (str "exploration/thread/" tid "/documents")]
         (mt/user-http-request other :get 403 url)
         (mt/user-http-request other :post 403 url {})))))
+
+(deftest ^:parallel append-chart-page-url-test
+  (testing "chart-page-url builds a research deep link with the leaf-group id percent-encoded"
+    (is (= "/question/research/7/group/auto%3A42%3Aorders.created_at"
+           (#'explorations.api/chart-page-url 7 42 "orders.created_at")))
+    (testing "the encoded segment decodes back to the FE-routed leaf-group id"
+      (is (= (explorations.groups/leaf-group-id 42 "orders.created_at")
+             "auto:42:orders.created_at")))))
+
+(deftest ^:parallel append-chart-nodes-test
+  (testing "append-chart-nodes adds a plain-link paragraph followed by a cardEmbed to the doc body"
+    (let [result (#'explorations.api/append-chart-nodes
+                  {:type "doc" :content []}
+                  77
+                  99
+                  "/question/research/7/group/auto%3A42%3Ad1"
+                  "Revenue by Plan")
+          [link embed] (:content result)]
+      (is (= "doc" (:type result)))
+      (is (= 2 (count (:content result))))
+      (testing "first node is a paragraph with a plain hyperlink to the chart page"
+        (is (= {:type    "paragraph"
+                :content [{:type  "text"
+                           :text  "Revenue by Plan"
+                           :marks [{:type  "link"
+                                    :attrs {:href "/question/research/7/group/auto%3A42%3Ad1"}}]}]}
+               link)))
+      (testing "second node is a resizeNode-wrapped cardEmbed referencing the card + stored result"
+        (is (= {:type    "resizeNode"
+                :content [{:type  "cardEmbed"
+                           :attrs {:id 77 :name nil :stored_result_id 99}}]}
+               embed)))))
+  (testing "tolerates a missing/non-doc root by starting from an empty doc"
+    (let [result (#'explorations.api/append-chart-nodes nil 1 1 "/x" "Chart")]
+      (is (= "doc" (:type result)))
+      (is (= 2 (count (:content result))))))
+  (testing "appends after existing content, preserving order"
+    (let [existing {:type "doc" :content [{:type "paragraph" :content []}]}
+          result   (#'explorations.api/append-chart-nodes existing 1 1 "/x" "Chart")]
+      (is (= 3 (count (:content result))))
+      (is (= {:type "paragraph" :content []} (first (:content result)))))))
 
 (deftest exploration-cascade-delete-test
   (testing "Deleting an exploration cascades to threads, selections, and queries"

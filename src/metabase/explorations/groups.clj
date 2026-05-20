@@ -25,9 +25,11 @@
   [card-id]
   (str "auto:metric:" card-id))
 
-(defn- leaf-group-id
+(defn leaf-group-id
   "Stable per-thread leaf group id derived from `[card_id dimension_id]`. Treated as
-   opaque by the FE; the format is illustrative, not parsed."
+   opaque by the FE; the format is illustrative, not parsed. Public so callers building
+   deep links to a chart's group page (see [[metabase.explorations.api]]) use the same
+   scheme the FE routes on."
   [card-id dim-id]
   (str "auto:" card-id ":" dim-id))
 

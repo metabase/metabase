@@ -31,6 +31,7 @@ import {
   ActionIcon,
   Box,
   Button,
+  Center,
   Group,
   Icon,
   Stack,
@@ -40,6 +41,7 @@ import * as Urls from "metabase/urls";
 import type { ExplorationDocument, ExplorationId } from "metabase-types/api";
 
 import S from "./ExplorationDocument.module.css";
+import { ExplorationDocumentSkeleton } from "./ExplorationDocumentSkeleton";
 
 export type ExplorationDocumentWithIsAutoInsights = ExplorationDocument & {
   isAutoInsights: boolean;
@@ -110,8 +112,16 @@ export function ExplorationDocument({
     dispatch(setIsHistorySidebarOpen(true));
   }, [dispatch]);
 
-  if (isDocumentLoading || error) {
-    return <LoadingAndErrorWrapper loading={isDocumentLoading} error={error} />;
+  if (error) {
+    return (
+      <Center w="100%" mih="20rem">
+        <LoadingAndErrorWrapper error={error} />
+      </Center>
+    );
+  }
+
+  if (isDocumentLoading) {
+    return <ExplorationDocumentSkeleton />;
   }
 
   return (

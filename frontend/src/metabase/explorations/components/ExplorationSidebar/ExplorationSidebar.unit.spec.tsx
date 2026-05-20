@@ -23,6 +23,8 @@ function createQuery(
     card_id: 1,
     dimension_id: "dim-1",
     dimension_name: overrides.name,
+    query_type: "default",
+    display: null,
     position: 0,
     error_message: null,
     started_at: null,
@@ -38,11 +40,17 @@ function createQuery(
 interface CreateExplorationOpts {
   queries: ExplorationQuery[];
   groups?: ExplorationQueryGroup[];
+  /** Thread chat prompt — set when the exploration was created with LLM context. */
+  prompt?: string | null;
 }
 
 const METRIC_HEADING_ID = "metric:1";
 
-function createExploration({ queries, groups }: CreateExplorationOpts): {
+function createExploration({
+  queries,
+  groups,
+  prompt = null,
+}: CreateExplorationOpts): {
   exploration: Exploration;
 } {
   const finalGroups: ExplorationQueryGroup[] = groups ?? [
@@ -71,7 +79,7 @@ function createExploration({ queries, groups }: CreateExplorationOpts): {
       id: 1,
       exploration_id: 1,
       name: null,
-      prompt: null,
+      prompt,
       position: 0,
       started_at: "2026-04-30T00:00:00Z",
       completed_at: null,
@@ -112,6 +120,7 @@ interface SetupOpts {
   groups?: ExplorationQueryGroup[];
   selectedQueryId?: number | null;
   selectedEntityId?: TestSelectedEntityId;
+  prompt?: string | null;
 }
 
 function setup({
@@ -119,6 +128,7 @@ function setup({
   groups,
   selectedQueryId = null,
   selectedEntityId,
+  prompt = null,
 }: SetupOpts) {
   const setSelectedEntityId = jest.fn();
 
@@ -131,7 +141,7 @@ function setup({
     fields: [],
   });
 
-  const { exploration } = createExploration({ queries, groups });
+  const { exploration } = createExploration({ queries, groups, prompt });
 
   const allGroups = exploration.threads?.flatMap((t) => t.groups ?? []) ?? [];
   const findGroupForQuery = (queryId: number) =>
@@ -215,6 +225,111 @@ describe("ExplorationSidebar", () => {
     expect(
       within(row).getByLabelText("Failed to generate"),
     ).toBeInTheDocument();
+  });
+
+  describe("potentially-interesting marker", () => {
+    const marker = (rowName: string) =>
+      within(getRow(rowName)).queryByTestId("potentially-interesting-marker");
+
+    describe("exploration created without LLM context (no thread prompt)", () => {
+      it("shows the marker when the regular interestingness score passes the threshold", () => {
+        setup({
+          queries: [
+            createQuery({
+              id: 1,
+              name: "High interest",
+              status: "done",
+              interestingness_score: 0.9,
+            }),
+          ],
+        });
+
+        expect(marker("High interest")).toBeInTheDocument();
+      });
+
+      it("hides the marker when the regular interestingness score is below the threshold", () => {
+        setup({
+          queries: [
+            createQuery({
+              id: 1,
+              name: "Low interest",
+              status: "done",
+              interestingness_score: 0.2,
+            }),
+          ],
+        });
+
+        expect(marker("Low interest")).not.toBeInTheDocument();
+      });
+
+      it("ignores contextual scores entirely — a high regular score still marks the row even when a low contextual score is present", () => {
+        setup({
+          queries: [
+            createQuery({
+              id: 1,
+              name: "High regular score",
+              status: "done",
+              interestingness_score: 0.95,
+              contextual_interestingness_score: 0.1,
+            }),
+          ],
+        });
+
+        expect(marker("High regular score")).toBeInTheDocument();
+      });
+    });
+
+    describe("exploration created with LLM context (thread prompt present)", () => {
+      it("uses the contextual score for every group — marks a row whose contextual score passes even though its regular score does not", () => {
+        setup({
+          prompt: "Why are signups down?",
+          queries: [
+            createQuery({
+              id: 1,
+              name: "Contextually relevant",
+              status: "done",
+              interestingness_score: 0.1,
+              contextual_interestingness_score: 0.95,
+            }),
+          ],
+        });
+
+        expect(marker("Contextually relevant")).toBeInTheDocument();
+      });
+
+      it("uses the contextual score for every group — does not mark a row whose regular score passes when its contextual score does not", () => {
+        setup({
+          prompt: "Why are signups down?",
+          queries: [
+            createQuery({
+              id: 1,
+              name: "Not contextually relevant",
+              status: "done",
+              interestingness_score: 0.95,
+              contextual_interestingness_score: 0.1,
+            }),
+          ],
+        });
+
+        expect(marker("Not contextually relevant")).not.toBeInTheDocument();
+      });
+
+      it("applies the contextual decision uniformly — a row with no contextual score yet is left unmarked even when its regular score passes", () => {
+        setup({
+          prompt: "Why are signups down?",
+          queries: [
+            createQuery({
+              id: 1,
+              name: "Unscored row",
+              status: "done",
+              interestingness_score: 0.95,
+            }),
+          ],
+        });
+
+        expect(marker("Unscored row")).not.toBeInTheDocument();
+      });
+    });
   });
 
   it("calls setSelectedEntityId when a row is clicked", async () => {
