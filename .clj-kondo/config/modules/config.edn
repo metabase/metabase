@@ -849,7 +849,10 @@
            tracing
            util
            warehouse-schema
-           warehouses}
+           warehouses
+           ;; `metabase.driver.sync/include-schema?` skips workspace iso schemas
+           ;; on parent (non-workspace-mode) instances. See GHY-3489.
+           workspaces}
    :model-imports #{:model/Database :model/Field :model/Table}}
 
   driver-api
