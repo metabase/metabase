@@ -1,21 +1,32 @@
 (ns metabase.warehouse-schema.field-values.union-distinct
   "Bulk distinct-values fetcher using SQL `UNION ALL`.
 
-   For each field in the input set, builds a `SELECT DISTINCT col FROM t LIMIT N` subquery,
-   wraps it with a `CAST(... AS VARCHAR)` and a literal field-name tag, then UNIONs all the
-   per-field arms into one query (batched into groups so query text stays small).
+   For each field in the input set, builds a flat per-field arm of the shape
 
-   Preserves master's per-column DISTINCT semantics: each column gets up to
-   [[*distinct-limit*]] distinct values, and `has_more_values` reflects per-column truncation
-   rather than a blanket table-row sample cap.
+       SELECT '<field-name>' AS field_name, <cast-to-text>(col) AS value_out
+       FROM <table>
+       GROUP BY '<field-name>', <cast-to-text>(col)
+       <driver-correct LIMIT clause>
 
-   Only supported on SQL drivers. Callers that need to handle non-SQL drivers should fall
-   back to per-field [[metabase.warehouse-schema.models.field-values/distinct-values]]."
+   Per-arm DISTINCT semantics come from `GROUP BY` rather than `SELECT DISTINCT` — both are
+   equivalent here, but `GROUP BY` composes cleanly with every driver's
+   [[sql.qp/apply-top-level-clause]] `:limit` transform (notably SQL Server's `TOP N` rewrite,
+   which reads from `:select` and doesn't see `:select-distinct`).
+
+   The cast goes through [[sql.qp/cast-to-text]] so each driver picks its native text type
+   (Oracle's `VARCHAR2`, SQL Server's `VARCHAR(MAX)`, Spark SQL's `STRING`, etc.). The LIMIT
+   goes through [[sql.qp/apply-top-level-clause]] so Oracle gets `WHERE rownum <= N` and
+   SQL Server gets `SELECT TOP N`.
+
+   Arms are then unioned via HoneySQL's `:union-all`, batched into groups so query text stays
+   below driver parameter / length limits, and decoded back to native Clojure values using the
+   field's known `base_type`."
   (:require
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -26,21 +37,11 @@
   50)
 
 (def ^:dynamic *distinct-limit*
-  "Per-column DISTINCT cap. Mirrors the limit used by the per-field path so that semantics match."
+  "Per-column DISTINCT cap. Mirrors the limit used by the per-field path so semantics match."
   1000)
 
-(defmulti varchar-type
-  "Return the SQL type keyword to use for `CAST(x AS ...)` on this driver. Default is `:varchar`;
-   override for drivers whose native string type uses a different name (e.g. BigQuery's `STRING`)."
-  {:arglists '([driver])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod varchar-type :sql                [_] :varchar)
-(defmethod varchar-type :bigquery-cloud-sdk [_] :string)
-
 (defn- decode-value
-  "Coerce a string value (from `CAST(... AS VARCHAR)`) back to a native Clojure value using the
+  "Coerce a string value (from `CAST(... AS <text>)`) back to a native Clojure value using the
    field's `base_type`. NULL/`nil` passes through unchanged."
   [base-type s]
   (cond
@@ -52,39 +53,45 @@
     :else                          s))
 
 (defn- table-honeysql
-  "HoneySQL identifier for `table`. Returns a single dotted keyword like `:schema.name` so HoneySQL
-   emits properly-quoted multi-part identifiers (e.g. `` `schema`.`name` `` on BigQuery,
-   `\"schema\".\"name\"` on Postgres)."
-  [{:keys [schema name]}]
-  (if (and schema (seq schema))
-    (keyword (str schema "." name))
-    (keyword name)))
+  "Driver-aware HoneySQL identifier for `table`. Routes through `sql.qp/->honeysql` so drivers
+   that need to qualify table identifiers further (e.g. BigQuery's project-id prefix) get their
+   chance."
+  [driver {:keys [schema name]}]
+  (sql.qp/->honeysql driver
+                     (if (and schema (seq schema))
+                       (h2x/identifier :table schema name)
+                       (h2x/identifier :table name))))
+
+(defn- cast-to-text-honeysql
+  "Driver-correct HoneySQL fragment for `CAST(col AS <driver's text type>)`."
+  [driver col-name]
+  (sql.qp/->honeysql driver
+                     (sql.qp/mbql-clause driver ::sql.qp/cast-to-text
+                                         (h2x/identifier :field col-name))))
 
 (defn- build-arm
-  "HoneySQL for one UNION arm: `SELECT 'field-name' AS field_name, CAST(value AS varchar)
-   AS value_out FROM (SELECT DISTINCT col AS value FROM t LIMIT N) inner`."
-  [varchar table-form field]
-  (let [col (keyword (:name field))]
-    {:select [[[:inline (:name field)] :field_name]
-              [[:cast :value varchar] :value_out]]
-     :from   [[{:select-distinct [[col :value]]
-                :from            [table-form]
-                :limit           *distinct-limit*}
-               :_inner]]}))
+  "HoneySQL for one UNION arm: a flat per-field `SELECT … GROUP BY … LIMIT N`."
+  [driver table field]
+  (let [tag           [:inline (:name field)]
+        cast-expr     (cast-to-text-honeysql driver (:name field))
+        arm-without-limit {:select   [[tag :field_name]
+                                      [cast-expr :value_out]]
+                           :from     [(table-honeysql driver table)]
+                           :group-by [tag cast-expr]}]
+    (sql.qp/apply-top-level-clause driver :limit arm-without-limit {:limit *distinct-limit*})))
 
 (defn- build-union
   "Build the full HoneySQL form for one batch of fields. Single field → no UNION wrapper."
   [driver table fields]
-  (let [varchar    (varchar-type driver)
-        table-form (table-honeysql table)
-        arms       (mapv #(build-arm varchar table-form %) fields)]
+  (let [arms (mapv #(build-arm driver table %) fields)]
     (if (= 1 (count arms))
       (first arms)
       {:union-all arms})))
 
 (defn- run-batch
-  "Execute one batched UNION query and group rows by `field_name`. Returns
-   `{field-name → [decoded-value ...]}` plus a raw row count per field."
+  "Execute one batched UNION query and aggregate rows by `field_name`. Returns
+   `{field-id → {:values [decoded …] :raw-count N}}` with all input fields pre-seeded so fields
+   with zero distinct values still appear."
   [driver db-id table fields]
   (let [hsql           (build-union driver table fields)
         [sql & params] (sql.qp/format-honeysql driver hsql)
@@ -100,7 +107,6 @@
                 (-> acc
                     (update-in [(:id field) :values] (fnil conj []) v)
                     (update-in [(:id field) :raw-count] (fnil inc 0)))))
-            ;; Pre-seed every field so fields with zero distinct values still appear in the result.
             (into {} (map (fn [f] [(:id f) {:values [] :raw-count 0}])) fields)
             rows)))
 

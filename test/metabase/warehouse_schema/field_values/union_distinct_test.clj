@@ -35,16 +35,6 @@
     (is (= "raw" (#'union-distinct/decode-value :type/Float "raw")))
     (is (= "anything" (#'union-distinct/decode-value :type/SomeMadeUpType "anything")))))
 
-;;; ---------------------------------- table-honeysql --------------------------------
-
-(deftest table-honeysql-test
-  (testing "Qualified table → dotted keyword for HoneySQL multi-part identifier"
-    (is (= :public.users (#'union-distinct/table-honeysql {:schema "public" :name "users"}))))
-  (testing "Unqualified table → bare keyword"
-    (is (= :users (#'union-distinct/table-honeysql {:name "users"}))))
-  (testing "Empty schema → bare keyword"
-    (is (= :users (#'union-distinct/table-honeysql {:schema "" :name "users"})))))
-
 ;;; ---------------------------------- end-to-end against H2 -------------------------
 
 (deftest union-distinct-values-h2-integration-test
