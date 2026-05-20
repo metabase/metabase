@@ -1246,13 +1246,46 @@
         (Thread/sleep ^long interval-ms)
         (recur (inc attempt))))))
 
+(def ^:private ws-sa-description-prefix
+  "Auto-created by Metabase for workspace isolation; created-at:")
+
+(defn ws-sa-description
+  "Format an IAM service account `description` field for a workspace iso SA.
+   The string carries `created-at:<ISO-8601 instant>` so that CI cleanup can
+   age-gate orphan SAs without needing IAM audit-log access.
+
+   This is the single source of truth for the description format. The cleanup
+   side ([[ws-sa-description->created-at]]) reads from it -- keep them in
+   lockstep by going through these two fns rather than building/parsing
+   the string inline anywhere else."
+  ^String [^java.time.Instant instant]
+  (str ws-sa-description-prefix instant))
+
+(defn ws-sa-description->created-at
+  "Parse the `created-at:<iso-instant>` token out of a workspace iso SA
+   `description` string. Returns the parsed `java.time.Instant`, or nil
+   when the marker is absent / malformed.
+
+   Round-trip contract: `(= i (ws-sa-description->created-at (ws-sa-description i)))`."
+  ^java.time.Instant [description]
+  (when description
+    (when-let [match (re-find #"created-at:(\S+)" description)]
+      (try
+        (java.time.Instant/parse (second match))
+        (catch Throwable _ nil)))))
+
 (defn- ws-create-service-account!
   "Create a service account for a workspace if it doesn't exist.
-   Returns the service account email."
+   Returns the service account email.
+
+   The SA `description` field is built via [[ws-sa-description]] so CI cleanup
+   can age-gate orphan SAs. See [[ws-sa-description->created-at]] for the parse
+   side, and `metabase.test.data.bigquery-cloud-sdk` for the cleanup loop."
   [^IAMClient iam-client ^String project-id workspace]
   (let [sa-id        (ws-service-account-id workspace)
         sa-email     (format "%s@%s.iam.gserviceaccount.com" sa-id project-id)
-        project-name (format "projects/%s" project-id)]
+        project-name (format "projects/%s" project-id)
+        description  (ws-sa-description (java.time.Instant/now))]
     ;; Check if already exists first
     (if (ws-service-account-exists? iam-client project-id sa-email)
       (log/debugf "Service account already exists: %s" sa-email)
@@ -1264,7 +1297,7 @@
                           (.setServiceAccount
                            (-> (ServiceAccount/newBuilder)
                                (.setDisplayName (format "Metabase Workspace %s" (:id workspace)))
-                               (.setDescription "Auto-created by Metabase for workspace isolation")
+                               (.setDescription description)
                                (.build)))
                           (.build))]
           (.createServiceAccount iam-client request)
