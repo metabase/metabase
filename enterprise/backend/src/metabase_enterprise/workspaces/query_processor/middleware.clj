@@ -96,6 +96,15 @@
              (get schema-table-index [(ws.table-remapping/denormalize-level (:schema table-metadata))
                                       (ws.table-remapping/denormalize-level (:name table-metadata))])))))
 
+(defn- table-transform
+  "Wrap a per-table function `f` into a transform suitable for [[lib.metadata/transforming-metadata-provider]].
+   Only applies `f` when the metadata spec's `:lib/type` is `:metadata/table`; all other types pass through."
+  [f]
+  (fn [{metadata-type :lib/type} results]
+    (if (= metadata-type :metadata/table)
+      (into [] (map f) results)
+      results)))
+
 ;;; ------------------------------------------------- Helpers --------------------------------------------------
 ;;;
 ;;; SQL-rewrite primitives (`rewrite-sql`, `build-table-replacements`,
@@ -119,8 +128,8 @@
    schema-less driver's `:metadata/table.:schema = nil` (and a Postgres remapping
    row with `from_schema = \"public\"` matches the literal value)."
   [mp remappings]
-  (let [remapping-mp (lib.metadata/table-mapping-metadata-provider
-                      (table-remapper remappings)
+  (let [remapping-mp (lib.metadata/transforming-metadata-provider
+                      (table-transform (table-remapper remappings))
                       mp)]
     (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
       ;; this has no body so it looks like this is a no-op. But the with-metadata-provider sets the metadata provider and then

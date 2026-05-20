@@ -324,24 +324,25 @@
         v)
       v)))
 
-;;; ---------------------------------------- TableMappingMetadataProvider ------------------------------------------
+;;; --------------------------------- TransformingMetadataProvider -------------------------------------------
 
-(deftype TableMappingMetadataProvider [f parent-metadata-provider]
+(deftype TransformingMetadataProvider [f parent-metadata-provider]
   lib.metadata.protocols/MetadataProvider
   (database [_this]
     (lib.metadata.protocols/database parent-metadata-provider))
-  (metadatas [_this {mt :lib/type :as metadata-spec}]
-    (cond->> (lib.metadata.protocols/metadatas parent-metadata-provider metadata-spec)
-      (= mt :metadata/table)
-      (into [] (map f))))
+  (metadatas [_this metadata-spec]
+    (f metadata-spec (lib.metadata.protocols/metadatas parent-metadata-provider metadata-spec)))
   (setting [_this setting-key]
     (lib.metadata.protocols/setting parent-metadata-provider setting-key)))
 
-(defn table-mapping-metadata-provider
-  "Wrap `parent-metadata-provider` so that every `:metadata/table` result is transformed by `f`.
-   The returned provider is wrapped in a fresh cache and invocation tracker. Also wraps with a cache mp and an
-  invocation tracker. Intended for the table remapping for workspaces."
+(defn transforming-metadata-provider
+  "Wrap `parent-metadata-provider` with a transform function `f`. `f` receives `(f metadata-spec results)`
+   for every call to `metadatas` and should return the (possibly transformed) results.
+   The returned provider is wrapped in a fresh cache and invocation tracker."
   [f parent-metadata-provider]
-  (-> (->TableMappingMetadataProvider f parent-metadata-provider)
+  (-> (->TransformingMetadataProvider f parent-metadata-provider)
+      ;; this deliberately ditches any prior cache so transformed values are seen
       lib.metadata.cached-provider/cached-metadata-provider
+      ;; this unfortunately tosses away invocation information. But shouldn't be hard to grab the tracker from the
+      ;; underlying (if present) and seed into the new tracker
       lib.metadata.invocation-tracker/invocation-tracker-provider))

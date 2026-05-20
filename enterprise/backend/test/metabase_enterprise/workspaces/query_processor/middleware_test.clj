@@ -761,8 +761,8 @@
    are `[schema table]` 2-tuples or `[db schema table]` 3-tuples."
   [mp & spec-pairs]
   (let [remappings (into {} (map (fn [[from to]] [(->spec from) (->spec to)])) spec-pairs)
-        remapper   (#'ws.middleware/table-remapper remappings)]
-    (lib.metadata/table-mapping-metadata-provider remapper mp)))
+        transform  (#'ws.middleware/table-transform (#'ws.middleware/table-remapper remappings))]
+    (lib.metadata/transforming-metadata-provider transform mp)))
 
 (defn- tables-by-id
   "Return `{id {:schema s :name n}}` for all tables visible through `mp`."
