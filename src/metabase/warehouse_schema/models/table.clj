@@ -202,7 +202,9 @@
       (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
                       {:status-code 400})))
 
-    ;; Prevent changing data_source to/from metabase-transform
+    ;; Prevent changing data_source to/from metabase-transform.
+    ;; The "to metabase-transform" direction is allowed during deserialization so an existing synced table
+    ;; can be migrated to a transform-managed table via serdes.
     (when (contains? changes :data_source)
       (let [original-data-source (some-> (:data_source original-table) keyword)
             new-data-source      (some-> (:data_source changes) keyword)]
@@ -210,7 +212,8 @@
                    (not= new-data-source :metabase-transform))
           (throw (ex-info "Cannot change data_source from metabase-transform"
                           {:status-code 400})))
-        (when (and (not= original-data-source :metabase-transform)
+        (when (and (not mi/*deserializing?*)
+                   (not= original-data-source :metabase-transform)
                    (= new-data-source :metabase-transform))
           (throw (ex-info "Cannot set data_source to metabase-transform"
                           {:status-code 400})))))
