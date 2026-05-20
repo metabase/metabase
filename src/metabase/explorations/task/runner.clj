@@ -191,35 +191,6 @@
         (catch Throwable e
           (log/errorf e "on-thread-completed failed for thread %d" thread-id))))))
 
-(defn- pick-display+viz-settings
-  "Pick the `display` and `visualization_settings` to persist on the `stored_result` row.
-  `graph.dimensions` / `graph.metrics` are *always* re-derived from the actual qp-result cols
-  (via `chart-config`) — the source Card's viz settings refer to *its* breakouts, which differ
-  from this query's, so carrying them forward unchanged would point graph.dimensions at a
-  column that doesn't exist in this result. Other viz settings (colors, formatting, etc.) are
-  inherited from the source Card. Display precedence:
-    1. explicit `:display` on the EQ (rarely set)
-    2. the chart-config's `:display_type` (line for temporal x, bar otherwise)
-    3. the source card's `:display`
-    4. `:table` as the last-resort fallback"
-  [exploration-query chart-config qp-result]
-  (let [src-card (when-let [card-id (:card_id exploration-query)]
-                   (t2/select-one [:model/Card :display :visualization_settings] :id card-id))
-        cols     (get-in qp-result [:data :cols])
-        col-name (fn [src] (some #(when (= src (:source %)) (:name %)) cols))
-        dim-name (col-name :breakout)
-        met-name (col-name :aggregation)]
-    {:display                (or (some-> (:display exploration-query) keyword)
-                                 (some-> (:display_type chart-config) keyword)
-                                 (:display src-card)
-                                 :table)
-     :visualization_settings (cond-> (or (:visualization_settings exploration-query)
-                                         (dissoc (:visualization_settings src-card)
-                                                 :graph.dimensions :graph.metrics)
-                                         {})
-                               dim-name (assoc :graph.dimensions [dim-name])
-                               met-name (assoc :graph.metrics    [met-name]))}))
-
 (defn- exploration-creator-id
   "Walk EQ → ExplorationThread → Exploration.creator_id for stamping onto the stored_result."
   [exploration-query]
@@ -227,6 +198,12 @@
                     {:join  [:exploration_thread
                              [:= :exploration_thread.exploration_id :exploration.id]]
                      :where [:= :exploration_thread.id (:exploration_thread_id exploration-query)]}))
+
+(defn- exploration-id
+  "Walk EQ → ExplorationThread → Exploration.id for recording the stored_result_use reference."
+  [exploration-query]
+  (t2/select-one-fn :exploration_id :model/ExplorationThread
+                    :id (:exploration_thread_id exploration-query)))
 
 (defn- safe-score+describe
   "Best-effort combined contextual scorer + describer for one chart. Threads the source
@@ -302,16 +279,13 @@
                   score        (safe-score row chart-config stats)
                   creator-id   (exploration-creator-id row)
                   ctx          (safe-score+describe row chart-config creator-id)
-                  viz          (pick-display+viz-settings row chart-config qp-result)
                   sr-id        (first
                                 (t2/insert-returning-pks!
                                  :model/StoredResult
-                                 {:result_data            bytes
-                                  :display                (:display viz)
-                                  :visualization_settings (:visualization_settings viz)
-                                  :creator_id             creator-id
-                                  :database_id            (-> row :dataset_query :database)
-                                  :dataset_query          (:dataset_query row)}))]
+                                 {:result_data   bytes
+                                  :creator_id    creator-id
+                                  :database_id   (-> row :dataset_query :database)
+                                  :dataset_query (:dataset_query row)}))]
               (t2/insert! :model/ExplorationQueryResult
                           {:exploration_query_id             (:id row)
                            :stored_result_id                 sr-id
@@ -320,6 +294,10 @@
                            :contextual_interestingness_score (:score ctx)
                            :metric_description               (:metric-description ctx)
                            :chart_description                (:chart-description ctx)})
+              ;; Record the (exploration -> stored_result) reference for lifecycle/GC tracking.
+              (t2/insert! :model/StoredResultUse
+                          {:stored_result_id sr-id
+                           :exploration_id   (exploration-id row)})
               (t2/update! :model/ExplorationQuery (:id row)
                           {:status      "done"
                            :started_at  started

@@ -10,6 +10,8 @@
    [metabase.explorations.auto-insights :as auto-insights]
    [metabase.explorations.interestingness :as explorations.interestingness]
    [metabase.interestingness.core :as interestingness]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.scope]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.claude]
@@ -265,31 +267,33 @@
   `generate-auto-insights!` finds exactly one chart in the pool. Returns the
   ids as `{:card-id :query-id}`."
   [user-id thread-id]
-  (let [card  (first (t2/insert-returning-instances!
+  (let [mp    (mt/metadata-provider)
+        oq    (lib/->legacy-MBQL
+               (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                   (lib/aggregate (lib/count))))
+        card  (first (t2/insert-returning-instances!
                       :model/Card
                       {:name          "rev"
                        :type          :metric
                        :display       :line
                        :visualization_settings {}
                        :creator_id    user-id
-                       :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}))
+                       :dataset_query oq}))
         eq    (first (t2/insert-returning-instances!
                       :model/ExplorationQuery
                       {:exploration_thread_id thread-id
                        :card_id               (:id card)
                        :dimension_id          "d1"
-                       :dataset_query         (mt/mbql-query orders {:aggregation [[:count]]})
+                       :dataset_query         oq
                        :status                "done"
                        :position              0}))
         bytes (serialize-result (fixture-qp-result))
         sr    (first (t2/insert-returning-instances!
                       :model/StoredResult
-                      {:result_data            bytes
-                       :display                :line
-                       :visualization_settings {}
-                       :creator_id             user-id
-                       :database_id            (mt/id)
-                       :dataset_query          (mt/mbql-query orders {:aggregation [[:count]]})}))
+                      {:result_data   bytes
+                       :creator_id    user-id
+                       :database_id   (mt/id)
+                       :dataset_query oq}))
         cfg   (explorations.interestingness/qp-result->chart-config eq (fixture-qp-result))
         stats (when cfg (interestingness/compute-chart-stats cfg {:deep? true}))]
     (t2/insert! :model/ExplorationQueryResult
@@ -312,16 +316,16 @@
                                                :position       0}]
       (seed-one-prepped-chart! (:id u) (:id t))
       (let [adapter-calls (atom 0)]
-        (with-redefs [metabot.settings/llm-metabot-configured? (constantly true)
-                      metabase.metabot.scope/resolve-user-permissions
-                      (fn [_uid] {:permission/metabot                :yes
-                                  :permission/metabot-sql-generation :yes
-                                  :permission/metabot-nlq            :yes
-                                  :permission/metabot-other-tools    :no})
+        (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-configured? (constantly true)
+                                    metabase.metabot.scope/resolve-user-permissions
+                                    (fn [_uid] {:permission/metabot                :yes
+                                                :permission/metabot-sql-generation :yes
+                                                :permission/metabot-nlq            :yes
+                                                :permission/metabot-other-tools    :no})
                       ;; If the real provider adapter were reached, this would
                       ;; bump — the permission check fires before that.
-                      metabase.metabot.self.claude/claude
-                      (fn [& _] (swap! adapter-calls inc) [])]
+                                    metabase.metabot.self.claude/claude
+                                    (fn [& _] (swap! adapter-calls inc) [])]
           (let [outcome (auto-insights/generate-auto-insights! (:id t))]
             (is (= :skip-no-permission outcome))
             (is (zero? @adapter-calls)
@@ -342,11 +346,11 @@
                                                :position       0}]
       (seed-one-prepped-chart! (:id u) (:id t))
       (let [adapter-calls (atom 0)]
-        (with-redefs [metabot.settings/llm-metabot-configured? (constantly true)
-                      metabase.metabot.usage/check-usage-limits!
-                      (fn [] "you have used all of your AI tokens")
-                      metabase.metabot.self.claude/claude
-                      (fn [& _] (swap! adapter-calls inc) [])]
+        (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-configured? (constantly true)
+                                    metabase.metabot.usage/check-usage-limits!
+                                    (fn [] "you have used all of your AI tokens")
+                                    metabase.metabot.self.claude/claude
+                                    (fn [& _] (swap! adapter-calls inc) [])]
           (let [outcome (auto-insights/generate-auto-insights! (:id t))]
             (is (= :skip-usage-limit outcome))
             (is (zero? @adapter-calls)
@@ -360,7 +364,10 @@
   (testing "Happy path: stubbed LLM produces a curation and analysis; a Document is created with a materialized chart embed"
     (mt/with-temp [:model/User u {:email "auto-insights-e2e@example.com"}
                    :model/Card card {:creator_id    (:id u)
-                                     :dataset_query (mt/mbql-query products {:aggregation [[:count]]})}
+                                     :dataset_query (lib/->legacy-MBQL
+                                                     (let [mp (mt/metadata-provider)]
+                                                       (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                                           (lib/aggregate (lib/count)))))}
                    :model/Exploration e {:name "x" :creator_id (:id u)}
                    :model/ExplorationThread t {:exploration_id (:id e)
                                                :prompt         "How is revenue trending?"
@@ -372,50 +379,54 @@
                                   :card_id               (:id card)
                                   :name                  "Revenue by Month"
                                   :dimension_id          "d1"
-                                  :dataset_query         (mt/mbql-query products
-                                                           {:aggregation [[:count]]
-                                                            :breakout    [!month.created_at]})
+                                  :dataset_query         (lib/->legacy-MBQL
+                                                          (let [mp (mt/metadata-provider)]
+                                                            (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                                                (lib/aggregate (lib/count))
+                                                                (lib/breakout
+                                                                 (lib/with-temporal-bucket
+                                                                   (lib.metadata/field mp (mt/id :products :created_at))
+                                                                   :month)))))
                                   :status                "done"
                                   :position              0}))
             chart-cfg    (explorations.interestingness/qp-result->chart-config query qp-result)
             chart-stats  (interestingness/compute-chart-stats chart-cfg {:deep? true})
             curation-call (atom 0)
             analysis-call (atom 0)
-            ;; Simulate what the runner writes: a stored_result row with the cached blob +
-            ;; display + viz_settings, then an exploration_query_result row that points at it.
+            ;; Simulate what the runner writes: a stored_result row holding the cached bytes
+            ;; plus the dataset_query needed for cached-read perm gating; display + viz_settings
+            ;; sit on the exploration_query_result row.
             sr-id (first
                    (t2/insert-returning-pks!
                     :model/StoredResult
-                    {:result_data            (serialize-result qp-result)
-                     :display                (or (some-> (:display_type chart-cfg) keyword) :table)
-                     :visualization_settings {}
-                     :creator_id             (:id u)
-                     :database_id            (mt/id)
-                     :dataset_query          (:dataset_query query)}))]
+                    {:result_data   (serialize-result qp-result)
+                     :creator_id    (:id u)
+                     :database_id   (mt/id)
+                     :dataset_query (:dataset_query query)}))]
         (t2/insert! :model/ExplorationQueryResult
                     {:exploration_query_id (:id query)
                      :stored_result_id     sr-id
                      :chart_stats          chart-stats})
-        (with-redefs [metabot.settings/llm-metabot-configured? (constantly true)
-                      metabot.self/call-llm-structured-with-trace
-                      (fn [_model messages _schema _temp _max-tokens _opts]
-                        (let [user-msg (->> messages (filter #(= "user" (:role %))) first :content)]
-                          (if (str/includes? user-msg "CHART POOL")
-                            (do (swap! curation-call inc)
-                                {:result {:top_tier       [(:id query)]
-                                          :awareness_tier []
-                                          :rationale      "only chart in the pool"}
-                                 :parts  [{:type :reasoning :reasoning "thinking about curation"}]})
-                            (do (swap! analysis-call inc)
-                                {:result {:document
-                                          {:type "doc"
-                                           :content [{:type "heading" :attrs {:level 2}
-                                                      :content [{:type "text" :text "Abstract"}]}
-                                                     {:type "paragraph"
-                                                      :content [{:type "text" :text "Revenue trends upward in spring 2025."}]}
-                                                     {:type "cardEmbed"
-                                                      :attrs {:stored_result_id sr-id}}]}}
-                                 :parts  [{:type :reasoning :reasoning "thinking about analysis"}]}))))]
+        (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-configured? (constantly true)
+                                    metabot.self/call-llm-structured-with-trace
+                                    (fn [_model messages _schema _temp _max-tokens _opts]
+                                      (let [user-msg (->> messages (filter #(= "user" (:role %))) first :content)]
+                                        (if (str/includes? user-msg "CHART POOL")
+                                          (do (swap! curation-call inc)
+                                              {:result {:top_tier       [(:id query)]
+                                                        :awareness_tier []
+                                                        :rationale      "only chart in the pool"}
+                                               :parts  [{:type :reasoning :reasoning "thinking about curation"}]})
+                                          (do (swap! analysis-call inc)
+                                              {:result {:document
+                                                        {:type "doc"
+                                                         :content [{:type "heading" :attrs {:level 2}
+                                                                    :content [{:type "text" :text "Abstract"}]}
+                                                                   {:type "paragraph"
+                                                                    :content [{:type "text" :text "Revenue trends upward in spring 2025."}]}
+                                                                   {:type "cardEmbed"
+                                                                    :attrs {:stored_result_id sr-id}}]}}
+                                               :parts  [{:type :reasoning :reasoning "thinking about analysis"}]}))))]
           (let [outcome (auto-insights/generate-auto-insights! (:id t))]
             (is (= :ok outcome))
             (is (= 1 @curation-call))
@@ -423,9 +434,16 @@
             (let [doc (t2/select-one :model/Document :exploration_thread_id (:id t)
                                      :name "Automatic Insights")]
               (is (some? doc) "Automatic Insights document was created")
-              ;; No Card is created — the static cardEmbed reads from the stored_result blob.
-              (let [cards (t2/select :model/Card :document_id (:id doc))]
-                (is (= 0 (count cards)) "no Card is materialized for static cardEmbed")))))))))
+              ;; Each cardEmbed the LLM picked materializes its own report_card attached to
+              ;; the document — display/viz/dataset_query live on the card; the cardEmbed
+              ;; node carries both `:id` (the new card) and `:stored_result_id` (the snapshot).
+              (let [cards     (t2/select :model/Card :document_id (:id doc))
+                    embed-ids (->> (tree-seq :content :content (:document doc))
+                                   (filter #(= "cardEmbed" (:type %)))
+                                   (map (comp :id :attrs)))]
+                (is (= 1 (count cards)) "one Card is materialized for the static cardEmbed")
+                (is (= [(:id (first cards))] embed-ids)
+                    "cardEmbed.attrs.id is the materialized card id")))))))))
 
 (deftest append-reasoning-section-paragraph-split-test
   (testing "Reasoning blocks are split on blank lines into separate paragraphs"

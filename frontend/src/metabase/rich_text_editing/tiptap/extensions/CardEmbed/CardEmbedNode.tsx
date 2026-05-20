@@ -13,11 +13,6 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { skipToken } from "metabase/api";
-import {
-  type StoredResultSort,
-  useGetStoredResultQuery,
-} from "metabase/api/document";
 import { ExplicitSizeRefreshModeContext } from "metabase/common/components/ExplicitSize/ExplicitSize";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
@@ -70,7 +65,11 @@ import { getGenericErrorMessage } from "metabase/visualizations/lib/errors";
 import { isTimeseries } from "metabase/visualizations/lib/renderer_utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import Question from "metabase-lib/v1/Question";
-import type { CardDisplayType, Dataset, RawSeries } from "metabase-types/api";
+import type {
+  CardDisplayType,
+  Dataset,
+  StoredResultSort,
+} from "metabase-types/api";
 
 import { CommentsButton } from "../../components/CommentsButton";
 import {
@@ -123,8 +122,9 @@ export interface CardEmbedAttributes {
   name?: string;
   class?: string;
   /**
-   * When set, the embed renders in static mode: data is pulled from the cached `stored_result`
-   * snapshot via `/api/document/stored-result/:id` instead of running a live Card. Live-mode
+   * When set, the embed renders in static mode: data is pulled from the cached
+   * `stored_result` snapshot (the card-query endpoint serves the cached bytes when this id
+   * is passed through alongside the card id) instead of running a live Card. Live-mode
    * affordances (menu, replace, drag) are hidden — the snapshot is read-only.
    */
   stored_result_id?: number | null;
@@ -226,7 +226,7 @@ export const CardEmbedComponent = memo(
     editor,
     getPos,
     deleteNode,
-    // eslint-disable-next-line complexity
+    // eslint-disable-next-line complexity -- large tiptap NodeView
   }: NodeViewProps) => {
     const { _id, id, name } = node.attrs;
     const storedResultId = node.attrs.stored_result_id as number | null;
@@ -258,50 +258,19 @@ export const CardEmbedComponent = memo(
 
     const embedIndex = getEmbedIndex(editor, getPos);
 
-    // Pass id: 0 in static mode so the live-card hooks skip their fetches.
-    const liveCardId = isStatic ? 0 : (id ?? 0);
     const isExternalDocument = !isStatic && externalCardData != null;
-    const regularCardData = useCardData({ id: liveCardId });
-    const externalCardDataResult = useExternalCardDataLoader(liveCardId);
+    const regularCardData = useCardData({
+      id,
+      ...(isStatic && storedResultId != null
+        ? { storedResultId, storedResultSort: staticSort }
+        : {}),
+    });
+    const externalCardDataResult = useExternalCardDataLoader(id);
 
-    const storedResultQuery = useGetStoredResultQuery(
-      isStatic && storedResultId != null
-        ? { id: storedResultId, sort: staticSort }
-        : skipToken,
+    const { card, dataset, isLoading, series, error } = useMemo(
+      () => (isExternalDocument ? externalCardDataResult : regularCardData),
+      [isExternalDocument, externalCardDataResult, regularCardData],
     );
-
-    const { card, dataset, isLoading, series, error } = useMemo(() => {
-      if (isStatic) {
-        const card = storedResultQuery.data?.card;
-        const dataset = storedResultQuery.data?.dataset;
-        const series: RawSeries | null =
-          card && dataset
-            ? [
-                {
-                  card,
-                  // started_at isn't surfaced by the stored-result envelope
-                  data: dataset.data,
-                } as RawSeries[number],
-              ]
-            : null;
-        return {
-          card,
-          dataset,
-          isLoading: storedResultQuery.isLoading,
-          series,
-          error: storedResultQuery.error ? ("unknown" as const) : undefined,
-        };
-      }
-      return isExternalDocument ? externalCardDataResult : regularCardData;
-    }, [
-      isStatic,
-      isExternalDocument,
-      storedResultQuery.data,
-      storedResultQuery.isLoading,
-      storedResultQuery.error,
-      externalCardDataResult,
-      regularCardData,
-    ]);
 
     const metadata = useSelector(getMetadata);
     const datasetError = dataset && getDatasetError(dataset);
@@ -403,7 +372,7 @@ export const CardEmbedComponent = memo(
       question,
       editor,
       embedIndex,
-      cardId: id ?? 0,
+      cardId: id,
     });
 
     useEffect(() => {
@@ -589,10 +558,8 @@ export const CardEmbedComponent = memo(
             [CS.open]: isOpen || isHovered,
           })}
           data-type="cardEmbed"
-          data-id={id ?? undefined}
-          data-testid={
-            isStatic ? "document-static-card-embed" : "document-card-embed"
-          }
+          data-id={id}
+          data-testid="document-card-embed"
           {...(isStatic
             ? null
             : {

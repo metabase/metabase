@@ -19,11 +19,13 @@ function buildSeries(card: Card, dataset: Dataset): RawSeries {
   ];
 }
 
-export function useExternalCardDataLoader(cardId: number): UseCardDataResult {
+export function useExternalCardDataLoader(
+  cardId: number | null | undefined,
+): UseCardDataResult {
   const context = useExternalCardData();
   const metadata = useSelector(getMetadata);
 
-  const card = context?.cards?.[cardId];
+  const card = cardId != null ? context?.cards?.[cardId] : undefined;
 
   const documentUuid = context?.documentUuid;
   const loadCardQuery = context?.loadCardQuery;

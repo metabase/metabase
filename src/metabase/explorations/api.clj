@@ -17,6 +17,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -699,7 +700,7 @@
                                {:object updated :user-id api/*current-user-id*}))
       (hydrate-exploration updated))))
 
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- :nil
   "Hard-delete an exploration. Soft delete is `PUT /api/exploration/:id {archived: true}`.
 
   Cascades to every `exploration_thread`, `exploration_query`, and attached `document`
@@ -715,7 +716,7 @@
   result blob, joins both interestingness scores from `exploration_query_result`."
   [:exploration_query.id :exploration_query.exploration_thread_id
    :exploration_query.card_id :exploration_query.segment_id
-   :exploration_query.dimension_id
+   :exploration_query.dimension_id :exploration_query.query_type
    :exploration_query.name :exploration_query.position
    :exploration_query.status :exploration_query.error_message
    :exploration_query.started_at :exploration_query.finished_at
@@ -799,24 +800,27 @@
                                 :archived false)))
 
 (defn- append-card-embed
-  "Append a static `cardEmbed` node referencing `stored-result-id` to the end of a
-  prose-mirror document body. Wrapped in a `resizeNode` to match the FE schema for all
-  `cardEmbed` nodes (live and static). Tolerates a missing/non-doc root by replacing it
-  with an empty doc."
-  [doc stored-result-id]
+  "Append a static `cardEmbed` node referencing both `card-id` (the per-document materialized
+  Card carrying display / visualization_settings / dataset_query) and `stored-result-id` (the
+  cached snapshot the static renderer reads bytes from) to the end of a prose-mirror document
+  body. Wrapped in a `resizeNode` to match the FE schema for all `cardEmbed` nodes (live and
+  static). Tolerates a missing/non-doc root by replacing it with an empty doc."
+  [doc card-id stored-result-id]
   (let [base  (if (and (map? doc) (= "doc" (:type doc)))
                 doc
                 {:type "doc" :content []})
         embed {:type "resizeNode"
                :content [{:type  "cardEmbed"
-                          :attrs {:id nil :name nil :stored_result_id stored-result-id}}]}]
+                          :attrs {:id card-id :name nil :stored_result_id stored-result-id}}]}]
     (update base :content (fnil conj []) embed)))
 
 (api.macros/defendpoint :post "/thread/:thread-id/documents/:document-id/append" :- ::ExplorationDocument
-  "Append a static `cardEmbed` referencing the snapshot for `exploration_query_id` to the end
-  of the document body. Resolves the EQ's `stored_result_id` via the EQR FK chain and writes
-  it into the node attrs. Display + visualization_settings live on the stored_result row,
-  computed once at result-write time — this endpoint is a pure doc edit."
+  "Append a static `cardEmbed` for `exploration_query_id` to the end of the document body.
+  Resolves the EQ's `stored_result_id` via the EQR FK chain, materializes a `report_card` for
+  this particular document embed (carrying display / visualization_settings / dataset_query),
+  and writes both ids into the node attrs. Each append produces a fresh Card — the same
+  snapshot can be embedded multiple times, possibly across documents, and each embed gets its
+  own Card so settings can diverge later without touching the others."
   [{:keys [thread-id document-id]} :- [:map
                                        [:thread-id   ms/PositiveInt]
                                        [:document-id ms/PositiveInt]]
@@ -830,7 +834,9 @@
         sr-id    (api/check-404
                   (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
                                     :exploration_query_id exploration_query_id))
-        new-body (append-card-embed (:document doc) sr-id)]
+        card-id  (eqr/create-card-for-stored-result!
+                  sr-id (:id doc) (:collection_id doc) @api/*current-user*)
+        new-body (append-card-embed (:document doc) card-id sr-id)]
     (t2/update! :model/Document (:id doc) {:document new-body})
     (t2/select-one (into [:model/Document] document-summary-columns) :id (:id doc))))
 
@@ -892,7 +898,7 @@
         ;; otherwise see data the QP would have filtered out for them. Block when the viewer
         ;; is sandboxed/impersonated for the snapshot's DB or lacks data perms on it.
         (when-not (= api/*current-user-id* (:creator_id sr))
-          (documents/assert-can-view-cached-result! sr))
+          (queries/assert-can-view-cached-result! sr))
         (stream-stored-result format (:result_data sr)))
 
       {:status 409

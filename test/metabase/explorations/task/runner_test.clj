@@ -6,6 +6,8 @@
    [metabase.explorations.models.exploration-query-result :as eqr]
    [metabase.explorations.task.runner :as runner]
    [metabase.explorations.timeline-interestingness :as explorations.timeline-interestingness]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.scope]
    [metabase.metabot.self.claude]
    [metabase.metabot.usage]
@@ -65,11 +67,10 @@
     (mt/with-temp [:model/User u {:email "happy@example.com"}
                    :model/Card card {:type :metric
                                      :creator_id (:id u)
-                                     :dataset_query (mt/mbql-query venues
-                                                      {:aggregation [[:count]]})}]
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
       (let [thread (temp-thread! (:id u))
             row    (pending-query! (:id thread) (:id card)
-                                   (mt/mbql-query venues {:aggregation [[:count]]}))
+                                   (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))
             final  (drain-until-terminal! (:id row) 10)
             result (t2/select-one :model/ExplorationQueryResult
                                   :exploration_query_id (:id row))
@@ -83,18 +84,33 @@
         (is (some? sr))
         (is (pos? (count (:result_data sr))))))))
 
+(deftest run-one-iteration-records-stored-result-use-test
+  (testing "Running a query records a stored_result_use row tying the snapshot to the exploration"
+    (mt/with-temp [:model/User u {:email "sruse@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+      (let [thread  (temp-thread! (:id u))
+            expl-id (t2/select-one-fn :exploration_id :model/ExplorationThread :id (:id thread))
+            row     (pending-query! (:id thread) (:id card)
+                                    (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))
+            _       (drain-until-terminal! (:id row) 10)
+            sr-id   (:stored_result_id (t2/select-one :model/ExplorationQueryResult
+                                                      :exploration_query_id (:id row)))
+            use-row (t2/select-one :model/StoredResultUse :stored_result_id sr-id)]
+        (is (some? use-row))
+        (is (= expl-id (:exploration_id use-row)))
+        (is (nil? (:card_id use-row)))))))
+
 (deftest run-one-iteration-writes-interestingness-score-test
   (testing "A 2-column result gets scored and the score lands on the result row"
     (mt/with-temp [:model/User u {:email "score@example.com"}
                    :model/Card card {:type :metric
                                      :creator_id (:id u)
-                                     :dataset_query (mt/mbql-query venues
-                                                      {:aggregation [[:count]]})}]
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
       (let [thread (temp-thread! (:id u))
             row    (pending-query! (:id thread) (:id card)
-                                   (mt/mbql-query venues
-                                     {:aggregation [[:count]]
-                                      :breakout    [$category_id]}))
+                                   (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)) (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))))
             _      (drain-until-terminal! (:id row) 10)
             result (t2/select-one :model/ExplorationQueryResult
                                   :exploration_query_id (:id row))
@@ -108,15 +124,12 @@
     (mt/with-temp [:model/User u {:email "scorefail@example.com"}
                    :model/Card card {:type :metric
                                      :creator_id (:id u)
-                                     :dataset_query (mt/mbql-query venues
-                                                      {:aggregation [[:count]]})}]
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
       (let [thread (temp-thread! (:id u))
             row    (pending-query! (:id thread) (:id card)
-                                   (mt/mbql-query venues
-                                     {:aggregation [[:count]]
-                                      :breakout    [$category_id]}))]
-        (with-redefs [explorations.interestingness/qp-result->chart-config
-                      (fn [& _] (throw (ex-info "boom" {})))]
+                                   (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)) (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))))]
+        (mt/with-dynamic-fn-redefs [explorations.interestingness/qp-result->chart-config
+                                    (fn [& _] (throw (ex-info "boom" {})))]
           (let [final  (drain-until-terminal! (:id row) 10)
                 result (t2/select-one :model/ExplorationQueryResult
                                       :exploration_query_id (:id row))
@@ -132,15 +145,12 @@
     (mt/with-temp [:model/User u {:email "ctx-score@example.com"}
                    :model/Card card {:type :metric
                                      :creator_id (:id u)
-                                     :dataset_query (mt/mbql-query venues
-                                                      {:aggregation [[:count]]})}]
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
       (let [thread (temp-thread! (:id u) "Why are venue counts dropping in this region?")
             row    (pending-query! (:id thread) (:id card)
-                                   (mt/mbql-query venues
-                                     {:aggregation [[:count]]
-                                      :breakout    [$category_id]}))]
-        (with-redefs [contextual-interestingness/score-and-describe-chart
-                      (fn [_inputs] {:score 0.73})]
+                                   (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)) (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))))]
+        (mt/with-dynamic-fn-redefs [contextual-interestingness/score-and-describe-chart
+                                    (fn [_inputs] {:score 0.73})]
           (drain-until-terminal! (:id row) 10)
           (let [result (t2/select-one :model/ExplorationQueryResult
                                       :exploration_query_id (:id row))]
@@ -151,16 +161,13 @@
     (mt/with-temp [:model/User u {:email "ctx-noprompt@example.com"}
                    :model/Card card {:type :metric
                                      :creator_id (:id u)
-                                     :dataset_query (mt/mbql-query venues
-                                                      {:aggregation [[:count]]})}]
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
       (let [thread (temp-thread! (:id u))
             row    (pending-query! (:id thread) (:id card)
-                                   (mt/mbql-query venues
-                                     {:aggregation [[:count]]
-                                      :breakout    [$category_id]}))
+                                   (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)) (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))))
             calls  (atom 0)]
-        (with-redefs [contextual-interestingness/score-and-describe-chart
-                      (fn [_inputs] (swap! calls inc) {:score 0.99})]
+        (mt/with-dynamic-fn-redefs [contextual-interestingness/score-and-describe-chart
+                                    (fn [_inputs] (swap! calls inc) {:score 0.99})]
           (drain-until-terminal! (:id row) 10)
           (let [result (t2/select-one :model/ExplorationQueryResult
                                       :exploration_query_id (:id row))]
@@ -172,15 +179,12 @@
     (mt/with-temp [:model/User u {:email "ctx-throw@example.com"}
                    :model/Card card {:type :metric
                                      :creator_id (:id u)
-                                     :dataset_query (mt/mbql-query venues
-                                                      {:aggregation [[:count]]})}]
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
       (let [thread (temp-thread! (:id u) "anything")
             row    (pending-query! (:id thread) (:id card)
-                                   (mt/mbql-query venues
-                                     {:aggregation [[:count]]
-                                      :breakout    [$category_id]}))]
-        (with-redefs [contextual-interestingness/score-and-describe-chart
-                      (fn [& _] (throw (ex-info "boom" {})))]
+                                   (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)) (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))))]
+        (mt/with-dynamic-fn-redefs [contextual-interestingness/score-and-describe-chart
+                                    (fn [& _] (throw (ex-info "boom" {})))]
           (let [final  (drain-until-terminal! (:id row) 10)
                 result (t2/select-one :model/ExplorationQueryResult
                                       :exploration_query_id (:id row))
@@ -201,21 +205,18 @@
     (mt/with-temp [:model/User u {:email "ctx-noperm@example.com"}
                    :model/Card card {:type :metric
                                      :creator_id (:id u)
-                                     :dataset_query (mt/mbql-query venues
-                                                      {:aggregation [[:count]]})}]
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
       (let [thread (temp-thread! (:id u) "Some prompt about venues")
             row    (pending-query! (:id thread) (:id card)
-                                   (mt/mbql-query venues
-                                     {:aggregation [[:count]]
-                                      :breakout    [$category_id]}))
+                                   (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)) (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))))
             llm-calls (atom 0)]
-        (with-redefs [metabase.metabot.scope/resolve-user-permissions
-                      (fn [_uid] {:permission/metabot                :yes
-                                  :permission/metabot-sql-generation :yes
-                                  :permission/metabot-nlq            :yes
-                                  :permission/metabot-other-tools    :no})
-                      metabase.metabot.self.claude/claude
-                      (fn [& _] (swap! llm-calls inc) [])]
+        (mt/with-dynamic-fn-redefs [metabase.metabot.scope/resolve-user-permissions
+                                    (fn [_uid] {:permission/metabot                :yes
+                                                :permission/metabot-sql-generation :yes
+                                                :permission/metabot-nlq            :yes
+                                                :permission/metabot-other-tools    :no})
+                                    metabase.metabot.self.claude/claude
+                                    (fn [& _] (swap! llm-calls inc) [])]
           (drain-until-terminal! (:id row) 10)
           (let [result (t2/select-one :model/ExplorationQueryResult
                                       :exploration_query_id (:id row))]
@@ -230,21 +231,18 @@
     (mt/with-temp [:model/User u {:email "ctx-nobase@example.com"}
                    :model/Card card {:type :metric
                                      :creator_id (:id u)
-                                     :dataset_query (mt/mbql-query venues
-                                                      {:aggregation [[:count]]})}]
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
       (let [thread (temp-thread! (:id u) "Some prompt")
             row    (pending-query! (:id thread) (:id card)
-                                   (mt/mbql-query venues
-                                     {:aggregation [[:count]]
-                                      :breakout    [$category_id]}))
+                                   (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)) (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))))
             llm-calls (atom 0)]
-        (with-redefs [metabase.metabot.scope/resolve-user-permissions
-                      (fn [_uid] {:permission/metabot                :no
-                                  :permission/metabot-sql-generation :yes
-                                  :permission/metabot-nlq            :yes
-                                  :permission/metabot-other-tools    :yes})
-                      metabase.metabot.self.claude/claude
-                      (fn [& _] (swap! llm-calls inc) [])]
+        (mt/with-dynamic-fn-redefs [metabase.metabot.scope/resolve-user-permissions
+                                    (fn [_uid] {:permission/metabot                :no
+                                                :permission/metabot-sql-generation :yes
+                                                :permission/metabot-nlq            :yes
+                                                :permission/metabot-other-tools    :yes})
+                                    metabase.metabot.self.claude/claude
+                                    (fn [& _] (swap! llm-calls inc) [])]
           (drain-until-terminal! (:id row) 10)
           (is (zero? @llm-calls)
               "LLM must not be invoked when creator lacks base :permission/metabot"))))))
@@ -256,18 +254,15 @@
     (mt/with-temp [:model/User u {:email "ctx-limit@example.com"}
                    :model/Card card {:type :metric
                                      :creator_id (:id u)
-                                     :dataset_query (mt/mbql-query venues
-                                                      {:aggregation [[:count]]})}]
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
       (let [thread (temp-thread! (:id u) "Some prompt about venues")
             row    (pending-query! (:id thread) (:id card)
-                                   (mt/mbql-query venues
-                                     {:aggregation [[:count]]
-                                      :breakout    [$category_id]}))
+                                   (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)) (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))))
             llm-calls (atom 0)]
-        (with-redefs [metabase.metabot.usage/check-usage-limits!
-                      (fn [] "you've hit your AI usage limit")
-                      metabase.metabot.self.claude/claude
-                      (fn [& _] (swap! llm-calls inc) [])]
+        (mt/with-dynamic-fn-redefs [metabase.metabot.usage/check-usage-limits!
+                                    (fn [] "you've hit your AI usage limit")
+                                    metabase.metabot.self.claude/claude
+                                    (fn [& _] (swap! llm-calls inc) [])]
           (drain-until-terminal! (:id row) 10)
           (let [result (t2/select-one :model/ExplorationQueryResult
                                       :exploration_query_id (:id row))]
@@ -280,8 +275,7 @@
     (mt/with-temp [:model/User u {:email "err@example.com"}
                    :model/Card card {:type :metric
                                      :creator_id (:id u)
-                                     :dataset_query (mt/mbql-query venues
-                                                      {:aggregation [[:count]]})}]
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
       (let [thread (temp-thread! (:id u))
             row    (pending-query! (:id thread) (:id card)
                                    {:database 999999 :type :query
@@ -302,9 +296,7 @@
         sr-id (first
                (t2/insert-returning-pks!
                 :model/StoredResult
-                {:result_data            bytes
-                 :display                :table
-                 :visualization_settings {}}))]
+                {:result_data bytes}))]
     (t2/insert! :model/ExplorationQueryResult
                 {:exploration_query_id query-id
                  :stored_result_id     sr-id})))
@@ -316,7 +308,7 @@
                   {:exploration_thread_id thread-id
                    :card_id               card-id
                    :dimension_id          "d1"
-                   :dataset_query         (mt/mbql-query venues {:aggregation [[:count]]})
+                   :dataset_query         (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))
                    :status                "done"
                    :position              0}))]
     (store-fake-result! (:id q) {:status :completed
@@ -328,7 +320,7 @@
   (testing "When a thread-selected timeline has no score for a done query, the worker scores it"
     (mt/with-temp [:model/User u {:email "ti-runner-claim@example.com"}
                    :model/Card card {:type :metric :creator_id (:id u)
-                                     :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
                    :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
       (let [thread (temp-thread! (:id u))
             q      (done-query-with-fake-result! (:id thread) (:id card))
@@ -336,8 +328,8 @@
                                {:exploration_thread_id (:id thread)
                                 :timeline_id           (:id tl)
                                 :position              0})]
-        (with-redefs [explorations.timeline-interestingness/score-query-timeline
-                      (fn [_ _] 0.71)]
+        (mt/with-dynamic-fn-redefs [explorations.timeline-interestingness/score-query-timeline
+                                    (fn [_ _] 0.71)]
           (run-one-iteration!)
           ;; If the iteration picked up a different unrelated row first (e.g. a leftover
           ;; pending query from another test), drain a few more times until ours is scored.
@@ -359,7 +351,7 @@
   (testing "If the scorer throws or returns nil, scored_at is still set so we don't retry forever"
     (mt/with-temp [:model/User u {:email "ti-runner-fail@example.com"}
                    :model/Card card {:type :metric :creator_id (:id u)
-                                     :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
                    :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
       (let [thread (temp-thread! (:id u))
             q      (done-query-with-fake-result! (:id thread) (:id card))
@@ -367,8 +359,8 @@
                                {:exploration_thread_id (:id thread)
                                 :timeline_id           (:id tl)
                                 :position              0})]
-        (with-redefs [explorations.timeline-interestingness/score-query-timeline
-                      (fn [_ _] (throw (ex-info "boom" {})))]
+        (mt/with-dynamic-fn-redefs [explorations.timeline-interestingness/score-query-timeline
+                                    (fn [_ _] (throw (ex-info "boom" {})))]
           (run-one-iteration!)
           (loop [n 5]
             (when (and (pos? n)
@@ -388,7 +380,7 @@
   (testing "Once a (query, timeline) pair is scored, subsequent iterations don't duplicate it"
     (mt/with-temp [:model/User u {:email "ti-runner-idem@example.com"}
                    :model/Card card {:type :metric :creator_id (:id u)
-                                     :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
                    :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
       (let [thread (temp-thread! (:id u))
             q      (done-query-with-fake-result! (:id thread) (:id card))
@@ -396,8 +388,8 @@
                                {:exploration_thread_id (:id thread)
                                 :timeline_id           (:id tl)
                                 :position              0})]
-        (with-redefs [explorations.timeline-interestingness/score-query-timeline
-                      (fn [_ _] 0.5)]
+        (mt/with-dynamic-fn-redefs [explorations.timeline-interestingness/score-query-timeline
+                                    (fn [_ _] 0.5)]
           (dotimes [_ 6] (run-one-iteration!)))
         (is (= 1 (t2/count :model/ExplorationQueryTimelineInterestingness
                            :exploration_query_id (:id q)
@@ -407,7 +399,7 @@
   (testing "A claim row left in the in-flight state (scored_at=NULL) past the cutoff is reclaimed and re-scored"
     (mt/with-temp [:model/User u {:email "ti-runner-stale@example.com"}
                    :model/Card card {:type :metric :creator_id (:id u)
-                                     :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
                    :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
       (let [thread     (temp-thread! (:id u))
             q          (done-query-with-fake-result! (:id thread) (:id card))
@@ -424,8 +416,8 @@
             _backdate  (t2/update! :model/ExplorationQueryTimelineInterestingness (:id stale-row)
                                    {:created_at (.minusMinutes (OffsetDateTime/now) 10)
                                     :scored_at  nil})]
-        (with-redefs [explorations.timeline-interestingness/score-query-timeline
-                      (fn [_ _] 0.42)]
+        (mt/with-dynamic-fn-redefs [explorations.timeline-interestingness/score-query-timeline
+                                    (fn [_ _] 0.42)]
           (run-one-iteration!)
           ;; Drain any unrelated leftover work from earlier tests.
           (loop [n 5]

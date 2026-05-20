@@ -35,10 +35,12 @@
   infrastructure lives in [[metabase.explorations.auto-insights.common]]."
   (:require
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.explorations.auto-insights.common :as common]
    [metabase.explorations.auto-insights.phase1 :as phase1]
    [metabase.explorations.auto-insights.phase2 :as phase2]
+   [metabase.explorations.models.exploration-query-result :as eqr]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.request.core :as request]
    [metabase.util.date-2 :as u.date]
@@ -511,15 +513,60 @@
       (and (map? pm-doc) (sequential? (:content pm-doc)))
       (update :content (fn [content] (mapv wrap content))))))
 
+(defn- coerce-int
+  "Tolerate string-valued ids (the LLM sometimes returns them as JSON strings)."
+  [v]
+  (cond
+    (integer? v) v
+    (string? v)  (try (Long/parseLong v) (catch Throwable _ nil))))
+
+(defn- card-embed? [node]
+  (and (map? node) (= prose-mirror/card-embed-type (:type node))))
+
+(defn- card-embed-stored-result-id [node]
+  (let [attrs (:attrs node)]
+    (coerce-int (or (:stored_result_id attrs) (get attrs "stored_result_id")))))
+
+(defn- card-embed-id [node]
+  (let [attrs (:attrs node)]
+    (coerce-int (or (:id attrs) (get attrs "id")))))
+
+(defn- materialize-cards-for-card-embeds
+  "Walk every static `cardEmbed` in `pm-doc`, materialize a real `report_card` for each one
+  that doesn't already carry an `:id`, and rewrite the node to include the new card id. Each
+  static embed ends up with both ids set: `:id` for display/viz/dataset_query, and
+  `:stored_result_id` for the cached bytes. A failure on any single embed is logged but does
+  not abort — the doc still renders the other embeds; the broken one will 404 at read time."
+  [pm-doc {:keys [document-id collection-id creator]}]
+  (walk/postwalk
+   (fn [node]
+     (let [sr-id (when (card-embed? node) (card-embed-stored-result-id node))]
+       (if (and sr-id (nil? (card-embed-id node)))
+         (try
+           (let [card-id (eqr/create-card-for-stored-result!
+                          sr-id document-id collection-id creator)]
+             (assoc-in node [:attrs :id] card-id))
+           (catch Throwable e
+             (log/warnf e "Failed to materialize Card for stored_result %d in document %d"
+                        sr-id document-id)
+             node))
+         node)))
+   pm-doc))
+
 (defn- write-document!
   "Update the placeholder `doc` (created up-front by [[create-placeholder-doc!]])
-  with the final content. The `cardEmbed` nodes the LLM emitted reference `stored_result_id`s
-  resolved at render time via `/api/document/stored-result/:id`; we wrap each one in a
-  `resizeNode` here so the chart has an explicit height in the rendered doc. Returns
-  `{:document-id ... :rendered-pm-doc ...}`."
+  with the final content. For every static `cardEmbed` the LLM emitted (referencing a
+  `stored_result_id`) materialize a `report_card` tied to this document and rewrite the embed
+  to carry both ids; then wrap each embed in a `resizeNode` so the chart has an explicit height
+  in the rendered doc. Returns `{:document-id ... :rendered-pm-doc ...}`."
   [{:keys [doc pm-doc creator-id]}]
-  (let [pm-doc (wrap-card-embeds-in-resize-nodes pm-doc)]
-    (request/with-current-user creator-id
+  (request/with-current-user creator-id
+    (let [creator (t2/select-one [:model/User :id] :id creator-id)
+          pm-doc  (-> pm-doc
+                      (materialize-cards-for-card-embeds {:document-id   (:id doc)
+                                                          :collection-id (:collection_id doc)
+                                                          :creator       creator})
+                      wrap-card-embeds-in-resize-nodes)]
       (t2/update! :model/Document (:id doc)
                   {:document     pm-doc
                    :content_type prose-mirror/prose-mirror-content-type})

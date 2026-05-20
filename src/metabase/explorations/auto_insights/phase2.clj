@@ -17,7 +17,8 @@
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.explorations.auto-insights.common :as common]
    [metabase.explorations.auto-insights.prompts :as prompts]
-   [metabase.interestingness.core :as interestingness]))
+   [metabase.interestingness.core :as interestingness]
+   [metabase.queries.core :as queries]))
 
 (set! *warn-on-reflection* true)
 
@@ -223,11 +224,6 @@
    :required             ["document"]
    :additionalProperties false})
 
-(def allowed-chart-sorts
-  "Sort attribute values a static `cardEmbed` is allowed to request. Re-exported here so the
-  prompt-builder and validators can refer to the same set the read-time renderer enforces."
-  documents/allowed-chart-sorts)
-
 (defn build-analysis-prompt
   "Phase 2 prompt: research-paper-shaped Automatic Insights document grounded
   in the Phase-1-curated chart set. The Selmer template lives at
@@ -284,9 +280,9 @@
         (conj (str path ".attrs.stored_result_id: must be an integer, got "
                    (pr-str sr-id)))
 
-        (and (some? sort-val) (not (contains? allowed-chart-sorts sort-val)))
+        (and (some? sort-val) (not (contains? queries/allowed-chart-sorts sort-val)))
         (conj (str path ".attrs.sort: must be one of "
-                   (str/join ", " (sort allowed-chart-sorts))
+                   (str/join ", " (sort queries/allowed-chart-sorts))
                    " (or omitted), got " (pr-str sort-val)))
 
         content
@@ -318,7 +314,7 @@
   [node]
   (let [attrs (or (get node :attrs) (get node "attrs"))
         raw   (or (get attrs :sort) (get attrs "sort"))]
-    (when (contains? allowed-chart-sorts raw) raw)))
+    (when (contains? queries/allowed-chart-sorts raw) raw)))
 
 (defn- all-static-card-embed-nodes
   "Walk `pm-doc` depth-first and return every static-mode `cardEmbed` node (those carrying a

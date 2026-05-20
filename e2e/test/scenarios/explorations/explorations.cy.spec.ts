@@ -668,12 +668,7 @@ describe("scenarios > explorations > detail page", () => {
 
         // Detail page renders with the embedded chart.
         cy.url().should("include", `/question/research/${id}/document/`);
-        // The exploration document page renders chart embeds via
-        // `StaticCardEmbedNode` (`data-testid="document-static-card-embed"`)
-        // instead of the interactive editor's `CardEmbedNode`
-        // (`document-card-embed`), so we match either with a
-        // regex testid.
-        cy.findByTestId(/document-(static-)?card-embed/).should("be.visible");
+        cy.findByTestId("document-card-embed").should("be.visible");
       },
     );
   });
@@ -889,12 +884,7 @@ describe("scenarios > explorations > detail page", () => {
         cy.findByText("Added to").should("be.visible");
         cy.findByRole("link", { name: "Scratchpad" }).click();
         cy.url().should("include", `/question/research/${id}/document/`);
-        // The exploration document page renders chart embeds via
-        // `StaticCardEmbedNode` (`data-testid="document-static-card-embed"`)
-        // instead of the interactive editor's `CardEmbedNode`
-        // (`document-card-embed`), so we match either with a
-        // regex testid.
-        cy.findByTestId(/document-(static-)?card-embed/).should("be.visible");
+        cy.findByTestId("document-card-embed").should("be.visible");
       },
     );
   });

@@ -4,6 +4,7 @@
    [metabase.explorations.groups :as explorations.groups]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -50,14 +51,14 @@
     (with-sample-metrics-archived
       (mt/with-temp [:model/Card _m1 {:name          "Alpha Metric"
                                       :type          :metric
-                                      :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                                      :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
                      :model/Card _m2 {:name          "Beta Metric"
                                       :type          :metric
-                                      :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
-        (let [response (mt/user-http-request :rasta :get 200 "exploration/dimensions")
-              metrics  (:metrics response)
-              groups   (:dimension_groups response)
-              dim-ids  (set (mapcat #(map :id (:dimensions %)) groups))]
+                                      :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+        (let [response       (mt/user-http-request :rasta :get 200 "exploration/dimensions")
+              metrics        (:metrics response)
+              groups         (:dimension_groups response)
+              metric-dim-ids (set (mapcat :dimension_ids metrics))]
           (is (= 2 (count metrics)))
           (is (every? #(contains? % :dimension_ids) metrics))
           (is (every? #(not (contains? % :dimensions)) metrics))
@@ -65,19 +66,21 @@
           (testing "every group has a name and a non-empty dimension list"
             (is (every? :name groups))
             (is (every? #(seq (:dimensions %)) groups)))
-          (testing "every metric's dimension_ids appear in some group"
-            (doseq [m metrics]
-              (is (every? #(contains? dim-ids %) (:dimension_ids m))))))))))
+          (testing "every grouped dimension belongs to some metric's dimension_ids"
+            ;; groups drop dimensions scoring below min-interestingness, so the reverse
+            ;; (every metric dimension appears in a group) no longer holds.
+            (doseq [g groups]
+              (is (every? #(contains? metric-dim-ids (:id %)) (:dimensions g))))))))))
 
 (deftest dimensions-search-by-name-test
   (testing "GET /api/exploration/dimensions filters case-insensitively by metric name"
     (with-sample-metrics-archived
       (mt/with-temp [:model/Card _m1 {:name          "Revenue"
                                       :type          :metric
-                                      :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                                      :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
                      :model/Card _m2 {:name          "Order Count"
                                       :type          :metric
-                                      :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                                      :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
         (let [response (mt/user-http-request :rasta :get 200 "exploration/dimensions" :q "reven")]
           (is (= 1 (count (:metrics response))))
           (is (= "Revenue" (:name (first (:metrics response))))))))))
@@ -87,7 +90,7 @@
     (with-sample-metrics-archived
       (mt/with-temp [:model/Card metric {:name          "Sales"
                                          :type          :metric
-                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                                         :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
         (let [hydrated (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
               dim-name (some-> hydrated :dimensions first :display_name)]
           (is (some? dim-name) "metric should have at least one hydrated dimension with a display_name")
@@ -101,7 +104,7 @@
     (with-sample-metrics-archived
       (mt/with-temp [:model/Card _m {:name          "Hello"
                                      :type          :metric
-                                     :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
         (let [response (mt/user-http-request :rasta :get 200 "exploration/dimensions"
                                              :q "zzz_no_such_thing_zzz")]
           (is (= [] (:metrics response)))
@@ -115,7 +118,7 @@
                        :model/Card _hidden {:name          "Hidden Metric"
                                             :type          :metric
                                             :collection_id (:id collection)
-                                            :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                                            :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
           (let [response (mt/user-http-request :rasta :get 200 "exploration/dimensions")]
             (is (not-any? #(= "Hidden Metric" (:name %)) (:metrics response)))))))))
 
@@ -124,7 +127,7 @@
     (with-sample-metrics-archived
       (mt/with-temp [:model/Card metric {:name          "Filter target"
                                          :type          :metric
-                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                                         :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
         (let [good-id "11111111-1111-1111-1111-111111111111"
               bad-id  "22222222-2222-2222-2222-222222222222"
               good-mapping {:dimension_id good-id
@@ -155,7 +158,7 @@
 (defn- valid-metric-card [user-id]
   {:type          :metric
    :creator_id    user-id
-   :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})})
+   :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))})
 
 (deftest exploration-create-persists-everything-and-runs-test
   (testing "POST / creates an exploration with one thread, persists selections, and materializes queries"
@@ -320,7 +323,7 @@
 (defn- venues-metric-card [user-id]
   {:type          :metric
    :creator_id    user-id
-   :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})})
+   :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))})
 
 (defn- venues-dimension-mappings []
   [{:dimension_id "category" :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
@@ -339,10 +342,10 @@
                    :model/Card metric (assoc (venues-metric-card (:id u)) :name "Revenue")
                    :model/Segment internal {:name       "internal"
                                             :table_id   (mt/id :venues)
-                                            :definition (mt/mbql-query venues {:filter [:= $price 1]})}
+                                            :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 1)))))}
                    :model/Segment premium  {:name       "premium"
                                             :table_id   (mt/id :venues)
-                                            :definition (mt/mbql-query venues {:filter [:= $price 4]})}]
+                                            :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 4)))))}]
       (let [body    {:name       "fan-out"
                      :metrics    [{:card_id (:id metric) :dimension_mappings (venues-dimension-mappings)}]
                      :dimensions [{:dimension_id "category" :display_name "Category"}
@@ -372,7 +375,7 @@
                    :model/Card metric (venues-metric-card (:id u))
                    :model/Segment _other {:name       "users-only"
                                           :table_id   (mt/id :users)
-                                          :definition (mt/mbql-query users {:filter [:not-null $id]})}]
+                                          :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :users))) (lib/filter (lib/not-null (lib.metadata/field mp (mt/id :users :id)))))))}]
       (let [body    {:name       "scope"
                      :metrics    [{:card_id (:id metric) :dimension_mappings (venues-dimension-mappings)}]
                      :dimensions [{:dimension_id "category"} {:dimension_id "price"}]}
@@ -388,15 +391,14 @@
   [user-id]
   {:type          :metric
    :creator_id    user-id
-   :dataset_query (mt/mbql-query products {:aggregation [[:count]]
-                                           :breakout    [!month.created_at]})})
+   :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :products))) (lib/aggregate (lib/count)) (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :products :created_at)) :month)))))})
 
 (defn- query-types
   [queries]
   (set (map :query_type queries)))
 
 (deftest exploration-create-temporal-dim-emits-pattern-variants-test
-  (testing "POST / with a datetime dim emits default + day-of-week + month-of-year + hour-of-day"
+  (testing "POST / with a datetime dim emits default + day-of-week + hour-of-day"
     (mt/with-temp [:model/User u {:email "temporal-dt@example.com"}
                    :model/Card metric (venues-metric-card (:id u))]
       (let [mapping [{:dimension_id "created"
@@ -409,12 +411,12 @@
                                    :effective_type "type/DateTime"}]}
             queries (-> (mt/user-http-request u :post 200 "exploration" body)
                         :threads first :queries)]
-        (is (= #{"default" "day-of-week" "month-of-year" "hour-of-day"}
+        (is (= #{"default" "day-of-week" "hour-of-day"}
                (query-types queries)))
         (is (every? #(= "created" (:dimension_id %)) queries))))))
 
 (deftest exploration-create-date-dim-skips-hour-of-day-test
-  (testing "POST / with a pure-date dim emits default + day-of-week + month-of-year (no HoD)"
+  (testing "POST / with a pure-date dim emits default + day-of-week (no HoD)"
     (mt/with-temp [:model/User u {:email "temporal-date@example.com"}
                    :model/Card metric (venues-metric-card (:id u))]
       (let [mapping [{:dimension_id "created"
@@ -427,7 +429,7 @@
                                    :effective_type "type/Date"}]}
             queries (-> (mt/user-http-request u :post 200 "exploration" body)
                         :threads first :queries)]
-        (is (= #{"default" "day-of-week" "month-of-year"} (query-types queries)))))))
+        (is (= #{"default" "day-of-week"} (query-types queries)))))))
 
 (deftest exploration-create-time-facet-test
   (testing "POST / with a low-cardinality categorical dim + metric with default temporal breakout emits default + time-facet"
@@ -482,7 +484,7 @@
                    :model/Card metric (assoc (products-monthly-metric-card (:id u)) :name "Sales")
                    :model/Segment s {:name       "premium"
                                      :table_id   (mt/id :products)
-                                     :definition (mt/mbql-query products {:filter [:> $price 50]})}]
+                                     :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :products))) (lib/filter (lib/> (lib.metadata/field mp (mt/id :products :price)) 50)))))}]
       (let [mapping [{:dimension_id "cat"
                       :table_id     (mt/id :products)
                       :target       ["field" {} (mt/id :products :category)]}]
@@ -507,7 +509,7 @@
                    :model/Card metric (assoc (venues-metric-card (:id u)) :name "Revenue")
                    :model/Segment s {:name       "cheap"
                                      :table_id   (mt/id :venues)
-                                     :definition (mt/mbql-query venues {:filter [:= $price 1]})}]
+                                     :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 1)))))}]
       (let [mapping [{:dimension_id "created"
                       :table_id     (mt/id :venues)
                       :target       ["field" {} (mt/id :checkins :date)]}]
@@ -519,10 +521,10 @@
             queries (-> (mt/user-http-request u :post 200 "exploration" body)
                         :threads first :queries)
             by-seg  (group-by (comp boolean :segment_id) queries)]
-        (is (= 8 (count queries)) "4 variants × (1 base + 1 segment) = 8")
-        (is (= #{"default" "day-of-week" "month-of-year" "hour-of-day"}
+        (is (= 6 (count queries)) "3 variants × (1 base + 1 segment) = 6")
+        (is (= #{"default" "day-of-week" "hour-of-day"}
                (set (map :query_type (get by-seg false)))))
-        (is (= #{"default" "day-of-week" "month-of-year" "hour-of-day"}
+        (is (= #{"default" "day-of-week" "hour-of-day"}
                (set (map :query_type (get by-seg true)))))
         (is (every? #(= (:id s) (:segment_id %)) (get by-seg true)))))))
 
@@ -543,9 +545,9 @@
             queries (:queries thread)
             leaves  (filter #(= "page" (:display_type %)) (:groups thread))
             page    (first leaves)]
-        (is (= 4 (count queries)))
-        (is (= 1 (count leaves)) "all 4 variants collapse into one page leaf")
-        (is (= 4 (count (:query_ids page))))
+        (is (= 3 (count queries)))
+        (is (= 1 (count leaves)) "all 3 variants collapse into one page leaf")
+        (is (= 3 (count (:query_ids page))))
         (is (= (set (map :id queries)) (set (:query_ids page))))))))
 
 (deftest exploration-create-without-selections-test
@@ -767,11 +769,13 @@
                                         :dimensions [{:dimension_id "d1"}]})
             eid (:id resp)
             qid (-> resp :threads first :queries first :id)]
-        (t2/insert! :model/ExplorationQueryResult
-                    {:exploration_query_id             qid
-                     :result_data                      (byte-array [0])
-                     :interestingness_score            0.42
-                     :contextual_interestingness_score 0.83})
+        (let [sr-id (first (t2/insert-returning-pks! :model/StoredResult
+                                                     {:result_data (byte-array [0])}))]
+          (t2/insert! :model/ExplorationQueryResult
+                      {:exploration_query_id             qid
+                       :stored_result_id                 sr-id
+                       :interestingness_score            0.42
+                       :contextual_interestingness_score 0.83}))
         (let [s (-> (mt/user-http-request u :get 200 (format "exploration/%d/queries" eid)) first)]
           (is (= 0.42 (:interestingness_score s)))
           (is (= 0.83 (:contextual_interestingness_score s))))))))
@@ -799,11 +803,13 @@
             (is (contains? q :user_interestingness))
             (is (nil? (:user_interestingness q)))))
         (testing "after a result row is inserted, both scores surface via hydration"
-          (t2/insert! :model/ExplorationQueryResult
-                      {:exploration_query_id             qid
-                       :result_data                      (byte-array [0])
-                       :interestingness_score            0.42
-                       :contextual_interestingness_score 0.83})
+          (let [sr-id (first (t2/insert-returning-pks! :model/StoredResult
+                                                       {:result_data (byte-array [0])}))]
+            (t2/insert! :model/ExplorationQueryResult
+                        {:exploration_query_id             qid
+                         :stored_result_id                 sr-id
+                         :interestingness_score            0.42
+                         :contextual_interestingness_score 0.83}))
           (let [q (fetch-query)]
             (is (= 0.42 (:interestingness_score q)))
             (is (= 0.83 (:contextual_interestingness_score q)))))
@@ -820,16 +826,19 @@
         (mt/user-http-request other :get 403 (format "exploration/%d/queries" eid))))))
 
 (defn- store-fake-result!
-  "Insert an ExplorationQueryResult that mirrors the worker's serialization format so the
-  result endpoint can replay it."
+  "Insert a StoredResult holding the worker-serialized bytes plus an ExplorationQueryResult
+  that points at it, mirroring what the runner produces so the read endpoints can replay it."
   [query-id qp-result]
   (let [bytes (cache.impl/do-with-serialization
                (fn [in result-fn]
                  (in qp-result)
-                 (result-fn)))]
+                 (result-fn)))
+        sr-id (first (t2/insert-returning-pks!
+                      :model/StoredResult
+                      {:result_data bytes}))]
     (t2/insert! :model/ExplorationQueryResult
                 {:exploration_query_id query-id
-                 :result_data          bytes})))
+                 :stored_result_id     sr-id})))
 
 (defn- mark-done! [query-id]
   (t2/update! :model/ExplorationQuery query-id {:status "done"}))
@@ -883,90 +892,41 @@
             qid  (-> resp :threads first :queries first :id)]
         (mt/user-http-request other :get 403 (format "exploration/query/%d" qid))))))
 
-(deftest exploration-static-card-card-shaped-response-test
-  (testing "GET /query/:id/static-card returns a card-shaped envelope with display, viz_settings, and dataset rows"
-    (mt/with-temp [:model/User u {:email "static-card@example.com"}
+(deftest exploration-append-records-stored-result-use-test
+  (testing "Appending a static cardEmbed records a stored_result_use row tying the snapshot to the new Card"
+    (mt/with-temp [:model/User u {:email "append-use@example.com"}
                    :model/Card metric (valid-metric-card (:id u))]
       (let [resp   (mt/user-http-request u :post 200 "exploration"
-                                         {:name "static"
+                                         {:name "append-use"
                                           :metrics [{:card_id (:id metric)
                                                      :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
                                           :dimensions [{:dimension_id "d1"}]})
+            tid    (-> resp :threads first :id)
             qid    (-> resp :threads first :queries first :id)
             qp-out {:status :completed
                     :data   {:cols [{:name "x" :source :breakout}
                                     {:name "y" :source :aggregation}]
-                             :rows [["a" 3] ["b" 1] ["c" 2]]}
-                    :row_count 3}]
+                             :rows [["a" 3] ["b" 1]]}
+                    :row_count 2}]
         (store-fake-result! qid qp-out)
         (mark-done! qid)
-        (t2/update! :model/ExplorationQueryResult :exploration_query_id qid
-                    {:display                :bar
-                     :visualization_settings {:graph.x_axis.title_text "X"}})
-        (let [body (mt/user-http-request u :get 200 (format "exploration/query/%d/static-card" qid))]
-          (is (= "bar" (-> body :card :display))
-              "display from exploration_query_result is returned")
-          (is (= {:graph.x_axis.title_text "X"}
-                 (-> body :card :visualization_settings))
-              "visualization_settings from exploration_query_result is returned")
-          (is (nil? (-> body :card :id))
-              "card.id is nil — there's no real Card row")
-          (is (= "completed" (-> body :dataset :status)))
-          (is (= [["a" 3] ["b" 1] ["c" 2]] (-> body :dataset :data :rows))
-              "rows come back in cached order when no sort param is supplied"))))))
-
-(deftest exploration-static-card-sort-test
-  (testing "GET /query/:id/static-card?sort=… re-orders rows in memory"
-    (mt/with-temp [:model/User u {:email "static-sort@example.com"}
-                   :model/Card metric (valid-metric-card (:id u))]
-      (let [resp   (mt/user-http-request u :post 200 "exploration"
-                                         {:name "sort"
-                                          :metrics [{:card_id (:id metric)
-                                                     :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                          :dimensions [{:dimension_id "d1"}]})
-            qid    (-> resp :threads first :queries first :id)
-            qp-out {:status :completed
-                    :data   {:cols [{:name "label" :source :breakout}
-                                    {:name "value" :source :aggregation}]
-                             :rows [["a" 3] ["b" 1] ["c" 2]]}
-                    :row_count 3}
-            fetch  (fn [sort]
-                     (-> (mt/user-http-request u :get 200
-                                               (format "exploration/query/%d/static-card?sort=%s" qid sort))
-                         :dataset :data :rows))]
-        (store-fake-result! qid qp-out)
-        (mark-done! qid)
-        (is (= [["a" 3] ["c" 2] ["b" 1]] (fetch "value_desc")))
-        (is (= [["b" 1] ["c" 2] ["a" 3]] (fetch "value_asc")))
-        (is (= [["a" 3] ["b" 1] ["c" 2]] (fetch "label_asc")))
-        (is (= [["c" 2] ["b" 1] ["a" 3]] (fetch "label_desc")))))))
-
-(deftest exploration-static-card-409-when-not-done-test
-  (testing "GET /query/:id/static-card returns 409 with status info while the query is still pending"
-    (mt/with-temp [:model/User u {:email "static-pending@example.com"}
-                   :model/Card metric (valid-metric-card (:id u))]
-      (let [resp (mt/user-http-request u :post 200 "exploration"
-                                       {:name "static-pending"
-                                        :metrics [{:card_id (:id metric)
-                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                        :dimensions [{:dimension_id "d1"}]})
-            qid  (-> resp :threads first :queries first :id)
-            body (mt/user-http-request u :get 409 (format "exploration/query/%d/static-card" qid))]
-        (is (= "pending" (:status body)))
-        (is (= qid (:id body)))))))
-
-(deftest exploration-static-card-permissions-test
-  (testing "GET /query/:id/static-card enforces the parent exploration's read check"
-    (mt/with-temp [:model/User owner {:email "static-owner@example.com"}
-                   :model/User other {:email "static-other@example.com"}
-                   :model/Card metric (valid-metric-card (:id owner))]
-      (let [resp (mt/user-http-request owner :post 200 "exploration"
-                                       {:name "static-private"
-                                        :metrics [{:card_id (:id metric)
-                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                        :dimensions [{:dimension_id "d1"}]})
-            qid  (-> resp :threads first :queries first :id)]
-        (mt/user-http-request other :get 403 (format "exploration/query/%d/static-card" qid))))))
+        (let [sr-id  (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
+                                       :exploration_query_id qid)
+              doc-id (-> (mt/user-http-request u :get 200 (str "exploration/thread/" tid "/documents"))
+                         first :id)
+              before (t2/select :model/StoredResultUse :stored_result_id sr-id)
+              doc    (mt/user-http-request u :post 200
+                                           (format "exploration/thread/%d/documents/%d/append" tid doc-id)
+                                           {:exploration_query_id qid})
+              card-id (-> (t2/select-one-fn :document :model/Document :id (:id doc))
+                          :content last :content first :attrs :id)
+              use-row (t2/select-one :model/StoredResultUse :stored_result_id sr-id :card_id card-id)]
+          (is (empty? before)
+              "no card-use row exists before the append")
+          (is (some? use-row)
+              "appending records a stored_result_use row for the materialized Card")
+          (is (nil? (:exploration_id use-row))
+              "the card-use row has no exploration_id"))))))
 
 (deftest exploration-user-interestingness-roundtrip-test
   (testing "PUT /query/:id/interesting sets the rating; DELETE clears it; both reflected in /:id/queries"
@@ -1042,14 +1002,15 @@
       (mt/user-http-request u :delete 404 "exploration/query/9999999/interesting"))))
 
 (deftest exploration-create-auto-creates-scratchpad-document-test
-  (testing "POST / auto-creates a 'Scratchpad' document owned by the new exploration's thread"
+  (testing "POST / auto-creates a 'Scratchpad' document owned by the new exploration's thread, alongside the Automatic Insights placeholder"
     (mt/with-temp [:model/User u {:email "scratchpad-auto@example.com"}]
-      (let [resp (mt/user-http-request u :post 200 "exploration" {:name "x"})
-            tid  (-> resp :threads first :id)
-            docs (t2/select :model/Document :exploration_thread_id tid)]
-        (is (= 1 (count docs)))
-        (is (= "Scratchpad" (:name (first docs))))
-        (is (= (:id u) (:creator_id (first docs))))))))
+      (let [resp       (mt/user-http-request u :post 200 "exploration" {:name "x"})
+            tid        (-> resp :threads first :id)
+            docs       (t2/select :model/Document :exploration_thread_id tid)
+            scratchpad (some #(when (= "Scratchpad" (:name %)) %) docs)]
+        (is (= #{"Scratchpad" "Automatic Insights"} (set (map :name docs))))
+        (is (some? scratchpad))
+        (is (= (:id u) (:creator_id scratchpad)))))))
 
 (deftest exploration-documents-list-and-create-test
   (testing "GET/POST /thread/:thread-id/documents list and create empty documents with auto-named Scratchpad"
@@ -1058,8 +1019,8 @@
             tid     (-> exp :threads first :id)
             url     (str "exploration/thread/" tid "/documents")
             initial (mt/user-http-request u :get 200 url)]
-        (is (= ["Scratchpad"] (mapv :name initial))
-            "Listing returns the auto-created Scratchpad doc")
+        (is (= ["Scratchpad" "Automatic Insights"] (mapv :name initial))
+            "Listing returns the auto-created Scratchpad + Automatic Insights docs")
         (let [d2 (mt/user-http-request u :post 200 url {})]
           (is (= "Scratchpad 2" (:name d2)))
           (is (= tid (:exploration_thread_id d2)))
@@ -1067,7 +1028,7 @@
         (let [d3 (mt/user-http-request u :post 200 url {})]
           (is (= "Scratchpad 3" (:name d3))))
         (let [after (mt/user-http-request u :get 200 url)]
-          (is (= #{"Scratchpad" "Scratchpad 2" "Scratchpad 3"} (set (map :name after)))))))))
+          (is (= #{"Scratchpad" "Automatic Insights" "Scratchpad 2" "Scratchpad 3"} (set (map :name after)))))))))
 
 (deftest exploration-documents-next-document-name-skips-gaps-test
   (testing "Auto-naming picks max+1 even with gaps and ignores unrelated docs"
@@ -1241,10 +1202,10 @@
                    :model/Card metric (assoc (venues-metric-card (:id u)) :name "Revenue")
                    :model/Segment _seg-a {:name "alpha"
                                           :table_id (mt/id :venues)
-                                          :definition (mt/mbql-query venues {:filter [:= $price 1]})}
+                                          :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 1)))))}
                    :model/Segment _seg-b {:name "beta"
                                           :table_id (mt/id :venues)
-                                          :definition (mt/mbql-query venues {:filter [:= $price 4]})}]
+                                          :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 4)))))}]
       (let [body {:name "groups"
                   :metrics    [{:card_id (:id metric)
                                 :dimension_mappings (venues-dimension-mappings)}]
@@ -1584,7 +1545,7 @@
     (with-sample-metrics-archived
       (mt/with-temp [:model/Card        _ {:name          "Routed Hidden"
                                            :type          :metric
-                                           :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                                           :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
                      :model/DatabaseRouter _ {:database_id    (mt/id)
                                               :user_attribute "team"}]
         (let [resp  (mt/user-http-request :rasta :get 200 "exploration/dimensions")

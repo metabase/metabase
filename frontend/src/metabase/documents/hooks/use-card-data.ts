@@ -9,13 +9,25 @@ import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
-import type { Card, Dataset, RawSeries } from "metabase-types/api";
+import type {
+  Card,
+  Dataset,
+  RawSeries,
+  StoredResultSort,
+} from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import { getCardWithDraft } from "../selectors";
 
 interface UseCardDataProps {
-  id: number;
+  id: number | null | undefined;
+  /**
+   * When set, the card-query call serves the cached snapshot identified by this id instead
+   * of running the card's query live. Used by static `cardEmbed`s.
+   */
+  storedResultId?: number;
+  /** In-memory re-sort applied to the cached rows. Only honored with `storedResultId`. */
+  storedResultSort?: StoredResultSort;
 }
 
 export interface UseCardDataResult {
@@ -83,7 +95,12 @@ function selectIsLoadingDataset(
   return isLoadingDraft;
 }
 
-export function useCardData({ id }: UseCardDataProps): UseCardDataResult {
+export function useCardData({
+  id: rawId,
+  storedResultId,
+  storedResultSort,
+}: UseCardDataProps): UseCardDataResult {
+  const id = rawId ?? 0;
   const isDraft = id < 0;
   const shouldSkipSavedCard = !id || isDraft;
 
@@ -122,7 +139,15 @@ export function useCardData({ id }: UseCardDataProps): UseCardDataResult {
   const shouldQueryDraftPivot = canQueryDraftCard && isPivotTable && metadata;
 
   const { data: regularDataset, isLoading: isLoadingRegularDataset } =
-    useGetCardQueryQuery({ cardId: id }, { skip: shouldSkipRegularQuery });
+    useGetCardQueryQuery(
+      {
+        cardId: id,
+        ...(storedResultId != null
+          ? { stored_result_id: storedResultId, sort: storedResultSort }
+          : {}),
+      },
+      { skip: shouldSkipRegularQuery },
+    );
 
   const { data: draftDataset, isLoading: isLoadingDraftDataset } =
     useGetAdhocQueryQuery(

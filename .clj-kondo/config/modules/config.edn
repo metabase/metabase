@@ -1008,6 +1008,7 @@
                     :model/ExplorationThreadMetric
                     :model/ExplorationThreadTimeline}
    :model-imports #{:model/Card
+                    :model/StoredResult
                     :model/Timeline
                     :model/TimelineEvent
                     :model/User}}
@@ -1723,7 +1724,8 @@
    :model-exports #{:model/Card
                     :model/Query
                     :model/QueryExecution
-                    :model/QueryTable}
+                    :model/QueryTable
+                    :model/StoredResult}
    :model-imports #{:model/Action
                     :model/CardBookmark
                     :model/Collection
@@ -1766,6 +1768,7 @@
                     :model/Collection
                     :model/Dashboard
                     :model/Database
+                    :model/StoredResult
                     :model/Table}}
 
   query-permissions
