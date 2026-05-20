@@ -578,11 +578,12 @@
   so each query carries its own server-side timeout, rather than relying on the pool-wide c3p0
   `unreturnedConnectionTimeout` to kill long queries. Transforms rebind `*query-timeout-ms*` so their statements get
   the transform timeout instead of the shorter default. Drivers that don't implement `setQueryTimeout` (a small
-  legacy tail — SparkSQL, SQLite, some old Oracle versions) throw here; the c3p0 leak-detector remains the fallback."
+  legacy tail — SparkSQL, SQLite, some old Oracle versions) may throw `AbstractMethodError` here; the c3p0
+  leak-detector remains the fallback. Catches `Throwable` deliberately to swallow such `Error`s."
   [^Statement stmt]
   (try
     (.setQueryTimeout stmt (long (/ driver.settings/*query-timeout-ms* 1000)))
-    (catch Exception e
+    (catch Throwable e
       (log/debug e "Error setting statement query timeout"))))
 
 (defn- prepared-statement*

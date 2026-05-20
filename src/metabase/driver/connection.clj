@@ -136,15 +136,18 @@
 
    Accepts a database (Toucan2 instance or lib/metadata). Returns nil for nil input.
 
-   By default, returns the primary `:details`. Within a [[with-write-connection]] scope,
-   takes `:write-data-details` into account (if configured). Within a
+   By default, returns the primary `:details`. Within a [[with-write-connection]] or
+   [[with-transform-connection]] scope, takes `:write-data-details` into account (if
+   configured) — transforms write, so they get write-data credentials when set. The two
+   contexts still resolve to *different* pool keys (`:write-data` vs `:transform`) so the
+   pool properties (e.g. `unreturnedConnectionTimeout`) can differ. Within a
    [[driver.w/with-swapped-connection-details]] scope, applies workspace isolation
    overrides on top."
   [database]
   (when-let [database (some-> database driver.u/ensure-lib-database)]
-    (let [write?        (= *connection-type* :write-data)
-          write-details (when write? (database-write-data-details database))
-          base          (merge (:details database) write-details)]
+    (let [write-context? (contains? #{:write-data :transform} *connection-type*)
+          write-details  (when write-context? (database-write-data-details database))
+          base           (merge (:details database) write-details)]
       ;; Track when write-data-details are genuinely used (not fallback, not workspace-swapped).
       ;; Default resolutions are not tracked here — see :metabase-db-connection/write-op for
       ;; pool-level connection acquisition metrics.
