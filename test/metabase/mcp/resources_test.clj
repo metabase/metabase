@@ -101,6 +101,5 @@
                                :_meta    {:ui {:prefersBorder true
                                                :domain        site-url
                                                :csp           {:connectDomains  [site-url]
-                                                               :resourceDomains [site-url]
-                                                               :frameDomains    [site-url]}}}}]}
+                                                               :resourceDomains [site-url]}}}}]}
                   (mcp.resources/read-resource uri #{"agent:visualize"} {}))))))))

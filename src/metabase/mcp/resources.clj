@@ -84,8 +84,7 @@
 (defn- ui-meta [resource]
   (let [url (system/site-url)]
     {:ui (cond-> {:csp {:connectDomains  [url]
-                        :resourceDomains [url]
-                        :frameDomains    [url]}}
+                        :resourceDomains [url]}}
            (contains? resource :prefersBorder)
            (assoc :prefersBorder (:prefersBorder resource)))}))
 
