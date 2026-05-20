@@ -121,10 +121,10 @@ describe("NewExplorationData", () => {
       setup();
 
       expect(
-        screen.getByText("No metrics yet. Click + to add some."),
+        screen.getByText(/Add metrics you.re interested in/),
       ).toBeInTheDocument();
       expect(
-        screen.getByText("No dimensions yet. Click + to add some."),
+        screen.getByText(/work backwards by specifying a dimension/),
       ).toBeInTheDocument();
       expect(
         screen.getByText(/Add timelines to see if events shed light/),

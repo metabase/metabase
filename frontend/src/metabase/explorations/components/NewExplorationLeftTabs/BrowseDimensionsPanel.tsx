@@ -116,7 +116,6 @@ export function BrowseDimensionsPanel({
           style={{ height: "100%" }}
         >
           <DimensionList
-            variant="card"
             dimensions={groupRows}
             isSelected={isSelected}
             onToggle={(dimension) =>

@@ -33,28 +33,3 @@
     padding-top: 0;
   }
 }
-
-.dimensionChip {
-  position: absolute;
-  top: 0;
-  left: 0;
-  display: inline-flex;
-  align-items: center;
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--mantine-radius-lg);
-  background: var(--mb-color-background-tertiary);
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-}
-
-.dimensionChip:hover:not(.dimensionChipSelected) {
-  background: var(--mb-color-background-hover);
-}
-
-.dimensionChipSelected {
-  background: var(--mb-color-brand);
-  border-color: var(--mb-color-brand);
-  color: var(--mb-color-text-primary-inverse);
-}
