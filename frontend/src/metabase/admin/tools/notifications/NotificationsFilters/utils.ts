@@ -5,20 +5,20 @@ import type {
 
 export const stateToDraft = (state: NotificationsUrlState): FilterDraft => ({
   channel: state.channel,
-  owner_active: state.owner_active,
-  last_sent_status: state.last_sent_status,
+  ownerless: state.ownerless,
+  last_send_status: state.last_send_status,
   recipient_email: state.recipient_email,
 });
 
 export const hasActiveFilters = (state: NotificationsUrlState): boolean => {
-  if (state.channel !== null) {
+  if (state.channel.length > 0) {
     return true;
   }
-  if (state.tab !== "failing" && state.last_sent_status !== null) {
+  if (state.tab !== "failing" && state.last_send_status !== null) {
     return true;
   }
   if (state.recipient_email !== "") {
     return true;
   }
-  return state.tab !== "ownerless" && state.owner_active !== null;
+  return state.tab !== "ownerless" && state.ownerless !== null;
 };

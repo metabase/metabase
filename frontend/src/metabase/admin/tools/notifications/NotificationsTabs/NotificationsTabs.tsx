@@ -48,7 +48,7 @@ export const NotificationsTabs = ({
       value: "failing",
       icon: "warning_round",
       label: t`Failing`,
-      patch: { tab: "failing", last_sent_status: null },
+      patch: { tab: "failing", last_send_status: null },
     });
   }
 
@@ -57,7 +57,7 @@ export const NotificationsTabs = ({
       value: "ownerless",
       icon: "ghost",
       label: t`Ownerless`,
-      patch: { tab: "ownerless", owner_active: null },
+      patch: { tab: "ownerless", ownerless: null },
     });
   }
 

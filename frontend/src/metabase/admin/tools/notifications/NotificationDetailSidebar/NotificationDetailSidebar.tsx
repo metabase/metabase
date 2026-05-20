@@ -8,17 +8,12 @@ import { t } from "ttag";
 import {
   skipToken,
   useAdminNotificationDetailQuery,
-  useBulkNotificationActionMutation,
   useGetCardQuery,
-  useListTaskRunsQuery,
 } from "metabase/api";
 import { Link as MBLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { ADMIN_NAVBAR_HEIGHT } from "metabase/nav/constants";
-import {
-  AlertModalSettingsBlock,
-  CreateOrEditQuestionAlertModal,
-} from "metabase/notifications/modals/CreateOrEditQuestionAlertModal";
+import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
@@ -33,50 +28,40 @@ import {
   Flex,
   Group,
   Icon,
+  Loader,
   Menu,
   Stack,
   Text,
   Title,
+  Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import Question from "metabase-lib/v1/Question";
 import type {
   AdminNotification,
+  AdminNotificationDetail,
   NotificationHandler,
   NotificationHandlerEmail,
   NotificationHandlerHttp,
   NotificationHandlerSlack,
   NotificationId,
-  NotificationRecipient,
-  TaskRun,
-  TaskRunStatus,
 } from "metabase-types/api";
 
 import {
   formatRelativeDate,
   getChannelIconName,
 } from "../NotificationsAdminPage/utils";
-import type { UserOption } from "../UserPicker";
-import { UserPicker } from "../UserPicker";
 
 import S from "./NotificationDetailSidebar.module.css";
-import {
-  RECENT_RUNS_FETCH_LIMIT,
-  RECENT_RUNS_LIMIT,
-  SIDEBAR_WIDTH,
-} from "./constants";
+import { SIDEBAR_WIDTH } from "./constants";
 import type {
   ChannelAvatarProps,
   DetailsRowProps,
   DetailsSectionProps,
-  EmailRecipientsSectionProps,
-  NotificationEditModalLoaderProps,
-  OwnerSectionProps,
-  RunHistorySectionProps,
+  NotificationRunSummaryLogProps,
   SidebarHeaderProps,
   SidebarProps,
   SidebarSectionProps,
-  SlackChannelsSectionProps,
 } from "./types";
 import {
   formatChannelSummary,
@@ -86,19 +71,40 @@ import {
 
 export const NotificationDetailSidebar = ({
   notificationId,
+  notificationSummary,
   isBulkLoading,
   prevNotificationId,
   nextNotificationId,
   onClose,
   onDelete,
 }: SidebarProps) => {
-  const {
-    data: notification,
-    error,
-    isLoading,
-  } = useAdminNotificationDetailQuery(notificationId);
+  const { currentData: detail, isFetching: isDetailFetching } =
+    useAdminNotificationDetailQuery(notificationId);
+  const notification = detail ?? notificationSummary;
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  useEffect(() => {
+    setIsEditModalOpen(false);
+  }, [notificationId]);
+
+  const dispatch = useDispatch();
+  const metadata = useSelector(getMetadata);
+  const cardId = notification?.payload.card_id;
+  const { currentData: card, isFetching: isCardLoading } = useGetCardQuery(
+    cardId !== undefined ? { id: cardId } : skipToken,
+  );
+
+  useEffect(() => {
+    if (card) {
+      dispatch(loadMetadataForCard(card));
+    }
+  }, [card, dispatch]);
+
+  const question = useMemo(
+    () => (card ? new Question(card, metadata) : undefined),
+    [card, metadata],
+  );
 
   return (
     <>
@@ -121,29 +127,36 @@ export const NotificationDetailSidebar = ({
         }}
       >
         <Stack h="100%" p="lg" gap="lg">
-          {isLoading || error || !notification ? (
-            <LoadingAndErrorWrapper loading={isLoading} error={error} />
+          <SidebarHeader
+            isBulkLoading={isBulkLoading}
+            notificationId={notificationId}
+            notification={notification}
+            prevNotificationId={prevNotificationId}
+            nextNotificationId={nextNotificationId}
+            isQuestionLoading={isCardLoading}
+            canEdit={question !== undefined}
+            onClose={onClose}
+            onDelete={onDelete}
+            onEdit={() => setIsEditModalOpen(true)}
+          />
+          {notification ? (
+            <SidebarBody
+              notification={notification}
+              detail={detail}
+              isDetailFetching={isDetailFetching}
+            />
           ) : (
-            <>
-              <SidebarHeader
-                isBulkLoading={isBulkLoading}
-                notification={notification}
-                prevNotificationId={prevNotificationId}
-                nextNotificationId={nextNotificationId}
-                onClose={onClose}
-                onDelete={onDelete}
-                onEdit={() => setIsEditModalOpen(true)}
-              />
-              <SidebarBody notification={notification} />
-            </>
+            <LoadingAndErrorWrapper loading />
           )}
         </Stack>
       </Drawer>
-      {isEditModalOpen && notification && (
-        <NotificationEditModalLoader
-          notification={notification}
+      {isEditModalOpen && notification && question && (
+        <CreateOrEditQuestionAlertModal
+          editingNotification={notification}
+          question={question}
+          skipUrlUpdate
+          onAlertUpdated={() => setIsEditModalOpen(false)}
           onClose={() => setIsEditModalOpen(false)}
-          onUpdated={() => setIsEditModalOpen(false)}
         />
       )}
     </>
@@ -152,18 +165,21 @@ export const NotificationDetailSidebar = ({
 
 const SidebarHeader = ({
   isBulkLoading,
+  notificationId,
   notification,
   prevNotificationId,
   nextNotificationId,
+  isQuestionLoading,
+  canEdit,
   onClose,
   onDelete,
   onEdit,
 }: SidebarHeaderProps) => {
-  const cardName = notification.payload?.card?.name ?? t`Untitled question`;
+  const cardName = notification?.payload.card?.name ?? t`Untitled question`;
   const dispatch = useDispatch();
 
   const handleCopyLink = async () => {
-    const url = `${window.location.origin}${Urls.adminToolsNotificationDetail(notification.id)}`;
+    const url = `${window.location.origin}${Urls.adminToolsNotificationDetail(notificationId)}`;
     await navigator.clipboard.writeText(url);
     dispatch(addUndo({ message: t`Link copied to clipboard` }));
   };
@@ -218,7 +234,7 @@ const SidebarHeader = ({
               >
                 {t`Copy link to clipboard`}
               </Menu.Item>
-              {notification.active && (
+              {notification?.active && (
                 <Menu.Item
                   c="danger"
                   leftSection={<Icon name="trash" />}
@@ -229,15 +245,22 @@ const SidebarHeader = ({
               )}
             </Menu.Dropdown>
           </Menu>
-          <ActionIcon
-            aria-label={t`Edit`}
-            size="lg"
-            c="icon-primary"
-            disabled={isBulkLoading}
-            onClick={onEdit}
-          >
-            <Icon name="pencil" />
-          </ActionIcon>
+          {isQuestionLoading && (
+            <Flex w={34} h={34} align="center" justify="center">
+              <Loader size="sm" />
+            </Flex>
+          )}
+          {!isQuestionLoading && canEdit && (
+            <ActionIcon
+              aria-label={t`Edit`}
+              size="lg"
+              c="icon-primary"
+              disabled={isBulkLoading}
+              onClick={onEdit}
+            >
+              <Icon name="pencil" />
+            </ActionIcon>
+          )}
           <ActionIcon
             aria-label={t`Close`}
             size="lg"
@@ -249,17 +272,19 @@ const SidebarHeader = ({
         </Group>
       </Flex>
 
-      <Flex align="center" gap="sm">
-        <ChannelAvatarStack handlers={notification.handlers} />
-        <Stack gap={2}>
-          <Text size="xs" c="text-secondary">
-            {t`Alert ${notification.id}`}
-          </Text>
-          <Title order={3} lh={1.2} c="text-primary">
-            {cardName}
-          </Title>
-        </Stack>
-      </Flex>
+      {notification && (
+        <Flex align="center" gap="sm">
+          <ChannelAvatarStack handlers={notification.handlers} />
+          <Stack gap={2}>
+            <Text size="xs" c="text-secondary">
+              {t`Alert ${notification.id}`}
+            </Text>
+            <Title order={3} lh={1.2} c="text-primary">
+              {cardName}
+            </Title>
+          </Stack>
+        </Flex>
+      )}
     </Stack>
   );
 };
@@ -318,7 +343,15 @@ const ChannelAvatar = ({ channel, bordered }: ChannelAvatarProps) => {
   );
 };
 
-const SidebarBody = ({ notification }: { notification: AdminNotification }) => {
+const SidebarBody = ({
+  notification,
+  isDetailFetching,
+  detail,
+}: {
+  notification: AdminNotification;
+  isDetailFetching: boolean;
+  detail: AdminNotificationDetail | undefined;
+}) => {
   const handlers = notification.handlers ?? [];
   const emailHandler = handlers.find(
     (handler): handler is NotificationHandlerEmail =>
@@ -335,6 +368,8 @@ const SidebarBody = ({ notification }: { notification: AdminNotification }) => {
   const emailRecipientCount = emailHandler?.recipients.length ?? 0;
   const slackChannelCount = slackHandler?.recipients.length ?? 0;
 
+  const cardId = notification.payload.card_id;
+
   return (
     <Stack gap="xl">
       <DetailsSection
@@ -343,18 +378,70 @@ const SidebarBody = ({ notification }: { notification: AdminNotification }) => {
         slackChannelCount={slackChannelCount}
         httpHandler={httpHandler}
       />
-      <RunsSections notification={notification} />
+      <NotificationRunSummaryLog
+        title={t`Check history`}
+        runs={detail?.send_history}
+        isLoading={isDetailFetching}
+        cardId={cardId}
+      />
+      <NotificationRunSummaryLog
+        title={t`Send history`}
+        runs={detail?.send_history}
+        isLoading={isDetailFetching}
+        cardId={cardId}
+      />
       {emailHandler && emailRecipientCount > 0 && (
-        <EmailRecipientsSection
-          handler={emailHandler}
-          count={emailRecipientCount}
-        />
+        <SidebarSection
+          title={
+            emailRecipientCount === 1
+              ? t`1 email recipient`
+              : t`${emailRecipientCount} email recipients`
+          }
+        >
+          <DetailsTable>
+            {emailHandler.recipients.map((recipient, index) => {
+              const { name, email } = getEmailRowText(recipient);
+              return (
+                <Flex
+                  key={recipient.id ?? index}
+                  align="center"
+                  justify="space-between"
+                  px="md"
+                  py="sm"
+                  gap="sm"
+                >
+                  <Text size="md" c="text-primary">
+                    {name}
+                  </Text>
+                  {email && (
+                    <Text size="md" c="text-secondary">
+                      {email}
+                    </Text>
+                  )}
+                </Flex>
+              );
+            })}
+          </DetailsTable>
+        </SidebarSection>
       )}
       {slackHandler && slackChannelCount > 0 && (
-        <SlackChannelsSection
-          handler={slackHandler}
-          count={slackChannelCount}
-        />
+        <SidebarSection
+          title={
+            slackChannelCount === 1
+              ? t`1 Slack channel`
+              : t`${slackChannelCount} Slack channels`
+          }
+        >
+          <DetailsTable>
+            {slackHandler.recipients.map((recipient, index) => (
+              <Flex key={recipient.id ?? index} align="center" px="md" py="sm">
+                <Text size="md" c="text-primary">
+                  {recipient.details?.value ?? ""}
+                </Text>
+              </Flex>
+            ))}
+          </DetailsTable>
+        </SidebarSection>
       )}
     </Stack>
   );
@@ -366,14 +453,14 @@ const DetailsSection = ({
   slackChannelCount,
   httpHandler,
 }: DetailsSectionProps) => {
-  const cardId = notification.payload?.card_id;
-  const cardName = notification.payload?.card?.name;
+  const cardId = notification.payload.card_id;
+  const cardName = notification.payload.card?.name;
   const lastCheck = notification.last_check;
-  const lastSent = notification.last_sent;
+  const lastSend = notification.last_send;
   const lastCheckDate = formatRelativeDate(lastCheck?.at);
-  const lastSentDate = formatRelativeDate(lastSent?.at);
+  const lastSendDate = formatRelativeDate(lastSend?.at);
   const checkError = lastCheck?.status === "failing" ? lastCheck.error : null;
-  const sentError = lastSent?.status === "failing" ? lastSent.error : null;
+  const sendError = lastSend?.status === "failing" ? lastSend.error : null;
   const channelSummary = formatChannelSummary({
     emailRecipientCount,
     slackChannelCount,
@@ -388,7 +475,7 @@ const DetailsSection = ({
         <DetailsRow
           label={t`Question`}
           value={
-            cardId !== undefined && cardName ? (
+            cardName ? (
               <MBLink
                 variant="brandBold"
                 to={Urls.card({ id: cardId, name: cardName })}
@@ -429,12 +516,12 @@ const DetailsSection = ({
           value={
             <Stack gap={4}>
               <Text size="md" c="text-primary">
-                {lastSentDate}
+                {lastSendDate}
               </Text>
-              {sentError && (
+              {sendError && (
                 <Flex align="center" gap="xs">
                   <Text size="sm" c="error">
-                    {sentError}
+                    {sendError}
                   </Text>
                   <Icon name="warning_round" c="error" size={14} />
                 </Flex>
@@ -447,200 +534,88 @@ const DetailsSection = ({
   );
 };
 
-const RunsSections = ({
-  notification,
-}: {
-  notification: AdminNotification;
-}) => {
-  const cardId = notification.payload?.card_id;
-  const { data: taskRunsData, isLoading } = useListTaskRunsQuery(
-    cardId !== undefined
-      ? {
-          limit: RECENT_RUNS_FETCH_LIMIT,
-          offset: 0,
-          "run-type": "alert",
-          "entity-type": "card",
-          "entity-id": cardId,
-        }
-      : undefined,
-    { skip: cardId === undefined },
-  );
-
-  if (cardId === undefined) {
-    return null;
-  }
-
-  const allRuns = taskRunsData?.data ?? [];
-  const checks = allRuns.slice(0, RECENT_RUNS_LIMIT);
-  const sends = allRuns
-    .filter((run) => run.status === "success")
-    .slice(0, RECENT_RUNS_LIMIT);
-
+const NotificationRunSummaryLog = ({
+  title,
+  runs,
+  isLoading,
+  cardId,
+}: NotificationRunSummaryLogProps) => {
   const viewAllUrl = Urls.adminToolsTasksRunsFor({
     runType: "alert",
     entityType: "card",
     entityId: cardId,
   });
 
-  return (
-    <>
-      <RunHistorySection
-        title={t`Check history`}
-        viewAllUrl={viewAllUrl}
-        runs={checks}
-        isLoading={isLoading}
-      />
-      <RunHistorySection
-        title={t`Send history`}
-        viewAllUrl={viewAllUrl}
-        runs={sends}
-        isLoading={isLoading}
-      />
-    </>
-  );
-};
-
-const RunHistorySection = ({
-  title,
-  viewAllUrl,
-  runs,
-  isLoading,
-}: RunHistorySectionProps) => (
-  <SidebarSection
-    title={title}
-    titleAside={
-      <Anchor
-        component={Link}
-        to={viewAllUrl}
-        c="brand"
-        fz="md"
-        lh="1rem"
-        fw="bold"
-      >
-        {t`View all`}
-      </Anchor>
+  const renderRuns = () => {
+    if (isLoading) {
+      return (
+        <Flex align="center" justify="center" py="lg">
+          <Loader size="sm" />
+        </Flex>
+      );
     }
-  >
-    <DetailsTable>
-      {isLoading || runs.length === 0 ? (
+    if (runs && runs.length === 0) {
+      return (
         <DetailsRow
-          label={isLoading ? t`Loading…` : t`No runs in the past 30 days.`}
+          label={t`No runs in the past 90 days.`}
           value=""
           bold={false}
           spanLabel
         />
-      ) : (
-        runs.map((taskRun) => <RunRow key={taskRun.id} taskRun={taskRun} />)
-      )}
-    </DetailsTable>
-  </SidebarSection>
-);
-
-const RunRow = ({ taskRun }: { taskRun: TaskRun }) => {
-  const formatted = formatRelativeDate(taskRun.started_at);
-  return (
-    <Flex align="center" justify="space-between" px="md" py="sm" gap="sm">
-      <Text size="md" c="text-primary">
-        {formatted}
-      </Text>
-      <RunStatusBadge status={taskRun.status} />
-    </Flex>
-  );
-};
-
-const RunStatusBadge = ({ status }: { status: TaskRunStatus }) => {
-  if (status === "failed" || status === "abandoned") {
-    return (
-      <Badge color="error" variant="light" radius="lg" tt="none" fw="normal">
-        {t`Failed`}
-      </Badge>
-    );
-  }
-  if (status === "started") {
-    return (
-      <Badge color="warning" variant="light" radius="lg" tt="none" fw="normal">
-        {t`Running`}
-      </Badge>
-    );
-  }
-  if (status === "success") {
-    return (
-      <Badge
-        variant="outline"
-        radius="lg"
-        tt="none"
-        fw="normal"
-        c="text-secondary"
-        bd="1px solid var(--mb-color-border)"
-      >
-        {t`Successful`}
-      </Badge>
-    );
-  }
-  return null;
-};
-
-const EmailRecipientsSection = ({
-  handler,
-  count,
-}: EmailRecipientsSectionProps) => {
-  const title =
-    count === 1 ? t`1 email recipient` : t`${count} email recipients`;
+      );
+    }
+    return runs?.map((run, index) => {
+      const isFailing = run.status === "failing";
+      return (
+        <Flex
+          key={index}
+          align="center"
+          justify="space-between"
+          px="md"
+          py="sm"
+          gap="sm"
+        >
+          <Text size="md" c="text-primary">
+            {formatRelativeDate(run.at)}
+          </Text>
+          <Tooltip label={run.error} disabled={!isFailing || !run.error}>
+            <Badge
+              color={isFailing ? "error" : undefined}
+              variant={isFailing ? "light" : "outline"}
+              radius="lg"
+              tt="none"
+              fw="normal"
+              c={isFailing ? undefined : "text-secondary"}
+              bd={isFailing ? undefined : "1px solid var(--mb-color-border)"}
+            >
+              {isFailing ? t`Failed` : t`Successful`}
+            </Badge>
+          </Tooltip>
+        </Flex>
+      );
+    });
+  };
 
   return (
-    <SidebarSection title={title}>
-      <DetailsTable>
-        {handler.recipients.map((recipient, index) => (
-          <EmailRow key={recipient.id ?? index} recipient={recipient} />
-        ))}
-      </DetailsTable>
+    <SidebarSection
+      title={title}
+      titleAside={
+        <Anchor
+          component={Link}
+          to={viewAllUrl}
+          c="brand"
+          fz="md"
+          lh="1rem"
+          fw="bold"
+        >
+          {t`View all`}
+        </Anchor>
+      }
+    >
+      <DetailsTable>{renderRuns()}</DetailsTable>
     </SidebarSection>
   );
 };
-
-const EmailRow = ({ recipient }: { recipient: NotificationRecipient }) => {
-  const { name, email } = getEmailRowText(recipient);
-  return (
-    <Flex align="center" justify="space-between" px="md" py="sm" gap="sm">
-      <Text size="md" c="text-primary">
-        {name}
-      </Text>
-      {email && (
-        <Text size="md" c="text-secondary">
-          {email}
-        </Text>
-      )}
-    </Flex>
-  );
-};
-
-const SlackChannelsSection = ({
-  handler,
-  count,
-}: SlackChannelsSectionProps) => {
-  const title = count === 1 ? t`1 Slack channel` : t`${count} Slack channels`;
-
-  return (
-    <SidebarSection title={title}>
-      <DetailsTable>
-        {handler.recipients.map((recipient, index) => (
-          <SlackRow
-            key={recipient.id ?? index}
-            value={recipient.details?.value ?? ""}
-          />
-        ))}
-      </DetailsTable>
-    </SidebarSection>
-  );
-};
-
-const SlackRow = ({ value }: { value: string }) => (
-  <Flex align="center" px="md" py="sm">
-    <Text size="md" c="text-primary">
-      {value}
-    </Text>
-  </Flex>
-);
 
 const SidebarSection = ({
   title,
@@ -706,95 +681,3 @@ const DetailsRow = ({ label, value, bold, spanLabel }: DetailsRowProps) => {
     </Flex>
   );
 };
-
-const NotificationEditModalLoader = ({
-  notification,
-  onClose,
-  onUpdated,
-}: NotificationEditModalLoaderProps) => {
-  const cardId = notification.payload?.card_id;
-  const dispatch = useDispatch();
-  const metadata = useSelector(getMetadata);
-
-  const { data: card, isFetching } = useGetCardQuery(
-    cardId !== undefined ? { id: cardId } : skipToken,
-  );
-
-  useEffect(() => {
-    if (card) {
-      dispatch(loadMetadataForCard(card));
-    }
-  }, [card, dispatch]);
-
-  const question = useMemo(() => {
-    if (!card || isFetching) {
-      return undefined;
-    }
-    return new Question(card, metadata);
-  }, [card, isFetching, metadata]);
-
-  const initialOwnerId = notification.owner_id ?? notification.owner.id;
-  const [selectedOwner, setSelectedOwner] = useState<UserOption>(() => {
-    const owner = notification.owner;
-    const label = owner.common_name || owner.email || t`Unknown`;
-    return {
-      id: initialOwnerId,
-      label: !owner.is_active ? t`${label} (deactivated)` : label,
-    };
-  });
-  const [bulkAction] = useBulkNotificationActionMutation();
-
-  const handleOwnerSubmit = async () => {
-    if (selectedOwner.id === initialOwnerId) {
-      return true;
-    }
-    const result = await bulkAction({
-      notification_ids: [notification.id],
-      action: "change-owner",
-      owner_id: selectedOwner.id,
-    });
-    if (result.error) {
-      dispatch(
-        addUndo({
-          icon: "warning",
-          toastColor: "error",
-          message: t`Could not change owner.`,
-        }),
-      );
-      return false;
-    }
-    return true;
-  };
-
-  if (cardId === undefined || !question) {
-    return null;
-  }
-
-  return (
-    <CreateOrEditQuestionAlertModal
-      question={question}
-      editingNotification={notification}
-      skipUrlUpdate
-      extraSection={
-        <OwnerSection
-          selectedOwner={selectedOwner}
-          onChange={setSelectedOwner}
-        />
-      }
-      additionalSubmit={handleOwnerSubmit}
-      onAlertUpdated={onUpdated}
-      onClose={onClose}
-    />
-  );
-};
-
-const OwnerSection = ({ selectedOwner, onChange }: OwnerSectionProps) => (
-  <AlertModalSettingsBlock title={t`Who owns this alert?`}>
-    <Flex align="center" gap="md">
-      <Text fw="bold" size="md" c="text-primary" w={56}>
-        {t`Owner`}
-      </Text>
-      <UserPicker flex={1} value={selectedOwner} onChange={onChange} />
-    </Flex>
-  </AlertModalSettingsBlock>
-);

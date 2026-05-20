@@ -12,20 +12,22 @@ export const PAGE_SIZE = 50;
 export const DEFAULT_TAB: NotificationsTab = "all";
 
 export const DEFAULT_ACTIVE: boolean | null = true;
-export const DEFAULT_SORT_COLUMN: AdminNotificationSortColumn = "updated_at";
+export const DEFAULT_SORT_COLUMN: AdminNotificationSortColumn = "last_send";
 export const DEFAULT_SORT_DIRECTION: SortDirection = "desc";
 
 export const SORT_COLUMN_VALUES: AdminNotificationSortColumn[] = [
-  "last_sent",
+  "id",
+  "last_send",
+  "last_check",
   "card_name",
   "owner_name",
   "updated_at",
 ];
 
 export const TAB_FILTERS: Record<NotificationsTab, TabFilters> = {
-  all: { last_sent_status: null, owner_active: null },
-  failing: { last_sent_status: "failing", owner_active: null },
-  ownerless: { last_sent_status: null, owner_active: false },
+  all: {},
+  failing: { last_send_status: "failing" },
+  ownerless: { ownerless: true },
 };
 
 export const CHANNEL_VALUES: NotificationChannelType[] = [
@@ -36,7 +38,7 @@ export const CHANNEL_VALUES: NotificationChannelType[] = [
 
 export const TAB_VALUES: NotificationsTab[] = ["all", "failing", "ownerless"];
 
-export const LAST_SENT_STATUS_VALUES: NotificationRunStatus[] = [
+export const LAST_SEND_STATUS_VALUES: NotificationRunStatus[] = [
   "failing",
   "successful",
 ];

@@ -2,18 +2,17 @@ import type { ReactNode } from "react";
 
 import type {
   AdminNotification,
+  CardId,
   NotificationChannelType,
-  NotificationHandlerEmail,
   NotificationHandlerHttp,
-  NotificationHandlerSlack,
   NotificationId,
-  TaskRun,
+  NotificationRunSummary,
+  NotificationTickSendEntry,
 } from "metabase-types/api";
-
-import type { UserOption } from "../UserPicker";
 
 export type SidebarProps = {
   notificationId: NotificationId;
+  notificationSummary: AdminNotification | undefined;
   isBulkLoading: boolean;
   prevNotificationId: NotificationId | null;
   nextNotificationId: NotificationId | null;
@@ -23,9 +22,12 @@ export type SidebarProps = {
 
 export type SidebarHeaderProps = {
   isBulkLoading: boolean;
-  notification: AdminNotification;
+  notificationId: NotificationId;
+  notification: AdminNotification | undefined;
   prevNotificationId: NotificationId | null;
   nextNotificationId: NotificationId | null;
+  isQuestionLoading: boolean;
+  canEdit: boolean;
   onClose: () => void;
   onDelete: (notification: AdminNotification) => void;
   onEdit: () => void;
@@ -43,21 +45,11 @@ export type DetailsSectionProps = {
   httpHandler: NotificationHandlerHttp | undefined;
 };
 
-export type RunHistorySectionProps = {
+export type NotificationRunSummaryLogProps = {
   title: string;
-  viewAllUrl: string;
-  runs: TaskRun[];
+  runs: (NotificationRunSummary | NotificationTickSendEntry)[] | undefined;
   isLoading: boolean;
-};
-
-export type EmailRecipientsSectionProps = {
-  handler: NotificationHandlerEmail;
-  count: number;
-};
-
-export type SlackChannelsSectionProps = {
-  handler: NotificationHandlerSlack;
-  count: number;
+  cardId: CardId;
 };
 
 export type SidebarSectionProps = {
@@ -71,15 +63,4 @@ export type DetailsRowProps = {
   value: ReactNode;
   bold?: boolean;
   spanLabel?: boolean;
-};
-
-export type NotificationEditModalLoaderProps = {
-  notification: AdminNotification;
-  onClose: () => void;
-  onUpdated: () => void;
-};
-
-export type OwnerSectionProps = {
-  selectedOwner: UserOption;
-  onChange: (next: UserOption) => void;
 };

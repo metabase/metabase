@@ -152,6 +152,7 @@ export type UpdateAlertNotificationRequest = NotificationCardPayload & {
   active: boolean;
   handlers: NotificationHandler[];
   subscriptions: NotificationCronSubscription[];
+  creator_id?: UserId;
 };
 
 export type UpdateNotificationRequest = UpdateAlertNotificationRequest; // will be populated with more variants later on
@@ -179,17 +180,37 @@ export type NotificationRunSummary = {
   status: NotificationRunStatus;
 };
 
+export type NotificationChannelSendEntry = {
+  channel_type: NotificationChannelType;
+  status: NotificationRunStatus;
+  error: string | null;
+};
+
+export type NotificationTickSendEntry = {
+  at: string;
+  status: NotificationRunStatus;
+  error: string | null;
+  channels: NotificationChannelSendEntry[];
+};
+
 export type AdminNotificationSortColumn =
-  | "last_sent"
+  | "id"
+  | "last_send"
+  | "last_check"
   | "card_name"
   | "owner_name"
   | "updated_at";
 
 export type AdminNotification = Omit<Notification, "creator_id" | "creator"> & {
   owner_id: UserId | null;
-  owner: UserInfo;
+  owner: UserInfo | null;
   last_check: NotificationRunSummary | null;
-  last_sent: NotificationRunSummary | null;
+  last_send: NotificationRunSummary | null;
+};
+
+export type AdminNotificationDetail = AdminNotification & {
+  check_history: NotificationRunSummary[];
+  send_history: NotificationTickSendEntry[];
 };
 
 export type AdminNotificationListParams = {
@@ -198,10 +219,11 @@ export type AdminNotificationListParams = {
   active?: boolean;
   owner_id?: UserId;
   owner_active?: boolean;
+  ownerless?: boolean;
   card_id?: CardId;
   recipient_email?: string;
-  channel?: NotificationChannelType;
-  last_sent_status?: NotificationRunStatus;
+  channel?: NotificationChannelType | NotificationChannelType[];
+  last_send_status?: NotificationRunStatus;
   query?: string;
   sort_column?: AdminNotificationSortColumn;
   sort_direction?: SortDirection;
@@ -214,7 +236,7 @@ export type AdminNotificationListResponse = {
   offset: number | null;
 };
 
-export type BulkNotificationAction = "archive" | "unarchive" | "change-owner";
+export type BulkNotificationAction = "archive" | "change-owner";
 
 export type BulkNotificationPayload = {
   notification_ids: NotificationId[];

@@ -53,8 +53,8 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
   const handleApply = () => {
     onChange({
       channel: draft.channel,
-      owner_active: draft.owner_active,
-      last_sent_status: draft.last_sent_status,
+      ownerless: draft.ownerless,
+      last_send_status: draft.last_send_status,
       recipient_email: draft.recipient_email.trim(),
       page: 0,
     });
@@ -63,9 +63,9 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
 
   const handleClear = () => {
     onChange({
-      channel: null,
-      owner_active: null,
-      last_sent_status: null,
+      channel: [],
+      ownerless: null,
+      last_send_status: null,
       recipient_email: "",
       page: 0,
     });
@@ -75,21 +75,23 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
   const toggleChannel = (channel: NotificationChannelType) => {
     setDraft((prev) => ({
       ...prev,
-      channel: prev.channel === channel ? null : channel,
+      channel: prev.channel.includes(channel)
+        ? prev.channel.filter((c) => c !== channel)
+        : [...prev.channel, channel],
     }));
   };
 
-  const toggleOwnerActive = (ownerActive: boolean) => {
+  const toggleOwnerless = (ownerless: boolean) => {
     setDraft((prev) => ({
       ...prev,
-      owner_active: prev.owner_active === ownerActive ? null : ownerActive,
+      ownerless: prev.ownerless === ownerless ? null : ownerless,
     }));
   };
 
-  const toggleLastSentStatus = (status: NotificationRunStatus) => {
+  const toggleLastSendStatus = (status: NotificationRunStatus) => {
     setDraft((prev) => ({
       ...prev,
-      last_sent_status: prev.last_sent_status === status ? null : status,
+      last_send_status: prev.last_send_status === status ? null : status,
     }));
   };
 
@@ -121,7 +123,7 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
                 key={channel}
                 icon={getChannelIconName(channel)}
                 label={getChannelLabel(channel)}
-                selected={draft.channel === channel}
+                selected={draft.channel.includes(channel)}
                 onClick={() => toggleChannel(channel)}
               />
             ))}
@@ -132,14 +134,14 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
               <FilterPill
                 icon="verified_round"
                 label={t`Successful`}
-                selected={draft.last_sent_status === "successful"}
-                onClick={() => toggleLastSentStatus("successful")}
+                selected={draft.last_send_status === "successful"}
+                onClick={() => toggleLastSendStatus("successful")}
               />
               <FilterPill
                 icon="warning_round"
                 label={t`Failed`}
-                selected={draft.last_sent_status === "failing"}
-                onClick={() => toggleLastSentStatus("failing")}
+                selected={draft.last_send_status === "failing"}
+                onClick={() => toggleLastSendStatus("failing")}
               />
             </FilterSection>
           )}
@@ -149,14 +151,14 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
               <FilterPill
                 icon="person"
                 label={t`Active`}
-                selected={draft.owner_active === true}
-                onClick={() => toggleOwnerActive(true)}
+                selected={draft.ownerless === false}
+                onClick={() => toggleOwnerless(false)}
               />
               <FilterPill
                 icon="ghost"
                 label={t`Deactivated`}
-                selected={draft.owner_active === false}
-                onClick={() => toggleOwnerActive(false)}
+                selected={draft.ownerless === true}
+                onClick={() => toggleOwnerless(true)}
               />
             </FilterSection>
           )}

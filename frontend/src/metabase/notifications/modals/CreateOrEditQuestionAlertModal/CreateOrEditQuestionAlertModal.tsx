@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
@@ -29,7 +28,11 @@ import {
 } from "metabase/query_builder/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { canAccessSettings, getUser } from "metabase/selectors/user";
+import {
+  canAccessSettings,
+  getUser,
+  getUserIsAdmin,
+} from "metabase/selectors/user";
 import {
   Button,
   Flex,
@@ -52,6 +55,7 @@ import type {
   NotificationHandler,
   ScheduleType,
   UpdateAlertNotificationRequest,
+  UserId,
 } from "metabase-types/api";
 
 import { ChannelSetupModal } from "../ChannelSetupModal";
@@ -59,6 +63,7 @@ import { NotificationChannelsPicker } from "../components/NotificationChannelsPi
 
 import { AlertTriggerIcon } from "./AlertTriggerIcon";
 import { AlertModalSettingsBlock } from "./components/AlertModalSettingsBlock/AlertModalSettingsBlock";
+import { NotificationOwner } from "./components/NotificationOwner/NotificationOwner";
 import { NotificationSchedule } from "./components/NotificationSchedule/NotificationSchedule";
 import type { NotificationTriggerOption } from "./types";
 
@@ -96,8 +101,6 @@ const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
 type CreateOrEditQuestionAlertModalWithQuestionProps = {
   onClose: () => void;
   skipUrlUpdate?: boolean;
-  extraSection?: ReactNode;
-  additionalSubmit?: () => Promise<boolean>;
 } & (
   | {
       editingNotification?: undefined;
@@ -122,8 +125,6 @@ export const CreateOrEditQuestionAlertModalWithQuestion = ({
   onAlertUpdated,
   onClose,
   skipUrlUpdate,
-  extraSection,
-  additionalSubmit,
 }: CreateOrEditQuestionAlertModalWithQuestionProps) => {
   const question = useSelector(getQuestion);
 
@@ -135,8 +136,6 @@ export const CreateOrEditQuestionAlertModalWithQuestion = ({
         onAlertUpdated={onAlertUpdated}
         onClose={onClose}
         skipUrlUpdate={skipUrlUpdate}
-        extraSection={extraSection}
-        additionalSubmit={additionalSubmit}
       />
     );
   } else {
@@ -146,8 +145,6 @@ export const CreateOrEditQuestionAlertModalWithQuestion = ({
         onAlertCreated={onAlertCreated}
         onClose={onClose}
         skipUrlUpdate={skipUrlUpdate}
-        extraSection={extraSection}
-        additionalSubmit={additionalSubmit}
       />
     );
   }
@@ -160,13 +157,12 @@ export const CreateOrEditQuestionAlertModal = ({
   onClose,
   question,
   skipUrlUpdate,
-  extraSection,
-  additionalSubmit,
 }: CreateOrEditQuestionAlertModalProps) => {
   const dispatch = useDispatch();
   const visualizationSettings = useSelector(getVisualizationSettings);
   const user = useSelector(getUser);
   const userCanAccessSettings = useSelector(canAccessSettings);
+  const isAdmin = useSelector(getUserIsAdmin);
 
   const [notification, setNotification] = useState<
     CreateAlertNotificationRequest | UpdateAlertNotificationRequest | null
@@ -228,6 +224,12 @@ export const CreateOrEditQuestionAlertModal = ({
     userCanAccessSettings,
   ]);
 
+  const handleOwnerChange = (creatorId: UserId) => {
+    if (notification) {
+      setNotification({ ...notification, creator_id: creatorId });
+    }
+  };
+
   const onCreateOrEditAlert = async () => {
     if (notification) {
       let result;
@@ -253,13 +255,6 @@ export const CreateOrEditQuestionAlertModal = ({
         );
 
         return;
-      }
-
-      if (additionalSubmit) {
-        const ok = await additionalSubmit();
-        if (!ok) {
-          return;
-        }
       }
 
       dispatch(
@@ -429,7 +424,14 @@ export const CreateOrEditQuestionAlertModal = ({
           </AlertModalSettingsBlock>
         )}
 
-        {extraSection}
+        {isEditMode && isAdmin && editingNotification && (
+          <AlertModalSettingsBlock title={t`Who owns this alert?`}>
+            <NotificationOwner
+              editingNotification={editingNotification}
+              onChange={handleOwnerChange}
+            />
+          </AlertModalSettingsBlock>
+        )}
 
         <AlertModalSettingsBlock title={t`More options`}>
           <Switch

@@ -124,7 +124,8 @@ export const NotificationsTable = ({
         id: "id",
         header: t`ID`,
         width: 80,
-        enableSorting: false,
+        enableSorting: true,
+        accessorFn: (notification) => notification.id,
         cell: ({ row }) => (
           <Flex justify="center">
             <Badge
@@ -216,17 +217,19 @@ export const NotificationsTable = ({
         id: "last_check",
         header: t`Last checked`,
         width: 170,
-        enableSorting: false,
+        enableSorting: true,
+        sortDescFirst: true,
+        accessorFn: (notification) => notification.last_check?.at ?? "",
         cell: ({ row }) => <TimestampCell run={row.original.last_check} />,
       },
       {
-        id: "last_sent",
+        id: "last_send",
         header: t`Last send attempt`,
         width: 200,
         enableSorting: true,
         sortDescFirst: true,
-        accessorFn: (notification) => notification.last_sent?.at ?? "",
-        cell: ({ row }) => <TimestampCell run={row.original.last_sent} />,
+        accessorFn: (notification) => notification.last_send?.at ?? "",
+        cell: ({ row }) => <TimestampCell run={row.original.last_send} />,
       },
     ],
     [],

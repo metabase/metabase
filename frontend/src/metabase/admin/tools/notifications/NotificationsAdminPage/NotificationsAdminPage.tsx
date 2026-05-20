@@ -78,14 +78,14 @@ export const NotificationsAdminPage = ({
       limit: 1,
       offset: 0,
       active: true,
-      last_sent_status: "failing",
+      last_send_status: "failing",
     });
   const { data: ownerlessData, isLoading: isOwnerlessLoading } =
     useAdminListNotificationsQuery({
       limit: 1,
       offset: 0,
       active: true,
-      owner_active: false,
+      ownerless: true,
     });
   const failingCount = failingData?.total ?? 0;
   const ownerlessCount = ownerlessData?.total ?? 0;
@@ -116,8 +116,8 @@ export const NotificationsAdminPage = ({
     urlState.page,
     urlState.active,
     urlState.tab,
-    urlState.last_sent_status,
-    urlState.owner_active,
+    urlState.last_send_status,
+    urlState.ownerless,
     urlState.query,
     urlState.channel,
     urlState.recipient_email,
@@ -278,20 +278,30 @@ export const NotificationsAdminPage = ({
     return <LoadingAndErrorWrapper loading />;
   }
 
-  const { prevNotificationId, nextNotificationId } = (() => {
-    if (notificationId === undefined) {
-      return { prevNotificationId: null, nextNotificationId: null };
-    }
-    const index = notifications.findIndex((n) => n.id === notificationId);
-    if (index === -1) {
-      return { prevNotificationId: null, nextNotificationId: null };
-    }
-    return {
-      prevNotificationId: index > 0 ? notifications[index - 1].id : null,
-      nextNotificationId:
-        index < notifications.length - 1 ? notifications[index + 1].id : null,
-    };
-  })();
+  const { prevNotificationId, nextNotificationId, notificationSummary } =
+    (() => {
+      if (notificationId === undefined) {
+        return {
+          prevNotificationId: null,
+          nextNotificationId: null,
+          notificationSummary: undefined,
+        };
+      }
+      const index = notifications.findIndex((n) => n.id === notificationId);
+      if (index === -1) {
+        return {
+          prevNotificationId: null,
+          nextNotificationId: null,
+          notificationSummary: undefined,
+        };
+      }
+      return {
+        prevNotificationId: index > 0 ? notifications[index - 1].id : null,
+        nextNotificationId:
+          index < notifications.length - 1 ? notifications[index + 1].id : null,
+        notificationSummary: notifications[index],
+      };
+    })();
 
   return (
     <SettingsPageWrapper pr={isSidebarOpen ? `${SIDEBAR_WIDTH}px` : 0}>
@@ -347,6 +357,7 @@ export const NotificationsAdminPage = ({
       {isSidebarOpen && (
         <NotificationDetailSidebar
           notificationId={notificationId}
+          notificationSummary={notificationSummary}
           isBulkLoading={isBulkLoading}
           prevNotificationId={prevNotificationId}
           nextNotificationId={nextNotificationId}

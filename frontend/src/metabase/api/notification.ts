@@ -1,5 +1,5 @@
 import type {
-  AdminNotification,
+  AdminNotificationDetail,
   AdminNotificationListParams,
   AdminNotificationListResponse,
   BulkNotificationPayload,
@@ -17,6 +17,7 @@ import {
   invalidateTags,
   listTag,
   provideAdminNotificationListTags,
+  provideAdminNotificationTags,
   provideNotificationListTags,
   provideNotificationTags,
 } from "./tags";
@@ -122,12 +123,16 @@ export const notificationApi = Api.injectEndpoints({
           ...notification_ids.map((id) => idTag("notification", id)),
         ]),
     }),
-    adminNotificationDetail: builder.query<AdminNotification, NotificationId>({
+    adminNotificationDetail: builder.query<
+      AdminNotificationDetail,
+      NotificationId
+    >({
       query: (id) => ({
         method: "GET",
         url: `/api/ee/notifications/${id}`,
       }),
-      providesTags: (result) => (result ? provideNotificationTags(result) : []),
+      providesTags: (result) =>
+        result ? provideAdminNotificationTags(result) : [],
     }),
   }),
 });

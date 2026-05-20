@@ -119,7 +119,7 @@ export const createMockAdminNotification = (
     owner_id: 1,
     owner: createMockUserInfo({ is_active: true }),
     last_check: null,
-    last_sent: null,
+    last_send: null,
     ...opts,
   };
 };
