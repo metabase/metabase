@@ -49,6 +49,17 @@ export const BehaviorCard = () => {
           />
         ),
       )
+      .with({ componentName: "metabase-metabot" }, (settings) => (
+        <Checkbox
+          label={t`Allow people to save new questions`}
+          checked={settings.isSaveEnabled}
+          onChange={(e) =>
+            updateSettings({
+              isSaveEnabled: e.target.checked,
+            } satisfies Partial<typeof settings>)
+          }
+        />
+      ))
       .with(
         { componentName: "metabase-question", questionId: P.nonNullable },
         (settings) => (
