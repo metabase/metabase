@@ -154,44 +154,15 @@
        (when-let [run (t2/select-one :model/TransformRun :id run-id)]
          (publish-timeout-event! run))))))
 
-(defn- timeout-rows!
-  "Atomic select-then-update of stale active runs older than `cutoff`. Returns the pre-update rows
-  the UPDATE transitioned. See [[timeout-old-runs!]] for atomicity rationale."
-  [cutoff]
-  ;; Alternative considered: `UPDATE … RETURNING *` to avoid an explicit transaction. Rejected —
-  ;; `RETURNING` on UPDATE is portable on Postgres but not on H2 or MySQL/MariaDB, and
-  ;; Metabase's app DB supports all three. The transaction here holds row locks only across a
-  ;; SELECT and one UPDATE-by-id, well within the 10-minute sweep cadence.
-  (t2/with-transaction [_conn]
-    (let [stale (t2/select :model/TransformRun
-                           {:where [:and
-                                    [:= :is_active true]
-                                    [:< :start_time cutoff]]
-                            :for   :update})]
-      (when (seq stale)
-        (t2/update! :model/TransformRun
-                    :id        [:in (mapv :id stale)]
-                    :is_active true
-                    {:status    :timeout
-                     :end_time  :%now
-                     :is_active nil
-                     :message   "Timed out by metabase"}))
-      stale)))
-
 (defn timeout-old-runs!
   "Time out all active runs older than the specified age. Returns the number of runs timed out.
-
-  Atomicity: the select-and-update is wrapped in a transaction with `SELECT … FOR UPDATE`,
-  so the rows we report on (counter, histogram, audit event) are exactly the rows the UPDATE
-  transitions to `:timeout`. Without the lock a concurrent run completion between SELECT and
-  UPDATE could leave the row non-active by UPDATE time — the UPDATE would skip it (its filter
-  matches `:is_active true`), but we'd already have counted it, overstating the timeout rate."
+  See [[metabase.transforms.models.timeout-util/timeout-rows!]] for atomicity rationale."
   [age unit]
   (let [cutoff      (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)
         timeout-dur (timeout-util/unit->duration age unit)
         detected-at (Instant/now)
         end-time    (OffsetDateTime/ofInstant detected-at ZoneOffset/UTC)
-        timed-out   (timeout-rows! cutoff)]
+        timed-out   (timeout-util/timeout-rows! :model/TransformRun :start_time cutoff)]
     (when (seq timed-out)
       (analytics/inc! :metabase-transforms/timeouts-total
                       {:type "transform"}
