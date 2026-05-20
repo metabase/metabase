@@ -44,7 +44,7 @@
   (flush)
   (println (c/bold " ✨ Metabase Automation Genius Engine ✨"))
   (println "")
-  (println (u/sh (str u/project-root-directory "/bin/bb tasks")))
+  (println (u/sh (str u/project-root-directory "/bin/bb") "tasks"))
   (println (tip-o-day)))
 
 (defn- summarize-exception [^Exception e]

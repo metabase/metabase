@@ -93,8 +93,8 @@ function ConfigSection() {
 
         <AdminSettingInput
           name="starrez-keep-versions"
-          title={t`Versions to Keep`}
-          description={t`Number of past export files to retain per table (0 = keep all)`}
+          title={t`Distinct Versions to Keep`}
+          description={t`Number of unique CSV snapshots to retain per table or report. Duplicate snapshots are removed; 0 = keep all unique snapshots.`}
           placeholder="5"
           inputType="number"
         />
@@ -138,7 +138,11 @@ function ExportSection() {
         </Text>
 
         <Flex gap="md" align="center">
-          <Button variant="filled" onClick={() => runExport()} loading={exporting}>
+          <Button
+            variant="filled"
+            onClick={() => runExport()}
+            loading={exporting}
+          >
             {t`Run Export`}
           </Button>
           {exporting && (
@@ -146,14 +150,12 @@ function ExportSection() {
           )}
         </Flex>
 
-        {exportResult?.error && (
-          <Alert color="red">{exportResult.error}</Alert>
-        )}
+        {exportResult?.error && <Alert color="red">{exportResult.error}</Alert>}
 
         {exportResult?.results && (
           <Stack gap="sm">
             <Title order={4}>{t`Export Results`}</Title>
-            {exportResult.results.map(r => (
+            {exportResult.results.map((r) => (
               <Paper key={`${r.kind}-${r.name}`} withBorder p="md">
                 <Flex justify="space-between" align="center">
                   <Stack gap={4}>
@@ -216,7 +218,7 @@ function PastExportsSection() {
           </Text>
         ) : (
           <Stack gap="sm">
-            {exports.map(file => (
+            {exports.map((file) => (
               <Paper key={file.name} withBorder p="md">
                 <Flex justify="space-between" align="center">
                   <Stack gap={4}>
@@ -354,7 +356,7 @@ function WeeksSection() {
         {activateResult?.results && (
           <Alert color="green">
             {t`Activated. Tables loaded: ${activateResult.results
-              .map(r => `${r.table} (${r.rows.toLocaleString()} rows)`)
+              .map((r) => `${r.table} (${r.rows.toLocaleString()} rows)`)
               .join(", ")}`}
           </Alert>
         )}
@@ -371,7 +373,7 @@ function WeeksSection() {
           </Text>
         ) : (
           <Stack gap="sm">
-            {weeks.map(w => (
+            {weeks.map((w) => (
               <Paper
                 key={w.id}
                 withBorder
@@ -385,12 +387,8 @@ function WeeksSection() {
                 <Flex justify="space-between" align="center">
                   <Stack gap={4}>
                     <Group gap="sm">
-                      <Title order={5}>
-                        {t`Week of ${w.week_start}`}
-                      </Title>
-                      {w.is_active && (
-                        <Badge color="green">{t`Active`}</Badge>
-                      )}
+                      <Title order={5}>{t`Week of ${w.week_start}`}</Title>
+                      {w.is_active && <Badge color="green">{t`Active`}</Badge>}
                     </Group>
                     <Text size="xs" c="text-secondary">
                       {t`Fetched: ${w.fetched_at}`} •{" "}

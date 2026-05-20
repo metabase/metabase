@@ -4,7 +4,6 @@
    [babashka.process :as p]
    [babashka.tasks :refer [shell]]
    [clojure.edn :as edn]
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.color :as c]
    [puget.printer :as puget]
@@ -14,12 +13,7 @@
 
 (def ^String project-root-directory
   "Root directory of the Metabase repo."
-  (.. (java.io.File. (.toURI (io/resource "mage/util.clj"))) ; this file
-      getParentFile ; /Users/me/metabase/mage/src/mage
-      getParentFile ; /Users/me/metabase/mage/src
-      getParentFile ; /Users/me/metabase/mage
-      getParentFile ; /Users/me/metabase
-      getCanonicalPath))
+  (str (fs/canonicalize ".")))
 
 (defn sh
   "Run a blocking shell command and return the output as a trimmed string.
@@ -83,8 +77,7 @@
 (defn public-bb-tasks-list
   "Returns all public bb tasks as a vector of strings."
   []
-  (->> (str project-root-directory "/bin/bb tasks")
-       shl
+  (->> (shl (str project-root-directory "/bin/bb") "tasks")
        (drop 2)
        (map (comp first #(str/split % #"\s+")))
        vec))

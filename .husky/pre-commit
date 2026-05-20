@@ -1,3 +1,5 @@
+export PATH="$HOME/.local/clojure/bin:$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+
 bun run precommit
 
 # Run the formatter
