@@ -99,6 +99,10 @@ describe(suiteTitle, () => {
       getResourceSelectorButton().should("contain", FIRST_DASHBOARD_NAME);
     });
 
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("Guest").click();
+    });
+
     cy.log("selected dashboard should be shown in the preview");
     cy.wait("@dashboard");
     H.getSimpleEmbedIframeContent().within(() => {
@@ -240,12 +244,12 @@ describe(suiteTitle, () => {
 
     getEmbedSidebar().within(() => {
       cy.findByText("Browser").click();
-      cy.findByText("Select a collection to embed").should("be.visible");
+      cy.findByText("Select initial collection").should("be.visible");
       getResourceSelectorButton().click();
     });
 
     H.entityPickerModal().within(() => {
-      cy.findByText("Select a collection").should("be.visible");
+      cy.findByText("Select default collection").should("be.visible");
 
       // The picker opens on "Recent items" by default. Navigate via the
       // root sidebar to disambiguate from any matching recent entries.

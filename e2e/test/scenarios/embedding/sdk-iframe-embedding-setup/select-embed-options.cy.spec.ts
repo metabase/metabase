@@ -184,6 +184,7 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      preselectGuest: true,
     });
 
     getEmbedSidebar()
@@ -379,6 +380,7 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      preselectGuest: true,
     });
 
     H.publishChanges("dashboard");
@@ -456,6 +458,7 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "chart",
       resourceName: QUESTION_NAME,
+      preselectGuest: true,
     });
 
     H.publishChanges("card");
@@ -557,6 +560,7 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "chart",
       resourceName: QUESTION_NAME,
+      preselectGuest: true,
     });
 
     getEmbedSidebar()
@@ -810,6 +814,7 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      preselectGuest: true,
     });
 
     H.publishChanges("dashboard");

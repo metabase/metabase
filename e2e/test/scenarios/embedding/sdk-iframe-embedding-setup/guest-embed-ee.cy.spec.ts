@@ -135,6 +135,12 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
       H.waitForSimpleEmbedIframesToLoad();
 
+      // Switch to Guest auth (wizard now defaults to SSO when SSO isn't configured)
+      getEmbedSidebar().within(() => {
+        cy.findByLabelText("Guest").click();
+      });
+      embedModalEnableEmbedding();
+
       // Combined experience + resource step
       getEmbedSidebar().within(() => {
         cy.findByLabelText("Guest").should("be.visible").should("be.checked");
@@ -299,6 +305,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         navigateToEmbedOptionsStep({
           experience: "chart",
           resourceName: FIRST_QUESTION_NAME,
+          preselectGuest: true,
         });
 
         cy.button("Unpublish").should("be.visible");
@@ -374,6 +381,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         navigateToEmbedOptionsStep({
           experience: "dashboard",
           resourceName: DASHBOARD_NAME,
+          preselectGuest: true,
         });
 
         getEmbedSidebar().within(() => {
