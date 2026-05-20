@@ -112,9 +112,10 @@
    for lookup (ChatGPT's thread-continuity hack — see `make-store-construct-query-result`).
    Returns updated arguments, or ::handle-not-found if the handle doesn't exist."
   [session-id tool-name arguments]
-  (let [verified-widget    (mcp.session/verified-widget-session-id
-                            (:widgetSessionId arguments) api/*current-user-id*)
-        lookup-session-id  (or verified-widget session-id)]
+  (let [widget-id          (:widgetSessionId arguments)
+        lookup-session-id  (if (and widget-id (mcp.session/owned-by-user? widget-id api/*current-user-id*))
+                             widget-id
+                             session-id)]
     (cond
       (:query_handle arguments)
       (if-let [{:keys [encoded_query]} (mcp.session/resolve-query-handle lookup-session-id (:query_handle arguments))]
