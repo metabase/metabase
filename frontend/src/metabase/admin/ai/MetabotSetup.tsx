@@ -69,7 +69,6 @@ function getModelDescription(provider: MetabotProvider | undefined) {
 const MetabotSetupContext = createContext<{
   connectHandlerRef: MutableRefObject<(() => Promise<void>) | null> | null;
   disconnectHandlerRef: MutableRefObject<(() => Promise<void>) | null> | null;
-  isLoading: boolean;
   isMutating: boolean;
   isConnectButtonEnabled: boolean;
   setIsConnectButtonEnabled: (enabled: boolean) => void;
@@ -77,7 +76,6 @@ const MetabotSetupContext = createContext<{
   handleDisconnect: VoidFunction;
   isModal: boolean;
 }>({
-  isLoading: false,
   isMutating: false,
   connectHandlerRef: null,
   disconnectHandlerRef: null,
@@ -95,7 +93,6 @@ export function useMetabotSetupContext(
   const {
     connectHandlerRef,
     disconnectHandlerRef,
-    isLoading,
     isMutating,
     setIsConnectButtonEnabled,
     resetProvider,
@@ -129,7 +126,7 @@ export function useMetabotSetupContext(
     };
   }, [disconnectHandlerRef, onDisconnect]);
 
-  return { isLoading, isMutating, resetProvider, handleDisconnect, isModal };
+  return { isMutating, resetProvider, handleDisconnect, isModal };
 }
 
 export function MetabotSetup({ id }: { id?: string }) {
@@ -206,11 +203,9 @@ export function MetabotSetupInner({
   const offerMetabaseAiManaged = PLUGIN_METABOT.isEnabled;
   const [sendToast] = useToast();
 
-  const {
-    value: savedProviderValue,
-    settingDetails,
-    isFetching: isMetabotProviderLoading,
-  } = useAdminSetting("llm-metabot-provider");
+  const { value: savedProviderValue, settingDetails } = useAdminSetting(
+    "llm-metabot-provider",
+  );
   const isEnvSetting =
     !!settingDetails &&
     !!settingDetails.is_env_setting &&
@@ -352,8 +347,6 @@ export function MetabotSetupInner({
   const isMutating =
     isConnecting || isDisconnecting || updateSettingsResult.isLoading;
 
-  const isLoading = isMutating || isMetabotProviderLoading;
-
   const [isConnectButtonEnabled, setIsConnectButtonEnabled] = useState(false);
 
   return (
@@ -361,7 +354,6 @@ export function MetabotSetupInner({
       value={{
         connectHandlerRef,
         disconnectHandlerRef,
-        isLoading,
         isMutating,
         setIsConnectButtonEnabled,
         isConnectButtonEnabled,
