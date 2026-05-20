@@ -471,6 +471,12 @@
   [field-id]
   (get-latest-field-values field-id :full nil))
 
+(def ^:private ^:dynamic *fv-select-batch-size*
+  "Chunk size when fetching FieldValues by `field_id [:in …]`. Keeps a single SQL `IN (…)` clause
+   under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100). Wide tables can
+   have thousands of list-eligible fields, so we partition before issuing the select."
+  500)
+
 (defn batched-get-latest-full-field-values
   "Batched version of [[get-latest-full-field-values]] .
   Takes a list of field-ids and returns a map of field-id -> full FieldValues.
@@ -478,7 +484,9 @@
   [field-ids]
   (delete-duplicates-and-return-latest!
    (when (seq field-ids)
-     (t2/select :model/FieldValues :field_id [:in field-ids] :type :full :hash_key nil))))
+     (mapcat (fn [batch]
+               (t2/select :model/FieldValues :field_id [:in batch] :type :full :hash_key nil))
+             (partition-all *fv-select-batch-size* field-ids)))))
 
 (defn persist-field-values!
   "Persist pre-fetched distinct values for a single field. Compares against `existing-fv` and
