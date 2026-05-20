@@ -86,12 +86,21 @@ jobs:
             echo '${{ secrets.GHCR_TOKEN }}' | docker login ghcr.io -u '${{ secrets.GHCR_USER }}' --password-stdin
             if docker compose version >/dev/null 2>&1; then
               COMPOSE="docker compose"
+              LEGACY_COMPOSE=false
             elif command -v docker-compose >/dev/null 2>&1; then
               COMPOSE="docker-compose"
+              LEGACY_COMPOSE=true
             else
               echo "Docker Compose is not installed on the server. Install the Docker Compose plugin or docker-compose."
               exit 1
             fi
             $COMPOSE pull
+            if [ "$LEGACY_COMPOSE" = "true" ]; then
+              # docker-compose v1 can crash with KeyError: ContainerConfig when
+              # recreating containers from newer images. Remove the old service
+              # container first so `up` creates it cleanly.
+              $COMPOSE stop metabase || true
+              $COMPOSE rm -f metabase || true
+            fi
             $COMPOSE up -d --remove-orphans
             docker image prune -f
