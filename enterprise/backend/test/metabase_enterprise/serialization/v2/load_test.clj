@@ -2021,12 +2021,14 @@
                                         :target {:database (:id db)
                                                  :type "table"
                                                  :schema "public"
-                                                 :name "hello_transforms_world"})]
-              (ts/create! :model/Table
-                          :name "hello_transforms_world"
-                          :db_id (:id db)
-                          :schema "public"
-                          :transform_id (:id transform))
+                                                 :name "hello_transforms_world"})
+                  ;; Transform's before-insert (pre-#73741) already inserted the
+                  ;; metabase_table row via upsert-target-table!; adopt that row.
+                  table-id  (t2/select-one-pk :model/Table
+                                              :db_id (:id db)
+                                              :schema "public"
+                                              :name "hello_transforms_world")]
+              (t2/update! :model/Table table-id {:transform_id (:id transform), :active true})
               (reset! serialized (into [] (serdes.extract/extract {})))))
 
           (ts/with-db dest-db
