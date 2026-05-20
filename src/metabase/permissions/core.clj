@@ -70,6 +70,7 @@
   set-default-group-permissions!
   set-default-database-permissions!
   set-default-table-permissions!
+  set-default-table-permissions-bulk!
   with-global-permissions-lock
   with-db-scoped-permissions-lock]
  [metabase.permissions.models.data-permissions.sql
