@@ -2249,9 +2249,7 @@
   [driver query]
   (apply-clauses driver {} query))
 
-(defn mbql->honeysql*
-  "Build the HoneySQL form we will compile to SQL and execute."
-  [driver query]
+(defn- mbql->honeysql* [driver query]
   (if (:lib/type query)
     (binding [driver/*driver* driver]
       (let [inner-query (preprocess driver query)]

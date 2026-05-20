@@ -26,7 +26,7 @@
   "Given a clause, possibly a `:field` ref, return true iff its type is known to have timezone information."
   [arg]
   (if-let [opts (driver-api/match-one arg
-                  [:field (opts :guard :lib/uuid) _] opts ;; mbql4
+                  [:field (opts :guard :lib/uuid) _] opts ;; mbql5
                   [:field _ opts] opts ;; mbql4
                   _ nil)]
     (when-let [type ((some-fn :effective-type :base-type) opts)]

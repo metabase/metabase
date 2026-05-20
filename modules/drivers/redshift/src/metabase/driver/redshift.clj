@@ -40,8 +40,6 @@
 ;; `:postgres` (see `metabase.driver.postgres`).
 (driver/register! :redshift, :parent :postgres)
 
-(driver/register! :redshift-mbql5, :parent #{:postgres-mbql5})
-
 (doseq [[feature supported?] {:atomic-renames                   true
                               :connection-impersonation         true
                               :database-routing                 true
@@ -373,20 +371,12 @@
    ;; character expression"), hence we will use a different function to safely escape it before splicing here
    [:raw (quote-literal-for-database driver (driver-api/database (driver-api/metadata-provider)) pattern)]])
 
-(defmethod sql.qp/->honeysql [:redshift-mbql5 :regex-match-first]
-  [driver [_ _opts arg pattern]]
-  ((get-method sql.qp/->honeysql [:redshift :regex-match-first]) driver [:regex-match-first arg pattern]))
-
 (defmethod sql.qp/->honeysql [:redshift :replace]
   [driver [_ arg pattern replacement]]
   [:replace
    (sql.qp/->honeysql driver arg)
    (sql.qp/->honeysql driver pattern)
    (sql.qp/->honeysql driver replacement)])
-
-(defmethod sql.qp/->honeysql [:redshift-mbql5 :replace]
-  [driver [_ _opts arg pattern replacement]]
-  ((get-method sql.qp/->honeysql [:redshift :replace]) driver [:replace arg pattern replacement]))
 
 (defmethod sql.qp/->honeysql [:redshift :concat]
   [driver [_ & args]]
@@ -400,17 +390,9 @@
                    y))
                nil)))
 
-(defmethod sql.qp/->honeysql [:redshift-mbql5 :concat]
-  [driver [_ _opts & args]]
-  ((get-method sql.qp/->honeysql [:redshift :concat]) driver [:concat args]))
-
 (defmethod sql.qp/->honeysql [:redshift :avg]
   [driver [_ field]]
   [:avg [:cast (sql.qp/->honeysql driver field) :float]])
-
-(defmethod sql.qp/->honeysql [:redshift-mbql5 :avg]
-  [driver [_ _opts field]]
-  ((get-method sql.qp/->honeysql [:redshift :avg]) driver [:avg field]))
 
 (defmethod sql.qp/->integer :redshift
   [driver value]
@@ -434,17 +416,9 @@
         y (h2x/->timestamp y)]
     (sql.qp/datetime-diff driver unit x y)))
 
-(defmethod sql.qp/->honeysql [:redshift-mbql5 :datetime-diff]
-  [driver [_ _opts x y unit]]
-  ((get-method sql.qp/->honeysql [:redshift :datetime-diff]) driver [:datetime-diff x y unit]))
-
 (defmethod sql.qp/->honeysql [:redshift :relative-datetime]
   [driver [_ amount unit]]
   (driver-api/maybe-cacheable-relative-datetime-honeysql driver unit amount))
-
-(defmethod sql.qp/->honeysql [:redshift-mbql5 :relative-datetime]
-  [driver [_ _opts amount unit]]
-  ((get-method sql.qp/->honeysql [:redshift :relative-datetime]) driver [:relative-datetime amount unit]))
 
 (defmethod sql.qp/->honeysql [:redshift java.time.LocalDate]
   [_driver t]
@@ -527,10 +501,6 @@
   [driver [_ value]]
   (->> (sql.qp/->honeysql driver value)
        (h2x/cast :text)))
-
-(defmethod sql.qp/->honeysql [:redshift-mbql5 ::sql.qp/expression-literal-text-value]
-  [driver [_ _opts value]]
-  ((get-method sql.qp/->honeysql [:redshift ::sql.qp/expression-literal-text-value]) driver [::sql.qp/expression-literal-text-value value]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
