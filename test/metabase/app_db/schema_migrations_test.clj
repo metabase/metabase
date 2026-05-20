@@ -2940,9 +2940,8 @@
       (migrate!)
       (testing "T00:00:09 is recorded as MARK_RAN"
         (is (= "MARK_RAN"
-               (->> (t2/query "SELECT exectype FROM databasechangelog WHERE id = 'v60.2026-04-02T00:00:09'")
-                    first
-                    :exectype)))))))
+               (:exectype (liquibase/changelog-by-id mdb.connection/*application-db*
+                                                     "v60.2026-04-02T00:00:09"))))))))
 
 ;;;
 ;;; 62 tests
