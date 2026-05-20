@@ -8,37 +8,44 @@
 
 (deftest ^:parallel infer-annotations-test
   (testing "GET defaults"
-    (is (= {:annotations {:readOnlyHint true :idempotentHint true}
+    (is (= {:annotations {:readOnlyHint true :idempotentHint true :destructiveHint false :openWorldHint false}
             :redundant   {}}
            (tools-manifest/infer-annotations :get nil))))
   (testing "DELETE defaults"
-    (is (= {:annotations {:destructiveHint true :idempotentHint true}
+    (is (= {:annotations {:destructiveHint true :idempotentHint true :readOnlyHint false :openWorldHint false}
             :redundant   {}}
            (tools-manifest/infer-annotations :delete nil))))
   (testing "PUT defaults"
-    (is (= {:annotations {:destructiveHint false :idempotentHint true}
+    (is (= {:annotations {:destructiveHint false :idempotentHint true :readOnlyHint false :openWorldHint false}
             :redundant   {}}
            (tools-manifest/infer-annotations :put nil))))
   (testing "POST defaults to non-destructive (opt in with :destructive? true)"
-    (is (= {:annotations {:destructiveHint false} :redundant {}}
+    (is (= {:annotations {:destructiveHint false :readOnlyHint false :openWorldHint false}
+            :redundant   {}}
            (tools-manifest/infer-annotations :post nil)))
     (is (= {:destructive? false}
            (:redundant (tools-manifest/infer-annotations :post {:destructive? false})))))
-  (testing "destructiveHint is dropped from output when readOnlyHint is true (per MCP spec it's only meaningful for non-read-only tools)"
-    (is (= {:readOnlyHint true}
+  (testing "destructiveHint is dropped from output when readOnlyHint is true (per MCP spec it's only meaningful for non-read-only tools), then re-added as false by the required-hint defaults"
+    (is (= {:readOnlyHint true :destructiveHint false :openWorldHint false}
            (:annotations (tools-manifest/infer-annotations :post {:read-only? true})))))
   (testing "Flags :contradictory? when readOnlyHint and destructiveHint would both be true before the cleanup"
     (is (true? (:contradictory? (tools-manifest/infer-annotations :get {:destructive? true}))))
     (is (true? (:contradictory? (tools-manifest/infer-annotations :delete {:read-only? true})))))
   (testing "Explicit annotations are merged on top of method defaults"
-    (is (= {:annotations {:readOnlyHint true :idempotentHint true}
+    (is (= {:annotations {:readOnlyHint true :idempotentHint true :destructiveHint false :openWorldHint false}
             :redundant   {}}
            (tools-manifest/infer-annotations :post {:read-only? true :idempotent? true}))))
   (testing "Reports redundant pairs that match what we'd already infer (using developer-facing keys)"
     (is (= {:read-only? true}
            (:redundant (tools-manifest/infer-annotations :get {:read-only? true}))))
     (is (= {:destructive? false}
-           (:redundant (tools-manifest/infer-annotations :put {:destructive? false}))))))
+           (:redundant (tools-manifest/infer-annotations :put {:destructive? false})))))
+  (testing "readOnlyHint, destructiveHint, openWorldHint are always present (some MCP clients reject tools without them)"
+    (doseq [method [:get :post :put :delete :head]]
+      (let [ann (:annotations (tools-manifest/infer-annotations method nil))]
+        (is (contains? ann :readOnlyHint)    (str method " missing :readOnlyHint"))
+        (is (contains? ann :destructiveHint) (str method " missing :destructiveHint"))
+        (is (contains? ann :openWorldHint)   (str method " missing :openWorldHint"))))))
 
 (deftest ^:parallel prefer-tool-descriptions-test
   (testing "tool/description replaces description in JSON schema output"
@@ -236,8 +243,10 @@
               :outputSchema {:type       "object"
                              :properties {:name {:type "string"}}
                              :required   [:name]}
-              :annotations    {:readOnlyHint   true
-                               :idempotentHint true}}
+              :annotations    {:readOnlyHint    true
+                               :idempotentHint  true
+                               :destructiveHint false
+                               :openWorldHint   false}}
              result))))
 
   (testing "Scope is included when metadata has :scope"
@@ -412,7 +421,7 @@
   (is (= {:name           "test_get_thing"
           :title          "Test Get Thing"
           :description    "A test endpoint for tools manifest generation."
-          :annotations    {:readOnlyHint true :idempotentHint true}
+          :annotations    {:readOnlyHint true :idempotentHint true :destructiveHint false :openWorldHint false}
           :endpoint       {:method "GET" :path "/api/test/v1/test/{id}"}
           :inputSchema    {:type       "object"
                            :properties {:id {:type "integer"}}
@@ -424,7 +433,7 @@
   (is (= {:name           "test_action"
           :title          "Test Action"
           :description    "A test POST action."
-          :annotations    {:readOnlyHint true}
+          :annotations    {:readOnlyHint true :destructiveHint false :openWorldHint false}
           :endpoint       {:method "POST" :path "/api/test/v1/test-action"}
           :inputSchema    {:type       "object"
                            :properties {:name {:type "string"}}
@@ -436,7 +445,7 @@
   (is (= {:name           "delete_test"
           :title          "Delete Test"
           :description    "Delete a test resource."
-          :annotations    {:destructiveHint true :idempotentHint true}
+          :annotations    {:destructiveHint true :idempotentHint true :readOnlyHint false :openWorldHint false}
           :endpoint       {:method "DELETE" :path "/api/test/v1/test/{id}"}
           :inputSchema    {:type       "object"
                            :properties {:id {:type "integer"}}
@@ -448,7 +457,7 @@
   (is (= {:name           "test_search"
           :title          "Test Search"
           :description    "Search for things."
-          :annotations    {:readOnlyHint true :idempotentHint true}
+          :annotations    {:readOnlyHint true :idempotentHint true :destructiveHint false :openWorldHint false}
           :endpoint       {:method "GET" :path "/api/test/v1/test-search"}
           :inputSchema    {:type       "object"
                            :properties {:q     {:type "string"}
@@ -465,7 +474,7 @@
   (is (= {:name           "test_resource_action"
           :title          "Test Resource Action"
           :description    "Perform an action on a resource."
-          :annotations    {:readOnlyHint true}
+          :annotations    {:readOnlyHint true :destructiveHint false :openWorldHint false}
           :endpoint       {:method "POST" :path "/api/test/v1/test-resource/{id}/action"}
           :inputSchema    {:type       "object"
                            :properties {:id     {:type "integer"}
@@ -484,7 +493,7 @@
   (is (= {:name           "test_resource"
           :title          "Test Resource"
           :description    "Update a test resource."
-          :annotations    {:destructiveHint false :idempotentHint true}
+          :annotations    {:destructiveHint false :idempotentHint true :readOnlyHint false :openWorldHint false}
           :endpoint       {:method "PUT" :path "/api/test/v1/test-resource/{id}"}
           :inputSchema    {:type       "object"
                            :properties {:id      {:type "integer"}

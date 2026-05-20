@@ -174,6 +174,16 @@
                   :idempotentHint  true}
     {}))
 
+(def ^:private required-hint-defaults
+  "Always-present hints on every tool's MCP annotations. Used as fallbacks when
+  neither HTTP-method defaults nor explicit metadata set them. Some clients
+  (e.g. ChatGPT Apps SDK) reject tools that omit these. `openWorldHint: false`
+  reflects that Metabase tools operate on the user's own instance — they don't
+  reach external entities."
+  {:readOnlyHint    false
+   :destructiveHint false
+   :openWorldHint   false})
+
 (defn infer-annotations
   "Compute MCP ToolAnnotations from HTTP method defaults merged with explicit `:annotations`.
    Returns `{:annotations <merged> :redundant <pairs> :contradictory? <bool>}`. Callers should
@@ -199,9 +209,11 @@
                                       (when-let [mcp-key (annotation-key-mapping k)]
                                         (when (= v (get method-defaults mcp-key))
                                           [k v]))))
-                              explicit-annotations)]
-    (cond-> {:annotations (cond-> merged
-                            read-only? (dissoc :destructiveHint))
+                              explicit-annotations)
+        annotations     (merge required-hint-defaults
+                               (cond-> merged
+                                 read-only? (dissoc :destructiveHint)))]
+    (cond-> {:annotations annotations
              :redundant   redundant}
       (and read-only? (true? (:destructiveHint merged)))
       (assoc :contradictory? true))))
