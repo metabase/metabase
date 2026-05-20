@@ -19,6 +19,7 @@
    [metabase.server.middleware.security :as mw.security]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.system.core :as system]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [oidc-provider.store :as oidc.store]
@@ -158,8 +159,8 @@
     (boolean
      (and origin-url
           host-url
-          (= (str/lower-case (:domain origin-url))
-             (str/lower-case (:domain host-url)))))))
+          (= (u/lower-case-en (:domain origin-url))
+             (u/lower-case-en (:domain host-url)))))))
 
 (defn- approved-mcp-origin?
   [origin]
