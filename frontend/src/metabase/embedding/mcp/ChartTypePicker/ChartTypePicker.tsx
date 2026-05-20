@@ -10,7 +10,7 @@ type ChartTypeOption = {
 
 type ChartTypePickerProps = {
   chartTypes: ChartTypeOption[];
-  value: CardDisplayType | "";
+  value: CardDisplayType | null;
   onChange: (type: CardDisplayType) => void;
 };
 

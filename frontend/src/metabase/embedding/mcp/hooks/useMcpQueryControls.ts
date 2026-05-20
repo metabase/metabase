@@ -64,7 +64,7 @@ export function useMcpQueryControls() {
 
   return {
     chartTypes: sensibleChartTypes,
-    currentChartType: selectedChartType ?? "",
+    currentChartType: selectedChartType,
     hasChartTypeSelector,
     hasTimeControls,
     onChartTypeChange: handleDisplayChange,
