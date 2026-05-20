@@ -55,9 +55,29 @@
                                  :type collection/library-metrics-collection-type)]
     (conj (or (collection/descendant-ids root) #{}) (:id root))))
 
-(defn- with-result-column-name [metric]
-  (assoc metric :result_column_name
-         (metrics/aggregation-column-name (:database_id metric) (:dataset_query metric))))
+(defn- metric-query
+  "Build the metric's single-stage lib query once, reused for resolving dimension targets and
+   computing the result column name. Returns nil when the metric has no `:dataset_query` or the
+   query can't be built (callers treat nil conservatively, matching the prior per-dimension
+   try/catch behavior)."
+  [metric]
+  (when-let [dataset-query (:dataset_query metric)]
+    (try
+      (lib/query (lib-be/application-database-metadata-provider (:database_id metric)) dataset-query)
+      (catch Exception e
+        (log/debugf e "Could not build query for metric %s" (:id metric))
+        nil))))
+
+(defn- result-column-name
+  "Name of the first aggregation column in `query` (the metric's result column), or nil."
+  [query]
+  (when query
+    (try
+      (->> (lib/returned-columns query)
+           (filter #(= (:lib/source %) :source/aggregations))
+           first
+           :name)
+      (catch Exception _ nil))))
 
 (defn- metric-matches-search? [metric q-lower]
   (or (str/includes? (u/lower-case-en (or (:name metric) "")) q-lower)
@@ -134,34 +154,92 @@
           by-id  (into {} (map (juxt :id identity)) rows)]
       (into [] (keep by-id) card-ids))))
 
-(defn target-resolvable?
-  "True if `target` (an MBQL field ref from a metric's `:dimension_mappings`) resolves to a
-   breakoutable column in the metric's single-stage `dataset-query`. Used to silently drop
-   dimensions that the Explorations query-generation path can't actually use — UXW-4083.
+(defn- breakoutable-column-index
+  "O(1) positive-lookup index for [[target-resolvable?]]: the set of `[source-field-id field-id]`
+   identities of `breakoutable-cols`, excluding explicit-join columns (whose disambiguation needs
+   the full matcher). A dimension target whose `[source-field, field-id]` is in this set is
+   definitely breakoutable, letting us skip the (much more expensive) `lib/find-matching-column`
+   for the common case of plain field refs into the main table or an implicitly-joinable table."
+  [breakoutable-cols]
+  (into #{}
+        (comp (remove :metabase.lib.join/join-alias)
+              (map (juxt :fk-field-id :id)))
+        breakoutable-cols))
 
-   Returns `false` defensively on any normalization/resolution exception so a bad dim never
-   blocks the rest of the response."
-  [mp dataset-query target]
+(defn- simple-table-query?
+  "True if `query` is a single-stage query over a base table (the metric's `:table_id`) with no
+   explicit joins or expressions. Such a query's breakoutable columns depend only on the source
+   table — not on the metric's aggregation or filters — so metrics that share the table share the
+   same breakoutable columns."
+  [metric query]
+  (boolean
+   (and query
+        (:table_id metric)
+        (= 1 (lib/stage-count query))
+        (empty? (lib/joins query 0))
+        (empty? (lib/expressions query 0)))))
+
+(defn- make-breakoutable-resolver
+  "Returns a stateful `(metric query) -> breakoutable-columns` that memoizes within one
+   [[exploration-data]] call. `lib/breakoutable-columns` is the dominant per-metric cost and
+   depends only on the source table/joins/expressions, so metrics that are simple queries over
+   the same table (see [[simple-table-query?]]) reuse a single computation. Non-simple queries
+   (explicit joins, expressions, nested stages, card sources) are computed per metric. Scoped to
+   one call so the cache can never go stale."
+  []
+  (let [cache (atom {})]
+    (fn [metric query]
+      (when query
+        (if (simple-table-query? metric query)
+          (let [k [(:database_id metric) (:table_id metric)]]
+            (or (get @cache k)
+                (let [cols (lib/breakoutable-columns query)]
+                  (swap! cache assoc k cols)
+                  cols)))
+          (lib/breakoutable-columns query))))))
+
+(defn target-resolvable?
+  "True if `target` (an MBQL field ref from a metric's `:dimension_mappings`) resolves to one of
+   `breakoutable-cols` in the metric's single-stage `query`. Used to silently drop dimensions
+   that the Explorations query-generation path can't actually use.
+
+   `query`, `breakoutable-cols`, and `col-index` are built once per metric by the caller and
+   reused across all that metric's dimensions. `col-index` (see [[breakoutable-column-index]]) is
+   a fast positive path; anything it doesn't cover falls back to the authoritative
+   `lib/find-matching-column`. Returns `false` defensively on any normalization/resolution
+   exception so a bad dim never blocks the rest of the response."
+  [query breakoutable-cols col-index target]
   (try
-    (let [query (lib/query mp dataset-query)
-          ref   (lib/normalize :metabase.lib.schema.ref/ref target)]
-      (some? (lib/find-matching-column query -1 ref (lib/breakoutable-columns query))))
+    (let [field-ref? (and (vector? target) (= :field (first target)))
+          opts       (when field-ref? (second target))
+          field-id   (when field-ref? (nth target 2 nil))]
+      (or (and (int? field-id)
+               (not (:join-alias opts))
+               (contains? col-index [(:source-field opts) field-id]))
+          (some? (lib/find-matching-column
+                  query -1 (lib/normalize :metabase.lib.schema.ref/ref target) breakoutable-cols))))
     (catch Exception e
       (log/debugf e "Dimension target %s not resolvable, dropping" (pr-str target))
       false)))
 
 (defn- filter-resolvable-dimensions
   "Drop any `:dimensions` and corresponding `:dimension_mappings` on `metric` whose target
-   field ref doesn't resolve against the metric's `:dataset_query`. A dimension with no
-   mapping at all is kept (no target = no breakout = nothing to resolve)."
-  [metric]
+   field ref doesn't resolve against the metric's prebuilt `query`. A dimension with no mapping
+   at all is kept (no target = no breakout = nothing to resolve).
+
+   `query` is built once per metric (see [[metric-query]]) and `breakoutable` is its breakoutable
+   columns (possibly shared across same-table metrics, see [[make-breakoutable-resolver]]). When
+   the metric had a `:dataset_query` but the query couldn't be built (`query` is nil), mapped
+   dimensions drop and unmapped ones are kept — matching the prior per-dimension try/catch
+   semantics."
+  [metric query breakoutable]
   (if-not (:dataset_query metric)
     metric
-    (let [mp             (lib-be/application-database-metadata-provider (:database_id metric))
+    (let [col-index      (breakoutable-column-index breakoutable)
           mappings-by-id (into {} (map (juxt :dimension_id identity)) (:dimension_mappings metric))
           keep?          (fn [dim]
                            (if-let [target (get-in mappings-by-id [(:id dim) :target])]
-                             (target-resolvable? mp (:dataset_query metric) target)
+                             (and (some? query) (target-resolvable? query breakoutable col-index target))
                              true))
           kept-dims      (filterv keep? (:dimensions metric))
           kept-ids       (into #{} (map :id) kept-dims)]
@@ -185,28 +263,37 @@
    The returned shape is `{:metrics [...] :dimension_groups [...]}` exactly matching the
    `::DimensionsResponse` schema in `metabase.explorations.api`."
   [{:keys [metric-ids q]}]
-  (let [card-ids   (accessible-metric-ids metric-ids)
-        cards      (load-metric-cards card-ids)
-        routed-dbs (routed-database-ids (into #{} (keep :database_id) cards))
-        cards      (remove (comp routed-dbs :database_id) cards)
-        hydrated   (->> cards
-                        (mapv (fn [m]
-                                (-> m
-                                    metrics/filter-dimensions-for-user
-                                    filter-resolvable-dimensions
-                                    with-result-column-name
-                                    ;; dataset_query was only needed to compute result_column_name
-                                    ;; and to resolve dimension targets.
-                                    (dissoc :dataset_query))))
-                        (metrics/annotate-dimensions-with-field-data [:dimension_interestingness]))
-        filtered   (if (str/blank? q)
-                     hydrated
-                     (let [q-lower (u/lower-case-en q)]
-                       (filterv #(metric-matches-search? % q-lower) hydrated)))
-        slimmed    (mapv (fn [m]
-                           (-> m
-                               (assoc :dimension_ids (mapv :id (:dimensions m)))
-                               (dissoc :dimensions)))
-                         filtered)]
-    {:metrics          slimmed
-     :dimension_groups (group-dimensions filtered)}))
+  (lib-be/with-metadata-provider-cache
+    (let [card-ids   (accessible-metric-ids metric-ids)
+          cards      (load-metric-cards card-ids)
+          routed-dbs (routed-database-ids (into #{} (keep :database_id) cards))
+          cards      (remove (comp routed-dbs :database_id) cards)
+          ;; Filter dimensions by user permissions for all metrics at once (one set of queries
+          ;; for the whole batch, rather than per metric).
+          permitted  (metrics/filter-dimensions-for-user-batch cards)
+          resolve-breakoutable (make-breakoutable-resolver)
+          hydrated   (->> permitted
+                          (mapv (fn [m]
+                                  ;; Build the metric's query once and reuse it for resolving
+                                  ;; dimension targets and computing the result column name.
+                                  ;; Breakoutable columns (the dominant cost) are shared across
+                                  ;; metrics that query the same table.
+                                  (let [query        (metric-query m)
+                                        breakoutable (resolve-breakoutable m query)]
+                                    (-> m
+                                        (filter-resolvable-dimensions query breakoutable)
+                                        (assoc :result_column_name (result-column-name query))
+                                        ;; dataset_query was only needed to build `query`.
+                                        (dissoc :dataset_query)))))
+                          (metrics/annotate-dimensions-with-field-data [:dimension_interestingness]))
+          filtered   (if (str/blank? q)
+                       hydrated
+                       (let [q-lower (u/lower-case-en q)]
+                         (filterv #(metric-matches-search? % q-lower) hydrated)))
+          slimmed    (mapv (fn [m]
+                             (-> m
+                                 (assoc :dimension_ids (mapv :id (:dimensions m)))
+                                 (dissoc :dimensions)))
+                           filtered)]
+      {:metrics          slimmed
+       :dimension_groups (group-dimensions filtered)})))

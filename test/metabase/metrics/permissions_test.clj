@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.metrics.permissions :as metrics.perms]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -183,3 +184,40 @@
       (testing "both mappings are preserved"
         (is (= #{"resolvable" "unresolvable"}
                (into #{} (map :dimension_id) (:dimension_mappings result))))))))
+
+;;; ------------------------------------------------- Batch Variant -------------------------------------------------
+
+(deftest filter-dimensions-for-user-batch-preserves-order-and-filters-per-metric-test
+  (testing "batch returns one result per input metric, in order, filtered independently"
+    (let [m1 {:dimensions         [{:id "tax" :display_name "Tax"
+                                    :sources [{:field-id (mt/id :orders :tax)}]}]
+              :dimension_mappings [{:dimension_id "tax" :target [:field {} (mt/id :orders :tax)]}]}
+          m2 {:dimensions         [{:id "mystery" :display_name "Mystery" :sources []}]
+              :dimension_mappings [{:dimension_id "mystery" :target [:some-other-ref {}]}]}
+          batched (mt/with-test-user :rasta
+                    (metrics.perms/filter-dimensions-for-user-batch [m1 m2]))]
+      (is (= 2 (count batched)))
+      (testing "resolvable, accessible field is kept on the first metric"
+        (is (= ["tax"] (mapv :id (:dimensions (first batched))))))
+      (testing "unresolvable field is conservatively kept on the second metric"
+        (is (= ["mystery"] (mapv :id (:dimensions (second batched))))))
+      (testing "batch matches mapping the single-metric fn over each"
+        (is (= (mt/with-test-user :rasta
+                 (mapv metrics.perms/filter-dimensions-for-user [m1 m2]))
+               batched))))))
+
+(deftest filter-dimensions-for-user-batch-memoizes-table-access-test
+  (testing "table access is checked once per (db,table) across the whole batch, not per dimension"
+    (let [fid-tax   (mt/id :orders :tax)
+          fid-total (mt/id :orders :total)
+          mk        (fn [] {:dimensions         [{:id "d-tax" :sources [{:field-id fid-tax}]}
+                                                 {:id "d-total" :sources [{:field-id fid-total}]}]
+                            :dimension_mappings [{:dimension_id "d-tax" :target [:field {} fid-tax]}
+                                                 {:dimension_id "d-total" :target [:field {} fid-total]}]})
+          calls     (atom 0)]
+      ;; Two metrics × two dimensions all live on the Orders table -> a single distinct
+      ;; (db, table), so the access check must fire exactly once.
+      (mt/with-test-user :rasta
+        (with-redefs [perms/user-has-permission-for-table? (fn [& _] (swap! calls inc) true)]
+          (metrics.perms/filter-dimensions-for-user-batch [(mk) (mk)])))
+      (is (= 1 @calls)))))
