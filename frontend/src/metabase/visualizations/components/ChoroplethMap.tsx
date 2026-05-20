@@ -496,13 +496,7 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
     : undefined;
 
   const propagateRenderError = (error?: unknown) => {
-    onRenderError(
-      error == null
-        ? undefined
-        : typeof error === "string"
-          ? error
-          : String(error),
-    );
+    onRenderError(error == null ? undefined : String(error));
   };
 
   return (
