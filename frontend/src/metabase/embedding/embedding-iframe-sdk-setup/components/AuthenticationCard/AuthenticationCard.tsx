@@ -3,14 +3,9 @@ import { t } from "ttag";
 import { Card, Radio, Stack, Text } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../../context";
-import {
-  DEFAULT_EXPERIENCE,
-  useHandleExperienceChange,
-} from "../../hooks/use-handle-experience-change";
 import { getAuthTypeForSettings } from "../../utils/get-auth-type-for-settings";
 import { getResourceTypeFromExperience } from "../../utils/get-resource-type-from-experience";
-import { isQuestionOrDashboardExperience } from "../../utils/is-question-or-dashboard-experience";
-import { isStepWithResource } from "../../utils/is-step-with-resource";
+import { SetupSsoAlert } from "../Common/SetupSsoAlert";
 import { DatabaseRoutingWarning } from "../DatabaseRoutingWarning";
 
 import { EnableGuestEmbedsSection } from "./EnableGuestEmbedsSection";
@@ -25,6 +20,7 @@ export const AuthenticationCard = () => {
   const {
     experience,
     isSimpleEmbedFeatureAvailable,
+    isSsoEnabledAndConfigured,
     currentStep,
     settings,
     updateSettings,
@@ -34,28 +30,17 @@ export const AuthenticationCard = () => {
     isGuestEmbedsEnabled,
     isGuestEmbedsTermsAccepted,
   } = useSdkIframeEmbedSetupContext();
-  const handleEmbedExperienceChange = useHandleExperienceChange();
 
   const resourceType = getResourceTypeFromExperience(experience);
   const authType = getAuthTypeForSettings(settings);
 
+  const showSsoNotConfiguredWarning =
+    !isSsoEnabledAndConfigured && authType === "sso";
+
   const handleAuthTypeChange = (value: string) => {
-    const isGuest = value === "guest-embed";
-    const isSso = value === "sso";
-
-    // Reset experience to default when switching to guest embeds from non-supported experience
-    const shouldSwitchExperience =
-      isGuest &&
-      !isStepWithResource(currentStep) &&
-      !isQuestionOrDashboardExperience(experience);
-
-    if (shouldSwitchExperience) {
-      handleEmbedExperienceChange(DEFAULT_EXPERIENCE);
-    }
-
     updateSettings({
-      isGuest,
-      isSso,
+      isGuest: value === "guest-embed",
+      isSso: value === "sso",
     });
   };
 
@@ -110,6 +95,8 @@ export const AuthenticationCard = () => {
             </Stack>
           </Stack>
         </Radio.Group>
+
+        {showSsoNotConfiguredWarning && <SetupSsoAlert />}
       </Stack>
     </Card>
   );

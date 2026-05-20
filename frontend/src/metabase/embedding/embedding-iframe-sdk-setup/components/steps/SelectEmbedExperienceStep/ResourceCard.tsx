@@ -169,7 +169,7 @@ export const ResourceCard = () => {
     if (experience === "browser") {
       return (
         <CollectionPickerModal
-          title={t`Select a collection`}
+          title={t`Select default collection`}
           value={PICKER_RECENTS_VALUE}
           onChange={handlePickerModalResourceSelect}
           onClose={closePicker}
@@ -234,10 +234,10 @@ const getResourceCopy = (experience: ResourceExperience) =>
       label: t`Change chart`,
     }))
     .with("browser", () => ({
-      title: t`Select a collection to embed`,
+      title: t`Select initial collection`,
       icon: "collection",
-      placeholder: t`Select a collection`,
-      label: t`Change collection`,
+      placeholder: t`Select initial collection`,
+      label: t`Change initial collection`,
     }))
     .exhaustive();
 

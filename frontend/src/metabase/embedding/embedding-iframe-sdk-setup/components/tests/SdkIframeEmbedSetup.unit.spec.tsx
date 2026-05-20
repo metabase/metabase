@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import {
   setupCardEndpoints,
   setupCardQueryMetadataEndpoint,
-  setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
@@ -110,6 +109,115 @@ describe("Embed flow > forward and backward navigation", () => {
     expect(screen.getByText("Appearance")).toBeInTheDocument();
   });
 
+  it("hides the authentication and resource cards when Exploration is selected", async () => {
+    setup({ simpleEmbeddingEnabled: true });
+
+    expect(screen.getByText("Authentication")).toBeInTheDocument();
+    expect(screen.getByText("Select a dashboard to embed")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("radio", { name: /Exploration/ }));
+
+    expect(screen.queryByText("Authentication")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Select a dashboard to embed"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Select initial collection"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides the authentication card but keeps the resource card (as a collection picker) when Browser is selected", async () => {
+    setup({ simpleEmbeddingEnabled: true });
+
+    expect(screen.getByText("Authentication")).toBeInTheDocument();
+    expect(screen.getByText("Select a dashboard to embed")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("radio", { name: /Browser/ }));
+
+    expect(screen.queryByText("Authentication")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Select a dashboard to embed"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Change initial collection" }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the SSO radio above the Guest radio in the authentication card", () => {
+    setup({ simpleEmbeddingEnabled: true });
+
+    const radios = screen.getAllByRole("radio");
+    const ssoIndex = radios.findIndex((r) => r.getAttribute("value") === "sso");
+    const guestIndex = radios.findIndex(
+      (r) => r.getAttribute("value") === "guest-embed",
+    );
+
+    expect(ssoIndex).toBeGreaterThanOrEqual(0);
+    expect(guestIndex).toBeGreaterThanOrEqual(0);
+    expect(ssoIndex).toBeLessThan(guestIndex);
+  });
+
+  it("selects Guest when initialState.isGuest is true, even with SSO configured", () => {
+    setup({
+      simpleEmbeddingEnabled: true,
+      jwtReady: true,
+      initialState: { isGuest: true, useExistingUserSession: true },
+    });
+
+    expect(screen.getByDisplayValue("guest-embed")).toBeChecked();
+    expect(screen.getByDisplayValue("sso")).not.toBeChecked();
+  });
+
+  describe("SSO not configured warnings", () => {
+    const warningText =
+      /This embed will only work for local testing\. To get production ready code, configure/;
+
+    it("shows a warning on the authentication card when SSO is selected but not configured", () => {
+      setup({ simpleEmbeddingEnabled: true, jwtReady: false });
+
+      expect(screen.getByDisplayValue("sso")).toBeChecked();
+      expect(screen.getByText("Authentication")).toBeInTheDocument();
+      expect(screen.getByText(warningText)).toBeInTheDocument();
+    });
+
+    it("hides the warning when Guest is selected", async () => {
+      setup({ simpleEmbeddingEnabled: true, jwtReady: false });
+
+      await userEvent.click(screen.getByRole("radio", { name: "Guest" }));
+
+      expect(screen.queryByText(warningText)).not.toBeInTheDocument();
+    });
+
+    it("hides the warning when SSO is configured", () => {
+      setup({ simpleEmbeddingEnabled: true, jwtReady: true });
+
+      expect(screen.queryByText(warningText)).not.toBeInTheDocument();
+    });
+
+    it.each(["Exploration", "Browser"])(
+      "shows a warning on the experience card when %s is selected and SSO is not configured",
+      async (experienceLabel) => {
+        setup({ simpleEmbeddingEnabled: true, jwtReady: false });
+
+        await userEvent.click(
+          screen.getByRole("radio", { name: new RegExp(experienceLabel) }),
+        );
+
+        expect(screen.getByText(warningText)).toBeInTheDocument();
+        // Authentication card is hidden so its warning is gone
+        expect(screen.queryByText("Authentication")).not.toBeInTheDocument();
+      },
+    );
+
+    it("hides the experience card warning when Exploration is selected and SSO is configured", async () => {
+      setup({ simpleEmbeddingEnabled: true, jwtReady: true });
+
+      await userEvent.click(screen.getByRole("radio", { name: /Exploration/ }));
+
+      expect(screen.queryByText(warningText)).not.toBeInTheDocument();
+    });
+  });
+
   it("disables next and back buttons when simple embedding is disabled", () => {
     setup({ simpleEmbeddingEnabled: false });
 
@@ -123,7 +231,6 @@ describe("Embed flow > forward and backward navigation", () => {
     const mockDatabase = createMockDatabase();
     const mockCard = createMockCard({ id: 456 });
 
-    setupDatabasesEndpoints([mockDatabase]);
     setupCardEndpoints(mockCard);
     setupCardQueryMetadataEndpoint(
       mockCard,
@@ -155,7 +262,6 @@ describe("Embed flow > Pro feature upsell indicators", () => {
     const mockDatabase = createMockDatabase();
     const mockCard = createMockCard({ id: 456 });
 
-    setupDatabasesEndpoints([mockDatabase]);
     setupCardEndpoints(mockCard);
     setupCardQueryMetadataEndpoint(
       mockCard,
@@ -197,7 +303,6 @@ describe("Embed flow > Pro feature upsell indicators", () => {
     const mockDatabase = createMockDatabase();
     const mockCard = createMockCard({ id: 456 });
 
-    setupDatabasesEndpoints([mockDatabase]);
     setupCardEndpoints(mockCard);
     setupCardQueryMetadataEndpoint(
       mockCard,
@@ -238,8 +343,6 @@ describe("Embed flow > Pro feature upsell indicators", () => {
   });
 
   it("disables Pro checkboxes for OSS users (dashboard)", () => {
-    setupDatabasesEndpoints([createMockDatabase()]);
-
     setup({
       simpleEmbeddingEnabled: false,
       initialState: {

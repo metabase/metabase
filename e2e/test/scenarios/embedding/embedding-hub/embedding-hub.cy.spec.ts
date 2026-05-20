@@ -172,6 +172,8 @@ describe("scenarios - embedding hub", () => {
       H.modal()
         .first()
         .within(() => {
+          cy.log("switch to guest auth");
+          cy.findByLabelText("Guest").click();
           cy.log("choose dashboard experience");
           cy.findByText("Dashboard").click();
           cy.log("pick a dashboard");
