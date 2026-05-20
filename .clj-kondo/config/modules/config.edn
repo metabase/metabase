@@ -1013,6 +1013,14 @@
    :api  #{metabase.graph.core}
    :uses #{util}}
 
+  health-inspector
+  {:team "Querying Platform"
+   :api #{metabase.health-inspector}
+   :uses #{lib
+           lib-be
+           task
+           util}}
+
   indexed-entities
   {:team "UX West"
    :api  #{metabase.indexed-entities.api
