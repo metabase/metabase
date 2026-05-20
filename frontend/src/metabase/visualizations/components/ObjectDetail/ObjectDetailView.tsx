@@ -124,6 +124,9 @@ export function ObjectDetailView({
     [passedData],
   );
 
+  const pkColumnName =
+    pkIndex != null ? passedData?.cols[pkIndex]?.name : undefined;
+
   const zoomedRow = useMemo(() => {
     const zoomedRowIDNumber =
       typeof zoomedRowID === "string" ? parseInt(zoomedRowID) : zoomedRowID;
@@ -286,13 +289,15 @@ export function ObjectDetailView({
 
     return ActionsApi.prefetchValues({
       id: actionId,
-      parameters: JSON.stringify({ id: String(zoomedRowID) }),
+      parameters: JSON.stringify({
+        [pkColumnName ?? "id"]: String(zoomedRowID),
+      }),
     });
-  }, [actionId, zoomedRowID]);
+  }, [actionId, pkColumnName, zoomedRowID]);
 
   const initialValues = useMemo(
-    () => ({ id: zoomedRowID ?? null }),
-    [zoomedRowID],
+    () => ({ [pkColumnName ?? "id"]: zoomedRowID ?? null }),
+    [pkColumnName, zoomedRowID],
   );
 
   const handleActionSuccess = useCallback(() => {
@@ -369,6 +374,7 @@ export function ObjectDetailView({
       <ActionExecuteModal
         opened={isActionExecuteModalOpen}
         actionId={actionId}
+        hiddenFields={pkColumnName ? [pkColumnName] : undefined}
         initialValues={initialValues}
         fetchInitialValues={fetchInitialValues}
         shouldPrefetch
@@ -380,6 +386,7 @@ export function ObjectDetailView({
         <DeleteObjectModal
           actionId={deleteActionId}
           objectId={zoomedRowID}
+          pkColumnName={pkColumnName}
           onClose={handleDeleteModalClose}
           onSuccess={handleDeleteSuccess}
         />

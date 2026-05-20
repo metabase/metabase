@@ -11,6 +11,7 @@ import type {
 
 export interface ActionParametersInputFormProps {
   action: WritebackAction;
+  hiddenFields?: string[];
   mappedParameters?: WritebackParameter[];
   initialValues?: ParametersForActionExecution;
   onSubmit: OnSubmitActionForm;
@@ -22,6 +23,7 @@ export interface ActionParametersInputFormProps {
 
 function ActionParametersInputForm({
   action,
+  hiddenFields: hiddenFieldsProp = [],
   mappedParameters = [],
   initialValues = {},
   onCancel,
@@ -37,8 +39,13 @@ function ActionParametersInputForm({
 
     return mappedParameters
       .map((parameter) => parameter.id)
-      .concat(hiddenFieldIds);
-  }, [mappedParameters, action.visualization_settings?.fields]);
+      .concat(hiddenFieldIds)
+      .concat(hiddenFieldsProp);
+  }, [
+    mappedParameters,
+    action.visualization_settings?.fields,
+    hiddenFieldsProp,
+  ]);
 
   const handleSubmit = useCallback(
     async (

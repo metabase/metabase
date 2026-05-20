@@ -107,13 +107,17 @@ export function DetailViewSidesheet({
   const modelId = getModelId(table);
   const isNavEnabled = rowFromProps != null && showNav;
   const hasPk = columns.some(isPK);
+  const pkColumnName = useMemo(() => columns.find(isPK)?.name, [columns]);
 
   const [actionId, setActionId] = useState<WritebackActionId>();
   const [deleteActionId, setDeleteActionId] = useState<WritebackActionId>();
   const isActionExecuteModalOpen = typeof actionId === "number";
   const isDeleteModalOpen = typeof deleteActionId === "number";
   const isModalOpen = isActionExecuteModalOpen || isDeleteModalOpen;
-  const initialValues = useMemo(() => ({ id: rowId ?? null }), [rowId]);
+  const initialValues = useMemo(
+    () => ({ [pkColumnName ?? "id"]: rowId ?? null }),
+    [pkColumnName, rowId],
+  );
 
   const { data: actions } = useListActionsQuery(
     showImplicitActions && modelId != null
@@ -154,9 +158,9 @@ export function DetailViewSidesheet({
 
     return ActionsApi.prefetchValues({
       id: actionId,
-      parameters: JSON.stringify({ id: String(rowId) }),
+      parameters: JSON.stringify({ [pkColumnName ?? "id"]: String(rowId) }),
     });
-  }, [actionId, rowId]);
+  }, [actionId, pkColumnName, rowId]);
 
   const handleActionSuccess = useCallback(() => {
     onActionSuccess?.();
@@ -379,6 +383,7 @@ export function DetailViewSidesheet({
       <ActionExecuteModal
         opened={isActionExecuteModalOpen}
         actionId={actionId}
+        hiddenFields={pkColumnName ? [pkColumnName] : undefined}
         initialValues={initialValues}
         fetchInitialValues={fetchInitialValues}
         shouldPrefetch
@@ -390,6 +395,7 @@ export function DetailViewSidesheet({
         <DeleteObjectModal
           actionId={deleteActionId}
           objectId={rowId}
+          pkColumnName={pkColumnName}
           onClose={handleDeleteModalClose}
           onSuccess={handleDeleteSuccess}
         />
