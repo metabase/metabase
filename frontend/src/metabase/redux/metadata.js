@@ -4,16 +4,16 @@ import _ from "underscore";
 import {
   cardApi,
   dashboardApi,
+  databaseApi,
   datasetApi,
   fieldApi,
   segmentApi,
 } from "metabase/api";
-import { Databases } from "metabase/entities/databases";
 import { Tables } from "metabase/entities/tables";
 import { entityCompatibleQuery } from "metabase/entities/utils";
 import { isProduction } from "metabase/env";
 import { createThunkAction } from "metabase/redux";
-import { FieldSchema } from "metabase/schema";
+import { DatabaseSchema, FieldSchema } from "metabase/schema";
 import { RevisionsApi } from "metabase/services";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 
@@ -47,20 +47,40 @@ export const updateSegment = (segment) => (dispatch) => {
   );
 };
 
-export const fetchRealDatabases = (reload = false) => {
-  deprecated("metabase/redux/metadata fetchRealDatabases");
-  return Databases.actions.fetchList({ include: "tables" }, { reload });
-};
+export const fetchRealDatabases =
+  (reload = false) =>
+  (dispatch) => {
+    deprecated("metabase/redux/metadata fetchRealDatabases");
+    return entityCompatibleQuery(
+      { include: "tables" },
+      dispatch,
+      databaseApi.endpoints.listDatabases,
+      { forceRefetch: reload },
+    );
+  };
 
-export const fetchDatabaseMetadata = (dbId, reload = false) => {
-  deprecated("metabase/redux/metadata fetchDatabaseMetadata");
-  return Databases.actions.fetchDatabaseMetadata({ id: dbId }, { reload });
-};
+export const fetchDatabaseMetadata =
+  (dbId, reload = false) =>
+  (dispatch) => {
+    deprecated("metabase/redux/metadata fetchDatabaseMetadata");
+    return entityCompatibleQuery(
+      { id: dbId },
+      dispatch,
+      databaseApi.endpoints.getDatabaseMetadata,
+      { forceRefetch: reload },
+    );
+  };
 
-export const updateDatabase = (database) => {
+export const updateDatabase = (database) => async (dispatch) => {
   deprecated("metabase/redux/metadata updateDatabase");
   const slimDatabase = _.omit(database, "tables", "tables_lookup");
-  return Databases.actions.update(slimDatabase);
+  const result = await entityCompatibleQuery(
+    slimDatabase,
+    dispatch,
+    databaseApi.endpoints.updateDatabase,
+  );
+  dispatch(updateMetadata(result, DatabaseSchema));
+  return result;
 };
 
 export const updateTable = (table) => {
