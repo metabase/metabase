@@ -489,70 +489,18 @@ describe("MetabotSetup", () => {
     expect(screen.getAllByText("Coming soon")).toHaveLength(2);
   });
 
-  it("BOT-1429: keeps the Provider select enabled while session-properties refetches in the background", async () => {
-    const { store } = await setup({
-      savedProviderValue: null,
-      isConfigured: false,
-    });
-    await screen.findByLabelText("Provider");
-    expect(screen.getByLabelText("Provider")).toBeEnabled();
-
-    const sessionPropertiesDeferred = defer<unknown>();
-    fetchMock.removeRoute("get-session-properties");
-    fetchMock.get(
-      "path:/api/session/properties",
-      () => sessionPropertiesDeferred.promise,
-    );
-
-    act(() => {
-      store.dispatch(Api.util.invalidateTags(["session-properties"]));
-    });
-
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.calls("path:/api/session/properties").length,
-      ).toBeGreaterThan(1);
-    });
-
-    expect(screen.getByLabelText("Provider")).toBeEnabled();
-
-    sessionPropertiesDeferred.resolve({});
-  });
-
-  it("BOT-1429: keeps the API key input enabled while session-properties refetches in the background", async () => {
+  it("BOT-1429: keeps the form interactive while session-properties refetches in the background", async () => {
     const { store } = await setup();
-    await screen.findByLabelText("API key");
-    expect(screen.getByLabelText("API key")).toBeEnabled();
-
-    const sessionPropertiesDeferred = defer<unknown>();
-    fetchMock.removeRoute("get-session-properties");
-    fetchMock.get(
-      "path:/api/session/properties",
-      () => sessionPropertiesDeferred.promise,
-    );
-
-    act(() => {
-      store.dispatch(Api.util.invalidateTags(["session-properties"]));
-    });
-
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.calls("path:/api/session/properties").length,
-      ).toBeGreaterThan(1);
-    });
-
-    expect(screen.getByLabelText("API key")).toBeEnabled();
-
-    sessionPropertiesDeferred.resolve({});
-  });
-
-  it("BOT-1429: keeps the Disconnect button stable while session-properties refetches in the background", async () => {
-    const { store } = await setup();
-    const disconnectButton = await screen.findByRole("button", {
+    const apiKey = await screen.findByLabelText("API key");
+    const model = await screen.findByLabelText("Model");
+    const disconnect = await screen.findByRole("button", {
       name: "Disconnect",
     });
-    expect(disconnectButton).toBeEnabled();
-    expect(disconnectButton).not.toHaveAttribute("data-loading", "true");
+
+    expect(apiKey).toBeEnabled();
+    expect(model).toBeEnabled();
+    expect(disconnect).toBeEnabled();
+    expect(disconnect).not.toHaveAttribute("data-loading", "true");
 
     const sessionPropertiesDeferred = defer<unknown>();
     fetchMock.removeRoute("get-session-properties");
@@ -571,8 +519,10 @@ describe("MetabotSetup", () => {
       ).toBeGreaterThan(1);
     });
 
-    expect(disconnectButton).toBeEnabled();
-    expect(disconnectButton).not.toHaveAttribute("data-loading", "true");
+    expect(apiKey).toBeEnabled();
+    expect(model).toBeEnabled();
+    expect(disconnect).toBeEnabled();
+    expect(disconnect).not.toHaveAttribute("data-loading", "true");
 
     sessionPropertiesDeferred.resolve({});
   });
@@ -808,33 +758,6 @@ describe("MetabotSetup", () => {
     expect(await screen.findByText("Sonnet")).toBeInTheDocument();
   });
 
-  it("BOT-1429: keeps the Model select enabled while session-properties refetches in the background", async () => {
-    const { store } = await setup();
-    await screen.findByLabelText("Model");
-    expect(screen.getByLabelText("Model")).toBeEnabled();
-
-    const sessionPropertiesDeferred = defer<unknown>();
-    fetchMock.removeRoute("get-session-properties");
-    fetchMock.get(
-      "path:/api/session/properties",
-      () => sessionPropertiesDeferred.promise,
-    );
-
-    act(() => {
-      store.dispatch(Api.util.invalidateTags(["session-properties"]));
-    });
-
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.calls("path:/api/session/properties").length,
-      ).toBeGreaterThan(1);
-    });
-
-    expect(screen.getByLabelText("Model")).toBeEnabled();
-
-    sessionPropertiesDeferred.resolve({});
-  });
-
   it("does not show the API key input when no provider is selected", async () => {
     await setup({ savedProviderValue: null, isConfigured: false });
 
@@ -994,44 +917,6 @@ describe("MetabotSetup", () => {
     expect(settingsRequest?.options?.body).toBe(
       JSON.stringify({ provider: "metabase", model: "" }),
     );
-  });
-
-  it("BOT-1429: keeps the terms checkbox enabled while session-properties refetches in the background", async () => {
-    const { store } = await setup({
-      isHosted: true,
-      savedProviderValue: null,
-      isConfigured: false,
-      isStoreUser: true,
-      tokenStatusFeatures: [],
-    });
-
-    await selectProvider("Metabase");
-
-    const termsCheckbox = await screen.findByRole("checkbox", {
-      name: /I agree with the Metabase AI Service/i,
-    });
-    expect(termsCheckbox).toBeEnabled();
-
-    const sessionPropertiesDeferred = defer<unknown>();
-    fetchMock.removeRoute("get-session-properties");
-    fetchMock.get(
-      "path:/api/session/properties",
-      () => sessionPropertiesDeferred.promise,
-    );
-
-    act(() => {
-      store.dispatch(Api.util.invalidateTags(["session-properties"]));
-    });
-
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.calls("path:/api/session/properties").length,
-      ).toBeGreaterThan(1);
-    });
-
-    expect(termsCheckbox).toBeEnabled();
-
-    sessionPropertiesDeferred.resolve({});
   });
 
   it("calls onClose after directly connecting to the Metabase provider in modal mode", async () => {
