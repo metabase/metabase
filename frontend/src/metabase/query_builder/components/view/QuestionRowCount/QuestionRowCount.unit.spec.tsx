@@ -156,10 +156,29 @@ describe("QuestionRowCount", () => {
           expect(rowCount).toHaveTextContent("Showing 321 rows");
         });
 
-        it("allows setting a limit", async () => {
+        it("shows the limit input only after selecting the custom option", async () => {
+          await setup({ question: getCard() });
+
+          await userEvent.click(await screen.findByLabelText("Row count"));
+          expect(
+            screen.queryByPlaceholderText("Pick a limit"),
+          ).not.toBeInTheDocument();
+
+          await userEvent.click(
+            await screen.findByRole("radio", { name: /Set custom limit/i }),
+          );
+
+          const input = await screen.findByPlaceholderText("Pick a limit");
+          expect(input).toHaveDisplayValue("2000");
+        });
+
+        it("allows setting a limit with Enter", async () => {
           const { rowCount } = await setup({ question: getCard() });
 
           await userEvent.click(rowCount);
+          await userEvent.click(
+            await screen.findByRole("radio", { name: /Set custom limit/i }),
+          );
           const input = await screen.findByPlaceholderText("Pick a limit");
           fireEvent.change(input, { target: { value: "25" } });
           fireEvent.keyPress(input, { key: "Enter", charCode: 13 });
@@ -167,6 +186,24 @@ describe("QuestionRowCount", () => {
           await waitFor(() => {
             expect(rowCount).toHaveTextContent("Show 25 rows");
           });
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        });
+
+        it("applies the limit when the input is blurred (metabase#71276)", async () => {
+          const { rowCount } = await setup({ question: getCard() });
+
+          await userEvent.click(rowCount);
+          await userEvent.click(
+            await screen.findByRole("radio", { name: /Set custom limit/i }),
+          );
+          const input = await screen.findByPlaceholderText("Pick a limit");
+          fireEvent.change(input, { target: { value: "25" } });
+          fireEvent.blur(input);
+
+          await waitFor(() => {
+            expect(rowCount).toHaveTextContent("Show 25 rows");
+          });
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
         });
 
         it("allows updating a limit", async () => {
