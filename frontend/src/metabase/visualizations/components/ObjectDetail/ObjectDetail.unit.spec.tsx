@@ -14,6 +14,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { ObjectDetailModal } from "metabase/query_builder/components/ObjectDetailModal";
 import {
   createMockQueryBuilderState,
   createMockState,
@@ -29,8 +30,6 @@ import {
   createProductsTable,
   createReviewsTable,
 } from "metabase-types/api/mocks/presets";
-
-import { ObjectDetail } from "./ObjectDetail";
 
 registerVisualizations();
 
@@ -104,19 +103,9 @@ function setup({ hideOrdersTable = false }: SetupOpts = {}) {
       ],
     }),
   });
-  renderWithProviders(
-    <ObjectDetail
-      data={testDataset}
-      settings={{}}
-      isObjectDetail
-      onVisualizationClick={jest.fn()}
-      visualizationIsClickable={jest.fn()}
-      isDashboard={false}
-    />,
-    {
-      storeInitialState: state,
-    },
-  );
+  renderWithProviders(<ObjectDetailModal />, {
+    storeInitialState: state,
+  });
 }
 
 function setupForeignKeyCountQueryEndpoints() {

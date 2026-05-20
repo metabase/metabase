@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { Component } from "react";
+import { Component, useCallback } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
@@ -13,9 +13,10 @@ import { ALERT_TYPE_ROWS, getAlertType } from "metabase/notifications/utils";
 import { zoomInRow } from "metabase/query_builder/actions";
 import {
   getIsShowingRawTable,
+  getRowIndexToPKMap,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import { useSelector } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
@@ -36,15 +37,27 @@ const ALLOWED_VISUALIZATION_PROPS = [
 ];
 
 export function VisualizationResult(props) {
+  const dispatch = useDispatch();
   const isRawTable = useSelector(getIsShowingRawTable);
   const scrollToLastColumn = useSelector(
     (state) => getUiControls(state)?.scrollToLastColumn ?? false,
+  );
+  // Resolve the clicked row index to the source table's primary key value (the
+  // map disambiguates joined queries with multiple PK columns), then zoom.
+  const rowIndexToPkMap = useSelector(getRowIndexToPKMap);
+  const onZoomRow = useCallback(
+    (rowIndex) =>
+      dispatch(
+        zoomInRow({ objectId: rowIndexToPkMap?.[rowIndex] ?? rowIndex }),
+      ),
+    [dispatch, rowIndexToPkMap],
   );
   return (
     <VisualizationResultInner
       {...props}
       isRawTable={isRawTable}
       scrollToLastColumn={scrollToLastColumn}
+      onZoomRow={onZoomRow}
     />
   );
 }
@@ -60,15 +73,6 @@ class VisualizationResultInner extends Component {
 
   onCloseCreateAlertModal = () => {
     this.setState({ showCreateAlertModal: false });
-  };
-
-  getObjectDetailData = (series) => {
-    return [
-      {
-        ...series[0],
-        card: { ...series[0].card, display: "object" },
-      },
-    ];
   };
 
   render() {
@@ -176,6 +180,7 @@ class VisualizationResultInner extends Component {
             token={token}
             selectedTimelineEventIds={selectedTimelineEventIds}
             getExtraDataForClick={() => ({ zoomInRow })}
+            onZoomRow={this.props.onZoomRow}
             handleVisualizationClick={this.props.handleVisualizationClick}
             onOpenTimelines={this.props.onOpenTimelines}
             onSelectTimelineEvents={this.props.selectTimelineEvents}
@@ -190,12 +195,6 @@ class VisualizationResultInner extends Component {
             onVisualizationRendered={this.props.onVisualizationRendered}
             {...vizSpecificProps}
           />
-          {this.props.isObjectDetail && (
-            <Visualization
-              isObjectDetail={true}
-              rawSeries={this.getObjectDetailData(rawSeries)}
-            />
-          )}
         </>
       );
     }

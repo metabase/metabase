@@ -172,6 +172,7 @@ type VisualizationOwnProps = {
   timelineEvents?: TimelineEvent[];
   tc?: ContentTranslationFunction;
   zoomedRowIndex?: number;
+  onZoomRow?: (rowIndex: number) => void;
   onOpenChartSettings?: (data: {
     initialChartSettings?: { section: string };
     showSidebarTitle?: boolean;
@@ -723,6 +724,7 @@ class Visualization extends PureComponent<
       onUpdateWarnings,
       titleMenuItems,
       zoomedRowIndex,
+      onZoomRow,
       tableFooterExtraButtons,
     } = this.props;
     const { width, height } = this.getNormalizedSizes();
@@ -978,6 +980,7 @@ class Visualization extends PureComponent<
                     visualizationIsClickable={this.visualizationIsClickable}
                     width={rawWidth}
                     zoomedRowIndex={zoomedRowIndex}
+                    onZoomRow={onZoomRow}
                     onActionDismissal={this.hideActions}
                     onChangeCardAndRun={
                       this.props.onChangeCardAndRun

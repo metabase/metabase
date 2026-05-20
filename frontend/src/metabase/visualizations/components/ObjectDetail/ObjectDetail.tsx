@@ -1,89 +1,56 @@
-import {
-  closeObjectDetail,
-  followForeignKey,
-  loadObjectDetailFKReferences,
-  runQuestionQuery,
-  viewNextObjectDetail,
-  viewPreviousObjectDetail,
-} from "metabase/query_builder/actions";
-import {
-  getCanZoomNextRow,
-  getCanZoomPreviousRow,
-  getQuestion,
-  getTableForeignKeyReferences,
-  getTableForeignKeys,
-  getTableMetadata,
-  getZoomRow,
-  getZoomedObjectId,
-} from "metabase/query_builder/selectors";
-import { connect } from "metabase/redux";
-import type { State } from "metabase/redux/store";
-import { fetchTableForeignKeys } from "metabase/redux/tables";
-import { getUser } from "metabase/selectors/user";
-import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
+import { noop } from "underscore";
 
 import { ObjectDetailWrapper } from "./ObjectDetailWrapper";
-import type { ObjectDetailProps, ObjectId } from "./types";
+import type { ObjectDetailProps } from "./types";
 import { getIdValue, getSingleResultsRow } from "./utils";
 
-const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
-  const isLoggedIn = !!getUser(state);
+/**
+ * Keys the query builder injects when it renders the interactive object-detail
+ * modal (see `query_builder/.../ObjectDetailModal`). The registered "object"
+ * visualization — used on dashboards, in public/embedded views, and as the QB's
+ * main result viz — never has these, so they're omitted here and stubbed below.
+ * This keeps the visualization free of any `query_builder` dependency.
+ */
+type ObjectDetailControlKey =
+  | "question"
+  | "table"
+  | "tableForeignKeys"
+  | "tableForeignKeyReferences"
+  | "zoomedRow"
+  | "zoomedRowID"
+  | "canZoom"
+  | "canZoomPreviousRow"
+  | "canZoomNextRow"
+  | "fetchTableFks"
+  | "loadObjectDetailFKReferences"
+  | "followForeignKey"
+  | "viewPreviousObjectDetail"
+  | "viewNextObjectDetail"
+  | "closeObjectDetail"
+  | "onActionSuccess";
 
-  if (!isLoggedIn) {
-    return {};
-  }
+type OwnProps = Omit<ObjectDetailProps, ObjectDetailControlKey>;
 
-  const table = getTableMetadata(state);
-  let zoomedRowID = getZoomedObjectId(state);
-  const isZooming = zoomedRowID != null;
+export function ObjectDetail(props: OwnProps) {
+  const { data } = props;
+  const zoomedRowID = getIdValue({ data });
+  const zoomedRow = getSingleResultsRow(data);
 
-  if (!isZooming) {
-    zoomedRowID = getIdValue({ data, tableId: table?.id });
-  }
-
-  const zoomedRow = isZooming ? getZoomRow(state) : getSingleResultsRow(data);
-  const canZoomPreviousRow = isZooming ? getCanZoomPreviousRow(state) : false;
-  const canZoomNextRow = isZooming ? Boolean(getCanZoomNextRow(state)) : false;
-
-  return {
-    question: getQuestion(state),
-    table,
-    tableForeignKeys: getTableForeignKeys(state),
-    tableForeignKeyReferences: getTableForeignKeyReferences(state) ?? undefined,
-    zoomedRowID: zoomedRowID ?? undefined,
-    zoomedRow,
-    canZoom: isZooming && !!zoomedRow,
-    canZoomPreviousRow,
-    canZoomNextRow,
-  };
-};
-type MapStateProps = ReturnType<typeof mapStateToProps>;
-
-// ugh, using function form of mapDispatchToProps here due to circlular dependency with actions
-const mapDispatchToProps = (dispatch: any) => ({
-  fetchTableFks: (id: number) => dispatch(fetchTableForeignKeys({ id })),
-  loadObjectDetailFKReferences: (args: any) =>
-    dispatch(loadObjectDetailFKReferences(args)),
-  followForeignKey: ({
-    objectId,
-    fk,
-  }: {
-    objectId: ObjectId;
-    fk: ForeignKey;
-  }) => dispatch(followForeignKey({ objectId, fk })),
-  viewPreviousObjectDetail: () => dispatch(viewPreviousObjectDetail()),
-  viewNextObjectDetail: () => dispatch(viewNextObjectDetail()),
-  closeObjectDetail: () => dispatch(closeObjectDetail()),
-  onActionSuccess: () => dispatch(runQuestionQuery()),
-});
-type MapDispatchProps = ReturnType<typeof mapDispatchToProps>;
-
-type OwnProps = Omit<
-  ObjectDetailProps,
-  keyof MapStateProps | keyof MapDispatchProps
->;
-
-export const ObjectDetail = connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(ObjectDetailWrapper) as unknown as React.ComponentType<OwnProps>;
+  return (
+    <ObjectDetailWrapper
+      {...props}
+      zoomedRow={zoomedRow}
+      zoomedRowID={zoomedRowID ?? undefined}
+      canZoom={false}
+      canZoomPreviousRow={false}
+      canZoomNextRow={false}
+      fetchTableFks={noop}
+      loadObjectDetailFKReferences={noop}
+      followForeignKey={noop}
+      viewPreviousObjectDetail={noop}
+      viewNextObjectDetail={noop}
+      closeObjectDetail={noop}
+      onActionSuccess={noop}
+    />
+  );
+}

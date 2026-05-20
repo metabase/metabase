@@ -9,7 +9,6 @@ import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import { entityCompatibleQuery } from "metabase/entities/utils";
-import { runQuestionQuery } from "metabase/query_builder/actions";
 import { useDispatch } from "metabase/redux";
 import { ActionsApi } from "metabase/services";
 import { Modal } from "metabase/ui";
@@ -88,6 +87,7 @@ export function ObjectDetailView({
   viewPreviousObjectDetail,
   viewNextObjectDetail,
   closeObjectDetail,
+  onActionSuccess,
   className,
   isDashboard,
 }: ObjectDetailProps): JSX.Element | null {
@@ -295,14 +295,10 @@ export function ObjectDetailView({
     [zoomedRowID],
   );
 
-  const handleActionSuccess = useCallback(() => {
-    dispatch(runQuestionQuery());
-  }, [dispatch]);
-
   const handleDeleteSuccess = useCallback(() => {
-    handleActionSuccess();
+    onActionSuccess?.();
     closeObjectDetail();
-  }, [closeObjectDetail, handleActionSuccess]);
+  }, [closeObjectDetail, onActionSuccess]);
 
   if (!data) {
     return null;
@@ -373,7 +369,7 @@ export function ObjectDetailView({
         fetchInitialValues={fetchInitialValues}
         shouldPrefetch
         onClose={handleExecuteModalClose}
-        onSuccess={handleActionSuccess}
+        onSuccess={onActionSuccess}
       />
 
       <Modal opened={isDeleteModalOpen} onClose={handleDeleteModalClose}>

@@ -263,6 +263,7 @@ export const ListViz = ({
   onVisualizationClick,
   queryBuilderMode,
   isDashboard,
+  onZoomRow,
 }: VisualizationProps) => {
   const dispatch = useDispatch();
   const question = useSelector(getQuestion);
@@ -385,6 +386,7 @@ export const ListViz = ({
           onSortClick={handleSort}
           entityType={entityType}
           isInteractive={queryBuilderMode !== "dataset"}
+          onZoomRow={onZoomRow}
         />
       )}
     </Box>
