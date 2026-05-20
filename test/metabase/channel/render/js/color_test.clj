@@ -8,6 +8,8 @@
   (:import
    [java.math BigDecimal BigInteger]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private red "#ff0000")
 (def ^:private green "#00ff00")
 
