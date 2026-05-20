@@ -60,7 +60,7 @@ jobs:
       vertica-quarantine-conflict: ${{ steps.driver-decisions.outputs.vertica-quarantine-conflict }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Fetch base branch
         if: github.event_name == 'pull_request' && github.event.pull_request.base.ref != ''
         run: |
@@ -121,7 +121,7 @@ jobs:
         echo ""
         echo "If you merge without testing, you risk breaking the Athena driver!"
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Athena driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -182,7 +182,7 @@ jobs:
         echo ""
         echo "If you merge without testing, you risk breaking the BigQuery driver!"
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
@@ -249,7 +249,7 @@ jobs:
         echo ""
         echo "If you merge without testing, you risk breaking the ClickHouse driver!"
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
@@ -323,7 +323,7 @@ jobs:
         echo ""
         echo "If you merge without testing, you risk breaking the Druid driver!"
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Druid driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -371,7 +371,7 @@ jobs:
         echo ""
         echo "If you merge without testing, you risk breaking the Druid JDBC driver!"
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Druid JDBC driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -419,7 +419,7 @@ jobs:
         echo ""
         echo "If you merge without testing, you risk breaking the Databricks driver!"
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Databricks driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -468,7 +468,7 @@ jobs:
         echo ""
         echo "If you merge without testing, you risk breaking the Databricks driver!"
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Databricks driver with multi-catalog
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -498,7 +498,7 @@ jobs:
       CI: 'true'
     name: H2
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test H2 driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -528,7 +528,7 @@ jobs:
       CI: 'true'
     name: H2 (OSS)
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test H2 driver (OSS)
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -653,7 +653,7 @@ jobs:
     # "be-tests-mariadb-10-2-ee (0)"
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Setup python-runner
         if: ${{ matrix.job.needs-python-runner == true }}
         uses: ./.github/actions/setup-python-runner
@@ -735,7 +735,7 @@ jobs:
         echo ""
         echo "If you merge without testing, you risk breaking the MongoDB driver!"
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
@@ -796,7 +796,7 @@ jobs:
           echo ""
           echo "If you merge without testing, you risk breaking the MongoDB SSL driver!"
           exit 1
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Spin up Mongo docker container
         run: >-
           docker run -d
@@ -867,7 +867,7 @@ jobs:
         echo ""
         echo "If you merge without testing, you risk breaking the MongoDB Sharded Cluster driver!"
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test MongoDB driver (Sharded cluster)
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -950,7 +950,7 @@ jobs:
         echo ""
         echo "If you merge without testing, you risk breaking the Oracle driver!"
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test ${{ matrix.version.name }}
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -1049,7 +1049,7 @@ jobs:
           POSTGRES_DB: mb_test
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Setup python-runner
         if: ${{ matrix.job.needs-python-runner == true }}
         uses: ./.github/actions/setup-python-runner
@@ -1117,7 +1117,7 @@ jobs:
         echo ""
         echo "If you merge without testing, you risk breaking the Presto JDBC driver!"
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: ./.github/actions/await-port
       with:
          port: ${{ env.MB_PRESTO_JDBC_TEST_PORT }}
@@ -1220,7 +1220,7 @@ jobs:
         echo ""
         echo "If you merge without testing, you risk breaking the Redshift driver!"
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
@@ -1302,7 +1302,7 @@ jobs:
         echo ""
         echo "If you merge without testing, you risk breaking the Snowflake driver!"
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
@@ -1358,7 +1358,7 @@ jobs:
         echo ""
         echo "If you merge without testing, you risk breaking the SparkSQL driver!"
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Spark driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -1399,7 +1399,7 @@ jobs:
         echo ""
         echo "If you merge without testing, you risk breaking the SQLite driver!"
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test SQLite driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -1471,7 +1471,7 @@ jobs:
         echo ""
         echo "If you merge without testing, you risk breaking the SQL Server driver!"
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
@@ -1520,7 +1520,7 @@ jobs:
   #         - "8080:8080"
   #   name: Starburst
   #   steps:
-  #   - uses: actions/checkout@v4
+  #   - uses: actions/checkout@v6
   #   - name: Make plugins directory
   #     run: mkdir plugins
   #   - name: Test Starburst driver
@@ -1598,7 +1598,7 @@ jobs:
         echo ""
         echo "If you merge without testing, you risk breaking the Vertica driver!"
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Make plugins directory
       run: mkdir plugins
     - name: Test Vertica driver
