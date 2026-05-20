@@ -47,49 +47,60 @@
   (let [engine (:engine (t2/select-one :model/Database :id (:db_id table)))]
     (isa? driver/hierarchy engine :sql)))
 
-(defn- empty-counts [] {:errors 0, :created 0, :updated 0, :deleted 0})
+(defn- empty-counts
+  "Initial counter map for a sync run.
+   - `:probed`  fields we attempted to fetch distinct values for (active list-eligible fields)
+   - `:queries` warehouse queries actually issued (1 per UNION batch on SQL, 1 per field on non-SQL)
+   - `:created`/`:updated`/`:deleted`/`:errors` per-field outcomes (`::fv-skipped` is not counted)"
+  []
+  {:errors 0, :created 0, :updated 0, :deleted 0, :probed 0, :queries 0})
 
 (defn- update-field-values-for-table-union!
   "Bulk-fetch distinct values for `fields-to-sync` via one UNION ALL query, then persist per field.
    If the bulk query fails, every field in the batch is reported as an error (no per-field
    fallback — by design)."
   [table fields-to-sync fvs-map]
-  (let [results (sync-util/with-error-handling
-                 (format "Error fetching union distinct values for %s" (sync-util/name-for-logging table))
-                  (union-distinct/union-distinct-values (u/the-id table) fields-to-sync))]
-    (if (or (nil? results) (instance? Throwable results))
-      (assoc (empty-counts) :errors (count fields-to-sync))
-      (reduce (fn [counts field]
-                (let [field-id        (u/the-id field)
-                      existing-fv     (get fvs-map field-id)
-                      {:keys [values raw-count]} (get results field-id {:values [] :raw-count 0})
-                      {capped-values :values
-                       cap-hit?      :has_more_values} (field-values/limit-values values)
-                      row-limit-hit?  (>= raw-count union-distinct/*distinct-limit*)
-                      has-more-values (boolean (or cap-hit? row-limit-hit?))
-                      result          (sync-util/with-error-handling
-                                       (format "Error updating field values for %s"
-                                               (sync-util/name-for-logging field))
-                                        (field-values/persist-field-values!
-                                         field existing-fv capped-values has-more-values))]
-                  (update-field-value-stats-count counts result)))
-              (empty-counts)
-              fields-to-sync))))
+  (let [n-fields  (count fields-to-sync)
+        n-queries (count (partition-all union-distinct/*batch-size* fields-to-sync))
+        results   (sync-util/with-error-handling
+                   (format "Error fetching union distinct values for %s" (sync-util/name-for-logging table))
+                    (union-distinct/union-distinct-values (u/the-id table) fields-to-sync))
+        outcome-counts (if (or (nil? results) (instance? Throwable results))
+                         (assoc (empty-counts) :errors n-fields)
+                         (reduce (fn [counts field]
+                                   (let [field-id        (u/the-id field)
+                                         existing-fv     (get fvs-map field-id)
+                                         {:keys [values raw-count]} (get results field-id {:values [] :raw-count 0})
+                                         {capped-values :values
+                                          cap-hit?      :has_more_values} (field-values/limit-values values)
+                                         row-limit-hit?  (>= raw-count union-distinct/*distinct-limit*)
+                                         has-more-values (boolean (or cap-hit? row-limit-hit?))
+                                         result          (sync-util/with-error-handling
+                                                          (format "Error updating field values for %s"
+                                                                  (sync-util/name-for-logging field))
+                                                           (field-values/persist-field-values!
+                                                            field existing-fv capped-values has-more-values))]
+                                     (update-field-value-stats-count counts result)))
+                                 (empty-counts)
+                                 fields-to-sync))]
+    (assoc outcome-counts :probed n-fields :queries n-queries)))
 
 (defn- update-field-values-for-table-per-field!
   "Sequential per-field fallback for non-SQL drivers that can't run the UNION query (e.g. Mongo).
    Matches master's behavior — one DISTINCT per field, no batching."
   [_table fields-to-sync fvs-map]
-  (reduce (fn [counts field]
-            (let [existing-fv (get fvs-map (u/the-id field))
-                  result      (sync-util/with-error-handling
-                               (format "Error updating field values for %s"
-                                       (sync-util/name-for-logging field))
-                                (field-values/create-or-update-full-field-values!
-                                 field :field-values existing-fv))]
-              (update-field-value-stats-count counts result)))
-          (empty-counts)
-          fields-to-sync))
+  (let [n-fields (count fields-to-sync)]
+    (-> (reduce (fn [counts field]
+                  (let [existing-fv (get fvs-map (u/the-id field))
+                        result      (sync-util/with-error-handling
+                                     (format "Error updating field values for %s"
+                                             (sync-util/name-for-logging field))
+                                      (field-values/create-or-update-full-field-values!
+                                       field :field-values existing-fv))]
+                    (update-field-value-stats-count counts result)))
+                (empty-counts)
+                fields-to-sync)
+        (assoc :probed n-fields :queries n-fields))))
 
 (mu/defn update-field-values-for-table!
   "Update the FieldValues for all Fields (as needed) for `table`.
@@ -142,9 +153,9 @@
     (let [tables (sync-util/reducible-sync-tables database)]
       (transduce (map update-field-values-for-table!) (partial merge-with +) tables))))
 
-(defn- update-field-values-summary [{:keys [created updated deleted errors]}]
-  (format "Updated %d field value sets, created %d, deleted %d with %d errors"
-          updated created deleted errors))
+(defn- update-field-values-summary [{:keys [created updated deleted errors probed queries]}]
+  (format "Updated %d field value sets, created %d, deleted %d with %d errors (probed %d fields in %d queries)"
+          updated created deleted errors probed queries))
 
 (defn- delete-expired-advanced-field-values-summary [{:keys [deleted]}]
   (format "Deleted %d expired advanced fieldvalues" deleted))
