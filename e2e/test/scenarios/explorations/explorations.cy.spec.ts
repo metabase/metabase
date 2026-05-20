@@ -586,7 +586,7 @@ describe("scenarios > explorations > detail page", () => {
     });
   });
 
-  it("auto-creates Scratchpad + Automatic Insights documents under the Findings sidebar heading, with a Move to trash action in each doc's three-dots menu", () => {
+  it("auto-creates Scratchpad + AI Summary documents under the Findings sidebar heading, with a Move to trash action in each doc's three-dots menu", () => {
     H.createExplorationViaApi({ name: "Documents fixture" }).then((id) => {
       H.visitExploration(id);
 
@@ -601,7 +601,7 @@ describe("scenarios > explorations > detail page", () => {
           }
         });
 
-      cy.findByText("Automatic Insights").should("be.visible");
+      cy.findByText("AI Summary").should("be.visible");
       cy.findAllByText("Scratchpad").should("be.visible");
 
       // Click each document, open the three-dots `More options`
@@ -614,9 +614,9 @@ describe("scenarios > explorations > detail page", () => {
             t.documents ?? [],
         ) as Array<{ id: number; name: string }>;
         const scratchpadDoc = docs.find((d) => d.name === "Scratchpad");
-        const autoDoc = docs.find((d) => d.name === "Automatic Insights");
+        const autoDoc = docs.find((d) => d.name === "AI Summary");
         expect(scratchpadDoc, "BE created a Scratchpad document").to.exist;
-        expect(autoDoc, "BE created an Automatic Insights document").to.exist;
+        expect(autoDoc, "BE created an AI Summary document").to.exist;
 
         for (const doc of [scratchpadDoc!, autoDoc!]) {
           cy.visit(`/question/research/${id}/document/${doc.id}`);
@@ -677,7 +677,7 @@ describe("scenarios > explorations > detail page", () => {
     );
   });
 
-  it("flips the Automatic Insights doc from running → done when the BE marks the thread complete, surfaces a toast, and renders the finished body when opened", () => {
+  it("flips the AI Summary doc from running → done when the BE marks the thread complete, surfaces a toast, and renders the finished body when opened", () => {
     H.createExplorationViaApi({ name: "AI completion fixture" }).then((id) => {
       const FINISHED_TEXT = "AI analysis complete: orders are trending upward";
 
@@ -701,7 +701,7 @@ describe("scenarios > explorations > detail page", () => {
             content: [
               {
                 type: "text",
-                text: "Automatic Insights is generating an analysis…",
+                text: "AI Summary is generating an analysis…",
                 marks: [{ type: "italic" }],
               },
             ],
@@ -756,11 +756,11 @@ describe("scenarios > explorations > detail page", () => {
           }
         });
 
-      // Pre-completion: the Automatic Insights doc row shows the
+      // Pre-completion: the AI Summary doc row shows the
       // Loading spinner (aria-label "Loading…"). Scope the
       // assertion to the sidebar (the `<nav>` element) so we
       // don't accidentally match an app-bar Loader.
-      cy.findByText("Automatic Insights")
+      cy.findByText("AI Summary")
         .closest('[role="listitem"]')
         .findByLabelText("Loading…")
         .should("be.visible");
@@ -797,13 +797,13 @@ describe("scenarios > explorations > detail page", () => {
         // Toast appears with the success message + a `View`
         // action button (the user is not currently viewing the
         // auto-insights doc, so the action renders).
-        cy.findByText("Automatic Insights ready", { timeout: 10000 }).should(
+        cy.findByText("AI Summary ready", { timeout: 10000 }).should(
           "be.visible",
         );
 
         // Sidebar icon flips: the auto-insights doc row now
         // exposes the `Ready` aria-label instead of `Loading…`.
-        cy.findByText("Automatic Insights")
+        cy.findByText("AI Summary")
           .closest('[role="listitem"]')
           .findByLabelText("Ready")
           .should("be.visible");

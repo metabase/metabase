@@ -173,7 +173,7 @@
   "Name for the LLM-generated Automatic Insights document. Distinct from the
   user-owned 'Findings' doc that's auto-created at exploration time — that one
   is the user's working space and we never overwrite it."
-  "Automatic Insights")
+  "AI Summary")
 
 (defn placeholder-pm-doc
   "ProseMirror doc body shown while auto-insights generation is still running.
@@ -188,7 +188,7 @@
               :content [{:type "text" :text "Analysis underway…"}]}
              {:type    "paragraph"
               :content [{:type  "text"
-                         :text  "Automatic Insights is generating an analysis of this exploration. This page will update when it's ready."
+                         :text  (str "The" auto-doc-name "is generating. This page will update when it's ready.")
                          :marks [{:type "italic"}]}]}]})
 
 (defn create-placeholder-doc!
@@ -438,9 +438,9 @@
     {:type    "doc"
      :content (cond-> [{:type    "heading"
                         :attrs   {:level 2}
-                        :content [{:type "text" :text "Automatic Insights generation failed"}]}
+                        :content [{:type "text" :text (str auto-doc-name " generation failed")}]}
                        {:type    "paragraph"
-                        :content [{:type "text" :text "The system couldn't generate an analysis for this exploration. The failure happened in "}
+                        :content [{:type "text" :text "The failure happened in "}
                                   {:type  "text"
                                    :text  phase-label
                                    :marks [{:type "bold"}]}
@@ -465,7 +465,7 @@
                        :content [{:type "text" :text "Next steps"}]}
                       {:type    "paragraph"
                        :content [{:type "text"
-                                  :text (str "Re-running the exploration may succeed if this was a transient issue. To debug, run "
+                                  :text (str "Re-running may succeed if this was a transient issue. To debug, run "
                                              (format "(metabase.explorations.auto-insights/debug-transcript %d)" thread-id)
                                              " in a Clojure REPL — the persisted transcript contains both phase prompts, every LLM response, validation errors, and the extended-thinking trace.")}]}))}))
 
@@ -781,7 +781,7 @@
                           {:document     (error-doc {:phase        :uncaught
                                                      :thread-id    thread-id
                                                      :final-errors [(or (.getMessage e) (.toString e))]
-                                                     :detail       "Automatic Insights hit an unexpected error before it could produce a document. The transcript has the full stack trace."})
+                                                     :detail       "Unexpected error generating the document."})
                            :content_type prose-mirror/prose-mirror-content-type}))))
         (catch Throwable e2
           (log/warnf e2 "Failed to write error doc for thread %d after generate-auto-insights! failure" thread-id)))
