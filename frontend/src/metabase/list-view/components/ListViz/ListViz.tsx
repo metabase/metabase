@@ -21,6 +21,7 @@ import {
 import type {
   ColumnSettingDefinition,
   VisualizationDefinition,
+  VisualizationPassThroughProps,
   VisualizationProps,
 } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
@@ -264,7 +265,7 @@ export const ListViz = ({
   queryBuilderMode,
   isDashboard,
   onZoomRow,
-}: VisualizationProps) => {
+}: VisualizationProps & VisualizationPassThroughProps) => {
   const dispatch = useDispatch();
   const question = useSelector(getQuestion);
   const isShowingListViewConfiguration = useSelector(
