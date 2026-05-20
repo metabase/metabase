@@ -58,7 +58,7 @@
   :audit      :getter)
 
 (defsetting starrez-keep-versions
-  (deferred-tru "Number of past export files to retain per table in blob storage (0 = keep all)")
+  (deferred-tru "Number of unique StarRez CSV snapshots to retain per table or report in blob storage (0 = keep all unique snapshots)")
   :visibility :admin
   :type       :integer
   :default    5

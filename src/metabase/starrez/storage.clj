@@ -11,7 +11,9 @@
    [metabase.util.log :as log])
   (:import
    (java.io BufferedReader InputStreamReader)
-   (java.net HttpURLConnection URI URL URLEncoder)))
+   (java.math BigInteger)
+   (java.net HttpURLConnection URI URL URLEncoder)
+   (java.security MessageDigest)))
 
 (set! *warn-on-reflection* true)
 
@@ -85,7 +87,10 @@
 (defn- list-url
   "Full URL for listing blobs in the container with prefix filter."
   [{:keys [container-url sas-params]} prefix]
-  (let [params (cond-> (assoc sas-params "restype" "container" "comp" "list")
+  (let [params (cond-> (assoc sas-params
+                              "restype" "container"
+                              "comp" "list"
+                              "include" "metadata")
                  (seq prefix) (assoc "prefix" prefix))]
     (str container-url "?" (build-query-string params))))
 
@@ -104,17 +109,34 @@
           :content
           first))
 
+(defn- xml-child-element
+  "Return the first child element whose tag name equals `tag-str`."
+  [element tag-str]
+  (first (filter #(tag-name= % tag-str) (:content element))))
+
+(defn- parse-metadata-element
+  [metadata-elem]
+  (into {}
+        (for [child (:content metadata-elem)
+              :let [tag   (:tag child)
+                    k     (some-> (if (keyword? tag) (name tag) (str tag)) str/lower-case)
+                    value (first (:content child))]
+              :when tag]
+          [k value])))
+
 (defn- parse-blob-element
   "Parse a single <Blob> XML element into a plain map."
   [blob-elem]
-  (let [props (first (filter #(tag-name= % "Properties") (:content blob-elem)))]
+  (let [props    (xml-child-element blob-elem "Properties")
+        metadata (xml-child-element blob-elem "Metadata")]
     {:name          (xml-child-text blob-elem "Name")
      :last_modified (when props (xml-child-text props "Last-Modified"))
-     :size          (when props (xml-child-text props "Content-Length"))}))
+     :size          (when props (xml-child-text props "Content-Length"))
+     :metadata      (when metadata (parse-metadata-element metadata))}))
 
 (defn list-exports
   "List all StarRez export blobs (prefix starrez_) in the Azure container.
-  Returns a vector of {:name :last_modified :size} maps."
+  Returns a vector of {:name :last_modified :size :metadata} maps."
   [sas-url]
   (if (str/blank? sas-url)
     []
@@ -154,6 +176,12 @@
         (log/errorf e "Failed to download %s from blob storage" blob-name)
         nil))))
 
+(defn- sha-256
+  [^String content]
+  (let [digest (.digest (MessageDigest/getInstance "SHA-256")
+                        (.getBytes content "UTF-8"))]
+    (format "%064x" (BigInteger. 1 digest))))
+
 (defn upload-export
   "Upload `content` (CSV string) as `blob-name` to Azure Blob Storage.
   Returns true on success."
@@ -166,9 +194,11 @@
       (let [parsed  (parse-sas-url sas-url)
             url     (blob-url parsed blob-name)
             payload (.getBytes content "UTF-8")
+            content-sha (sha-256 content)
             resp    (raw-http-request
                      "PUT" url
                      {:headers {"x-ms-blob-type" "BlockBlob"
+                                "x-ms-meta-content_sha256" content-sha
                                 "Content-Type"   "text/csv; charset=utf-8"
                                 "Content-Length" (str (alength payload))}
                       :body    payload})]
@@ -198,19 +228,46 @@
         (log/errorf e "Failed to delete %s from blob storage" blob-name)
         false))))
 
+(defn- content-sha
+  [blob]
+  (get-in blob [:metadata "content_sha256"]))
+
+(defn- distinct-version-key
+  [{blob-name :name :as blob}]
+  (if-let [sha (content-sha blob)]
+    [:content-sha sha]
+    [:blob-name blob-name]))
+
 (defn cleanup-old-exports
-  "Delete excess blobs for `table-name`, keeping only the `keep-n` most recent.
-  Does nothing when `keep-n` is zero (keep all)."
+  "Delete duplicate and excess blobs for `table-name`.
+  Keeps the newest blob for each unique CSV content hash from blob metadata.
+  When `keep-n` is positive, keeps only the `keep-n` newest distinct versions.
+  When `keep-n` is zero, keeps all distinct versions."
   [sas-url table-name keep-n]
-  (when (pos? keep-n)
-    (let [prefix      (str "starrez_" table-name "_")
-          all-exports (list-exports sas-url)
-          table-blobs (->> all-exports
-                           (filter #(some-> (:name %) (str/starts-with? prefix)))
-                           (sort-by :name)   ; ISO timestamps are lexicographically ordered
-                           reverse)
-          to-delete   (drop keep-n table-blobs)]
-      (doseq [{blob-name :name} to-delete]
-        (when blob-name
-          (log/infof "Deleting old export: %s" blob-name)
-          (delete-export sas-url blob-name))))))
+  (let [keep-n      (or keep-n 0)
+        prefix      (str "starrez_" table-name "_")
+        all-exports (list-exports sas-url)
+        table-blobs (->> all-exports
+                         (filter #(some-> (:name %) (str/starts-with? prefix)))
+                         (sort-by :name)   ; ISO timestamps are lexicographically ordered
+                         reverse)]
+    (loop [[{blob-name :name :as blob} & remaining] table-blobs
+           seen-hashes #{}
+           kept-count  0]
+      (when blob
+        (let [content-id (distinct-version-key blob)
+              duplicate? (and (= :content-sha (first content-id))
+                              (contains? seen-hashes content-id))
+              over-limit? (and (pos? keep-n)
+                               (not duplicate?)
+                               (>= kept-count keep-n))]
+          (if (or duplicate? over-limit?)
+            (do
+              (log/infof "Deleting %s StarRez export: %s"
+                         (if duplicate? "duplicate" "old")
+                         blob-name)
+              (delete-export sas-url blob-name)
+              (recur remaining seen-hashes kept-count))
+            (recur remaining
+                   (cond-> seen-hashes content-id (conj content-id))
+                   (inc kept-count))))))))
