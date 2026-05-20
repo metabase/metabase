@@ -152,5 +152,5 @@ Use the following options for the y-axis:
 ## Limitations and alternatives
 
 - If you only have one numeric value to plot, or if you want to show how a value changes over time, consider a [bar chart, histogram, or line chart](./line-bar-and-area-charts.md) instead.
-- Scatterplots can become hard to read with very large datasets because of overlapping dots. For large datasets, consider aggregating your data or using a [heat map](./pivot-table.md#using-pivot-tables-as-heatmaps) instead.
+- Scatterplots can become hard to read with very large datasets because of overlapping dots. For large datasets, consider aggregating your data, or using a [heat map](./pivot-table.md#using-pivot-tables-as-heatmaps) or [box plot](./box-plot.md) instead.
 - You can't set [alerts](../alerts.md) on goal lines in scatterplots or bubble charts.
