@@ -122,13 +122,14 @@
   nil)
 
 (defn- resolve-connection-type
-  "Resolution rule from `*connection-type*` (+ already-resolved `write-details`) to the effective
-  pool key. Centralized so [[effective-details]] and [[effective-connection-type]] cannot drift."
-  [write-details]
+  "Resolution rule mapping a requested `connection-type` plus already-resolved `write-details`
+  (truthy iff write-data is both requested and configured) to the effective pool key.
+  Pure function — caller is responsible for passing `*connection-type*` if that's the source."
+  [connection-type write-details]
   (cond
-    (= *connection-type* :transform) :transform
-    write-details                    :write-data
-    :else                            :default))
+    (= connection-type :transform) :transform
+    write-details                  :write-data
+    :else                          :default))
 
 (defn effective-details
   "Returns the connection details map appropriate for the current context.
@@ -153,7 +154,7 @@
         (try (analytics/inc! :metabase-db-connection/type-resolved {:connection-type "write-data"})
              (catch Exception _ nil)))
       (-> (driver.w/maybe-swap-details (:id database) base)
-          (assoc ::effective-connection-type (resolve-connection-type write-details))
+          (assoc ::effective-connection-type (resolve-connection-type *connection-type* write-details))
           (assoc ::database-id (u/id database))))))
 
 (defn details-for-exact-type
@@ -185,7 +186,7 @@
   [database]
   (let [write-details (when (= *connection-type* :write-data)
                         (database-write-data-details (driver.u/ensure-lib-database database)))]
-    (resolve-connection-type write-details)))
+    (resolve-connection-type *connection-type* write-details)))
 
 (defn track-connection-acquisition!
   "Increments a Prometheus counter tracking connection acquisitions by connection type
