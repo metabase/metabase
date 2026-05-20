@@ -45,11 +45,13 @@
   "Find a `metabase-plugin.yaml` entry in a JAR, checking both the root and `metabase/<driver>/` paths."
   [^String jar-path]
   (with-open [zip-file (ZipFile. jar-path)]
-    (first
-     (filter
-      (fn [^ZipEntry zip-entry]
-        (re-matches #"(metabase/[^/]+/)?metabase-plugin\.yaml" (str zip-entry)))
-      (enumeration-seq (.entries zip-file))))))
+    (let [manifests (filter
+                     (fn [^ZipEntry zip-entry]
+                       (re-matches #"(metabase/[^/]+/)?metabase-plugin\.yaml" (str zip-entry)))
+                     (enumeration-seq (.entries zip-file)))]
+      (when (> (count manifests) 1)
+        (throw (ex-info "Driver verification failed: multiple metabase-plugin.yaml files found in JAR")))
+      (first manifests))))
 
 (defn- verify-has-plugin-manifest [driver]
   (let [jar-filename (c/driver-jar-destination-path driver)]

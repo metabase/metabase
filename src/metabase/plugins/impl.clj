@@ -72,19 +72,27 @@
   (classloader/add-url-to-classpath! (-> jar-path .toUri .toURL)))
 
 (defn- slurp-plugin-manifest-from-archive
-  "Find and read `metabase-plugin.yaml` from a JAR archive. Searches both the JAR root and
-  `metabase/<driver>/metabase-plugin.yaml` to support both legacy and new driver resource layouts."
+  "Find and read `metabase-plugin.yaml` from a JAR archive. Prefers `metabase/<driver>/metabase-plugin.yaml`
+  over a legacy root-level manifest. Logs a warning if multiple manifests are found."
   ^String [^Path jar-path]
   (with-open [fs (FileSystems/newFileSystem jar-path (ClassLoader/getSystemClassLoader))]
-    (let [matcher (.getPathMatcher fs "glob:**/metabase-plugin.yaml")
-          root    (.getPath fs "/" (make-array String 0))]
+    (let [all-matcher (.getPathMatcher fs "glob:**/metabase-plugin.yaml")
+          root        (.getPath fs "/" (make-array String 0))]
       (with-open [stream (Files/walk root 3 (make-array FileVisitOption 0))]
-        (when-let [^Path match (-> stream
-                                   (.filter (reify java.util.function.Predicate
-                                              (test [_ p] (.matches matcher ^Path p))))
-                                   (.findFirst)
-                                   (.orElse nil))]
-          (String. (Files/readAllBytes match)))))))
+        (let [all-manifests (-> stream
+                                (.filter (reify java.util.function.Predicate
+                                           (test [_ p] (.matches all-matcher ^Path p))))
+                                (.collect (java.util.stream.Collectors/toList)))]
+          (when (> (count all-manifests) 1)
+            (log/warnf "Found %d metabase-plugin.yaml files in %s: %s"
+                       (count all-manifests)
+                       (.getFileName jar-path)
+                       (str/join ", " (map str all-manifests))))
+          (let [nested-matcher (.getPathMatcher fs "glob:/metabase/*/metabase-plugin.yaml")
+                ^Path manifest (or (first (filter #(.matches nested-matcher ^Path %) all-manifests))
+                                   (first all-manifests))]
+            (when manifest
+              (String. (Files/readAllBytes manifest)))))))))
 
 (defn- plugin-info [^Path jar-path]
   (some-> (slurp-plugin-manifest-from-archive jar-path)
