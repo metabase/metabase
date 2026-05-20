@@ -1872,3 +1872,37 @@
                  Exception
                  #"source-only-db|not found|Failed"
                  (serdes.load/load-metabase! (ingestion-in-memory @serialized))))))))))
+
+(deftest table-created-by-transform-load-test
+  (testing "Table created by a Transform can be imported via serialization (GDGT-2444)"
+    (mt/with-premium-features #{:transforms-basic}
+      (let [serialized (atom nil)]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (t2/delete! :model/TransformTag)
+            (let [db        (ts/create! :model/Database :name "my-db")
+                  transform (ts/create! :model/Transform
+                                        :name "Hello Transform"
+                                        :source {:query {:database (:id db)
+                                                         :type "native"
+                                                         :native {:query "select 'hello' message"}}
+                                                 :type "query"}
+                                        :target {:database (:id db)
+                                                 :type "table"
+                                                 :schema "public"
+                                                 :name "hello_transforms_world"})]
+              (ts/create! :model/Table
+                          :name "hello_transforms_world"
+                          :db_id (:id db)
+                          :schema "public"
+                          :transform_id (:id transform))
+              (reset! serialized (into [] (serdes.extract/extract {})))))
+
+          (ts/with-db dest-db
+            (t2/delete! :model/TransformTag)
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (let [transform (t2/select-one :model/Transform :name "Hello Transform")
+                  table     (t2/select-one :model/Table :name "hello_transforms_world")]
+              (is (some? transform))
+              (is (some? table))
+              (is (= (:id transform) (:transform_id table))))))))))
