@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import type { ExplorationMetric } from "metabase/explorations/types";
+import * as LibMetric from "metabase-lib/metric/core";
 import { COORDINATE, LOCATION } from "metabase-lib/v1/types/constants";
 import {
   isBoolean,
@@ -147,35 +148,21 @@ export function groupDimensionsBySemanticType(
   return rows;
 }
 
-/**
- * TODO: this relies on the assumption that each dimension has exactly one source which isn't future proof
- * we should expose a method in LibMetric to do this safely
- * also, should we be reaching into MetricDimension internals like this?
- */
-export function groupDimensionsBySource(dimensions: MetricDimension[]) {
-  const fieldIdToDimensions = new Map<number, MetricDimension[]>();
+export function groupDimensionsBySource(
+  dimensions: MetricDimension[],
+): DimensionPillGroup[] {
+  const dimensionMetadatas = dimensions.map(LibMetric.fromMetricDimension);
+  const groupedDimensionMetadatas =
+    LibMetric.groupDimensionsBySource(dimensionMetadatas);
 
-  for (const dimension of dimensions) {
-    const fieldId = dimension.sources?.[0]?.["field-id"];
-    if (!fieldId) {
-      continue;
-    }
-    const existing = fieldIdToDimensions.get(fieldId);
-    if (existing) {
-      existing.push(dimension);
-    } else {
-      fieldIdToDimensions.set(fieldId, [dimension]);
-    }
-  }
-
-  return Array.from(fieldIdToDimensions.values()).map((dimensions) => {
-    const head = dimensions[0];
+  return groupedDimensionMetadatas.map((group) => {
+    const head = LibMetric.toMetricDimension(group[0]);
     return {
       id: head.id,
       name: head.group?.display_name
         ? `${head.group.display_name} → ${head.display_name}`
         : head.display_name,
-      dimensions,
+      dimensions: group.map(LibMetric.toMetricDimension),
     };
   });
 }

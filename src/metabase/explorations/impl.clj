@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.metrics.core :as metrics]
    [metabase.queries.models.card :as card]
@@ -74,16 +75,6 @@
       dn
       (str group-dn " - " dn))))
 
-(defn- uf-find [parent i]
-  (loop [i i]
-    (let [p (get parent i)]
-      (if (= p i) i (recur p)))))
-
-(defn- uf-union [parent a b]
-  (let [ra (uf-find parent a)
-        rb (uf-find parent b)]
-    (if (= ra rb) parent (assoc parent ra rb))))
-
 (defn- group-dimensions
   "Collapse dimensions across the supplied metrics into a list of dimension groups. Dimensions that
    share at least one source entry are unioned into the same group (matching the semantics of
@@ -92,55 +83,25 @@
    `POST /api/exploration` when the user starts an exploration."
   [metrics]
   (let [;; Flatten + filter once. Keep dims whose interestingness is nil (didn't score) or above
-        ;; the threshold. Also dedupe by :id within the same source group later.
+        ;; the threshold
         all-dims (->> (mapcat :dimensions metrics)
                       (filter (fn [d]
                                 (let [score (:dimension_interestingness d)]
                                   (or (nil? score)
                                       (>= score min-interestingness))))))
-        n        (count all-dims)
-        idx-dims (vec all-dims)
-        ;; Build initial union-find: each dim is its own root.
-        init     (vec (range n))
-        ;; For every distinct source entry, union all dim indices that mention that source.
-        source->idxs (reduce (fn [acc i]
-                               (reduce (fn [acc src]
-                                         (update acc src (fnil conj []) i))
-                                       acc
-                                       (:sources (idx-dims i))))
-                             {}
-                             (range n))
-        parent       (reduce (fn [parent idxs]
-                               (if (< (count idxs) 2)
-                                 parent
-                                 (let [a (first idxs)]
-                                   (reduce (fn [p b] (uf-union p a b)) parent (rest idxs)))))
-                             init
-                             (vals source->idxs))
-        ;; Resolve final root for each dim and collect into buckets, deduping by dim :id.
-        buckets (reduce (fn [acc i]
-                          (let [r (uf-find parent i)
-                                d (idx-dims i)
-                                seen (get-in acc [r :seen] #{})]
-                            (if (contains? seen (:id d))
-                              acc
-                              (-> acc
-                                  (update-in [r :seen] (fnil conj #{}) (:id d))
-                                  (update-in [r :dims] (fnil conj []) d)))))
-                        {}
-                        (range n))
-        groups  (mapv (fn [{:keys [dims]}]
-                        (let [head   (first dims)
-                              scores (keep :dimension_interestingness dims)]
-                          {:name                      (dimension-display-name head)
-                           :dimension_interestingness (when (seq scores) (apply max scores))
-                           :dimensions                (vec dims)}))
-                      (vals buckets))]
-    (vec (sort-by (fn [g]
+        groups   (lib-metric/group-by-source all-dims)]
+    (->> groups
+         (mapv (fn [dims]
+                 (let [head   (first dims)
+                       scores (keep :dimension_interestingness dims)]
+                   {:name                      (dimension-display-name head)
+                    :dimension_interestingness (when (seq scores) (apply max scores))
+                    :dimensions                (vec dims)})))
+         (sort-by (fn [g]
                     (if-let [score (:dimension_interestingness g)]
                       [0 (- score)]
-                      [1 0]))
-                  groups))))
+                      [1 0])))
+         vec)))
 
 (defn- accessible-metric-ids
   "Card ids the current user can read, ordered with library-metrics collections first

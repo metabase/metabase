@@ -65,6 +65,7 @@
      extract-persisted-dimensions
      get-persisted-dimension-mappings
      get-persisted-dimensions
+     group-by-source
      mappings-changed?
      reconcile-dimensions-and-mappings
      resolve-dimension-to-field-id
