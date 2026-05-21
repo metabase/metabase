@@ -1,0 +1,71 @@
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
+import type {
+  OnBeforeRequestHandler,
+  OnBeforeRequestHandlerConfig,
+} from "metabase/plugins/oss/api";
+
+export async function apiRequestManipulationMiddleware(
+  beforeRequestHandlers: OnBeforeRequestHandler[],
+  requestConfig: OnBeforeRequestHandlerConfig,
+): Promise<OnBeforeRequestHandlerConfig> {
+  /**
+   * Handlers order is important.
+   * Handlers are executed in order and each handler uses the data returned by a previous handler.
+   */
+  const handlers = [...getDefaultHandlers(), ...beforeRequestHandlers];
+
+  let result = requestConfig;
+  for (const handler of handlers) {
+    const next = await handler(result);
+    if (next) {
+      result = merge(result, next);
+    }
+  }
+
+  return result;
+}
+
+function getDefaultHandlers() {
+  if (isEmbeddingSdk()) {
+    return [
+      PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler,
+      PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
+        .getOrRefreshGuestSessionHandler,
+      PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
+        .overrideRequestsForGuestEmbeds,
+    ];
+  }
+  return [
+    PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds,
+    PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForStaticEmbeds,
+  ];
+}
+
+function merge(
+  prev: OnBeforeRequestHandlerConfig,
+  next: Partial<OnBeforeRequestHandlerConfig>,
+) {
+  const result = { ...prev };
+
+  if (next?.method) {
+    result.method = next.method;
+  }
+  if (next?.url) {
+    result.url = next.url;
+  }
+  if (next?.options) {
+    result.options = {
+      ...result.options,
+      ...next.options,
+    };
+  }
+  if (next?.data) {
+    result.data = {
+      ...result.data,
+      ...next.data,
+    };
+  }
+
+  return result;
+}

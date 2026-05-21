@@ -12,7 +12,7 @@ export type OnBeforeRequestHandlerConfig = {
 
 export type OnBeforeRequestHandler = (
   data: OnBeforeRequestHandlerConfig,
-) => Promise<void | OnBeforeRequestHandlerConfig>;
+) => Promise<void | Partial<OnBeforeRequestHandlerConfig>>;
 
 const getDefaultPluginApi = () => ({
   onBeforeRequestHandlers: {

@@ -2,17 +2,14 @@
 import EventEmitter from "events";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-import type {
-  OnBeforeRequestHandler,
-  OnBeforeRequestHandlerConfig,
-} from "metabase/plugins/oss/api";
+import type { OnBeforeRequestHandler } from "metabase/plugins/oss/api";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 import { getTraceparentHeader } from "metabase/utils/otel";
 import { retry } from "metabase/utils/retry";
 
 import { getLocaleHeader } from "./locale";
 import { type RequestMethod, isRequestMethod } from "./method";
+import { apiRequestManipulationMiddleware } from "./middleware";
 import {
   appendQueryParameters,
   getBasenamePath,
@@ -175,17 +172,20 @@ export class ApiClient extends EventEmitter {
       }
 
       return async (rawData = {}, invocationOptions = {}) => {
-        const middlewareResult = await this.apiRequestManipulationMiddleware({
-          url: urlTemplate,
-          method: methodTemplate,
-          options: {
-            ...methodOptions,
-            ...invocationOptions,
+        const middlewareResult = await apiRequestManipulationMiddleware(
+          this.beforeRequestHandlers,
+          {
+            url: urlTemplate,
+            method: methodTemplate,
+            options: {
+              ...methodOptions,
+              ...invocationOptions,
+            },
+            // this will transform arrays to objects with numeric keys
+            // we shouldn't be using top level-arrays in the API
+            data: { ...rawData },
           },
-          // this will transform arrays to objects with numeric keys
-          // we shouldn't be using top level-arrays in the API
-          data: { ...rawData },
-        });
+        );
 
         const { method, data } = middlewareResult;
         const options = {
@@ -248,12 +248,15 @@ export class ApiClient extends EventEmitter {
       throw new Error("API bodies must be plain objects, not arrays");
     }
 
-    const middlewareResult = await this.apiRequestManipulationMiddleware({
-      url: urlTemplate,
-      method: methodTemplate,
-      options: invocationOptions,
-      data: { ...params },
-    });
+    const middlewareResult = await apiRequestManipulationMiddleware(
+      this.beforeRequestHandlers,
+      {
+        url: urlTemplate,
+        method: methodTemplate,
+        options: invocationOptions,
+        data: { ...params },
+      },
+    );
 
     const { method, data } = middlewareResult;
     const options = {
@@ -372,81 +375,6 @@ export class ApiClient extends EventEmitter {
       }
       throw error;
     }
-  }
-
-  async apiRequestManipulationMiddleware(
-    requestConfig: OnBeforeRequestHandlerConfig,
-  ): Promise<OnBeforeRequestHandlerConfig> {
-    let { method, url, options, data } = requestConfig;
-
-    /**
-     * Handlers order is important.
-     * Handlers are executed in order and each handler uses the data returned by a previous handler.
-     */
-    const handlers: Array<
-      (
-        data: OnBeforeRequestHandlerConfig,
-      ) => Promise<void | OnBeforeRequestHandlerConfig>
-    > = [];
-
-    if (isEmbeddingSdk()) {
-      handlers.push(
-        ...[
-          PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
-            .getOrRefreshSessionHandler,
-          PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
-            .getOrRefreshGuestSessionHandler,
-          PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
-            .overrideRequestsForGuestEmbeds,
-        ],
-      );
-    } else {
-      handlers.push(
-        ...[
-          PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds,
-          PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForStaticEmbeds,
-        ],
-      );
-    }
-
-    handlers.push(...this.beforeRequestHandlers);
-
-    if (handlers.length) {
-      for (const handler of handlers) {
-        const onBeforeRequestHandlerResult = await handler({
-          method,
-          url,
-          options,
-          data,
-        });
-
-        if (onBeforeRequestHandlerResult) {
-          if (onBeforeRequestHandlerResult.method) {
-            method = onBeforeRequestHandlerResult.method;
-          }
-
-          if (onBeforeRequestHandlerResult.url) {
-            url = onBeforeRequestHandlerResult.url;
-          }
-
-          if (onBeforeRequestHandlerResult.options) {
-            options = {
-              ...options,
-              ...onBeforeRequestHandlerResult.options,
-            };
-          }
-
-          if (onBeforeRequestHandlerResult.data) {
-            data = {
-              ...data,
-              ...onBeforeRequestHandlerResult.data,
-            };
-          }
-        }
-      }
-    }
-
-    return { method, url, options, data };
   }
 }
 
