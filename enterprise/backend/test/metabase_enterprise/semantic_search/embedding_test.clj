@@ -14,6 +14,7 @@
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
@@ -174,9 +175,8 @@
           (is (thrown? Exception (decode [{:embedding invalid-base64}]))))))))
 
 (deftest test-get-embedding
-  (mt/with-temporary-setting-values [llm-openai-api-key              "sk-mock-openai-api-key"
-                                     ee-embedding-service-base-url  "http://mock-embedding-service"
-                                     ee-embedding-service-api-key   "mock-embedding-service-key"]
+  (mt/with-temporary-setting-values [llm-openai-api-key             "sk-mock-openai-api-key"
+                                     ee-embedding-service-base-url "http://mock-embedding-service"]
     (let [mock-embedding  [1.0 2.0 3.0 4.0]
           openai-response {:data  [{:object    "embedding"
                                     :embedding (encode-floats-to-base64 mock-embedding)
@@ -200,6 +200,7 @@
 
         (mt/with-dynamic-fn-redefs [analytics/inc! (fn [metric & args]
                                                      (swap! analytics-calls conj [metric args]))
+                                    premium-features/premium-embedding-token (constantly "mock-token")
                                     http/post (fn post-mock [_url & _options]
                                                 {:status  200
                                                  :headers {"Content-Type" "application/json"}
@@ -237,21 +238,21 @@
                                      :model-name "test-model"
                                      :vector-dimensions 4}
                                     "test text")))))
-  (testing "ai-service throws when API key not configured"
-    (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://localhost:1234"
-                                       ee-embedding-service-api-key  nil]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Embedding service API key not configured"
-           (embedding/get-embedding {:provider "ai-service"
-                                     :model-name "test-model"
-                                     :vector-dimensions 4}
-                                    "test text"))))))
+  (testing "ai-service throws when premium-embedding-token is not set"
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://localhost:1234"]
+      (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly nil)]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Missing premium embedding token not set"
+             (embedding/get-embedding {:provider "ai-service"
+                                       :model-name "test-model"
+                                       :vector-dimensions 4}
+                                      "test text"
+                                      {:record-tokens? false})))))))
 
 (deftest test-embedding-service-snowplow-tracking
   (testing "ai-service fires a Snowplow token_usage event on each batch call"
-    (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://mock-embedding-service"
-                                       ee-embedding-service-api-key  "mock-key"]
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://mock-embedding-service"]
       (let [mock-response {:data  [{:object    "embedding"
                                     :embedding (encode-floats-to-base64 [1.0 2.0 3.0])
                                     :index     0}]
@@ -259,7 +260,8 @@
                            :usage {:prompt_tokens 5
                                    :total_tokens  5}}]
         (snowplow-test/with-fake-snowplow-collector
-          (mt/with-dynamic-fn-redefs [http/post (fn [_url & _opts]
+          (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "mock-token")
+                                      http/post (fn [_url & _opts]
                                                   {:status  200
                                                    :headers {"Content-Type" "application/json"}
                                                    :body    (json/encode mock-response)})]
@@ -290,12 +292,12 @@
                                :model "some-model"
                                :usage {:prompt_tokens 1
                                        :total_tokens 13}}]
-            (with-redefs [semantic.settings/ee-embedding-provider           (constantly provider)
-                          semantic.settings/ee-embedding-model              (constantly "mock-model")
-                          semantic.settings/openai-api-key                  (constantly "xyz")
-                          semantic.settings/openai-api-base-url             (constantly "xyz")
-                          semantic.settings/ee-embedding-service-base-url   (constantly "http://mock-embedding-service")
-                          semantic.settings/ee-embedding-service-api-key    (constantly "mock-key")
+            (with-redefs [semantic.settings/ee-embedding-provider          (constantly provider)
+                          semantic.settings/ee-embedding-model             (constantly "mock-model")
+                          semantic.settings/openai-api-key                 (constantly "xyz")
+                          semantic.settings/openai-api-base-url            (constantly "xyz")
+                          semantic.settings/ee-embedding-service-base-url  (constantly "http://mock-embedding-service")
+                          premium-features/premium-embedding-token         (constantly "mock-token")
                           http/post (fn post-mock [_url & _options]
                                       {:status 200
                                        :headers {"Content-Type" "application/json"}
