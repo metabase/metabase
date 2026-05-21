@@ -96,7 +96,9 @@
   (-> malli tools-manifest/malli->json-schema tools-manifest/strict-tool-input-schema))
 
 (defn- apply-schema-overrides
-  "Replace `:inputSchema`/`:outputSchema` on tools whose MCP-visible shape differs from the wire shape."
+  "Replace `:inputSchema`/`:outputSchema` on tools whose MCP-visible shape differs from the wire shape.
+   The `overrides-cover-known-tools-test` test asserts every key here matches a real tool name; a
+   misspelled or drifted key would otherwise silently no-op and leave the wire shape published."
   [tools]
   (mapv (fn [{tool-name :name :as tool}]
           (cond-> tool

@@ -6,6 +6,38 @@
    [metabase.util.malli.registry :as mr])
   (:import (clojure.lang ExceptionInfo)))
 
+(deftest ^:parallel assert-optional-fields-nullable!-test
+  (testing "no throw when every :optional field is also nullable via [:maybe ...]"
+    (is (some? (tools-manifest/assert-optional-fields-nullable!
+                [:map [:foo {:optional true} [:maybe :string]]] "ok-tool"))))
+  (testing "no throw when there are no :optional fields"
+    (is (some? (tools-manifest/assert-optional-fields-nullable!
+                [:map [:foo :string] [:bar :int]] "no-optional-tool")))
+    (is (nil? (tools-manifest/assert-optional-fields-nullable! nil "nil-schema-tool"))))
+  (testing "throws when an :optional field rejects nil"
+    (let [ex (try (tools-manifest/assert-optional-fields-nullable!
+                   [:map [:foo {:optional true} :string]] "bad-tool")
+                  (catch ExceptionInfo e e))]
+      (is (instance? ExceptionInfo ex))
+      (is (= "bad-tool" (-> ex ex-data :tool)))
+      (is (= :foo (-> ex ex-data :field)))))
+  (testing "walks composites — `:or` of maps catches the offender inside a branch"
+    (let [schema [:or
+                  [:map [:foo :string]]
+                  [:map [:bar {:optional true} :int]]]
+          ex    (try (tools-manifest/assert-optional-fields-nullable! schema "or-tool")
+                     (catch ExceptionInfo e e))]
+      (is (instance? ExceptionInfo ex))
+      (is (= :bar (-> ex ex-data :field)))))
+  (testing "walks into nested map properties"
+    (let [schema [:map
+                  [:outer [:map
+                           [:inner {:optional true} :int]]]]
+          ex    (try (tools-manifest/assert-optional-fields-nullable! schema "nested-tool")
+                     (catch ExceptionInfo e e))]
+      (is (instance? ExceptionInfo ex))
+      (is (= :inner (-> ex ex-data :field))))))
+
 (deftest ^:parallel infer-annotations-test
   (testing "GET defaults"
     (is (= {:annotations {:readOnlyHint true :idempotentHint true :destructiveHint false :openWorldHint false}
@@ -25,7 +57,7 @@
            (tools-manifest/infer-annotations :post nil)))
     (is (= {:destructive? false}
            (:redundant (tools-manifest/infer-annotations :post {:destructive? false})))))
-  (testing "destructiveHint is dropped from output when readOnlyHint is true (per MCP spec it's only meaningful for non-read-only tools), then re-added as false by the required-hint defaults"
+  (testing "POST's method defaults carry destructiveHint false / openWorldHint false; explicit :read-only? true is merged on top"
     (is (= {:readOnlyHint true :destructiveHint false :openWorldHint false}
            (:annotations (tools-manifest/infer-annotations :post {:read-only? true})))))
   (testing "Flags :contradictory? when readOnlyHint and destructiveHint would both be true before the cleanup"

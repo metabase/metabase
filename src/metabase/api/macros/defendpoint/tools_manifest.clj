@@ -243,9 +243,11 @@
 
 (defn assert-optional-fields-nullable!
   "Throw if any optional field reachable from `malli-schema` rejects an explicit null.
-   The strict-tool transform forces every property into `:required`, so an optional field that isn't
-   `[:maybe ...]` would publish a schema that allows null but be rejected by Malli validation at the endpoint.
-   The fix is at the schema definition: pair `:optional true` with `[:maybe ...]`."
+   The strict-tool transform forces every property into `:required` (it does not widen property types),
+   so the only way for a strict MCP client to express \"no value\" is by sending null. If the Malli source
+   marks a field `:optional true` without `[:maybe ...]`, the published JSON Schema is required-and-non-
+   nullable — the `:optional` marker has no observable effect and the contract drifts from what the
+   schema says. The fix is at the schema definition: pair `:optional true` with `[:maybe ...]`."
   [malli-schema tool-name]
   (when malli-schema
     (mc/walk
@@ -257,7 +259,8 @@
                             (not (nullable-malli? value-schema)))]
            (throw (ex-info (str "Tool " tool-name " input has optional non-nullable field "
                                 (pr-str k) ". Mark it `[:maybe ...]` so the published JSON "
-                                "Schema is already nullable and Malli accepts explicit nulls.")
+                                "Schema is nullable; otherwise `:optional` has no observable effect "
+                                "under the strict-tool transform.")
                            {:tool tool-name :field k}))))
        schema))))
 
