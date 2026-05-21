@@ -9,6 +9,7 @@
    [metabase-enterprise.serialization.v2.round-trip-test :as round-trip-test]
    [metabase.actions.models :as action]
    [metabase.audit-app.core :as audit]
+   [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -2819,3 +2820,20 @@
         (let [ser (ts/extract-one "Channel" http-id)]
           (is (= [{:label "channels"} {:label "HTTP Channel" :key "HTTP Channel"}]
                  (serdes/storage-path ser {}))))))))
+
+(deftest stamp-metabase-version-test
+  (testing "extract stamps :metabase_version on entities (so load can detect version mismatches)"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Collection {coll-id :id} {:name "My Collection"}
+                         :model/Card       _             {:name "My Card" :collection_id coll-id}]
+        (let [extracted (into [] (extract/extract {}))
+              by-model  (group-by (comp :model last :serdes/meta) extracted)]
+          (testing "Collections and Cards get the current Metabase version"
+            (doseq [m ["Collection" "Card"]
+                    entity (get by-model m)]
+              (is (= config/mb-version-string (:metabase_version entity))
+                  (str m " should be stamped with the current version"))))
+          (testing "Settings are not stamped — settings.yaml only persists :key and :value"
+            (doseq [setting (get by-model "Setting")]
+              (is (not (contains? setting :metabase_version))
+                  "Setting should not be stamped"))))))))
