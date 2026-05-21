@@ -133,7 +133,10 @@
                          e))]
               (is (some? ex) "Expected an exception to be thrown")
               (when ex
-                (let [data (ex-data (ex-cause ex))]
+                (testing "outer wrapper preserves the rich ex-data from check-response!"
+                  (is (=? {:error-code :ai-service-error :status 500} (ex-data ex))
+                      "downstream readers shouldn't need to walk ex-cause to find the structured fields"))
+                (doseq [data [(ex-data ex) (ex-data (ex-cause ex))]]
                   (is (not (contains? (:request data) :headers))
                       "Exception data should not contain :headers in request")
                   (is (not (contains? (:response data) :headers))

@@ -82,14 +82,12 @@
   (str (metabot-v3.settings/ai-service-base-url) path))
 
 (def ^:private max-body-preview-chars
-  "Cap on the size of the response-body snippet we splice into the *exception message*.
-   The full body is still logged in full via `log/warn` and stashed in `ex-data`."
+  "Cap on the body snippet spliced into the exception message; the full body is still logged and in ex-data."
   500)
 
 (defn- coerce-body
-  "Read a response body into a printable value, slurping `InputStream` bodies (the streaming
-   endpoint case) so they survive into logs and ex-data. Returns `nil` when the body is
-   empty or unreadable."
+  "Read a response body into a printable value, slurping `InputStream` bodies so they survive into logs and
+  ex-data. Returns `nil` when the body is empty or unreadable."
   [body]
   (try
     (cond
@@ -99,19 +97,22 @@
     (catch Throwable _ nil)))
 
 (defn- body-preview
-  "Build a short, human-readable snippet of an already-coerced response body for the
-   exception message. Pulls the upstream error message out of JSON envelopes when one
-   of `:error`/`:detail`/`:message` is present. Returns `nil` for structured maps
-   without a recognised human-readable field — the full body is still logged and
-   carried in `ex-data`, so users don't see raw `{:request-id ...}` blobs."
+  "Short snippet of an already-coerced response body for the user-facing exception message.
+  Pulls the upstream error string out of JSON envelopes — both `{:error {:message ...}}` and top-level
+  `:error`/`:detail`/`:message`.
+  Returns nil for shapes with no recognised human-readable field — the full body still lives in the log line
+  and `ex-data`, so users don't see raw `{:request-id ...}` blobs."
   [body]
   (let [s (cond
             (nil? body)    nil
             (string? body) body
-            (map? body)    (some-> (or (:error body) (:detail body) (:message body))
+            (map? body)    (some-> (or (get-in body [:error :message])
+                                       (:error body)
+                                       (:detail body)
+                                       (:message body))
                                    str
                                    not-empty)
-            :else          (pr-str body))]
+            :else          nil)]
     (when-let [trimmed (some-> s str/trim not-empty)]
       (if (<= (count trimmed) max-body-preview-chars)
         trimmed
@@ -119,13 +120,9 @@
 
 (defn- check-response!
   "Return the response body on success (HTTP 200 or 202); throw on failure.
-
-   On failure, builds an error message that includes the upstream status, reason
-   phrase, and a truncated preview of the response body (when a human-readable
-   one can be extracted), and emits a `log/warnf` line with the *full* response
-   body so engineers can correlate with AI-service logs without reconstructing it
-   from the stacktrace. The full (slurped) body also survives into `ex-data` for
-   downstream callers."
+  On failure the exception message includes a truncated preview of the response body when one can be
+  extracted, a `log/warnf` emits the *full* body alongside status and url, and the slurped body lives in
+  `ex-data` for downstream callers."
   [response request]
   (if (#{200 202} (:status response))
     (:body response)
@@ -150,6 +147,30 @@
                        ;; and other internals we don't want in ex-data / Sentry payloads.
                        :response   (-> (select-keys response [:status :reason-phrase])
                                        (assoc :body body))})))))
+
+(defn- rethrow-with-context!
+  "Log a request-level failure with the throwable (so the stacktrace is captured) and rethrow with a
+  `label`-prefixed message.
+  Preserves the original `ex-data` so downstream handlers see the `:error-code :ai-service-error` fields
+  built up in `check-response!` — without this they'd see only the wrapper's empty map and have to walk
+  `(ex-cause ...)`."
+  [label ^Throwable e]
+  (let [{:keys [error-code status body]} (ex-data e)
+        msg (ex-message e)]
+    (cond
+      (= error-code :ai-service-error)
+      (log/errorf e "%s: HTTP %s body=%s" label status (pr-str body))
+
+      ;; ex-message can be nil/blank for exceptions thrown without a message
+      ;; (e.g. `(NullPointerException.)`) — skip the colon when there's nothing to say.
+      (str/blank? msg)
+      (log/error e label)
+
+      :else
+      (log/errorf e "%s: %s" label msg))
+    (throw (ex-info (format "%s: %s" label msg)
+                    (or (ex-data e) {})
+                    e))))
 
 (defn- metric-selection-endpoint-url []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/select-metric"))
@@ -286,7 +307,7 @@
         (when on-complete
           (on-complete @lines))))
     (catch Throwable e
-      (throw (ex-info (format "Error in request to AI Proxy: %s" (ex-message e)) {} e)))))
+      (rethrow-with-context! "Error in request to AI Proxy" e))))
 
 (mu/defn select-metric-request
   "Make a request to AI Service to select a metric."
@@ -301,9 +322,7 @@
       (u/prog1 (check-response! response body)
         (log/debugf "Response:\n%s" (u/pprint-to-str <>))))
     (catch Throwable e
-      (throw (ex-info (format "Error in request to AI Service: %s" (ex-message e))
-                      {}
-                      e)))))
+      (rethrow-with-context! "Error in request to AI Service" e))))
 
 (mu/defn find-outliers-request
   "Make a request to AI Service to find outliers"
@@ -316,9 +335,7 @@
       (u/prog1 (check-response! response body)
         (log/debugf "Response:\n%s" (u/pprint-to-str <>))))
     (catch Throwable e
-      (throw (ex-info (format "Error in request to AI service: %s" (ex-message e))
-                      {}
-                      e)))))
+      (rethrow-with-context! "Error in request to AI service" e))))
 
 (mu/defn fix-sql
   "Ask the AI service to propose fixes a SQL query and a given error."
