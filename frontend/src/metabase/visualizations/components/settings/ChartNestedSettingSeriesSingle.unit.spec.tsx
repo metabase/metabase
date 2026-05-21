@@ -5,12 +5,17 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { registerVisualization } from "metabase/visualizations";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
-import registerVisualizations from "metabase/visualizations/register";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
+import { LineChart } from "metabase/visualizations/visualizations/LineChart";
 import type { Series } from "metabase-types/api";
 
-registerVisualizations();
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(BarChart);
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(LineChart);
 
 function getSeries(): Series {
   return [

@@ -2,9 +2,10 @@ import userEvent from "@testing-library/user-event";
 
 import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
 import { NumberColumn } from "__support__/visualizations";
+import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import registerVisualizations from "metabase/visualizations/register";
+import { SmartScalar } from "metabase/visualizations/visualizations/SmartScalar";
 import type { Series } from "metabase-types/api";
 import type { Insight } from "metabase-types/api/insight";
 import { createMockSingleSeries } from "metabase-types/api/mocks";
@@ -15,7 +16,8 @@ import {
   mockSeries as series,
 } from "./test-mocks";
 
-registerVisualizations();
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(SmartScalar);
 
 const createMockInsights = (insights: Partial<Insight>[]) => insights;
 

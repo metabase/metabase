@@ -1,9 +1,11 @@
 // these tests use QuestionChartSettings directly, but logic we're testing lives in ChartNestedSettingSeries
 import { renderWithProviders, screen } from "__support__/ui";
+import { registerVisualization } from "metabase/visualizations";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
-import registerVisualizations from "metabase/visualizations/register";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 
-registerVisualizations();
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(BarChart);
 
 function getSeries(metrics) {
   return [

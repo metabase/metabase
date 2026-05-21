@@ -1,7 +1,9 @@
 import { Route } from "react-router";
 
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualization } from "metabase/visualizations";
+import { LineChart } from "metabase/visualizations/visualizations/LineChart";
+import { PieChart } from "metabase/visualizations/visualizations/PieChart";
 import type {
   CardDisplayType,
   CardType,
@@ -42,7 +44,10 @@ function setup({
   return { onSave, onCancel };
 }
 
-registerVisualizations();
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(LineChart);
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(PieChart);
 
 describe("CheckDependenciesForm", () => {
   describe.each<CardType>(["question", "model", "metric"])("%s", (type) => {

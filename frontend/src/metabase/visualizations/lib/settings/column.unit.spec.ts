@@ -1,6 +1,5 @@
 import { checkNotNull } from "metabase/utils/types";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
-import registerVisualizations from "metabase/visualizations/register";
 import type { DatasetColumn, Series } from "metabase-types/api";
 import {
   createMockColumn,
@@ -8,8 +7,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { NUMBER_COLUMN_SETTINGS, columnSettings } from "./column";
-
-registerVisualizations();
 
 function seriesWithColumn(column?: Partial<DatasetColumn>): Series {
   return [

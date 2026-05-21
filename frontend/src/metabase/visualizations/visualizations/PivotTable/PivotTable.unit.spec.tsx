@@ -7,8 +7,9 @@ import { useState } from "react";
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders } from "__support__/ui";
 import * as domUtils from "metabase/utils/dom";
+import { registerVisualization } from "metabase/visualizations";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
-import registerVisualizations from "metabase/visualizations/register";
+import { PivotTable } from "metabase/visualizations/visualizations/PivotTable";
 import Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
 import {
@@ -32,7 +33,8 @@ import {
   PivotTableTestWrapper,
 } from "./pivot-table-test-mocks";
 
-registerVisualizations();
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(PivotTable);
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

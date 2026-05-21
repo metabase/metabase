@@ -19,7 +19,6 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
-import registerVisualizations from "metabase/visualizations/register";
 import type { Field } from "metabase-types/api";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 import {
@@ -31,8 +30,6 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import { ObjectDetail } from "./ObjectDetail";
-
-registerVisualizations();
 
 const PRODUCTS_TABLE = createProductsTable();
 const ORDERS_TABLE = createOrdersTable();

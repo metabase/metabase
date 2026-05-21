@@ -1,4 +1,7 @@
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualization } from "metabase/visualizations";
+import { PieChart } from "metabase/visualizations/visualizations/PieChart";
+import { Scalar } from "metabase/visualizations/visualizations/Scalar";
+import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import type {
   AnalysisFindingError,
   AnalysisFindingErrorType,
@@ -72,7 +75,12 @@ import {
   isSameNode,
 } from "./utils";
 
-registerVisualizations();
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(PieChart);
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(Scalar);
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(Table);
 
 describe("getNodeIcon", () => {
   it.each<{

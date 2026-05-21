@@ -4,7 +4,8 @@ import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { ChartSettingsButton } from "metabase/dashboard/components/DashCard/DashCardActionsPanel/ChartSettingsButton/ChartSettingsButton";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualization } from "metabase/visualizations";
+import { LineChart } from "metabase/visualizations/visualizations/LineChart";
 import {
   createMockColumn,
   createMockDashboard,
@@ -12,7 +13,8 @@ import {
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
-registerVisualizations();
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(LineChart);
 
 const rows = [["John", "John Smith Jr"]];
 const MOCK_SERIES = [

@@ -6,7 +6,10 @@ import utc from "dayjs/plugin/utc";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-import { getVisualizationTransformed } from "metabase/visualizations";
+import {
+  getVisualizationTransformed,
+  registerVisualization,
+} from "metabase/visualizations";
 import type { ChartLayout } from "metabase/visualizations/echarts/cartesian/layout/types";
 import type {
   CartesianChartDateTimeAbsoluteUnit,
@@ -19,8 +22,8 @@ import {
   getTimezoneOrOffset,
   normalizeDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
-import registerVisualizations from "metabase/visualizations/register";
 import type { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import {
   type DateTimeAbsoluteUnit,
   type RawSeries,
@@ -55,7 +58,8 @@ function createMockChartMeasurements(
   };
 }
 
-registerVisualizations();
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(BarChart);
 
 function computeDefinedTimeseriesDataInterval(
   xValues: RowValue[],

@@ -4,10 +4,18 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { DashboardChartSettings } from "metabase/dashboard/components/DashboardChartSettings";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualization } from "metabase/visualizations";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
+import { LineChart } from "metabase/visualizations/visualizations/LineChart";
+import { RowChart } from "metabase/visualizations/visualizations/RowChart";
 import { createMockCard } from "metabase-types/api/mocks";
 
-registerVisualizations();
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(BarChart);
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(LineChart);
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(RowChart);
 
 function getSeries(display, index, changeSeriesName) {
   return {

@@ -11,7 +11,10 @@ import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownl
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualization } from "metabase/visualizations";
+import { LineChart } from "metabase/visualizations/visualizations/LineChart";
+import { PivotTable } from "metabase/visualizations/visualizations/PivotTable";
+import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import type { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,
@@ -20,7 +23,12 @@ import {
 } from "metabase-types/api/mocks";
 import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 
-registerVisualizations();
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(LineChart);
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(PivotTable);
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(Table);
 
 const TEST_CARD = createMockCard({
   dataset_query: createMockStructuredDatasetQuery({

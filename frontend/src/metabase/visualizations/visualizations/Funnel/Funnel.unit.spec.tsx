@@ -1,7 +1,8 @@
 import { renderWithProviders, screen } from "__support__/ui";
 import { ThemeProvider } from "metabase/ui";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualization } from "metabase/visualizations";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import type { VisualizationSettings } from "metabase-types/api";
 import {
   createMockCard,
@@ -15,7 +16,10 @@ import {
 
 import { Funnel } from "./Funnel";
 
-registerVisualizations();
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(Funnel);
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(BarChart);
 
 const cardTitle = "cardTitle";
 

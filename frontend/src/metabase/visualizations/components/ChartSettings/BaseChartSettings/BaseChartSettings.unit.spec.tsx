@@ -1,14 +1,11 @@
 import { addLocale, useLocale } from "ttag";
 
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import registerVisualizations from "metabase/visualizations/register";
 import type { Widget } from "metabase/visualizations/types";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
 import { BaseChartSettings } from "./BaseChartSettings";
 import type { BaseChartSettingsProps } from "./types";
-
-registerVisualizations();
 
 const DEFAULT_PROPS = {
   widgets: [],

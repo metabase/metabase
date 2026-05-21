@@ -7,8 +7,9 @@ import { createMockState } from "metabase/redux/store/mocks";
 import { color } from "metabase/ui/colors";
 import { registerVisualization } from "metabase/visualizations";
 import VisualizationComponent from "metabase/visualizations/components/Visualization";
-import registerVisualizations from "metabase/visualizations/register";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
+import { Scalar } from "metabase/visualizations/visualizations/Scalar";
 import type {
   RawSeries,
   Settings,
@@ -24,7 +25,10 @@ import {
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-registerVisualizations();
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(BarChart);
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(Scalar);
 
 const MOCK_DISPLAY = "mocked-visualization" as VisualizationDisplay;
 

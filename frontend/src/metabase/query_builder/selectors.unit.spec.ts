@@ -19,7 +19,8 @@ import {
   createMockQueryBuilderUIControlsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualization } from "metabase/visualizations";
+import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -47,7 +48,8 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-registerVisualizations();
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(Table);
 
 function getBaseState({
   uiControls = {},

@@ -5,7 +5,9 @@ import {
   createMockQueryBuilderUIControlsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualization } from "metabase/visualizations";
+import { Gauge } from "metabase/visualizations/visualizations/Gauge";
+import { Scalar } from "metabase/visualizations/visualizations/Scalar";
 import {
   PRODUCTS_ID,
   createSampleDatabase,
@@ -13,7 +15,10 @@ import {
 
 import { ChartSettingsSidebar } from "./ChartSettingsSidebar";
 
-registerVisualizations();
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(Gauge);
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(Scalar);
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

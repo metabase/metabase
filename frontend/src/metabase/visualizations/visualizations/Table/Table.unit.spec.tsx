@@ -4,8 +4,9 @@ import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { registerVisualization } from "metabase/visualizations";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
-import registerVisualizations from "metabase/visualizations/register";
+import { ObjectDetail } from "metabase/visualizations/visualizations/ObjectDetail";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
@@ -33,7 +34,10 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-registerVisualizations();
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(ObjectDetail);
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(Table);
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

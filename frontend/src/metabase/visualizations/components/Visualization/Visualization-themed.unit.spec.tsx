@@ -2,13 +2,15 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { getColorShades } from "metabase/ui/utils/colors";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualization } from "metabase/visualizations";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import type { Series } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
 import Visualization from ".";
 
-registerVisualizations();
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(BarChart);
 
 describe("Themed Visualization", () => {
   it("inherits the chart label color from the theme", async () => {

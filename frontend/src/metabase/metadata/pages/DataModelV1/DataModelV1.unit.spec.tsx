@@ -24,7 +24,6 @@ import { getNextId } from "__support__/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
-import registerVisualizations from "metabase/visualizations/register";
 import type {
   Database,
   Field,
@@ -55,8 +54,6 @@ import {
 
 import { DataModelV1 } from "./DataModelV1";
 import type { ParsedRouteParams } from "./types";
-
-registerVisualizations();
 
 const DEFAULT_ROUTE_PARAMS: ParsedRouteParams = {
   databaseId: undefined,

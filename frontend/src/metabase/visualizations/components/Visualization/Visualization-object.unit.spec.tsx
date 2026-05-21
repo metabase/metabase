@@ -3,8 +3,9 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
-import registerVisualizations from "metabase/visualizations/register";
+import { ObjectDetail } from "metabase/visualizations/visualizations/ObjectDetail";
 import type { FieldVisibilityType } from "metabase-types/api";
 import {
   createMockColumn,
@@ -12,7 +13,8 @@ import {
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-registerVisualizations();
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(ObjectDetail);
 
 function setup({
   rows,

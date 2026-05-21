@@ -1,4 +1,5 @@
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualization } from "metabase/visualizations";
+import { LineChart } from "metabase/visualizations/visualizations/LineChart";
 import type { RowValues } from "metabase-types/api/dataset";
 import {
   createMockCard,
@@ -8,7 +9,8 @@ import {
 
 import { splitVisualizerSeries } from "./split-series";
 
-registerVisualizations();
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(LineChart);
 
 describe("splitVisualizerSeries", () => {
   it("should split a single series into multiple series", () => {

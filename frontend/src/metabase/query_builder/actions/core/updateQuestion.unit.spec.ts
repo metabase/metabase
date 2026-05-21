@@ -9,7 +9,8 @@ import {
 } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualization } from "metabase/visualizations";
+import { PivotTable } from "metabase/visualizations/visualizations/PivotTable";
 import Question from "metabase-lib/v1/Question";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
@@ -58,7 +59,8 @@ import * as url from "../url";
 import * as native from "./native";
 import { UPDATE_QUESTION, updateQuestion } from "./updateQuestion";
 
-registerVisualizations();
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(PivotTable);
 
 type TestCard = Card<LegacyDatasetQuery> | UnsavedCard<LegacyDatasetQuery>;
 

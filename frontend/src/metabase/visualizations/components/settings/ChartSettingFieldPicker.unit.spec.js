@@ -1,10 +1,12 @@
 // these tests use QuestionChartSettings directly, but logic we're testing logic in ChartSettingFieldPicker
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { registerVisualization } from "metabase/visualizations";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
-import registerVisualizations from "metabase/visualizations/register";
+import { LineChart } from "metabase/visualizations/visualizations/LineChart";
 import { createMockCard } from "metabase-types/api/mocks";
 
-registerVisualizations();
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(LineChart);
 
 function getSeries(metricColumnProps) {
   return [

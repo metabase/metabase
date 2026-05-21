@@ -16,7 +16,9 @@ import {
 } from "__support__/ui";
 import { createMockDashboardState } from "metabase/redux/store/mocks";
 import * as iframeUtils from "metabase/utils/iframe";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualization } from "metabase/visualizations";
+import { PieChart } from "metabase/visualizations/visualizations/PieChart";
+import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import type {
   LinkCardSettings,
   Parameter,
@@ -36,7 +38,10 @@ import {
 import type { LinkVizProps } from "./LinkViz";
 import { LinkViz } from "./LinkViz";
 
-registerVisualizations();
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(PieChart);
+// @ts-expect-error: registerVisualization is not in TypeScript yet
+registerVisualization(Table);
 
 type LinkCardVizSettings = VirtualDashboardCard["visualization_settings"] & {
   link: LinkCardSettings;

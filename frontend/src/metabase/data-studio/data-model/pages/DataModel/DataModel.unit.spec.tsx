@@ -27,7 +27,6 @@ import {
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
-import registerVisualizations from "metabase/visualizations/register";
 import type {
   Database,
   Field,
@@ -60,8 +59,6 @@ import {
 
 import { DataModel } from "./DataModel";
 import type { ParsedRouteParams } from "./types";
-
-registerVisualizations();
 
 const DEFAULT_ROUTE_PARAMS: ParsedRouteParams = {
   databaseId: undefined,
