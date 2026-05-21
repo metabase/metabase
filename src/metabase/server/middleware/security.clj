@@ -61,9 +61,9 @@
   {"Strict-Transport-Security" "max-age=31536000"})
 
 (defn try-parse-url
-  "Like `parse-url` but returns nil silently on unparsable input. Use this when
-   the caller is parsing client-controlled data (e.g. `Origin`/`Host` headers)
-   where bad input is expected and shouldn't fill the error logs."
+  "Like `parse-url` but returns nil silently on unparsable input. Use this when the caller is parsing
+   client-controlled data (e.g. `Origin`/`Host` headers) where bad input is expected and shouldn't
+   fill the error logs."
   [url]
   (if (= url "*")
     {:protocol nil :domain "*" :port "*"}
@@ -74,10 +74,9 @@
         {:protocol protocol :domain domain :port port}))))
 
 (defn parse-url
-  "Returns an object with protocol, domain and port for the given url. Logs an
-   error when the input doesn't parse — appropriate for server-side config (where
-   bad input indicates a misconfiguration). For client-controlled input prefer
-   [[try-parse-url]]."
+  "Returns an object with protocol, domain and port for the given url. Logs an error when the input
+   doesn't parse — appropriate for server-side config (where bad input indicates a misconfiguration).
+   For client-controlled input prefer [[try-parse-url]]."
   [url]
   (or (try-parse-url url)
       (do (log/errorf "Invalid URL: %s" url) nil)))

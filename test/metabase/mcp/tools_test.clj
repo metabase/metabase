@@ -4,6 +4,23 @@
    [clojure.test :refer :all]
    [metabase.mcp.tools]))
 
+(deftest ^:parallel drop-nil-args-test
+  (testing "strips nil-valued top-level keys so 'missing' and 'explicit nil' are equivalent at the MCP boundary"
+    (let [drop-nil-args (var-get #'metabase.mcp.tools/drop-nil-args)]
+      (testing "removes top-level nils"
+        (is (= {:id 42 :flag false}
+               (drop-nil-args {:id 42 :flag false :extra nil}))))
+      (testing "keeps non-nil falsey values"
+        (is (= {:flag false :count 0 :text ""}
+               (drop-nil-args {:flag false :count 0 :text ""}))))
+      (testing "preserves nested nils (only top-level is rewritten)"
+        (is (= {:source {:type "table" :id nil}}
+               (drop-nil-args {:source {:type "table" :id nil} :continuation_token nil}))))
+      (testing "nil argument → nil"
+        (is (nil? (drop-nil-args nil))))
+      (testing "empty map stays empty"
+        (is (= {} (drop-nil-args {})))))))
+
 (deftest ^:parallel overrides-cover-known-tools-test
   (testing "every key in `mcp-input-overrides` / `mcp-output-overrides` matches a real tool"
     ;; Catches the silent-no-op failure mode if a tool gets renamed or an override key is misspelled:

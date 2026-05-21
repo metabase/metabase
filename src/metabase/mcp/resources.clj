@@ -95,8 +95,8 @@
    - `csp.resourceDomains` — hosts the iframe may load scripts/styles/images from
                               (the SDK bundle is served from this Metabase instance)
 
-   `frameDomains` is intentionally omitted — we don't nest iframes inside the visualization, and
-   leaving it out narrows the CSP for security review."
+   `frameDomains` is intentionally omitted — we don't nest iframes inside the visualization, and leaving
+   it out narrows the CSP for security review."
   [resource]
   (let [url (system/site-url)]
     {:ui (cond-> {:csp {:connectDomains  [url]
