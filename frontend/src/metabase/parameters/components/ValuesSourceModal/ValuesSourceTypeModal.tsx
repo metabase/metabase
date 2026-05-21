@@ -597,7 +597,7 @@ function ValuesSourceTypeModalLoader(props: ModalOwnProps) {
   );
 
   return (
-    <ModalLoadingAndErrorWrapper loading={isLoading} error={error}>
+    <ModalLoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
       <ValuesSourceTypeModalConnected {...props} />
     </ModalLoadingAndErrorWrapper>
   );

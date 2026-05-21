@@ -103,7 +103,7 @@ export const TableBrowser = (props: TableBrowserContainerProps) => {
   }
 
   return (
-    <LoadingAndErrorWrapper loading={isLoading} error={error}>
+    <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
       <TableBrowserInner
         tables={tables}
         getTableUrl={getTableUrl}
