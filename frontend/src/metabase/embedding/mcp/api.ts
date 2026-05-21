@@ -33,6 +33,8 @@ export async function storeDrillQuery({
   widgetSessionId,
   encodedQuery,
 }: StoreDrillQueryRequest): Promise<StoreDrillQueryResponse> {
+  console.debug("[MCP UI] POST /drills widgetSessionId", widgetSessionId);
+
   const response = await fetch(`${instanceUrl}/api/embed-mcp/drills`, {
     method: "POST",
     headers: {

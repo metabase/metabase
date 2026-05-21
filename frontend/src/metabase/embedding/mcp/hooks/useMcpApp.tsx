@@ -69,6 +69,7 @@ export function useMcpApp(): McpAppState {
           (params.arguments as VisualizeQueryToolInput | undefined) ?? {};
 
         if (widgetSessionId) {
+          console.debug("[MCP UI] ontoolinput widgetSessionId", widgetSessionId);
           setWidgetSessionId(widgetSessionId);
         }
 
@@ -87,6 +88,7 @@ export function useMcpApp(): McpAppState {
           {};
 
         if (widgetSessionId) {
+          console.debug("[MCP UI] ontoolresult widgetSessionId", widgetSessionId);
           setWidgetSessionId(widgetSessionId);
         }
 

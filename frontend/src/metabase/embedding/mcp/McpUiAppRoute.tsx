@@ -88,7 +88,7 @@ export function McpUiAppRoute() {
   }, [isReady, userAndSettingsFetchError]);
 
   const height = "500px";
-  const visualizationHeight = `calc(${height} - 8.5rem)`;
+      const visualizationHeight = `calc(${height} - 8.5rem)`;
   const safeAreaMargins = `${Math.max(safeAreaInsets.top, 0)}px ${Math.max(safeAreaInsets.right, 0)}px ${Math.max(safeAreaInsets.bottom, 0)}px ${Math.max(safeAreaInsets.left, 0)}px`;
 
   const containerStyle: CSSProperties = {
@@ -130,6 +130,21 @@ export function McpUiAppRoute() {
           >
             <div style={{ flex: 1, minWidth: 0 }}>
               <McpQuestionTitle />
+              <div
+                data-testid="mcp-widget-session-debug"
+                style={{
+                  color: theme.colors?.["text-secondary"],
+                  fontFamily: "monospace",
+                  fontSize: 11,
+                  lineHeight: 1.4,
+                  marginTop: 4,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                widgetSessionId: {widgetSessionId ?? "missing"}
+              </div>
             </div>
 
             <Flex align="center" gap="xs" style={{ flexShrink: 0 }}>
@@ -150,6 +165,29 @@ export function McpUiAppRoute() {
           <Flex px="lg">
             <McpQueryBar app={app} instanceUrl={instanceUrl} />
           </Flex>
+
+          <div
+            data-testid="mcp-widget-session-debug-overlay"
+            style={{
+              background: "#fff3bf",
+              border: "1px solid #fab005",
+              borderRadius: 4,
+              bottom: 8,
+              color: "#5c3c00",
+              fontFamily: "monospace",
+              fontSize: 12,
+              left: 8,
+              maxWidth: "calc(100% - 16px)",
+              overflow: "hidden",
+              padding: "4px 6px",
+              position: "absolute",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              zIndex: 10,
+            }}
+          >
+            MCP debug widgetSessionId: {widgetSessionId ?? "missing"}
+          </div>
         </Flex>
       </SdkQuestion>
     );
@@ -162,7 +200,9 @@ export function McpUiAppRoute() {
       reduxStore={store}
       loaderComponent={SimpleLoader}
     >
-      <div style={containerStyle}>{renderContent()}</div>
+      <div style={{ ...containerStyle, position: "relative" }}>
+        {renderContent()}
+      </div>
     </ComponentProvider>
   );
 }
