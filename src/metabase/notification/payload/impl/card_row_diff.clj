@@ -25,14 +25,13 @@
                    :snapshot        snapshot-json
                    :captured_at     now}))))
 
-(defn- row-set [rows]
-  (into #{} (map pr-str) rows))
-
 (defn- diff-rows [current-rows previous-rows]
   (if (nil? previous-rows)
     []
-    (let [prev-set (row-set previous-rows)]
-      (remove (fn [row] (prev-set (pr-str row))) current-rows))))
+    ;; Identify rows by their first column value (assumed to be a unique ID).
+    ;; This avoids flagging updated rows as new when mutable fields change.
+    (let [prev-ids (into #{} (map first) previous-rows)]
+      (remove (fn [row] (prev-ids (first row))) current-rows))))
 
 (mu/defmethod notification.payload/payload :notification/card-row-diff
   [{:keys [id creator_id payload_id payload] :as _notification-info}
@@ -53,8 +52,9 @@
                           {:card_id card-id :status (:status card-result)})))
         (let [columns      (get-in card-result [:data :cols])
               raw-rows     (get-in card-result [:data :rows])
-              ;; Large result sets are stored in a temp file — deref to get the plain vector.
-              current-rows (if (temp-storage/streaming-temp-file? raw-rows) @raw-rows raw-rows)
+              ;; Materialize into a vector so the seq can be iterated multiple times
+              ;; (once for diff, once for save-snapshot!) without exhausting a lazy cursor.
+              current-rows (vec (if (temp-storage/streaming-temp-file? raw-rows) @raw-rows raw-rows))
               prev-rows    (when-not unsaved? (load-snapshot id))
               ;; Unsaved preview: cap to 3 rows so per-row sends don't flood Slack.
               new-rows     (if unsaved? (take 3 current-rows) (diff-rows current-rows prev-rows))]
