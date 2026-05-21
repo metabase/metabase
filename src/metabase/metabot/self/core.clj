@@ -567,10 +567,15 @@
                         e)))
 
       :else
-      (let [exception-class (some-> e .getClass .getName)]
+      (let [exception-class (some-> e .getClass .getName)
+            msg             (ex-message e)]
         (log/warnf "Provider API request failed (no response): provider=%s class=%s message=%s"
-                   provider exception-class (ex-message e))
-        (throw (ex-info (tru "{0} API request failed: {1}" provider (ex-message e))
+                   provider exception-class msg)
+        ;; ex-message can be nil/blank for exceptions thrown without one (e.g. (RuntimeException.))
+        ;; — skip the colon when the cause has nothing to say.
+        (throw (ex-info (if (str/blank? msg)
+                          (tru "{0} API request failed" provider)
+                          (tru "{0} API request failed: {1}" provider msg))
                         {:api-error       true
                          :provider        provider
                          :error-code      :provider-request-failed

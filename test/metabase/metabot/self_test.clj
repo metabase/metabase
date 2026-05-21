@@ -975,6 +975,10 @@
                :exception-class "java.net.SocketTimeoutException"}
               (ex-data ex)))))
 
+  (testing "no-body branch drops the trailing colon when ex-message is blank"
+    (let [ex (caught #(self.core/rethrow-api-error! "openai" (constantly "unused") (RuntimeException.)))]
+      (is (= "openai API request failed" (ex-message ex)))))
+
   (testing "the full upstream body is emitted at warn level alongside provider and status"
     (let [upstream (ex-info "clj-http error"
                             {:status 502 :reason-phrase "Bad Gateway"
