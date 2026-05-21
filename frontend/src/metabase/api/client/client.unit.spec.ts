@@ -234,75 +234,89 @@ describe("api", () => {
     });
 
     it("emits the relative path when basename is empty", async () => {
-      fetchMock.get("path:/api/session/properties", { ok: true });
+      fetchMock.get("path:/api/session/properties", { status: 401 });
       const listener = jest.fn();
-      apiInstance.on("200", listener);
+      apiInstance.on(401, listener);
 
-      await apiInstance.request({
-        method: "GET",
-        url: "/api/session/properties",
-      });
+      await apiInstance
+        .request({
+          method: "GET",
+          url: "/api/session/properties",
+        })
+        .catch(() => null);
 
       expect(listener).toHaveBeenCalledWith("/api/session/properties");
     });
 
     it("strips a subpath basename so listeners see the relative path", async () => {
       apiInstance.basename = "/metabase";
-      fetchMock.get("path:/metabase/api/session", { ok: true });
+      fetchMock.get("path:/metabase/api/session", { status: 401 });
       const listener = jest.fn();
-      apiInstance.on("200", listener);
+      apiInstance.on(401, listener);
 
-      await apiInstance.request({ method: "GET", url: "/api/session" });
+      await apiInstance
+        .request({ method: "GET", url: "/api/session" })
+        .catch(() => null);
 
       expect(listener).toHaveBeenCalledWith("/api/session");
     });
 
     it("emits the relative path when basename is a full URL (SDK case)", async () => {
       apiInstance.basename = "https://metabase.example.com";
-      fetchMock.get("https://metabase.example.com/api/session", { ok: true });
+      fetchMock.get("https://metabase.example.com/api/session", {
+        status: 401,
+      });
       const listener = jest.fn();
-      apiInstance.on("200", listener);
+      apiInstance.on(401, listener);
 
-      await apiInstance.request({ method: "GET", url: "/api/session" });
+      await apiInstance
+        .request({ method: "GET", url: "/api/session" })
+        .catch(() => null);
 
       expect(listener).toHaveBeenCalledWith("/api/session");
     });
 
     it("strips the subpath when basename is a full URL with a subpath", async () => {
       apiInstance.basename = "http://localhost/mb";
-      fetchMock.get("http://localhost/mb/api/session", { ok: true });
+      fetchMock.get("http://localhost/mb/api/session", { status: 401 });
       const listener = jest.fn();
-      apiInstance.on("200", listener);
+      apiInstance.on(401, listener);
 
-      await apiInstance.request({ method: "GET", url: "/api/session" });
+      await apiInstance
+        .request({ method: "GET", url: "/api/session" })
+        .catch(() => null);
 
       expect(listener).toHaveBeenCalledWith("/api/session");
     });
 
     it("includes the querystring in the emitted path", async () => {
-      fetchMock.get("path:/api/search", { items: [] });
+      fetchMock.get("path:/api/search", { status: 401 });
       const listener = jest.fn();
-      apiInstance.on("200", listener);
+      apiInstance.on(401, listener);
 
-      await apiInstance.request({
-        method: "GET",
-        url: "/api/search",
-        params: { q: "foo" },
-      });
+      await apiInstance
+        .request({
+          method: "GET",
+          url: "/api/search",
+          params: { q: "foo" },
+        })
+        .catch(() => null);
 
       expect(listener).toHaveBeenCalledWith("/api/search?q=foo");
     });
 
     it("does not emit when noEvent is set", async () => {
-      fetchMock.get("path:/api/session/properties", { ok: true });
+      fetchMock.get("path:/api/session/properties", { status: 401 });
       const listener = jest.fn();
-      apiInstance.on("200", listener);
+      apiInstance.on(401, listener);
 
-      await apiInstance.request({
-        method: "GET",
-        url: "/api/session/properties",
-        noEvent: true,
-      });
+      await apiInstance
+        .request({
+          method: "GET",
+          url: "/api/session/properties",
+          noEvent: true,
+        })
+        .catch(() => null);
 
       expect(listener).not.toHaveBeenCalled();
     });

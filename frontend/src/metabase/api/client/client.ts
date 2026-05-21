@@ -65,8 +65,8 @@ type ResponseErrorInfo = {
 };
 
 type EventMap = {
-  "401": [string];
-  "403": [string];
+  401: [string];
+  403: [string];
 };
 
 export class ApiClient extends EventEmitter<EventMap> {
@@ -320,15 +320,10 @@ export class ApiClient extends EventEmitter<EventMap> {
       const body = await getResponseBody(response);
       const status = getResponseStatus(response, body);
 
-      if (!options.noEvent) {
+      if (!options.noEvent && (status === 401 || status === 403)) {
         // Strip basename so listeners (app-main.js) see the relative path.
         const path = relativePath(this.basename, url);
-        if (status === 401) {
-          this.emit("401", path);
-        }
-        if (status === 403) {
-          this.emit("403", path);
-        }
+        this.emit(status, path);
       }
 
       if (status >= 200 && status <= 299) {
