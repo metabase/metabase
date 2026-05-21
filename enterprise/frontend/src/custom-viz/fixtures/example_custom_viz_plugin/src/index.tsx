@@ -1,17 +1,13 @@
 import {
   type CreateCustomVisualization,
-  type CustomVisualizationProps,
   defineConfig,
 } from "@metabase/custom-viz";
 import { Visualization } from "./Visualization";
-
-type Settings = {
-  threshold?: number;
-};
+import { Settings } from "./types";
 
 const createVisualization: CreateCustomVisualization<Settings> = ({
   defineSetting,
-  getAssetUrl,
+  locale,
 }) => {
   return defineConfig<Settings>({
     id: "example_custom_viz_plugin",
@@ -63,7 +59,9 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
         },
       }),
     },
-    VisualizationComponent: Visualization,
+    VisualizationComponent: (props) => (
+      <Visualization {...props} locale={locale} />
+    ),
   });
 };
 
