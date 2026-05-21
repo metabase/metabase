@@ -192,6 +192,21 @@
           (is (=? {:response {:body {:error "invalid metric" :request-id "abc"}}}
                   (ex-data ex))))
         (assert-no-headers! (ex-data ex))))
+    (testing "nested {:error {:message ...}} envelopes are unwrapped — wrapper map doesn't leak into the message"
+      (let [{:keys [response request]} (check-response!-input {:status        500
+                                                               :reason-phrase "Internal Server Error"
+                                                               :body          {:error {:message "upstream went boom"
+                                                                                       :code    500}}})
+            ex  (is (thrown-with-msg?
+                     Exception
+                     #"AI service request failed: HTTP 500 Internal Server Error — upstream went boom"
+                     (check! response request)))
+            msg (ex-message ex)]
+        (is (not (str/includes? msg ":code"))
+            "the :code sibling field shouldn't leak into the user-facing message")
+        (is (=? {:response {:body {:error {:message "upstream went boom" :code 500}}}}
+                (ex-data ex))
+            "the full nested envelope still lives in ex-data for debugging")))
     (testing "stream bodies get slurped — preview surfaces in the message and the full body survives in ex-data"
       (let [stream (java.io.ByteArrayInputStream. (.getBytes "boom from upstream" "UTF-8"))
             {:keys [response request]} (check-response!-input {:status        502

@@ -155,20 +155,21 @@
   built up in `check-response!` — without this they'd see only the wrapper's empty map and have to walk
   `(ex-cause ...)`."
   [label ^Throwable e]
-  (let [{:keys [error-code status body]} (ex-data e)
-        msg (ex-message e)]
+  (let [{:keys [error-code status response]} (ex-data e)
+        body (:body response)
+        msg  (ex-message e)]
+    ;; ex-message can be nil/blank for exceptions thrown without a message
+    ;; (e.g. `(NullPointerException.)`) — skip the colon when there's nothing to say.
     (cond
       (= error-code :ai-service-error)
       (log/errorf e "%s: HTTP %s body=%s" label status (pr-str body))
 
-      ;; ex-message can be nil/blank for exceptions thrown without a message
-      ;; (e.g. `(NullPointerException.)`) — skip the colon when there's nothing to say.
       (str/blank? msg)
       (log/error e label)
 
       :else
       (log/errorf e "%s: %s" label msg))
-    (throw (ex-info (format "%s: %s" label msg)
+    (throw (ex-info (if (str/blank? msg) label (str label ": " msg))
                     (or (ex-data e) {})
                     e))))
 
