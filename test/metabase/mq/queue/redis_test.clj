@@ -13,11 +13,14 @@
    [metabase.mq.queue.registry :as q.registry]
    [metabase.mq.settings :as mq.settings]
    [metabase.mq.test-util :as mq.tu]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.log :as log])
   (:import
    (java.util.concurrent CountDownLatch TimeUnit)))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defmacro ^:private when-server [& body]
   `(if (redis/broker-available?)

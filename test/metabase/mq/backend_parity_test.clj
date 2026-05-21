@@ -19,9 +19,12 @@
    [clojure.test :refer :all]
    [metabase.mq.core :as mq]
    [metabase.mq.test-util :as mq.tu]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def ^:private redis-available?
   "Memoized probe — true iff a Redis server is reachable at the configured `mq-redis-uri`.
