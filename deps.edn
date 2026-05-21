@@ -86,7 +86,26 @@
                                              :git/sha "ffc4edc482c057cd9412c62f018a41e9140c618b"
                                              :git/url "https://github.com/eerohele/pp"}
   io.github.metabase/macaw                  {:mvn/version "0.2.33"}             ; Parse native SQL queries
-  io.netty/netty-codec-http                 {:mvn/version "4.2.9.Final"}        ; override of transitive dep from aws s3
+  ;; Pin the whole netty stack to one coherent line. Netty 4.1 and 4.2 are NOT binary-compatible.
+  ;; Since drivers were flattened onto a single classpath, transitive netty otherwise resolves to a mix
+  ;; (e.g. netty-codec stranded at 4.1 against netty-transport at 4.2) → NoSuchMethodError at runtime.
+  ;; A single top-level pin forces every module to the same version so nothing can be stranded. 4.2.9
+  ;; keeps the modules already at 4.2.9 and only lifts the stranded ones up to match (no downgrades).
+  io.netty/netty-buffer                       {:mvn/version "4.2.9.Final"}
+  io.netty/netty-codec                        {:mvn/version "4.2.9.Final"}
+  io.netty/netty-codec-base                   {:mvn/version "4.2.9.Final"}
+  io.netty/netty-codec-compression            {:mvn/version "4.2.9.Final"}
+  io.netty/netty-codec-http                   {:mvn/version "4.2.9.Final"}
+  io.netty/netty-codec-http2                  {:mvn/version "4.2.9.Final"}
+  io.netty/netty-codec-marshalling            {:mvn/version "4.2.9.Final"}
+  io.netty/netty-codec-protobuf               {:mvn/version "4.2.9.Final"}
+  io.netty/netty-common                       {:mvn/version "4.2.9.Final"}
+  io.netty/netty-handler                      {:mvn/version "4.2.9.Final"}
+  io.netty/netty-resolver                     {:mvn/version "4.2.9.Final"}
+  io.netty/netty-transport                    {:mvn/version "4.2.9.Final"}
+  io.netty/netty-transport-classes-epoll      {:mvn/version "4.2.9.Final"}
+  io.netty/netty-transport-native-epoll       {:mvn/version "4.2.9.Final"}
+  io.netty/netty-transport-native-unix-common {:mvn/version "4.2.9.Final"}
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
   kixi/stats                                {:mvn/version "0.5.7"               ; Various statistic measures implemented as transducers
