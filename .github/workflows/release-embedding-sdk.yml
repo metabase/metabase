@@ -42,7 +42,7 @@ jobs:
     outputs:
       slackMessageId: ${{ steps.send-slack-message-start.outputs.result }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             release
@@ -176,7 +176,7 @@ jobs:
       pre_release_label: ${{ fromJson(steps.new-sdk-version.outputs.result).preReleaseLabel }}
     steps:
       - name: Check out the code using the provided branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch }}
 
@@ -225,7 +225,7 @@ jobs:
       tag: embedding-sdk-${{ needs.determine-sdk-version.outputs.sdk_version }}
     steps:
       - name: Check out the code using the provided branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch }}
           fetch-depth: 0
@@ -247,7 +247,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Check out the code using the provided branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch }}
 
@@ -266,7 +266,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Check out the code using the provided branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch }}
           fetch-depth: 0
@@ -307,7 +307,7 @@ jobs:
       sdk_version: ${{ needs.determine-sdk-version.outputs.sdk_version }}
     steps:
       - name: Check out branch to prepare for a SDK version bump PR
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           # when we created version update PR, it would only have diff from 2 files SDK readme and SDK package.json template
@@ -400,7 +400,7 @@ jobs:
           npm publish --tag "$TAG"
       # ⚠️ This step should only be executed on the latest stable (gold) release branch.
       # Only uncomment this when the new release branch becomes stable (gold).
-      # - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
+      # - name: Add `latest` tag to the latest release branch (e.g. `release-x.61.x`) deployment
       #   working-directory: sdk
       #   run: |
       #     npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
@@ -414,7 +414,7 @@ jobs:
       stable_tag: embedding-sdk-${{ needs.determine-sdk-version.outputs.major_version }}-stable
     steps:
       - name: Check out the code using the provided branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           ref: ${{ inputs.branch }}

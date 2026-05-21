@@ -16,7 +16,7 @@
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
    (java.time.chrono ChronoLocalDateTime ChronoZonedDateTime)
-   (java.time.temporal ChronoField Temporal)
+   (java.time.temporal Temporal)
    (org.apache.commons.codec.digest MurmurHash2)
    (org.apache.commons.math3.stat.descriptive SummaryStatistics)
    (org.apache.datasketches.hll HllSketch)
@@ -283,69 +283,13 @@
         (instance? OffsetTime t)     (recur (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset t)))
         :else                        nil))
 
-(defn- temporal->zoned
-  "Promote a `Temporal` to a form whose ChronoField support covers DAY_OF_WEEK and
-   HOUR_OF_DAY. `Instant` is coerced to UTC; all other types pass through unchanged
-   (e.g. `LocalDate` still supports DAY_OF_WEEK; `LocalTime` still supports HOUR_OF_DAY;
-   downstream extractors check `isSupported` per-field)."
-  ^Temporal [^Temporal t]
-  (if (instance? Instant t)
-    (.atZone ^Instant t ZoneOffset/UTC)
-    t))
-
-(defn- temporal->weekday
-  "Return 1-7 for Monday-Sunday, or nil if `t` is nil or the Temporal has no day-of-week."
-  [t]
-  (when-let [^Temporal z (some-> t temporal->zoned)]
-    (when (.isSupported z ChronoField/DAY_OF_WEEK)
-      (.get z ChronoField/DAY_OF_WEEK))))
-
-(defn- temporal->hour
-  "Return 0-23 for hour-of-day, or nil if `t` is nil or the Temporal has no hour."
-  [t]
-  (when-let [^Temporal z (some-> t temporal->zoned)]
-    (when (.isSupported z ChronoField/HOUR_OF_DAY)
-      (.get z ChronoField/HOUR_OF_DAY))))
-
-(defn- bucket-distribution
-  "Reducer factory: returns a reducer that bucketizes values via `bucket-fn` into `n-buckets`
-   slots and, on completion, returns a vector of per-bucket fractions (summing to 1.0).
-   Values where `bucket-fn` returns nil or out-of-range are skipped. Returns nil if no
-   valid values were seen."
-  [n-buckets bucket-fn]
-  (fn
-    ([] [(vec (repeat n-buckets 0)) 0])
-    ([[buckets total]]
-     (when (pos? total)
-       (mapv #(/ (double %) (double total)) buckets)))
-    ([[buckets total] x]
-     (if-let [idx (bucket-fn x)]
-       (if (and (<= 0 idx) (< idx n-buckets))
-         [(update buckets idx inc) (inc total)]
-         [buckets total])
-       [buckets total]))))
-
-(defn- weekday-distribution
-  "Reducer producing a 7-element vector of per-weekday fractions (Monday=index 0 .. Sunday=6)."
-  []
-  (bucket-distribution 7 (fn [t]
-                           (when-let [dow (temporal->weekday t)]
-                             (dec dow)))))
-
-(defn- hour-distribution
-  "Reducer producing a 24-element vector of per-hour fractions (0..23)."
-  []
-  (bucket-distribution 24 temporal->hour))
-
 (deffingerprinter :type/DateTime
   ((map ->temporal)
    (redux/post-complete
-    (robust-fuse {:earliest             earliest
-                  :latest               latest
-                  :skewness             ((keep ->millis-from-epoch) stats/skewness)
-                  :mode-stats           ((keep ->millis-from-epoch) mode-stats)
-                  :weekday-distribution (weekday-distribution)
-                  :hour-distribution    (hour-distribution)})
+    (robust-fuse {:earliest   earliest
+                  :latest     latest
+                  :skewness   ((keep ->millis-from-epoch) stats/skewness)
+                  :mode-stats ((keep ->millis-from-epoch) mode-stats)})
     (fn [{:keys [mode-stats] :as fused}]
       (-> fused
           (dissoc :mode-stats)
@@ -427,8 +371,6 @@
                   :percent-state  (stats/share u/state?)
                   :percent-blank  (stats/share str/blank?)
                   :average-length ((map count) stats/mean)
-                  :min-length     ((map count) stats/min)
-                  :max-length     ((map count) stats/max)
                   :mode-stats     mode-stats})
     (fn [{:keys [mode-stats] :as fused}]
       (-> fused

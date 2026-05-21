@@ -3,8 +3,8 @@ import _ from "underscore";
 import type {
   EmbedResource,
   EmbedResourceParameter,
-  EmbeddingParameters,
 } from "metabase/embedding/types";
+import type { EmbeddingParameters } from "metabase-types/api";
 
 export function getDefaultEmbeddingParams(
   resource: EmbedResource,

@@ -2,7 +2,6 @@
   "Schemas and helper functions for various PARSED parameter maps. These are created from the `:parameters` passed in
   with a query."
   (:require
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -16,6 +15,8 @@
   ::no-value)
 
 (mr/def ::no-value
+  "Convenience for representing an *optional* parameter present in a query but whose value is unspecified in the param
+  values."
   [:= ::no-value])
 
 (mr/def ::field-filter.value.map
@@ -43,16 +44,24 @@
      {:type   :date/single
       :value  #t \"2019-09-20T19:52:00.000-07:00\"}
 
-  *  A vector of maps like the one above (for multiple values)"
+  *  A vector of maps like the one above (for multiple values)
+
+  * Alias is optional and added by #61118 (not sure what it does, look at PR for more info)"
   [:map
    [:lib/type [:= ::field-filter]]
    [:field    ::lib.schema.metadata/column]
-   [:value    ::field-filter.value]])
+   [:value    ::field-filter.value]
+   [:alias    {:optional true} [:maybe string?]]])
 
 (mu/defn field-filter :- ::field-filter
   "Create a parsed `field-filter` parameter from map `m`."
-  [m]
-  (assoc m :lib/type ::field-filter))
+  ([field :- ::lib.schema.metadata/column
+    value :- ::field-filter.value]
+   {:lib/type ::field-filter
+    :field    field
+    :value    value})
+  ([field value param-alias]
+   (assoc (field-filter field value) :alias param-alias)))
 
 (defn field-filter?
   "Whether `x` is a map representing a parsed [[field-filter]] parameter."
@@ -62,14 +71,20 @@
 (mr/def ::temporal-unit
   [:map
    [:lib/type [:= ::temporal-unit]]
-   [:name     ::lib.schema.common/non-blank-string]
+   [:field    ::lib.schema.metadata/column]
    ;; TODO (Cam 7/16/25) -- constrain `:value`
-   [:value    some?]])
+   [:value    some?]
+   [:alias    {:optional true} [:maybe string?]]])
 
 (mu/defn temporal-unit :- ::temporal-unit
   "Create a parsed `temporal-unit` parameter from map `m`."
-  [m :- :map]
-  (assoc m :lib/type ::temporal-unit))
+  ([column    :- ::lib.schema.metadata/column
+    value      :- some?]
+   {:lib/type ::temporal-unit
+    :field    column
+    :value    value})
+  ([column value param-alias]
+   (assoc (temporal-unit column value) :alias param-alias)))
 
 (defn temporal-unit?
   "Whether `x` is a map representing a parsed [[temporal-unit]] parameter."
@@ -93,13 +108,71 @@
 
 (mu/defn referenced-card-query :- ::referenced-card-query
   "Create a parsed `referenced-card-query` parameter from map `m`."
-  [m :- :map]
-  (assoc m :lib/type ::referenced-card-query))
+  ([card-id query]
+   (referenced-card-query card-id query nil))
+  ([card-id    :- ::lib.schema.id/card
+    query      :- :string
+    parameters :- [:maybe [:sequential :any]]]
+   {:lib/type   ::referenced-card-query
+    :card-id    card-id
+    :query      query
+    :parameters parameters}))
 
 (defn referenced-card-query?
   "Whether `x` is a map representing a parsed [[referenced-card-query]] parameter."
   [x]
   (= (:lib/type x) ::referenced-card-query))
+
+(mr/def ::referenced-table-query.source-filter
+  "Each filter map has:
+
+   * `:field-id` - the ID of the field to filter on
+   * `:op`       - the comparison operator, one of :>, :>=, :<, :<=, :=, :!=
+   * `:value`    - the value to compare against"
+  [:map
+   [:field-id ::lib.schema.id/field]
+   [:op       [:enum :> :>= :< :<= := :!=]]
+   [:value    any?]])
+
+(mr/def ::referenced-table-query
+  "`table-id` is the id of the table being referenced
+
+  `source-filters` is an optional sequence of filter maps applied to the table reference.
+
+  When present, the table reference is rendered as a filtered subquery:
+
+      (SELECT * FROM \"table\" WHERE \"col\" > ? AND \"col\" <= ?)
+
+  `source-filters` was introduced to support incremental transforms, unused by the frontend.
+
+  `alias` is an optional string alias for the table reference. When present, the expansion includes an AS clause:
+  \"table\" AS \"alias\" or (SELECT ...) AS \"alias\".
+
+  Resolved from the template tag's `:emit-alias` boolean and `:name` during parsing."
+  [:map
+   [:lib/type       [:= ::referenced-table-query]]
+   [:table-id       ::lib.schema.id/table]
+   [:source-filters {:optional true} [:maybe [:sequential ::referenced-table-query.source-filter]]]
+   [:alias          {:optional true} [:maybe string?]]])
+
+(mu/defn referenced-table-query :- ::referenced-table-query
+  "Create a parsed `referenced-table-query` parameter from map `m`."
+  ([table-id]
+   (referenced-table-query table-id nil))
+  ([table-id source-filters]
+   (referenced-table-query table-id source-filters nil))
+  ([table-id       :- ::lib.schema.id/table
+    source-filters :- [:maybe [:sequential ::referenced-table-query.source-filter]]
+    param-alias    :- [:maybe string?]]
+   {:lib/type       ::referenced-table-query
+    :table-id       table-id
+    :source-filters source-filters
+    :alias          param-alias}))
+
+(defn referenced-table-query?
+  "Whether `x` is a map representing a parsed [[referenced-table-query]] parameter."
+  [x]
+  (= (:lib/type x) ::referenced-table-query))
 
 (mr/def ::referenced-query-snippet
   "A `ReferencedQuerySnippet` expands to the partial query snippet stored in the `NativeQuerySnippet` table in the
@@ -115,24 +188,33 @@
 
 (mu/defn referenced-query-snippet :- ::referenced-query-snippet
   "Create a parsed `referenced-query-snippet` parameter from map `m`."
-  [m :- :map]
-  (assoc m :lib/type ::referenced-query-snippet))
+  [snippet-id :- ::lib.schema.id/snippet
+   content    :- :string]
+  {:lib/type   ::referenced-query-snippet
+   :snippet-id snippet-id
+   :content    content})
 
 (defn referenced-query-snippet?
   "Whether `x` is a map representing a parsed [[referenced-query-snippet]]."
   [x]
   (= (:lib/type x) ::referenced-query-snippet))
 
+(mr/def ::date.value
+  [:or
+   ::lib.schema.literal/string.date
+   ::lib.schema.literal/string.datetime])
+
+;; TODO (Cam 2026-05-14) -- rename to `::datetime`
 (mr/def ::date
   "As in a literal date, defined by date-string `s`."
   [:map
    [:lib/type [:= ::date]]
-   [:s        ::lib.schema.literal/string.date]])
+   [:s        ::date.value]])
 
 (mu/defn date :- ::date
   "Create a parsed `date` parameter from map `m`."
-  [m :- :map]
-  (assoc m :lib/type ::date))
+  [s :- ::date.value]
+  {:lib/type ::date, :s s})
 
 (defn date?
   "Whether `x` is a map representing a parsed [[date]] parameter."
@@ -148,8 +230,8 @@
 
 (mu/defn date-range :- ::date-range
   "Create a new parsed `date-range` parameter from map `m`."
-  [m :- :map]
-  (assoc m :lib/type ::date-range))
+  [start end]
+  {:lib/type ::date-range, :start start, :end end})
 
 (defn date-range?
   "Whether `x` is a map representing a parsed [[date-range]] parameter."
@@ -165,8 +247,8 @@
 
 (mu/defn date-time-range :- ::date-time-range
   "Create a new parsed `date-time-range` parameter from map `m`."
-  [m :- :map]
-  (assoc m :lib/type ::date-time-range))
+  [start end]
+  {:lib/type ::date-time-range, :start start, :end end})
 
 (defn date-time-range?
   "Whether `x` is a map representing a parsed [[date-time-range]] parameter."
@@ -180,8 +262,9 @@
 
 (mu/defn param :- ::param
   "Create a new parsed `param` parameter from map `m`."
-  [m :- :map]
-  (assoc m :lib/type ::param))
+  [param-key :- :string]
+  {:lib/type ::param
+   :k        param-key})
 
 (defn param?
   "Whether `x` is a map that represents a parsed [[param]] parameter."
@@ -213,8 +296,9 @@
 
 (mu/defn optional :- ::optional
   "Create a new parsed `optional` param from map `m`."
-  [m :- :map]
-  (assoc m :lib/type ::optional))
+  [args :- [:sequential :any]]
+  {:lib/type ::optional
+   :args     args})
 
 (defn optional?
   "Whether `x` is a map that represents a parsed [[optional]] parameter."

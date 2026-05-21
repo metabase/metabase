@@ -47,6 +47,11 @@
                       ;; NB: because of test parallelism, this *will* affect other non-h2
                       ;; tests, but the check above in the test-driver function will
                       ;; prevent it from actually doing anything different in those tests.
+                      ;; The kondo ignore is the exemption: this `with-redefs` is
+                      ;; parallel-safe by construction (the redef target is a no-op
+                      ;; identity for h2, and the inner conditional in `test-driver`
+                      ;; prevents it from affecting non-h2 tests).
+                      #_{:clj-kondo/ignore [:metabase/validate-deftest]}
                       (with-redefs [mtd/-test-driver test-driver]
                         (f))))
 
@@ -416,8 +421,8 @@
     (is (= {:type :metabase.actions.error/violate-unique-constraint,
             :message "Ranking already exists.",
             :errors {"RANKING" "This Ranking value already exists."}}
-           (with-redefs [h2.actions/constraint->column-names (fn [& _args]
-                                                               ["RANKING"])]
+           (mt/with-dynamic-fn-redefs [h2.actions/constraint->column-names (fn [& _args]
+                                                                             ["RANKING"])]
              (sql-jdbc.actions/maybe-parse-sql-error
               :h2 actions.error/violate-unique-constraint nil nil
               "Unique index or primary key violation: \"PUBLIC.CONSTRAINT_INDEX_4 ON PUBLIC.\"\"GROUP\"\"(RANKING NULLS FIRST) VALUES ( /* 1 */ 1 )\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"GROUP\" (\"NAME\", \"RANKING\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23505-214]"))))))

@@ -1,6 +1,5 @@
 (ns metabase-enterprise.data-complexity-score.cli-test
   (:require
-   [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.data-complexity-score.cli :as cli]
@@ -13,7 +12,8 @@
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -44,23 +44,36 @@
     ;;                 events (extra universe repeat).
     (let [result (#'cli/run-cli {:representation-dir representation-fixture-dir})]
       (testing "library score matches the hand-derived total"
-        (is (= {:total      215
-                :components {:entity-count      {:measurement 6.0 :score 60}
-                             :name-collisions   {:measurement 1.0 :score 100}
-                             :synonym-pairs     {:measurement 1.0 :score 50}
-                             :field-count       {:measurement 3.0 :score 3}
-                             :repeated-measures {:measurement 1.0 :score 2}}}
+        ;;  size  = 60 (entity) + 3 (field) = 63
+        ;;  amb   = 100 (collisions) + 50 (synonyms) + 2 (repeated-measures) = 152
+        ;;  total = 215
+        (is (= {:score      215
+                :components {:size      {:score      63
+                                         :components {:entity-count {:measurement 6.0 :score 60}
+                                                      :field-count  {:measurement 3.0 :score 3}}}
+                             :ambiguity {:score      152
+                                         :components {:name-collisions   {:measurement 1.0 :score 100}
+                                                      :synonym-pairs     {:measurement 1.0 :score 50}
+                                                      :repeated-measures {:measurement 1.0 :score 2}}}}}
                (:library result))))
       (testing "universe score matches the hand-derived total"
-        (is (= {:total      409
-                :components {:entity-count      {:measurement 10.0 :score 100}
-                             :name-collisions   {:measurement 2.0  :score 200}
-                             :synonym-pairs     {:measurement 2.0  :score 100}
-                             :field-count       {:measurement 5.0  :score 5}
-                             :repeated-measures {:measurement 2.0  :score 4}}}
+        ;;  size  = 100 (entity) + 5 (field) = 105
+        ;;  amb   = 200 (collisions) + 100 (synonyms) + 4 (repeated-measures) = 304
+        ;;  total = 409
+        (is (= {:score      409
+                :components {:size      {:score      105
+                                         :components {:entity-count {:measurement 10.0 :score 100}
+                                                      :field-count  {:measurement 5.0  :score 5}}}
+                             :ambiguity {:score      304
+                                         :components {:name-collisions   {:measurement 2.0  :score 200}
+                                                      :synonym-pairs     {:measurement 2.0  :score 100}
+                                                      :repeated-measures {:measurement 2.0  :score 4}}}}}
                (:universe result))))
-      (testing "meta has formula-version + threshold + weights but no :embedding-model (offline mode)"
+      (testing "meta has formula-version + format-version + threshold + weights but no :embedding-model (offline mode)"
+        ;; Literal 1/1 here is intentional — flags accidental version bumps that would invalidate the
+        ;; emitted fingerprint without an explicit code-change reviewer call.
         (is (= {:formula-version   1
+                :format-version    1
                 :synonym-threshold 0.8
                 :weights           complexity/weights
                 :metabot-source    :universe-fallback}
@@ -89,16 +102,21 @@
       (is (= 2 (:field-count events))
           "events Table should have exactly 2 fields — the side-car must not be counted"))))
 
-(deftest ^:sequential run-cli-writes-readable-edn-to-output-file-test
+(deftest ^:sequential run-cli-writes-readable-json-test
   ;; Not ^:parallel: calls `cli/write-result!`, which kondo flags as a destructive function in
   ;; parallel tests. The temp file we hand it is unique-per-call so the write is safe in
   ;; principle, but the lint flag is the right default — drop it instead of whitelisting.
-  (testing "--output path gets a readable EDN dump of the same result"
-    (let [tmp (doto (java.io.File/createTempFile "complexity-cli-output-" ".edn") .deleteOnExit)]
-      ;; Call internals instead of -main, which terminates the JVM via System/exit.
-      (#'cli/write-result! (#'cli/run-cli {:representation-dir representation-fixture-dir})
-                           (.getAbsolutePath tmp))
-      (is (= 215 (-> (slurp tmp) edn/read-string :library :total))))))
+  ;; Call internals instead of -main, which terminates the JVM via System/exit.
+  (let [result (#'cli/run-cli {:representation-dir representation-fixture-dir})]
+    (testing "without --output, stdout gets single-line JSON"
+      (let [stdout (with-out-str (#'cli/write-result! result nil))]
+        (is (= 215 (-> stdout (json/decode true) :library :score)))
+        (is (not (re-find #"\n.+" stdout)) "stdout JSON should be single-line")))
+    (testing "with --output, the file gets pretty JSON and stdout stays silent"
+      (let [tmp    (doto (java.io.File/createTempFile "complexity-cli-output-" ".json") .deleteOnExit)
+            stdout (with-out-str (#'cli/write-result! result (.getAbsolutePath tmp)))]
+        (is (= "" stdout))
+        (is (= 215 (-> (slurp tmp) (json/decode true) :library :score)))))))
 
 ;;; ------------------------------------- pure embedder/scoring tests -------------------------------------
 
@@ -129,7 +147,7 @@
                                    []
                                    (embedders/file-embedder embeddings)
                                    {})
-                                  [:library :components :synonym-pairs :measurement]))]
+                                  [:library :components :ambiguity :components :synonym-pairs :measurement]))]
         (testing "cosine ≈ 0.50 — above the old 0.30 cutoff, below 0.80: NOT a synonym"
           (is (= 0.0 (score-pairs {"alpha" [1.0 0.0]
                                    "beta"  [0.5 0.866]}))))
@@ -330,38 +348,38 @@
             "representation-derived rows must never advance the cron's last-fingerprint setting")))))
 
 (deftest ^:sequential run-cli-appdb-mode-defaults-to-writing-test
-  (testing "appdb mode with no --write-to-appdb flag defaults to writing (true)"
+  (testing "appdb mode with no --write-to-appdb flag defaults to writing (true) but doesn't advance the cron fingerprint"
+    ;; CLI runs disable Snowplow, so they can't legitimately advance
+    ;; `data-complexity-scoring-last-fingerprint` — that setting is the cron's
+    ;; been-published-already gate and only a confirmed publish should move it. The CLI just
+    ;; persists the score row so operators can see the run.
     (let [calls         (atom [])
-          advance-calls (atom [])]
-      (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!                (fn [])
-                                  complexity/complexity-scores                    (fn [& _] {:meta {}})
-                                  synonym-source/complexity-scores-opts           (constantly {})
-                                  metabot-scope/internal-metabot-scope            (constantly {})
-                                  task.complexity-score/current-fingerprint       (constantly "appdb-fp")
-                                  task.complexity-score/maybe-advance-last-fingerprint! (fn [fp _result]
-                                                                                          (swap! advance-calls conj fp))
-                                  data-complexity-score/record-score!             (fn [fp source _result]
-                                                                                    (swap! calls conj [fp source]))]
-        (#'cli/run-cli {:source "appdb"})
-        (is (= [["appdb-fp" "appdb"]] @calls)
-            "appdb-mode default must write one row stamped source=\"appdb\"")
-        (is (= ["appdb-fp"] @advance-calls)
-            "appdb-mode write path must call maybe-advance-last-fingerprint! the same way the cron does")))))
-
-(deftest ^:sequential run-cli-appdb-mode-respects-explicit-no-write-test
-  (testing "appdb + --write-to-appdb false scores but never persists or advances the fingerprint"
-    (let [persisted?    (atom false)
           advance-calls (atom 0)]
       (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!                (fn [])
                                   complexity/complexity-scores                    (fn [& _] {:meta {}})
                                   synonym-source/complexity-scores-opts           (constantly {})
                                   metabot-scope/internal-metabot-scope            (constantly {})
-                                  data-complexity-score/record-score!             (fn [& _] (reset! persisted? true))
+                                  task.complexity-score/current-fingerprint       (constantly "appdb-fp")
                                   task.complexity-score/maybe-advance-last-fingerprint! (fn [& _]
-                                                                                          (swap! advance-calls inc))]
+                                                                                          (swap! advance-calls inc))
+                                  data-complexity-score/record-score!             (fn [fp source _result]
+                                                                                    (swap! calls conj [fp source]))]
+        (#'cli/run-cli {:source "appdb"})
+        (is (= [["appdb-fp" "appdb"]] @calls)
+            "appdb-mode default must write one row stamped source=\"appdb\"")
+        (is (zero? @advance-calls)
+            "CLI must not advance the cron's last-fingerprint setting")))))
+
+(deftest ^:sequential run-cli-appdb-mode-respects-explicit-no-write-test
+  (testing "appdb + --write-to-appdb false scores but never persists"
+    (let [persisted? (atom false)]
+      (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!                (fn [])
+                                  complexity/complexity-scores                    (fn [& _] {:meta {}})
+                                  synonym-source/complexity-scores-opts           (constantly {})
+                                  metabot-scope/internal-metabot-scope            (constantly {})
+                                  data-complexity-score/record-score!             (fn [& _] (reset! persisted? true))]
         (#'cli/run-cli {:source "appdb" :write-to-appdb false})
-        (is (false? @persisted?))
-        (is (zero? @advance-calls))))))
+        (is (false? @persisted?))))))
 
 (deftest ^:parallel dir-digest-is-stable-and-content-sensitive-test
   (testing "dir-digest produces the same value for the same content"

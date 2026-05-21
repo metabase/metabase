@@ -21,6 +21,7 @@ export * from "./dataset";
 export * from "./dependencies";
 export * from "./document";
 export * from "./email";
+export * from "./embed";
 export * from "./embedding-theme";
 export * from "./entity-id";
 export * from "./field";
@@ -70,6 +71,8 @@ export * from "./util";
 export * from "./visualization";
 export * from "./visualization-settings";
 export * from "./visualizer";
+export * from "./workspace";
+export * from "./workspace-instance";
 
 // ISO8601 timestamp
 export type ISO8601Time = string;
