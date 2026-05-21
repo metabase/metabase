@@ -21,7 +21,7 @@ const swcJestTransform = [
       },
       experimental: {
         plugins: [
-          ["swc_mut_cjs_exports", {}],
+          ["@swc-contrib/mut-cjs-exports", {}],
           ["@swc/plugin-emotion", { sourceMap: false }],
         ],
       },
