@@ -1,0 +1,8 @@
+{% if no_tool_call %}Your previous response didn't include a `structured_output` tool call — only reasoning or free text. You MUST emit the plan by calling the `structured_output` tool exactly once. {% else %}Your plan didn't validate. {% endif %}Errors:
+
+{{ errors|safe }}
+
+Return a `structured_output` tool call with a valid `plan` array and `rationale`. Keep the same overall strategy — only fix what the errors above point at. Your previous response was:
+```json
+{{ previous_echo|safe }}
+```

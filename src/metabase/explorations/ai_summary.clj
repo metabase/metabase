@@ -89,13 +89,16 @@
                                           :chart_description  chart_description}]))
             eqr-rows))))
 
-(defn- load-timeline-events
+(defn load-timeline-events
   "Fetch every non-archived timeline event from each timeline the user selected
   on this thread, grouped by timeline. The events themselves carry the bulk
   of the analytical signal — names, descriptions, and timestamps tell the
   model *what happened* around the time the data changed. Returns a vector of
   `{:timeline-id :timeline-name :timeline-description :events [...]}` maps,
-  events sorted by timestamp ascending."
+  events sorted by timestamp ascending.
+
+  Shared with `metabase.explorations.query-plan` — both prompts need the same
+  timeline rendering."
   [thread-id]
   (let [rows (t2/query
               {:select   [[:t.id :timeline_id]
@@ -432,17 +435,21 @@
 
 ;;; ----- Error document — used when a phase fatally fails validation -----
 
-(defn- error-doc
+(defn error-doc
   "Build a minimal ProseMirror document explaining why generation failed.
   Used when Phase 1 or Phase 2 hits validation errors that survived the
   repair retry. The doc is intentionally diagnostic, not pretty — this is
   development-time signal that something is wrong with the prompt, schema,
-  or model behavior, and someone should look."
+  or model behavior, and someone should look.
+
+  Shared with `metabase.explorations.query-plan` so a planning failure can
+  swap the same Auto-Insights placeholder doc to an error body."
   [{:keys [phase thread-id final-errors detail]}]
   (let [phase-label (case phase
-                      :phase-1  "Phase 1 — Chart curation"
-                      :phase-2  "Phase 2 — Analysis"
-                      :uncaught "an unexpected error before any phase ran"
+                      :phase-1     "Phase 1 — Chart curation"
+                      :phase-2     "Phase 2 — Analysis"
+                      :query-plan  "Query plan — choosing which charts to run"
+                      :uncaught    "an unexpected error before any phase ran"
                       (str phase))
         err-items   (mapv (fn [e]
                             {:type    "listItem"

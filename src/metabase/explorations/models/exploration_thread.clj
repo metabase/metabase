@@ -17,7 +17,7 @@
   "EDN-encode the AI Summary transcript. EDN over JSON for the same
   reason as chart_stats: the transcript contains keyword keys, prose-mirror
   doc trees with string-keyed maps, and nested Clojure data — JSON would
-  mangle the shape."
+  mangle the shape. Shared by `auto_insights_transcript` and `query_plan_transcript`."
   [v]
   (cond
     (nil? v)    nil
@@ -32,11 +32,12 @@
     (try
       (edn/read-string {:readers {} :default (fn [tag v] [::unknown-tag tag v])} s)
       (catch Throwable e
-        (log/warn e "Failed to parse exploration_thread.auto_insights_transcript; returning nil")
+        (log/warn e "Failed to parse exploration_thread transcript column; returning nil")
         nil))))
 
 (t2/deftransforms :model/ExplorationThread
-  {:auto_insights_transcript {:in transcript-in :out transcript-out}})
+  {:auto_insights_transcript {:in transcript-in :out transcript-out}
+   :query_plan_transcript    {:in transcript-in :out transcript-out}})
 
 (defmethod mi/can-read? :model/ExplorationThread
   ([instance]
