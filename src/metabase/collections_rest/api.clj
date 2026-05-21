@@ -1697,7 +1697,7 @@
     (api/check-400 (:archived collection)
                    "Collection must be trashed before deletion.")
     (api/check-400 (contains? #{:tenant-specific collection/shared-tenant-ns nil} (:namespace collection))
-                   "Collections in non-nil namespaces cannot be deleted.")
+                   "Only collections in the default or tenant namespaces can be deleted.")
     ;; Shouldn't happen, because they can't be archived either... but juuuuust in case.
     (api/check-400 (nil? (:personal_owner_id collection))
                    "Personal collections cannot be deleted.")
