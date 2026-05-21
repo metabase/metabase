@@ -57,6 +57,10 @@ cypress.env.json
 /e2e/tmp/db_dumps/*
 !/e2e/tmp/db_dumps/.gitkeep
 /e2e/support/assets/example_custom_viz_plugin*.tgz
+# Per-spec coverage intermediates emitted by the after:spec hook; the
+# aggregated manifest at e2e/coverage/spec-module-manifest.json is committed.
+/e2e/coverage-manifest
+/.nyc_output
 /lein-plugins/*/target
 /local
 /locales/metabase-*.pot

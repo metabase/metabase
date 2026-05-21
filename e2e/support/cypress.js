@@ -1,5 +1,8 @@
 import { register as registerCypressGrep } from "@cypress/grep";
 registerCypressGrep();
+// No-op when the bundle isn't instrumented (window.__coverage__ undefined),
+// so always-on is safe and avoids env-conditional support imports.
+import "@cypress/code-coverage/support";
 import "@cypress/skip-test/support";
 import "@testing-library/cypress/add-commands";
 import { configure } from "@testing-library/cypress";

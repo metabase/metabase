@@ -33,15 +33,44 @@ import {
 } from "./helpers/e2e-mock-llm-tasks";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
+const coverageTask = require("@cypress/code-coverage/task");
 const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
 const cypressSplit = require("cypress-split");
 
+const isInstrumented = process.env.INSTRUMENT_COVERAGE === "true";
+const COVERAGE_MANIFEST_DIR = path.resolve("e2e/coverage-manifest");
+const NYC_OUTPUT_FILE = path.resolve(".nyc_output/out.json");
+
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 const isCI = !!process.env.CI;
 
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
+
+// We delete .nyc_output/out.json between specs so each per-spec entry reflects
+// only that spec's execution — @cypress/code-coverage otherwise accumulates.
+function writeSpecCoverageEntry(spec) {
+  if (!fs.existsSync(NYC_OUTPUT_FILE)) {
+    return;
+  }
+
+  const coverage = JSON.parse(fs.readFileSync(NYC_OUTPUT_FILE, "utf8"));
+  const executed = Object.entries(coverage)
+    .filter(([, fileCov]) =>
+      Object.values(fileCov.s || {}).some((count) => count > 0),
+    )
+    .map(([file]) => file);
+
+  fs.mkdirSync(COVERAGE_MANIFEST_DIR, { recursive: true });
+  const entryName = spec.relative.replace(/[\\/]/g, "__") + ".json";
+  fs.writeFileSync(
+    path.join(COVERAGE_MANIFEST_DIR, entryName),
+    JSON.stringify({ spec: spec.relative, files: executed }, null, 2),
+  );
+
+  fs.unlinkSync(NYC_OUTPUT_FILE);
+}
 
 // docs say that tsconfig paths should handle aliases, but they don't
 const assetsResolverPlugin = {
@@ -185,6 +214,10 @@ const defaultConfig = {
       collectFailingTests(on, config);
     }
 
+    if (isInstrumented) {
+      coverageTask(on, config);
+    }
+
     // Surface the resolved Cypress retry ceiling so the ci-conductor reporter
     // can include it in the payload (CYPRESS_RETRIES isn't otherwise set in CI;
     // the value lives in mainConfig.retries.runMode). DEV-1999.
@@ -218,6 +251,10 @@ const defaultConfig = {
           // delete the video if the spec passed
           fs.unlinkSync(results.video);
         }
+      }
+
+      if (isInstrumented) {
+        writeSpecCoverageEntry(spec);
       }
     });
 
