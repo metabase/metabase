@@ -63,7 +63,6 @@ export function useIsCardPristine(options: UseIsCardPristineOptions): boolean {
     columns,
     columnValuesMapping,
     settings,
-    source.sourceId,
-    source.id,
+    source,
   ]);
 }

@@ -264,6 +264,9 @@ export const getTabularPreviewSeries = createSelector(
 
 export const getCurrentVisualizerState = getCurrentHistoryItem;
 
+export const getVisualizerInitialState = (state: State) =>
+  getCurrentHistoryItem(state).initialState;
+
 export const getIsDirty = createSelector(
   [getFirstHistoryItem, getCurrentHistoryItem],
   (initialState, state) => {

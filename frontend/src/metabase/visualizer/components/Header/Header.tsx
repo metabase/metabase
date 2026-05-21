@@ -22,6 +22,7 @@ import {
 } from "../analytics";
 
 import S from "./Header.module.css";
+import { ResetButton } from "./ResetButton";
 
 interface HeaderProps {
   onSave: (visualization: VisualizerVizDefinition) => void;
@@ -113,6 +114,7 @@ export function Header({
           />
         </Tooltip>
       </Button.Group>
+      <ResetButton />
       <Button
         variant="filled"
         size="sm"
