@@ -11,6 +11,7 @@ import {
   setupSettingEndpoint,
 } from "__support__/server-mocks";
 import {
+  act,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
@@ -89,7 +90,7 @@ async function setup({
   );
 
   // manually dispatch the location event that would otherwise be done for us with react-router-redux
-  dispatchLocationChange({ store, initialRoute: true, pathname });
+  await dispatchLocationChange({ store, initialRoute: true, pathname });
 
   await waitForLoaderToBeRemoved();
 
@@ -127,14 +128,14 @@ describe("nav > containers > Navbar > Core App", () => {
   it("should hide when visiting a question", async () => {
     const store = await setup({ pathname: "/" });
     await expectNavbarOpen();
-    dispatchLocationChange({ store, pathname: "/question/1" });
+    await dispatchLocationChange({ store, pathname: "/question/1" });
     await expectNavbarClosed();
   });
 
   it("should stay open when navigating to the database reference questions page (metabase#72001)", async () => {
     const store = await setup({ pathname: "/reference/databases/1" });
     await expectNavbarOpen();
-    dispatchLocationChange({
+    await dispatchLocationChange({
       store,
       pathname: "/reference/databases/1/tables/2/questions",
     });
@@ -144,21 +145,24 @@ describe("nav > containers > Navbar > Core App", () => {
   it("should hide when visiting a question and stay hidden when returning to collection", async () => {
     const store = await setup({ pathname: "/collection/1" });
     await expectNavbarOpen();
-    dispatchLocationChange({ store, pathname: "/question/1" });
+    await dispatchLocationChange({ store, pathname: "/question/1" });
     await expectNavbarClosed();
-    dispatchLocationChange({ store, pathname: "/collection/1" });
+    await dispatchLocationChange({ store, pathname: "/collection/1" });
     await expectNavbarClosed();
   });
 
   it("should not close navbar when preserveNavbarState is set", async () => {
     const store = await setup({ isOpen: true });
     await expectNavbarOpen();
-    store.dispatch({
-      type: "@@router/LOCATION_CHANGE",
-      payload: {
-        pathname: "/question/1",
-        state: { preserveNavbarState: true },
-      },
+    // act(...) flushes the connected Navbar re-render caused by the dispatch
+    await act(async () => {
+      store.dispatch({
+        type: "@@router/LOCATION_CHANGE",
+        payload: {
+          pathname: "/question/1",
+          state: { preserveNavbarState: true },
+        },
+      });
     });
     await expectNavbarOpen();
   });
@@ -166,20 +170,25 @@ describe("nav > containers > Navbar > Core App", () => {
   it("should preserve state when navigating collections", async () => {
     const store = await setup({ pathname: "/collection/1" });
     await expectNavbarOpen();
-    dispatchLocationChange({ store, pathname: "/collection/2" });
+    await dispatchLocationChange({ store, pathname: "/collection/2" });
     await expectNavbarOpen();
-    dispatchLocationChange({ store, pathname: "/question/1" });
+    await dispatchLocationChange({ store, pathname: "/question/1" });
     await expectNavbarClosed();
-    dispatchLocationChange({ store, pathname: "/collection/3" });
+    await dispatchLocationChange({ store, pathname: "/collection/3" });
     await expectNavbarClosed();
-    dispatchLocationChange({ store, pathname: "/collection/4" });
+    await dispatchLocationChange({ store, pathname: "/collection/4" });
     await expectNavbarClosed();
-    store.dispatch({ type: OPEN_NAVBAR });
+    // act(...) flushes the connected Navbar re-render caused by the dispatch
+    await act(async () => {
+      store.dispatch({ type: OPEN_NAVBAR });
+    });
     await expectNavbarOpen();
-    dispatchLocationChange({ store, pathname: "/collection/5" });
+    await dispatchLocationChange({ store, pathname: "/collection/5" });
     await expectNavbarOpen();
-    store.dispatch({ type: CLOSE_NAVBAR });
-    dispatchLocationChange({ store, pathname: "/collection/6" });
+    await act(async () => {
+      store.dispatch({ type: CLOSE_NAVBAR });
+    });
+    await dispatchLocationChange({ store, pathname: "/collection/6" });
     await expectNavbarClosed();
   });
 
@@ -276,16 +285,21 @@ interface DispatchLocationChangeParams {
   pathname: string;
 }
 
-function dispatchLocationChange({
+async function dispatchLocationChange({
   store,
   initialRoute = false,
   pathname,
 }: DispatchLocationChangeParams) {
-  store.dispatch({
-    type: "@@router/LOCATION_CHANGE",
-    payload: {
-      pathname,
-      action: initialRoute ? "POP" : "PUSH",
-    },
+  // The dispatch synchronously re-renders the connected Navbar; wrap it in
+  // act(...) so React's state updates (and any async effects they trigger)
+  // are flushed within the test instead of leaking past it.
+  await act(async () => {
+    store.dispatch({
+      type: "@@router/LOCATION_CHANGE",
+      payload: {
+        pathname,
+        action: initialRoute ? "POP" : "PUSH",
+      },
+    });
   });
 }

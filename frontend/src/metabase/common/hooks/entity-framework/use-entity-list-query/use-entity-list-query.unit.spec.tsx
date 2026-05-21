@@ -111,10 +111,14 @@ const setup = () => {
 };
 
 describe("useEntityListQuery", () => {
-  it("should be initially loading", () => {
+  it("should be initially loading", async () => {
     setup();
 
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+
+    // Let the pending list requests settle so their state updates stay
+    // wrapped in act instead of leaking into the next test.
+    await waitForLoaderToBeRemoved();
   });
 
   it("should initially load data only once the reload flag in a nested component tree", async () => {
@@ -206,9 +210,9 @@ describe("useEntityListQuery", () => {
       within(screen.getByTestId("test2")).getByTestId("loading-indicator"),
     ).toBeInTheDocument();
 
-    await delay(100); // trigger fetch request to be resolved
-
-    await delay(0); // trigger extra event loop to make sure React state has been updated
+    // Wait for the delayed (cached) request to resolve. Using waitFor keeps the
+    // resulting state updates wrapped in act, unlike a bare delay.
+    await waitForLoaderToBeRemoved();
 
     expect(fetchMock.callHistory.calls("path:/api/card")).toHaveLength(1);
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
