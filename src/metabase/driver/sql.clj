@@ -79,9 +79,8 @@
    {native-query :native, :as native-stage} :- ::lib.schema/stage.native]
   (let [params-map            (params.values/stage->params-map metadata-providerable native-stage)
         referenced-card-ids   (params.values/referenced-card-ids params-map)
-        [native-query params] (-> native-query
-                                  lib/parse-parameters
-                                  (sql.params.substitute/substitute params-map))]
+        parsed-query          (lib/parse-parameters native-query)
+        [native-query params] (sql.params.substitute/substitute metadata-providerable parsed-query params-map)]
     (cond-> (assoc native-stage
                    :native native-query
                    :params params)

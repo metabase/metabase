@@ -25,8 +25,7 @@
 
 (defn- substitute [parsed param->value]
   (driver/with-driver :h2
-    (mt/with-metadata-provider meta/metadata-provider
-      (sql.params.substitute/substitute parsed param->value))))
+    (sql.params.substitute/substitute meta/metadata-provider parsed param->value)))
 
 ;; as with the MBQL parameters tests Redshift fail for unknown reasons; disable their tests for now
 ;; TIMEZONE FIXME
@@ -162,8 +161,7 @@
                             field-metadata
                             {:type  :string/=
                              :value ["banana"]})
-            [sql _args] (mt/with-metadata-provider metadata-provider
-                          (sql.params.substitute/substitute query {"tag" field-filter}))]
+            [sql _args] (sql.params.substitute/substitute metadata-provider query {"tag" field-filter})]
         (testing "The SQL identifier should include the parent field 'result' before 'tag_name'"
           (let [[exp-identifier] (sql.qp/format-honeysql driver/*driver*
                                                          (h2x/identifier :field "result" "tag_name"))]
@@ -390,8 +388,7 @@
 
 (defn- substitute-e2e [sql params]
   (let [[query params] (driver/with-driver :h2
-                         (mt/with-metadata-provider meta/metadata-provider
-                           (#'sql.params.substitute/substitute (lib/parse-parameters sql) (into {} params))))]
+                         (#'sql.params.substitute/substitute meta/metadata-provider (lib/parse-parameters sql) (into {} params)))]
     {:query query, :params (vec params)}))
 
 (deftest ^:parallel basic-substitution-test
@@ -1307,6 +1304,7 @@
       (is (= ["SELECT * FROM (SELECT * FROM table WHERE x LIKE ?)"
               ["G%"]]
              (sql.params.substitute/substitute
+              meta/metadata-provider
               ["SELECT * FROM " (lib/parsed-param "#1")]
               {"#1"
                (lib/parsed-referenced-card-query-param 1 "SELECT * FROM table WHERE x LIKE ?" ["G%"])}))))))

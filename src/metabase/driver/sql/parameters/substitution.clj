@@ -119,6 +119,7 @@
    [:replacement-snippet     {:optional true} :string] ; allowed to be blank if this is an optional param
    [:prepared-statement-args {:optional true} [:maybe [:sequential :any]]]])
 
+;; TODO (Cam 2026-05-21) Update this to take an explicit `metadata-providerable`
 (defmulti ->replacement-snippet-info
   "Return information about how `value` should be converted to SQL, as a map with keys `:replacement-snippet` and
   `:prepared-statement-args`.
