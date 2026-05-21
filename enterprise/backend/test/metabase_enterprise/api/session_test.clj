@@ -121,6 +121,7 @@
             :etl_connections                false
             :etl_connections_pg             false
             :dependencies                   false
+            :workspaces                     false
             :writable_connection            true}
            (mt/with-temporary-setting-values [custom-viz-enabled true]
              (:token-features (mt/user-http-request :crowberto :get 200 "session/properties")))))))
