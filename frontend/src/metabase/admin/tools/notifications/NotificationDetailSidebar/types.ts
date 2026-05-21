@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import type {
   AdminNotification,
+  AdminNotificationDetail,
   CardId,
   NotificationChannelType,
   NotificationHandlerHttp,
@@ -62,4 +63,10 @@ export type DetailsRowProps = {
   value: ReactNode;
   bold?: boolean;
   spanLabel?: boolean;
+};
+
+export type SidebarBodyProps = {
+  notification: AdminNotification;
+  isDetailFetching: boolean;
+  detail: AdminNotificationDetail | undefined;
 };

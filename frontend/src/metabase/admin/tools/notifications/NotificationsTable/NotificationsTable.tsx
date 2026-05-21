@@ -3,7 +3,6 @@ import dayjs from "dayjs";
 import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
-import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { SelectionState, TreeTableColumnDef } from "metabase/ui";
 import {
@@ -26,6 +25,7 @@ import type {
 } from "metabase-types/api";
 
 import {
+  formatRelativeDate,
   getChannelIconName,
   getChannelLabel,
 } from "../NotificationsAdminPage/utils";
@@ -67,18 +67,12 @@ const summarizeChannels = (
 
 const TimestampCell = ({ run }: { run: NotificationRunSummary | null }) => {
   if (!run) {
-    return <span>{t`Never`}</span>;
+    return formatRelativeDate(null);
   }
-  const date = dayjs(run.at);
-  const isToday = date.isSame(dayjs(), "day");
   return (
     <Flex gap="sm" align="center">
-      <Tooltip label={date.fromNow()}>
-        {isToday ? (
-          <span>{t`Today, ${date.format("LT")}`}</span>
-        ) : (
-          <DateTime value={run.at} unit="minute" />
-        )}
+      <Tooltip label={dayjs(run.at).fromNow()}>
+        <span>{formatRelativeDate(run.at)}</span>
       </Tooltip>
       {run.status === "failing" && (
         <Tooltip label={run.error} disabled={!run.error}>
