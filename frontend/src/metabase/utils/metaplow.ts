@@ -39,7 +39,7 @@ function getBasePayload(url: string): Omit<MetaplowPayload, "name" | "data"> {
   };
 }
 
-async function send(payload: MetaplowPayload): Promise<void> {
+async function send(payload: MetaplowPayload): Promise<unknown> {
   const metaplowUrl = Settings.get("metaplow-url");
   if (!metaplowUrl) {
     return;
@@ -49,7 +49,7 @@ async function send(payload: MetaplowPayload): Promise<void> {
     "Content-Type": "application/json",
   };
 
-  fetch(metaplowUrl, {
+  return fetch(metaplowUrl, {
     method: "POST",
     headers,
     body: JSON.stringify({ type: "event", payload }),
@@ -67,7 +67,7 @@ export function trackMetaplowEvent(
   }).catch(() => undefined);
 }
 
-export function trackMetaplowPageView(url: string): Promise<void> {
+export function trackMetaplowPageView(url: string): Promise<unknown> {
   return send({
     ...getBasePayload(url),
     name: "pageview",
