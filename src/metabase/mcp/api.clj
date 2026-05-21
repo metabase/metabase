@@ -9,20 +9,22 @@
    [metabase.api.common :as api]
    [metabase.api.macros.scope :as scope]
    [metabase.api.open-api :as open-api]
+   [metabase.mcp.core :as mcp]
    [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.tools :as mcp.tools]
    [metabase.mcp.validation :as mcp.validation]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.request.core :as request]
+   [metabase.server.middleware.security :as mw.security]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.system.core :as system]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [oidc-provider.store :as oidc.store]
    [throttle.core :as throttle])
   (:import
    (java.io BufferedWriter OutputStreamWriter)
-   (java.net URI)
    (java.nio.charset StandardCharsets)
    (java.util UUID)))
 
@@ -160,18 +162,40 @@
 
 ;;; ------------------------------------------------- Validation --------------------------------------------------
 
+(defn- normalize-domain
+  "Extract and lowercase the domain from a URL or Host-style header value.
+   Bracketed IPv6 forms (`[::1]:3000`) and ports are handled correctly. Returns nil for unparsable input.
+   Uses `try-parse-url` (the silent variant) — `Origin`/`Host` are client-controlled, so malformed inputs
+   are expected and shouldn't spam the error logs."
+  [url]
+  (some-> url str mw.security/try-parse-url :domain u/lower-case-en))
+
+(defn- same-origin-host? [origin host]
+  (let [origin-domain (normalize-domain origin)]
+    (and (some? origin-domain) (= origin-domain (normalize-domain host)))))
+
+(defn- approved-mcp-origin? [origin]
+  ;; Pre-lowercase both inputs so DNS hostname matching is case-insensitive (per RFC) and so mixed-case
+  ;; schemes still match `try-parse-url`'s lowercase-only `https?|app|capacitor` regex.
+  (boolean
+   (or (mcp/sandbox-origin? origin)
+       (when-let [approved-origins (not-empty (mcp/cors-origins))]
+         (when-let [origin-url (mw.security/try-parse-url (u/lower-case-en origin))]
+           (some (fn [approved-origin]
+                   (and (mw.security/approved-domain? (:domain origin-url) (:domain approved-origin))
+                        (mw.security/approved-protocol? (:protocol origin-url) (:protocol approved-origin))
+                        (mw.security/approved-port? (:port origin-url) (:port approved-origin))))
+                 (mw.security/parse-approved-origins (u/lower-case-en approved-origins))))))))
+
 (defn- validate-origin
   "Validate the Origin header to prevent DNS rebinding attacks (MCP spec requirement).
-   Returns a 403 response if Origin is present and doesn't match the request's Host header.
-   Non-browser clients that omit the Origin header are allowed through."
+   Returns a 403 response if Origin is present and is neither same-host nor an explicitly configured
+   MCP app origin. Non-browser clients that omit the Origin header are allowed through."
   [request]
   (when-let [origin (get-in request [:headers "origin"])]
     (let [host (get-in request [:headers "host"])]
-      (when-not (try
-                  (let [origin-host (.getHost (URI. origin))
-                        request-host (first (str/split (str host) #":"))]
-                    (= origin-host request-host))
-                  (catch Exception _ false))
+      (when-not (or (same-origin-host? origin host)
+                    (approved-mcp-origin? origin))
         (json-response 403 (jsonrpc-error nil -32600 "Origin not allowed"))))))
 
 (defn- session-error-response

@@ -11,7 +11,8 @@
    [metabase.mcp.scope :as mcp.scope]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.io ByteArrayOutputStream)
    (java.net URLEncoder)
@@ -19,11 +20,93 @@
 
 (set! *warn-on-reflection* true)
 
+;;; ---------------------------- MCP schema overrides -------------------------------
+;;
+;; A few tools have an MCP-visible input or output shape that differs from the wire shape declared
+;; on the defendpoint. Owning the override here keeps `agent-api` ignorant of MCP: the endpoint
+;; describes its own wire schema, and this layer patches the manifest to publish the MCP-visible
+;; shape.
+
+;; Shared sub-shapes for the program-shaped tools (`construct_query`, `query`). Extracted so the two
+;; tools can't drift on what a program looks like to the LLM — both reuse the same `:source` map and
+;; the same flattened `:operations` (`[:sequential [:sequential :any]]`, no tuple-of-anys, no `:and`).
+;; The wire schemas under `agent_api` use the precise tuple/composite grammar; this layer publishes
+;; the permissive variant strict MCP clients (ChatGPT) accept.
+
+(def ^:private program-source-malli
+  [:map
+   [:type {:tool/description "Entity kind."}
+    [:enum "table" "card" "dataset" "metric"]]
+   [:id ms/PositiveInt]])
+
+(def ^:private program-operations-malli
+  [:sequential
+   [:sequential
+    {:tool/description (str "First element is the operator string; remaining "
+                            "elements are operator-specific arguments (scalars, "
+                            "references, or nested arrays).")}
+    :any]])
+
+(def ^:private operations-description
+  (str "Array of operator tuples like [\"filter\", clause] or [\"aggregate\", agg-clause]. "
+       "See metabase://docs/construct-query.md for the full grammar."))
+
+(def ^:private construct-query-mcp-input-malli
+  "MCP-visible input for `construct_query`.
+  Deliberately flatter than the wire schema — the operator/ref grammar is conveyed through the tool
+  description and the construct-query.md MCP resource, not the schema."
+  [:map
+   [:source     {:tool/description "Database entity to query."}
+    program-source-malli]
+   [:operations {:tool/description operations-description}
+    program-operations-malli]])
+
+(def ^:private query-mcp-input-malli
+  "MCP-visible input for `query`. The wire body is a `:multi` whose `:program` branch references
+  agent-lib tuple/composite schemas — those emit `prefixItems`/`allOf` JSON Schema constructs that
+  strict MCP clients (ChatGPT) reject. This override publishes the same flattened program shape used
+  by `construct_query`, plus the `:continuation_token` alternative for pagination."
+  [:map
+   [:source             {:optional true
+                         :tool/description (str "Database entity to query. Omit when paginating via "
+                                                "`continuation_token`.")}
+    [:maybe program-source-malli]]
+   [:operations         {:optional true
+                         :tool/description operations-description}
+    [:maybe program-operations-malli]]
+   [:continuation_token {:optional true
+                         :tool/description (str "Token returned by a previous `query` response — pass "
+                                                "it back to fetch the next page. Mutually exclusive "
+                                                "with `source`/`operations`.")}
+    [:maybe ms/NonBlankString]]])
+
+(def ^:private mcp-input-overrides
+  "tool-name → Malli schema. Replaces the manifest's derived `:inputSchema` for tools whose wire
+  schema would otherwise emit prefixItems/allOf JSON Schema constructs that strict MCP clients
+  (notably ChatGPT) reject."
+  {"construct_query" construct-query-mcp-input-malli
+   "query"           query-mcp-input-malli})
+
+(defn- override->input-json-schema [malli tool-name]
+  (tools-manifest/assert-optional-fields-nullable! malli tool-name)
+  (-> malli tools-manifest/malli->json-schema tools-manifest/strict-tool-input-schema))
+
+(defn- apply-schema-overrides
+  "Replace `:inputSchema` on tools whose MCP-visible shape differs from the wire shape."
+  [tools]
+  (mapv (fn [{tool-name :name :as tool}]
+          (cond-> tool
+            (mcp-input-overrides tool-name)
+            (assoc :inputSchema (override->input-json-schema (mcp-input-overrides tool-name) tool-name))))
+        tools))
+
 (defn- generate-manifest
-  "Generate tools manifest from agent API endpoint metadata."
+  "Generate tools manifest from agent API endpoint metadata, then patch input schemas for tools
+  whose MCP-visible shape differs from the wire shape."
   []
-  (tools-manifest/generate-tools-manifest
-   {'metabase.agent-api.api "/api/agent"}))
+  (-> (tools-manifest/generate-tools-manifest
+       {'metabase.agent-api.api "/api/agent"})
+      (update :tools apply-schema-overrides)))
 
 (def ^:private manifest-delay
   (delay (generate-manifest)))
@@ -43,11 +126,7 @@
     (into []
           (comp (filter #(mcp.scope/matches? token-scopes (:scope %)))
                 (map (fn [tool]
-                       (cond-> {:name        (:name tool)
-                                :title       (:title tool)
-                                :description (:description tool)
-                                :inputSchema (:inputSchema tool)}
-                         (:annotations tool) (assoc :annotations (:annotations tool))))))
+                       (select-keys tool [:name :title :description :inputSchema :outputSchema :annotations]))))
           tools)))
 
 (defn- build-tool-index
@@ -105,9 +184,13 @@
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------
 
 (defn- text-content
-  "Wrap a value as MCP text content."
+  "Wrap a value as an MCP tool-call result.
+   Map/sequential values are surfaced as `structuredContent` — MCP spec requires this for any tool that
+   declares an `outputSchema`.
+   The `content` array carries a text serialization for clients that don't consume structuredContent."
   [v]
-  {:content [{:type "text" :text (if (string? v) v (json/encode v))}]})
+  (cond-> {:content [{:type "text" :text (if (string? v) v (json/encode v))}]}
+    (or (map? v) (sequential? v)) (assoc :structuredContent v)))
 
 (defn- error-content
   "Wrap an error message as MCP error content."
@@ -209,6 +292,31 @@
         api-path              (strip-api-prefix resolved-path)]
     (invoke-agent-api method api-path token-scopes remaining-args)))
 
+;; --- Design note: centralized null-stripping at the MCP boundary --------------------------------
+;; The MCP inputSchema we publish makes every optional field required-and-nullable, because strict
+;; MCP clients (notably ChatGPT) cannot represent absent fields — they always send every property
+;; the schema declares, with `null` for the ones the agent doesn't want to populate. We strip
+;; those nulls here so each downstream tool handler can use ordinary Clojure idioms (destructure
+;; `:or` defaults, `(when foo …)`, etc.) and treat missing and null identically.
+;;
+;; The alternative is per-tool auditing: every endpoint handler would need to coerce nil into the
+;; right default, and every wire schema's dispatch logic would need to tolerate explicit nulls. We
+;; chose centralization because (a) it's the layer that creates the strict-validator artifact, and
+;; (b) the codex review found that `query`'s `:multi` dispatch on `:continuation_token` already
+;; mishandled a client-sent `null`, so per-tool handling is easy to miss.
+;;
+;; TRADE-OFF: as a consequence, a top-level `null` argument is indistinguishable from omitted at
+;; the MCP boundary. If we ever expose a tool whose semantics genuinely require `null` to mean
+;; something different from "missing" (e.g. \"clear this field\" semantics), it must either model
+;; the distinction with a sentinel value (`{:clear true}`) or do the bespoke handling before this
+;; normalization runs (e.g. as a pre-processing step inside `call-tool`).
+(defn- drop-nil-args
+  "Strip nil-valued top-level keys from MCP tool arguments.
+   Nested values are left alone — the strict-tool transform only rewrites top-level properties."
+  [arguments]
+  (when arguments
+    (into {} (remove (comp nil? val)) arguments)))
+
 (defn call-tool
   "Dispatch an MCP `tools/call` request to the appropriate handler.
    `token-scopes` from the original MCP session are propagated to the synthetic
@@ -216,9 +324,10 @@
    `defendpoint` middleware.
    Returns MCP content on success, or error content on failure."
   [token-scopes tool-name arguments]
-  (if-let [tool-def (get (tool-index) tool-name)]
-    (try
-      (dispatch-via-agent-api tool-def arguments token-scopes)
-      (catch Exception e
-        (error-content (or (ex-message e) "Internal error"))))
-    (error-content (str "Unknown tool: " tool-name))))
+  (let [arguments (drop-nil-args arguments)]
+    (if-let [tool-def (get (tool-index) tool-name)]
+      (try
+        (dispatch-via-agent-api tool-def arguments token-scopes)
+        (catch Exception e
+          (error-content (or (ex-message e) "Internal error"))))
+      (error-content (str "Unknown tool: " tool-name)))))
