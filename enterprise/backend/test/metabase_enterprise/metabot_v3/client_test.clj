@@ -281,6 +281,17 @@
           (is (= body (get-in (ex-data ex) [:response :body]))
               "the full structured body is still preserved in ex-data")
           (assert-no-headers! (ex-data ex)))))
+    (testing "a non-string or blank value at one key falls through to a later key with a real message"
+      (doseq [body [{:error {:message {:code 500}} :detail "real error"}
+                    {:error "" :detail "real error"}]]
+        (let [{:keys [response request]} (check-response!-input {:status        500
+                                                                 :reason-phrase "Internal Server Error"
+                                                                 :body          body})
+              ex (is (thrown-with-msg?
+                      Exception
+                      #"AI service request failed: HTTP 500 Internal Server Error — real error"
+                      (check! response request)))]
+          (assert-no-headers! (ex-data ex)))))
     (testing "ex-data :response is an explicit allow-list, not a passthrough of clj-http internals"
       (let [{:keys [request]} (check-response!-input {})
             ;; clj-http responses can carry `:http-client` (a Closeable), `:trace-redirects`,

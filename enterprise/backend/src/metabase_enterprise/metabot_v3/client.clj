@@ -106,17 +106,17 @@
   (let [s (cond
             (nil? body)    nil
             (string? body) body
-            (map? body)    (let [scalar-val (fn [v] (when-not (coll? v) v))]
+            (map? body)    (let [scalar (fn [v] (when-not (coll? v) (not-empty (str v))))]
                              ;; Only accept scalars under :error/:detail/:message (and the nested
                              ;; [:error :message]) — `{:error {:code 500}}` or `{:detail [{:loc ...}]}`
                              ;; (FastAPI-style validation errors) would otherwise be `str`-coerced and
-                             ;; leak the raw envelope into the user message.
-                             (some-> (or (scalar-val (get-in body [:error :message]))
-                                         (scalar-val (get body :error))
-                                         (scalar-val (get body :detail))
-                                         (scalar-val (get body :message)))
-                                     str
-                                     not-empty))
+                             ;; leak the raw envelope into the user message. Per-lookup filtering also
+                             ;; means a non-string or blank value at one key falls through to the next,
+                             ;; e.g. `{:error "" :detail "real msg"}` → "real msg".
+                             (or (scalar (get-in body [:error :message]))
+                                 (scalar (get body :error))
+                                 (scalar (get body :detail))
+                                 (scalar (get body :message))))
             :else          nil)]
     (when-let [trimmed (some-> s str/trim not-empty)]
       (if (<= (count trimmed) max-body-preview-chars)
