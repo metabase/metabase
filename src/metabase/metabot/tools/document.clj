@@ -84,7 +84,19 @@
     (catch Exception e
       (ex-message e))))
 
+(defn- schema-collect-entity-usage
+  "Build the `:entity-usage` map for `document_schema_collect`. Only the
+  successfully-resolved single-database branch records an input entity —
+  the error branches (no database, multiple databases) didn't inspect
+  anything."
+  [database-id]
+  {:input  (if (some? database-id)
+             [{:type "database" :id database-id}]
+             [])
+   :output []})
+
 (mu/defn ^{:tool-name "document_schema_collect"
+           :tool-type :inspection
            :scope     scope/agent-document-read}
   document-schema-collect-tool
   "Collects the schema of a database in order to construct a SQL query.
@@ -100,10 +112,14 @@
           database-ids (referenced-database-ids refs)]
       (cond
         (empty? database-ids)
-        {:output "You must `@` mention a database to use when not querying an existing model"}
+        (construct-tools/entity-usage-on-result
+         {:output "You must `@` mention a database to use when not querying an existing model"}
+         (schema-collect-entity-usage nil))
 
         (< 1 (count database-ids))
-        {:output "You can only `@` mention one database when generating SQL"}
+        (construct-tools/entity-usage-on-result
+         {:output "You can only `@` mention one database when generating SQL"}
+         (schema-collect-entity-usage nil))
 
         :else
         (let [database-id (first database-ids)
@@ -121,11 +137,14 @@
                                "SQL engine: " (:engine db) ".\n"
                                "</instructions>")]
           {:output output
-           :structured-output {:database_id database-id
-                               :sql_engine  (:engine db)}})))
+           :structured-output {:database_id  database-id
+                               :sql_engine   (:engine db)
+                               :entity-usage (schema-collect-entity-usage database-id)}})))
     (catch Exception e
       (log/error e "Error collecting document schema")
-      {:output (str "Failed to collect schema: " (or (ex-message e) "Unknown error"))})))
+      (construct-tools/entity-usage-on-result
+       {:output (str "Failed to collect schema: " (or (ex-message e) "Unknown error"))}
+       (schema-collect-entity-usage nil)))))
 
 (def ^:private sql-chart-schema
   [:map {:closed true}

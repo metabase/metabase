@@ -92,6 +92,21 @@
   [result entity-usage]
   (update result :structured-output (fnil assoc {}) :entity-usage entity-usage))
 
+(defn transform-inspection-entity-usage
+  "Build the `:entity-usage` map for a transform-inspection tool call.
+  Input is a single `{:type \"transform\" :id transform-id}` entry. Output is
+  always `[]` — these tools don't surface entities; they fetch details about
+  a known transform.
+
+  `transform-id` may be an int (`get_transform_details`) or a path string
+  (`get_transform_python_library_details` — the path is recorded under the
+  `transform`-type bucket because it identifies a transform-infrastructure
+  artifact, even though it is not a row id in the `transform` table).
+  Consumers can disambiguate by `:id`'s runtime type."
+  [transform-id]
+  {:input  [{:type "transform" :id transform-id}]
+   :output []})
+
 (defn- resulting-transform-sql
   "Best-effort extraction of the post-edit native SQL from a write-transform-sql
   result. Returns `nil` if the result has no transform, no source query, or the
@@ -128,29 +143,36 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (mu/defn ^{:tool-name "get_transform_details"
+           :tool-type :inspection
            :scope     scope/agent-transforms-read
            :capabilities #{:feature-transforms}}
   get-transform-details-tool
   "Get information about a transform."
   [{:keys [transform_id]} :- [:map {:closed true} [:transform_id :int]]]
-  (try
-    (add-output {:structured_output (transforms/get-transform transform_id)}
-                format-transform-details-output)
-    (catch Exception e
-      (metabot.tools.u/handle-agent-error e))))
+  (let [entity-usage (transform-inspection-entity-usage transform_id)]
+    (entity-usage-on-result
+     (try
+       (add-output {:structured_output (transforms/get-transform transform_id)}
+                   format-transform-details-output)
+       (catch Exception e
+         (metabot.tools.u/handle-agent-error e)))
+     entity-usage)))
 
 (def ^:private python-lib-schema
   [:map {:closed true} [:path :string]])
 
 (defenterprise ^{:tool-name  "get_transform_python_library_details"
+                 :tool-type  :inspection
                  :schema     [:=> [:cat python-lib-schema] :map]
                  :scope      scope/agent-transforms-read
                  :capabilities #{:feature-transforms :feature-transforms-python}}
   get-transform-python-library-details-tool
   "Get Python library details. EE-only; returns an error in OSS."
   metabase-enterprise.metabot.tools.transforms
-  [{:keys [_path]}]
-  {:output "Python transform tools are only available in Metabase Enterprise Edition."})
+  [{:keys [path]}]
+  (entity-usage-on-result
+   {:output "Python transform tools are only available in Metabase Enterprise Edition."}
+   (transform-inspection-entity-usage path)))
 
 (def ^:private write-transform-sql-schema
   [:map {:closed true}

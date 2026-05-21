@@ -149,8 +149,7 @@
     ;; defenterprise stub also populates `:entity-usage`).
     "write_transform_sql"
     "write_transform_python"
-    ;; Phase 3b — Document tools (authoring subset; `document_schema_collect`
-    ;; lands in Phase 3c as `:inspection`).
+    ;; Phase 3b — Document authoring subset.
     "document_construct_sql_chart"
     "document_construct_model_chart"
     ;; Phase 3b — Autogen / chart / nav / viz / alert tools.
@@ -160,7 +159,13 @@
     "navigate_user"
     "static_viz"
     "create_alert"
-    "create_dashboard_subscription"})
+    "create_dashboard_subscription"
+    ;; Phase 3c — Inspection tools.
+    "list_available_fields"
+    "get_field_values"
+    "get_transform_details"
+    "get_transform_python_library_details"
+    "document_schema_collect"})
 
 (defn- wrap-with-entity-usage-validation
   "Wrap a tool fn so its returned `:entity-usage` is validated against the

@@ -27,8 +27,10 @@
   "Get information about a Python library by path."
   :feature :transforms-python
   [{:keys [path]} :- [:map {:closed true} [:path :string]]]
-  (tools.transforms/add-output (transforms-write-tools/get-transform-python-library-details {:path path})
-                               format-python-library-output))
+  (tools.transforms/entity-usage-on-result
+   (tools.transforms/add-output (transforms-write-tools/get-transform-python-library-details {:path path})
+                                format-python-library-output)
+   (tools.transforms/transform-inspection-entity-usage path)))
 
 (defenterprise-schema write-transform-python-tool :- :map
   "Write new Python code or edit existing code for transforms.

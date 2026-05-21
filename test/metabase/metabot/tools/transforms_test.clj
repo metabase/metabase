@@ -12,6 +12,7 @@
    [metabase.metabot.tools.transforms.write :as transforms-write]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
+   [metabase.transforms.core :as transforms]
    [metabase.util.malli.registry :as mr]))
 
 ;;; ----------------------------------- write tool integration tests --------------------------------------------------
@@ -267,3 +268,50 @@
         (is (= [{:type "database" :id (mt/id)}
                 {:type "table"    :id 7}]
                (:input eu)))))))
+
+;;; ----------------------------------- entity-usage / inspection ----------------------------------------
+
+(deftest transform-inspection-entity-usage-test
+  (testing "wraps a single id under :type \"transform\" with empty :output"
+    (is (= {:input  [{:type "transform" :id 7}]
+            :output []}
+           (agent-transforms/transform-inspection-entity-usage 7)))
+    (testing "accepts string ids (python library path)"
+      (is (= {:input  [{:type "transform" :id "common.py"}]
+              :output []}
+             (agent-transforms/transform-inspection-entity-usage "common.py"))))))
+
+(deftest get-transform-details-entity-usage-success-test
+  (testing "get_transform_details success path emits :entity-usage with the requested transform"
+    (mt/with-dynamic-fn-redefs [transforms/get-transform
+                                (fn [id] {:id id :name "fake" :description "" :source {} :target {}})]
+      (let [result (agent-transforms/get-transform-details-tool {:transform_id 99})
+            eu     (get-in result [:structured-output :entity-usage])]
+        (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+        (is (= {:input  [{:type "transform" :id 99}]
+                :output []}
+               eu))
+        (is (string? (:output result)))))))
+
+(deftest get-transform-details-entity-usage-error-test
+  (testing "get_transform_details agent-error catch still emits :entity-usage"
+    (mt/with-dynamic-fn-redefs [transforms/get-transform
+                                (fn [_] (throw (ex-info "boom" {:agent-error? true})))]
+      (let [result (agent-transforms/get-transform-details-tool {:transform_id 7})
+            eu     (get-in result [:structured-output :entity-usage])]
+        (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+        (is (= {:input  [{:type "transform" :id 7}]
+                :output []}
+               eu))
+        (is (= "boom" (:output result)))))))
+
+(deftest get-transform-python-library-details-oss-entity-usage-test
+  (testing "OSS stub emits :entity-usage with path-as-id and EE-only message"
+    (when-not (premium-features/has-feature? :transforms-python)
+      (let [result (agent-transforms/get-transform-python-library-details-tool {:path "common"})
+            eu     (get-in result [:structured-output :entity-usage])]
+        (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+        (is (= {:input  [{:type "transform" :id "common"}]
+                :output []}
+               eu))
+        (is (str/includes? (:output result) "Enterprise"))))))

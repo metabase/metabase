@@ -23,8 +23,10 @@
         (is (re-find #"CREATE TABLE TestTable" (:output result)))
         (is (re-find #"TestColumn varchar" (:output result)))
         (is (re-find #"SQL engine: h2" (:output result)))
-        (is (= {:database_id 1
-                :sql_engine  "h2"}
+        (is (= {:database_id  1
+                :sql_engine   "h2"
+                :entity-usage {:input  [{:type "database" :id 1}]
+                               :output []}}
                (:structured-output result))))))
 
   (testing "returns missing-database message when no database references are present"
@@ -196,3 +198,28 @@
         (is (= [] (:output eu)))
         (is (= [{:type "model" :id 4 :metadata {:arg_slot "source_entity"}}]
                (:input eu)))))))
+
+(deftest document-schema-collect-entity-usage-test
+  (testing "single-database success path emits database input"
+    (mt/with-dynamic-fn-redefs [shared/current-context (fn [] {:references {"database:42" "DB"}})
+                                warehouses/get-database (fn [_] {:id 42 :engine "postgres"})
+                                table-utils/schema-full (fn [_] "CREATE TABLE a (b int);")]
+      (let [result (document-tools/document-schema-collect-tool {})
+            eu     (get-in result [:structured-output :entity-usage])]
+        (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+        (is (= {:input  [{:type "database" :id 42}]
+                :output []}
+               eu)))))
+  (testing "no-database branch emits empty input/output"
+    (mt/with-dynamic-fn-redefs [shared/current-context (fn [] {:references {}})]
+      (let [result (document-tools/document-schema-collect-tool {})
+            eu     (get-in result [:structured-output :entity-usage])]
+        (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+        (is (= {:input [] :output []} eu)))))
+  (testing "multiple-databases branch emits empty input/output"
+    (mt/with-dynamic-fn-redefs [shared/current-context (fn [] {:references {"database:1" "A"
+                                                                            "database:2" "B"}})]
+      (let [result (document-tools/document-schema-collect-tool {})
+            eu     (get-in result [:structured-output :entity-usage])]
+        (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+        (is (= {:input [] :output []} eu))))))
