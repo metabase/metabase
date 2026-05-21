@@ -164,7 +164,7 @@ export function MetabaseAIProviderSetup({
     removeCloudAddOn,
   ]);
 
-  const { isLoading, handleDisconnect, resetProvider, isModal } =
+  const { isMutating, handleDisconnect, resetProvider, isModal } =
     useMetabotSetupContext(connectAction, onDisconnect);
 
   const metabaseManagedAiPurchaseError = metabaseManagedAiPurchase.error
@@ -253,7 +253,7 @@ export function MetabaseAIProviderSetup({
             .otherwise(() => (
               <Checkbox
                 checked={hasAcceptedTerms}
-                disabled={isLoading}
+                disabled={isMutating}
                 onChange={(event) =>
                   setHasAcceptedTerms(event.currentTarget.checked)
                 }

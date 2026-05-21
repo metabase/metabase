@@ -80,11 +80,13 @@
          :uri->resource (sorted-map)
          :tools         (sorted-map)}))
 
-(defn- ui-csp-meta []
+(defn- ui-meta [resource]
   (let [url (system/site-url)]
-    {:ui {:csp {:connectDomains  [url]
-                :resourceDomains [url]
-                :frameDomains    [url]}}}))
+    {:ui (cond-> {:csp {:connectDomains  [url]
+                        :resourceDomains [url]
+                        :frameDomains    [url]}}
+           (contains? resource :prefersBorder)
+           (assoc :prefersBorder (:prefersBorder resource)))}))
 
 (mu/defn register-resource!
   "Register an MCP resource. Overwrites any existing entry with the same `:uri`."
@@ -106,7 +108,8 @@
    resource :- [:map
                 [:name :string]
                 [:description :string]
-                [:render-fn fn?]]]
+                [:render-fn fn?]
+                [:prefersBorder {:optional true} :boolean]]]
   (let [resource (-> (assoc resource :uri uri :scope scope :ui? true)
                      (update :mimeType #(or % "text/html;profile=mcp-app")))]
     (swap! registry #(-> %
@@ -145,7 +148,7 @@
                     (comp (filter #(mcp.scope/public-or-matches? token-scopes (:scope %)))
                           (map (fn [resource]
                                  (cond-> (select-keys resource [:uri :name :description :mimeType])
-                                   (:ui? resource) (assoc :_meta (ui-csp-meta))))))
+                                   (:ui? resource) (assoc :_meta (ui-meta resource))))))
                     (vals (:uri->resource @registry)))})
 
 (defn check-resource-access
@@ -169,7 +172,7 @@
       {:status   :ok
        :contents [(cond-> (select-keys resource [:uri :mimeType])
                     true (assoc :text (render-fn opts))
-                    ui?  (assoc :_meta (ui-csp-meta)))]}
+                    ui?  (assoc :_meta (ui-meta resource)))]}
       {:status :scope-denied})
     {:status :not-found}))
 
@@ -206,6 +209,7 @@
  "agent:visualize"
  {:name        "Visualize Query"
   :description "Interactive Metabase SDK visualization for a query"
+  :prefersBorder true
   :render-fn   (fn [opts]
                  (let [site-url    (system/site-url)
                        session-key (:session-key opts)

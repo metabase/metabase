@@ -1,0 +1,120 @@
+import cx from "classnames";
+import dayjs from "dayjs";
+import { Component } from "react";
+import { t } from "ttag";
+
+import { AdminAwareEmptyState } from "metabase/common/components/AdminAwareEmptyState";
+import { List } from "metabase/common/components/List";
+import S from "metabase/common/components/List/List.module.css";
+import { ListItem } from "metabase/common/components/ListItem";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
+import { connect } from "metabase/redux";
+import * as metadataActions from "metabase/redux/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
+import * as Urls from "metabase/urls";
+import visualizations from "metabase/visualizations";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { Card } from "metabase-types/api";
+
+import ReferenceHeader from "../components/ReferenceHeader";
+import type { ReferenceRouteProps, StateWithReference } from "../selectors";
+import {
+  getError,
+  getLoading,
+  getTable,
+  getTableQuestions,
+} from "../selectors";
+import type { StubbedTable } from "../types";
+import { getQuestionUrl } from "../utils";
+
+const emptyStateData = (table: StubbedTable, metadata: Metadata) => {
+  return {
+    message: t`Questions about this table will appear here as they're added`,
+    icon: "folder" as const,
+    action: t`Ask a question`,
+    link: getQuestionUrl({
+      dbId: table.db_id!,
+      tableId: table.id,
+      metadata,
+    }),
+  };
+};
+
+const mapStateToProps = (
+  state: StateWithReference,
+  props: ReferenceRouteProps,
+) => ({
+  table: getTable(state, props),
+  entities: getTableQuestions(state, props),
+  loading: getLoading(state),
+  loadingError: getError(state),
+  metadata: getMetadata(state),
+});
+
+const mapDispatchToProps = {
+  ...metadataActions,
+};
+
+interface TableQuestionsProps {
+  table: StubbedTable;
+  metadata: Metadata;
+  entities: Card[];
+  loading?: boolean;
+  loadingError?: unknown;
+}
+
+class TableQuestions extends Component<TableQuestionsProps> {
+  render() {
+    const { entities, loadingError, loading, table, metadata } = this.props;
+
+    return (
+      <div>
+        <ReferenceHeader
+          name={t`Questions about ${this.props.table.display_name}`}
+          type="questions"
+          headerIcon="table2"
+        />
+        <LoadingAndErrorWrapper
+          loading={!loadingError && loading}
+          error={loadingError}
+        >
+          {() =>
+            Object.keys(entities).length > 0 ? (
+              <div className={cx(CS.wrapper, CS.wrapperTrim)}>
+                <List>
+                  {Object.values(entities).map(
+                    (entity) =>
+                      entity &&
+                      entity.id &&
+                      entity.name && (
+                        <ListItem
+                          key={entity.id}
+                          name={entity.name}
+                          description={t`Created ${dayjs(
+                            entity.created_at,
+                          ).fromNow()} by ${entity.creator?.common_name ?? ""}`}
+                          url={Urls.card(entity)}
+                          icon={visualizations.get(entity.display)?.iconName}
+                        />
+                      ),
+                  )}
+                </List>
+              </div>
+            ) : (
+              <div className={S.empty}>
+                <AdminAwareEmptyState {...emptyStateData(table, metadata)} />
+              </div>
+            )
+          }
+        </LoadingAndErrorWrapper>
+      </div>
+    );
+  }
+}
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(TableQuestions as unknown as React.ComponentType);

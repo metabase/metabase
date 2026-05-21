@@ -98,9 +98,9 @@
 
 (defn- old-dataset-names
   "Return a collection of all dataset names that are old
-   -- tracked that haven't been touched in 2 days or are not tracked and two days old"
+   -- tracked that haven't been touched in a while or are not tracked and too old"
   []
-  (let [days-ago -2
+  (let [days-ago -5
         ;; tracked UNION ALL untracked
         query "(select name from metabase_test_tracking.PUBLIC.datasets
                 where accessed_at < dateadd(day, ?, current_timestamp()))
