@@ -192,4 +192,3 @@
   (when-let [^ExecutorService pool @worker-pool]
     (.shutdownNow pool)
     (reset! worker-pool nil)))
-
