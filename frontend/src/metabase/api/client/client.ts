@@ -1,7 +1,6 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 import EventEmitter from "events";
 
-import { substituteUrlTags } from "metabase/api/utils/substitute-url-tags";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import type {
@@ -20,6 +19,7 @@ import {
   getResponseBody,
   getResponseStatus,
   isRetriableError,
+  substituteUrlTags,
 } from "./utils";
 
 const MAX_RETRIES = 10;

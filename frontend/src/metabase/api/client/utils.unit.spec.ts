@@ -1,4 +1,4 @@
-import { substituteUrlTags } from "./substitute-url-tags";
+import { substituteUrlTags } from "./utils";
 
 describe("substituteUrlTags", () => {
   it("returns the URL unchanged when no tags are present", () => {
