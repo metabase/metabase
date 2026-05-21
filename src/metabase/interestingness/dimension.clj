@@ -6,6 +6,19 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private near-unique-top-3-fraction
+  "Hard-zero threshold for [[cardinality]]: when the three most common values of a text field
+   together cover less than this fraction of rows, the field is effectively key-like / free-text
+   (nearly every value is distinct) and makes a useless breakout — one group per row. 0.01 ≈ 300+
+   evenly-distributed categories, well past the point a grouped chart is readable."
+  0.01)
+
+(def ^:private max-breakout-text-length
+  "Hard-zero threshold for [[text-structure]]: text whose average length exceeds this many
+   characters is free-form prose (descriptions, narratives, comments), not a label, and makes a
+   useless breakout. Shorter text keeps the existing soft penalties."
+  100)
+
 (defn- bucket-count-score
   "Universal quality curve for bucket/group counts. Sweet spot is 10-25 buckets.
    Returns 0.0 for ≤1 (hard-zero gate for constant fields)."
@@ -50,11 +63,14 @@
      the one that lands closest to the 10-25 bucket sweet spot.
    - Numeric fields with high distinct count and a range: auto-binnable, scores high.
    - All others (categorical, low-cardinality numeric): scores by raw distinct count.
-   Returns 0.0 (hard-zero gate) for constant fields (≤1 distinct value)."
+   Returns 0.0 (hard-zero gate) for constant fields (≤1 distinct value) and for near-unique
+   text fields (key-like / free-text, where the top 3 values cover < [[near-unique-top-3-fraction]]
+   of rows) — grouping by those produces one bucket per row, which is never a useful chart."
   [field]
   (let [distinct-count (get-in field [:fingerprint :global :distinct-count])
         temporal-fp    (get-in field [:fingerprint :type :type/DateTime])
-        numeric-fp     (get-in field [:fingerprint :type :type/Number])]
+        numeric-fp     (get-in field [:fingerprint :type :type/Number])
+        text-top-3     (get-in field [:fingerprint :type :type/Text :top-3-fraction])]
     (cond
       ;; No fingerprint data at all
       (nil? distinct-count)
@@ -81,6 +97,12 @@
            (some? (:min numeric-fp)) (some? (:max numeric-fp))
            (not= (:min numeric-fp) (:max numeric-fp)))
       {:score 0.9 :reason (str distinct-count " distinct values, auto-binnable")}
+
+      ;; Near-unique text — hard-zero gate. When the top 3 values cover almost no rows the field is
+      ;; effectively key-like / free-text (one group per row), a useless breakout. Scoped to text:
+      ;; binnable numerics already returned above, and temporal fields exited at the temporal branch.
+      (and (some? text-top-3) (< text-top-3 near-unique-top-3-fraction))
+      {:score 0.0 :reason (format "near-unique (top 3 values cover %.2f%% of rows)" (* 100.0 text-top-3))}
 
       ;; Everything else: score by raw distinct count (categoricals, low-cardinality numerics, etc.)
       :else
@@ -164,8 +186,9 @@
           (and (some? percent-state) (> percent-state 0.9))
           {:score 0.4 :reason (str (long (* 100 percent-state)) "% state codes (a map visualization fits better)")}
 
-          (and (some? average-length) (> average-length 100))
-          {:score 0.05 :reason (str "avg length " (long average-length) " chars")}
+          ;; Free-form long text (descriptions, narratives, comments) — hard-zero gate.
+          (and (some? average-length) (> average-length max-breakout-text-length))
+          {:score 0.0 :reason (str "free-form long text, avg length " (long average-length) " chars")}
 
           (and (some? average-length) (> average-length 50))
           {:score 0.2 :reason (str "avg length " (long average-length) " chars")}

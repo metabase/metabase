@@ -17,6 +17,17 @@
   (testing "high cardinality scores lower"
     (let [score (:score (dim/cardinality {:fingerprint {:global {:distinct-count 5000}}}))]
       (is (< score 0.5))))
+  (testing "near-unique text field (tiny top-3-fraction) is a hard-zero gate"
+    (is (= 0.0 (:score (dim/cardinality {:fingerprint {:global {:distinct-count 5000}
+                                                       :type   {:type/Text {:top-3-fraction 3.0E-4}}}})))))
+  (testing "repeating text categorical (healthy top-3-fraction) is not gated"
+    (let [score (:score (dim/cardinality {:fingerprint {:global {:distinct-count 12}
+                                                        :type   {:type/Text {:top-3-fraction 0.5}}}}))]
+      (is (> score 0.1))))
+  (testing "missing top-3-fraction falls through to the bucket-count score (no gate on absence)"
+    (let [score (:score (dim/cardinality {:fingerprint {:global {:distinct-count 12}
+                                                        :type   {:type/Text {:average-length 8}}}}))]
+      (is (> score 0.1))))
   (testing "missing fingerprint returns nil (no signal)"
     (is (nil? (:score (dim/cardinality {}))))
     (is (nil? (:score (dim/cardinality {:fingerprint {}}))))))
@@ -85,20 +96,16 @@
     (let [score (:score (dim/text-structure
                          {:fingerprint {:type {:type/Text {:percent-url 0.95}}}}))]
       (is (<= score 0.2))))
-  (testing "long average length scores low"
-    (let [score (:score (dim/text-structure
-                         {:fingerprint {:type {:type/Text {:average-length 150}}}}))]
-      (is (<= score 0.25))))
+  (testing "long average length (> 100 chars) is a hard-zero gate (free-form text)"
+    (is (= 0.0 (:score (dim/text-structure
+                        {:fingerprint {:type {:type/Text {:average-length 150}}}}))))
+    (is (= 0.0 (:score (dim/text-structure
+                        {:fingerprint {:type {:type/Text {:average-length 200}}}})))))
   (testing "moderate length scores low (soft penalty)"
     (let [score (:score (dim/text-structure
                          {:fingerprint {:type {:type/Text {:average-length 60}}}}))]
       (is (> score 0.1))
       (is (< score 0.3))))
-  (testing "very long text (> 100 chars) scores near-zero but isn't a hard-zero"
-    (let [score (:score (dim/text-structure
-                         {:fingerprint {:type {:type/Text {:average-length 200}}}}))]
-      (is (< score 0.1))
-      (is (> score 0.0))))
   (testing "short text scores high"
     (let [score (:score (dim/text-structure
                          {:fingerprint {:type {:type/Text {:average-length 10}}}}))]
@@ -165,4 +172,12 @@
                  {:semantic-type :type/Category
                   :fingerprint   {:global {:distinct-count 15 :nil% 0.0}}})]
       (is (number? score))
-      (is (pos? score)))))
+      (is (pos? score))))
+  (testing "near-unique free-text field scores 0.0 (regression: explorations research 416 'by Narrative')"
+    ;; long free-form text + near-unique values + no semantic type + 0% null — used to score ~0.53
+    ;; because 'structurally clean' signals outweighed cardinality/text-structure.
+    (is (= 0.0 (dim/dimension-interestingness
+                {:semantic-type nil
+                 :fingerprint   {:global {:distinct-count 9801 :nil% 0.0}
+                                 :type   {:type/Text {:average-length 732.0 :top-3-fraction 3.0E-4
+                                                      :percent-blank 0.0}}}})))))
