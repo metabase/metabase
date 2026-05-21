@@ -12,6 +12,7 @@
    [metabase.metabot.test-util :as test-util]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.log.capture :as log.capture]
    [ring.adapter.jetty :as jetty]))
 
 (set! *warn-on-reflection* true)
@@ -972,4 +973,22 @@
              (set (keys (ex-data ex)))))
       (is (=? {:api-error true :provider "openai" :error-code :provider-request-failed
                :exception-class "java.net.SocketTimeoutException"}
-              (ex-data ex))))))
+              (ex-data ex)))))
+
+  (testing "the full upstream body is emitted at warn level alongside provider and status"
+    (let [upstream (ex-info "clj-http error"
+                            {:status 502 :reason-phrase "Bad Gateway"
+                             :headers {"content-type" "text/plain"}
+                             :body "upstream gateway timeout"})
+          [entry & more]
+          (log.capture/with-log-messages-for-level [msgs [metabase.metabot.self.core :warn]]
+            (caught #(self.core/rethrow-api-error!
+                      "openrouter"
+                      (constantly "OpenRouter upstream provider returned an error")
+                      upstream))
+            (msgs))]
+      (is (nil? more) "exactly one warn line at the failure boundary")
+      (is (=? {:level :warn :namespace 'metabase.metabot.self.core}
+              entry))
+      (is (re-find #"provider=openrouter status=502 body=\"upstream gateway timeout\""
+                   (:message entry))))))
