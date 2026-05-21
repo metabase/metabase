@@ -1,9 +1,8 @@
-(ns metabase.root.system-test
+(ns metabase.global-system.system-test
   (:require
-   [clj-async-profiler.core :as prof]
    [clojure.test :refer :all]
-   [metabase.root.mutable-component :as mc]
-   [metabase.root.system :as system]))
+   [metabase.global-system.mutable-component :as mc]
+   [metabase.global-system.system :as system]))
 
 (set! *warn-on-reflection* true)
 
@@ -95,14 +94,3 @@
 
       (finally
         ((:stop! sched))))))
-
-(comment
-  (let [iterations 100]
-    (prof/profile
-     {:event :cpu :title "metabase.root.system-test"}
-     (dotimes [_ iterations]
-       (dynamic-binding-test))
-     (dotimes [_ iterations]
-       (root-binding-test))))
-
-  (prof/serve-ui 9111))

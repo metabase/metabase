@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
-   [metabase.root.mutable-component :as mc]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.connection :as t2.connection]

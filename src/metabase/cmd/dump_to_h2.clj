@@ -18,7 +18,7 @@
    [metabase.cmd.copy :as copy]
    [metabase.cmd.copy.h2 :as copy.h2]
    [metabase.cmd.rotate-encryption-key :as rotate-encryption]
-   [metabase.root.mutable-component :as mc]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)

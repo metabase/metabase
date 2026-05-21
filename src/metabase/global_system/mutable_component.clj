@@ -1,4 +1,4 @@
-(ns metabase.root.mutable-component
+(ns metabase.global-system.mutable-component
   "Protocol for interacting with a mutable component's storage through a uniform interface."
   (:refer-clojure :exclude [binding reset! swap!]))
 

@@ -328,7 +328,7 @@
            classloader
            config
            connection-pool
-           root
+           global-system
            task
            util}
    :model-imports #{:model/Database
@@ -549,7 +549,7 @@
            config
            models
            query-processor
-           root
+           global-system
            search
            settings
            util}
@@ -989,6 +989,12 @@
            permissions
            settings
            util}}
+
+  global-system
+  {:team "Graphy"
+   :api #{metabase.global-system.mutable-component
+          metabase.global-system.system}
+   :uses #{}}
 
   glossary
   {:team "Gadget"
@@ -1854,12 +1860,6 @@
                     :model/Measure
                     :model/Segment
                     :model/Transform}}
-
-  root
-  {:team "Graphy"
-   :api #{metabase.root.mutable-component
-          metabase.root.system}
-   :uses #{}}
 
   sample-data
   {:team "UX West"

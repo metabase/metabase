@@ -1,6 +1,6 @@
-(ns metabase.root.system
+(ns metabase.global-system.system
   (:require
-   [metabase.root.mutable-component :as mc])
+   [metabase.global-system.mutable-component :as mc])
   (:import (clojure.lang Var)))
 
 (set! *warn-on-reflection* true)

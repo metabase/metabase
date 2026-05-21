@@ -20,7 +20,7 @@
    [metabase.app-db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.root.mutable-component :as mc]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.test.data.datasets :as datasets]
    [metabase.test.data.interface :as tx]
    [metabase.test.initialize :as initialize]

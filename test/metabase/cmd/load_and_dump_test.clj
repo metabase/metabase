@@ -13,7 +13,7 @@
    [metabase.cmd.test-util :as cmd.test-util]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
-   [metabase.root.mutable-component :as mc]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util.i18n.impl :as i18n.impl]))

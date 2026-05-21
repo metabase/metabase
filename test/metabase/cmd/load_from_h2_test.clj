@@ -13,7 +13,7 @@
    [metabase.cmd.test-util :as cmd.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.root.mutable-component :as mc]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]

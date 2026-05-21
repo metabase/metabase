@@ -22,7 +22,7 @@
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.spec :as mdb.spec]
    [metabase.config.core :as config]
-   [metabase.root.mutable-component :as mc]
+   [metabase.global-system.mutable-component :as mc]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)

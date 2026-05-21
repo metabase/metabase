@@ -18,7 +18,7 @@
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.config.core :as config]
-   [metabase.root.mutable-component :as mc]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2]
