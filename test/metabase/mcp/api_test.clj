@@ -270,18 +270,18 @@
   (testing "tools that declare outputSchema emit structuredContent — guards the regression where Claude Desktop got 500s because we declared outputSchema without matching structuredContent"
     (let [[session-id _] (initialize!)
           response       (mcp-request (jsonrpc-request "tools/call"
-                                                       {:name      "get_table"
-                                                        :arguments {:id (mt/id :orders)}})
+                                                       {:name      "read_resource"
+                                                        :arguments {:uris ["metabase://databases"]}})
                                       {"mcp-session-id" session-id})
           result         (get-in response [:body :result])]
       (is (= 200 (:status response)))
       (is (not (:isError result))
-          (str "get_table should succeed: " (some-> result :content first :text)))
+          (str "read_resource should succeed: " (some-> result :content first :text)))
       (is (contains? result :structuredContent)
-          "get_table declares outputSchema → MUST emit structuredContent")
+          "read_resource declares outputSchema → MUST emit structuredContent")
       (is (map? (:structuredContent result))
           "structuredContent should be the parsed response object, not a string")
-      (is (= "ORDERS" (-> result :structuredContent :name))
+      (is (sequential? (-> result :structuredContent :resources))
           "structuredContent should mirror the endpoint response shape"))))
 
 (deftest tools-list-strict-shape-test

@@ -787,7 +787,7 @@
    ["add"    [:map
               [:action       [:= "add"]]
               [:card_id      ms/PositiveInt]
-              [:display_size {:optional true} [:enum "wide" "tall" "full"]]]]
+              [:display_size {:optional true} [:maybe [:enum "wide" "tall" "full"]]]]]
    ["remove" [:map
               [:action      [:= "remove"]]
               [:dashcard_id ms/PositiveInt]]]
