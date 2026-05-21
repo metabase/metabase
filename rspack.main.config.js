@@ -4,7 +4,7 @@
 const fs = require("fs");
 
 const rspack = require("@rspack/core");
-const ReactRefreshPlugin = require("@rspack/plugin-react-refresh");
+const { ReactRefreshRspackPlugin } = require("@rspack/plugin-react-refresh");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
 const {
@@ -371,7 +371,7 @@ if (shouldEnableHotRefresh) {
   };
 
   config.plugins.unshift(
-    new ReactRefreshPlugin({
+    new ReactRefreshRspackPlugin({
       overlay: false,
 
       // app-embed-mcp runs in an isolated iframe with CSP restrictions.
