@@ -548,9 +548,9 @@
            auth-identity
            classloader
            config
+           global-system
            models
            query-processor
-           global-system
            search
            settings
            util}
