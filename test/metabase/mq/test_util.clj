@@ -158,7 +158,9 @@
   "Constructs backend instances for the given fixture kind. Memory gets a fresh
   isolated layer; appdb shares the DB table but gets its own per-instance state
   (poll-state, owner-id, offsets, periodic-task rate-limit atoms) so that
-  test teardown doesn't tear down the production singleton's polling thread."
+  test teardown doesn't tear down the production singleton's polling thread.
+  `:redis` opens a connection to the server configured via the standard `mq-redis-*`
+  settings — set `MB_MQ_REDIS_URI` etc. to override."
   [kind]
   (case kind
     :memory (let [layer (memory/make-layer)]
@@ -166,7 +168,9 @@
                :layer    layer
                :queue-be (q.memory/make-backend layer)})
     :appdb  {:backend  :appdb
-             :queue-be (q.appdb/make-backend)}))
+             :queue-be (q.appdb/make-backend)}
+    :redis  {:backend  :redis
+             :queue-be ((requiring-resolve 'metabase.mq.queue.redis/make-backend))}))
 
 ;; A defrecord (not reify) so it exposes a `:poll-context` field — the transport reads
 ;; `(:poll-context backend)` to wake the poll loop, and that must resolve to the inner backend's

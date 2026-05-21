@@ -35,6 +35,18 @@ To use any other database beside the default ones please take a look at [Buildin
 
 To skip the setup wizard and pre-configure users, database connections, and settings, add a [Metabase config file](https://www.metabase.com/docs/latest/configuring-metabase/config-file) to the directory where you run Metabase.
 
+### Optional services
+
+`dev/docker-compose.yml` defines several optional services behind compose profiles. Pass them in `COMPOSE_PROFILES` to start what you need.
+
+- `pulse` — maildev SMTP server (http://localhost:1080) for testing email notifications.
+- `sso` — SAML identity provider for SSO development.
+- `redis` — Redis server (on `:6379`). Required when exercising `MB_QUEUE_BACKEND=redis`. Default settings in `.env.example` already point at this container.
+
+```
+COMPOSE_PROFILES=postgresappdb,redis docker-compose --file dev/docker-compose.yml up
+```
+
 ### Frontend
 
 Metabase depends on third-party libraries to run, so you'll need to keep those up to date. The Clojure CLI will automatically fetch the dependencies when needed. With JavaScript dependencies, however, you'll need to kick off the installation process manually.

@@ -75,6 +75,7 @@ Transport Dispatch (mq.transport)   ← multimethod on channel namespace
 Backends
   appdb  — FOR UPDATE SKIP LOCKED
   memory — LinkedBlockingQueue per channel
+  redis  — Streams + consumer group
         │
         ▼
 Delivery Engine (mq.impl)

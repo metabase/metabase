@@ -23,6 +23,9 @@ version: '3.1'
 # ;; All of the above, and builds the frontend, too. No need for `bun run build-hot` locally.
 # COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data,fe-builder,dev-app docker-compose --file dev/docker-compose.yml up
 #
+# ;; Run with a Redis server available (for MB_QUEUE_BACKEND=redis).
+# COMPOSE_PROFILES=postgresappdb,redis docker-compose --file dev/docker-compose.yml up
+#
 # TODOs:
 # - Consider using swarm to declaratively scale up/down.
 services:
@@ -199,6 +202,17 @@ services:
       - "1025:1025"
     profiles:
       - pulse
+    networks:
+      - metabasenet
+
+  # Redis broker for MB_QUEUE_BACKEND=redis
+  redis:
+    image: redis:7-alpine
+    container_name: metabase-redis
+    ports:
+      - "6379:6379"
+    profiles:
+      - redis
     networks:
       - metabasenet
 

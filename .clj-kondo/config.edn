@@ -329,7 +329,10 @@
 
   :unresolved-var
   {:exclude
-   [colorize.core]}
+   [colorize.core
+    ;; Carmine defines its Redis command vars (xadd, xreadgroup, …) via macros at load time,
+    ;; so clj-kondo can't see them statically.
+    taoensso.carmine]}
 
   :consistent-alias
   {:aliases
@@ -415,6 +418,7 @@
     ring.util.codec                           codec
     ring.util.response                        response
     saml20-clj.core                           saml
+    taoensso.carmine                          car
     metabase.transforms-base.util              transforms-base.u
     metabase.transforms.util                   transforms.u
     toucan2.core                              t2}}}

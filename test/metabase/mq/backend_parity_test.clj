@@ -23,10 +23,20 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private redis-available?
+  "Memoized probe — true iff a Redis server is reachable at the configured `mq-redis-uri`.
+  Computed once per JVM so each test in this ns doesn't reopen a TCP socket."
+  (delay
+    (try
+      (boolean ((requiring-resolve 'metabase.mq.queue.redis/broker-available?)))
+      (catch Throwable _ false))))
+
 (def ^:private backend-kinds
   "Backend kinds exercised by the parity scenarios. `:memory` covers the
-  fast async in-process backend; `:appdb` covers the durable DB-backed one."
-  [:memory :appdb])
+  fast async in-process backend; `:appdb` covers the durable DB-backed one.
+  `:redis` is included only when a server is reachable at the configured URI."
+  (cond-> [:memory :appdb]
+    @redis-available? (conj :redis)))
 
 (def ^:private delivery-modes
   "Delivery modes exercised by the parity scenarios. `:normal` is the
@@ -49,6 +59,13 @@
   (case (namespace channel)
     "queue" (t2/delete! :queue_message_batch :queue_name (name channel))))
 
+(defn- cleanup-redis-channel!
+  "Deletes the Redis stream for `channel` so successive parity runs don't accumulate streams."
+  [channel]
+  (try
+    ((requiring-resolve 'metabase.mq.queue.redis/delete-stream!) channel)
+    (catch Throwable _)))
+
 (defn- unique-channel [transport-ns suffix]
   (keyword transport-ns (str suffix "-" (random-uuid))))
 
@@ -69,8 +86,10 @@
                                      :duplicate-delivery? (= mode :duplicate)}]
              (scenario-fn ctx channel))
            (finally
-             (when (= :appdb kind)
-               (cleanup-appdb-channel! channel)))))))))
+             (case kind
+               :appdb (cleanup-appdb-channel! channel)
+               :redis (cleanup-redis-channel! channel)
+               nil))))))))
 
 (deftest queue-delivers-published-messages-test
   (run-parity!

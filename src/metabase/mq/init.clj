@@ -16,11 +16,24 @@
   {q.appdb/backend-id  q.appdb/backend
    q.memory/backend-id q.memory/backend})
 
-(def ^:private valid-queue-backends (set (keys queue-backends)))
+;; The redis backend is lazy-loaded (see [[redis-backend]]), so its `backend-id` keyword is
+;; referenced as a literal here rather than requiring the namespace eagerly.
+(def ^:private valid-queue-backends
+  "Includes optional backends that are lazy-loaded in [[resolve-backend]]."
+  (conj (set (keys queue-backends)) :queue.backend/redis))
+
+(defn- redis-backend
+  "Lazy-construct the Redis backend. Loading is deferred so the Carmine/Redis client is only
+  touched when this backend is selected via the `queue-backend` setting."
+  []
+  (require 'metabase.mq.queue.redis)
+  ((requiring-resolve 'metabase.mq.queue.redis/make-backend)))
 
 (defn- resolve-backend [label table kw-or-instance]
   (if (keyword? kw-or-instance)
     (or (get table kw-or-instance)
+        (when (= kw-or-instance :queue.backend/redis)
+          (redis-backend))
         (throw (ex-info (str "Unknown " label " backend: " kw-or-instance)
                         {:backend kw-or-instance :valid (set (keys table))})))
     kw-or-instance))
