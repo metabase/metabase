@@ -7,6 +7,7 @@ const anonymizedOrigin = `http://${anonymizedHostname}`;
 type MetaplowPayload = {
   website: string;
   url: string;
+  id: string;
   referrer: string;
   title: string;
   hostname: string;
@@ -30,6 +31,7 @@ function getBasePayload(url: string): Omit<MetaplowPayload, "name" | "data"> {
   return {
     website: METAPLOW_WEBSITE_ID,
     url: getSanitizedUrl(url),
+    id: Settings.get("analytics-uuid") ?? "",
     referrer: "",
     title: "",
     hostname: anonymizedHostname,
