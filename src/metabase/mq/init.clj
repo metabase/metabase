@@ -13,8 +13,8 @@
    [metabase.util.log :as log]))
 
 (def ^:private queue-backends
-  {:queue.backend/appdb  q.appdb/backend
-   :queue.backend/memory q.memory/backend})
+  {q.appdb/backend-id  q.appdb/backend
+   q.memory/backend-id q.memory/backend})
 
 (def ^:private valid-queue-backends (set (keys queue-backends)))
 
@@ -52,7 +52,7 @@
     (listener/register-listeners!)
     (let [owns-buffer-flush? (publish-buffer/start-publish-buffer-flush!)
           owns-worker-pool?  (mq.impl/start-worker-pool!)]
-      (mq.impl/start-transports)
+      (q.backend/start! queue-instance)
       {:prev-queue-be      prev-queue-be
        :queue-be           queue-instance
        :owns-buffer-flush? owns-buffer-flush?

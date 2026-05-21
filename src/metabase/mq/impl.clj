@@ -5,10 +5,9 @@
    [metabase.mq.listener :as listener]
    [metabase.mq.payload :as payload]
    [metabase.mq.polling :as mq.polling]
-   [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.registry :as q.registry]
-   [metabase.mq.transport :as transport]
+   [metabase.mq.settings :as mq.settings]
    [metabase.util.log :as log])
   (:import
    (java.util.concurrent Callable ExecutorService Executors Future)))
@@ -60,9 +59,9 @@
   and records metrics. Calls `on-success` / `on-error` for queue ACK/NACK."
   [{:keys [channel listener-fn invoke-fn on-success on-error]}]
   (let [transport (namespace channel)
-        listener    (listener-fn)
-        labels      {:transport transport :channel (name channel)}
-        start       (System/nanoTime)]
+        listener  (listener-fn)
+        labels    {:transport transport :channel (name channel)}
+        start     (System/nanoTime)]
     (try
       (if-not listener
         (log/debugf "No listener registered for %s %s, skipping message" transport (name channel))
@@ -77,6 +76,24 @@
       (finally
         (analytics/observe! :metabase-mq/handle-duration-ms labels
                             (/ (double (- (System/nanoTime) start)) 1e6))))))
+
+(defn- handle-batch-failure!
+  "Decides retry vs. permanent failure for a just-failed batch based on its prior failure count
+  and `queue-max-retries`, emits the matching metric, and tells the backend to re-enqueue or drop
+  it. No-ops if the backend no longer owns/knows the batch (`failure-count` returns nil). The
+  policy lives here so it's identical across backends."
+  [backend channel batch-id]
+  (when-let [failures (q.backend/failure-count backend channel batch-id)]
+    (let [labels {:backend (name (q.backend/backend-id backend)) :channel (name channel)}]
+      (if (>= (inc failures) (mq.settings/queue-max-retries))
+        (do
+          (log/warnf "Batch %s on %s exhausted retries (%d), dropping"
+                     batch-id channel (mq.settings/queue-max-retries))
+          (analytics/inc! :metabase-mq/queue-batch-permanent-failures labels)
+          (q.backend/fail-batch! backend channel batch-id))
+        (do
+          (analytics/inc! :metabase-mq/queue-batch-retries labels)
+          (q.backend/retry-batch! backend channel batch-id))))))
 
 (defn handle!
   "Handles accumulated messages for a channel by invoking the registered listener.
@@ -109,7 +126,7 @@
                        (q.backend/batch-successful! backend channel bid))
       :on-error     (fn [_e]
                       (doseq [[bid backend] message-batches]
-                        (q.backend/batch-failed! backend channel bid)))})))
+                        (handle-batch-failure! backend channel bid)))})))
 
 (defn deliver!
   "Called by backends when a payload is ready for delivery. Decodes the opaque payload
@@ -176,20 +193,3 @@
     (.shutdownNow pool)
     (reset! worker-pool nil)))
 
-(defn start-transports
-  "Starts the queue backend."
-  []
-  (transport/start! :queue))
-
-(defn shutdown-transports
-  "Shuts down the queue backend."
-  []
-  (transport/shutdown! :queue))
-
-(defn shutdown!
-  "Shuts down all mq infrastructure: publish buffer, worker pool, backends, and listener state."
-  []
-  (publish-buffer/stop-publish-buffer-flush!)
-  (shutdown-transports)
-  (shutdown-worker-pool!)
-  (reset! listener/*listeners* {}))

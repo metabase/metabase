@@ -649,18 +649,15 @@
                         :labels [:profile-id]})
 
    ;; messaging metrics
-   (prometheus/counter :metabase-mq/appdb-cleanup-deleted
-                       {:description "Messages/batches deleted by cleanup."
-                        :labels [:transport :channel]})
-   (prometheus/gauge :metabase-mq/appdb-queue-depth
-                     {:description "Batch count per queue by status."
-                      :labels [:channel :status]})
-   (prometheus/counter :metabase-mq/appdb-queue-poll-results
-                       {:description "Queue poll results by outcome."
-                        :labels [:result]})
+   (prometheus/gauge :metabase-mq/queue-depth
+                     {:description "Batch count per queue by status, across all queue backends."
+                      :labels [:backend :channel :status]})
+   (prometheus/counter :metabase-mq/queue-poll-results
+                       {:description "Queue poll results by outcome, across all queue backends."
+                        :labels [:backend :result]})
    (prometheus/counter :metabase-mq/batch-stale-recoveries
                        {:description "Batches recovered from stale processing state."
-                        :labels [:transport :channel]})
+                        :labels [:backend :transport :channel]})
    (prometheus/counter :metabase-mq/batches-handled
                        {:description "Batches handled by status."
                         :labels [:transport :channel :status]})
@@ -682,10 +679,10 @@
                         :labels [:channel]})
    (prometheus/counter :metabase-mq/queue-batch-permanent-failures
                        {:description "Queue batches that exhausted retries."
-                        :labels [:channel]})
+                        :labels [:backend :channel]})
    (prometheus/counter :metabase-mq/queue-batch-retries
                        {:description "Queue batches retried after transient failure."
-                        :labels [:channel]})
+                        :labels [:backend :channel]})
    (prometheus/counter :metabase-mq/messages-received
                        {:description "Individual messages delivered to handlers."
                         :labels [:transport :channel]})

@@ -22,27 +22,21 @@
    [metabase.mq.queue.appdb :as q.appdb]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.memory :as q.memory]
-   [metabase.mq.queue.registry :as q.registry])
-  (:import
-   (java.util.concurrent LinkedBlockingQueue)))
+   [metabase.mq.queue.registry :as q.registry]))
 
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------- Quiescence -------------------------------------------
 
-(defn- layer-channels-empty?
-  "Returns true if every memory channel that currently has a listener is empty.
-  Channels with no listener are not counted — messages published after an
-  `unlisten!` are orphaned by design and would otherwise block teardown.
-  Returns true for non-memory fixtures (appdb) since there is no layer."
+(defn- layer-drained?
+  "Returns true if no stored memory message belongs to a channel that currently has a listener.
+  Messages on channels with no listener are orphaned by design (published after `unlisten!`) and
+  would otherwise block teardown. Returns true for non-memory fixtures (appdb/redis) — no layer."
   [{:keys [layer]}]
   (if (nil? layer)
     true
     (let [listeners @listener/*listeners*]
-      (every? (fn [[channel-name ^LinkedBlockingQueue q]]
-                (or (not (contains? listeners channel-name))
-                    (.isEmpty q)))
-              @(:channels layer)))))
+      (not-any? #(contains? listeners (:queue %)) (vals @(:messages layer))))))
 
 (defn- unmet-idle-conditions
   "Returns a set of the idle conditions that currently do NOT hold. Empty set == idle."
@@ -50,7 +44,7 @@
   (cond-> #{}
     (seq @publish-buffer/*publish-buffer*) (conj :publish-buffer-nonempty)
     (seq (mq.impl/busy-channels))          (conj :busy-channels)
-    (not (layer-channels-empty? ctx))      (conj :memory-channels-nonempty)))
+    (not (layer-drained? ctx))             (conj :memory-messages-pending)))
 
 (defn wait-for-idle!
   "Blocks until the MQ fixture reaches quiescence or `timeout-ms` elapses. Throws
@@ -174,22 +168,38 @@
     :appdb  {:backend  :appdb
              :queue-be (q.appdb/make-backend)}))
 
+;; A defrecord (not reify) so it exposes a `:poll-context` field — the transport reads
+;; `(:poll-context backend)` to wake the poll loop, and that must resolve to the inner backend's
+;; poll context (the one the inner poll loop actually waits on).
+(defrecord DoubleDeliveryBackend [inner poll-context]
+  q.backend/QueueBackend
+  (publish! [_ queue-name messages]
+    (q.backend/publish! inner queue-name messages)
+    (q.backend/publish! inner queue-name messages))
+  (batch-successful! [_ queue-name batch-id]
+    (q.backend/batch-successful! inner queue-name batch-id))
+  (failure-count [_ queue-name batch-id]
+    (q.backend/failure-count inner queue-name batch-id))
+  (retry-batch! [_ queue-name batch-id]
+    (q.backend/retry-batch! inner queue-name batch-id))
+  (fail-batch! [_ queue-name batch-id]
+    (q.backend/fail-batch! inner queue-name batch-id))
+  (start! [_] (q.backend/start! inner))
+  (shutdown! [_] (q.backend/shutdown! inner))
+  (backend-id [_] (q.backend/backend-id inner))
+  (fetch! [_ available-queues] (q.backend/fetch! inner available-queues))
+  (recover-stale! [_ stale-timeout-ms max-retries]
+    (q.backend/recover-stale! inner stale-timeout-ms max-retries))
+  (run-heartbeats! [_] (q.backend/run-heartbeats! inner))
+  (queue-depths [_] (q.backend/queue-depths inner)))
+
 (defn- double-delivery-queue-backend!
   "Wraps an inner `QueueBackend` so that `publish!` calls the inner backend's
   `publish!` twice with the same payload. Used by `do-with-test-mq!` when
   `:duplicate-delivery?` is set, to force listeners under test to handle the
   MQ's at-least-once contract."
   [inner]
-  (reify q.backend/QueueBackend
-    (publish! [_ queue-name messages]
-      (q.backend/publish! inner queue-name messages)
-      (q.backend/publish! inner queue-name messages))
-    (batch-successful! [_ queue-name batch-id]
-      (q.backend/batch-successful! inner queue-name batch-id))
-    (batch-failed! [_ queue-name batch-id]
-      (q.backend/batch-failed! inner queue-name batch-id))
-    (start! [_] (q.backend/start! inner))
-    (shutdown! [_] (q.backend/shutdown! inner))))
+  (->DoubleDeliveryBackend inner (:poll-context inner)))
 
 (defn do-with-test-mq!
   "Function form of [[with-test-mq]]. `opts` may include:

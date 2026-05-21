@@ -1,7 +1,6 @@
 (ns metabase.mq.queue.appdb-test
   (:require
    [clojure.test :refer :all]
-   [metabase.analytics-interface.core :as analytics]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.listener :as listener]
    [metabase.mq.queue.appdb :as q.appdb]
@@ -40,7 +39,7 @@
       (try
         (t2/with-connection [_conn]
           (testing "Returns nil if no rows are found"
-            (is (nil? (#'q.appdb/fetch! (:owner-id q.appdb/backend) (listener/queue-names)))))
+            (is (nil? (q.backend/fetch! q.appdb/backend (listener/queue-names)))))
 
           (t2/insert! :queue_message_batch
                       {:queue_name (name invalid-queue)
@@ -54,9 +53,9 @@
 
           (testing "Returns nil if no queues are defined"
             (binding [listener/*listeners* (atom {})]
-              (is (nil? (#'q.appdb/fetch! (:owner-id q.appdb/backend) (listener/queue-names))))))
+              (is (nil? (q.backend/fetch! q.appdb/backend (listener/queue-names))))))
           (testing "Fetches one row per queue in a single call"
-            (let [results (#'q.appdb/fetch! (:owner-id q.appdb/backend) (listener/queue-names))
+            (let [results (q.backend/fetch! q.appdb/backend (listener/queue-names))
                   by-queue (into {} (map (juxt :queue identity)) results)]
               (is (= 2 (count results)))
               (testing "queue1 row"
@@ -68,13 +67,13 @@
                       (is (= "processing" (:status updated-row)))
                       (is (not= (:created_at updated-row) (:status_heartbeat updated-row)))
                       (is (= 0 (:failures updated-row)))
-                      (is (= (:owner-id q.appdb/backend) (:owner updated-row)))))))
+                      (is (= (:id (:poll-context q.appdb/backend)) (:owner updated-row)))))))
               (testing "queue2 row"
                 (let [{:keys [batch-id payload]} (get by-queue queue2)]
                   (is (pos-int? batch-id))
                   (is (= ["data2"] (json/decode payload)))))))
           (testing "When everything valid is processing, return nil"
-            (is (nil? (#'q.appdb/fetch! (:owner-id q.appdb/backend) (listener/queue-names))))))
+            (is (nil? (q.backend/fetch! q.appdb/backend (listener/queue-names))))))
         (finally
           (t2/delete! :queue_message_batch :queue_name [:in [(name queue1) (name queue2) (name invalid-queue)]]))))))
 
@@ -91,7 +90,7 @@
             (t2/insert! :queue_message_batch
                         {:queue_name (name exclusive-q)
                          :payload   (json/encode ["exclusive-msg1"])})
-            (let [results (#'q.appdb/fetch! (:owner-id q.appdb/backend) (listener/queue-names))
+            (let [results (q.backend/fetch! q.appdb/backend (listener/queue-names))
                   {:keys [queue payload]} (first results)]
               (is (= 1 (count results)))
               (is (= exclusive-q queue))
@@ -102,14 +101,14 @@
                         {:queue_name (name exclusive-q)
                          :payload   (json/encode ["exclusive-msg2"])})
             ;; The first message is now 'processing', so the second should be skipped
-            (is (nil? (#'q.appdb/fetch! (:owner-id q.appdb/backend) (listener/queue-names)))
+            (is (nil? (q.backend/fetch! q.appdb/backend (listener/queue-names)))
                 "Should return nil because exclusive queue has a processing row"))
 
           (testing "Non-exclusive queue is still fetchable even when exclusive queue is blocked"
             (t2/insert! :queue_message_batch
                         {:queue_name (name normal-q)
                          :payload   (json/encode ["normal-msg1"])})
-            (let [results (#'q.appdb/fetch! (:owner-id q.appdb/backend) (listener/queue-names))
+            (let [results (q.backend/fetch! q.appdb/backend (listener/queue-names))
                   {:keys [queue payload]} (first results)]
               (is (= 1 (count results)))
               (is (= normal-q queue))
@@ -118,7 +117,7 @@
           (testing "After exclusive processing completes, next message can be fetched"
             ;; Mark the processing row as done by deleting it (simulating batch-successful!)
             (t2/delete! :queue_message_batch :queue_name (name exclusive-q) :status "processing")
-            (let [results (#'q.appdb/fetch! (:owner-id q.appdb/backend) (listener/queue-names))
+            (let [results (q.backend/fetch! q.appdb/backend (listener/queue-names))
                   {:keys [queue payload]} (first results)]
               (is (= exclusive-q queue))
               (is (= ["exclusive-msg2"] (json/decode payload))))))
@@ -132,7 +131,7 @@
                                                 {:queue_name (name queue-name)
                                                  :payload (json/encode ["test-message"])
                                                  :status "processing"
-                                                 :owner (:owner-id q.appdb/backend)})]
+                                                 :owner (:id (:poll-context q.appdb/backend))})]
         (q.backend/batch-successful! q.appdb/backend queue-name message-id)
         (is (nil? (t2/select-one :queue_message_batch :id message-id)))))
 
@@ -141,70 +140,82 @@
 
 ;; Note: no cleanup needed — batch-successful! deletes the row
 
-(deftest message-failed-test
-  (let [queue-name (keyword "queue" (str (gensym "failed-test-")))]
+(deftest failure-handling-test
+  (let [queue-name (keyword "queue" (str (gensym "failed-test-")))
+        owner      (:id (:poll-context q.appdb/backend))
+        mk-row     (fn [failures]
+                     (t2/insert-returning-pk! :queue_message_batch
+                                              {:queue_name (name queue-name)
+                                               :payload   (json/encode ["m"])
+                                               :status     "processing"
+                                               :failures   failures
+                                               :owner      owner}))]
     (try
-      (testing "Message failed resets to pending and increments failures"
+      (testing "failure-count returns the stored failure count"
+        (is (= 2 (q.backend/failure-count q.appdb/backend queue-name (mk-row 2)))))
+
+      (testing "failure-count is nil for an unknown message (caller no-ops)"
+        (is (nil? (q.backend/failure-count q.appdb/backend queue-name 99999))))
+
+      (testing "failure-count is nil when another node owns the message"
         (let [message-id (t2/insert-returning-pk! :queue_message_batch
                                                   {:queue_name (name queue-name)
-                                                   :payload (json/encode ["test-message"])
-                                                   :status "processing"
-                                                   :failures 0
-                                                   :owner (:owner-id q.appdb/backend)})]
-          (q.backend/batch-failed! q.appdb/backend queue-name message-id)
-          (let [updated-message (t2/select-one :queue_message_batch :id message-id)]
-            (is (= "pending" (:status updated-message)))
-            (is (= 1 (:failures updated-message)))
-            (is (nil? (:owner updated-message)))
-            (is (not (nil? (:status_heartbeat updated-message)))))))
+                                                   :payload   (json/encode ["m"])
+                                                   :status     "processing"
+                                                   :owner      "another-node"
+                                                   :failures   0})]
+          (is (nil? (q.backend/failure-count q.appdb/backend queue-name message-id)))
+          (testing "and retry-batch! leaves the other node's row untouched"
+            (q.backend/retry-batch! q.appdb/backend queue-name message-id)
+            (let [row (t2/select-one :queue_message_batch :id message-id)]
+              (is (= "processing" (:status row)))
+              (is (= 0 (:failures row)))
+              (is (= "another-node" (:owner row)))))))
 
-      (testing "Message failed increments failures multiple times"
-        (let [message-id (t2/insert-returning-pk! :queue_message_batch
-                                                  {:queue_name (name queue-name)
-                                                   :payload (json/encode ["test-message"])
-                                                   :status "processing"
-                                                   :failures 2
-                                                   :owner (:owner-id q.appdb/backend)})]
-          (q.backend/batch-failed! q.appdb/backend queue-name message-id)
-          (let [updated-message (t2/select-one :queue_message_batch :id message-id)]
-            (is (= "pending" (:status updated-message)))
-            (is (= 3 (:failures updated-message)))
-            (is (nil? (:owner updated-message))))))
+      (testing "retry-batch! resets to pending and increments failures"
+        (let [message-id (mk-row 2)]
+          (q.backend/retry-batch! q.appdb/backend queue-name message-id)
+          (let [row (t2/select-one :queue_message_batch :id message-id)]
+            (is (= "pending" (:status row)))
+            (is (= 3 (:failures row)))
+            (is (nil? (:owner row)))
+            (is (some? (:status_heartbeat row))))))
 
-      (testing "Message moved to failed status after max failures"
-        (let [message-id (t2/insert-returning-pk! :queue_message_batch
-                                                  {:queue_name (name queue-name)
-                                                   :payload (json/encode ["test-message"])
-                                                   :status "processing"
-                                                   :failures (dec (mq.settings/queue-max-retries))
-                                                   :owner (:owner-id q.appdb/backend)})]
-          (q.backend/batch-failed! q.appdb/backend queue-name message-id)
-          (let [updated-message (t2/select-one :queue_message_batch :id message-id)]
-            (is (= "failed" (:status updated-message)))
-            (is (= (mq.settings/queue-max-retries) (:failures updated-message)))
-            (is (nil? (:owner updated-message))))))
-
-      (testing "Message failed on non-existent message does not fail"
-        (is (nil? (q.backend/batch-failed! q.appdb/backend queue-name 99999))))
-
-      (testing "Message failed when being processed by another node is a no-op"
-        (let [message-id (t2/insert-returning-pk! :queue_message_batch
-                                                  {:queue_name (name queue-name)
-                                                   :payload (json/encode ["test-message"])
-                                                   :status "processing"
-                                                   :owner "another-node"
-                                                   :failures 0})]
-          (q.backend/batch-failed! q.appdb/backend queue-name message-id)
-          (let [updated-message (t2/select-one :queue_message_batch :id message-id)]
-            (is (= "processing" (:status updated-message)))
-            (is (= 0 (:failures updated-message)))
-            (is (= "another-node" (:owner updated-message))))))
+      (testing "fail-batch! deletes the message (failed batches aren't retained)"
+        (let [message-id (mk-row 2)]
+          (q.backend/fail-batch! q.appdb/backend queue-name message-id)
+          (is (nil? (t2/select-one :queue_message_batch :id message-id)))))
       (finally
         (t2/delete! :queue_message_batch :queue_name (name queue-name))))))
 
+(deftest max-retries-decision-test
+  (testing "the shared delivery layer retries below max-retries and fails permanently at max"
+    (let [queue-name (keyword "queue" (str (gensym "decision-test-")))
+          owner      (:id (:poll-context q.appdb/backend))
+          mk-row     (fn [failures]
+                       (t2/insert-returning-pk! :queue_message_batch
+                                                {:queue_name (name queue-name)
+                                                 :payload   (json/encode ["m"])
+                                                 :status     "processing"
+                                                 :failures   failures
+                                                 :owner      owner}))]
+      (try
+        (testing "below max retries -> re-queued as pending"
+          (let [id (mk-row 0)]
+            (#'mq.impl/handle-batch-failure! q.appdb/backend queue-name id)
+            (is (= "pending" (:status (t2/select-one :queue_message_batch :id id))))))
+        (testing "at max retries -> dropped (deleted)"
+          (let [id (mk-row (dec (mq.settings/queue-max-retries)))]
+            (#'mq.impl/handle-batch-failure! q.appdb/backend queue-name id)
+            (is (nil? (t2/select-one :queue_message_batch :id id)))))
+        (finally
+          (t2/delete! :queue_message_batch :queue_name (name queue-name)))))))
+
 (deftest recover-stale-processing-batches-test
-  (let [queue-name (keyword "queue" (str "stale-test-" (random-uuid)))
-        stale-heartbeat (Timestamp/from (.minusMillis (Instant/now) (+ @#'q.appdb/stale-processing-timeout-ms 60000)))]
+  (let [queue-name      (keyword "queue" (str "stale-test-" (random-uuid)))
+        stale-ms        (* 10 60 1000)
+        max-retries     (mq.settings/queue-max-retries)
+        stale-heartbeat (Timestamp/from (.minusMillis (Instant/now) (+ stale-ms 60000)))]
     (try
       (testing "Stale processing batch is reset to pending with incremented failures"
         (let [message-id (t2/insert-returning-pk! :queue_message_batch
@@ -214,13 +225,17 @@
                                                    :status_heartbeat stale-heartbeat
                                                    :failures         1
                                                    :owner            "dead-owner"})]
-          (is (pos? (#'q.appdb/recover-stale-processing-batches!)))
+          (let [recovered (->> (q.backend/recover-stale! q.appdb/backend stale-ms max-retries)
+                               (filter #(= (name queue-name) (:channel %)))
+                               (keep :recovered)
+                               (reduce + 0))]
+            (is (pos? recovered) "recover-stale! reports the recovered batch for this channel"))
           (let [row (t2/select-one :queue_message_batch :id message-id)]
             (is (= "pending" (:status row)))
             (is (= 2 (:failures row)))
             (is (nil? (:owner row))))))
 
-      (testing "Stale batch at max retries is marked as failed"
+      (testing "Stale batch at max retries is dropped (deleted)"
         (let [message-id (t2/insert-returning-pk! :queue_message_batch
                                                   {:queue_name       (name queue-name)
                                                    :payload         (json/encode ["stale-msg-max"])
@@ -228,11 +243,13 @@
                                                    :status_heartbeat stale-heartbeat
                                                    :failures         (dec (mq.settings/queue-max-retries))
                                                    :owner            "dead-owner"})]
-          (is (pos? (#'q.appdb/recover-stale-processing-batches!)))
-          (let [row (t2/select-one :queue_message_batch :id message-id)]
-            (is (= "failed" (:status row)))
-            (is (= (mq.settings/queue-max-retries) (:failures row)))
-            (is (nil? (:owner row))))))
+          (let [failed (->> (q.backend/recover-stale! q.appdb/backend stale-ms max-retries)
+                            (filter #(= (name queue-name) (:channel %)))
+                            (keep :failed)
+                            (reduce + 0))]
+            (is (pos? failed) "recover-stale! reports the permanently-failed batch for this channel"))
+          (is (nil? (t2/select-one :queue_message_batch :id message-id))
+              "exhausted stale batch is deleted")))
 
       (testing "Recent processing batch is not recovered by stale check"
         (let [message-id (t2/insert-returning-pk! :queue_message_batch
@@ -241,7 +258,7 @@
                                                    :status           "processing"
                                                    :failures         0
                                                    :owner            "active-owner"})]
-          (#'q.appdb/recover-stale-processing-batches!)
+          (q.backend/recover-stale! q.appdb/backend stale-ms max-retries)
           (let [row (t2/select-one :queue_message_batch :id message-id)]
             (is (= "processing" (:status row)))
             (is (= 0 (:failures row))))))
@@ -255,70 +272,30 @@
                                                         {:queue_name (name queue-name)
                                                          :payload   (json/encode ["msg"])
                                                          :status     "processing"
-                                                         :owner      (:owner-id q.appdb/backend)})
+                                                         :owner      (:id (:poll-context q.appdb/backend))})
             original-heartbeat (:status_heartbeat (t2/select-one :queue_message_batch :id message-id))]
         (Thread/sleep 100) ; Ensure enough time passes for timestamp to differ
         (mt/with-dynamic-fn-redefs [mq.impl/busy-channels          (constantly #{queue-name})
                                     mq.impl/active-handler-metadata (fn [_ch] {:batch-id message-id})]
-          (#'q.appdb/update-heartbeats! (:owner-id q.appdb/backend)))
-        (testing "Heartbeat is updated after update-heartbeats!"
+          (q.backend/run-heartbeats! q.appdb/backend))
+        (testing "Heartbeat is updated after run-heartbeats!"
           (let [updated-heartbeat (:status_heartbeat (t2/select-one :queue_message_batch :id message-id))]
             (is (not= original-heartbeat updated-heartbeat)
                 "Heartbeat timestamp should be updated"))))
       (finally
         (t2/delete! :queue_message_batch :queue_name (name queue-name))))))
 
-(deftest cleanup-failed-batches-test
-  (let [queue-name (keyword "queue" (str "cleanup-test-" (random-uuid)))
-        old-ts     (Timestamp/from (.minusMillis (Instant/now) (+ (* 7 24 60 60 1000) 60000)))]
-    (try
-      (testing "Failed batch older than 7 days is deleted"
-        (let [old-id (t2/insert-returning-pk! :queue_message_batch
-                                              {:queue_name       (name queue-name)
-                                               :payload         (json/encode ["old-msg"])
-                                               :status           "failed"
-                                               :status_heartbeat old-ts})]
-          (#'q.appdb/cleanup-failed-batches!)
-          (is (nil? (t2/select-one :queue_message_batch :id old-id))
-              "Old failed batch should be deleted")))
-
-      (testing "Recent failed batch is not deleted"
-        (let [recent-id (t2/insert-returning-pk! :queue_message_batch
-                                                 {:queue_name (name queue-name)
-                                                  :payload   (json/encode ["recent-msg"])
-                                                  :status     "failed"})]
-          (#'q.appdb/cleanup-failed-batches!)
-          (is (some? (t2/select-one :queue_message_batch :id recent-id))
-              "Recent failed batch should not be deleted")
-          (t2/delete! :queue_message_batch :id recent-id)))
-
-      (testing "Non-failed batch with old heartbeat is not cleaned up"
-        (let [pending-id (t2/insert-returning-pk! :queue_message_batch
-                                                  {:queue_name       (name queue-name)
-                                                   :payload         (json/encode ["pending-msg"])
-                                                   :status           "pending"
-                                                   :status_heartbeat old-ts})]
-          (#'q.appdb/cleanup-failed-batches!)
-          (is (some? (t2/select-one :queue_message_batch :id pending-id))
-              "Non-failed batch should not be deleted")
-          (t2/delete! :queue_message_batch :id pending-id)))
-      (finally
-        (t2/delete! :queue_message_batch :queue_name (name queue-name))))))
-
-(deftest update-depth-gauges-test
-  (let [queue-name  (keyword "queue" (str "depth-gauge-test-" (random-uuid)))
-        gauge-calls (atom [])]
+(deftest queue-depths-test
+  (let [queue-name (keyword "queue" (str "depth-gauge-test-" (random-uuid)))]
     (try
       (t2/insert! :queue_message_batch {:queue_name (name queue-name) :payload (json/encode ["m1"]) :status "pending"})
-      (t2/insert! :queue_message_batch {:queue_name (name queue-name) :payload (json/encode ["m2"]) :status "failed"})
-      (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [metric labels value]
-                                                         (when (= metric :metabase-mq/appdb-queue-depth)
-                                                           (swap! gauge-calls conj {:labels labels :value value})))]
-        (#'q.appdb/update-depth-gauges!))
-      (testing "Gauge is emitted for each queue/status combination"
-        (let [calls-for-queue (filter #(= (name queue-name) (-> % :labels :channel)) @gauge-calls)
-              by-status       (into {} (map (juxt #(-> % :labels :status) :value)) calls-for-queue)]
+      (t2/insert! :queue_message_batch {:queue_name (name queue-name) :payload (json/encode ["m2"]) :status "processing"})
+      (testing "queue-depths returns a {:channel :status :count} row per queue/status combination"
+        (let [by-status (into {}
+                              (comp (filter #(= (name queue-name) (:channel %)))
+                                    (map (juxt :status :count)))
+                              (q.backend/queue-depths q.appdb/backend))]
           (is (= 1 (get by-status "pending")) "Should count 1 pending message")
-          (is (= 1 (get by-status "failed")) "Should count 1 failed message")))
+          (is (= 1 (get by-status "processing")) "Should count 1 processing message")))
       (finally
         (t2/delete! :queue_message_batch :queue_name (name queue-name))))))

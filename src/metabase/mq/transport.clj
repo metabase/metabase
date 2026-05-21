@@ -3,7 +3,8 @@
   Selection is based on the channel keyword's namespace (`:queue/*`)."
   (:require
    [metabase.mq.payload :as payload]
-   [metabase.mq.queue.backend :as q.backend]))
+   [metabase.mq.queue.backend :as q.backend]
+   [metabase.mq.queue.polling :as q.polling]))
 
 (set! *warn-on-reflection* true)
 
@@ -13,22 +14,14 @@
   (keyword (namespace channel)))
 
 (defn publish!
-  "Publishes messages to the appropriate backend for the channel's transport type.
-  Messages are encoded to an opaque string payload here — once, upstream of every backend —
-  so backends only move bytes around and every backend delivers an identical message shape."
+  "Publishes messages to the appropriate backend for the channel's transport type, then wakes the
+  backend's poll loop so it picks the work up promptly. Messages are encoded to an opaque string
+  payload here — once, upstream of every backend — so backends only move bytes around and every
+  backend delivers an identical message shape."
   [channel messages]
-  (let [encoded (payload/encode messages)]
+  (let [encoded (payload/encode messages)
+        backend q.backend/*backend*]
     (case (transport-type channel)
-      :queue (q.backend/publish! q.backend/*backend* channel encoded))))
-
-(defn start!
-  "Starts the backend for the given transport type (`:queue`)."
-  [transport-type]
-  (case transport-type
-    :queue (q.backend/start! q.backend/*backend*)))
-
-(defn shutdown!
-  "Shuts down the backend for the given transport type (`:queue`)."
-  [transport-type]
-  (case transport-type
-    :queue (q.backend/shutdown! q.backend/*backend*)))
+      :queue (do
+               (q.backend/publish! backend channel encoded)
+               (q.polling/notify-on-publish! (:poll-context backend) channel)))))
