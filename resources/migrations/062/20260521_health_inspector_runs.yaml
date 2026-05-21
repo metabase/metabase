@@ -1,0 +1,39 @@
+## Create a table for health inspector runs
+
+databaseChangeLog:
+  - changeSet:
+      id: v62.2026-05-21T10:47:00
+      author: technomancy
+      comment: Create health_inspector_runs table.
+      changes:
+        - createTable:
+            tableName: health_inspector_runs
+            remarks: Stores registered custom visualization plugins uploaded as zip bundles
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: message
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: check_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: run_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: health
+                  type: integer
+                  remarks: Health as a percentage out of 100

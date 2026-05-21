@@ -28,6 +28,7 @@
    [metabase.frontend-errors.api]
    [metabase.geojson.api]
    [metabase.glossary.api]
+   [metabase.health-inspector.core]
    [metabase.indexed-entities.api]
    [metabase.llm.api]
    [metabase.logger.api]
@@ -188,6 +189,7 @@
    "/geojson"              'metabase.geojson.api
    "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)
+   "/health-inspector"     (+auth metabase.health-inspector.core/routes)
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
    "/llm"                  (+auth metabase.llm.api/routes)
    "/logger"               (+auth 'metabase.logger.api)
