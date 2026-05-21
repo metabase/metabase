@@ -226,7 +226,7 @@
                         "ai-service" {"x-metabase-instance-token"
                                       (u/prog1 (premium-features/premium-embedding-token)
                                         (when (nil? <>)
-                                          (throw (ex-info "Missing premium embedding token not set."
+                                          (throw (ex-info "Premium embedding token not set."
                                                           {:provider provider
                                                            :endpoint endpoint
                                                            :setting "premium-embedding-token"}))))}
