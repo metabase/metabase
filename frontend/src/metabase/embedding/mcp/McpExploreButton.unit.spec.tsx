@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import {
   setupAlertsEndpoints,
   setupCardEndpoints,
@@ -5,11 +7,12 @@ import {
   setupCardQueryMetadataEndpoint,
   setupDatabaseEndpoints,
 } from "__support__/server-mocks";
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
+import * as Urls from "metabase/urls";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -25,7 +28,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { McpQueryBar } from "./McpQueryBar";
+import { McpExploreButton } from "./McpExploreButton";
 
 const TEST_USER = createMockUser();
 const TEST_DATABASE = createSampleDatabase();
@@ -38,17 +41,11 @@ const TEST_CARD = createMockCard({
       "source-table": ORDERS_ID,
       aggregation: [["count"]],
       breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "quarter" }]],
-      filter: [
-        "between",
-        ["field", ORDERS.CREATED_AT, null],
-        "2024-01-01",
-        "2024-12-31",
-      ],
     },
   },
 });
 
-const ONE_POINT_RESULT = createMockDataset({
+const QUERY_RESULT = createMockDataset({
   data: createMockDatasetData({
     cols: [
       createMockNumericColumn({
@@ -64,6 +61,7 @@ const ONE_POINT_RESULT = createMockDataset({
 function setup() {
   const { state } = setupSdkState({ currentUser: TEST_USER });
   const app = { openLink: jest.fn() };
+  const instanceUrl = "https://metabase.example";
 
   setupCardEndpoints(TEST_CARD);
   setupCardQueryMetadataEndpoint(
@@ -73,7 +71,7 @@ function setup() {
   setupDatabaseEndpoints(TEST_DATABASE);
 
   setupAlertsEndpoints(TEST_CARD, []);
-  setupCardQueryEndpoints(TEST_CARD, ONE_POINT_RESULT);
+  setupCardQueryEndpoints(TEST_CARD, QUERY_RESULT);
 
   renderWithSDKProviders(
     <SdkQuestion
@@ -82,7 +80,7 @@ function setup() {
       withEditorButton={false}
       withChartTypeSelector={false}
     >
-      <McpQueryBar app={app as any} instanceUrl="https://metabase.example" />
+      <McpExploreButton app={app as any} instanceUrl={instanceUrl} />
     </SdkQuestion>,
     {
       componentProviderProps: {
@@ -92,28 +90,27 @@ function setup() {
     },
   );
 
-  return { app };
+  return { app, instanceUrl };
 }
 
-describe("McpQueryBar", () => {
-  it("renders remaining query controls when a one-point result has no MCP chart types", async () => {
-    setup();
+describe("McpExploreButton", () => {
+  it("opens the current question in Metabase", async () => {
+    const user = userEvent.setup();
+    const { app, instanceUrl } = setup();
 
-    expect(await screen.findByTestId("query-explorer-bar")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /explore/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "line" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "bar" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "area" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "table" }),
-    ).not.toBeInTheDocument();
+    await user.click(
+      await screen.findByRole("button", { name: /explore in metabase/i }),
+    );
+
+    await waitFor(() => {
+      expect(app.openLink).toHaveBeenCalledWith({
+        url:
+          instanceUrl +
+          Urls.serializedQuestion({
+            ...TEST_CARD,
+            original_card_id: TEST_CARD.id,
+          }),
+      });
+    });
   });
 });

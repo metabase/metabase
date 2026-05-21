@@ -1,19 +1,10 @@
-import type { App } from "@modelcontextprotocol/ext-apps/react";
-
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
-import * as Urls from "metabase/urls";
 
-import { QueryExplorerBar } from "./QueryExplorerBar";
-import { useChartTypes } from "./hooks/useChartTypes";
-import { useDateFilter } from "./hooks/useDateFilter";
-import { useTemporalGranularity } from "./hooks/useTemporalGranularity";
+import { useChartTypes } from "./useChartTypes";
+import { useDateFilter } from "./useDateFilter";
+import { useTemporalGranularity } from "./useTemporalGranularity";
 
-interface McpQueryBarProps {
-  app: App | null;
-  instanceUrl: string;
-}
-
-export function McpQueryBar({ app, instanceUrl }: McpQueryBarProps) {
+export function useMcpQueryControls() {
   const { question, updateQuestion, queryResults } = useSdkQuestionContext();
 
   const {
@@ -41,10 +32,6 @@ export function McpQueryBar({ app, instanceUrl }: McpQueryBarProps) {
     handleDateFilterClear,
   } = useDateFilter(question, updateQuestion, rawTemporalColumn);
 
-  if (!question || !queryResults || hasOnlyTable) {
-    return null;
-  }
-
   const timeRange =
     rawTemporalColumn !== null
       ? {
@@ -67,31 +54,21 @@ export function McpQueryBar({ app, instanceUrl }: McpQueryBarProps) {
         }
       : undefined;
 
-  const hasControls =
-    sensibleChartTypes.length > 0 || timeRange || timeGranularity || app;
+  const hasQueryResults = !!question && !!queryResults;
+  const canShowChartControls = hasQueryResults && !hasOnlyTable;
 
-  if (!hasControls) {
-    return null;
-  }
+  const hasChartTypeSelector =
+    canShowChartControls && sensibleChartTypes.length > 1;
 
-  async function handleExploreClicked() {
-    if (!instanceUrl || !question || !app) {
-      return;
-    }
+  const hasTimeControls = hasQueryResults && !!(timeRange || timeGranularity);
 
-    const url = instanceUrl + Urls.serializedQuestion(question.card());
-
-    await app.openLink({ url });
-  }
-
-  return (
-    <QueryExplorerBar
-      chartTypes={sensibleChartTypes}
-      currentChartType={selectedChartType ?? ""}
-      onChartTypeChange={handleDisplayChange}
-      timeRange={timeRange}
-      timeGranularity={timeGranularity}
-      onExplore={handleExploreClicked}
-    />
-  );
+  return {
+    chartTypes: sensibleChartTypes,
+    currentChartType: selectedChartType,
+    hasChartTypeSelector,
+    hasTimeControls,
+    onChartTypeChange: handleDisplayChange,
+    timeGranularity,
+    timeRange,
+  };
 }
