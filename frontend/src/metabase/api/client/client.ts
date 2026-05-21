@@ -114,35 +114,34 @@ export class ApiClient extends EventEmitter {
   getClientHeaders(
     extraHeaders: Record<string, string> = {},
   ): Record<string, string> {
-    const self = this;
     const headers: Record<string, string> = {
       Accept: "application/json",
       "Content-Type": "application/json",
     };
 
     if (this.apiKey) {
-      headers["X-Api-Key"] = self.apiKey;
+      headers["X-Api-Key"] = this.apiKey;
     }
 
     if (this.sessionToken) {
-      headers["X-Metabase-Session"] = self.sessionToken!;
+      headers["X-Metabase-Session"] = this.sessionToken;
     }
 
     if (isWithinIframe() && !isEmbeddingSdk()) {
       headers["X-Metabase-Embedded"] = "true";
     }
 
-    if (self.requestClient) {
+    if (this.requestClient) {
       if (IFRAMED_IN_SELF) {
         headers["X-Metabase-Embedded-Preview"] = "true";
       }
-      if (typeof self.requestClient === "object") {
-        headers["X-Metabase-Client"] = self.requestClient.name;
-        if (self.requestClient.version) {
-          headers["X-Metabase-Client-Version"] = self.requestClient.version;
+      if (typeof this.requestClient === "object") {
+        headers["X-Metabase-Client"] = this.requestClient.name;
+        if (this.requestClient.version) {
+          headers["X-Metabase-Client-Version"] = this.requestClient.version;
         }
       } else {
-        headers["X-Metabase-Client"] = self.requestClient;
+        headers["X-Metabase-Client"] = this.requestClient;
       }
     }
 
