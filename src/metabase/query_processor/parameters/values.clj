@@ -37,8 +37,7 @@
 (set! *warn-on-reflection* true)
 
 (defmulti ^:private parse-tag
-  "Parse a tag by its `:type`, returning an appropriate record type such as
-  `metabase.driver.common.parameters.FieldFilter`."
+  "Parse a tag by its `:type`, returning one of the parsed types in [[metabase.lib.parameters.parse.types]]."
   {:arglists '([metadata-providerable tag params])}
   (fn [_metadata-providerable {tag-type :type, :as _tag} _params]
     (keyword tag-type)))

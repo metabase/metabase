@@ -12,9 +12,8 @@
      replaced as usual and the rest of the clause (`AND ...`) is included in the query as-is
 
   Native parameter parsing and substution logic shared by multiple drivers lives in
-  `metabase.driver.common.parameters.*` (for legacy MBQL) and `metabase.query-processor.parameters.*` (for MBQL 5).
-  Driver-specific parsing/substitution logic is implemented in `metabase.driver.sql.parameters.*` (for SQL drivers) or
-  similar namespaces for others.
+  `metabase.query-processor.parameters.*` (for MBQL 5). Driver-specific parsing/substitution logic is implemented in
+  `metabase.driver.sql.parameters.*` (for SQL drivers) or similar namespaces for others.
 
   The different steps of this process, are similar between existing driver implementations, and are as follows:
 

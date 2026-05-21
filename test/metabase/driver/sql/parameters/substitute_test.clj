@@ -998,7 +998,7 @@
 (deftest ^:parallel e2e-relative-dates-test
   (mt/test-drivers (sql-parameters-engines)
     (testing (str "test that relative dates work correctly. It should be enough to try just one type of relative date "
-                  "here, since handling them gets delegated to the functions in `metabase.driver.common.parameters.dates`, "
+                  "here, since handling them gets delegated to the functions in `metabase.query-processor.parameters.dates`, "
                   "which is fully-tested :D")
       (is (= [0]
              (mt/first-row
@@ -1028,7 +1028,7 @@
 (deftest ^:parallel e2e-exclude-date-parts-test
   (mt/test-drivers (mt/normal-drivers-with-feature ::e2e-exclude-date-parts-test)
     (testing (str "test that excluding date parts work correctly. It should be enough to try just one type of exclusion "
-                  "here, since handling them gets delegated to the functions in `metabase.driver.common.parameters.dates`, "
+                  "here, since handling them gets delegated to the functions in `metabase.query-processor.parameters.dates`, "
                   "which is fully-tested :D")
       (doseq [[exclusion-string expected] {"exclude-months-Jan" 14
                                            "exclude-months-Jan-Feb" 13
