@@ -70,15 +70,26 @@
                                          (h2x/identifier :field col-name))))
 
 (defn- build-arm
-  "HoneySQL for one UNION arm: a flat per-field `SELECT … GROUP BY … LIMIT N`."
+  "HoneySQL for one UNION arm.
+
+   The per-field `SELECT … GROUP BY … LIMIT N` is built as an inner subquery and wrapped in an
+   outer `SELECT * FROM (<inner>)`. The wrap is required: a `UNION ALL` of arms that each carry
+   their own `LIMIT` is illegal SQL — the LIMIT would bind to the whole union. Nesting the
+   limited query as a subquery parenthesizes it; the outer arms then carry no LIMIT and union
+   cleanly."
   [driver table field]
-  (let [tag           [:inline (:name field)]
-        cast-expr     (cast-to-text-honeysql driver (:name field))
-        arm-without-limit {:select   [[tag :field_name]
-                                      [cast-expr :value_out]]
-                           :from     [(table-honeysql driver table)]
-                           :group-by [tag cast-expr]}]
-    (sql.qp/apply-top-level-clause driver :limit arm-without-limit {:limit *distinct-limit*})))
+  (let [tag       [:inline (:name field)]
+        cast-expr (cast-to-text-honeysql driver (:name field))
+        ;; `:from` wraps the identifier expression in an extra vector — `[[expr]]` — so HoneySQL
+        ;; treats it as a single table expression rather than parsing the identifier's own
+        ;; `[::identifier :table [...]]` vector as a `[table alias …]` spec.
+        inner     {:select   [[tag :field_name]
+                              [cast-expr :value_out]]
+                   :from     [[(table-honeysql driver table)]]
+                   :group-by [tag cast-expr]}
+        limited   (sql.qp/apply-top-level-clause driver :limit inner {:limit *distinct-limit*})]
+    {:select [:*]
+     :from   [[limited :_arm]]}))
 
 (defn- build-union
   "Build the full HoneySQL form for one batch of fields. Single field → no UNION wrapper."

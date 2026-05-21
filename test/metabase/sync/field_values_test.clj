@@ -24,6 +24,15 @@
     [(sync.util-test/only-step-keys step-info)
      (:task_details task-history)]))
 
+(defn- sync-database-counts!
+  "Like [[sync-database!']] but keeps only the create/update/delete/error counts. The
+   `:probed`/`:queries` observability counters are dropped — they're a function of how many
+   fields across the whole database have active FieldValues, which is global state these
+   whole-database sync tests don't (and shouldn't) pin down."
+  [step database]
+  (mapv #(select-keys % [:errors :created :updated :deleted])
+        (sync-database!' step database)))
+
 (deftest sync-recreate-field-values-test
   (testing "Test that when we delete FieldValues syncing the Table again will cause them to be re-created"
     (testing "Check that we have expected field values to start with"
@@ -40,8 +49,8 @@
       (is (= nil
              (venues-price-field-values))))
     (testing "After the delete, a field values should not be created"
-      (is (= (repeat 2 {:errors 0, :created 0, :updated 0, :deleted 0, :probed 1, :queries 1})
-             (sync-database!' "update-field-values" (data/db)))))
+      (is (= (repeat 2 {:errors 0, :created 0, :updated 0, :deleted 0})
+             (sync-database-counts! "update-field-values" (data/db)))))
     (testing "Now re-sync the table and make sure they're back"
       ;; Manually activate Field values since they are not created during sync (#53387)
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :venues :price)))
@@ -63,8 +72,8 @@
       (is (= [1 2 3]
              (venues-price-field-values))))
     (testing "Now re-sync the table and validate the field values updated"
-      (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0, :probed 2, :queries 2})
-             (sync-database!' "update-field-values" (data/db)))))
+      (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0})
+             (sync-database-counts! "update-field-values" (data/db)))))
     (testing "Make sure the value is back"
       (is (= [1 2 3 4]
              (venues-price-field-values))))))
@@ -77,8 +86,8 @@
                     (t2/select-one-pk :model/FieldValues :field_id (mt/id :venues :price) :type :full)
                     {:last_used_at (t/minus (t/offset-date-time) (t/days 20))
                      :values       [1 2 3]})
-        (is (= (repeat 2 {:errors 0, :created 0, :updated 0, :deleted 0, :probed 1, :queries 1})
-               (sync-database!' "update-field-values" (data/db))))
+        (is (= (repeat 2 {:errors 0, :created 0, :updated 0, :deleted 0})
+               (sync-database-counts! "update-field-values" (data/db))))
         (is (= [1 2 3] (venues-price-field-values)))
         (testing "Fetching field values causes an on-demand update and marks Field Values as active"
           (is (partial= {:values [[1] [2] [3] [4]]}
@@ -89,8 +98,8 @@
             (t2/update! :model/FieldValues
                         (t2/select-one-pk :model/FieldValues :field_id (mt/id :venues :price) :type :full)
                         {:values [1 2 3]})
-            (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0, :probed 2, :queries 2})
-                   (sync-database!' "update-field-values" (data/db))))
+            (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0})
+                   (sync-database-counts! "update-field-values" (data/db))))
             (is (partial= {:values [[1] [2] [3] [4]]}
                           (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))
         (testing "If only advanced fields have been used recently, still sync"
@@ -102,8 +111,8 @@
                                           :type         :advanced
                                           :hash_key     "random-key"
                                           :last_used_at (t/instant)})
-          (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0, :probed 2, :queries 2})
-                 (sync-database!' "update-field-values" (data/db)))))
+          (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0})
+                 (sync-database-counts! "update-field-values" (data/db)))))
         (is (= [1 2 3 4] (venues-price-field-values)))))
     (finally
       ; clear out our changes to not mess up other tests. Changes are more than with-model-cleanup handles
