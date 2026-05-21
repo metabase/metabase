@@ -27,7 +27,7 @@ describe("scenarios - embedding hub", () => {
         .should("exist");
     });
 
-    it('"Create a dashboard" card should show return toast after saving x-ray', () => {
+    it('"Create a dashboard" card should save the x-ray and show a success toast without leaving the guide', () => {
       cy.visit("/admin/embedding/setup-guide");
 
       cy.log("Find and click on 'Create a dashboard' card");
@@ -43,20 +43,13 @@ describe("scenarios - embedding hub", () => {
         H.pickEntity({ path: ["Databases", "Sample Database", "Accounts"] });
       });
 
-      cy.log("Should navigate to auto dashboard with from param");
-      cy.url().should("include", "/auto/dashboard/table/");
-      cy.url().should("include", "returnToEmbeddingSetupGuide=");
+      cy.log("Should show a success toast with a link to the new dashboard");
+      H.undoToast()
+        .findByText("Your dashboard was saved", { timeout: 30_000 })
+        .should("be.visible");
+      H.undoToast().findByText("See it").should("be.visible");
 
-      cy.log("Wait for x-ray dashboard to load and save it");
-      cy.findByRole("button", { name: "Save this", timeout: 30_000 }).click();
-
-      cy.log("Should show modal prompting to return to setup guide");
-      H.modal().within(() => {
-        cy.findByText("Dashboard saved!").should("be.visible");
-        cy.findByText("Return to the setup guide").click();
-      });
-
-      cy.log("Should navigate back to the setup guide");
+      cy.log("Should remain on the setup guide");
       cy.url().should("include", "/admin/embedding/setup-guide");
     });
 
