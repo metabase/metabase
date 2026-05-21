@@ -261,7 +261,7 @@
           :text suffix}]))))
 
 (defn- anthropic-error-msg
-  "Canonical, status-specific Anthropic error message; [[core/rethrow-api-error!]] appends the body preview."
+  "Canonical, status-specific Anthropic error message; the upstream body is appended out of scope."
   [res]
   (let [status (long (:status res 0))]
     (case status
