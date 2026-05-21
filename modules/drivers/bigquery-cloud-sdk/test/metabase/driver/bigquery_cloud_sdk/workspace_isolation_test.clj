@@ -29,8 +29,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.workspace-test-util :as bq.util]
+   [metabase.driver.bigquery-cloud-sdk.workspaces :as bigquery.ws]
    [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -149,14 +149,14 @@
               (let [hacker-ds (str "ws_iso_hacker_" run-id)
                     succeeded (atom false)]
                 (try
-                  (bigquery/create-dataset! user-client project-id hacker-ds)
+                  (bigquery.ws/create-dataset! user-client project-id hacker-ds)
                   (reset! succeeded true)
                   (is false (format "workspace SA unexpectedly created dataset %s" hacker-ds))
                   (catch Throwable t
                     (is (some? t)
                         (format "workspace SA correctly denied dataset creation: %s" (ex-message t)))))
                 (when @succeeded
-                  (try (bigquery/drop-dataset! admin-client project-id hacker-ds)
+                  (try (bigquery.ws/drop-dataset! admin-client project-id hacker-ds)
                        (catch Throwable _ nil)))))
             (testing "workspace SA cannot exfiltrate data via storage/external escapes"
               ;; The two BigQuery primitives that bridge to GCS (and thus would
@@ -204,11 +204,11 @@
     (testing "two workspaces on the same project are mutually isolated"
       (let [database     (mt/db)
             details      (:details database)
-            admin-creds  (#'bigquery/ws-service-account-credentials details)
+            admin-creds  (#'bigquery.ws/ws-service-account-credentials details)
             project-id   (or (:project-id details)
                              (.getProjectId ^ServiceAccountCredentials admin-creds))
-            admin-client (#'bigquery/ws-database-details->client details)
-            iam-client   (#'bigquery/ws-database-details->iam-client details)
+            admin-client (#'bigquery.ws/ws-database-details->client details)
+            iam-client   (#'bigquery.ws/ws-database-details->iam-client details)
             test-id      (random-suffix)
             ws-a-id      (random-suffix)
             ws-b-id      (random-suffix)
@@ -238,8 +238,8 @@
                            (.query c (QueryJobConfiguration/of sql)
                                    (into-array BigQuery$JobOption [])))]
         (try
-          (bigquery/create-dataset! admin-client project-id in-dataset-a)
-          (bigquery/create-dataset! admin-client project-id in-dataset-b)
+          (bigquery.ws/create-dataset! admin-client project-id in-dataset-a)
+          (bigquery.ws/create-dataset! admin-client project-id in-dataset-b)
           (run-sql admin-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual in-dataset-a src-a-name)))
           (run-sql admin-client (format "INSERT INTO %s (id, v) VALUES (1, 'a')" (qual in-dataset-a src-a-name)))
           (run-sql admin-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual in-dataset-b src-b-name)))
@@ -305,7 +305,7 @@
                      (log/warn t "destroy-workspace-isolation! failed for :bigquery-cloud-sdk during cross-workspace test cleanup"))))
             ;; Belt-and-suspenders: drop input datasets + delete each workspace SA directly.
             (doseq [ds [in-dataset-a in-dataset-b]]
-              (try (bigquery/drop-dataset! admin-client project-id ds) (catch Throwable _ nil)))
+              (try (bigquery.ws/drop-dataset! admin-client project-id ds) (catch Throwable _ nil)))
             (doseq [w [ws-a ws-b]]
               (try (bq.util/delete-sa-direct! iam-client project-id w) (catch Throwable _ nil)))
             (u/ignore-exceptions (.close ^IAMClient iam-client))))))))
@@ -345,8 +345,8 @@
                            (mapv (fn [^FieldValueList row] {:id (.getLongValue (.get row "id"))})
                                  (.iterateAll ^TableResult (run-sql c sql))))]
         (try
-          (bigquery/create-dataset! admin-client project-id in-a-dataset)
-          (bigquery/create-dataset! admin-client project-id in-b-dataset)
+          (bigquery.ws/create-dataset! admin-client project-id in-a-dataset)
+          (bigquery.ws/create-dataset! admin-client project-id in-b-dataset)
           (run-sql admin-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual in-a-dataset src-a-name)))
           (run-sql admin-client (format "INSERT INTO %s (id, v) VALUES (1, 'a')" (qual in-a-dataset src-a-name)))
           (run-sql admin-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual in-b-dataset src-b-name)))
@@ -375,8 +375,8 @@
             (try (driver/destroy-workspace-isolation! :bigquery-cloud-sdk database @ws-state)
                  (catch Throwable t
                    (log/warn t "destroy-workspace-isolation! failed for :bigquery-cloud-sdk during grant-accumulation test cleanup")))
-            (try (bigquery/drop-dataset! admin-client project-id in-a-dataset) (catch Throwable _ nil))
-            (try (bigquery/drop-dataset! admin-client project-id in-b-dataset) (catch Throwable _ nil))
+            (try (bigquery.ws/drop-dataset! admin-client project-id in-a-dataset) (catch Throwable _ nil))
+            (try (bigquery.ws/drop-dataset! admin-client project-id in-b-dataset) (catch Throwable _ nil))
             (try (bq.util/delete-sa-direct! iam-client project-id workspace) (catch Throwable _ nil))
             (u/ignore-exceptions (.close ^IAMClient iam-client))))))))
 
@@ -385,7 +385,7 @@
   ;; output-dataset name is deterministic from `workspace.id` (see
   ;; `driver.u/workspace-isolation-namespace-name`), so init can land on an
   ;; existing dataset (partial prior init, another process, etc.). The driver's
-  ;; `bigquery/create-dataset!` is documented as idempotent ("no-op when the
+  ;; `bigquery.ws/create-dataset!` is documented as idempotent ("no-op when the
   ;; dataset already exists"), so init silently succeeds. This test pins that
   ;; behavior — init must not crash on collision and the standard contract must
   ;; still hold afterward. Same KNOWN-LIMITATION caveat about pre-existing data
@@ -412,12 +412,12 @@
                            (.query c (QueryJobConfiguration/of sql)
                                    (into-array BigQuery$JobOption [])))]
         (try
-          (bigquery/create-dataset! admin-client project-id in-dataset)
+          (bigquery.ws/create-dataset! admin-client project-id in-dataset)
           (run-sql admin-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual in-dataset src-name)))
           (run-sql admin-client (format "INSERT INTO %s (id, v) VALUES (1, 'a')" (qual in-dataset src-name)))
           ;; Pre-create the output dataset at exactly the name init will target,
           ;; before init runs.
-          (bigquery/create-dataset! admin-client project-id out-dataset)
+          (bigquery.ws/create-dataset! admin-client project-id out-dataset)
           (let [init-result     (driver/init-workspace-isolation! :bigquery-cloud-sdk database workspace)
                 ws-with-details (merge workspace init-result)
                 _               (reset! ws-state ws-with-details)
@@ -449,11 +449,11 @@
             (try (driver/destroy-workspace-isolation! :bigquery-cloud-sdk database @ws-state)
                  (catch Throwable t
                    (log/warn t "destroy-workspace-isolation! failed for :bigquery-cloud-sdk during collision test cleanup")))
-            (try (bigquery/drop-dataset! admin-client project-id in-dataset) (catch Throwable _ nil))
+            (try (bigquery.ws/drop-dataset! admin-client project-id in-dataset) (catch Throwable _ nil))
             ;; Belt-and-suspenders for the colliding output dataset: destroy
             ;; should have dropped it, but if init never reached the
             ;; create-dataset step (e.g., earlier failure) destroy might
             ;; not know to drop it. Idempotent.
-            (try (bigquery/drop-dataset! admin-client project-id out-dataset) (catch Throwable _ nil))
+            (try (bigquery.ws/drop-dataset! admin-client project-id out-dataset) (catch Throwable _ nil))
             (try (bq.util/delete-sa-direct! iam-client project-id workspace) (catch Throwable _ nil))
             (u/ignore-exceptions (.close ^IAMClient iam-client))))))))

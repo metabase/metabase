@@ -12,6 +12,8 @@
   (:require
    [clojure.test :refer [is testing]]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
+   [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
+   [metabase.driver.bigquery-cloud-sdk.workspaces :as bigquery.ws]
    [metabase.util :as u])
   (:import
    (com.google.api.gax.core CredentialsProvider)
@@ -86,10 +88,10 @@
 
 (defn project-id
   "Project ID for `details`: explicit `:project-id` field if set, else parsed
-   out of the admin SA JSON. Thin re-export of the BQ driver's private
-   `get-project-id`."
+   out of the admin SA JSON. Thin re-export of the BQ driver's
+   `bigquery-cloud-sdk.common/get-project-id`."
   [details]
-  (#'bigquery/get-project-id details))
+  (bigquery.common/get-project-id details))
 
 ;;; -------------------- Dataset CRUD --------------------
 
@@ -217,7 +219,7 @@
    call from `finally` so we always attempt to clean up the workspace SA even
    when destroy itself failed mid-run."
   [^IAMClient iam-client project-id workspace]
-  (let [sa-id    (#'bigquery/ws-service-account-id workspace)
+  (let [sa-id    (#'bigquery.ws/ws-service-account-id workspace)
         sa-email (format "%s@%s.iam.gserviceaccount.com" sa-id project-id)
         sa-name  (format "projects/%s/serviceAccounts/%s" project-id sa-email)]
     (try (.deleteServiceAccount iam-client sa-name)

@@ -11,6 +11,7 @@
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
+   [metabase.driver.bigquery-cloud-sdk.workspaces :as bigquery.ws]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.settings :as driver.settings]
    [metabase.lib.core :as lib]
@@ -1399,10 +1400,10 @@
                      (java.time.Instant/parse "2020-06-15T00:00:00Z")
                      (java.time.Instant/now)]]
       (is (= instant
-             (bigquery/ws-sa-description->created-at (bigquery/ws-sa-description instant)))
+             (bigquery.ws/ws-sa-description->created-at (bigquery.ws/ws-sa-description instant)))
           (str "round-trip failed for " instant))))
   (testing "ws-sa-description->created-at returns nil for non-conforming inputs"
-    (is (nil? (bigquery/ws-sa-description->created-at nil)))
-    (is (nil? (bigquery/ws-sa-description->created-at "")))
-    (is (nil? (bigquery/ws-sa-description->created-at "some other description")))
-    (is (nil? (bigquery/ws-sa-description->created-at "created-at:not-an-instant")))))
+    (is (nil? (bigquery.ws/ws-sa-description->created-at nil)))
+    (is (nil? (bigquery.ws/ws-sa-description->created-at "")))
+    (is (nil? (bigquery.ws/ws-sa-description->created-at "some other description")))
+    (is (nil? (bigquery.ws/ws-sa-description->created-at "created-at:not-an-instant")))))

@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
+   [metabase.driver.bigquery-cloud-sdk.workspaces :as bigquery.ws]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.test.data.impl :as data.impl]
@@ -390,7 +391,7 @@
    Pure: lists SAs via the IAM client and filters in-memory."
   []
   (let [details    (test-db-details)
-        iam-client (#'bigquery/ws-database-details->iam-client details)
+        iam-client (#'bigquery.ws/ws-database-details->iam-client details)
         proj-name  (format "projects/%s" (project-id))
         threshold  (.minus (java.time.Instant/now) 3 java.time.temporal.ChronoUnit/HOURS)]
     (try
@@ -401,7 +402,7 @@
         (->> (.iterateAll response)
              (keep (fn [^com.google.iam.admin.v1.ServiceAccount sa]
                      (let [sa-email   (.getEmail sa)
-                           created-at (bigquery/ws-sa-description->created-at (.getDescription sa))]
+                           created-at (bigquery.ws/ws-sa-description->created-at (.getDescription sa))]
                        (when (and (str/starts-with? sa-email "mb__isolation_")
                                   created-at
                                   (.isBefore ^java.time.Instant created-at threshold))
@@ -428,7 +429,7 @@
    client (separate from the enumerator's) so the lifecycle is local."
   []
   (let [details    (test-db-details)
-        iam-client (#'bigquery/ws-database-details->iam-client details)]
+        iam-client (#'bigquery.ws/ws-database-details->iam-client details)]
     (try
       (doseq [sa-email (orphan-isolation-service-accounts)]
         (log/info (u/format-color 'blue "Deleting orphan workspace isolation SA older than 3h: %s" sa-email))
