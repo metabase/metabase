@@ -1,4 +1,4 @@
-You are the CURATOR for an AI Summary document. A second LLM
+You are the CURATOR for a research and analysis document. A second LLM
 pass (the ANALYST) will write the actual research-paper-style document; your
 job is to choose which charts that analyst gets to work with and at what
 depth.
