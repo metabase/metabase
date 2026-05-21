@@ -1,4 +1,4 @@
-(ns metabase-enterprise.custom-viz-plugin.cache-test
+(ns ^:synchronous metabase-enterprise.custom-viz-plugin.cache-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]

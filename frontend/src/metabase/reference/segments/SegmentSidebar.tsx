@@ -7,12 +7,13 @@ import S from "metabase/common/components/Sidebar.module.css";
 import { SidebarItem } from "metabase/common/components/SidebarItem";
 import CS from "metabase/css/core/index.css";
 import MetabaseSettings from "metabase/utils/settings";
-import type { Segment, User } from "metabase-types/api";
+import type { User } from "metabase-types/api";
 
 import { trackReferenceXRayClicked } from "../analytics";
+import type { StubbedSegment } from "../types";
 
 interface SegmentSidebarProps {
-  segment: Segment;
+  segment: StubbedSegment;
   user?: User | null;
 }
 

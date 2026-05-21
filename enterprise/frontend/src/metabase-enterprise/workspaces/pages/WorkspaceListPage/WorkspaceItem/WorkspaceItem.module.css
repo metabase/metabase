@@ -1,0 +1,8 @@
+.workspaceItem {
+  color: inherit;
+  text-decoration: none;
+}
+
+.workspaceItem:hover {
+  background-color: var(--mb-color-background-hover);
+}

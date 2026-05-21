@@ -1,4 +1,4 @@
-(ns metabase-enterprise.support-access-grants.session-integration-test
+(ns ^:synchronous metabase-enterprise.support-access-grants.session-integration-test
   "Tests for session API integration with support access grants.
   Tests the fallback mechanism in /api/session/reset_password and /api/session/password_reset_token_valid
   that tries support-access-grant provider first, then falls back to emailed-secret-password-reset."
@@ -220,7 +220,7 @@
                                                                               :ip_address "127.0.0.1"}})]
                         (is (:success? login-result) "Should be able to login with new password")))))))))))))
 
-(deftest ^:parallel with-fallback-preserves-error-info-test
+(deftest with-fallback-preserves-error-info-test
   (testing "with-fallback swallows exceptions from the first provider, losing error info"
     (let [result (auth-identity/with-fallback
                    (fn [provider _request]

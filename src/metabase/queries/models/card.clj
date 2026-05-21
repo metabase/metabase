@@ -196,7 +196,8 @@
                                                               :d.collection_id
                                                               :d.description
                                                               :d.id
-                                                              :d.archived]
+                                                              :d.archived
+                                                              :d.enable_embedding]
                                                    :from     [[:report_dashboardcard :dc]]
                                                    :join     [[:report_dashboard :d] [:= :dc.dashboard_id :d.id]]
                                                    :where    [:in :dc.card_id [:inline card-ids]]
@@ -208,7 +209,8 @@
                                                               :d.collection_id
                                                               :d.description
                                                               :d.id
-                                                              :d.archived]
+                                                              :d.archived
+                                                              :d.enable_embedding]
                                                    :from     [[:dashboardcard_series :dcs]]
                                                    :join     [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]
                                                               [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
