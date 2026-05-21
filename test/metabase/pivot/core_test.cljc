@@ -224,6 +224,27 @@
               {:value "200%" :isSubtotal true :custom "attr"}]
              result)))))
 
+(deftest create-subtotal-node-test
+  (testing "labels a plain formatted value (CSV / FE path)"
+    (is (= "Totals for BA"
+           (:value (#'pivot/create-subtotal-node {:value "BA" :rawValue "BA"})))))
+  (testing "labels an XLSX formatter-map value using its formatted text"
+    (is (= "Totals for engineer"
+           (:value (#'pivot/create-subtotal-node
+                    {:value {:col {:name "bio"}
+                             :value "engineer"
+                             :xlsx-formatted-value "engineer"
+                             :styles nil}
+                     :rawValue "engineer"})))))
+  (testing "renders nil breakout values as (empty) instead of dumping the formatter map (#71220)"
+    (is (= "Totals for (empty)"
+           (:value (#'pivot/create-subtotal-node
+                    {:value {:col {:name "bio"}
+                             :value nil
+                             :xlsx-formatted-value nil
+                             :styles nil}
+                     :rawValue nil}))))))
+
 (deftest build-pivot-trees-test
   (testing "build-pivot-trees correctly builds basic row and column tree structures"
     (let [rows [[1 "A" "Y" 0 10]
