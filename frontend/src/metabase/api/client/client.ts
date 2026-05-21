@@ -298,15 +298,23 @@ export class ApiClient extends EventEmitter<EventMap> {
 
       updateAntiCsrfToken(response);
 
+      if (
+        !options.noEvent &&
+        (response.status === 401 || response.status === 403)
+      ) {
+        // We can use response.status here, and not the status from getResponseStatus,
+        // because streaming responses will never set a _status of 401 or 403.
+        //
+        // See src/metabase/server/streaming_response.clj
+        //
+        // Strip basename so listeners (app-main.js) see the relative path.
+        const path = relativePath(this.basename, url);
+        this.emit(response.status, path);
+      }
+
       const unreadResponse = response.clone();
       const body = await getResponseBody(response);
       const status = getResponseStatus(response, body);
-
-      if (!options.noEvent && (status === 401 || status === 403)) {
-        // Strip basename so listeners (app-main.js) see the relative path.
-        const path = relativePath(this.basename, url);
-        this.emit(status, path);
-      }
 
       if (status >= 200 && status <= 299) {
         // If a transformer is given its return value IS `T`. Otherwise the raw
