@@ -148,7 +148,7 @@ exports[`DataComplexityCards renders the data complexity cards 2`] = `
         </div>
         <div
           color="text-primary"
-          data-size="xs"
+          data-size="sm"
         >
           Metrics and published tables within your Library.
         </div>
@@ -184,6 +184,12 @@ exports[`DataComplexityCards renders the data complexity cards 2`] = `
             Size of this layer
           </div>
           <div>
+            <div
+              color="text-primary"
+              data-size="md"
+            >
+              Complexity score
+            </div>
             <div
               color="text-primary"
               data-size="md"
@@ -335,6 +341,12 @@ exports[`DataComplexityCards renders the data complexity cards 2`] = `
             Areas of ambiguity
           </div>
           <div>
+            <div
+              color="text-primary"
+              data-size="md"
+            >
+              Complexity score
+            </div>
             <div
               color="text-primary"
               data-size="md"
