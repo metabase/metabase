@@ -1,7 +1,19 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import type { TabInfo } from "metabase/metrics-viewer/utils/tabs";
+import type {
+  MetricSourceId,
+  MetricsViewerDisplayType,
+  MetricsViewerTabType,
+} from "metabase/metrics-viewer/types";
+import {
+  type AvailableDimensionsResult,
+  type DimensionFilterValue,
+  type SourceDisplayInfo,
+  type TabInfo,
+  getProjectionInfo,
+  getTabConfig,
+} from "metabase/metrics-viewer/utils";
 import {
   ActionIcon,
   Box,
@@ -15,18 +27,6 @@ import {
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import type { TemporalUnit, VisualizationSettings } from "metabase-types/api";
 
-import type {
-  MetricSourceId,
-  MetricsViewerDisplayType,
-  MetricsViewerTabType,
-} from "../../types/viewer-state";
-import { getProjectionInfo } from "../../utils/definition-builder";
-import type { DimensionFilterValue } from "../../utils/dimension-filters";
-import type {
-  AvailableDimensionsResult,
-  SourceDisplayInfo,
-} from "../../utils/dimension-picker";
-import { getTabConfig } from "../../utils/tab-config";
 import { AddDimensionPopover } from "../MetricsViewerTabs/AddDimensionPopover";
 
 import { BinningButton } from "./BinningButton";
