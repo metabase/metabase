@@ -162,13 +162,12 @@
 (defn- method-default-annotations
   "Default MCP ToolAnnotations for an HTTP method."
   [method]
-  ;; `readOnlyHint`, `destructiveHint`, and `openWorldHint` are always present —
-  ;; some MCP clients (e.g. the ChatGPT Apps SDK) reject tools that omit them.
+  ;; `readOnlyHint`, `destructiveHint`, and `openWorldHint` are always present — some MCP clients
+  ;; (e.g. the ChatGPT Apps SDK) reject tools that omit them.
   (merge {:readOnlyHint    false
           :destructiveHint false
-          ;; `openWorldHint` signals whether a tool reaches arbitrary external
-          ;; entities (e.g. a web-search tool) — false here because every
-          ;; Metabase tool stays within the user's own instance.
+          ;; `openWorldHint` signals whether a tool reaches arbitrary external entities (e.g. a
+          ;; web-search tool) — false because Metabase tools stay within the user's own instance.
           :openWorldHint   false}
          (case method
            (:get :head) {:readOnlyHint   true
@@ -181,9 +180,8 @@
 (defn infer-annotations
   "Compute MCP ToolAnnotations from HTTP method defaults merged with explicit `:annotations`.
    Returns `{:annotations <merged> :redundant <pairs> :contradictory? <bool>}`.
-   Callers should reject `:redundant` entries (explicit declarations must add information
-   beyond the HTTP-method default) and `:contradictory?` (a tool can't be both read-only and
-   destructive)."
+   Callers should reject `:redundant` entries (explicit declarations must add information beyond
+   the HTTP-method default) and `:contradictory?` (a tool can't be both read-only and destructive)."
   [method explicit-annotations]
   (let [method-defaults (method-default-annotations method)
         explicit        (into {}

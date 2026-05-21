@@ -26,10 +26,10 @@
 
 ;;; ---------------------------- MCP schema overrides -------------------------------
 ;;
-;; A few tools have an MCP-visible input or output shape that differs from the wire
-;; shape declared on the defendpoint. Owning the override here keeps `agent-api`
-;; ignorant of MCP: the endpoint describes its own wire schema, and this layer patches
-;; the manifest to publish the MCP-visible shape.
+;; A few tools have an MCP-visible input or output shape that differs from the wire shape declared
+;; on the defendpoint. Owning the override here keeps `agent-api` ignorant of MCP: the endpoint
+;; describes its own wire schema, and this layer patches the manifest to publish the MCP-visible
+;; shape.
 
 (def ^:private construct-query-mcp-input-malli
   "MCP-visible input for `construct_query`.
@@ -221,14 +221,14 @@
 
 (defn- make-store-construct-query-result
   "Build a body-transform fn for construct_query.
-   The fn stores the base64 payload server-side under the calling user (with the current MCP session
-   id recorded for cleanup) and returns {:query_handle uuid} instead of {:query base64}, so the LLM
-   carries a short opaque UUID rather than the full base64 string.
+   The fn stores the base64 payload server-side under the calling user (with the current MCP session id
+   recorded for cleanup) and returns {:query_handle uuid} instead of {:query base64}, so the LLM carries
+   a short opaque UUID rather than the full base64 string.
    The optional prompt is stored with the handle for later feedback submission.
 
-   The fn validates its emitted shape against `construct-query-mcp-output-malli` — the same schema
-   the manifest publishes as the tool's outputSchema — keeping the published schema and the actual
-   emitted body in lockstep."
+   The fn validates its emitted shape against `construct-query-mcp-output-malli` — the same schema the
+   manifest publishes as the tool's outputSchema — keeping the published schema and the actual emitted
+   body in lockstep."
   [session-id user-id]
   (fn [body]
     (if-let [encoded (:query body)]

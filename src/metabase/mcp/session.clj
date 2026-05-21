@@ -151,18 +151,17 @@
 (defn store-handle!
   "Insert a new handle row binding `encoded-query` to the calling user, and return the handle UUID.
 
-   `mcp-session-id` is recorded so DELETE /api/mcp can sweep the session's handles, and reads can
-   prefer the calling session before falling back across the user's other sessions (see
-   [[resolve-query-handle]]).
+   `mcp-session-id` is recorded so DELETE /api/mcp can sweep the session's handles, and reads can prefer
+   the calling session before falling back across the user's other sessions (see [[resolve-query-handle]]).
 
-   `prompt` is optional, but should be supplied for construct_query handles so visualize_query can
-   later return both the query and original user prompt to the MCP iframe for feedback submission."
+   `prompt` is optional, but should be supplied for construct_query handles so visualize_query can later
+   return both the query and original user prompt to the MCP iframe for feedback submission."
   ([mcp-session-id user-id encoded-query]
    (store-handle! mcp-session-id user-id encoded-query nil))
   ([mcp-session-id user-id encoded-query prompt]
-   ;; Materializing a core_session here serves two purposes: its FK is what
-   ;; makes handles cascade-delete when the session row is reaped, and its
-   ;; user_id is what find-handle-row filters on for cross-session ownership.
+   ;; Materializing a core_session here serves two purposes: its FK is what makes handles
+   ;; cascade-delete when the session row is reaped, and its user_id is what find-handle-row
+   ;; filters on for cross-session ownership.
    (let [core-session-id (:id (get-or-create-embedding-session! mcp-session-id user-id))
          handle-id       (str (UUID/randomUUID))]
      (t2/insert! :model/McpQueryHandle
@@ -175,9 +174,8 @@
 
 (defn- find-handle-row
   "Look up the handle row owned by `user-id`.
-   Prefers a row stored under the calling `mcp-session-id` and falls back to any other session
-   owned by the same user — the fallback covers harnesses (e.g. ChatGPT) that rotate MCP sessions
-   between tool calls."
+   Prefers a row stored under the calling `mcp-session-id` and falls back to any other session owned
+   by the same user — the fallback covers harnesses (e.g. ChatGPT) that rotate MCP sessions between calls."
   [mcp-session-id user-id handle-id]
   (when (and user-id handle-id)
     ;; Single round-trip: join `mcp_query_handle` to `core_session` and filter on
