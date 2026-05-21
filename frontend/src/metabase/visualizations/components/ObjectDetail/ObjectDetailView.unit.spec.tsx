@@ -598,47 +598,6 @@ describe("ObjectDetailView", () => {
     executeSpy.mockRestore();
   });
 
-  it("should hide PK field in update action form", async () => {
-    const updateActionWithParams = createMockImplicitQueryAction({
-      ...implicitUpdateAction,
-      parameters: [
-        {
-          id: "ID",
-          name: "ID",
-          type: "type/Integer",
-          target: ["variable", ["template-tag", "ID"]],
-          "display-name": "ID",
-          slug: "ID",
-        },
-        {
-          id: "EAN",
-          name: "EAN",
-          type: "type/Text",
-          target: ["variable", ["template-tag", "EAN"]],
-          "display-name": "Ean",
-          slug: "EAN",
-        },
-      ],
-    });
-    const actionsWithParams = actions.map((a) =>
-      a.id === implicitUpdateAction.id ? updateActionWithParams : a,
-    );
-    setupDatabasesEndpoints([databaseWithActionsEnabled]);
-    setupActionsEndpoints(actionsWithParams);
-    setup({ question: mockDataset });
-    setupPrefetch();
-
-    const action = await findActionInActionMenu(updateActionWithParams);
-    await userEvent.click(action!);
-
-    const modal = await screen.findByTestId("action-execute-modal");
-
-    await waitFor(() => {
-      expect(within(modal).queryByLabelText("ID")).not.toBeInTheDocument();
-    });
-    expect(within(modal).getByLabelText("Ean")).toBeInTheDocument();
-  });
-
   describe("keyboard bindings", () => {
     it("should be added when showControls is true", async () => {
       const mockViewPreviousObjectDetail = jest.fn();

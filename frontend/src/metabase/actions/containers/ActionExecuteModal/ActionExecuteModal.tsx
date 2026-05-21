@@ -18,7 +18,6 @@ import ActionParametersInputForm from "../ActionParametersInputForm";
 export interface ActionExecuteModalProps {
   opened: boolean;
   actionId: WritebackActionId | undefined;
-  hiddenFields?: string[];
   initialValues?: ParametersForActionExecution;
   fetchInitialValues?: () => Promise<ParametersForActionExecution>;
   shouldPrefetch?: boolean;
@@ -29,7 +28,6 @@ export interface ActionExecuteModalProps {
 export const ActionExecuteModal = ({
   opened,
   actionId,
-  hiddenFields,
   initialValues: initialValuesProp,
   fetchInitialValues,
   shouldPrefetch,
@@ -100,7 +98,6 @@ export const ActionExecuteModal = ({
       ) : (
         <ActionParametersInputForm
           action={action}
-          hiddenFields={hiddenFields}
           initialValues={initialValues}
           onCancel={onClose}
           onSubmit={handleSubmit}

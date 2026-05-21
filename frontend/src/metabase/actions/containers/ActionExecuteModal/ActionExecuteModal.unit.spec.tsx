@@ -81,21 +81,4 @@ describe("Actions > ActionExecuteModal", () => {
       expect(screen.getByLabelText("Parameter 2")).toHaveValue("dos");
     });
   });
-
-  it("should hide fields specified in hiddenFields prop", async () => {
-    await setup({
-      actionId: implicitUpdateAction.id,
-      hiddenFields: ["parameter_1"],
-      fetchInitialValues,
-      shouldPrefetch: true,
-    });
-
-    await waitForLoaderToBeRemoved();
-
-    await waitFor(() => {
-      expect(screen.queryByLabelText("Parameter 1")).not.toBeInTheDocument();
-    });
-
-    expect(screen.getByLabelText("Parameter 2")).toBeInTheDocument();
-  });
 });

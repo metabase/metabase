@@ -374,7 +374,6 @@ export function ObjectDetailView({
       <ActionExecuteModal
         opened={isActionExecuteModalOpen}
         actionId={actionId}
-        hiddenFields={pkColumnName ? [pkColumnName] : undefined}
         initialValues={initialValues}
         fetchInitialValues={fetchInitialValues}
         shouldPrefetch

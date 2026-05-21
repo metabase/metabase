@@ -90,32 +90,6 @@ describe("Actions > ActionParametersInputForm", () => {
     expect(cancelSpy).toHaveBeenCalled();
   });
 
-  it("should hide fields specified in hiddenFields prop", async () => {
-    const submitSpy = jest.fn().mockResolvedValue({ success: true });
-    await setup({
-      hiddenFields: ["parameter_1"],
-      initialValues: { parameter_1: "hidden_value" },
-      onSubmit: submitSpy,
-    });
-
-    expect(screen.queryByText("Parameter 1")).not.toBeInTheDocument();
-    expect(screen.getByText("Parameter 2")).toBeInTheDocument();
-
-    await userEvent.type(screen.getByLabelText("Parameter 2"), "dos");
-    await waitFor(() =>
-      expect(screen.getByLabelText("Parameter 2")).toHaveValue("dos"),
-    );
-
-    await userEvent.click(screen.getByText(mockAction.name));
-
-    await waitFor(() => {
-      expect(submitSpy).toHaveBeenCalledWith({
-        parameter_1: "hidden_value",
-        parameter_2: "dos",
-      });
-    });
-  });
-
   it("passes form values to submit handler", async () => {
     const submitSpy = jest.fn().mockResolvedValue({ success: true });
     await setup({
