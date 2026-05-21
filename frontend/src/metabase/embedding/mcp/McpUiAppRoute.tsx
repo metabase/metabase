@@ -28,9 +28,9 @@ const SimpleLoader = () => (
 );
 
 export function McpUiAppRoute() {
-  const { query, prompt, hostContext, app } = useMcpApp();
+  const { query, prompt, widgetSessionId, hostContext, app } = useMcpApp();
 
-  const handleDrillThrough = useHandleMcpDrillThrough(app);
+  const handleDrillThrough = useHandleMcpDrillThrough(app, widgetSessionId);
 
   const {
     instanceUrl = "",

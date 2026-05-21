@@ -45,7 +45,10 @@ type DrillThroughHandler = (
   defaultNavigate: () => Promise<void>,
 ) => Promise<void>;
 
-export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
+export function useHandleMcpDrillThrough(
+  app: App | null,
+  widgetSessionId?: string | null,
+): DrillThroughHandler {
   return useCallback(
     async ({ drillName, nextCard }, defaultNavigate) => {
       if (isStayDrill(drillName) || !app) {
@@ -86,6 +89,7 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
           instanceUrl,
           sessionToken,
           mcpSessionId,
+          widgetSessionId,
           encodedQuery,
         }));
       } catch {
@@ -106,6 +110,6 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
         ],
       });
     },
-    [app],
+    [app, widgetSessionId],
   );
 }

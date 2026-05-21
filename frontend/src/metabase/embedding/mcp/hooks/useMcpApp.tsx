@@ -16,6 +16,7 @@ interface McpAppState {
    * from `construct_query`, e.g. "visualize orders with Metabase".
    */
   prompt: string | null;
+  widgetSessionId: string | null;
 
   hostContext: McpUiHostContext | null;
   app: App | null;
@@ -23,11 +24,13 @@ interface McpAppState {
 
 type VisualizeQueryToolInput = {
   query?: string;
+  widgetSessionId?: string;
 };
 
 type VisualizeQueryToolResult = {
   query?: string;
   prompt?: string;
+  widgetSessionId?: string;
 };
 
 function applyHostContext(ctx: McpUiHostContext) {
@@ -47,6 +50,7 @@ function applyHostContext(ctx: McpUiHostContext) {
 export function useMcpApp(): McpAppState {
   const [query, setQuery] = useState<string | null>(null);
   const [prompt, setPrompt] = useState<string | null>(null);
+  const [widgetSessionId, setWidgetSessionId] = useState<string | null>(null);
   const [hostContext, setHostContext] = useState<McpUiHostContext | null>(null);
 
   const { app } = useApp({
@@ -61,8 +65,12 @@ export function useMcpApp(): McpAppState {
       };
 
       app.ontoolinput = (params) => {
-        const { query } =
+        const { query, widgetSessionId } =
           (params.arguments as VisualizeQueryToolInput | undefined) ?? {};
+
+        if (widgetSessionId) {
+          setWidgetSessionId(widgetSessionId);
+        }
 
         if (query) {
           setQuery(query);
@@ -74,9 +82,13 @@ export function useMcpApp(): McpAppState {
       // (notification sent before the app finishes connecting).
       // Also the source of `prompt`, which visualize_query includes in structuredContent.
       app.ontoolresult = (params) => {
-        const { query, prompt } =
+        const { query, prompt, widgetSessionId } =
           (params.structuredContent as VisualizeQueryToolResult | undefined) ??
           {};
+
+        if (widgetSessionId) {
+          setWidgetSessionId(widgetSessionId);
+        }
 
         if (query) {
           setQuery(query);
@@ -98,5 +110,5 @@ export function useMcpApp(): McpAppState {
     }
   }, [app]);
 
-  return { query, prompt, hostContext, app };
+  return { query, prompt, widgetSessionId, hostContext, app };
 }

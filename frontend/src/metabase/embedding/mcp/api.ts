@@ -6,6 +6,7 @@ type StoreDrillQueryRequest = {
   instanceUrl: string;
   sessionToken: string;
   mcpSessionId: string;
+  widgetSessionId?: string | null;
   encodedQuery: string;
 };
 
@@ -29,6 +30,7 @@ export async function storeDrillQuery({
   instanceUrl,
   sessionToken,
   mcpSessionId,
+  widgetSessionId,
   encodedQuery,
 }: StoreDrillQueryRequest): Promise<StoreDrillQueryResponse> {
   const response = await fetch(`${instanceUrl}/api/embed-mcp/drills`, {
@@ -39,7 +41,7 @@ export async function storeDrillQuery({
       "X-Metabase-Session": sessionToken,
       "Mcp-Session-Id": mcpSessionId,
     },
-    body: JSON.stringify({ encodedQuery }),
+    body: JSON.stringify({ encodedQuery, widgetSessionId }),
   });
 
   if (!response.ok) {

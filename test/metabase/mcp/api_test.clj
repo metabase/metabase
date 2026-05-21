@@ -741,10 +741,10 @@
                                              :arguments {:handle (str (random-uuid))}})
                            {"mcp-session-id" session-id})))))
 
-  (testing "render_drill_through does not resolve a handle from another session"
+  (testing "render_drill_through does not resolve a handle from another session without widgetSessionId"
     (let [user-id             (mt/user->id :crowberto)
           [owner-session _]   (initialize!)
-          [attacker-session _] (initialize!)
+          [rotated-session _] (initialize!)
           handle              (mt/with-current-user user-id
                                 (mcp.session/store-handle! owner-session user-id "ZW5jb2RlZA=="))]
       (is (=? {:status 200
@@ -753,7 +753,22 @@
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "render_drill_through"
                                              :arguments {:handle handle}})
-                           {"mcp-session-id" attacker-session}))))))
+                           {"mcp-session-id" rotated-session})))))
+
+  (testing "render_drill_through does not resolve another user's handle"
+    (let [owner-id             (mt/user->id :crowberto)
+          [owner-session _]    (initialize!)
+          [attacker-session _] (initialize-as! :rasta)
+          handle               (mt/with-current-user owner-id
+                                 (mcp.session/store-handle! owner-session owner-id "ZW5jb2RlZA=="))]
+      (is (=? {:status 200
+               :body   {:result {:isError true
+                                 :content [{:text #(str/includes? % "No drill-through found")}]}}}
+              (mcp-request-as :rasta
+                              (jsonrpc-request "tools/call"
+                                               {:name      "render_drill_through"
+                                                :arguments {:handle handle}})
+                              {"mcp-session-id" attacker-session}))))))
 
 (deftest tools-call-visualize-query-test
   (testing "visualize_query echoes the inline query"

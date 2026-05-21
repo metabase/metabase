@@ -65,7 +65,9 @@ describe("useHandleMcpDrillThrough", () => {
     };
 
     const defaultNavigate = jest.fn();
-    const { result } = renderHook(() => useHandleMcpDrillThrough(app as any));
+    const { result } = renderHook(() =>
+      useHandleMcpDrillThrough(app as any, "widget-session-id"),
+    );
 
     await result.current(
       { drillName: "fk-details", nextCard: NEXT_CARD },
@@ -75,6 +77,17 @@ describe("useHandleMcpDrillThrough", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/embed-mcp/drills"),
     ).toHaveLength(1);
+
+    expect(
+      JSON.parse(
+        fetchMock.callHistory.calls("path:/api/embed-mcp/drills")[0].options
+          .body as string,
+      ),
+    ).toEqual(
+      expect.objectContaining({
+        widgetSessionId: "widget-session-id",
+      }),
+    );
 
     expect(app.sendMessage).toHaveBeenCalledWith({
       role: "user",

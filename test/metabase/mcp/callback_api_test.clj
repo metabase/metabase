@@ -45,7 +45,41 @@
                                  {"mcp-session-id" session-id})]
       (is (=? {:status 200
                :body   {:handle parse-uuid}}
-              response)))))
+              response))))
+
+  (testing "POST stores under widgetSessionId when it belongs to the current user"
+    (let [user-id           (mt/user->id :crowberto)
+          request-session   (mcp.session/create! user-id)
+          widget-session-id (mcp.session/create! user-id)
+          response          (post-drill {:encodedQuery    "ZW5jb2RlZA=="
+                                         :widgetSessionId widget-session-id}
+                                        {"mcp-session-id" request-session})
+          handle            (get-in response [:body :handle])]
+      (is (= "ZW5jb2RlZA==" (mcp.session/read-handle widget-session-id handle)))
+      (is (nil? (mcp.session/read-handle request-session handle)))))
+
+  (testing "POST ignores another user's widgetSessionId"
+    (let [user-id           (mt/user->id :crowberto)
+          attacker-id       (mt/user->id :rasta)
+          request-session   (mcp.session/create! user-id)
+          widget-session-id (mcp.session/create! attacker-id)
+          _                 (mcp.session/get-or-create-session-key! widget-session-id attacker-id)
+          response          (post-drill {:encodedQuery    "ZW5jb2RlZA=="
+                                         :widgetSessionId widget-session-id}
+                                        {"mcp-session-id" request-session})
+          handle            (get-in response [:body :handle])]
+      (is (= "ZW5jb2RlZA==" (mcp.session/read-handle request-session handle)))
+      (is (nil? (mcp.session/read-handle widget-session-id handle)))))
+
+  (testing "POST ignores invalid widgetSessionId"
+    (let [user-id         (mt/user->id :crowberto)
+          request-session (mcp.session/create! user-id)
+          response        (post-drill {:encodedQuery    "ZW5jb2RlZA=="
+                                       :widgetSessionId "not-a-uuid"}
+                                      {"mcp-session-id" request-session})
+          handle          (get-in response [:body :handle])]
+      (is (= "ZW5jb2RlZA==" (mcp.session/read-handle request-session handle)))
+      (is (nil? (mcp.session/read-handle "not-a-uuid" handle))))))
 
 (deftest drills-post-validates-session-header-test
   (testing "missing Mcp-Session-Id header returns 400"

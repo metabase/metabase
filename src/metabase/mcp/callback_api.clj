@@ -62,11 +62,17 @@
    `render_drill_through` tool can fetch it."
   [_route-params
    _query-params
-   {:keys [encodedQuery]} :- [:map [:encodedQuery ms/NonBlankString]]
+   {:keys [encodedQuery widgetSessionId]} :- [:map
+                                              [:encodedQuery ms/NonBlankString]
+                                              [:widgetSessionId {:optional true} [:maybe ms/NonBlankString]]]
    request]
   (let [session-id (mcp-session-id-from-headers request)]
     (check-session-header! session-id api/*current-user-id*)
-    {:handle (mcp.session/store-handle! session-id api/*current-user-id* encodedQuery)}))
+    (let [storage-session-id (if (and (mcp.session/valid-id? widgetSessionId)
+                                      (mcp.session/owned-by-user? widgetSessionId api/*current-user-id*))
+                               widgetSessionId
+                               session-id)]
+      {:handle (mcp.session/store-handle! storage-session-id api/*current-user-id* encodedQuery)})))
 
 (api.macros/defendpoint :post "/feedback" :- [:map
                                               [:status [:= 204]]
