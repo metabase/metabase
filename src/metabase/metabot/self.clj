@@ -93,17 +93,29 @@
         (= status 429)
         (>= status 500))))
 
+(defn- connection-error?
+  "True if `t` is a transient connection/timeout failure worth retrying."
+  [t]
+  (or (instance? java.net.ConnectException t)
+      (instance? java.net.SocketTimeoutException t)
+      (instance? java.io.IOException t)))
+
 (defn- retryable-error?
   "Whether an exception represents a transient LLM error worth retrying.
   Checks for retryable HTTP status codes in ex-data (set by claude-raw/openai-raw)
-  and connection-level failures."
+  and connection-level failures.
+
+  Walks the cause chain because provider adapters wrap the underlying socket
+  error: `rethrow-api-error!` rethrows e.g. a `Read timed out` as an
+  `ExceptionInfo` (with `:error-code :provider-request-failed` and no `:status`)
+  whose *cause* is the original `SocketTimeoutException`. Inspecting only the
+  top-level exception would miss it and we'd never retry a transient timeout."
   [^Exception e]
   (boolean
    (or (retryable-status? (:status (ex-data e)))
-       ;; Connection errors (e.g. under load, connection refused/reset)
-       (instance? java.net.ConnectException e)
-       (instance? java.net.SocketTimeoutException e)
-       (instance? java.io.IOException e))))
+       ;; Connection errors (e.g. under load, connection refused/reset), possibly
+       ;; wrapped one or more levels deep by a provider adapter.
+       (some connection-error? (take-while some? (iterate #(some-> ^Throwable % .getCause) e))))))
 
 (defn- parse-retry-after-header
   "Extract retry-after seconds from response headers in ex-data, if present and ≤ 60s.

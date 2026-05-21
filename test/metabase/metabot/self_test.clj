@@ -536,8 +536,18 @@
       ;; connection errors are also retriable
       true  (java.net.ConnectException. "refused")
       true  (java.net.SocketTimeoutException. "timed out")
+      ;; ...even when wrapped by rethrow-api-error! (the real provider shape: an
+      ;; ExceptionInfo with no :status whose cause is the transient socket error)
+      true  (ex-info "anthropic API request failed: Read timed out"
+                     {:api-error true :provider "anthropic" :error-code :provider-request-failed}
+                     (java.net.SocketTimeoutException. "Read timed out"))
+      true  (ex-info "anthropic API request failed: Connection refused"
+                     {:api-error true :provider "anthropic" :error-code :provider-request-failed}
+                     (java.net.ConnectException. "Connection refused"))
       ;; but other stuff is not
-      false (RuntimeException. "oops"))))
+      false (RuntimeException. "oops")
+      ;; a wrapped non-transient cause stays non-retryable
+      false (ex-info "boom" {} (IllegalArgumentException. "bad")))))
 
 (deftest retry-delay-ms-test
   (testing "backoff"
