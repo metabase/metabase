@@ -43,7 +43,7 @@
   [^BigQuery client ^String project-id ^String dataset-name & [{:keys [^String description]}]]
   (let [dataset-id (DatasetId/of project-id dataset-name)]
     (when-not (.getDataset client dataset-id
-                           ^com.google.cloud.bigquery.BigQuery$DatasetOption/1
+                           ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
                            (into-array BigQuery$DatasetOption []))
       (let [builder (DatasetInfo/newBuilder dataset-id)
             _       (when description (.setDescription builder description))
