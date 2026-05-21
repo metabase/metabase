@@ -24,6 +24,7 @@
    [metabase.app-db.connection :as mdb.conn]
    [metabase.mq.core :as mq]
    [metabase.mq.listener :as listener]
+   [metabase.mq.payload :as payload]
    [metabase.mq.polling :as polling]
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.appdb :as q.appdb]
@@ -161,9 +162,8 @@
   (when-not @started?
     (start-mq!))
   ;; Restart poll threads if they died (e.g., from InterruptedException during a previous benchmark).
-  ;; start! is idempotent and start-polling! detects dead futures.
-  (let [start-transports! (requiring-resolve 'metabase.mq.impl/start-transports)]
-    (start-transports!))
+  ;; start! is idempotent and the shared poll driver detects dead futures.
+  (q.backend/start! q.appdb/backend)
   ;; Benchmarks register listeners on the shared queues, which now requires the queues to be
   ;; declared first.
   (declare-shared-queues!))
@@ -317,7 +317,7 @@
              (dotimes [i iterations]
                (let [msgs (vec (for [j (range bs)]
                                  {:seq (+ (* i bs) j) :ts (System/currentTimeMillis)}))]
-                 (q.backend/publish! q.appdb/backend channel msgs))))
+                 (q.backend/publish! q.appdb/backend channel (payload/encode msgs)))))
            (let [elapsed-ms (/ (- (System/nanoTime) start) 1e6)]
              (swap! results conj
                     [(str bs) (fmt (/ n (/ elapsed-ms 1000.0))) (fmt elapsed-ms)]))))
@@ -352,7 +352,7 @@
                                    (fn [msgs]
                                      (doseq [msg msgs]
                                        (let [receive-ns (System/nanoTime)
-                                             publish-ns (get msg "publish-ns")]
+                                             publish-ns (get msg :publish-ns)]
                                          (when publish-ns
                                            (swap! latencies conj (/ (- receive-ns (double publish-ns)) 1e6))))
                                        (swap! received inc))))))
@@ -419,7 +419,7 @@
                                    (fn [msgs]
                                      (doseq [msg msgs]
                                        (let [receive-ns (System/nanoTime)
-                                             publish-ns (get msg "publish-ns")]
+                                             publish-ns (get msg :publish-ns)]
                                          (when publish-ns
                                            (swap! latencies conj (/ (- receive-ns (double publish-ns)) 1e6)))
                                          (swap! received inc)))))))
@@ -680,17 +680,21 @@
      (try
        (let [rows (vec (for [_ (range n)]
                          {:queue_name (name queue-name)
-                          :messages   "[]"
+                          :payload    "[]"
                           :status     "processing"
                           :status_heartbeat stale-ts
                           :owner      "dead-node"}))]
          (t2/insert! :queue_message_batch rows))
        (let [recoveries (atom [])
+             be         (q.appdb/make-backend)
              latch      (CountDownLatch. 1)
              threads    (mapv (fn [_]
                                 (let [r (bound-fn []
                                           (.await latch)
-                                          (let [n-recovered (@#'q.appdb/recover-stale-processing-batches!)]
+                                          ;; Large max-retries so every stale row is recovered to 'pending'
+                                          ;; rather than dropped, matching the original "all recovered" check.
+                                          (let [results     (q.backend/recover-stale! be (* 10 60 1000) Integer/MAX_VALUE)
+                                                n-recovered  (reduce + 0 (map #(+ (:recovered % 0) (:failed % 0)) results))]
                                             (swap! recoveries conj n-recovered)))]
                                   (Thread. ^Runnable r)))
                               (range workers))
@@ -746,7 +750,7 @@
                                (fn [msgs]
                                  (let [now (System/nanoTime)]
                                    (doseq [m msgs]
-                                     (when-let [pub-ns (get m "publish-ns")]
+                                     (when-let [pub-ns (get m :publish-ns)]
                                        (swap! latencies conj (/ (- now (double pub-ns)) 1e6))))
                                    (swap! received + (count msgs)))))
        (let [pub-runnable (bound-fn []
