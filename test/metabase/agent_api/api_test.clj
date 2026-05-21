@@ -11,6 +11,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.session.models.session :as session.models]
@@ -577,7 +579,14 @@
         ;; Non-admin groups have no perms on the new collection by default.
         (mt/user-http-request :rasta :post 403 "agent/v1/collection"
                               {:name                 "Should Fail"
-                               :parent_collection_id parent-id})))))
+                               :parent_collection_id parent-id}))))
+
+  ;; Parent-inheritance behaviors (:namespace, :type "library*", :is_remote_synced, exclusion of
+  ;; :type "trash") are unit-tested directly against `apply-defaults-to-collection` in
+  ;; `metabase.collections.create-test`, since the HTTP boundary is gated by other checks
+  ;; (library collections refuse writes, snippet-namespace collections require explicit perms)
+  ;; that make end-to-end coverage redundant.
+  )
 
 ;;; ----------------------------------------------- Update Question Tests ------------------------------------------
 
@@ -608,14 +617,17 @@
         (is (= dest-coll-id (:collection_id resp))))
       (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id)))))
 
-  (testing "Archiving a card"
+  (testing "Archiving a card also sets :archived_directly so it lands in the Trash"
     (mt/with-temp [:model/Card {card-id :id} {:name          "Card To Archive"
                                               :dataset_query (orders-count-query)
                                               :display       :table}]
       (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/question/" card-id)
                                        {:archived true})]
         (is (true? (:archived resp))))
-      (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))))
+      (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))
+      ;; Mirrors the REST archive flow -- without :archived_directly the card would only show up
+      ;; as inherited-from-trash and stay invisible in the Trash UI.
+      (is (true? (t2/select-one-fn :archived_directly :model/Card :id card-id)))))
 
   (testing "Replacing the underlying query via :query (base64)"
     (mt/with-temp [:model/Card {card-id :id} {:name          "Card To Re-query"
@@ -650,6 +662,22 @@
                                                              :collection_id locked-coll-id}]
         (mt/user-http-request :rasta :put 403 (str "agent/v1/question/" card-id)
                               {:name "Forbidden Rename"}))))
+
+  (testing "Returns 403 when caller can write source collection but not target"
+    ;; Guard against an LLM moving a card into a collection the user can't normally write.
+    ;; api/write-check on the card covers the source side; collection/check-allowed-to-change-
+    ;; collection covers the target side.
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {writable-id :id} {:name "Writable Src"}
+                     :model/Collection {locked-id   :id} {:name "Locked Dest"}
+                     :model/Card       {card-id     :id} {:name          "Card In Writable"
+                                                          :dataset_query (orders-count-query)
+                                                          :display       :table
+                                                          :collection_id writable-id}]
+        (perms/grant-collection-readwrite-permissions!
+         (perms-group/all-users) writable-id)
+        (mt/user-http-request :rasta :put 403 (str "agent/v1/question/" card-id)
+                              {:collection_id locked-id}))))
 
   (testing "Rejects unknown :display values with 400"
     (mt/with-temp [:model/Card {card-id :id} {:name          "Card Display Validation"
@@ -711,7 +739,18 @@
                      :model/Dashboard  {dash-id :id}        {:name          "Hidden Dash"
                                                              :collection_id locked-coll-id}]
         (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
-                              {:name "Forbidden Rename"})))))
+                              {:name "Forbidden Rename"}))))
+
+  (testing "Returns 403 when caller can write source collection but not target"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {writable-id :id} {:name "Writable Dash Src"}
+                     :model/Collection {locked-id   :id} {:name "Locked Dash Dest"}
+                     :model/Dashboard  {dash-id     :id} {:name          "Dash In Writable"
+                                                          :collection_id writable-id}]
+        (perms/grant-collection-readwrite-permissions!
+         (perms-group/all-users) writable-id)
+        (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
+                              {:collection_id locked-id})))))
 
 (deftest update-dashboard-dashcards-test
   (testing "Add a card to the dashboard (autoplaced)"
