@@ -10,10 +10,12 @@
    nil scope is treated as internal-only."
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
+   [metabase.request.core :as request]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -85,6 +87,16 @@
          :uri->resource (sorted-map)
          :tools         (sorted-map)}))
 
+(defn- chatgpt-client?
+  "True when the in-flight request's User-Agent identifies the ChatGPT MCP/Apps
+   client. ChatGPT empirically sends `openai-mcp/...`; Claude rejects
+   `_meta.ui.domain` unless it's a Claude-issued subdomain, so we gate the field
+   on this check."
+  []
+  (boolean (some-> (request/current-request)
+                   (get-in [:headers "user-agent"])
+                   (str/includes? "openai-mcp"))))
+
 (defn- site-origin
   "Origin (scheme://host[:port]) extracted from `site-url`, dropping any path segment.
    ChatGPT's MCP host treats `_meta.ui.domain` and the CSP domain lists as origins, so an instance
@@ -103,7 +115,10 @@
    to pick a sandbox configuration:
 
    - `prefersBorder`    — presentation hint asking the host to draw a frame border
-   - `domain`           — the origin the iframe content is anchored at
+   - `domain`           — origin the iframe content is anchored at. ChatGPT-only:
+                          Claude validates this against its own namespace
+                          (`*.claudemcpcontent.com`) and rejects anything else,
+                          so we emit it only for ChatGPT (gated by [[chatgpt-client?]]).
    - `csp.connectDomains`  — hosts the iframe may XHR/fetch/WebSocket to
                               (the embedded SDK calls back to this Metabase instance)
    - `csp.resourceDomains` — hosts the iframe may load scripts/styles/images from
@@ -116,6 +131,7 @@
     {:ui (cond-> {:csp {:connectDomains  [url]
                         :resourceDomains [url]}}
            (contains? resource :prefersBorder)
+           (chatgpt-client?) (assoc :domain url)
            (assoc :prefersBorder (:prefersBorder resource)))}))
 
 (mu/defn register-resource!
