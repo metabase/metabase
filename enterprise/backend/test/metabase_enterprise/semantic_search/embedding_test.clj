@@ -243,7 +243,7 @@
       (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly nil)]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Missing premium embedding token not set"
+             #"Premium embedding token not set"
              (embedding/get-embedding {:provider "ai-service"
                                        :model-name "test-model"
                                        :vector-dimensions 4}
