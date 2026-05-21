@@ -210,7 +210,7 @@
   "Locate the peak (max y) and trough (min y) in a time series, together with
   their x-coordinates (dates), and count how many points sit above the mean.
   These are pre-computed answers to the questions downstream consumers (the
-  Automatic Insights generator, for instance) need to ground citations — the
+  AI Summary generator, for instance) need to ground citations — the
   date of the peak isn't recoverable from the summary's `:min`/`:max` alone."
   [values dates]
   (when-let [{:keys [argmax argmin above-mean]} (argmax-min values)]

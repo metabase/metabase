@@ -1,12 +1,12 @@
-(ns metabase.explorations.auto-insights.common-test
-  "Unit tests for the pure helpers in [[metabase.explorations.auto-insights.common]].
+(ns metabase.explorations.ai-summary.common-test
+  "Unit tests for the pure helpers in [[metabase.explorations.ai-summary.common]].
 
   Tests stay pure: no DB, no LLM. The one LLM-touching function under test —
   `run-with-repair` — exercises its control flow against a stubbed `call-llm`
   via `with-redefs`."
   (:require
    [clojure.test :refer :all]
-   [metabase.explorations.auto-insights.common :as common]))
+   [metabase.explorations.ai-summary.common :as common]))
 
 ;;; ---------------------------------------------- summarize-parts ----------------------------------------------
 

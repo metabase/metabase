@@ -1,4 +1,4 @@
-(ns metabase.explorations.auto-insights.phase2
+(ns metabase.explorations.ai-summary.phase2
   "Phase 2 — ANALYSIS.
 
   Given the Phase-1 curation, the analyst LLM produces the ProseMirror document
@@ -10,13 +10,13 @@
   doesn't touch viz config and the doc keeps the LLM-emitted nodes verbatim.
 
   Common chart-rendering and LLM-call infrastructure lives in
-  [[metabase.explorations.auto-insights.common]]."
+  [[metabase.explorations.ai-summary.common]]."
   (:require
    [clojure.string :as str]
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
-   [metabase.explorations.auto-insights.common :as common]
-   [metabase.explorations.auto-insights.prompts :as prompts]
+   [metabase.explorations.ai-summary.common :as common]
+   [metabase.explorations.ai-summary.prompts :as prompts]
    [metabase.interestingness.core :as interestingness]
    [metabase.queries.core :as queries]))
 
@@ -225,9 +225,9 @@
    :additionalProperties false})
 
 (defn build-analysis-prompt
-  "Phase 2 prompt: research-paper-shaped Automatic Insights document grounded
+  "Phase 2 prompt: research-paper-shaped AI Summary document grounded
   in the Phase-1-curated chart set. The Selmer template lives at
-  `resources/explorations/auto_insights/prompts/phase2_analysis.selmer`."
+  `resources/explorations/ai_summary/prompts/phase2_analysis.selmer`."
   [{:keys [thread-prompt selections curation-rationale timelines
            top-blocks awareness-blocks
            total-chart-count pool-size]}]

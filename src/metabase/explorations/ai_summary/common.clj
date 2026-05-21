@@ -1,5 +1,5 @@
-(ns metabase.explorations.auto-insights.common
-  "Shared infrastructure for the two-phase Automatic Insights pipeline.
+(ns metabase.explorations.ai-summary.common
+  "Shared infrastructure for the two-phase AI Summary pipeline.
 
   Holds *only* the helpers both phase-1 (curation) and phase-2 (analysis)
   actually depend on:
@@ -329,7 +329,7 @@
       (catch ExceptionInfo e
         ;; Fall back to the repair loop when the model returned no tool call
         ;; (legitimate with extended thinking + tool_choice auto). For permission
-        ;; denial / usage-limit hits, and anything else, let generate-auto-insights!
+        ;; denial / usage-limit hits, and anything else, let generate-ai-summary!
         ;; see the throw and route to a skip outcome.
         (let [{ex-type :type parts :parts} (ex-data e)]
           (if (and parts (not (#{:metabot/permission-denied :metabot/usage-limit-reached} ex-type)))
@@ -361,7 +361,7 @@
   Args:
     thread-id      - exploration_thread id, used for logging
     phase-name     - \"phase-1\" / \"phase-2\" — used in log lines and the
-                     usage tag (`exploration-auto-insights-<phase>`)
+                     usage tag (`exploration-ai-summary-<phase>`)
     llm-config     - `{:model :temperature :max-tokens :thinking-config}`
                      — the phase's own LLM settings
     prompt         - the rendered user prompt string
@@ -371,7 +371,7 @@
     repair-builder - (previous-value errors) → repair user message string"
   [{:keys [thread-id phase-name llm-config prompt schema
            extract-fn validate-fn repair-builder]}]
-  (let [tag             (str "exploration-auto-insights-" phase-name)
+  (let [tag             (str "exploration-ai-summary-" phase-name)
         first-messages  [{:role "user" :content prompt}]
         {first-response :response
          first-parts    :parts} (call-llm llm-config first-messages schema tag)
@@ -386,7 +386,7 @@
     (if (empty? first-errors)
       {:value first-value :attempts [attempt-1] :outcome :ok}
       (do
-        (log/warnf "Automatic Insights %s for thread %d: validation failed on first attempt; retrying once.\nErrors:\n%s"
+        (log/warnf "AI Summary %s for thread %d: validation failed on first attempt; retrying once.\nErrors:\n%s"
                    phase-name thread-id (format-errors first-errors))
         (let [retry-msg       (repair-builder first-value first-errors)
               retry-messages  (conj first-messages
@@ -403,9 +403,9 @@
                                :value             retry-value
                                :validation-errors retry-errors}]
           (if (empty? retry-errors)
-            (do (log/infof "Automatic Insights %s for thread %d: repair succeeded on retry" phase-name thread-id)
+            (do (log/infof "AI Summary %s for thread %d: repair succeeded on retry" phase-name thread-id)
                 {:value retry-value :attempts [attempt-1 attempt-2] :outcome :ok})
-            (do (log/warnf "Automatic Insights %s for thread %d: repair failed; giving up.\nErrors:\n%s"
+            (do (log/warnf "AI Summary %s for thread %d: repair failed; giving up.\nErrors:\n%s"
                            phase-name thread-id (format-errors retry-errors))
                 {:value        nil
                  :attempts     [attempt-1 attempt-2]

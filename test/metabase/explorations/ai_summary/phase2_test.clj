@@ -1,4 +1,4 @@
-(ns metabase.explorations.auto-insights.phase2-test
+(ns metabase.explorations.ai-summary.phase2-test
   "Unit tests for phase-2 pure helpers: extraction, the static-mode cardEmbed
   validator, the small node parsers, and the doc-level cross-cutting
   validators.
@@ -7,7 +7,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.explorations.auto-insights.phase2 :as phase2]))
+   [metabase.explorations.ai-summary.phase2 :as phase2]))
 
 ;;; ---------------------------------------------- downsample-pairs ----------------------------------------------
 

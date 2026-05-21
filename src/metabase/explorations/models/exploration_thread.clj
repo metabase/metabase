@@ -14,7 +14,7 @@
   (derive :hook/entity-id))
 
 (defn- transcript-in
-  "EDN-encode the Automatic Insights transcript. EDN over JSON for the same
+  "EDN-encode the AI Summary transcript. EDN over JSON for the same
   reason as chart_stats: the transcript contains keyword keys, prose-mirror
   doc trees with string-keyed maps, and nested Clojure data — JSON would
   mangle the shape."

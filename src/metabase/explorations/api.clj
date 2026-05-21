@@ -9,7 +9,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
    [metabase.events.core :as events]
-   [metabase.explorations.auto-insights :as auto-insights]
+   [metabase.explorations.ai-summary :as ai-summary]
    [metabase.explorations.core :as explorations]
    [metabase.explorations.groups :as explorations.groups]
    [metabase.explorations.models.exploration :as expl.model]
@@ -622,7 +622,8 @@
                                    :creator_id            api/*current-user-id*
                                    :collection_id         coll-id
                                    :exploration_thread_id tid})
-          _           (auto-insights/create-placeholder-doc! tid api/*current-user-id* coll-id)
+          _           (when (ai-summary/ai-summary-available?)
+                        (ai-summary/create-placeholder-doc! tid api/*current-user-id* coll-id))
           metric-rows (when (seq metrics)
                         (t2/insert-returning-instances!
                          :model/ExplorationThreadMetric

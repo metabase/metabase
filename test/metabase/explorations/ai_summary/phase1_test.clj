@@ -1,11 +1,11 @@
-(ns metabase.explorations.auto-insights.phase1-test
+(ns metabase.explorations.ai-summary.phase1-test
   "Unit tests for the phase-1 (curation) extractor and validator.
 
   Pure — no DB, no LLM."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.explorations.auto-insights.phase1 :as phase1]))
+   [metabase.explorations.ai-summary.phase1 :as phase1]))
 
 ;;; ---------------------------------------------- extract-curation ----------------------------------------------
 

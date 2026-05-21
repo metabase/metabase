@@ -1,4 +1,4 @@
-(ns metabase.explorations.auto-insights.phase1
+(ns metabase.explorations.ai-summary.phase1
   "Phase 1 — CURATION.
 
   Given the thin index of pre-ranked charts, the curator LLM picks which charts
@@ -9,11 +9,11 @@
   Holds the phase-1 LLM config, schema, tier bounds, index-entry renderer,
   prompt builder, response extractor, validator, repair-prompt builder, and
   the `run-curation!` entry point. Common chart-rendering and LLM-call
-  infrastructure lives in [[metabase.explorations.auto-insights.common]]."
+  infrastructure lives in [[metabase.explorations.ai-summary.common]]."
   (:require
    [clojure.string :as str]
-   [metabase.explorations.auto-insights.common :as common]
-   [metabase.explorations.auto-insights.prompts :as prompts]))
+   [metabase.explorations.ai-summary.common :as common]
+   [metabase.explorations.ai-summary.prompts :as prompts]))
 
 (set! *warn-on-reflection* true)
 
@@ -74,7 +74,7 @@
 (defn build-curation-prompt
   "Phase 1 prompt: pick top-tier (full-data) and awareness-tier (summary-only)
   charts from a thin index of the pool. The Selmer template lives at
-  `resources/explorations/auto_insights/prompts/phase1_curation.selmer`."
+  `resources/explorations/ai_summary/prompts/phase1_curation.selmer`."
   [{:keys [thread-prompt selections timelines index-entries pool-size total-chart-count]}]
   (let [{:keys [top-tier-min top-tier-max
                 awareness-tier-min awareness-tier-max

@@ -22,7 +22,7 @@
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.contextual-interestingness.core :as contextual-interestingness]
-   [metabase.explorations.auto-insights :as explorations.auto-insights]
+   [metabase.explorations.ai-summary :as explorations.ai-summary]
    [metabase.explorations.interestingness :as explorations.interestingness]
    [metabase.explorations.settings :as explorations.settings]
    [metabase.explorations.timeline-interestingness :as explorations.timeline-interestingness]
@@ -149,7 +149,7 @@
                                          [:= :s.scored_at nil]]]}]]})))
 
 (defn- mark-thread-fully-completed!
-  "Set `completed_at` to NOW(). Called after the auto-insights handler has finished
+  "Set `completed_at` to NOW(). Called after the ai-summary handler has finished
   (success, skip, or failure). This is what the UI polls on to decide it's done
   watching the thread."
   [thread-id]
@@ -161,13 +161,13 @@
   transaction has committed, so it's free to do its own DB I/O, HTTP, LLM calls, etc.
 
   Stamps `completed_at` last so the UI's polling loop sees a clean done signal only
-  after the auto-insights doc has been written (or failed)."
+  after the ai-summary doc has been written (or failed)."
   [thread-id]
-  (log/infof "Exploration thread %d: queries+scoring done, running auto-insights" thread-id)
+  (log/infof "Exploration thread %d: queries+scoring done, running ai-summary" thread-id)
   (try
-    (explorations.auto-insights/generate-auto-insights! thread-id)
+    (explorations.ai-summary/generate-ai-summary! thread-id)
     (catch Throwable e
-      (log/errorf e "generate-auto-insights! threw for thread %d" thread-id))
+      (log/errorf e "generate-ai-summary! threw for thread %d" thread-id))
     (finally
       (try
         (mark-thread-fully-completed! thread-id)

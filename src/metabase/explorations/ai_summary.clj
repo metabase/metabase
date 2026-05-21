@@ -1,21 +1,21 @@
-(ns metabase.explorations.auto-insights
-  "Two-phase LLM-driven Automatic Insights generation for a completed exploration thread.
+(ns metabase.explorations.ai-summary
+  "Two-phase LLM-driven AI Summary generation for a completed exploration thread.
 
   Invoked from `metabase.explorations.task.runner` after a thread has reached
   terminal state. The pipeline is split into two structured LLM calls so each
   can specialize:
 
-  Phase 1 — Curation (see [[metabase.explorations.auto-insights.phase1]]).
+  Phase 1 — Curation (see [[metabase.explorations.ai-summary.phase1]]).
     Sees a *thin* index of up to 100 pre-ranked charts (id, name, score, plus a
     one-line summary derived from `chart_stats`). Picks which charts deserve
     deep analysis (top tier: full data point grounding for citation) and which
     are awareness-only (model knows they exist but won't cite values).
 
-  Phase 2 — Analysis (see [[metabase.explorations.auto-insights.phase2]]).
+  Phase 2 — Analysis (see [[metabase.explorations.ai-summary.phase2]]).
     Sees only what Phase 1 selected, with the curation rationale. Top-tier
     charts get full chart blocks (stats + key-points + verbatim data points);
     awareness-tier charts get slim blocks (title + summary + key-points). The
-    model writes the research-paper-shaped Automatic Insights document.
+    model writes the research-paper-shaped AI Summary document.
 
   Both phases use extended thinking, both have one repair retry on validation
   failure, both have their prompt / response / reasoning persisted to the
@@ -28,18 +28,18 @@
   The user's manually-created `Findings` document is left untouched; the
   auto-generated artifact is a separate document per thread.
 
-  This namespace is the orchestrator: [[generate-auto-insights!]] wires Phase 1
+  This namespace is the orchestrator: [[generate-ai-summary!]] wires Phase 1
   and Phase 2 together, handles the success / failure / skip branches, writes
   the resulting `Document`, materializes chart embeds, persists the transcript,
   and exposes the `debug-*` REPL helpers. Shared chart-rendering and LLM-call
-  infrastructure lives in [[metabase.explorations.auto-insights.common]]."
+  infrastructure lives in [[metabase.explorations.ai-summary.common]]."
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.documents.prose-mirror :as prose-mirror]
-   [metabase.explorations.auto-insights.common :as common]
-   [metabase.explorations.auto-insights.phase1 :as phase1]
-   [metabase.explorations.auto-insights.phase2 :as phase2]
+   [metabase.explorations.ai-summary.common :as common]
+   [metabase.explorations.ai-summary.phase1 :as phase1]
+   [metabase.explorations.ai-summary.phase2 :as phase2]
    [metabase.explorations.models.exploration-query-result :as eqr]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.request.core :as request]
@@ -169,16 +169,16 @@
     (t2/update! :model/ExplorationThread thread-id
                 {:auto_insights_transcript transcript})
     (catch Throwable e
-      (log/warnf e "Failed to save Automatic Insights transcript for thread %d" thread-id))))
+      (log/warnf e "Failed to save AI Summary transcript for thread %d" thread-id))))
 
 (def ^:private auto-doc-name
-  "Name for the LLM-generated Automatic Insights document. Distinct from the
+  "Name for the LLM-generated AI Summary document. Distinct from the
   user-owned 'Findings' doc that's auto-created at exploration time — that one
   is the user's working space and we never overwrite it."
   "AI Summary")
 
 (defn placeholder-pm-doc
-  "ProseMirror doc body shown while auto-insights generation is still running.
+  "ProseMirror doc body shown while ai-summary generation is still running.
   The sidebar links to this doc the moment the exploration is created; we
   swap its `:document` content in-place when generation finishes (success,
   skip, or failure). Public because the API endpoint creates the doc at
@@ -190,11 +190,22 @@
               :content [{:type "text" :text "Analysis underway…"}]}
              {:type    "paragraph"
               :content [{:type  "text"
-                         :text  (str "The" auto-doc-name "is generating. This page will update when it's ready.")
+                         :text  (str "The " auto-doc-name " is generating. This page will update when it's ready.")
                          :marks [{:type "italic"}]}]}]})
 
+(defn ai-summary-available?
+  "True when AI Summary can be generated — Metabot is enabled (which
+  also requires AI features to be on) and an LLM provider is configured. When
+  false the exploration POST endpoint must not create the placeholder document
+  and [[generate-ai-summary!]] skips generation, so no empty `Automatic
+  Insights` doc is left behind for a disabled / unconfigured instance."
+  []
+  (boolean
+   (and (metabot.settings/metabot-enabled?)
+        (metabot.settings/llm-metabot-configured?))))
+
 (defn create-placeholder-doc!
-  "Insert a fresh `Automatic Insights` document on `thread-id` owned by
+  "Insert a fresh `AI Summary` document on `thread-id` owned by
   `creator-id`, populated with the `Analysis underway…` placeholder. The doc's
   `collection_id` mirrors the parent Exploration's so perms stay aligned.
   Caller must establish a current-user binding. The doc is created up-front
@@ -214,7 +225,7 @@
     doc))
 
 (defn- find-placeholder-doc
-  "Look up the Automatic Insights document for `thread-id`. Returns nil when
+  "Look up the AI Summary document for `thread-id`. Returns nil when
   none has been created yet (e.g. an old exploration created before the
   endpoint started pre-creating the placeholder); callers should defensively
   re-create it in that case."
@@ -227,7 +238,7 @@
 ;;; ----- Debug helpers (REPL-friendly accessors for the persisted transcript) -----
 
 (defn debug-transcript
-  "Return the full Automatic Insights transcript for `thread-id`, or nil when
+  "Return the full AI Summary transcript for `thread-id`, or nil when
   no transcript has been written yet. Includes pool info, both phase prompts
   and attempts, the curation, the final document, and the outcome keyword."
   [thread-id]
@@ -367,7 +378,7 @@
           (map (fn [[fn-name doc]]
                  {:type    "paragraph"
                   :content [{:type  "text"
-                             :text  (format "(metabase.explorations.auto-insights/%s %d)"
+                             :text  (format "(metabase.explorations.ai-summary/%s %d)"
                                             fn-name thread-id)
                              :marks [{:type "code"}]}
                             {:type "text" :text (str " — " doc)}]})
@@ -468,7 +479,7 @@
                       {:type    "paragraph"
                        :content [{:type "text"
                                   :text (str "Re-running may succeed if this was a transient issue. To debug, run "
-                                             (format "(metabase.explorations.auto-insights/debug-transcript %d)" thread-id)
+                                             (format "(metabase.explorations.ai-summary/debug-transcript %d)" thread-id)
                                              " in a Clojure REPL — the persisted transcript contains both phase prompts, every LLM response, validation errors, and the extended-thinking trace.")}]}))}))
 
 ;;; ----- Main entry point -----
@@ -573,14 +584,14 @@
       {:document-id (:id doc) :rendered-pm-doc pm-doc})))
 
 (defn- run-phases!
-  "Inner body of [[generate-auto-insights!]]: runs Phase 1 + Phase 2 inside a
+  "Inner body of [[generate-ai-summary!]]: runs Phase 1 + Phase 2 inside a
   `with-current-user creator-id` binding so the LLM calls see the creator's
   metabot permissions / usage limits.
 
   Catches `ex-info`s thrown by `metabase.metabot.self/call-llm-structured-with-trace`
   for the `:metabot/permission-denied` and `:metabot/usage-limit-reached` cases
   and returns matching skip outcomes; any other exception bubbles to the outer
-  `try` in [[generate-auto-insights!]]."
+  `try` in [[generate-ai-summary!]]."
   [{:keys [thread-id thread creator-id coll-id done-queries prepped prepped-by-id
            pool-ids selections timelines preamble]}]
   (request/with-current-user creator-id
@@ -623,7 +634,7 @@
                                      :phase-1         p1-transcript
                                      :document-id     document-id
                                      :rendered-pm-doc rendered-pm-doc))
-            (log/warnf "Automatic Insights for thread %d: Phase 1 failed; wrote error doc %d"
+            (log/warnf "AI Summary for thread %d: Phase 1 failed; wrote error doc %d"
                        thread-id document-id)
             :phase-1-failed)
           (let [{:keys [top_tier awareness_tier rationale]} (:value p1)
@@ -674,7 +685,7 @@
                                          :phase-2         p2-transcript
                                          :document-id     document-id
                                          :rendered-pm-doc rendered-pm-doc))
-                (log/warnf "Automatic Insights for thread %d: Phase 2 failed; wrote error doc %d"
+                (log/warnf "AI Summary for thread %d: Phase 2 failed; wrote error doc %d"
                            thread-id document-id)
                 :phase-2-failed)
               (let [pm-doc  (:value p2)
@@ -698,27 +709,27 @@
                                          :phase-2         p2-transcript
                                          :document-id     document-id
                                          :rendered-pm-doc rendered-pm-doc))
-                (log/infof "Wrote Automatic Insights for thread %d to document %d"
+                (log/infof "Wrote AI Summary for thread %d to document %d"
                            thread-id document-id)
                 :ok)))))
       (catch ExceptionInfo e
         (case (:type (ex-data e))
           :metabot/permission-denied
-          (do (log/infof "Skipping Automatic Insights for thread %d: creator %s lacks required metabot permissions"
+          (do (log/infof "Skipping AI Summary for thread %d: creator %s lacks required metabot permissions"
                          thread-id creator-id)
               (save-transcript! thread-id (assoc preamble :outcome :skip-no-permission))
               :skip-no-permission)
 
           :metabot/usage-limit-reached
-          (do (log/infof "Skipping Automatic Insights for thread %d: AI usage limit reached (%s)"
+          (do (log/infof "Skipping AI Summary for thread %d: AI usage limit reached (%s)"
                          thread-id (ex-message e))
               (save-transcript! thread-id (assoc preamble :outcome :skip-usage-limit))
               :skip-usage-limit)
 
           (throw e))))))
 
-(defn generate-auto-insights!
-  "Two-phase generation of the `Automatic Insights` document for `thread-id`.
+(defn generate-ai-summary!
+  "Two-phase generation of the `AI Summary` document for `thread-id`.
   Always inserts a new document — the manually-created `Findings` doc is the
   user's working space and is left untouched. The full transcript (both phase
   prompts, every LLM response, validation errors, extended-thinking traces,
@@ -733,15 +744,23 @@
   development — failures are surfaced so they can be fixed.
 
   Returns `:ok` on success, a keyword reason on graceful skip
-  (`:skip-no-llm`, `:skip-no-charts`), `:phase-1-failed` /
+  (`:skip-metabot-disabled`, `:skip-no-llm`, `:skip-no-charts`), `:phase-1-failed` /
   `:phase-2-failed` when the corresponding phase couldn't be repaired, or
   `nil` on an uncaught throwable (logged but never thrown)."
   [thread-id]
   (try
-    (if-not (metabot.settings/llm-metabot-configured?)
-      (do (log/infof "Skipping Automatic Insights for thread %d: LLM not configured" thread-id)
+    (cond
+      (not (metabot.settings/metabot-enabled?))
+      (do (log/infof "Skipping AI Summary for thread %d: Metabot is disabled" thread-id)
+          (save-transcript! thread-id (assoc (base-transcript thread-id) :outcome :skip-metabot-disabled))
+          :skip-metabot-disabled)
+
+      (not (metabot.settings/llm-metabot-configured?))
+      (do (log/infof "Skipping AI Summary for thread %d: LLM not configured" thread-id)
           (save-transcript! thread-id (assoc (base-transcript thread-id) :outcome :skip-no-llm))
           :skip-no-llm)
+
+      :else
       (let [thread (t2/select-one [:model/ExplorationThread :id :prompt :exploration_id]
                                   :id thread-id)]
         (if (nil? thread)
@@ -780,7 +799,7 @@
                                     :timelines           timelines)]
             (cond
               (empty? prepped)
-              (do (log/infof "No usable chart blocks for thread %d; skipping Automatic Insights" thread-id)
+              (do (log/infof "No usable chart blocks for thread %d; skipping AI Summary" thread-id)
                   (save-transcript! thread-id (assoc preamble :outcome :skip-no-charts))
                   :skip-no-charts)
 
@@ -805,7 +824,7 @@
                             :timelines     timelines
                             :preamble      preamble}))))))
     (catch Throwable e
-      (log/errorf e "generate-auto-insights! failed for thread %d" thread-id)
+      (log/errorf e "generate-ai-summary! failed for thread %d" thread-id)
       (save-transcript! thread-id (assoc (base-transcript thread-id)
                                          :outcome :error
                                          :error   (.getMessage e)))
@@ -831,5 +850,5 @@
                                                      :detail       "Unexpected error generating the document."})
                            :content_type prose-mirror/prose-mirror-content-type}))))
         (catch Throwable e2
-          (log/warnf e2 "Failed to write error doc for thread %d after generate-auto-insights! failure" thread-id)))
+          (log/warnf e2 "Failed to write error doc for thread %d after generate-ai-summary! failure" thread-id)))
       nil)))

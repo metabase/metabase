@@ -1,7 +1,7 @@
-(ns metabase.explorations.auto-insights.prompts
-  "Selmer-based loader for the auto-insights phase prompts.
+(ns metabase.explorations.ai-summary.prompts
+  "Selmer-based loader for the ai-summary phase prompts.
 
-  Templates live in `resources/explorations/auto_insights/prompts/` and
+  Templates live in `resources/explorations/ai_summary/prompts/` and
   follow the same pattern used by `metabase.metabot.agent.prompts`:
   slurp from the classpath, cache the raw string in an atom, render with
   Selmer."
@@ -12,7 +12,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private template-dir "explorations/auto_insights/prompts/")
+(def ^:private template-dir "explorations/ai_summary/prompts/")
 
 (def ^:private template-cache (atom {}))
 
@@ -32,7 +32,7 @@
 
 (defn render
   "Render the named template (relative to
-  `resources/explorations/auto_insights/prompts/`) with the supplied
+  `resources/explorations/ai_summary/prompts/`) with the supplied
   context map. Returns the unrendered template on render failure so a
   template bug never kills a run."
   [filename context]
@@ -40,7 +40,7 @@
     (try
       (selmer/render t context)
       (catch Exception e
-        (log/error e "Failed to render auto-insights prompt template:" filename)
+        (log/error e "Failed to render ai-summary prompt template:" filename)
         t))))
 
 (defn clear-cache!

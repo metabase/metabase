@@ -6,6 +6,7 @@
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -42,6 +43,23 @@
   "Execute `body` with any sample-database metric cards temporarily archived."
   [& body]
   `(do-with-sample-metrics-archived (fn [] ~@body)))
+
+(defn- do-with-ai-summary-available
+  "Run `thunk` with the conditions under which AI Summary are generated:
+  AI features + Metabot enabled, and an LLM provider configured. Needed because
+  a clean test instance has no provider key, so `ai-summary-available?` is
+  false by default and the placeholder document is not created."
+  [thunk]
+  (mt/with-temporary-setting-values [ai-features-enabled? true
+                                     metabot-enabled?     true]
+    (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-configured? (constantly true)]
+      (thunk))))
+
+(defmacro with-ai-summary-available
+  "Execute `body` with AI Summary generation enabled (see
+  [[do-with-ai-summary-available]])."
+  [& body]
+  `(do-with-ai-summary-available (fn [] ~@body)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    GET /api/exploration/dimensions                                             |
@@ -1003,33 +1021,58 @@
       (mt/user-http-request u :delete 404 "exploration/query/9999999/interesting"))))
 
 (deftest exploration-create-auto-creates-scratchpad-document-test
-  (testing "POST / auto-creates a 'Scratchpad' document owned by the new exploration's thread, alongside the Automatic Insights placeholder"
-    (mt/with-temp [:model/User u {:email "scratchpad-auto@example.com"}]
-      (let [resp       (mt/user-http-request u :post 200 "exploration" {:name "x"})
-            tid        (-> resp :threads first :id)
-            docs       (t2/select :model/Document :exploration_thread_id tid)
-            scratchpad (some #(when (= "Scratchpad" (:name %)) %) docs)]
-        (is (= #{"Scratchpad" "Automatic Insights"} (set (map :name docs))))
-        (is (some? scratchpad))
-        (is (= (:id u) (:creator_id scratchpad)))))))
+  (testing "POST / auto-creates a 'Scratchpad' document owned by the new exploration's thread, alongside the AI Summary placeholder"
+    (with-ai-summary-available
+      (mt/with-temp [:model/User u {:email "scratchpad-auto@example.com"}]
+        (let [resp       (mt/user-http-request u :post 200 "exploration" {:name "x"})
+              tid        (-> resp :threads first :id)
+              docs       (t2/select :model/Document :exploration_thread_id tid)
+              scratchpad (some #(when (= "Scratchpad" (:name %)) %) docs)]
+          (is (= #{"Scratchpad" "AI Summary"} (set (map :name docs))))
+          (is (some? scratchpad))
+          (is (= (:id u) (:creator_id scratchpad))))))))
+
+(deftest exploration-create-skips-ai-summary-doc-when-metabot-disabled-test
+  (testing "POST / does NOT create the AI Summary placeholder when Metabot is disabled (UXW-4121)"
+    (mt/with-temporary-setting-values [metabot-enabled? false]
+      (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-configured? (constantly true)]
+        (mt/with-temp [:model/User u {:email "ai-disabled-create@example.com"}]
+          (let [resp (mt/user-http-request u :post 200 "exploration" {:name "x"})
+                tid  (-> resp :threads first :id)
+                docs (t2/select :model/Document :exploration_thread_id tid)]
+            (is (= #{"Scratchpad"} (set (map :name docs)))
+                "only the Scratchpad doc is created; no AI Summary placeholder")))))))
+
+(deftest exploration-create-skips-ai-summary-doc-when-llm-not-configured-test
+  (testing "POST / does NOT create the AI Summary placeholder when no LLM provider is configured (UXW-4121)"
+    (mt/with-temporary-setting-values [ai-features-enabled? true
+                                       metabot-enabled?     true]
+      (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-configured? (constantly false)]
+        (mt/with-temp [:model/User u {:email "llm-unconfigured-create@example.com"}]
+          (let [resp (mt/user-http-request u :post 200 "exploration" {:name "x"})
+                tid  (-> resp :threads first :id)
+                docs (t2/select :model/Document :exploration_thread_id tid)]
+            (is (= #{"Scratchpad"} (set (map :name docs)))
+                "only the Scratchpad doc is created; no AI Summary placeholder")))))))
 
 (deftest exploration-documents-list-and-create-test
   (testing "GET/POST /thread/:thread-id/documents list and create empty documents with auto-named Scratchpad"
-    (mt/with-temp [:model/User u {:email "docs-api@example.com"}]
-      (let [exp     (mt/user-http-request u :post 200 "exploration" {:name "doc host"})
-            tid     (-> exp :threads first :id)
-            url     (str "exploration/thread/" tid "/documents")
-            initial (mt/user-http-request u :get 200 url)]
-        (is (= ["Scratchpad" "Automatic Insights"] (mapv :name initial))
-            "Listing returns the auto-created Scratchpad + Automatic Insights docs")
-        (let [d2 (mt/user-http-request u :post 200 url {})]
-          (is (= "Scratchpad 2" (:name d2)))
-          (is (= tid (:exploration_thread_id d2)))
-          (is (= {:type "doc" :content []} (:document (t2/select-one :model/Document :id (:id d2))))))
-        (let [d3 (mt/user-http-request u :post 200 url {})]
-          (is (= "Scratchpad 3" (:name d3))))
-        (let [after (mt/user-http-request u :get 200 url)]
-          (is (= #{"Scratchpad" "Automatic Insights" "Scratchpad 2" "Scratchpad 3"} (set (map :name after)))))))))
+    (with-ai-summary-available
+      (mt/with-temp [:model/User u {:email "docs-api@example.com"}]
+        (let [exp     (mt/user-http-request u :post 200 "exploration" {:name "doc host"})
+              tid     (-> exp :threads first :id)
+              url     (str "exploration/thread/" tid "/documents")
+              initial (mt/user-http-request u :get 200 url)]
+          (is (= ["Scratchpad" "AI Summary"] (mapv :name initial))
+              "Listing returns the auto-created Scratchpad + AI Summary docs")
+          (let [d2 (mt/user-http-request u :post 200 url {})]
+            (is (= "Scratchpad 2" (:name d2)))
+            (is (= tid (:exploration_thread_id d2)))
+            (is (= {:type "doc" :content []} (:document (t2/select-one :model/Document :id (:id d2))))))
+          (let [d3 (mt/user-http-request u :post 200 url {})]
+            (is (= "Scratchpad 3" (:name d3))))
+          (let [after (mt/user-http-request u :get 200 url)]
+            (is (= #{"Scratchpad" "AI Summary" "Scratchpad 2" "Scratchpad 3"} (set (map :name after))))))))))
 
 (deftest exploration-documents-next-document-name-skips-gaps-test
   (testing "Auto-naming picks max+1 even with gaps and ignores unrelated docs"
