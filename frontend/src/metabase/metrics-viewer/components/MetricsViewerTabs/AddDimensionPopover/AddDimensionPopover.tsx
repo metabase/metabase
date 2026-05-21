@@ -4,18 +4,17 @@ import { t } from "ttag";
 
 import { AccordionList } from "metabase/common/components/AccordionList";
 import { trackMetricsViewerDimensionTabAdded } from "metabase/metrics-viewer/analytics";
-import type { TabInfo } from "metabase/metrics-viewer/utils/tabs";
+import type { MetricSourceId } from "metabase/metrics-viewer/types";
+import {
+  type AvailableDimensionsResult,
+  type DimensionPickerItem,
+  type DimensionPickerSection,
+  type SourceDisplayInfo,
+  type TabInfo,
+  buildDimensionPickerSections,
+  getScalarTabLabel,
+} from "metabase/metrics-viewer/utils";
 import { ActionIcon, Icon, Popover } from "metabase/ui";
-
-import type { MetricSourceId } from "../../../types/viewer-state";
-import type {
-  AvailableDimensionsResult,
-  DimensionPickerItem,
-  DimensionPickerSection,
-  SourceDisplayInfo,
-} from "../../../utils/dimension-picker";
-import { buildDimensionPickerSections } from "../../../utils/dimension-picker";
-import { getScalarTabLabel } from "../../../utils/tabs";
 
 import S from "./AddDimensionPopover.module.css";
 

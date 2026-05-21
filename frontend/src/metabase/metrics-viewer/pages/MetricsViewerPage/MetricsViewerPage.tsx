@@ -2,21 +2,20 @@ import type { Location } from "history";
 import { useCallback } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Box, Center, Flex, Stack } from "metabase/ui";
-
 import {
   trackMetricsViewerMetricAdded,
   trackMetricsViewerMetricRemoved,
-} from "../../analytics";
-import { BreakoutLegend } from "../../components/BreakoutLegend/BreakoutLegend";
+} from "metabase/metrics-viewer/analytics";
+import { BreakoutLegend } from "metabase/metrics-viewer/components/BreakoutLegend/BreakoutLegend";
 import {
   MetricsViewerEmptyState,
   MetricsViewerNoTabsEmptyState,
-} from "../../components/EmptyState";
-import { MetricSearchPanel } from "../../components/MetricSearchPanel";
-import { MetricsViewerTabContent } from "../../components/MetricsViewerTabs";
-import { useMetricsViewer } from "../../hooks/use-metrics-viewer";
-import type { SelectedMetric } from "../../types/viewer-state";
+} from "metabase/metrics-viewer/components/EmptyState";
+import { MetricSearchPanel } from "metabase/metrics-viewer/components/MetricSearchPanel";
+import { MetricsViewerTabContent } from "metabase/metrics-viewer/components/MetricsViewerTabs";
+import { useMetricsViewer } from "metabase/metrics-viewer/hooks";
+import type { SelectedMetric } from "metabase/metrics-viewer/types";
+import { Box, Center, Flex, Stack } from "metabase/ui";
 
 import S from "./MetricsViewerPage.module.css";
 

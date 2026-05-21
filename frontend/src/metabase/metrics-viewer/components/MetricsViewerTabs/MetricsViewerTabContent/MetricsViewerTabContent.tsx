@@ -1,5 +1,8 @@
 import { useCallback, useMemo } from "react";
 
+import { DimensionPillBar } from "metabase/metrics-viewer/components/DimensionPillBar";
+import { MetricControls } from "metabase/metrics-viewer/components/MetricControls";
+import { MetricsViewerVisualization } from "metabase/metrics-viewer/components/MetricsViewerVisualization";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
@@ -9,19 +12,17 @@ import type {
   MetricsViewerTabState,
   SourceColorMap,
 } from "metabase/metrics-viewer/types/viewer-state";
-import { getProjectionInfo } from "metabase/metrics-viewer/utils/definition-builder";
-import type { DimensionFilterValue } from "metabase/metrics-viewer/utils/dimension-filters";
-import type {
-  AvailableDimensionsResult,
-  SourceDisplayInfo,
-} from "metabase/metrics-viewer/utils/dimension-picker";
-import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 import {
+  type AvailableDimensionsResult,
+  type DimensionFilterValue,
+  type SourceDisplayInfo,
+  type TabInfo,
   buildDimensionItemsFromDefinitions,
+  getProjectionInfo,
+  getTabConfig,
   shouldShowStackSeries,
-} from "metabase/metrics-viewer/utils/series";
-import { getTabConfig } from "metabase/metrics-viewer/utils/tab-config";
-import type { TabInfo } from "metabase/metrics-viewer/utils/tabs";
+} from "metabase/metrics-viewer/utils";
+import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 import { Box, Flex, Stack } from "metabase/ui";
 import { getObjectKeys, getObjectValues } from "metabase/utils/objects";
 import { isNotNull } from "metabase/utils/types";
@@ -33,10 +34,6 @@ import type {
   TemporalUnit,
   VisualizationSettings,
 } from "metabase-types/api";
-
-import { DimensionPillBar } from "../../DimensionPillBar";
-import { MetricControls } from "../../MetricControls";
-import { MetricsViewerVisualization } from "../../MetricsViewerVisualization";
 
 type MetricsViewerTabContentProps = {
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
@@ -187,6 +184,13 @@ export function MetricsViewerTabContent({
     [onTabUpdate, tab.visualizationSettings],
   );
 
+  const handleShowColumnLabelsChange = useCallback(
+    (showColumnLabels: boolean) => {
+      onTabUpdate({ showColumnLabels });
+    },
+    [onTabUpdate],
+  );
+
   const handleBrush = useCallback(
     ({ start, end }: { start: number; end: number }) => {
       updateProjectionConfig({
@@ -217,6 +221,7 @@ export function MetricsViewerTabContent({
       : item.availableOptions.length > 0,
   );
   const hideDimensionPill = tabConfig.minDimensions === 0 && !hasAnyOptions;
+  const showColumnLabels = tab.showColumnLabels !== false;
 
   const mappedDimensionCount = getObjectValues(tab.dimensionMapping).filter(
     isNotNull,
@@ -238,7 +243,7 @@ export function MetricsViewerTabContent({
         queriesAreLoading={queriesAreLoading}
         queriesError={queriesError}
       />
-      {!hideDimensionPill && (
+      {!hideDimensionPill && showColumnLabels && (
         <Box mt="sm">
           <DimensionPillBar
             items={dimensionItems}
@@ -267,6 +272,9 @@ export function MetricsViewerTabContent({
             onBinningChange={handleBinningChange}
             onAddTab={onAddTab}
             showStackSeries={showStackSeries}
+            canToggleColumnLabels={!hideDimensionPill}
+            showColumnLabels={showColumnLabels}
+            onShowColumnLabelsChange={handleShowColumnLabelsChange}
             visualizationSettings={tab.visualizationSettings}
             onVisualizationSettingsChange={handleVisualizationSettingsChange}
           />

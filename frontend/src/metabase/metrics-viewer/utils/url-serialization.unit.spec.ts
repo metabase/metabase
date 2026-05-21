@@ -42,6 +42,27 @@ describe("url-serialization", () => {
       expect(decoded).toEqual(state);
     });
 
+    it("round-trips disabled column labels", () => {
+      const state: SerializedMetricsViewerPageState = {
+        formulaEntities: [{ type: "metric", id: 1 }],
+        tabs: [
+          {
+            id: "tab-1",
+            type: "time",
+            label: "By Month",
+            display: "line",
+            showColumnLabels: false,
+            definitions: [{ slotIndex: 0, dimensionId: "created_at" }],
+          },
+        ],
+        selectedTabId: "tab-1",
+      };
+
+      const hash = encodeStateOrThrow(state);
+      const decoded = decodeState(hash);
+      expect(decoded).toEqual(state);
+    });
+
     it("round-trips a metric with breakoutTemporalUnit", () => {
       const state: SerializedMetricsViewerPageState = {
         formulaEntities: [

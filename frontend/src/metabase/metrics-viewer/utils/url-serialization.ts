@@ -199,6 +199,7 @@ interface SerializedTab {
   type: MetricsViewerTabType;
   label: string | null;
   display: MetricsViewerDisplayType;
+  showColumnLabels?: boolean;
   visualizationSettings?: Partial<VisualizationSettings>;
   definitions: SerializedTabDef[];
   projectionConfig?: SerializedProjectionConfig;
@@ -343,6 +344,7 @@ function tabToSerializedTab(tab: MetricsViewerTabState): SerializedTab {
     type: tab.type,
     label: tab.label,
     display: tab.display,
+    ...(tab.showColumnLabels === false ? { showColumnLabels: false } : {}),
     ...(tab.visualizationSettings &&
     Object.keys(tab.visualizationSettings).length > 0
       ? { visualizationSettings: tab.visualizationSettings }
@@ -376,6 +378,9 @@ export function deserializeTab(
     type: serializedTab.type,
     label: serializedTab.label,
     display: serializedTab.display,
+    ...(serializedTab.showColumnLabels === false
+      ? { showColumnLabels: false }
+      : {}),
     ...(serializedTab.visualizationSettings
       ? { visualizationSettings: serializedTab.visualizationSettings }
       : {}),
@@ -547,6 +552,7 @@ const tabSchema = defineCompactSchema<SerializedTab>({
   type: "t",
   label: { key: "l", default: null },
   display: { key: "d", default: "line" },
+  showColumnLabels: { key: "c", optional: true },
   visualizationSettings: { key: "V", optional: true },
   definitions: { key: "D", schema: tabDefSchema, default: [] },
   projectionConfig: {
