@@ -83,10 +83,14 @@
         ;; `:from` wraps the identifier expression in an extra vector — `[[expr]]` — so HoneySQL
         ;; treats it as a single table expression rather than parsing the identifier's own
         ;; `[::identifier :table [...]]` vector as a `[table alias …]` spec.
+        ;;
+        ;; Only `cast-expr` goes in `GROUP BY`. `tag` is a constant in the SELECT list — a
+        ;; literal needs no GROUP BY entry, and Postgres specifically rejects a non-integer
+        ;; constant in GROUP BY ("non-integer constant in GROUP BY").
         inner     {:select   [[tag :field_name]
                               [cast-expr :value_out]]
                    :from     [[(table-honeysql driver table)]]
-                   :group-by [tag cast-expr]}
+                   :group-by [cast-expr]}
         limited   (sql.qp/apply-top-level-clause driver :limit inner {:limit *distinct-limit*})]
     {:select [:*]
      :from   [[limited :_arm]]}))
