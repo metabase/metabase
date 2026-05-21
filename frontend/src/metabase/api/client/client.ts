@@ -50,7 +50,7 @@ type ApiMethod = (
 
 type MethodCreator = (
   urlTemplate: string,
-  methodOptions?: RequestOptions | ResponseTransformer,
+  methodOptions?: RequestOptions,
 ) => ApiMethod;
 
 type ResponseErrorInfo = {
@@ -146,10 +146,6 @@ export class ApiClient extends EventEmitter<EventMap> {
     withRetries: boolean = false,
   ): MethodCreator {
     return (urlTemplate, methodOptions = {}) => {
-      if (typeof methodOptions === "function") {
-        methodOptions = { transformResponse: methodOptions };
-      }
-
       return async (rawData = {}, invocationOptions = {}) => {
         const middlewareResult = await apiRequestManipulationMiddleware(
           this.beforeRequestHandlers,
