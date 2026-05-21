@@ -56,6 +56,7 @@
    [metabase.api.common :as api]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.entity-usage :as entity-usage]
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-representations :as llm-rep]
@@ -667,6 +668,167 @@
                         "</resource>")))
        "\n</resources>"))
 
+;; ----- Entity-usage derivation -----
+;;
+;; `read_resource` is the hybrid tool in the §A.6 categorization — its URIs are
+;; inputs (the entity the agent asked to dereference) and the surfaced content
+;; carries outputs (the entity itself plus any related entities the response
+;; exposes). The helpers below pure-derive `:entity-usage` from the parsed
+;; URI segments and the structured-output produced by each `fetch-*` handler;
+;; nothing here calls back into the DB or the dispatch.
+
+(def ^:private uri-type->entity-type
+  "Maps the first path segment of a `metabase://` URI to the entity-usage type
+   string. Excludes segments that aren't entity addressors (e.g. `databases`,
+   `collections`, `user`)."
+  {"database"   "database"
+   "table"      "table"
+   "model"      "model"
+   "question"   "question"
+   "metric"     "metric"
+   "transform"  "transform"
+   "collection" "collection"
+   "dashboard"  "dashboard"
+   "document"   "document"})
+
+(defn- uri-input-refs
+  "Derive the input entity refs implied by a parsed URI's segments.
+
+   - Top-level lists (e.g. `metabase://databases`)            → `[]`
+   - Single-entity URIs (`metabase://table/3`)                → `[{:type \"table\" :id 3}]`
+   - Sub-resource URIs (`metabase://table/3/derived`)         → `[{:type \"table\" :id 3}]`
+   - Leaf field URIs (`metabase://table/3/fields/42`,
+     `metabase://metric/6/dimensions/dim-1`) emit both the parent and the
+     leaf field — matching the `get_field_values` Phase 3c convention.
+     Non-integer leaf ids (e.g. composite `c75/17`) are skipped — they
+     don't refer to a real `metabase_field` row."
+  [segments uri]
+  (let [[head id-str & rst] segments]
+    (when-let [entity-type (uri-type->entity-type head)]
+      (when-let [parent-id (some-> id-str parse-long)]
+        (let [parent-ref {:type entity-type :id parent-id :metadata {:uri uri}}
+              leaf-id    (when (and (#{"fields" "dimensions"} (first rst))
+                                    (= 2 (count rst)))
+                           (parse-long (second rst)))
+              leaf-ref   (when leaf-id {:type "field" :id leaf-id})]
+          (cond-> [parent-ref]
+            leaf-ref (conj leaf-ref)))))))
+
+(defn- item->output-ref
+  "Project a presented item (as built by `present-database`, `present-table`,
+   etc., or a hand-built source-list item) to an entity-usage output ref.
+   Drops items whose `:type` falls outside the closed entity-types enum
+   (e.g. `:type \"schema\"` from `fetch-database-schemas`)."
+  [{:keys [type id uri]}]
+  (when (and type id (contains? entity-usage/entity-types type))
+    (cond-> {:type type :id id}
+      uri (assoc :metadata {:uri uri}))))
+
+(defn- output-refs-from-list
+  [{:keys [items]}]
+  (vec (keep item->output-ref items)))
+
+(defn- field-refs-from-fields
+  "Extract field entity refs from a `:fields` (or `:queryable-dimensions`)
+   collection in a `get-table-details`/`get-card-details`/`get-metric-details`
+   structured-output. Only integer `:field_id`s are emitted — string aliases
+   from aggregation/expression columns don't refer to real `metabase_field`
+   rows (mirrors the Phase 3c convention for `list_available_fields`)."
+  [fields]
+  (->> fields
+       (keep (fn [{:keys [field_id]}]
+               (when (int? field_id)
+                 {:type "field" :id field_id})))
+       vec))
+
+(defn- output-refs-from-entity
+  "Project a single-entity structured-output (`:metabot-entity`, `:entity`)
+   into entity-usage output refs. Includes the head entity itself plus any
+   sub-entities the response surfaces (related_tables, fields,
+   queryable-dimensions)."
+  [{:keys [type id uri fields related_tables queryable-dimensions]}]
+  (let [type-str   (when type (clojure.core/name type))
+        head       (when (and type-str
+                              (contains? entity-usage/entity-types type-str)
+                              id)
+                     (cond-> {:type type-str :id id}
+                       uri (assoc :metadata {:uri uri})))
+        related    (->> related_tables
+                        (keep (fn [{:keys [id]}]
+                                (when (int? id)
+                                  {:type "table" :id id})))
+                        vec)
+        field-refs (field-refs-from-fields fields)
+        dim-refs   (field-refs-from-fields queryable-dimensions)]
+    (vec (concat (when head [head]) related field-refs dim-refs))))
+
+(defn- output-refs-from-field-metadata
+  "Project a `:field-metadata` structured-output into a single field ref.
+
+  `field-stats/field-values` stores `:field_id` verbatim from its caller,
+  which for the URI-dispatched fetch-*-field handlers is the raw URI tail
+  string. Parse it to an int when numeric so the surfaced field ref dedups
+  cleanly against the integer leaf-id derived from the URI; keep
+  non-numeric strings (e.g. composite ids like `c75/17`) verbatim per
+  the entity-usage schema's `[:or :int :string]` allowance."
+  [{:keys [field_id]}]
+  (let [id (cond
+             (int? field_id)    field_id
+             (string? field_id) (or (parse-long field_id) field_id))]
+    (cond-> []
+      id (conj {:type "field" :id id}))))
+
+(defn- entity-usage-for-uri
+  "Build the entity-usage map for one URI. `content` is the result map from
+   `dispatch` (with `:structured-output`) or `nil` when the fetch errored."
+  [segments uri content]
+  (let [structured (:structured-output content)
+        outputs    (case (:result-type structured)
+                     :metabot-list   (output-refs-from-list structured)
+                     :metabot-entity (output-refs-from-entity structured)
+                     :entity         (output-refs-from-entity structured)
+                     :field-metadata (output-refs-from-field-metadata structured)
+                     [])]
+    {:input  (vec (uri-input-refs segments uri))
+     :output outputs}))
+
+(defn- dedup-refs
+  "Deduplicate entity-usage refs by `[:type :id]`, keeping the first
+   occurrence so the earliest `:metadata` annotation (typically with the
+   URI that surfaced the ref) is preserved."
+  [refs]
+  (->> refs
+       (reduce (fn [{:keys [seen out]} ref]
+                 (let [k [(:type ref) (:id ref)]]
+                   (if (contains? seen k)
+                     {:seen seen :out out}
+                     {:seen (conj seen k) :out (conj out ref)})))
+               {:seen #{} :out []})
+       :out))
+
+(defn- merge-entity-usage
+  "Concatenate per-URI entity-usage maps into one composite. Inputs and
+   outputs are each deduped by `[:type :id]`."
+  [per-uri]
+  {:input  (dedup-refs (mapcat :input per-uri))
+   :output (dedup-refs (mapcat :output per-uri))})
+
+(defn- safe-uri-segments
+  "Parse a URI to its segments tolerantly — returns `[]` if the URI is
+   malformed, so the caller can still build a (degenerate) entity-usage row
+   for a rejected URI."
+  [uri]
+  (try (:segments (parse-uri uri))
+       (catch Exception _ [])))
+
+(defn- uris->input-only-entity-usage
+  "Entity-usage derived from URIs alone (no fetch results). Used when the
+   tool errors out before any URI is fetched (e.g. too-many-URIs validation)."
+  [uris]
+  (merge-entity-usage
+   (for [uri uris]
+     (entity-usage-for-uri (safe-uri-segments uri) uri nil))))
+
 (defn read-resource
   "Read one or more Metabase resources via URI patterns.
 
@@ -686,17 +848,24 @@
             {:uri-count (count uris) :max max-concurrent-uris})))
 
   ;; Fetch all URIs (sequentially for now, could parallelize with pmap)
-  (let [resources (mapv fetch-single-uri uris)
-        formatted (format-resources resources)]
+  (let [resources    (mapv fetch-single-uri uris)
+        formatted    (format-resources resources)
+        entity-usage (merge-entity-usage
+                      (map (fn [uri {:keys [content]}]
+                             (entity-usage-for-uri (safe-uri-segments uri) uri content))
+                           uris
+                           resources))]
 
     (log/info "Fetched resources" {:total      (count resources)
                                    :successful (count (filter :content resources))
                                    :errors     (count (filter :error resources))})
 
-    {:resources resources
-     :output formatted}))
+    {:resources         resources
+     :output            formatted
+     :structured-output {:entity-usage entity-usage}}))
 
 (mu/defn ^{:tool-name "read_resource"
+           :tool-type :hybrid
            :scope     scope/agent-resource-read}
   read-resource-tool
   "Read detailed information about Metabase resources via URI patterns. Use this to navigate
@@ -737,4 +906,5 @@
     (read-resource {:uris uris})
     (catch Exception e
       (log/error e "Error in read_resource tool")
-      {:output (str "Failed to read resources: " (or (ex-message e) "Unknown error"))})))
+      {:output (str "Failed to read resources: " (or (ex-message e) "Unknown error"))
+       :structured-output {:entity-usage (uris->input-only-entity-usage uris)}})))

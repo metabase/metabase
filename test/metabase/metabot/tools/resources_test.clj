@@ -6,12 +6,14 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.tools.entity-usage :as entity-usage]
    [metabase.metabot.tools.resources :as read-resource]
    [metabase.metabot.tools.shared.llm-representations :as llm-rep]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.transforms.core :as transforms.core]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (deftest parse-uri-test
@@ -779,3 +781,213 @@
             (is (=? {:fields [{:display_name "Category"}
                               {:display_name "Count"}]}
                     structured))))))))
+
+;; ===== Phase 3d — :entity-usage population =====
+;;
+;; read_resource is a `:hybrid` tool. The URI is the input the agent
+;; dereferences; the fetch result is the output the tool surfaces. The
+;; pure helpers below derive both sides without touching the DB.
+
+(deftest uri-input-refs-test
+  (testing "top-level list URIs have no entity input"
+    (is (= [] (vec (#'read-resource/uri-input-refs ["databases"] "metabase://databases"))))
+    (is (= [] (vec (#'read-resource/uri-input-refs ["collections"] "metabase://collections"))))
+    (is (= [] (vec (#'read-resource/uri-input-refs ["user" "recent-items"]
+                                                   "metabase://user/recent-items")))))
+
+  (testing "single-entity URIs input the addressed entity with its URI in metadata"
+    (is (= [{:type "table" :id 3 :metadata {:uri "metabase://table/3"}}]
+           (#'read-resource/uri-input-refs ["table" "3"] "metabase://table/3")))
+    (is (= [{:type "database" :id 7 :metadata {:uri "metabase://database/7"}}]
+           (#'read-resource/uri-input-refs ["database" "7"] "metabase://database/7"))))
+
+  (testing "sub-resource URIs input the parent entity (no leaf)"
+    (is (= [{:type "table" :id 3 :metadata {:uri "metabase://table/3/derived"}}]
+           (#'read-resource/uri-input-refs ["table" "3" "derived"] "metabase://table/3/derived")))
+    (is (= [{:type "table" :id 3 :metadata {:uri "metabase://table/3/fields"}}]
+           (#'read-resource/uri-input-refs ["table" "3" "fields"] "metabase://table/3/fields"))))
+
+  (testing "leaf field URIs input both the parent and the field"
+    (is (= [{:type "table" :id 3 :metadata {:uri "metabase://table/3/fields/42"}}
+            {:type "field" :id 42}]
+           (#'read-resource/uri-input-refs ["table" "3" "fields" "42"]
+                                           "metabase://table/3/fields/42")))
+    (is (= [{:type "metric" :id 6 :metadata {:uri "metabase://metric/6/dimensions/77"}}
+            {:type "field" :id 77}]
+           (#'read-resource/uri-input-refs ["metric" "6" "dimensions" "77"]
+                                           "metabase://metric/6/dimensions/77"))))
+
+  (testing "composite (non-numeric) leaf ids skip the field ref but keep the parent"
+    (is (= [{:type "table" :id 3 :metadata {:uri "metabase://table/3/fields/c75/17"}}]
+           (#'read-resource/uri-input-refs ["table" "3" "fields" "c75" "17"]
+                                           "metabase://table/3/fields/c75/17"))
+        "trailing segment count > 2 under /fields means no leaf field is recorded")
+    (is (= [{:type "metric" :id 6 :metadata {:uri "metabase://metric/6/dimensions/dim-1"}}]
+           (#'read-resource/uri-input-refs ["metric" "6" "dimensions" "dim-1"]
+                                           "metabase://metric/6/dimensions/dim-1"))
+        "non-parse-able dimension id is dropped"))
+
+  (testing "schema names in path do not become entity refs"
+    (is (= [{:type "database" :id 1
+             :metadata {:uri "metabase://database/1/schemas/PUBLIC/tables"}}]
+           (#'read-resource/uri-input-refs ["database" "1" "schemas" "PUBLIC" "tables"]
+                                           "metabase://database/1/schemas/PUBLIC/tables")))))
+
+(deftest output-refs-from-list-test
+  (testing "projects items with type/id; drops items whose :type isn't in the closed enum"
+    (is (= [{:type "table" :id 1 :metadata {:uri "metabase://table/1"}}
+            {:type "model" :id 4 :metadata {:uri "metabase://model/4"}}]
+           (#'read-resource/output-refs-from-list
+            {:items [{:type "table"  :id 1 :uri "metabase://table/1"}
+                     {:type "schema" :name "PUBLIC"} ;; not an entity type — dropped
+                     {:type "model"  :id 4 :uri "metabase://model/4"}]}))))
+  (testing "items without :uri are still projected (no metadata)"
+    (is (= [{:type "table" :id 1}]
+           (#'read-resource/output-refs-from-list
+            {:items [{:type "table" :id 1}]})))))
+
+(deftest output-refs-from-entity-test
+  (testing "single-entity :metabot-entity result projects the entity"
+    (is (= [{:type "database" :id 1 :metadata {:uri "metabase://database/1"}}]
+           (#'read-resource/output-refs-from-entity
+            {:type "database" :id 1 :uri "metabase://database/1"}))))
+
+  (testing "get-table-details (:entity, keyword :type) projects table + related + fields"
+    (is (= [{:type "table" :id 3}
+            {:type "table" :id 9}
+            {:type "field" :id 100}
+            {:type "field" :id 101}]
+           (#'read-resource/output-refs-from-entity
+            {:type           :table
+             :id             3
+             :fields         [{:field_id 100}
+                              {:field_id "expr_alias"} ;; non-int — dropped
+                              {:field_id 101}]
+             :related_tables [{:id 9 :name "joined"}]}))))
+
+  (testing "get-metric-details projects metric + queryable-dimensions as fields"
+    (is (= [{:type "metric" :id 6}
+            {:type "field"  :id 200}
+            {:type "field"  :id 201}]
+           (#'read-resource/output-refs-from-entity
+            {:type :metric
+             :id   6
+             :queryable-dimensions [{:field_id 200} {:field_id 201}]}))))
+
+  (testing "entity whose :type is not in the closed enum yields no head ref"
+    (is (= []
+           (#'read-resource/output-refs-from-entity
+            {:type :schema :id "PUBLIC"})))))
+
+(deftest output-refs-from-field-metadata-test
+  (testing "integer :field_id passes through"
+    (is (= [{:type "field" :id 42}]
+           (#'read-resource/output-refs-from-field-metadata {:field_id 42}))))
+  (testing "string-encoded numeric :field_id is parsed so it dedups with URI leaf ref"
+    (is (= [{:type "field" :id 42}]
+           (#'read-resource/output-refs-from-field-metadata {:field_id "42"}))))
+  (testing "non-numeric string :field_id is preserved verbatim"
+    (is (= [{:type "field" :id "sum_total"}]
+           (#'read-resource/output-refs-from-field-metadata {:field_id "sum_total"}))))
+  (testing "nil :field_id yields no ref"
+    (is (= [] (#'read-resource/output-refs-from-field-metadata {})))))
+
+(deftest entity-usage-for-uri-test
+  (testing "list result — input from URI, output from items"
+    (is (= {:input  [{:type "database" :id 1
+                      :metadata {:uri "metabase://database/1/tables"}}]
+            :output [{:type "table" :id 5 :metadata {:uri "metabase://table/5"}}]}
+           (#'read-resource/entity-usage-for-uri
+            ["database" "1" "tables"]
+            "metabase://database/1/tables"
+            {:structured-output {:result-type :metabot-list
+                                 :list-type   :database-tables
+                                 :items       [{:type "table" :id 5 :uri "metabase://table/5"}]}}))))
+
+  (testing "field-metadata result — input has parent + leaf; output has surfaced field"
+    (is (= {:input  [{:type "table" :id 3
+                      :metadata {:uri "metabase://table/3/fields/42"}}
+                     {:type "field" :id 42}]
+            :output [{:type "field" :id 42}]}
+           (#'read-resource/entity-usage-for-uri
+            ["table" "3" "fields" "42"]
+            "metabase://table/3/fields/42"
+            {:structured-output {:result-type :field-metadata
+                                 :field_id    "42"
+                                 :value_metadata {}}}))))
+
+  (testing "error path — content nil; still emit URI input with empty output"
+    (is (= {:input  [{:type "table" :id 99
+                      :metadata {:uri "metabase://table/99"}}]
+            :output []}
+           (#'read-resource/entity-usage-for-uri
+            ["table" "99"] "metabase://table/99" nil)))))
+
+(deftest merge-entity-usage-test
+  (testing "concatenates per-URI input/output and dedups by [:type :id]"
+    (is (= {:input  [{:type "table" :id 1 :metadata {:uri "metabase://table/1"}}
+                     {:type "table" :id 2 :metadata {:uri "metabase://table/2"}}]
+            :output [{:type "field" :id 10}
+                     {:type "field" :id 11}]}
+           (#'read-resource/merge-entity-usage
+            [{:input  [{:type "table" :id 1 :metadata {:uri "metabase://table/1"}}]
+              :output [{:type "field" :id 10}]}
+             {:input  [{:type "table" :id 2 :metadata {:uri "metabase://table/2"}}
+                       ;; duplicate of the first URI's input — dropped, keeping the
+                       ;; earlier metadata.
+                       {:type "table" :id 1 :metadata {:uri "metabase://table/1/derived"}}]
+              :output [{:type "field" :id 10}      ;; duplicate — dropped
+                       {:type "field" :id 11}]}]))))
+
+  (testing "empty per-URI list yields empty channels"
+    (is (= {:input [] :output []} (#'read-resource/merge-entity-usage [])))))
+
+;; ===== End-to-end: read_resource carries :structured-output {:entity-usage ...} =====
+
+(deftest read-resource-attaches-entity-usage-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Database {db-id :id} {:name "EU-DB"}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "EU-TBL" :active true}]
+      (testing "single listing URI — input is the database, output surfaces the table"
+        (let [eu (-> (read-resource/read-resource
+                      {:uris [(str "metabase://database/" db-id "/tables")]})
+                     (get-in [:structured-output :entity-usage]))]
+          (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+          (is (= [{:type "database" :id db-id
+                   :metadata {:uri (str "metabase://database/" db-id "/tables")}}]
+                 (:input eu)))
+          (is (some #(and (= "table" (:type %)) (= t-id (:id %))) (:output eu))
+              "the table-row appears in the surfaced outputs")))
+
+      (testing "single entity URI — input AND output include the table"
+        (let [eu (-> (read-resource/read-resource
+                      {:uris [(str "metabase://table/" t-id)]})
+                     (get-in [:structured-output :entity-usage]))]
+          (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+          (is (= [{:type "table" :id t-id
+                   :metadata {:uri (str "metabase://table/" t-id)}}]
+                 (:input eu)))
+          (is (some #(and (= "table" (:type %)) (= t-id (:id %))) (:output eu)))))
+
+      (testing "multi-URI call merges per-URI entity-usage (deduped)"
+        (let [eu (-> (read-resource/read-resource
+                      {:uris [(str "metabase://database/" db-id)
+                              (str "metabase://database/" db-id "/tables")]})
+                     (get-in [:structured-output :entity-usage]))]
+          (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+          (is (= 1 (count (filter #(= "database" (:type %)) (:input eu))))
+              "duplicate database ref across URIs is deduped on the input side")
+          (is (some #(and (= "table" (:type %)) (= t-id (:id %))) (:output eu))
+              "the listing URI's surfaced table appears in merged outputs"))))))
+
+(deftest read-resource-error-path-attaches-entity-usage-test
+  (testing "too-many-URIs error path still emits input refs from the URIs"
+    (let [uris   (vec (repeat 10 "metabase://table/123"))
+          result (read-resource/read-resource-tool {:uris uris})
+          eu     (get-in result [:structured-output :entity-usage])]
+      (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+      (is (= [{:type "table" :id 123 :metadata {:uri "metabase://table/123"}}]
+             (:input eu))
+          "URIs are deduped to a single ref")
+      (is (= [] (:output eu)))
+      (is (str/starts-with? (:output result) "Failed to read resources")))))

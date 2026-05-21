@@ -165,7 +165,9 @@
     "get_field_values"
     "get_transform_details"
     "get_transform_python_library_details"
-    "document_schema_collect"})
+    "document_schema_collect"
+    ;; Phase 3d — Hybrid tool (per-URI discovery / inspection dispatch).
+    "read_resource"})
 
 (defn- wrap-with-entity-usage-validation
   "Wrap a tool fn so its returned `:entity-usage` is validated against the
