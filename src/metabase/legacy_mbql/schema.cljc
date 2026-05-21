@@ -1692,15 +1692,7 @@
 
   Map of template tag name -> template tag definition"
   [:and
-   [:map-of
-    {:decode/normalize (fn [m]
-                         (when (and (map? m)
-                                    (seq m))
-                           (update-keys m (fn [k]
-                                            (cond-> k
-                                              (keyword? k) u/qualified-name)))))}
-    ::lib.schema.common/non-blank-string
-    [:ref ::TemplateTag]]
+   [:map-of ::lib.schema.common/non-blank-string [:ref ::TemplateTag]]
    [:ref ::lib.schema.template-tag/template-tag-map.validate-names]])
 
 (defn- remove-empty-keys [m {:keys [non-empty-keys non-nil-keys]}]
@@ -1734,33 +1726,44 @@
      :source-table ":source-table is only allowed in MBQL inner queries."
      :fields       ":fields is only allowed in MBQL inner queries."})])
 
-(mr/def ::NativeQuery
+(mr/def ::TopLevelNativeInnerQuery
   "Schema for a valid, normalized native [inner] query."
-  [:merge
-   {:decode/normalize #'remove-empty-keys-from-native-inner-query}
-   ::NativeQuery.Common
-   [:map
-    [:query :some]]])
+  [:and
+   [:merge
+    {:decode/normalize #'remove-empty-keys-from-native-inner-query}
+    ::NativeQuery.Common
+    [:map
+     [:query :some]]]
+   (lib.schema.common/disallowed-keys
+    {:native "A top-level native inner query should have the :query key, not :native"})])
 
 (mr/def ::NativeSourceQuery
-  [:merge
-   {:decode/normalize #'remove-empty-keys-from-native-inner-query}
-   ::NativeQuery.Common
-   [:map
-    [:native :some]]])
+  [:and
+   [:merge
+    {:decode/normalize #'remove-empty-keys-from-native-inner-query}
+    ::NativeQuery.Common
+    [:map
+     [:native :some]]]
+   (lib.schema.common/disallowed-keys
+    {:query "A top-level native inner query should have the :native key, not :query"})])
 
 (mr/def ::SourceQuery
   "Schema for a valid value for a `:source-query`."
-  [:multi
-   {:dispatch (fn [x]
-                (if ((every-pred map? :native) x)
-                  :native
-                  :mbql))}
-   ;; when using native queries as source queries the schema is exactly the same except use `:native` in place of
-   ;; `:query` for reasons I do not fully remember (perhaps to make it easier to differentiate them from MBQL source
-   ;; queries).
-   [:native [:ref ::NativeSourceQuery]]
-   [:mbql   [:ref ::MBQLInnerQuery]]])
+  [:and
+   ;; normalize the keys in the map first so we can check for the presence of `:native` versus `:mbql` in the `:multi`
+   ;; schema below
+   [:map
+    {:decode/normalize lib.schema.common/normalize-map}]
+   [:multi
+    {:dispatch (fn [x]
+                 (if ((every-pred map? :native) x)
+                   :native
+                   :mbql))}
+    ;; when using native queries as source queries the schema is exactly the same except use `:native` in place of
+    ;; `:query` for reasons I do not fully remember (perhaps to make it easier to differentiate them from MBQL source
+    ;; queries).
+    [:native [:ref ::NativeSourceQuery]]
+    [:mbql   [:ref ::MBQLInnerQuery]]]])
 
 (defn- normalize-legacy-column
   "Normalize legacy column metadata when using [[metabase.lib.normalize/normalize]]."
@@ -2211,7 +2214,7 @@
        :description "Type of query. `:query` = MBQL; `:native` = native."}
       :query :native]]
 
-    [:native     {:optional true} [:ref ::NativeQuery]]
+    [:native     {:optional true} [:ref ::TopLevelNativeInnerQuery]]
     [:query      {:optional true} [:ref ::MBQLInnerQuery]]
     [:parameters {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]
     ;;

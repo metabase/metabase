@@ -61,6 +61,7 @@
   [_ info & _]
   (value info nil))
 
+
 (defmethod add-type-info Object
   [this info & _]
   (value info this))
@@ -212,14 +213,14 @@
     (lib/absolute-datetime t target-unit)))
 
 (defmethod add-type-info String
-  [s {:keys [unit], :as info} & {:keys [parse-datetime-strings?]
-                                 :or   {parse-datetime-strings? true}}]
-  (if (and (or unit (when info (lib.types.isa/temporal? info)))
+  [s {:keys [unit], :as col} & {:keys [parse-datetime-strings?]
+                                :or   {parse-datetime-strings? true}}]
+  (if (and (or unit (when col (lib.types.isa/temporal? col)))
            parse-datetime-strings?
            (seq s))
-    (let [effective-type ((some-fn :effective-type :base-type) info)]
+    (let [effective-type ((some-fn :effective-type :base-type) col)]
       (parse-temporal-string-literal effective-type s (or unit :default)))
-    (value info s)))
+    (value col s)))
 
 ;;; -------------------------------------------- wrap-literals-in-clause ---------------------------------------------
 
@@ -318,12 +319,3 @@
                          (fn [clause]
                            (wrap-value-literals-in-clause nil nil clause)))
                         first)))))
-
-;; NOCOMMIT - we can remove this now
-(mu/defn wrap-value-literals-in-mbql :- [:cat :keyword [:* :any]]
-  "Wrapper around `wrap-value-literals-in-mbql5` that converts the clause back to legacy MBQL.
-  DEPRECATED: This is for legacy compatibility and should not be used in new code."
-  {:deprecated "0.57.0"}
-  [mbql :- [:cat :keyword [:* :any]]]
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib/->legacy-MBQL (wrap-value-literals-in-mbql5 mbql)))

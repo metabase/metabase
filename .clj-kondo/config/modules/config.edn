@@ -837,7 +837,6 @@
            config
            driver-api
            events
-           legacy-mbql
            lib
            lib-be
            premium-features
@@ -1760,8 +1759,7 @@
               metabase.query-processor.streaming.interface
               metabase.query-processor.timezone
               metabase.query-processor.util
-              metabase.query-processor.util.add-alias-info
-              metabase.query-processor.util.persisted-cache}
+              metabase.query-processor.util.add-alias-info}
    :uses #{analytics
            analytics-interface
            analyze

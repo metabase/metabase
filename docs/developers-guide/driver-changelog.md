@@ -38,6 +38,9 @@ title: Driver interface changelog
   called in Metabase 0.62.0+; on the off chance that you implemented it, please implement
   `substitute-native-parameters-in-stage-method` instead as soon as possible.
 
+- `metabase.driver-api.core/wrap-value-literals-in-mbql` has been removed; use
+  `metabase.driver-api.core/wrap-value-literals-in-mbql5` instead.
+
 ## Metabase 0.61.0
 
 - Added the following driver multimethods to support MBQL5 compilation migration:

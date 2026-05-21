@@ -595,7 +595,7 @@
     (is (thrown?
          clojure.lang.ExceptionInfo
          (params.values/stage->params-map (query-with-snippet meta/metadata-provider)))))
-  (testing "If no such Snippet exists, it should throw an #?(:clj Exception :cljs :default"
+  (testing "If no such Snippet exists, it should throw an exception"
     (is (thrown?
          clojure.lang.ExceptionInfo
          (params.values/stage->params-map (query-with-snippet meta/metadata-provider :snippet-id Integer/MAX_VALUE))))))

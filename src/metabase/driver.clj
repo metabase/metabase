@@ -1117,7 +1117,7 @@
 
   Much of the implementation for this method is shared across drivers and lives in the
   `metabase.query-processor.parameters.*` namespaces. See the `:sql` and `:mongo` drivers for sample implementations
-  of this method.`Driver-agnostic end-to-end native parameter tests live in
+  of this method. Driver-agnostic end-to-end native parameter tests live in
   [[metabase.query-processor.parameters-test]] and other namespaces."
   {:added "0.62.0"}
   [driver                :- :keyword

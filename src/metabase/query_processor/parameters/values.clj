@@ -3,7 +3,7 @@
   don't parse the query itself, but instead look at the values of `:template-tags` and `:parameters` passed along with
   the query.)
 
-    (query->params-map some-inner-query)
+    (query->params-map metadata-provider stage)
     ;; -> {\"checkin_date\" {:field {:name \"date\", :parent_id nil, :table_id 1375}
                              :param {:type   \"date/range\"
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
@@ -275,7 +275,7 @@
 
 (mu/defmethod parse-tag :temporal-unit
   [_metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   {:keys [required] tag-name :name :as tag}
+   {:keys [required] tag-name :name :as tag} :- ::lib.schema.template-tag/template-tag
    params]
   (let [matching-param       (when-let [matching-params (not-empty (tag-params tag params))]
                                (when (> (count matching-params) 1)
