@@ -14,10 +14,7 @@ import {
   MetricsViewerNoTabsEmptyState,
 } from "../../components/EmptyState";
 import { MetricSearchPanel } from "../../components/MetricSearchPanel";
-import {
-  MetricsViewerTabContent,
-  MetricsViewerTabs,
-} from "../../components/MetricsViewerTabs";
+import { MetricsViewerTabContent } from "../../components/MetricsViewerTabs";
 import { useMetricsViewer } from "../../hooks/use-metrics-viewer";
 import type { SelectedMetric } from "../../types/viewer-state";
 
@@ -35,7 +32,6 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     formulaEntities,
     tabs,
     activeTab,
-    activeTabId,
     initialLoadComplete,
     queriesAreLoading,
     queriesError,
@@ -52,9 +48,7 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     addMetric,
     swapMetric,
     removeMetric,
-    changeTab,
     addAndSelectTab,
-    removeTab,
     updateActiveTab,
     changeTabDimension,
     removeTabDimension,
@@ -91,6 +85,8 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
   const hasLoadedDefinitions = Object.values(definitions).some(
     (entry) => entry.definition != null,
   );
+  const hasMultipleSources = sourceOrder.length > 1;
+  const canAddScalarTab = !tabs.some((tab) => tab.type === "scalar");
 
   return (
     <Stack px="3rem" h="100%" gap={0} className={S.root}>
@@ -109,21 +105,6 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
       </Box>
       <Flex flex="1 1 auto" mih={0}>
         <Stack gap={0} flex={1} mih={0} miw={0}>
-          {hasDefinitions && (
-            <Box pt="sm" flex="0 0 auto" className={S.tabsBar}>
-              <MetricsViewerTabs
-                tabs={tabs}
-                activeTabId={activeTabId}
-                isLoading={!hasLoadedDefinitions}
-                availableDimensions={availableDimensions}
-                sourceOrder={sourceOrder}
-                sourceDataById={sourceDataById}
-                onTabChange={changeTab}
-                onAddTab={addAndSelectTab}
-                onRemoveTab={removeTab}
-              />
-            </Box>
-          )}
           <Flex flex="1 1 auto" mih={0} pt="lg">
             <Flex
               direction="column"
@@ -149,6 +130,11 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
                   series={series}
                   cardIdToEntityIndex={cardIdToEntityIndex}
                   sourceColors={sourceColors}
+                  availableDimensions={availableDimensions}
+                  sourceOrder={sourceOrder}
+                  sourceDataById={sourceDataById}
+                  hasMultipleSources={hasMultipleSources}
+                  canAddScalarTab={canAddScalarTab}
                   onTabUpdate={updateActiveTab}
                   onDimensionChange={(slotIndex, dim) =>
                     changeTabDimension(activeTab.id, slotIndex, dim)
@@ -156,6 +142,7 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
                   onDimensionRemove={(slotIndex) =>
                     removeTabDimension(activeTab.id, slotIndex)
                   }
+                  onAddTab={addAndSelectTab}
                 />
               ) : hasLoadedDefinitions ? (
                 <MetricsViewerNoTabsEmptyState />

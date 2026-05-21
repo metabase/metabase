@@ -1,5 +1,27 @@
 import { useCallback, useMemo } from "react";
 
+import type {
+  MetricSourceId,
+  MetricsViewerDefinitionEntry,
+  MetricsViewerDisplayType,
+  MetricsViewerFormulaEntity,
+  MetricsViewerTabProjectionConfig,
+  MetricsViewerTabState,
+  SourceColorMap,
+} from "metabase/metrics-viewer/types/viewer-state";
+import { getProjectionInfo } from "metabase/metrics-viewer/utils/definition-builder";
+import type { DimensionFilterValue } from "metabase/metrics-viewer/utils/dimension-filters";
+import type {
+  AvailableDimensionsResult,
+  SourceDisplayInfo,
+} from "metabase/metrics-viewer/utils/dimension-picker";
+import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
+import {
+  buildDimensionItemsFromDefinitions,
+  shouldShowStackSeries,
+} from "metabase/metrics-viewer/utils/series";
+import { getTabConfig } from "metabase/metrics-viewer/utils/tab-config";
+import type { TabInfo } from "metabase/metrics-viewer/utils/tabs";
 import { Box, Flex, Stack } from "metabase/ui";
 import { getObjectKeys, getObjectValues } from "metabase/utils/objects";
 import { isNotNull } from "metabase/utils/types";
@@ -12,23 +34,6 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import type {
-  MetricSourceId,
-  MetricsViewerDefinitionEntry,
-  MetricsViewerDisplayType,
-  MetricsViewerFormulaEntity,
-  MetricsViewerTabProjectionConfig,
-  MetricsViewerTabState,
-  SourceColorMap,
-} from "../../../types/viewer-state";
-import { getProjectionInfo } from "../../../utils/definition-builder";
-import type { DimensionFilterValue } from "../../../utils/dimension-filters";
-import type { MetricSlot } from "../../../utils/metric-slots";
-import {
-  buildDimensionItemsFromDefinitions,
-  shouldShowStackSeries,
-} from "../../../utils/series";
-import { getTabConfig } from "../../../utils/tab-config";
 import { DimensionPillBar } from "../../DimensionPillBar";
 import { MetricControls } from "../../MetricControls";
 import { MetricsViewerVisualization } from "../../MetricsViewerVisualization";
@@ -44,9 +49,15 @@ type MetricsViewerTabContentProps = {
   series: SingleSeries[];
   cardIdToEntityIndex: Record<CardId, number>;
   sourceColors: SourceColorMap;
+  availableDimensions: AvailableDimensionsResult;
+  sourceOrder: MetricSourceId[];
+  sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
+  hasMultipleSources: boolean;
+  canAddScalarTab: boolean;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
   onDimensionChange: (slotIndex: number, dimension: DimensionMetadata) => void;
   onDimensionRemove: (slotIndex: number) => void;
+  onAddTab: (tabInfo: TabInfo) => void;
 };
 
 export function MetricsViewerTabContent({
@@ -60,9 +71,15 @@ export function MetricsViewerTabContent({
   series: rawSeries,
   cardIdToEntityIndex,
   sourceColors,
+  availableDimensions,
+  sourceOrder,
+  sourceDataById,
+  hasMultipleSources,
+  canAddScalarTab,
   onTabUpdate,
   onDimensionChange,
   onDimensionRemove,
+  onAddTab,
 }: MetricsViewerTabContentProps) {
   const dimensionFilter = getTabConfig(tab.type).dimensionPredicate;
 
@@ -236,12 +253,19 @@ export function MetricsViewerTabContent({
             definition={definitionForControls}
             displayType={tab.display}
             tabType={tab.type}
+            tabLabel={tab.label}
             dimensionFilter={tab.projectionConfig.dimensionFilter}
             allFilterDimensions={allFilterDimensions}
+            availableDimensions={availableDimensions}
+            sourceOrder={sourceOrder}
+            sourceDataById={sourceDataById}
+            hasMultipleSources={hasMultipleSources}
+            canAddScalarTab={canAddScalarTab}
             onDisplayTypeChange={handleDisplayTypeChange}
             onDimensionFilterChange={handleDimensionFilterChange}
             onTemporalUnitChange={handleTemporalUnitChange}
             onBinningChange={handleBinningChange}
+            onAddTab={onAddTab}
             showStackSeries={showStackSeries}
             visualizationSettings={tab.visualizationSettings}
             onVisualizationSettingsChange={handleVisualizationSettingsChange}
