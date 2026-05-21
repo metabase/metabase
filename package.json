@@ -210,6 +210,7 @@
     "@redocly/cli": "^2.14.3",
     "@rspack/cli": "^2.0.3",
     "@rspack/core": "^2.0.3",
+    "@rspack/dev-server": "^2.0.1",
     "@rspack/plugin-react-refresh": "^2.0.0",
     "@sinonjs/fake-timers": "^9.1.2",
     "@storybook/addon-a11y": "^8.5.0",

@@ -32,7 +32,6 @@ interface VisualizationErrorProps {
   duration: number;
   error: DatasetError;
   errorType?: DatasetErrorType;
-  isResultDirty?: boolean;
 }
 
 export function VisualizationError({
@@ -42,7 +41,6 @@ export function VisualizationError({
   duration,
   error,
   errorType,
-  isResultDirty,
 }: VisualizationErrorProps) {
   const query = question.query();
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
@@ -150,7 +148,7 @@ export function VisualizationError({
                 {t`Learn how to debug SQL errors`}
               </ExternalLink>
             )}
-            {!isResultDirty && <FixSqlQueryButton />}
+            <FixSqlQueryButton />
           </Flex>
         </Flex>
       </Box>
