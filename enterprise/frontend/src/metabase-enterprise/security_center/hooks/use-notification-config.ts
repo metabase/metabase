@@ -75,15 +75,15 @@ export function serializeNotificationConfig(
     type: "notification-recipient/group",
     permissions_group_id: ADMIN_GROUP_ID,
   };
-  const email_recipients: NotificationRecipient[] = [
+  const emailRecipients: NotificationRecipient[] = [
     ...(config.email.sendToAllAdmins ? [adminGroupRecipient] : []),
     ...config.email.handler.recipients,
   ];
-  const slack_channel: string | null =
+  const slackChannel: string | null =
     config.slack.enabled && config.slack.handler.recipients.length > 0
       ? config.slack.handler.recipients[0].details.value
       : null;
-  return { email_recipients, slack_channel };
+  return { emailRecipients, slackChannel };
 }
 
 function configFromSettings(
