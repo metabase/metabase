@@ -24,13 +24,7 @@ import { isSettledExplorationQueryStatus } from "metabase-types/api";
 import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
 import S from "./ExplorationVisualization.module.css";
 import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader";
-import { StickyXAxisChart } from "./StickyXAxisChart";
-import { useMainChartAxisSnapshot } from "./useMainChartAxisSnapshot";
-import { buildSeriesGroups } from "./utils";
-
-const MIN_PANEL_HEIGHT_PX = 200;
-const STICKY_AXIS_HEIGHT_PX = 60;
-const NUM_PANELS_BEFORE_STICKY_AXIS = 2;
+import { buildSeriesGroups, getHeatMapSeries } from "./utils";
 
 interface ExplorationGroupVisualizationProps {
   group: ExplorationQueryGroup;
@@ -43,6 +37,8 @@ interface ExplorationGroupVisualizationProps {
   interestingTimelineIds?: ReadonlySet<TimelineId>;
   exploration: Exploration;
 }
+
+const STACK_PANEL_HEIGHT = 64;
 
 export function ExplorationGroupVisualization(
   props: ExplorationGroupVisualizationProps,
@@ -214,180 +210,111 @@ function ExplorationGroupVisualizationChart({
         groupQueries={queries}
         interestingTimelineIds={interestingTimelineIds}
       />
-      {seriesGroups.map(({ series }) =>
+      {seriesGroups.map(({ series, stackCount }) =>
         isCartesianChart(series[0].card.display) ? (
-          <CartesianPageBody
+          <ExplorationCartesianChart
             key={series[0].card.id}
             series={series}
             timelineEvents={timelineEvents}
+            stackCount={stackCount}
           />
+        ) : series[0].card.display === "table" ? (
+          <ExplorationHeatMap key={series[0].card.id} series={series} />
         ) : (
-          // Non-cartesian (e.g. `map`): render each query as its own
-          // chart, stacked vertically. Each chart gets a small header
-          // row (color dot + chart name) consolidated in a single
-          // wrap-flex legend at the top.
-          <Stack
+          <ExplorationMap
             key={series[0].card.id}
-            gap="md"
-            flex={1}
-            mih={0}
-            style={{ overflowY: "auto" }}
-          >
-            {series.length > 1 && (
-              <Group
-                gap="0.75rem"
-                wrap="nowrap"
-                role="list"
-                aria-label={t`Legend`}
-              >
-                {series.map((s) => {
-                  const color = queryColors[s.card.id];
-                  return (
-                    <Group
-                      key={s.card.id}
-                      gap="xs"
-                      align="center"
-                      wrap="nowrap"
-                      role="listitem"
-                      p="0.125rem"
-                      miw={0}
-                    >
-                      <Box
-                        aria-hidden
-                        w="0.5rem"
-                        h="0.5rem"
-                        bdrs="50%"
-                        flex="none"
-                        style={{ background: color }}
-                      />
-                      <Ellipsified
-                        fw="bold"
-                        size="sm"
-                        fz={LEGEND_ITEM_FONT_SIZE}
-                        lh="normal"
-                      >
-                        {s.card.name}
-                      </Ellipsified>
-                    </Group>
-                  );
-                })}
-              </Group>
-            )}
-            {series.map((s) => (
-              <Box
-                key={s.card.id}
-                flex={1}
-                mih="10rem"
-                style={{ flexShrink: 0 }}
-              >
-                <Visualization rawSeries={[s]} className={S.chart} />
-              </Box>
-            ))}
-          </Stack>
+            series={series}
+            queryColors={queryColors}
+          />
         ),
       )}
     </>
   );
 }
 
-interface CartesianPageBodyProps {
+interface ExplorationCartesianChartProps {
   series: SingleSeries[];
   timelineEvents: TimelineEvent[];
+  stackCount?: number;
 }
 
-function CartesianPageBody({ series, timelineEvents }: CartesianPageBodyProps) {
-  // Extract the live x-axis option from the main chart's ECharts
-  // instance so the sticky axis below it uses the exact same font,
-  // tick formatter, axis name, and grid.left.
-  const { mainChartContainerRef, mainChartAxisSnapshot } =
-    useMainChartAxisSnapshot(true, series);
-
-  const naturalChartHeight = series.length * MIN_PANEL_HEIGHT_PX;
-  const shouldShowStickyAxis = series.length > NUM_PANELS_BEFORE_STICKY_AXIS;
-
-  // When the sticky axis is active, hide the main chart's bottom
-  // x-axis entirely (ticks + line + title) so we don't render the
-  // axis twice. We pass `axis_enabled: false` (hides ticks/labels/
-  // line) and `labels_enabled: false` (hides the axis title). The
-  // sticky chart restores axis-label/line visibility on its own
-  // copy of the option, and falls back to a separate `xAxisTitle`
-  // prop for the title text (the main chart's snapshot loses
-  // `xAxis.name` once `labels_enabled` is false).
-  const adjustedSeries = useMemo(() => {
-    if (!shouldShowStickyAxis) {
-      return series;
-    }
-    return series.map((s) => ({
-      ...s,
-      card: {
-        ...s.card,
-        visualization_settings: {
-          ...s.card.visualization_settings,
-          "graph.x_axis.axis_enabled": false,
-          "graph.x_axis.labels_enabled": false,
-        },
-      },
-    }));
-  }, [series, shouldShowStickyAxis]);
-
-  // Compute the axis title independently of the rendered snapshot.
-  // When `labels_enabled` is disabled on the main chart, its
-  // snapshot loses `xAxis.name` — and reading from the snapshot
-  // would race with the first ResizeObserver tick that triggers the
-  // disable. The cartesian builder's default for
-  // `graph.x_axis.title_text` is just the dimension column's
-  // `display_name` (see `getDefaultXAxisTitle`), so compute it from
-  // the series directly. Stable, no timing dependency.
-  const xAxisTitle = series[0]?.data?.cols?.[0]?.display_name ?? null;
-
+function ExplorationCartesianChart({
+  series,
+  timelineEvents,
+  stackCount,
+}: ExplorationCartesianChartProps) {
   return (
-    <Box
-      flex={1}
-      mih={0}
-      // some of the next panel should be visible to indicate that there are more panels to scroll through
-      mah={MIN_PANEL_HEIGHT_PX * (NUM_PANELS_BEFORE_STICKY_AXIS + 0.5)}
-      style={{
-        overflowY: "auto",
-        position: "relative",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <Box ref={mainChartContainerRef} flex={1} mih={`${naturalChartHeight}px`}>
-        <Visualization
-          rawSeries={adjustedSeries}
-          timelineEvents={timelineEvents}
-          className={S.chart}
-        />
-      </Box>
-      {shouldShowStickyAxis && (
-        <Box
-          h={`${STICKY_AXIS_HEIGHT_PX}px`}
-          data-testid="exploration-sticky-x-axis"
-          bg="background-primary"
-          flex="none"
-          style={{
-            position: "sticky",
-            bottom: 0,
-            zIndex: 1,
-            marginLeft: mainChartAxisSnapshot.chartLeftOffset || undefined, // When the main cartesian chart renders a side legend, mirror that horizontal box
-            width:
-              mainChartAxisSnapshot.chartWidth != null
-                ? `${mainChartAxisSnapshot.chartWidth}px`
-                : undefined,
-          }}
-        >
-          <StickyXAxisChart
-            series={series}
-            xAxisOption={mainChartAxisSnapshot.xAxis}
-            xAxisExtent={mainChartAxisSnapshot.xAxisExtent}
-            xAxisCategories={mainChartAxisSnapshot.xAxisCategories}
-            xAxisTitle={xAxisTitle}
-            gridLeft={mainChartAxisSnapshot.gridLeft}
-            gridRight={mainChartAxisSnapshot.gridRight}
-          />
-        </Box>
-      )}
+    <Box flex={1} mih={stackCount ? stackCount * STACK_PANEL_HEIGHT : "10rem"}>
+      <Visualization
+        rawSeries={series}
+        timelineEvents={timelineEvents}
+        className={S.chart}
+      />
     </Box>
+  );
+}
+
+interface ExplorationHeatMapProps {
+  series: SingleSeries[];
+}
+
+function ExplorationHeatMap({ series }: ExplorationHeatMapProps) {
+  const combinedSeries = getHeatMapSeries({ series });
+  return (
+    <Box flex={1} mih="10rem">
+      <Visualization rawSeries={[combinedSeries]} className={S.chart} />
+    </Box>
+  );
+}
+
+interface ExplorationMapProps {
+  series: SingleSeries[];
+  queryColors: Record<string, string>;
+}
+
+function ExplorationMap({ series, queryColors }: ExplorationMapProps) {
+  return (
+    <Stack key={series[0].card.id} gap="md" flex={1}>
+      {series.length > 1 && (
+        <Group gap="0.75rem" wrap="nowrap" role="list" aria-label={t`Legend`}>
+          {series.map((s) => {
+            const color = queryColors[s.card.id];
+            return (
+              <Group
+                key={s.card.id}
+                gap="xs"
+                align="center"
+                wrap="nowrap"
+                role="listitem"
+                p="0.125rem"
+                miw={0}
+              >
+                <Box
+                  aria-hidden
+                  w="0.5rem"
+                  h="0.5rem"
+                  bdrs="50%"
+                  flex="none"
+                  style={{ background: color }}
+                />
+                <Ellipsified
+                  fw="bold"
+                  size="sm"
+                  fz={LEGEND_ITEM_FONT_SIZE}
+                  lh="normal"
+                >
+                  {s.card.name}
+                </Ellipsified>
+              </Group>
+            );
+          })}
+        </Group>
+      )}
+      {series.map((s) => (
+        <Box key={s.card.id} flex={1} mih="10rem">
+          <Visualization rawSeries={[s]} className={S.chart} />
+        </Box>
+      ))}
+    </Stack>
   );
 }
