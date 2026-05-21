@@ -3,6 +3,7 @@
    [clojure.core.async :as a]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -14,10 +15,26 @@
 
 (set! *warn-on-reflection* true)
 
+(defenterprise resolve-transform-target
+  "Hook for workspace isolation: given a database id and a transform's canonical target
+  `{:schema ..., :name ...}`, returns the target the transform should actually write to.
+
+  When workspace isolation is active for `db-id`, the EE impl rewrites the target's
+  `:schema` to the workspace's output schema and records a `TableRemapping` so that
+  subsequent queries against the canonical `(schema, name)` pair resolve to the
+  workspace copy via the QP middleware.
+
+  OSS / no-workspace fallback: returns the target unchanged."
+  metabase-enterprise.workspaces.transform-hooks
+  [_db-id target]
+  target)
+
 (defn- run-mbql-transform!
   ([transform] (run-mbql-transform! transform nil))
   ([{:keys [id source target owner_user_id creator_id] :as transform}
     {:keys [run-method start-promise user-id]}]
+   ;; `:target` is already workspace-rewritten — `resolve-transform-target` runs in
+   ;; `metabase.transforms.execute/execute!` before dispatch.
    (try
      (let [db          (t2/select-one :model/Database (get-in source [:query :database]))
            driver      (:engine db)

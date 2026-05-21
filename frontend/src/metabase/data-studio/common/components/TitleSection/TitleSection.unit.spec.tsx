@@ -14,7 +14,7 @@ function setup({ label = "Default Title", children }: SetupOpts = {}) {
 }
 
 describe("TitleSection", () => {
-  it("should render label, rightSection, and children", () => {
+  it("should render label and children", () => {
     const label = "Custom Title Label";
     const children = <div>Title section content</div>;
 

@@ -2049,8 +2049,13 @@
 
 (defmethod ->honeysql [:sql :metadata/table]
   [driver table]
-  (let [{table-name :name, schema :schema} table]
-    (->honeysql driver (h2x/identifier :table schema table-name))))
+  ;; `:db` is normally absent on `:metadata/table` — sync doesn't populate it.
+  ;; Workspace remap (and any future cross-DB rewriter) can fill it to route the
+  ;; query at a database different from the connection's bound one. The
+  ;; identifier helper drops nil components, so absent `:db` produces the same
+  ;; `schema.table` shape as before.
+  (let [{table-name :name, schema :schema, db :db} table]
+    (->honeysql driver (h2x/identifier :table db schema table-name))))
 
 (defmethod apply-top-level-clause [:sql :source-table]
   [driver _top-level-clause honeysql-form {source-table-id :source-table}]
@@ -2308,10 +2313,26 @@
 ;;;; Transforms
 
 (defmethod driver/compile-transform :sql
-  [driver {:keys [query output-table]}]
-  (let [{sql-query :query sql-params :params} query]
+  [driver {:keys [query output-db output-table]}]
+  (let [{sql-query :query sql-params :params} query
+        ;; If the workspace remap populated `:output-db`, qualify the output
+        ;; table with that DB so the CTAS lands in the iso database. Used by
+        ;; MySQL workspace transforms today — the iso namespace lives at the
+        ;; AST `:db` position and the canonical `output-table` is bare.
+        ;;
+        ;; HoneySQL renders `(keyword ns name)` as ``ns`.`name`` on MySQL — we
+        ;; lean on that here. 3-part `:db.:schema.:name` writes (Snowflake / SQL
+        ;; Server / BigQuery cross-DB) aren't expressible through this single-
+        ;; keyword shape; when those workspaces land they'll either need
+        ;; `output-table` to carry both qualifiers or a different HoneySQL form.
+        target-id (cond
+                    (and (not (str/blank? output-db))
+                         (str/blank? (namespace (keyword output-table))))
+                    (keyword output-db (clojure.core/name (keyword output-table)))
+                    :else
+                    (keyword output-table))]
     [(first (format-honeysql driver
-                             {:create-table-as [(keyword output-table)]
+                             {:create-table-as [target-id]
                               :raw sql-query}))
      sql-params]))
 

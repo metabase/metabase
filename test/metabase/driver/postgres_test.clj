@@ -90,6 +90,16 @@
                         ;; NB: because of test parallelism, this *will* affect other non-pg
                         ;; tests, but the check above in the test-driver function will
                         ;; prevent it from actually doing anything different in those tests.
+                        ;;
+                        ;; The linter (`:metabase/validate-deftest`) flags `with-redefs` inside a
+                        ;; `use-fixtures` body because it isn't parallel-safe -- the root var is
+                        ;; mutated globally across threads. We accept the hazard here for the
+                        ;; duration of the `:postgres-mbql5` equivalence experiment: this fixture
+                        ;; reruns every `:postgres` test under the `:postgres-mbql5` dispatch so
+                        ;; we can confirm behavioral parity. Once the experiment concludes and
+                        ;; `:postgres-mbql5` becomes `:postgres`, this entire `with-redefs` goes
+                        ;; away (see Phil's note in #ee-querying-platform 2026-05-21).
+                        #_{:clj-kondo/ignore [:metabase/validate-deftest]}
                         (with-redefs [mtd/-test-driver test-driver]
                           (mt/with-test-user :rasta (thunk))))))
 
@@ -1404,10 +1414,7 @@
                                                 :table_id (t2/select-one-pk :model/Table :db_id (u/the-id database)))
                 ;; Strip extended interestingness stats — this test covers the core TIME fingerprint
                 ;; shape (#5911), not the interestingness metrics.
-                extended-keys [:hour-distribution :weekday-distribution :skewness
-                               :mode-fraction :top-3-fraction
-                               :mode-fraction-by-weekday :mode-fraction-by-hour
-                               :min-length :max-length :percent-blank]
+                extended-keys [:skewness :mode-fraction :top-3-fraction :percent-blank]
                 trim-type     (fn [fp]
                                 (update fp :type
                                         (fn [types]
