@@ -47,6 +47,6 @@
                  (triggers/with-identity trimmer-trigger-key)
                  (triggers/start-now)
                  (triggers/with-schedule
-                   ;; daily at 23:28:23 — ~14 minutes after ai-usage-trimmer
-                  (cron/cron-schedule "23 28 23 * * ?")))]
+                   ;; daily at 23:16:37 — 2 minutes after ai-usage-trimmer
+                  (cron/cron-schedule "37 16 23 * * ?")))]
     (task/schedule-task! job trigger)))
