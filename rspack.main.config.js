@@ -337,6 +337,9 @@ if (shouldEnableHotRefresh) {
   config.output.publicPath =
     `http://localhost:${PORT}/` + config.output.publicPath;
 
+  // Disable lazy compilation explicitly to match behavior of rspack 1.x
+  config.lazyCompilation = false;
+
   config.devServer = {
     port: PORT, // make the port explicit so it errors if it's already in use
     hot: true,
