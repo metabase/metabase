@@ -18,9 +18,9 @@ import {
   updateTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
-import { permissionApi } from "metabase/api";
+import { databaseApi, permissionApi } from "metabase/api";
 import { type ErrorPayload, getErrorMessage } from "metabase/api/utils/errors";
-import { Tables } from "metabase/entities/tables";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_DATA_PERMISSIONS,
@@ -216,13 +216,15 @@ export const updateDataPermission = createThunkAction(
   }: UpdateDataPermissionParams) => {
     return (dispatch, getState): UpdateDataPermissionPayload | undefined => {
       if (isDatabaseEntityId(entityId)) {
-        dispatch(
-          Tables.actions.fetchList({
-            dbId: entityId.databaseId,
+        void entityCompatibleQuery(
+          {
+            id: entityId.databaseId,
             include_hidden: true,
             remove_inactive: true,
             skip_fields: true,
-          }),
+          },
+          dispatch,
+          databaseApi.endpoints.getDatabaseMetadata,
         );
       }
 
