@@ -15,7 +15,7 @@
 (defn- temporal-core-fields
   "Return the subset of a temporal fingerprint result containing the historically-asserted fields.
    We compare only :earliest / :latest (plus :global) to keep tests stable against new distribution
-   stats (skewness, mode-fraction, weekday-distribution, hour-distribution)."
+   stats (skewness, mode-fraction)."
   [result]
   {:global (:global result)
    :type   {:type/DateTime (select-keys (get-in result [:type :type/DateTime])
@@ -174,8 +174,6 @@
                                :percent-email  0.0
                                :percent-state  0.0
                                :average-length 6.4
-                               :min-length     4.0
-                               :max-length     9.0
                                :mode-fraction  0.2
                                :top-3-fraction 0.6
                                :percent-blank  0.0}}}
@@ -190,8 +188,6 @@
                                  :percent-email  0.0
                                  :percent-state  0.0
                                  :average-length 10.6
-                                 :min-length     4.0
-                                 :max-length     30.0
                                  :mode-fraction  0.2
                                  :top-3-fraction 0.6
                                  :percent-blank  0.0}}}

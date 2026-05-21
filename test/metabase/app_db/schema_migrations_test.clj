@@ -2933,15 +2933,20 @@
                                                   :updated_at     :%now}))))))))
 
 (deftest dependency-status-segment-handles-missing-column-migration-test
-  (testing "Migration v60.2026-04-02T00:00:09 MARK_RANs when segment.dependency_analysis_version is missing (issue #74443)"
-    (impl/test-migrations ["v60.2026-04-02T00:00:09" "v60.2026-04-02T00:00:09"] [migrate!]
-      ;; Simulate the broken partial-migration state: source column gone before the data-migration runs.
+  (testing "The whole 20260402_dependency_status changeset run survives a missing
+            segment.dependency_analysis_version column (issue #74443). Every changeset that
+            touches the column — the INSERT (T00:00:09) and the DROP COLUMN (T00:00:23) —
+            must MARK_RAN rather than fail."
+    (impl/test-migrations ["v60.2026-04-02T00:00:09" "v60.2026-04-02T00:00:24"] [migrate!]
+      ;; Simulate an instance whose segment table never got dependency_analysis_version.
       (t2/query "ALTER TABLE segment DROP COLUMN dependency_analysis_version")
+      ;; Must not throw: the migration run completes despite the missing column.
       (migrate!)
-      (testing "T00:00:09 is recorded as MARK_RAN"
-        (is (= "MARK_RAN"
-               (:exectype (liquibase/changelog-by-id mdb.connection/*application-db*
-                                                     "v60.2026-04-02T00:00:09"))))))))
+      (doseq [id ["v60.2026-04-02T00:00:09"   ; INSERT … SELECT FROM segment
+                  "v60.2026-04-02T00:00:23"]] ; ALTER TABLE segment DROP COLUMN
+        (testing (str id " is recorded as MARK_RAN")
+          (is (= "MARK_RAN"
+                 (:exectype (liquibase/changelog-by-id mdb.connection/*application-db* id)))))))))
 
 ;;;
 ;;; 62 tests

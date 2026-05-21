@@ -397,7 +397,7 @@
   capturing the user's original intent when a caller has one."
   (mut/merge agent-lib/program-schema
              [:map
-              [:prompt {:optional true} ConstructQueryPrompt]]))
+              [:prompt {:optional true} [:maybe ConstructQueryPrompt]]]))
 
 (mr/def ::construct-query-response
   "Response containing a base64-encoded MBQL query and, when supplied, the original prompt for use with /v1/execute."
@@ -420,7 +420,7 @@
    "Construct a Metabase MBQL query from a structured program. The body structure is:\n"
    "`{\"source\": {...}, \"operations\": [...]}`\n"
    "For MCP calls, include `\"prompt\": \"<user's exact original message>\"` whenever you have the user's message; do not summarize or modify it.\n"
-   "Returns `{\"query_handle\": \"<uuid>\"}` — pass it as `query_handle` to `execute_query` or `visualize_query`.\n"
+   "Returns `{\"query_handle\": \"<uuid>\"}` — pass `query_handle` to `execute_query` or `visualize_query`.\n"
    "For the full reference, read the `metabase://docs/construct-query.md` MCP resource.\n"
    "\n"
    "IMPORTANT: field IDs must come from entity-detail endpoints (`/v1/table/{id}`, `/v1/metric/{id}`). "
@@ -430,7 +430,7 @@
    "## Workflow\n"
    "1. Use `search_entities` / entity-detail tools to find the table/metric/model and its fields.\n"
    "2. Call `construct_query` with the program. Include the user's original `prompt` whenever available. You get back `{\"query_handle\": \"<uuid>\"}`.\n"
-   "3. Pass that handle to `execute_query` or `visualize_query` as `query_handle`.\n"
+   "3. Pass `query_handle` to the follow-up `execute_query` or `visualize_query` call.\n"
    "Never embed IDs you did not read from a metadata endpoint — invented IDs will fail at execution.\n"
    "\n"
    "## Source\n"
@@ -761,7 +761,9 @@
                              "row count, and execution time. Use this when the user explicitly asks for raw data, "
                              "rows, columns, counts, metadata, or programmatic query results. If the user asks to "
                              "show, display, visualize, plot, chart, or present the result, use visualize_query "
-                             "instead.")
+                             "instead. "
+                             "Pass `query_handle` (preferred) from construct_query rather than constructing the "
+                             "base64 query yourself.")
            :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params

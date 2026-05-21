@@ -22,7 +22,10 @@ import { getSchemaDisplayName } from "./schema";
  * there's no logic on FE to reliably decide whether two columns are comparable. Trying to come up with that in ad-hoc
  * manner could disable some cases that users may depend on.
  */
-export function areFieldsComparable(field1: Field, field2: Field): boolean {
+export function areFieldsComparable(
+  field1: Pick<Field, "effective_type">,
+  field2: Pick<Field, "effective_type">,
+): boolean {
   return field1.effective_type === "type/MongoBSONID" ||
     field2.effective_type === "type/MongoBSONID"
     ? field1.effective_type === field2.effective_type
