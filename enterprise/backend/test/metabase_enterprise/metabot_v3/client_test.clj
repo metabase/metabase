@@ -177,9 +177,10 @@
                                           {:detail [{:loc ["body" "prompt"]}]}
                                           {:message {:code "missing"}}
                                           {:error  {:message {:code 500}}}]))))
-    (testing "non-string or blank at one key falls through to a later key with a real message"
+    (testing "non-string, blank, or whitespace-only at one key falls through to a later key"
       (is (= "real error" (body-preview {:error {:message {:code 500}} :detail "real error"})))
-      (is (= "real error" (body-preview {:error "" :detail "real error"}))))
+      (is (= "real error" (body-preview {:error "" :detail "real error"})))
+      (is (= "real error" (body-preview {:error "   " :detail "real error"}))))
     (testing "long bodies are truncated to 500 chars with an ellipsis"
       (let [preview (body-preview (apply str (repeat 2000 \x)))]
         (is (str/ends-with? preview "…"))

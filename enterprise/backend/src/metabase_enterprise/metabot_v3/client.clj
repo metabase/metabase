@@ -105,7 +105,7 @@
   (let [s (cond
             (nil? body)    nil
             (string? body) body
-            (map? body)    (let [scalar (fn [v] (when-not (coll? v) (not-empty (str v))))]
+            (map? body)    (let [scalar (fn [v] (when-not (coll? v) (not-empty (str/trim (str v)))))]
                              ;; Only accept scalars under :error/:detail/:message (and the nested
                              ;; [:error :message]) — `{:error {:code 500}}` or `{:detail [{:loc ...}]}`
                              ;; (FastAPI-style validation errors) would otherwise be `str`-coerced and
