@@ -16,17 +16,18 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest ^:parallel field->field-ref-test
-  (is (=? [:field
-           {:base-type                                                           :type/BigInteger
-            :metabase.query-processor.util.add-alias-info/source-table           (meta/id :venues)
-            :metabase.driver.sql.parameters.substitution/compiling-field-filter? true}
-           (meta/id :venues :id)]
-          (#'sql.params.substitution/field->field-ref
-           :h2
-           (meta/field-metadata :venues :id)
-           :number/=
-           nil))))
+(deftest ^:parallel field->field-filter-clause-test
+  (mt/test-driver :h2
+    (is (=? [:field
+             {:base-type                                                           :type/BigInteger,
+              :metabase.query-processor.util.add-alias-info/source-table           (meta/id :venues),
+              :metabase.driver.sql.parameters.substitution/compiling-field-filter? true}
+             (meta/id :venues :id)]
+            (#'sql.params.substitution/field->field-ref
+             driver/*driver*
+             (meta/field-metadata :venues :id)
+             :number/=
+             nil)))))
 
 (deftest ^:parallel honeysql->replacement-snippet-info-test
   (testing "make sure we handle quotes inside names correctly!"
