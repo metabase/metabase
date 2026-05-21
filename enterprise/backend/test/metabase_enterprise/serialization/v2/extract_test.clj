@@ -12,6 +12,7 @@
    [metabase-enterprise.serialization.v2.round-trip-test :as round-trip-test]
    [metabase.actions.models :as action]
    [metabase.audit-app.core :as audit]
+   [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -1727,7 +1728,8 @@
                        :model/Collection    {clean-coll-id :id
                                              clean-coll-eid :entity_id} {:name "Clean Collection"}
                        :model/Dashboard     {dash-id :id}               {:name "A Dashboard" :collection_id coll1-id}
-                       :model/Database      {db-id :id}                 {}
+                       ;; non-H2 engine so the database survives serdes extract filtering
+                       :model/Database      {db-id :id}                 {:engine :postgres}
                        :model/Card          {card1-id :id}              {:name "Some Card", :database_id db-id}
                        :model/Card          {clean-card-eid :entity_id} {:name          "Clean Card"
                                                                          :collection_id clean-coll-id
@@ -1836,6 +1838,15 @@
       (let [ser (extract/extract {:no-settings   true
                                   :no-data-model true})]
         (is (= #{} (ids-by-model "Collection" ser)))))))
+
+(deftest skip-h2-databases-test
+  (testing "H2 databases must not be extracted because import rejects them (see GHY-3633)"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database _h2-db   {:name "H2 DB"        :engine :h2}
+                     :model/Database _non-h2  {:name "Postgres DB"  :engine :postgres}]
+        (let [ser (extract/extract {:no-settings true})]
+          (is (= #{"Postgres DB"} (ids-by-model "Database" ser))
+              "Only non-H2 databases should appear in the extract"))))))
 
 (deftest xray-of-analytics-model-export-test
   (testing "X-rays of analytics models can be exported without errors"
@@ -2419,6 +2430,41 @@
             (is (= #{transform-eid python-transform-eid}
                    (ids-by-model "Transform" (extract/extract {}))))))))))
 
+(deftest table-with-transform-id-dependency-test
+  (testing "Table created by a Transform declares the Transform as a serdes dependency (GDGT-2444)"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-empty-h2-app-db!
+        (ts/with-temp-dpc [:model/Database
+                           {db-id :id}
+                           {:name "My Database"}
+
+                           :model/Transform
+                           {transform-id :id
+                            transform-eid :entity_id}
+                           {:name "Transform Creating Table"
+                            :entity_id "transformCreatingTblx"
+                            :source {:query {:database db-id
+                                             :type "native"
+                                             :native {:query "select 1 as x"}}
+                                     :type "query"}
+                            :target {:database db-id
+                                     :type "table"
+                                     :schema "public"
+                                     :name "transform_output"}}
+
+                           :model/Table
+                           {table-id :id}
+                           {:name "transform_output"
+                            :db_id db-id
+                            :schema "public"
+                            :transform_id transform-id}]
+          (let [ser (ts/extract-one "Table" table-id)]
+            (testing "transform_id is transformed to entity_id"
+              (is (= transform-eid (:transform_id ser))))
+            (testing "depends on the transform"
+              (is (contains? (set (serdes/dependencies ser))
+                             [{:model "Transform" :id transform-eid}])))))))))
+
 (deftest transform-job-extraction-test
   (testing "TransformJob extraction and serialization"
     (mt/with-premium-features #{:transforms-basic}
@@ -2927,3 +2973,20 @@
       (testing "all embedding themes are extracted"
         (is (= #{light-eid dark-eid}
                (ids-by-model "EmbeddingTheme" (extract/extract {}))))))))
+
+(deftest stamp-metabase-version-test
+  (testing "extract stamps :metabase_version on entities (so load can detect version mismatches)"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Collection {coll-id :id} {:name "My Collection"}
+                         :model/Card       _             {:name "My Card" :collection_id coll-id}]
+        (let [extracted (into [] (extract/extract {}))
+              by-model  (group-by (comp :model last :serdes/meta) extracted)]
+          (testing "Collections and Cards get the current Metabase version"
+            (doseq [m ["Collection" "Card"]
+                    entity (get by-model m)]
+              (is (= config/mb-version-string (:metabase_version entity))
+                  (str m " should be stamped with the current version"))))
+          (testing "Settings are not stamped — settings.yaml only persists :key and :value"
+            (doseq [setting (get by-model "Setting")]
+              (is (not (contains? setting :metabase_version))
+                  "Setting should not be stamped"))))))))

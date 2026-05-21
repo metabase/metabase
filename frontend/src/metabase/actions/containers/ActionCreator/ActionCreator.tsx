@@ -7,6 +7,7 @@ import {
   skipToken,
   useCreateActionMutation,
   useGetActionQuery,
+  useListDatabasesQuery,
   useUpdateActionMutation,
 } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
@@ -14,7 +15,6 @@ import { Modal } from "metabase/common/components/Modal";
 import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { Databases } from "metabase/entities/databases";
 import { Questions } from "metabase/entities/questions";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -202,6 +202,7 @@ function ActionCreatorWithContext({
   action,
   ...props
 }: Props) {
+  useListDatabasesQuery();
   const { data: initialAction } = useGetActionQuery(
     props.actionId != null ? { id: props.actionId } : skipToken,
   );
@@ -225,6 +226,5 @@ export default _.compose(
     id: (state: State, props: OwnProps) => props?.modelId,
     entityAlias: "model",
   }),
-  Databases.loadList(),
   connect(mapStateToProps),
 )(ActionCreatorWithContext);

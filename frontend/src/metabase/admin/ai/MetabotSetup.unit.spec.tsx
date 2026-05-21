@@ -10,6 +10,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Api } from "metabase/api";
 import { reinitialize } from "metabase/plugins";
 import { defer } from "metabase/utils/promise";
 import type {
@@ -486,6 +487,44 @@ describe("MetabotSetup", () => {
     expect(openrouterOption).toHaveAttribute("data-combobox-disabled");
 
     expect(screen.getAllByText("Coming soon")).toHaveLength(2);
+  });
+
+  it("BOT-1429: keeps the form interactive while session-properties refetches in the background", async () => {
+    const { store } = await setup();
+    const apiKey = await screen.findByLabelText("API key");
+    const model = await screen.findByLabelText("Model");
+    const disconnect = await screen.findByRole("button", {
+      name: "Disconnect",
+    });
+
+    expect(apiKey).toBeEnabled();
+    expect(model).toBeEnabled();
+    expect(disconnect).toBeEnabled();
+    expect(disconnect).not.toHaveAttribute("data-loading", "true");
+
+    const sessionPropertiesDeferred = defer<unknown>();
+    fetchMock.removeRoute("get-session-properties");
+    fetchMock.get(
+      "path:/api/session/properties",
+      () => sessionPropertiesDeferred.promise,
+    );
+
+    act(() => {
+      store.dispatch(Api.util.invalidateTags(["session-properties"]));
+    });
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/session/properties").length,
+      ).toBeGreaterThan(1);
+    });
+
+    expect(apiKey).toBeEnabled();
+    expect(model).toBeEnabled();
+    expect(disconnect).toBeEnabled();
+    expect(disconnect).not.toHaveAttribute("data-loading", "true");
+
+    sessionPropertiesDeferred.resolve({});
   });
 
   it("shows the connected badge with the saved provider and model", async () => {

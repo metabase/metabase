@@ -363,9 +363,6 @@ export const tokenFeatures = [
   "upload_management",
   "collection_cleanup",
   "cache_preemptive",
-  "ai_sql_fixer",
-  "ai_sql_generation",
-  "ai_entity_analysis",
   "database_routing",
   "development_mode",
   "etl_connections",
@@ -624,6 +621,7 @@ interface PublicSettings {
   "metabot-limit-unit": MetabotLimitType;
   "metabot-limit-reset-rate": MetabotLimitPeriod;
   "metabot-quota-reached-message": string | null;
+  "ai-usage-max-retention-days": number | null;
   "metabot-chat-system-prompt": string | null;
   "metabot-nlq-system-prompt": string | null;
   "metabot-sql-system-prompt": string | null;

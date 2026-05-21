@@ -4,9 +4,8 @@ import { replace } from "react-router-redux";
 import { useMount } from "react-use";
 import _ from "underscore";
 
-import { useListActionsQuery } from "metabase/api";
+import { useListActionsQuery, useListDatabasesQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import { Databases } from "metabase/entities/databases";
 import { Questions } from "metabase/entities/questions";
 import { Tables } from "metabase/entities/tables";
 import { usePageTitle } from "metabase/hooks/use-page-title";
@@ -52,6 +51,7 @@ function ModelActions({
   fetchTableForeignKeys,
   onChangeLocation,
 }: Props) {
+  useListDatabasesQuery();
   const { data: actions = [] } = useListActionsQuery({
     "model-id": model.id(),
   });
@@ -119,7 +119,6 @@ function getModelId(state: State, props: OwnProps) {
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Questions.load({ id: getModelId, entityAlias: "model" }),
-  Databases.loadList(),
   connect<null, DispatchProps, OwnProps & EntityLoadersProps, State>(
     null,
     mapDispatchToProps,

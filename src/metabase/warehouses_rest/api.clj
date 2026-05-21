@@ -1152,8 +1152,9 @@
         (quick-task/submit-task!
          (fn []
            (database-routing/with-database-routing-off
-             (sync/sync-db-metadata! db)
-             (sync/analyze-db! db))))
+             ;; explicit, user-requested sync — runs even when `disable-auto-sync` is enabled
+             (sync/sync-db-metadata-explicit! db)
+             (sync/analyze-db-explicit! db))))
         {:status :ok}))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API

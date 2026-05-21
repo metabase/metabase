@@ -102,7 +102,7 @@
 
 (defmethod sql.qp/->honeysql [:h2-mbql5 :regex-match-first]
   [driver [_ _opts arg pattern]]
-  [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
+  ((get-method sql.qp/->honeysql [:h2 :regex-match-first]) driver [:regex-match-first arg pattern]))
 
 (defmethod driver/connection-properties :h2
   [_]
@@ -435,7 +435,7 @@
 
 (defmethod sql.qp/->honeysql [:h2-mbql5 :log]
   [driver [_ _opts field]]
-  [:log10 (sql.qp/->honeysql driver field)])
+  ((get-method sql.qp/->honeysql [:h2 :log]) driver [:log field]))
 
 (defmethod sql.qp/->honeysql [:h2 ::sql.qp/expression-literal-text-value]
   [driver [_ value]]
@@ -450,14 +450,7 @@
 
 (defmethod sql.qp/->honeysql [:h2-mbql5 ::sql.qp/expression-literal-text-value]
   [driver [_ _opts value]]
-  ;; A literal text value gets compiled to a parameter placeholder like "?". H2 attempts to compile the prepared
-  ;; statement immediately, presumably before the types of the params are known, and sometimes raises an "Unknown
-  ;; data type" error if it can't deduce the type. The recommended workaround is to insert an explicit CAST.
-  ;;
-  ;; https://linear.app/metabase/issue/QUE-726/
-  ;; https://github.com/h2database/h2database/issues/1383
-  (->> (sql.qp/->honeysql driver value)
-       (h2x/cast :text)))
+  ((get-method sql.qp/->honeysql [:h2 ::sql.qp/expression-literal-text-value]) driver [::sql.qp/expression-literal-text-value value]))
 
 (defn- datediff
   "Like H2's `datediff` function but accounts for timestamps with time zones."
