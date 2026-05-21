@@ -151,8 +151,9 @@
 (defn store-handle!
   "Insert a new handle row binding `encoded-query` to the calling user, and return the handle UUID.
 
-   `mcp-session-id` is recorded so DELETE /api/mcp can sweep the session's handles, and reads can prefer
-   the calling session before falling back across the user's other sessions (see [[resolve-query-handle]]).
+   `mcp-session-id` is recorded so DELETE /api/mcp can sweep the session's handles, and so reads can log
+   when a handle is resolved across sessions (see [[find-handle-row]]) — the read path itself is purely
+   user-scoped, since handle UUIDs are globally unique.
 
    `prompt` is optional, but should be supplied for construct_query handles so visualize_query can later
    return both the query and original user prompt to the MCP iframe for feedback submission."
@@ -173,9 +174,11 @@
      handle-id)))
 
 (defn- find-handle-row
-  "Look up the handle row owned by `user-id`.
-   Prefers a row stored under the calling `mcp-session-id` and falls back to any other session owned
-   by the same user — the fallback covers harnesses (e.g. ChatGPT) that rotate MCP sessions between calls."
+  "Look up the handle row by `handle-id`, scoped to `user-id`.
+   Handle ids are globally unique UUIDs, so the join's `WHERE mqh.id = handle-id` returns at most one
+   row by definition — no ordering or session-preference logic is needed. `mcp-session-id` is recorded
+   on the row only so harnesses that rotate MCP sessions between calls (e.g. ChatGPT) can be logged as
+   cross-session resolutions for telemetry."
   [mcp-session-id user-id handle-id]
   (when (and user-id handle-id)
     ;; Single round-trip: join `mcp_query_handle` to `core_session` and filter on
@@ -194,13 +197,13 @@
 
 (defn read-handle
   "Return the encoded query for `handle-id` owned by `user-id`, or nil if no row exists.
-   Falls back across the user's other sessions when no row matches `mcp-session-id`."
+   Lookup is user-scoped — see [[find-handle-row]] for how `mcp-session-id` is used."
   [mcp-session-id user-id handle-id]
   (:encoded_query (find-handle-row mcp-session-id user-id handle-id)))
 
 (defn resolve-query-handle
   "Return {:encoded_query ... :prompt ...} for `handle-id` owned by `user-id`, or nil.
-   Falls back across the user's other sessions when no row matches `mcp-session-id`."
+   Lookup is user-scoped — see [[find-handle-row]] for how `mcp-session-id` is used."
   [mcp-session-id user-id handle-id]
   (when-let [row (find-handle-row mcp-session-id user-id handle-id)]
     (select-keys row [:encoded_query :prompt])))
