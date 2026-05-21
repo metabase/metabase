@@ -218,12 +218,18 @@
                {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
     (let [start-ms             (u/start-timer)
           auth-header (case provider
-                        "openai" {"Authorization" (str "Bearer " api-key)}
+                        "openai" (if-not (string? (not-empty api-key))
+                                   (throw (ex-info "Missing api key"
+                                                   {:provider provider
+                                                    :endpoint endpoint}))
+                                   {"Authorization" (str "Bearer " api-key)})
                         "ai-service" {"x-metabase-instance-token"
                                       (u/prog1 (premium-features/premium-embedding-token)
                                         (when (nil? <>)
                                           (throw (ex-info "Missing premium embedding token not set."
-                                                          {:setting "premium-embedding-token"}))))}
+                                                          {:provider provider
+                                                           :endpoint endpoint
+                                                           :setting "premium-embedding-token"}))))}
                         (throw (ex-info "Unsupported provider."
                                         {:provider provider})))
           headers     (merge {"Content-Type"  "application/json"}
