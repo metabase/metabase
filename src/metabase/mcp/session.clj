@@ -175,30 +175,25 @@
                    prompt (assoc :prompt prompt)))
      handle-id)))
 
-(defn- handle-belongs-to-user?
-  "True when `handle-row` belongs to `user-id` via its `core_session_id`.
-   Handles without a `core_session_id` are treated as not the caller's."
-  [handle-row user-id]
-  (when-let [core-session-id (:core_session_id handle-row)]
-    (= user-id (t2/select-one-fn :user_id :core_session :id core-session-id))))
-
 (defn- find-handle-row
-  "Look up the handle row owned by `user-id`.
+  "Look up the handle row owned by `user-id` in a single query, by joining
+   `mcp_query_handle` to `core_session` and filtering on `core_session.user_id`.
    Prefers a row stored under the calling `mcp-session-id` and falls back to any
-   other session owned by the same user — that fallback covers harnesses (e.g.
+   other session owned by the same user — the fallback covers harnesses (e.g.
    ChatGPT) that rotate MCP sessions between tool calls."
   [mcp-session-id user-id handle-id]
   (when (and user-id handle-id)
-    ;; Global id-only lookup is safe: handle ids are globally unique and the
-    ;; ownership check on the next line rejects rows that aren't the caller's.
-    (when-let [row (t2/select-one :model/McpQueryHandle :id handle-id)]
-      (cond
-        (not (handle-belongs-to-user? row user-id)) nil
-        (= mcp-session-id (:mcp_session_id row))    row
-        :else                                       (do (log/debugf
-                                                         "MCP handle %s resolved across sessions for user %s"
-                                                         handle-id user-id)
-                                                        row)))))
+    (let [row (t2/select-one :model/McpQueryHandle
+                             {:select [:mqh.*]
+                              :from   [[:mcp_query_handle :mqh]]
+                              :join   [[:core_session :cs] [:= :cs.id :mqh.core_session_id]]
+                              :where  [:and
+                                       [:= :mqh.id handle-id]
+                                       [:= :cs.user_id user-id]]})]
+      (when (and row (not= mcp-session-id (:mcp_session_id row)))
+        (log/debugf "MCP handle %s resolved across sessions for user %s"
+                    handle-id user-id))
+      row)))
 
 (defn read-handle
   "Return the encoded query for `handle-id` owned by `user-id`, or nil if no row exists.

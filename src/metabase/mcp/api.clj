@@ -155,9 +155,11 @@
 (defn- normalize-domain
   "Extract and lowercase the domain from a URL or Host-style header value.
    Bracketed IPv6 forms (`[::1]:3000`) and ports are handled correctly.
-   Returns nil for unparsable input."
+   Returns nil for unparsable input.
+   Uses `try-parse-url` (the silent variant) — `Origin`/`Host` are client-controlled,
+   so malformed inputs are expected and shouldn't spam the error logs."
   [url]
-  (some-> url str mw.security/parse-url :domain u/lower-case-en))
+  (some-> url str mw.security/try-parse-url :domain u/lower-case-en))
 
 (defn- same-origin-host? [origin host]
   (let [origin-domain (normalize-domain origin)]
@@ -167,8 +169,7 @@
   (boolean
    (or (mcp/sandbox-origin? origin)
        (when-let [approved-origins (not-empty (mcp/cors-origins))]
-          ;; `parse-url` returns nil for a malformed origin - we treat that as non-approved.
-         (when-let [origin-url (mw.security/parse-url origin)]
+         (when-let [origin-url (mw.security/try-parse-url origin)]
            (some (fn [approved-origin]
                    (and (mw.security/approved-domain? (:domain origin-url) (:domain approved-origin))
                         (mw.security/approved-protocol? (:protocol origin-url) (:protocol approved-origin))
