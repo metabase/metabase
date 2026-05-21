@@ -86,11 +86,26 @@
          (some? eff)
          (> eff top-n-other-min-cardinality))))
 
+(defn- fan-segments
+  "Expand one plan item across `[nil + metric.segments]`, producing N+1
+  copies — the bare unsegmented item plus one per available segment. Each
+  segmented copy carries `:params.segment_id <id>`. `time-facet` skips the
+  fan-out (per the pre-LLM rule: the per-category line series is already
+  busy enough without splitting it further across segments)."
+  [metric item]
+  (if (= "time-facet" (:variant item))
+    [item]
+    (cons item
+          (for [seg (:segments metric)]
+            (update item :params assoc :segment_id (:id seg))))))
+
 (defn- items-for-pair
   "Emit the baseline `default` plan item for one applicable (metric, dim)
-  pair, plus any eligible temporal-pattern / time-facet variants. All items
-  share the same `(metric_id, dimension_id)` so the auto-groups sidebar
-  collapses them under one leaf, matching the pre-LLM grouping behavior.
+  pair, plus any eligible temporal-pattern / time-facet / top-n-other
+  variants. Each non-time-facet item is fanned out across the metric's
+  available segments — one copy per `[nil + segments]` — matching the
+  pre-LLM behavior. All items share the same `(metric_id, dimension_id)`
+  so the auto-groups sidebar collapses them under one leaf.
 
   No `:rationale` is emitted: every mechanical item's rationale is a direct
   consequence of its (variant, dim-type) pair — a per-item explanation adds
@@ -110,7 +125,8 @@
         top-n-other (when (top-n-other-eligible? dim)
                       [(assoc (item "top-n-other")
                               :params {:k top-n-other-default-k})])]
-    (vec (concat base patterns facet top-n-other))))
+    (vec (mapcat (partial fan-segments metric)
+                 (concat base patterns facet top-n-other)))))
 
 (defn- run-plan!
   "Walk the metric × dim matrix and emit plan items per `items-for-pair`.

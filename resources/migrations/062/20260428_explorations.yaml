@@ -1357,3 +1357,38 @@ databaseChangeLog:
                   remarks: EDN-encoded transcript of the LLM exchange (prompt + responses + validation errors + final plan) used to materialize this thread's exploration_query rows. Debug-only — not surfaced to the user.
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v62.qparams
+      author: johnswanson
+      comment: Add params JSON column to exploration_query (deferred MBQL recipe)
+      changes:
+        - addColumn:
+            tableName: exploration_query
+            columns:
+              - column:
+                  name: params
+                  type: ${text.type}
+                  remarks: JSON-encoded variant params (e.g. {"k":10}, {"filter_values":[...]}, {"value_index":N,"k":K,"temporal_dimension_id":"..."}). The runner reads this when finalizing the chart MBQL just before execution.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v62.qdsetqnull
+      author: johnswanson
+      comment: Make exploration_query.dataset_query nullable (lazy build at execution)
+      changes:
+        - dropNotNullConstraint:
+            tableName: exploration_query
+            columnName: dataset_query
+            columnDataType: ${text.type}
+
+  - changeSet:
+      id: v62.qnamenull
+      author: johnswanson
+      comment: Make exploration_query.name nullable (runner names rows when it finalizes them)
+      changes:
+        - dropNotNullConstraint:
+            tableName: exploration_query
+            columnName: name
+            columnDataType: ${text.type}

@@ -241,6 +241,52 @@
      :dimensions    dimensions
      :applicability (into {} (map (juxt :metric-id :applicability)) metrics)}))
 
+(defn build-row-context
+  "Resolve everything the variant multimethods need to finalize a single
+  pending `ExplorationQuery` row at execution time. Returns the ctx map
+  consumed by `qp.variants/query-name` and `qp.variants/dataset-query`,
+  or `nil` when a required dependency (Card / thread metric / thread dim)
+  can't be loaded.
+
+  Looks up the metric Card, derives the metadata provider, finds the dim's
+  target via the thread-metric's `:dimension_mappings`, resolves any
+  selected segment, and — for `per-value-time-series` rows that carry
+  `:params.temporal_dimension_id` — also resolves the override temporal
+  axis. The runner calls this per claimed row."
+  [{:keys [card_id exploration_thread_id dimension_id segment_id params]}]
+  (let [card          (t2/select-one :model/Card :id card_id)
+        thread-dim    (t2/select-one :model/ExplorationThreadDimension
+                                     :exploration_thread_id exploration_thread_id
+                                     :dimension_id dimension_id)
+        thread-metric (t2/select-one :model/ExplorationThreadMetric
+                                     :exploration_thread_id exploration_thread_id
+                                     :card_id card_id)]
+    (when (and card thread-dim thread-metric)
+      (let [mp           (lib-be/application-database-metadata-provider (:database_id card))
+            mappings     (:dimension_mappings thread-metric)
+            target       (qp.mbql/find-dimension-target dimension_id mappings)
+            segment      (when segment_id
+                           (try
+                             (let [q (lib/query mp (:dataset_query card))]
+                               (some #(when (= segment_id (:id %)) %)
+                                     (lib/available-segments q)))
+                             (catch Exception _ nil)))
+            t-dim-id     (:temporal_dimension_id params)
+            t-target     (when t-dim-id (qp.mbql/find-dimension-target t-dim-id mappings))
+            t-thread-dim (when t-dim-id
+                           (t2/select-one :model/ExplorationThreadDimension
+                                          :exploration_thread_id exploration_thread_id
+                                          :dimension_id t-dim-id))]
+        {:mp              mp
+         :card            card
+         :target          target
+         :dim             thread-dim
+         :dim-label       (or (:display_name thread-dim) dimension_id)
+         :segment         segment
+         :params          params
+         :temporal-target t-target
+         :temporal-dim    t-thread-dim}))))
+
 (defn prompt-vars
   "Build the Selmer context map for `plan.selmer`. `metric-dim-ctx` is the
   output of [[metric-and-dim-context]]; `thread-prompt` is passed through

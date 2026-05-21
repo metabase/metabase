@@ -25,6 +25,8 @@
    [metabase.explorations.ai-summary :as explorations.ai-summary]
    [metabase.explorations.interestingness :as explorations.interestingness]
    [metabase.explorations.query-plan :as explorations.query-plan]
+   [metabase.explorations.query-plan.context :as qp.context]
+   [metabase.explorations.query-plan.variants :as qp.variants]
    [metabase.explorations.settings :as explorations.settings]
    [metabase.explorations.timeline-interestingness :as explorations.timeline-interestingness]
    [metabase.interestingness.core :as interestingness]
@@ -77,6 +79,31 @@
    (fn [in result-fn]
      (in qp-result)
      (result-fn))))
+
+(defn- finalize-row!
+  "If `row` carries a nil `:dataset_query` (planner deferred the MBQL build),
+  resolve the per-row context, invoke `qp.variants/dataset-query` and
+  `qp.variants/query-name` for the row's variant, persist both back onto the
+  row, and return the row with both fields populated. Throws when the
+  context can't be built or when the variant's `dataset-query` returns nil
+  (e.g. top-K discovery returned no rows) — the caller's catch handler
+  records it as a row-level error."
+  [row]
+  (if (:dataset_query row)
+    row
+    (let [ctx (qp.context/build-row-context row)]
+      (when-not ctx
+        (throw (ex-info "Could not build context for row"
+                        {:row-id (:id row)})))
+      (let [variant (:query_type row)
+            dq      (qp.variants/dataset-query variant ctx)
+            nm      (qp.variants/query-name variant ctx)]
+        (when (nil? dq)
+          (throw (ex-info "Could not build dataset_query for row (discovery returned no values?)"
+                          {:row-id (:id row) :variant variant})))
+        (t2/update! :model/ExplorationQuery (:id row)
+                    {:dataset_query dq :name nm})
+        (assoc row :dataset_query dq :name nm)))))
 
 (defn- safe-chart-config
   "Best-effort `qp-result->chart-config`. Returns nil on failure (>2 cols,
@@ -270,7 +297,8 @@
         (reset! row-thread (:exploration_thread_id row))
         (let [started (OffsetDateTime/now)]
           (try
-            (let [qp-result    (qp/process-query
+            (let [row          (finalize-row! row)
+                  qp-result    (qp/process-query
                                 (qp/userland-query-with-default-constraints
                                  (:dataset_query row)
                                  {:context :exploration}))
