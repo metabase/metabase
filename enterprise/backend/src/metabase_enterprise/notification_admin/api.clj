@@ -280,21 +280,21 @@
   [{:keys [active owner_id owner_active ownerless card_id recipient_email channel last_send_status query
            skip-run-joins?]}]
   (cond-> {:select (cond-> [:notification.id
-                             :notification.active
-                             :notification.creator_id
-                             :notification.created_at
-                             :notification.updated_at
-                             :notification.payload_type
-                             :notification.payload_id
-                             [:c.name                                           :card_name]
-                             [:cu.is_active                                     :owner_is_active]
-                             [[:coalesce :cu.last_name :cu.first_name :cu.email] :owner_name]]
-                    (not skip-run-joins?)
-                    (into [[:lc.id                                            :lc_id]
-                           [:lc.status                                        :lc_status]
-                           [:lc.started_at                                    :lc_started_at]
-                           [:ls.started_at                                    :ls_started_at]
-                           [:ls.has_failure                                   :ls_has_failure]]))
+                            :notification.active
+                            :notification.creator_id
+                            :notification.created_at
+                            :notification.updated_at
+                            :notification.payload_type
+                            :notification.payload_id
+                            [:c.name                                           :card_name]
+                            [:cu.is_active                                     :owner_is_active]
+                            [[:coalesce :cu.last_name :cu.first_name :cu.email] :owner_name]]
+                     (not skip-run-joins?)
+                     (into [[:lc.id                                            :lc_id]
+                            [:lc.status                                        :lc_status]
+                            [:lc.started_at                                    :lc_started_at]
+                            [:ls.started_at                                    :ls_started_at]
+                            [:ls.has_failure                                   :ls_has_failure]]))
            :from   [:notification]
            :where  [:= :notification.payload_type "notification/card"]}
 

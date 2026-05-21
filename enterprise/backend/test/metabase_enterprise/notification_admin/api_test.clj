@@ -749,17 +749,17 @@
                                                                 :payload_id   nc-unsent
                                                                 :creator_id   (mt/user->id :crowberto)}
                      :model/TaskRun          {run-id :id}      {:run_type    :alert
-                                                               :entity_type :card
-                                                               :entity_id   card-sent
-                                                               :status      :success
-                                                               :started_at  (t/instant)
-                                                               :ended_at    (t/instant)}
+                                                                :entity_type :card
+                                                                :entity_id   card-sent
+                                                                :status      :success
+                                                                :started_at  (t/instant)
+                                                                :ended_at    (t/instant)}
                      :model/TaskHistory      _th               {:task         "channel-send"
-                                                               :run_id       run-id
-                                                               :status       :success
-                                                               :started_at   (t/instant)
-                                                               :ended_at     (t/instant)
-                                                               :task_details {:channel_type "channel/email"}}]
+                                                                :run_id       run-id
+                                                                :status       :success
+                                                                :started_at   (t/instant)
+                                                                :ended_at     (t/instant)
+                                                                :task_details {:channel_type "channel/email"}}]
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
               ids            (->> data (map :id) (filter #{sent-id unsent-id}) vec)]
           (is (= [sent-id unsent-id] ids)
@@ -1200,7 +1200,7 @@
           (is (=? {:status   "successful"
                    :error    nil
                    :channels [{:channel_type "channel/email" :status "successful"}
-                               {:channel_type "channel/slack" :status "successful"}]}
+                              {:channel_type "channel/slack" :status "successful"}]}
                   (first send-history))))))))
 
 (deftest detail-send-history-mixed-channels-test

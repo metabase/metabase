@@ -75,7 +75,6 @@ import { getSettingsRoutes } from "./settingsRoutes";
 import { ToolsApp } from "./tools/components/ToolsApp";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
 import { getNotificationsRoutes, getTasksRoutes } from "./tools/routes";
-import { getTasksRoutes } from "./tools/routes";
 import { UpsellTenants } from "./upsells/UpsellTenants";
 import {
   RedirectToAllowedSettings,

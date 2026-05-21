@@ -5,6 +5,7 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupNotificationChannelsEndpoints,
   setupUserRecipientsEndpoint,
+  setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
@@ -497,6 +498,7 @@ function setup({
 
   setupWebhookChannelsEndpoint(webhooksResult);
   setupUserRecipientsEndpoint({ users: [] });
+  setupUsersEndpoints([]);
 
   const currentUser = createMockUser(
     isAdmin ? { is_superuser: true } : undefined,

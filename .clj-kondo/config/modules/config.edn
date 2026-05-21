@@ -2183,6 +2183,7 @@
            task
            tracing
            util}
+   :model-exports #{:model/TaskHistory}
    :model-imports #{:model/Card :model/Dashboard :model/Database}}
 
   tenants
@@ -3129,7 +3130,8 @@
            util}
    :model-imports #{:model/Notification
                     :model/NotificationHandler
-                    :model/NotificationRecipient}}
+                    :model/NotificationRecipient
+                    :model/TaskHistory}}
 
   enterprise/permission-debug
   {:team "UX West"
