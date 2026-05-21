@@ -106,14 +106,15 @@
   (let [s (cond
             (nil? body)    nil
             (string? body) body
-            (map? body)    (let [scalar (fn [k] (let [v (get body k)] (when-not (coll? v) v)))]
-                             ;; Only accept scalars under :error/:detail/:message — `{:error {:code 500}}`
-                             ;; or `{:detail [{:loc ...}]}` (FastAPI-style validation errors) would
-                             ;; otherwise be `str`-coerced and leak the raw envelope into the user message.
-                             (some-> (or (get-in body [:error :message])
-                                         (scalar :error)
-                                         (scalar :detail)
-                                         (scalar :message))
+            (map? body)    (let [scalar-val (fn [v] (when-not (coll? v) v))]
+                             ;; Only accept scalars under :error/:detail/:message (and the nested
+                             ;; [:error :message]) — `{:error {:code 500}}` or `{:detail [{:loc ...}]}`
+                             ;; (FastAPI-style validation errors) would otherwise be `str`-coerced and
+                             ;; leak the raw envelope into the user message.
+                             (some-> (or (scalar-val (get-in body [:error :message]))
+                                         (scalar-val (get body :error))
+                                         (scalar-val (get body :detail))
+                                         (scalar-val (get body :message)))
                                      str
                                      not-empty))
             :else          nil)]

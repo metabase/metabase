@@ -241,7 +241,8 @@
         (is (= "AI service request failed: HTTP 500 Internal Server Error" msg)
             "no internal body fields leak into the exception message")
         (is (= body (get-in (ex-data ex) [:response :body]))
-            "the full body is still preserved in ex-data for debugging")))
+            "the full body is still preserved in ex-data for debugging")
+        (assert-no-headers! (ex-data ex))))
     (testing "{:error <map-without-:message>} doesn't stringify the raw envelope into the user message"
       (let [body {:error {:code 500 :request-id "abc"}}
             {:keys [response request]} (check-response!-input {:status        500
@@ -252,7 +253,21 @@
         (is (= "AI service request failed: HTTP 500 Internal Server Error" msg)
             "the nested error map shouldn't leak into the user-facing message")
         (is (= body (get-in (ex-data ex) [:response :body]))
-            "the full body is still preserved in ex-data for debugging")))
+            "the full body is still preserved in ex-data for debugging")
+        (assert-no-headers! (ex-data ex))))
+    (testing "{:error {:message <non-scalar>}} doesn't stringify the raw envelope into the user message"
+      (doseq [body [{:error {:message {:code 500}}}
+                    {:error {:message ["a" "b"]}}]]
+        (let [{:keys [response request]} (check-response!-input {:status        500
+                                                                 :reason-phrase "Internal Server Error"
+                                                                 :body          body})
+              ex  (is (thrown? Exception (check! response request)))
+              msg (ex-message ex)]
+          (is (= "AI service request failed: HTTP 500 Internal Server Error" msg)
+              (str "non-scalar nested :error :message shouldn't leak for " (pr-str body)))
+          (is (= body (get-in (ex-data ex) [:response :body]))
+              "the full body is still preserved in ex-data for debugging")
+          (assert-no-headers! (ex-data ex)))))
     (testing "structured :detail/:message values fall through to nil instead of getting str-coerced"
       (doseq [body [{:detail [{:loc ["body" "prompt"] :msg "field required"}]}
                     {:message {:code "missing" :type "validation"}}]]
@@ -264,7 +279,8 @@
           (is (= "AI service request failed: HTTP 422 Unprocessable Entity" msg)
               (str "raw envelope shouldn't leak into the message for " (pr-str body)))
           (is (= body (get-in (ex-data ex) [:response :body]))
-              "the full structured body is still preserved in ex-data"))))
+              "the full structured body is still preserved in ex-data")
+          (assert-no-headers! (ex-data ex)))))
     (testing "ex-data :response is an explicit allow-list, not a passthrough of clj-http internals"
       (let [{:keys [request]} (check-response!-input {})
             ;; clj-http responses can carry `:http-client` (a Closeable), `:trace-redirects`,
