@@ -1,30 +1,19 @@
-.editorContainer {
-  display: flex;
-  align-items: flex-start;
-  width: 100%;
-  height: 100%;
-}
-
 .iconContainer {
-  padding-top: 12px;
-  width: 2.375rem;
+  width: 1.25rem;
   flex: 0 0 auto;
   display: flex;
   justify-content: center;
 }
 
 .button {
-  margin-bottom: 0.625rem;
-  margin-right: -0.125rem;
   background: var(--mb-color-brand);
   border-radius: 50%;
-  align-self: flex-end;
-  margin-left: 2px;
   width: 1.25rem;
   height: 1.25rem;
   display: flex;
   justify-content: center;
   align-items: center;
+  flex-shrink: 0;
   transition:
     opacity 300ms ease,
     background 150ms ease,
@@ -40,16 +29,9 @@
   }
 }
 
-.buttonHidden {
-  opacity: 0;
-  transition: opacity 0ms ease;
-  user-select: none;
-  cursor: default;
-
-  &:hover,
-  &:active {
-    opacity: 0;
-  }
+.button[disabled] {
+  background-color: var(--mb-color-background-tertiary);
+  cursor: not-allowed;
 }
 
 .buttonResponding {
@@ -74,4 +56,52 @@
   flex: 1;
   min-width: 0;
   width: 100%;
+}
+
+.modelSelectRoot {
+  flex: 0 1 auto;
+  overflow: hidden;
+}
+
+.modelSelectInput {
+  border: 0;
+  margin-left: 0.125rem;
+  margin-right: 0.25rem;
+  min-height: 1.25rem;
+  height: 1.25rem;
+  padding: 0 1rem 0 1.25rem;
+  background: transparent;
+  color: var(--mb-color-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1rem;
+  cursor: pointer;
+  field-sizing: content;
+  width: auto;
+}
+
+.modelSelectWrapper,
+.modelSelectSection {
+  min-height: 1.25rem;
+  height: 1.25rem;
+}
+
+.modelSelectSection {
+  pointer-events: none;
+  color: var(--mb-color-text-tertiary);
+}
+
+.modelSelectDropdown {
+  min-width: 14rem;
+}
+
+.modelSelectOption {
+  min-height: 2rem;
+  border-radius: 0.5rem;
+  white-space: nowrap;
+}
+
+.modelSelectOptionContent {
+  font-size: var(--mantine-font-size-sm);
+  line-height: var(--mantine-line-height-sm);
 }

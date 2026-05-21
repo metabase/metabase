@@ -48,7 +48,11 @@ const setup = (
   props = {},
   {
     searchItems = [],
-  }: { searchItems?: ReturnType<typeof createMockSearchResult>[] } = {},
+    settings: settingOverrides = {},
+  }: {
+    searchItems?: ReturnType<typeof createMockSearchResult>[];
+    settings?: Parameters<typeof mockSettings>[0];
+  } = {},
 ) => {
   setupEnterprisePlugins();
   setupCardEndpoints(createMockCard({ id: 123, name: "Test Model" }));
@@ -63,7 +67,11 @@ const setup = (
     collections: [createMockCollection(ROOT_COLLECTION)],
   });
   setupSearchEndpoints(searchItems);
-  const settings = mockSettings({ "site-url": "http://localhost:3000" });
+  const settings = mockSettings({
+    "site-url": "http://localhost:3000",
+    "llm-metabot-conversation-model-selection-enabled": false,
+    ...settingOverrides,
+  });
 
   return renderWithProviders(
     <MetabotChatEditor {...defaultProps} {...props} />,
@@ -82,6 +90,37 @@ const getEditor = () =>
 const getPopup = () => screen.findByTestId("mini-picker");
 
 describe("MetabotChatEditor", () => {
+  it("hides the model selector when conversation model selection is disabled", () => {
+    setup(
+      {},
+      {
+        settings: {
+          "llm-metabot-conversation-model-selection-enabled": false,
+        },
+      },
+    );
+
+    expect(
+      screen.queryByTestId("metabot-model-selector"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides the model selector for the Metabase-managed provider", () => {
+    setup(
+      {},
+      {
+        settings: {
+          "llm-metabot-provider": "metabase/anthropic/claude-sonnet-4-6",
+          "llm-metabot-conversation-model-selection-enabled": true,
+        },
+      },
+    );
+
+    expect(
+      screen.queryByTestId("metabot-model-selector"),
+    ).not.toBeInTheDocument();
+  });
+
   it("should convert text value to formatted tiptap", async () => {
     setup({ value: "[Test Model](metabase://model/123)" });
 

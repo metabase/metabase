@@ -117,6 +117,7 @@ export interface MetabotConverstationState {
   history: MetabotHistory;
   state: any;
   activeToolCalls: MetabotToolCall[];
+  modelOverride: string | undefined;
   profileOverride: MetabotProfileId | undefined;
   pendingMessageExternalId: string | undefined;
   experimental: {

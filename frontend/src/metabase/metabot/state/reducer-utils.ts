@@ -65,6 +65,7 @@ export const createConversation = (
     history: [],
     state: {},
     activeToolCalls: [],
+    modelOverride: undefined,
     profileOverride: undefined,
     pendingMessageExternalId: undefined,
     ...overrides,

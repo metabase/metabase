@@ -14,7 +14,10 @@ import { c, t } from "ttag";
 import _ from "underscore";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { SetByEnvVar } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import {
+  AdminSettingInput,
+  SetByEnvVar,
+} from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import {
   skipToken,
   useGetMetabotSettingsQuery,
@@ -597,22 +600,29 @@ const AIProviderSetup = ({
       ) : null}
 
       {!needsApiKey && !apiKeyError && (
-        <Select
-          label={t`Model`}
-          placeholder={
-            metabotSettingsQuery.isLoading
-              ? t`Loading models...`
-              : t`Select a model`
-          }
-          description={getModelDescription(selectedProvider)}
-          error={modelError}
-          data={modelOptions}
-          value={model}
-          onChange={handleModelChange}
-          disabled={isEnvSetting || needsApiKey || isMutating}
-          searchable
-          nothingFoundMessage={t`No models found`}
-        />
+        <>
+          <Select
+            label={t`Model`}
+            placeholder={
+              metabotSettingsQuery.isLoading
+                ? t`Loading models...`
+                : t`Select a model`
+            }
+            description={getModelDescription(selectedProvider)}
+            error={modelError}
+            data={modelOptions}
+            value={model}
+            onChange={handleModelChange}
+            disabled={isEnvSetting || needsApiKey || isMutating}
+            searchable
+            nothingFoundMessage={t`No models found`}
+          />
+          <AdminSettingInput
+            title={t`Model selection`}
+            name="llm-metabot-conversation-model-selection-enabled"
+            inputType="boolean"
+          />
+        </>
       )}
 
       {updateMetabotSettingsResult.error && (

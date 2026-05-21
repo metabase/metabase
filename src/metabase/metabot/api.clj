@@ -97,7 +97,7 @@
   [[metabot.persistence/start-turn!]]; the finally block UPDATEs that row.
   `:external-id` is the assistant row's `external_id`, threaded into the AI-SDK
   line protocol so the client can correlate streamed messages with feedback."
-  [{:keys [metabot-id profile-id message context history conversation-id state debug?
+  [{:keys [metabot-id profile-id message context history conversation-id model state debug?
            assistant-msg-id external-id]}]
   (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id})
         messages         (concat history [message])]
@@ -122,6 +122,7 @@
                                :state         state
                                :metabot-id    metabot-id
                                :profile-id    (keyword profile-id)
+                               :model         model
                                :context       enriched-context
                                :tracking-opts {:session-id conversation-id}}
                         debug? (assoc :debug? true))))
@@ -170,7 +171,8 @@
   it into:
     - `hostname`: extracted from the origin URL, always recorded.
     - `pii-info`: gated by `analytics-pii-retention-enabled` — nil when off."
-  [{:keys [metabot_id profile_id message context history conversation_id state debug]} request-info]
+  [{:keys [metabot_id profile_id message context history conversation_id state model debug]}
+   request-info]
   (let [message    (metabot.envelope/user-message message)
         metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
         _          (metabot.config/check-metabot-enabled! metabot-id)
@@ -193,6 +195,7 @@
         :context          context
         :history          history
         :conversation-id  conversation_id
+        :model            model
         :state            state
         :debug?           debug?
         :assistant-msg-id assistant-msg-id
@@ -231,6 +234,7 @@
    body :- [:map
             [:profile_id {:optional true} :string]
             [:metabot_id {:optional true} :string]
+            [:model {:optional true} :string]
             [:message ms/NonBlankString]
             [:context ::metabot.context/context]
             [:conversation_id ms/UUIDString]
@@ -294,7 +298,9 @@
 (def ^:private llm-model-response-schema
   [:map
    [:id :string]
+   [:value :string]
    [:display_name :string]
+   [:original_provider {:optional true} [:enum "anthropic" "openai"]]
    [:group {:optional true} [:maybe :string]]])
 
 (def ^:private metabot-settings-response-schema
@@ -369,12 +375,34 @@
               first
               title-case-token)))
 
+(def ^:private supported-original-providers
+  #{"anthropic" "openai"})
+
+(defn- model-id-provider
+  [{:keys [id]}]
+  (some-> id
+          (str/split #"/" 2)
+          first))
+
+(defn- original-provider
+  [provider model]
+  (let [original-provider (if (contains? supported-original-providers provider)
+                            provider
+                            (model-id-provider model))]
+    (when (contains? supported-original-providers original-provider)
+      original-provider)))
+
+(defn- model-value
+  [provider {:keys [id]}]
+  (str provider "/" id))
+
 (defn- decorate-provider-model
   [provider model]
-  (case provider
-    "anthropic"  (assoc model :group (anthropic-model-group model))
-    "openrouter" (assoc model :group (openrouter-model-group model))
-    model))
+  (let [original-provider* (original-provider provider model)]
+    (cond-> (assoc model :value (model-value provider model))
+      original-provider*        (assoc :original_provider original-provider*)
+      (= provider "anthropic")  (assoc :group (anthropic-model-group model))
+      (= provider "openrouter") (assoc :group (openrouter-model-group model)))))
 
 (defn- normalize-metabase-model
   [model]
@@ -430,10 +458,6 @@
     {:value (metabot.settings/llm-metabot-provider)}
     (provider-models-response provider api-key-override))))
 
-(defn- current-provider
-  []
-  (provider-util/provider-and-model->provider (metabot.settings/llm-metabot-provider)))
-
 (defn- current-setting-provider
   []
   (provider-util/provider-and-model->outer-provider (metabot.settings/llm-metabot-provider)))
@@ -453,7 +477,7 @@
    {:keys [provider]} :- [:map
                           [:provider {:optional true} metabot-provider-schema]]]
   (perms/check-has-application-permission :setting)
-  (settings-response (or provider (current-provider))))
+  (settings-response (or provider (current-setting-provider))))
 
 (api.macros/defendpoint :put "/settings"
   :- metabot-settings-response-schema
