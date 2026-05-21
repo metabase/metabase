@@ -836,7 +836,10 @@
     (is (= {:type  :roles
             :roles #{"`example_role`@`%`" "`example_role_2`@`%`"}}
            (#'mysql/parse-grant "GRANT `example_role`@`%`,`example_role_2`@`%` TO 'metabase'@'localhost'")))
-    (is (nil? (#'mysql/parse-grant "GRANT PROXY ON 'metabase'@'localhost' TO 'metabase'@'localhost' WITH GRANT OPTION")))))
+    (is (nil? (#'mysql/parse-grant "GRANT PROXY ON 'metabase'@'localhost' TO 'metabase'@'localhost' WITH GRANT OPTION")))
+    (testing "REVOKE grants (emitted under partial_revokes) are ignored rather than throwing"
+      (is (nil? (#'mysql/parse-grant "REVOKE INSERT ON `test-data`.`foo` FROM 'metabase'@'localhost'")))
+      (is (nil? (#'mysql/parse-grant "REVOKE INSERT, DELETE ON `test-data`.* FROM 'metabase'@'localhost'"))))))
 
 (deftest ^:parallel table-name->privileges-test
   (testing "table-names->privileges should work correctly"
@@ -994,15 +997,17 @@
 (deftest partial-revokes-writable-test
   (mt/test-driver :mysql
     (when-not (mysql/mariadb? (mt/db))
-      (testing "`database-supports :metadata/table-writable-check` returns true normally but false with partial revokes"
+      (testing "a genuinely-writable table stays editable under partial_revokes, even when another table is revoked"
         (tx/drop-if-exists-and-create-db! driver/*driver* "partial_revokes_test")
         (let [details (tx/dbdef->connection-details :mysql :db {:database-name "partial_revokes_test"})
               spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
           (try
-            ;; Create test tables and user
-            (doseq [stmt ["CREATE TABLE `test_table` (id INTEGER);"
+            ;; Two fully-writable tables and a user with full DML on both.
+            (doseq [stmt ["CREATE TABLE `writable_table` (id INTEGER);"
+                          "CREATE TABLE `revoked_table` (id INTEGER);"
                           "CREATE USER 'partial_revokes_test_user' IDENTIFIED BY 'password';"
-                          "GRANT SELECT, INSERT, UPDATE, DELETE ON partial_revokes_test.test_table TO 'partial_revokes_test_user'"]]
+                          "GRANT SELECT, INSERT, UPDATE, DELETE ON partial_revokes_test.writable_table TO 'partial_revokes_test_user'"
+                          "GRANT SELECT, INSERT, UPDATE, DELETE ON partial_revokes_test.revoked_table TO 'partial_revokes_test_user'"]]
               (jdbc/execute! spec stmt))
 
             (let [user-connection-details (assoc details
@@ -1012,31 +1017,27 @@
                                                  :additional-options "trustServerCertificate=true")]
               (mt/with-temp [:model/Database database {:engine "mysql", :details user-connection-details
                                                        :dbms_version {:flavor "MySQL"}}]
-                (testing "With partial_revokes OFF (default), metadata/table-writable-check is supported"
+                (testing "With partial_revokes OFF (default), both tables sync as writable"
                   (jdbc/execute! spec "SET GLOBAL partial_revokes = OFF;")
                   (is (true? (driver/database-supports? driver/*driver* :metadata/table-writable-check database))
-                      "Should support metadata/table-writable-check when partial_revokes is OFF"))
+                      "Should support metadata/table-writable-check when partial_revokes is OFF")
+                  (sync/sync-database! database)
+                  (is (= {"writable_table" true, "revoked_table" true}
+                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))
 
-                (testing "With partial_revokes ON, metadata/table-writable-check is not supported"
+                (testing "With partial_revokes ON and INSERT revoked on one table, the check stays enabled"
                   (jdbc/execute! spec "SET GLOBAL partial_revokes = ON;")
-                  (is (false? (driver/database-supports? driver/*driver* :metadata/table-writable-check database))
-                      "Should not support metadata/table-writable-check when partial_revokes is ON")
+                  (jdbc/execute! spec "REVOKE INSERT ON partial_revokes_test.revoked_table FROM 'partial_revokes_test_user';")
+                  (is (true? (driver/database-supports? driver/*driver* :metadata/table-writable-check database))
+                      "Should still support metadata/table-writable-check when partial_revokes is ON")
 
                   (sync/sync-database! database)
-                  (is (= {"test_table" nil}
+                  ;; The bug (metabase#73276): a single REVOKE made *every* table uneditable. The fix is that the
+                  ;; genuinely-writable table must remain writable. The revoked table reports writable optimistically
+                  ;; (we ignore REVOKE grants), so editing it would fail at runtime rather than being hidden up front.
+                  (is (= {"writable_table" true, "revoked_table" true}
                          (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))
-                      "is_writable should sync to nil when partial_revokes is ON"))
-
-                (testing "Revoke some permissions with partial_revokes ON"
-                  (jdbc/execute! spec "REVOKE INSERT ON partial_revokes_test.test_table FROM 'partial_revokes_test_user';")
-                  (is (false? (driver/database-supports? driver/*driver* :metadata/table-writable-check database))
-                      "Should still not support metadata/table-writable-check after partial revoke")
-
-                  ;; Sync database again and verify is_writable is still nil
-                  (sync/sync-database! database)
-                  (is (= {"test_table" nil}
-                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))
-                      "is_writable should still be nil after partial revoke"))))
+                      "writable_table must stay writable; revoked_table is optimistically writable"))))
 
             (finally
               ;; Clean up: Reset partial_revokes to OFF before exiting
