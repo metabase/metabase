@@ -195,7 +195,7 @@
 
   `:provider`        — label for analytics (e.g. \"ai-service\", \"openai\")
   `:endpoint`        — full URL including /v1/embeddings
-  `:api-key`         — Bearer token for non-metabase-cloud-forwarded requests. For forwarded requests premium 
+  `:api-key`         — Bearer token for non-metabase-cloud-forwarded requests. For forwarded requests premium
                        `premium-embedding-token` is used.
   `:model-name`      — model identifier sent in the request body
   `:texts`           — collection of input strings
