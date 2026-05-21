@@ -206,7 +206,7 @@
                           debug/capture-stream    (fn [r _] r)
                           http/request            (fn [req] {:body req})]
               (is (=? {:method  :post
-                       :url     "https://proxy.example/llm/openrouter/v1/chat/completions"
+                       :url     "https://proxy.example/openrouter/v1/chat/completions"
                        :headers {"x-metabase-instance-token" "proxy-token"}
                        :body    string?}
                       (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]

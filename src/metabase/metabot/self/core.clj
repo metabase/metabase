@@ -539,13 +539,8 @@
    - Otherwise uses the provider's BYOK `auth`."
   [provider-slug llm-type auth ai-proxy?]
   (let [proxy-auth (when-let [base (llm/llm-proxy-base-url)]
-                     ;; ai-service proxy url ex. http://localhost:8000/llm/anthropic/v1/messages
-                     {:url     (str (str/replace base #"/+$" "") "/llm/" provider-slug)
-                      :headers {"x-metabase-instance-token"
-                                (u/prog1 (premium-features/premium-embedding-token)
-                                  (when (nil? <>)
-                                    (throw (ex-info "Premium embedding token not set."
-                                                    {:setting "premium-embedding-token"}))))}})]
+                     {:url     (str (str/replace base #"/+$" "") "/" provider-slug)
+                      :headers {"x-metabase-instance-token" (premium-features/premium-embedding-token)}})]
     (if ai-proxy?
       (or proxy-auth
           (throw (ex-info (tru "AI proxy is not configured")
