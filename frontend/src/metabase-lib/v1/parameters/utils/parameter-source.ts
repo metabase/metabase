@@ -45,16 +45,23 @@ export const getSourceConfig = (parameter: Parameter): ValuesSourceConfig => {
  * label column.
  */
 export const hasRemappedParameterValues = (
-  parameter: Parameter,
+  parameter: Parameter | null | undefined,
   fields: Field[],
 ): boolean => {
+  if (Field.remappedField(fields) != null) {
+    return true;
+  }
+
+  if (parameter == null) {
+    return false;
+  }
+
   const sourceType = getSourceType(parameter);
   const sourceConfig = getSourceConfig(parameter);
   const sourceLabelField = sourceConfig.label_field;
   const sourceValues = sourceConfig.values ?? [];
 
   return (
-    Field.remappedField(fields) != null ||
     (sourceType === "static-list" &&
       sourceValues.some((value) => Array.isArray(value) && value.length > 1)) ||
     (sourceType === "card" && sourceLabelField != null)

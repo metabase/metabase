@@ -11,6 +11,7 @@ import {
   hasFields,
   isFieldFilterUiParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-fields";
+import { hasRemappedParameterValues } from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
   isBooleanParameter,
   isDateParameter,
@@ -59,8 +60,8 @@ function FormattedParameterValue({
 
   const renderContent = () => {
     if (
-      isFieldFilterUiParameter(parameter) &&
-      hasFields(parameter) &&
+      ((isFieldFilterUiParameter(parameter) && hasFields(parameter)) ||
+        hasRemappedParameterValues(parameter, getFields(parameter))) &&
       !isDateParameter(parameter) &&
       !isTemporalUnitParameter(parameter)
     ) {
