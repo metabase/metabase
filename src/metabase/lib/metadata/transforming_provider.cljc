@@ -29,10 +29,11 @@
 
    `f` must be pure."
   (:require
-   #?@(:clj ([pretty.core :as pretty]))
+   #?@(:clj ([potemkin :as p]
+             [pretty.core :as pretty]))
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
 
-(deftype TransformingMetadataProvider [f parent-metadata-provider]
+(#?(:clj p/deftype+ :cljs deftype) TransformingMetadataProvider [f parent-metadata-provider]
   lib.metadata.protocols/MetadataProvider
   (database [_this]
     (lib.metadata.protocols/database parent-metadata-provider))
