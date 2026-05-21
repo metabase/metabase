@@ -30,6 +30,8 @@ import alert_confirm_component from "./alert_confirm.svg?component";
 import alert_confirm_source from "./alert_confirm.svg?source";
 import alert_filled_component from "./alert_filled.svg?component";
 import alert_filled_source from "./alert_filled.svg?source";
+import anthropic_component from "./anthropic.svg?component";
+import anthropic_source from "./anthropic.svg?source";
 import archive_component from "./archive.svg?component";
 import archive_source from "./archive.svg?source";
 import area_component from "./area.svg?component";
@@ -356,6 +358,8 @@ import official_collection_component from "./official_collection.svg?component";
 import official_collection_source from "./official_collection.svg?source";
 import open_folder_component from "./open_folder.svg?component";
 import open_folder_source from "./open_folder.svg?source";
+import openai_component from "./openai.svg?component";
+import openai_source from "./openai.svg?source";
 import ordered_list_component from "./ordered_list.svg?component";
 import ordered_list_source from "./ordered_list.svg?source";
 import package_component from "./package.svg?component";
@@ -730,6 +734,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     burger: {
       component: burger_component,
       source: burger_source,
+    },
+    anthropic: {
+      component: anthropic_component,
+      source: anthropic_source,
     },
     calendar: {
       component: calendar_component,
@@ -1656,6 +1664,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     verified: {
       component: verified_component,
       source: verified_source,
+    },
+    openai: {
+      component: openai_component,
+      source: openai_source,
     },
     octagon_alert: {
       component: octagon_alert_component,

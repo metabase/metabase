@@ -270,18 +270,39 @@
                                                                        :display_name "Claude Opus 4.1"}]}))]
       (is (= {:value  "anthropic/claude-haiku-4-5"
               :models [{:id "claude-haiku-4-5"
+                        :value "anthropic/claude-haiku-4-5"
                         :display_name "Claude Haiku 4.5"
+                        :original_provider "anthropic"
                         :group "Haiku"}
                        {:id "claude-opus-4-5"
+                        :value "anthropic/claude-opus-4-5"
                         :display_name "Claude Opus 4.5"
+                        :original_provider "anthropic"
                         :group "Opus"}
                        {:id "claude-opus-4-1"
+                        :value "anthropic/claude-opus-4-1"
                         :display_name "Claude Opus 4.1"
+                        :original_provider "anthropic"
                         :group "Opus"}
                        {:id "claude-sonnet-4-5"
+                        :value "anthropic/claude-sonnet-4-5"
                         :display_name "Claude Sonnet 4.5"
+                        :original_provider "anthropic"
                         :group "Sonnet"}]}
              (mt/user-http-request :crowberto :get 200 "metabot/settings" :provider "anthropic"))))))
+
+(deftest settings-model-original-provider-test
+  (doseq [[provider-and-model expected] [["metabase/anthropic/claude-sonnet-4" "anthropic"]
+                                         ["openrouter/anthropic/claude-sonnet-4" "anthropic"]
+                                         ["anthropic/claude-sonnet-4" "anthropic"]
+                                         ["metabase/openai/gpt-4.1-mini" "openai"]
+                                         ["openai/gpt-4.1-mini" "openai"]
+                                         ["openrouter/openai/gpt-4.1-mini" "openai"]
+                                         ["openrouter/google/gemini-2.5-flash" nil]
+                                         ["metabase/google/gemini-2.5-flash" nil]
+                                         ["google/gemini-2.5-flash" nil]]]
+    (let [[provider model-id] (str/split provider-and-model #"/" 2)]
+      (is (= expected (#'api/original-provider provider {:id model-id}))))))
 
 (deftest settings-get-normalizes-legacy-anthropic-ids-test
   (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-valid"]
@@ -293,10 +314,14 @@
                                                                       :display_name "Claude Haiku 4.5"}]})]
       (is (= {:value  (metabot.settings/llm-metabot-provider)
               :models [{:id "claude-3-haiku-20240307"
+                        :value "anthropic/claude-3-haiku-20240307"
                         :display_name "Claude 3 Haiku"
+                        :original_provider "anthropic"
                         :group "Haiku"}
                        {:id "claude-haiku-4-5"
+                        :value "anthropic/claude-haiku-4-5"
                         :display_name "Claude Haiku 4.5"
+                        :original_provider "anthropic"
                         :group "Haiku"}]}
              (mt/user-http-request :crowberto :get 200 "metabot/settings"
                                    :provider "anthropic"))))))
@@ -311,10 +336,14 @@
                                                                       :display_name "Anthropic: Claude Sonnet 4.5"}]})]
       (is (= {:value  (metabot.settings/llm-metabot-provider)
               :models [{:id "anthropic/claude-sonnet-4.5"
+                        :value "openrouter/anthropic/claude-sonnet-4.5"
                         :display_name "Anthropic: Claude Sonnet 4.5"
+                        :original_provider "anthropic"
                         :group "Anthropic"}
                        {:id "openai/gpt-4.1-mini"
+                        :value "openrouter/openai/gpt-4.1-mini"
                         :display_name "OpenAI: GPT-4.1 mini"
+                        :original_provider "openai"
                         :group "OpenAI"}]}
              (mt/user-http-request :crowberto :get 200 "metabot/settings"
                                    :provider "openrouter"))))))
@@ -331,9 +360,9 @@
                                                                       {:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
                                                                       {:id "claude-opus-4-1" :display_name "Claude Opus 4.1"}]}))]
       (is (= {:value  "metabase/anthropic/claude-sonnet-4-6"
-              :models [{:id "anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
-                       {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
-                       {:id "anthropic/claude-opus-4-1" :display_name "Claude Opus 4.1"}]}
+              :models [{:id "anthropic/claude-haiku-4-5" :value "metabase/anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5" :original_provider "anthropic"}
+                       {:id "anthropic/claude-sonnet-4-6" :value "metabase/anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6" :original_provider "anthropic"}
+                       {:id "anthropic/claude-opus-4-1" :value "metabase/anthropic/claude-opus-4-1" :display_name "Claude Opus 4.1" :original_provider "anthropic"}]}
              (mt/user-http-request :crowberto :get 200 "metabot/settings"
                                    :provider "metabase"))))))
 
@@ -352,7 +381,9 @@
                                                                        :display_name "GPT-4.1 mini"}]}))]
       (is (= {:value  "openai/gpt-4.1-mini"
               :models [{:id "gpt-4.1-mini"
-                        :display_name "GPT-4.1 mini"}]}
+                        :value "openai/gpt-4.1-mini"
+                        :display_name "GPT-4.1 mini"
+                        :original_provider "openai"}]}
              (mt/user-http-request :crowberto :put 200 "metabot/settings"
                                    {:provider "openai"
                                     :model    "gpt-4.1-mini"})))
@@ -371,9 +402,9 @@
                                                                       {:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
                                                                       {:id "claude-opus-4-1" :display_name "Claude Opus 4.1"}]}))]
       (is (= {:value  "metabase/anthropic/claude-sonnet-4-6"
-              :models [{:id "anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
-                       {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
-                       {:id "anthropic/claude-opus-4-1" :display_name "Claude Opus 4.1"}]}
+              :models [{:id "anthropic/claude-haiku-4-5" :value "metabase/anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5" :original_provider "anthropic"}
+                       {:id "anthropic/claude-sonnet-4-6" :value "metabase/anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6" :original_provider "anthropic"}
+                       {:id "anthropic/claude-opus-4-1" :value "metabase/anthropic/claude-opus-4-1" :display_name "Claude Opus 4.1" :original_provider "anthropic"}]}
              (mt/user-http-request :crowberto :put 200 "metabot/settings"
                                    {:provider "metabase"
                                     :model    "anthropic/claude-sonnet-4-6"})))
@@ -392,9 +423,9 @@
                                                                       {:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
                                                                       {:id "claude-opus-4-1" :display_name "Claude Opus 4.1"}]}))]
       (is (= {:value  "metabase/anthropic/claude-sonnet-4-6"
-              :models [{:id "anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
-                       {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
-                       {:id "anthropic/claude-opus-4-1" :display_name "Claude Opus 4.1"}]}
+              :models [{:id "anthropic/claude-haiku-4-5" :value "metabase/anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5" :original_provider "anthropic"}
+                       {:id "anthropic/claude-sonnet-4-6" :value "metabase/anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6" :original_provider "anthropic"}
+                       {:id "anthropic/claude-opus-4-1" :value "metabase/anthropic/claude-opus-4-1" :display_name "Claude Opus 4.1" :original_provider "anthropic"}]}
              (mt/user-http-request :crowberto :put 200 "metabot/settings"
                                    {:provider "metabase"
                                     :model    ""})))
@@ -413,9 +444,11 @@
                                                                    "verification should happen before saving the key")
                                                                {:models [{:id "claude-haiku-4-5"
                                                                           :display_name "Claude Haiku 4.5"}]})]
-          (is (= {:value  (metabot.settings/llm-metabot-provider)
+          (is (= {:value  "anthropic/claude-sonnet-4-6"
                   :models [{:id "claude-haiku-4-5"
+                            :value "anthropic/claude-haiku-4-5"
                             :display_name "Claude Haiku 4.5"
+                            :original_provider "anthropic"
                             :group "Haiku"}]}
                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
                                        {:provider "anthropic"
@@ -441,7 +474,9 @@
                                                                           :group "Opus"}]})]
           (is (= {:value  "anthropic/claude-opus-4-1"
                   :models [{:id "claude-opus-4-1"
+                            :value "anthropic/claude-opus-4-1"
                             :display_name "Claude Opus 4.1"
+                            :original_provider "anthropic"
                             :group "Opus"}]}
                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
                                        {:provider "anthropic"
@@ -473,10 +508,14 @@
                                                                           :group "Opus"}]})]
           (is (= {:value  "anthropic/claude-sonnet-4-6"
                   :models [{:id "claude-opus-4-1"
+                            :value "anthropic/claude-opus-4-1"
                             :display_name "Claude Opus 4.1"
+                            :original_provider "anthropic"
                             :group "Opus"}
                            {:id "claude-sonnet-4-6"
+                            :value "anthropic/claude-sonnet-4-6"
                             :display_name "Claude Sonnet 4.6"
+                            :original_provider "anthropic"
                             :group "Sonnet"}]}
                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
                                        {:provider "anthropic"
@@ -501,10 +540,14 @@
                                                                       :display_name "Claude Opus 4.1"}]})]
       (is (= {:value  "anthropic/claude-opus-4-1"
               :models [{:id "claude-opus-4-1"
+                        :value "anthropic/claude-opus-4-1"
                         :display_name "Claude Opus 4.1"
+                        :original_provider "anthropic"
                         :group "Opus"}
                        {:id "claude-sonnet-4-6"
+                        :value "anthropic/claude-sonnet-4-6"
                         :display_name "Claude Sonnet 4.6"
+                        :original_provider "anthropic"
                         :group "Sonnet"}]}
              (mt/user-http-request :crowberto :put 200 "metabot/settings"
                                    {:provider "anthropic"

@@ -32,7 +32,7 @@ export const metabotApi = Api.injectEndpoints({
     }),
     getMetabotSettings: builder.query<
       MetabotSettingsResponse,
-      { provider: MetabotProvider }
+      { provider?: MetabotProvider }
     >({
       query: ({ provider }) => ({
         method: "GET",

@@ -212,13 +212,21 @@
   :type             :string
   :encryption       :no
   :default          default-llm-metabot-provider
-  :visibility       :settings-manager
+  :visibility       :authenticated
   :export?          false
   :deprecated-name  :ee-ai-metabot-provider
   :setter           (fn [new-value]
                       (when new-value
                         (validate-metabot-provider! new-value))
                       (setting/set-value-of-type! :string :llm-metabot-provider new-value)))
+
+(defsetting llm-metabot-conversation-model-selection-enabled
+  (deferred-tru "Allow users to choose a different model for individual Metabot conversations.")
+  :type       :boolean
+  :encryption :no
+  :default    true
+  :export?    true
+  :visibility :authenticated)
 
 (defn- token-configured?
   [token]
