@@ -1369,7 +1369,7 @@ databaseChangeLog:
               - column:
                   name: params
                   type: ${text.type}
-                  remarks: JSON-encoded variant params (e.g. {"k":10}, {"filter_values":[...]}, {"value_index":N,"k":K,"temporal_dimension_id":"..."}). The runner reads this when finalizing the chart MBQL just before execution.
+                  remarks: JSON-encoded variant params consumed by the runner when finalizing the chart MBQL just before execution. Shape depends on variant — top-n-other carries a k; filtered-subset carries filter_values; per-value-time-series carries k plus value_index plus optional temporal_dimension_id.
                   constraints:
                     nullable: true
 
@@ -1381,14 +1381,4 @@ databaseChangeLog:
         - dropNotNullConstraint:
             tableName: exploration_query
             columnName: dataset_query
-            columnDataType: ${text.type}
-
-  - changeSet:
-      id: v62.qnamenull
-      author: johnswanson
-      comment: Make exploration_query.name nullable (runner names rows when it finalizes them)
-      changes:
-        - dropNotNullConstraint:
-            tableName: exploration_query
-            columnName: name
             columnDataType: ${text.type}

@@ -20,6 +20,7 @@
   retried forever."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.app-db.core :as mdb]
    [metabase.contextual-interestingness.core :as contextual-interestingness]
    [metabase.explorations.ai-summary :as explorations.ai-summary]
@@ -30,6 +31,7 @@
    [metabase.explorations.settings :as explorations.settings]
    [metabase.explorations.timeline-interestingness :as explorations.timeline-interestingness]
    [metabase.interestingness.core :as interestingness]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.request.core :as request]
@@ -73,11 +75,22 @@
 
 (defn- serialize-result
   "Run `cache.impl/do-with-serialization` against a single QP result, returning the gzipped+nippy
-  byte array."
+  byte array.
+
+  Mirrors the prep step the QP's own result-cache middleware does (see
+  `metabase.query-processor.middleware.cache/add-object-to-cache!`):
+  `:json_query` and `:preprocessed_query` are passed through
+  `lib/prepare-for-serialization` so the metadata provider — a record
+  holding caching atoms that Nippy can't freeze — is stripped before
+  serialization. Without this prep, Nippy chokes on the `Atom` inside the
+  mp the moment we hand it a qp-result whose input query is a pMBQL value
+  with `:lib/metadata` still attached."
   ^bytes [qp-result]
   (cache.impl/do-with-serialization
    (fn [in result-fn]
-     (in qp-result)
+     (in (cond-> qp-result
+           (map? qp-result) (-> (m/update-existing :json_query lib/prepare-for-serialization)
+                                (m/update-existing :preprocessed_query lib/prepare-for-serialization))))
      (result-fn))))
 
 (defn- finalize-row!
