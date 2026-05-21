@@ -42,7 +42,6 @@
    [metabase.explorations.ai-summary.phase2 :as phase2]
    [metabase.explorations.models.exploration-query-result :as eqr]
    [metabase.metabot.core :as metabot]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.request.core :as request]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
@@ -198,15 +197,10 @@
                          :marks [{:type "italic"}]}]}]})
 
 (defn ai-summary-available?
-  "True when AI Summary can be generated — Metabot is enabled (which
-  also requires AI features to be on) and an LLM provider is configured. When
-  false the exploration POST endpoint must not create the placeholder document
-  and [[generate-ai-summary!]] skips generation, so no empty `Automatic
-  Insights` doc is left behind for a disabled / unconfigured instance."
+  "True when AI Summary can be generated for the **current user**. Must be called with the creator
+  bound as the current user so the permission/usage checks resolve correctly."
   []
-  (boolean
-   (and (metabot.settings/metabot-enabled?)
-        (metabot.settings/llm-metabot-configured?))))
+  (metabot/llm-call-available? :permission/metabot-other-tools))
 
 (defn create-placeholder-doc!
   "Insert a fresh `AI Summary` document on `thread-id` owned by

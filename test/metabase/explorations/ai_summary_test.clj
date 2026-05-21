@@ -440,6 +440,11 @@
         (mt/with-temporary-setting-values [ai-features-enabled? true
                                            metabot-enabled?     true]
           (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-configured? (constantly true)
+                                      ;; Grant the metabot permission so the pre-flight gate opens
+                                      ;; regardless of whether this instance has the :ai-controls
+                                      ;; feature (otherwise a fresh creator defaults to :no).
+                                      metabase.metabot.scope/resolve-user-permissions
+                                      (constantly metabase.metabot.scope/all-yes-permissions)
                                       metabot.self/call-llm-structured-with-trace
                                       (fn [_model messages _schema _temp _max-tokens _opts]
                                         (let [user-msg (->> messages (filter #(= "user" (:role %))) first :content)]

@@ -6,6 +6,7 @@
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -46,13 +47,17 @@
 
 (defn- do-with-ai-summary-available
   "Run `thunk` with the conditions under which AI Summary are generated:
-  AI features + Metabot enabled, and an LLM provider configured. Needed because
-  a clean test instance has no provider key, so `ai-summary-available?` is
-  false by default and the placeholder document is not created."
+  AI features + Metabot enabled, an LLM provider configured, and the current user
+  holding the metabot permission. Needed because a clean test instance has no
+  provider key (so `ai-summary-available?` is false by default) and, on instances
+  with the `:ai-controls` feature, a fresh user lacks `:permission/metabot-other-tools`
+  (which `ai-summary-available?` now also requires) — in either case the placeholder
+  document would not be created."
   [thunk]
   (mt/with-temporary-setting-values [ai-features-enabled? true
                                      metabot-enabled?     true]
-    (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-configured? (constantly true)]
+    (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-configured? (constantly true)
+                                scope/resolve-user-permissions (constantly scope/all-yes-permissions)]
       (thunk))))
 
 (defmacro with-ai-summary-available
@@ -1054,6 +1059,21 @@
                 docs (t2/select :model/Document :exploration_thread_id tid)]
             (is (= #{"Scratchpad"} (set (map :name docs)))
                 "only the Scratchpad doc is created; no AI Summary placeholder")))))))
+
+(deftest exploration-create-skips-ai-summary-doc-when-creator-lacks-permission-test
+  (testing "POST / does NOT create the AI Summary placeholder when the creator lacks :permission/metabot-other-tools (UXW-4120)"
+    (mt/with-temporary-setting-values [ai-features-enabled? true
+                                       metabot-enabled?     true]
+      (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-configured? (constantly true)
+                                  scope/resolve-user-permissions
+                                  (fn [_uid] (assoc scope/all-yes-permissions
+                                                    :permission/metabot-other-tools :no))]
+        (mt/with-temp [:model/User u {:email "ai-noperm-create@example.com"}]
+          (let [resp (mt/user-http-request u :post 200 "exploration" {:name "x"})
+                tid  (-> resp :threads first :id)
+                docs (t2/select :model/Document :exploration_thread_id tid)]
+            (is (= #{"Scratchpad"} (set (map :name docs)))
+                "only the Scratchpad doc is created; no AI Summary placeholder for a permission-restricted creator")))))))
 
 (deftest exploration-documents-list-and-create-test
   (testing "GET/POST /thread/:thread-id/documents list and create empty documents with auto-named Scratchpad"
