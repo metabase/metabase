@@ -2,7 +2,7 @@
 
 The Metabase Teradata driver allows Metabase SNAPSHOT to connect to [Teradata](https://www.teradata.com/) databases.
 Instructions for installing it can be found below.
-As soon as the required commit is merged into a future Metabase release version, this driver can be aligned with Metabase tags. 
+As soon as the required commit is merged into a future Metabase release version, this driver can be aligned with Metabase tags.
 
 This driver is community-supported and is not considered part of the
 core Metabase project. If you would like to open a GitHub issue to
@@ -52,7 +52,7 @@ If you are running the Docker image or you want to use another directory for plu
 
 You require metabase to be installed alongside of your project
 1. cd metadata-teradata-driver/..
-2. execute 
+2. execute
    ```
    git clone https://github.com/metabase/metabase
    cd metabase
@@ -68,7 +68,7 @@ You require metabase to be installed alongside of your project
 ```
 DRIVER_PATH=`readlink -f /home/user/metadata-teradata-driver/`
 ```
-3. 
+3.
 ```
  clojure   -Sdeps "{:aliases {:teradata {:extra-deps {com.metabase/teradata-driver {:local/root \"$DRIVER_PATH\"}}}}}"    -X:build:teradata   build-drivers.build-driver/build-driver!   "{:driver :teradata :project-dir \"$DRIVER_PATH\", :target-dir \"$DRIVER_PATH/target\"}"
 ```

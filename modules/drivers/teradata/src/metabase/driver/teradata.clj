@@ -96,9 +96,10 @@
 
 (defn- jdbc-fields-metadata
   "Fetch metadata about the Fields belonging to a Table or View using a SELECT * query."
-  [_driver ^Connection conn _db-name-or-nil schema table-name]
+  [driver ^Connection conn _db-name-or-nil schema table-name]
   (try
-    (let [sql (str "SELECT * FROM " (when schema (str schema ".")) table-name " WHERE 1=0")] ; Query with no rows
+    (let [table (sql.u/quote-name driver :table schema table-name)
+          sql (format "SELECT * FROM %s WHERE 1=0" table)] ; Query with no rows
       (with-open [stmt (.createStatement conn)
                   rs   (.executeQuery stmt sql)]
         (let [metadata (.getMetaData rs)]
@@ -338,7 +339,7 @@
 ;; Overridden to customise the C3P0 properties which can be used to avoid the high number of logins against Teradata
 ;; In case of such problem increase the value of acquireRetryDelay
 ;; https://github.com/metabase/metabase/blob/master/src/metabase/driver/sql_jdbc/connection.clj#L42
-;; https://www.mchange.com/projectstr/c3p0/#acquireRetryDelay
+;; https://www.mchange.com/projects/c3p0/#acquireRetryDelay
 (defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :teradata
   [driver database]
   {"acquireRetryDelay"            1000
@@ -358,4 +359,3 @@
                                                                                                              :dbname
                                                                                                              :sid
                                                                                                              :catalog))))})
-

@@ -1,7 +1,7 @@
 info:
   name: Metabase Teradata Driver
   # also replace the version in deps.edn if you change the metabase version here
-  version: 1.1.18-metabase-v0.50.31-teradata-jdbc-20.00
+  version: 1.1.19-metabase-v0.61.1-teradata-jdbc-20.00
   description: Allows Metabase to connect to Teradata databases. Community Supported driver.
 dependencies:
   - class: com.teradata.jdbc.TeraDriver

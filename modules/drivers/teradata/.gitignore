@@ -1,0 +1,14 @@
+\#*\#
+.\#*
+/target
+/.nrepl-port
+/bin
+.classpath
+.project
+.idea
+*.iml
+teradata-driver.iml
+.lein-repl-history
+.cpcache
+.clj-kondo
+.lsp
