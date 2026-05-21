@@ -117,10 +117,8 @@
                (range 1 (inc (.getColumnCount metadata))))))
           (catch Exception e
             (if (driver/table-known-to-not-exist? driver e)
-              ;; if the table does not exist, we just warn and ignore it, rather than failing with an exception
-              (do
-                (log/warnf e "Cannot sync Table %s: does not exist" table-name)
-                init)
+              ;; if the table does not exist, we just ignore it, rather than failing with an exception
+              init
               (throw e))))))))
 
 (defn- jdbc-fields-metadata

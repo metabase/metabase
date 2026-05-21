@@ -189,7 +189,7 @@
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
     (with-redefs [test.data.snowflake/qualified-db-name (constantly "v4_test-data")]
       (testing "Create DB DDL statements"
-        (is (= "DROP DATABASE IF EXISTS \"v4_test-data\"; CREATE DATABASE \"v4_test-data\";"
+        (is (= "CREATE DATABASE IF NOT EXISTS \"v4_test-data\";"
                (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition defs/test-data)))))
       (testing "Create Table DDL statements"
         (is (= (map

@@ -2,7 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
-   [metabase.mcp.resources :as mcp.resources]))
+   [metabase.mcp.resources :as mcp.resources]
+   [metabase.request.core :as request]
+   [metabase.system.core :as system]))
 
 (set! *warn-on-reflection* true)
 
@@ -76,3 +78,50 @@
              :name     "Construct Query Reference"}
             (some #(when (= "metabase://docs/construct-query.md" (:uri %)) %)
                   (:resources (mcp.resources/list-resources #{})))))))
+
+(deftest builtin-ui-resource-prefers-border-test
+  (testing "the visualize query UI resource explicitly asks the host to provide a border"
+    (mcp.resources/with-fallback-template
+      (is (=? {:status   :ok
+               :contents [{:uri      "ui://metabase/visualize-query.html"
+                           :mimeType "text/html;profile=mcp-app"
+                           :_meta    {:ui {:prefersBorder true}}}]}
+              (mcp.resources/read-resource "ui://metabase/visualize-query.html"
+                                           #{"agent:visualize"}
+                                           {}))))))
+
+(deftest builtin-visualize-query-ui-resource-metadata-test
+  (testing "the visualize_query UI resource publishes bare origins; :domain is gated on the ChatGPT client"
+    ;; site-url is set with a subpath to confirm `_meta.ui.domain` and the CSP domain lists strip the
+    ;; path — ChatGPT's MCP host treats those fields as origins and would otherwise reject the value.
+    ;; `:domain` itself is only emitted for ChatGPT — Claude validates it against its own
+    ;; `*.claudemcpcontent.com` namespace and rejects anything else, so the field is suppressed for
+    ;; non-ChatGPT clients (detected via the in-flight request's User-Agent header).
+    (let [site-url "https://metabase.example.com/sub/path"
+          origin   "https://metabase.example.com"
+          uri      "ui://metabase/visualize-query.html"
+          read-ui  (fn []
+                     (mcp.resources/with-fallback-template
+                       (mcp.resources/read-resource uri #{"agent:visualize"} {})))]
+      (with-redefs [system/site-url (constantly site-url)]
+        (testing "no request bound → CSP origins still emitted, :domain suppressed"
+          (let [ui-meta (-> (read-ui) :contents first :_meta :ui)]
+            (is (=? {:prefersBorder true
+                     :csp           {:connectDomains  [origin]
+                                     :resourceDomains [origin]}}
+                    ui-meta))
+            (is (not (contains? ui-meta :domain)))))
+        (testing "non-ChatGPT User-Agent → :domain suppressed"
+          (request/with-current-request {:headers {"user-agent" "claude-ai/0.1.0"}}
+            (let [ui-meta (-> (read-ui) :contents first :_meta :ui)]
+              (is (not (contains? ui-meta :domain))))))
+        (testing "ChatGPT User-Agent (`openai-mcp/...`) → :domain = origin"
+          (request/with-current-request {:headers {"user-agent" "openai-mcp/1.0.0 (ChatGPT)"}}
+            (is (=? {:status   :ok
+                     :contents [{:uri      uri
+                                 :mimeType "text/html;profile=mcp-app"
+                                 :_meta    {:ui {:prefersBorder true
+                                                 :domain        origin
+                                                 :csp           {:connectDomains  [origin]
+                                                                 :resourceDomains [origin]}}}}]}
+                    (read-ui)))))))))

@@ -12,6 +12,7 @@
    [metabase-enterprise.serialization.v2.round-trip-test :as round-trip-test]
    [metabase.actions.models :as action]
    [metabase.audit-app.core :as audit]
+   [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -2429,6 +2430,41 @@
             (is (= #{transform-eid python-transform-eid}
                    (ids-by-model "Transform" (extract/extract {}))))))))))
 
+(deftest table-with-transform-id-dependency-test
+  (testing "Table created by a Transform declares the Transform as a serdes dependency (GDGT-2444)"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-empty-h2-app-db!
+        (ts/with-temp-dpc [:model/Database
+                           {db-id :id}
+                           {:name "My Database"}
+
+                           :model/Transform
+                           {transform-id :id
+                            transform-eid :entity_id}
+                           {:name "Transform Creating Table"
+                            :entity_id "transformCreatingTblx"
+                            :source {:query {:database db-id
+                                             :type "native"
+                                             :native {:query "select 1 as x"}}
+                                     :type "query"}
+                            :target {:database db-id
+                                     :type "table"
+                                     :schema "public"
+                                     :name "transform_output"}}
+
+                           :model/Table
+                           {table-id :id}
+                           {:name "transform_output"
+                            :db_id db-id
+                            :schema "public"
+                            :transform_id transform-id}]
+          (let [ser (ts/extract-one "Table" table-id)]
+            (testing "transform_id is transformed to entity_id"
+              (is (= transform-eid (:transform_id ser))))
+            (testing "depends on the transform"
+              (is (contains? (set (serdes/dependencies ser))
+                             [{:model "Transform" :id transform-eid}])))))))))
+
 (deftest transform-job-extraction-test
   (testing "TransformJob extraction and serialization"
     (mt/with-premium-features #{:transforms-basic}
@@ -2937,3 +2973,20 @@
       (testing "all embedding themes are extracted"
         (is (= #{light-eid dark-eid}
                (ids-by-model "EmbeddingTheme" (extract/extract {}))))))))
+
+(deftest stamp-metabase-version-test
+  (testing "extract stamps :metabase_version on entities (so load can detect version mismatches)"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Collection {coll-id :id} {:name "My Collection"}
+                         :model/Card       _             {:name "My Card" :collection_id coll-id}]
+        (let [extracted (into [] (extract/extract {}))
+              by-model  (group-by (comp :model last :serdes/meta) extracted)]
+          (testing "Collections and Cards get the current Metabase version"
+            (doseq [m ["Collection" "Card"]
+                    entity (get by-model m)]
+              (is (= config/mb-version-string (:metabase_version entity))
+                  (str m " should be stamped with the current version"))))
+          (testing "Settings are not stamped — settings.yaml only persists :key and :value"
+            (doseq [setting (get by-model "Setting")]
+              (is (not (contains? setting :metabase_version))
+                  "Setting should not be stamped"))))))))

@@ -3,6 +3,7 @@ import { c, t } from "ttag";
 import { useRunTransformJobMutation } from "metabase/api";
 import { Schedule } from "metabase/common/components/Schedule";
 import { useSetting } from "metabase/common/hooks";
+import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Divider, Group, Tooltip } from "metabase/ui";
 import { getScheduleExplanation } from "metabase/utils/cron";
@@ -15,7 +16,6 @@ import type {
 import { trackTransformJobTriggerManualRun } from "../../../analytics";
 import { RunButton } from "../../RunButton";
 import { RunStatus } from "../../RunStatus";
-import { TitleSection } from "../../TitleSection";
 import type { TransformJobInfo } from "../types";
 
 type ScheduleSectionProps = {

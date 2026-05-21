@@ -87,7 +87,6 @@ export function QueryVisualization(props) {
             via={result.via}
             question={question}
             duration={result.duration}
-            isResultDirty={isResultDirty}
           />
         ) : result?.data ? (
           <VisualizationResult
