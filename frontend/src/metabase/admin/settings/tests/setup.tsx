@@ -74,6 +74,10 @@ export const ossRoutes: RouteMap = {
     testPattern: /Make Metabase look like you/i,
   },
   cloud: { path: "/cloud", testPattern: /Migrate to Metabase Cloud/i },
+  remoteSync: {
+    path: "/remote-sync",
+    testPattern: /Manage your Metabase content in Git/i,
+  },
 };
 
 export const enterpriseRoutes: RouteMap = {
@@ -152,6 +156,14 @@ export const setup = async ({
 
   fetchMock.get("path:/api/cloud-migration", { status: 204 });
   fetchMock.get("path:/api/ee/sso/oidc", []);
+  fetchMock.get("path:/api/ee/remote-sync/dirty", {
+    data: [],
+    metadata: {
+      changed_collections: {},
+      is_dirty: false,
+      has_removed_items: false,
+    },
+  });
 
   const user = createMockUser({
     is_superuser: isAdmin,
