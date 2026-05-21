@@ -7,6 +7,7 @@ import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 import { getTraceparentHeader } from "metabase/utils/otel";
 import { retry } from "metabase/utils/retry";
 
+import { NetworkError, isRetriableError } from "./errors";
 import { getLocaleHeader } from "./locale";
 import { type RequestMethod, isRequestMethod } from "./method";
 import { apiRequestManipulationMiddleware } from "./middleware";
@@ -15,7 +16,6 @@ import {
   getBasenamePath,
   getResponseBody,
   getResponseStatus,
-  isRetriableError,
   substituteUrlTags,
 } from "./utils";
 
@@ -67,19 +67,6 @@ type ResponseErrorInfo = {
   status: number;
   metabaseVersion: string | null;
 };
-
-/**
- * Thrown when the transport itself fails before a response is received —
- * e.g. the server dropped the connection, DNS lookup failed, or the user is
- * offline. Callers can `instanceof`-check this to render a connectivity
- * error message instead of treating it as a generic JS exception.
- */
-export class NetworkError extends Error {
-  constructor(message = "Network error") {
-    super(message);
-    this.name = "NetworkError";
-  }
-}
 
 export class ApiClient extends EventEmitter {
   basename = "";

@@ -42,22 +42,6 @@ export function appendQueryParameters(
   }
 }
 
-export function getErrorStatus(error: unknown): number | undefined {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "status" in error &&
-    typeof error.status === "number"
-  ) {
-    return error.status;
-  }
-  return undefined;
-}
-
-export function isRetriableError(error: unknown): boolean {
-  return getErrorStatus(error) === 503;
-}
-
 export function getResponseStatus(response: Response, body: unknown): number {
   if (
     response.status === 202 &&
