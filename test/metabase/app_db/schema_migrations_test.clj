@@ -2943,7 +2943,7 @@
       (migrate!)
       (testing "T00:00:09 is recorded as MARK_RAN"
         (is (= "MARK_RAN"
-               (:exectype (liquibase/changelog-by-id mdb.connection/*application-db*
+               (:exectype (liquibase/changelog-by-id (mc/current (mdb.connection/application-db-handle))
                                                      "v60.2026-04-02T00:00:09"))))))))
 
 ;;;
