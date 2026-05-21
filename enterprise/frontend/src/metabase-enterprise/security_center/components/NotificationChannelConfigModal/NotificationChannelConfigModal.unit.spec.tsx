@@ -493,7 +493,7 @@ describe("NotificationChannelConfigModal — test notification payload", () => {
     });
   });
 
-  it("sends unsaved Slack channel changes (the bug — used to send saved channel)", async () => {
+  it("sends unsaved Slack channel changes (metabase#74147)", async () => {
     setupWithRealHook({ slackConfigured: true, slackChannel: "#general" });
 
     // Wait for the Slack channels query to resolve before interacting with
@@ -515,7 +515,7 @@ describe("NotificationChannelConfigModal — test notification payload", () => {
     });
   });
 
-  it("sends null slack_channel when the user toggles Slack off without saving", async () => {
+  it("sends null slack_channel when the user toggles Slack off without saving (metabase#74147)", async () => {
     setupWithRealHook({ slackConfigured: true, slackChannel: "#general" });
 
     await userEvent.click(screen.getByTestId("slack-toggle"));
@@ -530,7 +530,7 @@ describe("NotificationChannelConfigModal — test notification payload", () => {
     });
   });
 
-  it("sends unsaved 'send to all admins' toggle changes", async () => {
+  it("sends unsaved 'send to all admins' toggle changes (metabase#74147)", async () => {
     setupWithRealHook({ emailConfigured: true });
 
     // Default state has the admin group recipient — flip the toggle off

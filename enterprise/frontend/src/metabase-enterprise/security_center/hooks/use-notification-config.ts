@@ -11,13 +11,13 @@ import {
   useListUserRecipientsQuery,
   useUpdateSettingsMutation,
 } from "metabase/api";
-import type { SendTestNotificationBody } from "metabase/api/security-center";
 import { useSetting } from "metabase/common/hooks";
 import type {
   ChannelApiResponse,
   NotificationHandlerEmail,
   NotificationHandlerSlack,
   NotificationRecipient,
+  SendTestNotificationRequest,
   User,
 } from "metabase-types/api";
 
@@ -64,13 +64,13 @@ function isAdminGroupRecipient(r: NotificationRecipient): boolean {
 }
 
 /**
- * Flatten the modal's config into the wire shape used by both
+ * Flatten the modal's config into a serializable shape used by both
  * POST /api/ee/security-center/test-notification (for unsaved test sends)
  * and PUT /api/setting/security-center-email-recipients (for saving).
  */
 export function serializeNotificationConfig(
   config: NotificationConfig,
-): SendTestNotificationBody {
+): SendTestNotificationRequest {
   const adminGroupRecipient: NotificationRecipient = {
     type: "notification-recipient/group",
     permissions_group_id: ADMIN_GROUP_ID,
@@ -207,11 +207,11 @@ export function useNotificationConfigState(): NotificationConfigValue {
   }, []);
 
   const save = useCallback(async () => {
-    const { email_recipients, slack_channel } =
+    const { emailRecipients, slackChannel } =
       serializeNotificationConfig(config);
     await updateSettings({
-      "security-center-email-recipients": email_recipients,
-      "security-center-slack-channel": slack_channel,
+      "security-center-email-recipients": emailRecipients,
+      "security-center-slack-channel": slackChannel,
     }).unwrap();
   }, [config, updateSettings]);
 

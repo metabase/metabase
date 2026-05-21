@@ -3,16 +3,11 @@ import type {
   AcknowledgeAdvisoryResponse,
   AdvisoryId,
   ListAdvisoriesResponse,
-  NotificationRecipient,
+  SendTestNotificationRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
 import { listTag } from "./tags";
-
-export type SendTestNotificationBody = {
-  email_recipients: NotificationRecipient[];
-  slack_channel: string | null;
-};
 
 export const securityCenterApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -50,12 +45,15 @@ export const securityCenterApi = Api.injectEndpoints({
     }),
     sendTestNotification: builder.mutation<
       { success: boolean },
-      SendTestNotificationBody
+      SendTestNotificationRequest
     >({
-      query: (body) => ({
+      query: ({ emailRecipients, slackChannel }) => ({
         method: "POST",
         url: "/api/ee/security-center/test-notification",
-        body,
+        body: {
+          email_recipients: emailRecipients,
+          slack_channel: slackChannel,
+        },
       }),
     }),
   }),
