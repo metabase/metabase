@@ -305,6 +305,18 @@
                eu))
         (is (= "boom" (:output result)))))))
 
+(deftest get-transform-details-entity-usage-non-agent-error-test
+  (testing "get_transform_details still emits :entity-usage when the underlying call throws a non-agent error (e.g. api/read-check 404)"
+    (mt/with-dynamic-fn-redefs [transforms/get-transform
+                                (fn [_] (throw (ex-info "Not found." {:status-code 404})))]
+      (let [result (agent-transforms/get-transform-details-tool {:transform_id 7})
+            eu     (get-in result [:structured-output :entity-usage])]
+        (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+        (is (= {:input  [{:type "transform" :id 7}]
+                :output []}
+               eu))
+        (is (str/includes? (:output result) "Not found."))))))
+
 (deftest get-transform-python-library-details-oss-entity-usage-test
   (testing "OSS stub emits :entity-usage with path-as-id and EE-only message"
     (when-not (premium-features/has-feature? :transforms-python)

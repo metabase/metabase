@@ -149,14 +149,27 @@
   get-transform-details-tool
   "Get information about a transform."
   [{:keys [transform_id]} :- [:map {:closed true} [:transform_id :int]]]
+  ;; Outer try attaches :entity-usage on the non-agent error path that
+  ;; `handle-agent-error` re-raises (e.g. `api/read-check` 404s from
+  ;; `transforms/get-transform`, which throw with `:status-code 404` but no
+  ;; `:agent-error?` — without this catch the throw escapes past
+  ;; `entity-usage-on-result`).
   (let [entity-usage (transform-inspection-entity-usage transform_id)]
-    (entity-usage-on-result
-     (try
-       (add-output {:structured_output (transforms/get-transform transform_id)}
-                   format-transform-details-output)
-       (catch Exception e
-         (metabot.tools.u/handle-agent-error e)))
-     entity-usage)))
+    (try
+      (entity-usage-on-result
+       (try
+         (add-output {:structured_output (transforms/get-transform transform_id)}
+                     format-transform-details-output)
+         (catch Exception e
+           (metabot.tools.u/handle-agent-error e)))
+       entity-usage)
+      (catch Exception e
+        (log/error e "Failed to get transform details")
+        (entity-usage-on-result
+         (if (:agent-error? (ex-data e))
+           {:output (ex-message e)}
+           {:output (str "Failed to get transform details: " (or (ex-message e) "Unknown error"))})
+         entity-usage)))))
 
 (def ^:private python-lib-schema
   [:map {:closed true} [:path :string]])

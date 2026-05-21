@@ -181,17 +181,31 @@
           (mapcat fields-from-entity)
           (concat tables models))))
 
+(defn- answer-sources-output-refs
+  "Project the `:metrics` and `:models` from a successful `answer-sources`
+  result into `:entity-usage.output` entries. Both lists carry `:id` per
+  entity; the `:type` on each list element is the keyword equivalent of
+  the entity-usage type string."
+  [{:keys [metrics models]}]
+  (into []
+        (concat
+         (mapv (fn [{:keys [id]}] {:type "metric" :id id}) metrics)
+         (mapv (fn [{:keys [id]}] {:type "model"  :id id}) models))))
+
 (mu/defn ^{:tool-name "list_available_data_sources"
+           :tool-type :discovery
            :scope     scope/agent-metadata-read}
   list-available-data-sources-tool
   "List all data sources (metrics and models) available to the metabot instance."
   [_args :- [:map {:closed true}]]
-  (add-output
-   (entity-details-tools/answer-sources {:metabot-id         shared/*metabot-id*
-                                         :with-field-values? false
-                                         :with-measures?     true
-                                         :with-segments?     true})
-   format-answer-sources-output))
+  (let [result (add-output
+                (entity-details-tools/answer-sources {:metabot-id         shared/*metabot-id*
+                                                      :with-field-values? false
+                                                      :with-measures?     true
+                                                      :with-segments?     true})
+                format-answer-sources-output)
+        output (answer-sources-output-refs (:structured-output result))]
+    (entity-usage-on-result result {:input [] :output output})))
 
 (def ^:private list-available-fields-schema
   [:map {:closed true}
@@ -227,13 +241,25 @@
   get-field-values-tool
   "Return metadata for a given field of a given data source."
   [{:keys [data_source source_id field_id]} :- get-field-values-schema]
+  ;; Outer try attaches :entity-usage on the non-agent error path that
+  ;; `handle-agent-error` re-raises (e.g. `api/read-check` 404s from
+  ;; `field-stats` helpers when `source_id` doesn't resolve to a real entity).
   (let [entity-usage {:input  [{:type data_source :id source_id}
                                {:type "field"     :id field_id}]
-                      :output []}
-        result       (add-output
-                      (field-stats-tools/field-values {:entity-type data_source
-                                                       :entity-id   source_id
-                                                       :field-id    field_id
-                                                       :limit       nil})
-                      format-field-metadata-output)]
-    (entity-usage-on-result result entity-usage)))
+                      :output []}]
+    (try
+      (entity-usage-on-result
+       (add-output
+        (field-stats-tools/field-values {:entity-type data_source
+                                         :entity-id   source_id
+                                         :field-id    field_id
+                                         :limit       nil})
+        format-field-metadata-output)
+       entity-usage)
+      (catch Exception e
+        (log/error e "Failed to fetch field values")
+        (entity-usage-on-result
+         (if (:agent-error? (ex-data e))
+           {:output (ex-message e)}
+           {:output (str "Failed to fetch field values: " (or (ex-message e) "Unknown error"))})
+         entity-usage)))))

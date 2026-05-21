@@ -50,6 +50,7 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
           stringify-series-keys))
 
 (mu/defn ^{:tool-name "analyze_chart"
+           :tool-type :utility
            :prompt    "analyze_chart"
            :scope     scope/agent-viz-read}
   analyze-chart-tool

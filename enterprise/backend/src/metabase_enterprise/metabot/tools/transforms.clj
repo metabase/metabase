@@ -5,7 +5,8 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.transforms :as tools.transforms]
    [metabase.metabot.util :as metabot.u]
-   [metabase.premium-features.core :refer [defenterprise-schema]]))
+   [metabase.premium-features.core :refer [defenterprise-schema]]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,10 +28,23 @@
   "Get information about a Python library by path."
   :feature :transforms-python
   [{:keys [path]} :- [:map {:closed true} [:path :string]]]
-  (tools.transforms/entity-usage-on-result
-   (tools.transforms/add-output (transforms-write-tools/get-transform-python-library-details {:path path})
-                                format-python-library-output)
-   (tools.transforms/transform-inspection-entity-usage path)))
+  ;; Outer try attaches :entity-usage on the non-agent error path that
+  ;; `handle-agent-error` re-raises from `get-transform-python-library-details`.
+  (let [entity-usage (tools.transforms/transform-inspection-entity-usage path)]
+    (try
+      (tools.transforms/entity-usage-on-result
+       (tools.transforms/add-output
+        (transforms-write-tools/get-transform-python-library-details {:path path})
+        format-python-library-output)
+       entity-usage)
+      (catch Exception e
+        (log/error e "Failed to get transform Python library details")
+        (tools.transforms/entity-usage-on-result
+         (if (:agent-error? (ex-data e))
+           {:output (ex-message e)}
+           {:output (str "Failed to get transform Python library details: "
+                         (or (ex-message e) "Unknown error"))})
+         entity-usage)))))
 
 (defenterprise-schema write-transform-python-tool :- :map
   "Write new Python code or edit existing code for transforms.

@@ -49,6 +49,36 @@
     (is (= [] (#'metadata-tools/list-available-fields-output
                {:structured-output {:tables [] :models [] :metrics []}})))))
 
+;;; ----------------------------------- list_available_data_sources ----------------------------------------
+
+(deftest answer-sources-output-refs-test
+  (testing "projects metrics and models from answer-sources :structured-output"
+    (is (= [{:type "metric" :id 12}
+            {:type "metric" :id 13}
+            {:type "model"  :id 50}]
+           (#'metadata-tools/answer-sources-output-refs
+            {:metrics [{:id 12 :name "M1"} {:id 13 :name "M2"}]
+             :models  [{:id 50 :name "Best"}]}))))
+  (testing "empty inputs → empty output"
+    (is (= [] (#'metadata-tools/answer-sources-output-refs {:metrics [] :models []})))))
+
+(deftest list-available-data-sources-entity-usage-test
+  (testing "list_available_data_sources emits :input [] and :output of surfaced metrics + models"
+    (mt/with-dynamic-fn-redefs [entity-details-tools/answer-sources
+                                (fn [_]
+                                  {:structured-output {:result-type :answer-sources
+                                                       :metrics [{:id 12 :type :metric :name "M1"}
+                                                                 {:id 13 :type :metric :name "M2"}]
+                                                       :models  [{:id 50 :type :model  :name "Best"}]}})]
+      (let [result (metadata-tools/list-available-data-sources-tool {})
+            eu     (get-in result [:structured-output :entity-usage])]
+        (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+        (is (= {:input []
+                :output [{:type "metric" :id 12}
+                         {:type "metric" :id 13}
+                         {:type "model"  :id 50}]}
+               eu))))))
+
 ;;; ----------------------------------- list_available_fields ----------------------------------------
 
 (deftest list-available-fields-entity-usage-success-test
@@ -152,3 +182,17 @@
                          {:type "field"  :id 99}]
                 :output []}
                eu))))))
+
+(deftest get-field-values-entity-usage-non-agent-error-test
+  (testing "get_field_values still emits :entity-usage when field-values throws a non-agent error (e.g. api/read-check 404 on the underlying entity)"
+    (mt/with-dynamic-fn-redefs [field-stats-tools/field-values
+                                (fn [_] (throw (ex-info "Not found." {:status-code 404})))]
+      (let [result (metadata-tools/get-field-values-tool
+                    {:data_source "table" :source_id 99999 :field_id 42})
+            eu     (get-in result [:structured-output :entity-usage])]
+        (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+        (is (= {:input  [{:type "table" :id 99999}
+                         {:type "field" :id 42}]
+                :output []}
+               eu))
+        (is (string? (:output result)))))))
