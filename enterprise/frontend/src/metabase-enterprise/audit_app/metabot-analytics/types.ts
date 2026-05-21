@@ -105,9 +105,18 @@ export type ConversationDetail = {
   feedback: ConversationFeedback[];
 };
 
+export const DATA_COMPLEXITY_CATALOG_IDS = [
+  "library",
+  "universe",
+  "metabot",
+] as const;
+
+export const DATA_COMPLEXITY_GROUP_IDS = ["size", "ambiguity"] as const;
+
 export type DataComplexityRating = "low" | "medium" | "high";
-export type DataComplexityCatalogId = "library" | "universe" | "metabot";
-export type DataComplexityGroupId = "size" | "ambiguity";
+export type DataComplexityCatalogId =
+  (typeof DATA_COMPLEXITY_CATALOG_IDS)[number];
+export type DataComplexityGroupId = (typeof DATA_COMPLEXITY_GROUP_IDS)[number];
 
 export type DataComplexitySizeComponentId = "entity_count" | "field_count";
 export type DataComplexityAmbiguityComponentId =
@@ -117,6 +126,10 @@ export type DataComplexityAmbiguityComponentId =
 export type DataComplexityComponentId =
   | DataComplexitySizeComponentId
   | DataComplexityAmbiguityComponentId;
+type DataComplexityGroupComponents = {
+  size: DataComplexitySizeComponentId;
+  ambiguity: DataComplexityAmbiguityComponentId;
+};
 
 export type DataComplexityFailure = { error: string };
 export type ScoreAndRating = {
@@ -133,51 +146,18 @@ export type DataComplexityLeaf = {
   measurement: number;
 } & ScoreAndRating;
 
-interface DataComplexitySchemaNode {
-  [key: string]: DataComplexitySchemaNode | true;
-}
-
-type DataComplexityCatalogSchema = {
-  size: {
-    entity_count: true;
-    field_count: true;
-  };
-  ambiguity: {
-    name_collisions: true;
-    synonym_pairs: true;
-    repeated_measures: true;
-  };
-};
-
-export type DataComplexityGrouping<T extends DataComplexitySchemaNode> = (
-  | ScoreAndRating
-  | ScoreAndRatingError
-) & {
-  components: {
-    [K in keyof T]: T[K] extends true
-      ? DataComplexitySubScore
-      : T[K] extends DataComplexitySchemaNode
-        ? DataComplexityGrouping<T[K]>
-        : never;
-  };
-};
-
 export type DataComplexitySubScore = DataComplexityFailure | DataComplexityLeaf;
 
-export type DataComplexitySizeGroup = DataComplexityGrouping<
-  DataComplexityCatalogSchema["size"]
->;
-
-export type DataComplexityAmbiguityGroup = DataComplexityGrouping<
-  DataComplexityCatalogSchema["ambiguity"]
->;
-
-export type DataComplexityGroup =
-  | DataComplexitySizeGroup
-  | DataComplexityAmbiguityGroup;
-
-export type DataComplexityCatalog =
-  DataComplexityGrouping<DataComplexityCatalogSchema>;
+export type DataComplexityCatalog = (ScoreAndRating | ScoreAndRatingError) & {
+  components: {
+    [G in DataComplexityGroupId]: (ScoreAndRating | ScoreAndRatingError) & {
+      components: Record<
+        DataComplexityGroupComponents[G],
+        DataComplexitySubScore
+      >;
+    };
+  };
+};
 
 export type DataComplexityScoresResponse = {
   meta: {

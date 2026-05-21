@@ -21,31 +21,48 @@ import {
 } from "metabase/ui";
 import type { MetabaseColorKey } from "metabase/ui/colors/types";
 import { formatNumber } from "metabase/utils/formatting";
+import { getObjectEntries } from "metabase/utils/objects";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { useGetDataComplexityScoresQuery } from "../../api";
-import type {
-  DataComplexityCatalog,
-  DataComplexityCatalogId,
-  DataComplexityComponentId,
-  DataComplexityFailure,
-  DataComplexityGroupId,
-  DataComplexityRating,
-  DataComplexitySubScore,
-  ScoreAndRating,
-  ScoreAndRatingError,
+import {
+  DATA_COMPLEXITY_CATALOG_IDS,
+  DATA_COMPLEXITY_GROUP_IDS,
+  type DataComplexityCatalog,
+  type DataComplexityCatalogId,
+  type DataComplexityComponentId,
+  type DataComplexityFailure,
+  type DataComplexityGroupId,
+  type DataComplexityRating,
+  type DataComplexitySubScore,
+  type ScoreAndRating,
+  type ScoreAndRatingError,
 } from "../../types";
 
-const CATALOG_IDS: DataComplexityCatalogId[] = [
-  "library",
-  "universe",
-  "metabot",
-];
+import S from "./DataComplexityCards.module.css";
 
-const GROUP_IDS = [
-  "size",
-  "ambiguity",
-] as const satisfies readonly DataComplexityGroupId[];
+type RatingColorKey = DataComplexityRating | "default";
+
+const RATING_BADGE_BACKGROUND_COLORS = {
+  low: "background-success-secondary",
+  medium: "background-warning-secondary",
+  high: "background-error",
+  default: "background-tertiary",
+} satisfies Record<RatingColorKey, MetabaseColorKey>;
+
+const RATING_BADGE_TEXT_COLORS = {
+  low: "success-secondary",
+  medium: "text-primary",
+  high: "error",
+  default: "text-secondary",
+} satisfies Record<RatingColorKey, MetabaseColorKey>;
+
+const RATING_TEXT_COLORS = {
+  low: "success",
+  medium: "warning",
+  high: "error",
+  default: "text-secondary",
+} satisfies Record<RatingColorKey, MetabaseColorKey>;
 
 function DataComplexityCardSkeleton() {
   return (
@@ -94,21 +111,23 @@ function DataComplexityCard({
           <Icon name="expand" c="text-tertiary" />
         </Flex>
         <Text c="text-secondary">{subtitle}</Text>
-        {match(catalog)
-          .with({ score: P.number }, ({ score, rating, rating_label }) => (
-            <Stack align="center" gap="sm" my="sm">
-              <Text size="4rem" fw={700} c={ratingToTextColor(rating)}>
-                {formatNumber(score, { maximumFractionDigits: 0 })}
-              </Text>
-              <Text c="text-secondary">{rating_label}</Text>
-            </Stack>
-          ))
-          .otherwise(() => (
-            <Stack gap={4} my="sm">
-              <Text c="error" fw={700}>{t`Score unavailable`}</Text>
-              <Text c="text-secondary">{t`Open for component details.`}</Text>
-            </Stack>
-          ))}
+        {catalog.score !== null ? (
+          <Stack align="center" gap="sm" my="sm">
+            <Text
+              size="4rem"
+              fw={700}
+              c={RATING_TEXT_COLORS[catalog.rating ?? "default"]}
+            >
+              {formatNumber(catalog.score, { maximumFractionDigits: 0 })}
+            </Text>
+            <Text c="text-secondary">{catalog.rating_label}</Text>
+          </Stack>
+        ) : (
+          <Stack gap={4} my="sm">
+            <Text c="error" fw={700}>{t`Score unavailable`}</Text>
+            <Text c="text-secondary">{t`Open for component details.`}</Text>
+          </Stack>
+        )}
       </UnstyledButton>
 
       <Modal
@@ -146,7 +165,7 @@ function DataComplexityBreakdown({
         </Alert>
       )}
 
-      {GROUP_IDS.map((groupId) => {
+      {DATA_COMPLEXITY_GROUP_IDS.map((groupId) => {
         const title = match(groupId)
           .with("size", () => t`Size of this layer`)
           .with("ambiguity", () => t`Areas of ambiguity`)
@@ -164,38 +183,13 @@ function DataComplexityBreakdown({
 
             <Accordion
               chevron={<Icon name="chevrondown" size={12} />}
-              styles={{
-                chevron: {
-                  border: 0,
-                  color: "var(--mb-color-text-primary)",
-                  height: "0.75rem",
-                  marginLeft: "1rem",
-                  width: "0.75rem",
-                },
-                content: {
-                  backgroundColor: "var(--mb-color-background-secondary)",
-                  borderTop: "1px solid var(--mb-color-border-subtle)",
-                  padding: "0.5rem 1rem 0.75rem",
-                },
-                control: {
-                  backgroundColor: "var(--mb-color-background-secondary)",
-                  borderRadius: "0.5rem",
-                  padding: "0.625rem 1rem",
-                },
-                item: {
-                  border: 0,
-                  borderRadius: "0.5rem",
-                  overflow: "hidden",
-                },
-                label: {
-                  padding: 0,
-                },
-                root: {
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "0.25rem",
-                  width: "100%",
-                },
+              classNames={{
+                chevron: S.accordionChevron,
+                content: S.accordionContent,
+                control: S.accordionControl,
+                item: S.accordionItem,
+                label: S.accordionLabel,
+                root: S.accordionRoot,
               }}
             >
               {getGroupComponentEntries(catalog, groupId).map(
@@ -215,28 +209,12 @@ function DataComplexityBreakdown({
   );
 }
 
-function getGroupComponentEntries(
+const getGroupComponentEntries = <G extends DataComplexityGroupId>(
   catalog: DataComplexityCatalog,
-  groupId: DataComplexityGroupId,
-): [DataComplexityComponentId, DataComplexitySubScore][] {
-  return match(groupId)
-    .returnType<[DataComplexityComponentId, DataComplexitySubScore][]>()
-    .with("size", () =>
-      (["entity_count", "field_count"] as const).map((componentId) => [
-        componentId,
-        catalog.components.size.components[componentId],
-      ]),
-    )
-    .with("ambiguity", () =>
-      (["name_collisions", "synonym_pairs", "repeated_measures"] as const).map(
-        (componentId) => [
-          componentId,
-          catalog.components.ambiguity.components[componentId],
-        ],
-      ),
-    )
-    .exhaustive();
-}
+  groupId: G,
+) => {
+  return getObjectEntries(catalog.components[groupId].components);
+};
 
 function DataComplexityComponentItem({
   componentId,
@@ -356,7 +334,7 @@ export function DataComplexityCards() {
     <SimpleGrid cols={{ base: 1, md: 3 }} spacing="lg">
       {match({ isLoading, queryError, data })
         .with({ isLoading: true }, () =>
-          CATALOG_IDS.map((catalogId) => (
+          DATA_COMPLEXITY_CATALOG_IDS.map((catalogId) => (
             <DataComplexityCardSkeleton key={catalogId} />
           )),
         )
@@ -381,25 +359,13 @@ export function DataComplexityCards() {
           ),
         )
         .with({ data: P.nonNullable }, ({ data }) =>
-          CATALOG_IDS.map((key) => (
+          DATA_COMPLEXITY_CATALOG_IDS.map((key) => (
             <DataComplexityCard key={key} catalogId={key} catalog={data[key]} />
           )),
         )
         .exhaustive()}
     </SimpleGrid>
   );
-}
-
-function ratingToTextColor(
-  rating: DataComplexityRating | null,
-): MetabaseColorKey {
-  return match(rating)
-    .returnType<MetabaseColorKey>()
-    .with("low", () => "success")
-    .with("medium", () => "warning")
-    .with("high", () => "error")
-    .with(null, () => "text-secondary")
-    .exhaustive();
 }
 
 function ScoreDisplayInline({
@@ -414,47 +380,23 @@ function ScoreDisplayInline({
         {t`Unavailable`}
       </Text>
     ))
-    .with({ score: P.nonNullable }, ({ score, rating }) => (
-      <Box
-        ml="auto"
-        px={8}
-        py={4}
-        bdrs="sm"
-        bg={getRatingBadgeColors(rating).backgroundColor}
-        {...rest}
-      >
-        <Text fw={700} lh="1rem" c={getRatingBadgeColors(rating).color}>
-          {formatNumber(score, { maximumFractionDigits: 0 })}
-        </Text>
-      </Box>
-    ))
-    .exhaustive();
-}
+    .with({ score: P.nonNullable }, ({ score, rating }) => {
+      const ratingColorKey = rating ?? "default";
 
-function getRatingBadgeColors(rating: DataComplexityRating | null): {
-  backgroundColor: MetabaseColorKey;
-  color: MetabaseColorKey;
-} {
-  return match(rating)
-    .returnType<{
-      backgroundColor: MetabaseColorKey;
-      color: MetabaseColorKey;
-    }>()
-    .with("low", () => ({
-      backgroundColor: "background-success-secondary",
-      color: "success-secondary",
-    }))
-    .with("medium", () => ({
-      backgroundColor: "background-warning-secondary",
-      color: "text-primary",
-    }))
-    .with("high", () => ({
-      backgroundColor: "background-error",
-      color: "error",
-    }))
-    .with(null, () => ({
-      backgroundColor: "background-tertiary",
-      color: "text-secondary",
-    }))
+      return (
+        <Box
+          ml="auto"
+          px={8}
+          py={4}
+          bdrs="sm"
+          bg={RATING_BADGE_BACKGROUND_COLORS[ratingColorKey]}
+          {...rest}
+        >
+          <Text fw={700} lh="1rem" c={RATING_BADGE_TEXT_COLORS[ratingColorKey]}>
+            {formatNumber(score, { maximumFractionDigits: 0 })}
+          </Text>
+        </Box>
+      );
+    })
     .exhaustive();
 }
