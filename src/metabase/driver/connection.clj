@@ -68,7 +68,8 @@
 
    - `:default` — primary `:details`
    - `:write-data` — `:write-data-details` merged over `:details` (if configured)
-   - `:transform` — primary `:details`, but resolved through a separate connection pool
+   - `:transform` — same details as `:write-data` (transforms write, so `:write-data-details`
+     are taken into account when configured), but resolved through a separate connection pool
      whose c3p0 leak-detector tolerates transform-length runtimes. Set by
      [[with-transform-connection]] from the transform runner.
 
@@ -96,9 +97,10 @@
 (defmacro with-transform-connection
   "Establishes a transform-connection context for body.
 
-   Routes queries through a separate connection pool keyed on `:transform`, sharing the
-   primary `:details` with `:default` but carrying its own c3p0 pool properties. See
-   [[*connection-type*]] for the rationale."
+   Connection details resolve the same as `:write-data` (transforms write, so
+   `:write-data-details` are taken into account when configured), but queries are routed
+   through a separate connection pool keyed on `:transform` so the pool can carry its own
+   c3p0 properties. See [[*connection-type*]] for the rationale."
   [& body]
   `(binding [*connection-type* :transform]
      ~@body))
@@ -122,9 +124,7 @@
   nil)
 
 (defn- resolve-connection-type
-  "Resolution rule mapping a requested `connection-type` plus already-resolved `write-details`
-  (truthy iff write-data is both requested and configured) to the effective pool key.
-  Pure function — caller is responsible for passing `*connection-type*` if that's the source."
+  "Resolution rule mapping a requested `connection-type` plus already-resolved `write-details`."
   [connection-type write-details]
   (cond
     (= connection-type :transform) :transform
