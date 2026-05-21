@@ -1156,6 +1156,14 @@ describe("issue 54603", () => {
 
     // The sidebar closes when the parameter is removed.
     cy.findByTestId("dashboard-parameter-sidebar").should("not.exist");
+
+    // Saving triggers server-side archival of any subscription referencing
+    // the removed parameter. updateDashboard's invalidatesTags includes the
+    // subscription list so the panel reflects the archive without a refresh.
+    H.saveDashboard();
+
+    H.openDashboardMenu("Subscriptions");
+    H.sidebar().findByText("Weekly Category Roundup").should("not.exist");
   });
 
   it("removes a filter immediately when no subscription references it (metabase#54603)", () => {
