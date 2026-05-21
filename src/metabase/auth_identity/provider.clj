@@ -248,7 +248,7 @@
 
 (mu/defn- create-session!
   "Create a new session for a user with the given provider.
-   Updates the last_used_at timestamp on the corresponding AuthIdentity."
+  Updates the last_used_at timestamp on the corresponding AuthIdentity."
   [request :- [:map
                [:user [:map
                        [:id ms/PositiveInt]
@@ -302,7 +302,7 @@
 
 (defenterprise sso-user-fields
   "Return the list of User model fields that should be populated from SSO user data.
-   OSS version includes basic fields. Enterprise version includes login_attributes and jwt_attributes."
+  OSS version includes basic fields. Enterprise version includes login_attributes and jwt_attributes."
   metabase-enterprise.auth-identity.provider
   []
   [:email :first_name :last_name :sso_source])

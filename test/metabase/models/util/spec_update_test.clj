@@ -22,7 +22,7 @@
 
 (defmacro with-tracked-operations!
   "Tracks Toucan2 operations within the body and returns the tracked operations.
-   Usage: (with-tracked-operations (do-something))"
+  Usage: (with-tracked-operations (do-something))"
   [& body]
   `(do-track-operations! (fn [] ~@body)))
 

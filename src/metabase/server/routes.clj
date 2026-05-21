@@ -22,7 +22,7 @@
 
 (defn- redirect-including-query-string
   "Like `response/redirect`, but passes along query string URL params as well. This is important because the public and
-   embedding routes below pass query params (such as template tags) as part of the URL."
+  embedding routes below pass query params (such as template tags) as part of the URL."
   [url]
   (fn [{:keys [query-string]} respond _raise]
     (respond (response/redirect (str url "?" query-string)))))

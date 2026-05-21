@@ -55,7 +55,7 @@
 
 (defn- get-field
   "Returns value of private field. This function is used to bypass field protection to instantiate
-   a low-level H2 Parser object in order to detect DDL statements in queries."
+  a low-level H2 Parser object in order to detect DDL statements in queries."
   ([obj field]
    (.get (doto (.getDeclaredField (class obj) field)
            (.setAccessible true))

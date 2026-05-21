@@ -10,7 +10,7 @@
 
 (def settings-to-reset
   "Some default values require resetting. For example, the `saml-attribute-email` is a link,
-   which fails an email validation check when Metabase loads the config file."
+  which fails an email validation check when Metabase loads the config file."
   '(:saml-attribute-email))
 
 (defn reset-default-values
@@ -20,7 +20,7 @@
 
 (defn settings
   "Gets valid config settings. We include deprecated settings in the env var docs,
-   but we exclude them from the config file template."
+  but we exclude them from the config file template."
   []
   (->> (dox/get-settings)
        dox/remove-env-vars-we-should-not-document))
@@ -76,7 +76,7 @@
 
 (defn- create-config-doc
   "Generates a configuration file Markdown doc with config template for Metabase
-   with settings and their default values."
+  with settings and their default values."
   [yaml-template]
   (-> yaml-template
       (cmd.common/load-resource!)

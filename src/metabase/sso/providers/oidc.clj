@@ -23,10 +23,10 @@
 (defn- enrich-config-with-discovery
   "Enrich configuration with OIDC discovery endpoints if needed.
 
-   If the configuration doesn't have manual endpoints, attempts discovery
-   using the issuer URI.
+  If the configuration doesn't have manual endpoints, attempts discovery
+  using the issuer URI.
 
-   Returns updated configuration map with :discovery-document."
+  Returns updated configuration map with :discovery-document."
   [config]
   (if (oidc.schema/discovery-based? config)
     ;; Use discovery
@@ -71,11 +71,11 @@
 (defn- extract-user-data
   "Extract user data from ID token claims.
 
-   Parameters:
-   - claims: ID token claims map
-   - config: OIDC configuration (for custom attribute mappings)
+  Parameters:
+  - claims: ID token claims map
+  - config: OIDC configuration (for custom attribute mappings)
 
-   Returns user data map with :email, :first_name, :last_name, :provider-id"
+  Returns user data map with :email, :first_name, :last_name, :provider-id"
   [claims config]
   (let [;; Get attribute mappings from config, or use defaults
         email-attr (get config :attribute-email "email")

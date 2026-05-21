@@ -43,7 +43,7 @@
 
 (defn- synthetic-remap
   "Generate a synthetic remap for a table reference: schema.table -> ws_test_remap.table.
-   If no schema, uses nil -> ws_test_remap."
+  If no schema, uses nil -> ws_test_remap."
   [{:keys [schema table]}]
   (when table
     [{:schema schema :table table}
@@ -53,7 +53,7 @@
 
 (defn- referenced-tables-or-error
   "Return either the parsed table refs (a possibly-empty seq of `{:schema ..., :table ...}`)
-   or `[::parse-failed ex-message]` if SQLGlot couldn't parse the SQL."
+  or `[::parse-failed ex-message]` if SQLGlot couldn't parse the SQL."
   [driver sql]
   (try
     (sql-tools/referenced-tables-raw driver sql)
@@ -121,17 +121,17 @@
 
 (defn run-corpus-for-dialect
   "Run round-trip tests for a single dialect file. Returns
-   `{:total N :passed N :no-tables N :source-parse-failed N :errors [...]}`.
+  `{:total N :passed N :no-tables N :source-parse-failed N :errors [...]}`.
 
-   `:passed` is the count of queries that genuinely round-tripped — the rewriter saw the
-   picked ref and produced output where it no longer appears.
+  `:passed` is the count of queries that genuinely round-tripped — the rewriter saw the
+  picked ref and produced output where it no longer appears.
 
-   `:no-tables` and `:source-parse-failed` are queries the test could not meaningfully
-   exercise (the rewriter wouldn't be invoked for them, or would be invoked on something
-   it can't parse — the production fail-closed path catches the latter at runtime).
+  `:no-tables` and `:source-parse-failed` are queries the test could not meaningfully
+  exercise (the rewriter wouldn't be invoked for them, or would be invoked on something
+  it can't parse — the production fail-closed path catches the latter at runtime).
 
-   `:errors` contains genuine failures: `:ref-survived`, `:rewrite-failed`, or
-   `:rewrite-emitted-unparseable`."
+  `:errors` contains genuine failures: `:ref-survived`, `:rewrite-failed`, or
+  `:rewrite-emitted-unparseable`."
   [dir filename driver]
   (let [file    (io/file dir filename)
         content (slurp file)

@@ -225,7 +225,7 @@
 
 (defmulti llm-sql-dialect-resource
   "Returns the resource path for dialect-specific LLM prompt instructions,
-   or nil if no dialect-specific instructions exist for this driver."
+  or nil if no dialect-specific instructions exist for this driver."
   {:added "0.59.0" :arglists '([driver])}
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
@@ -1168,7 +1168,7 @@
 
 (defmulti incorporate-auth-provider-details
   "A multimethod for driver specific behavior required to incorporate response of an auth-provider into the DB details.
-   In most cases this means setting the :password and/or :username based on the auth-provider and its response."
+  In most cases this means setting the :password and/or :username based on the auth-provider and its response."
   {:added "0.50.17" :arglists '([driver auth-provider auth-provider-response details])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -1219,15 +1219,15 @@
 
 (defmulti db-details-to-test-and-migrate
   "When `details` are in an ambiguous state, this should return a sequence of modified `details` of the
-   possible, normalized, unambiguous states.
+  possible, normalized, unambiguous states.
 
-   The result of this function will be used to test each new `details`, in order,
-   and the first one that succeeds will be saved in the database.
+  The result of this function will be used to test each new `details`, in order,
+  and the first one that succeeds will be saved in the database.
 
-   If none of the details succeed, nothing will change.
-   Returning `nil` will skip the test.
+  If none of the details succeed, nothing will change.
+  Returning `nil` will skip the test.
 
-   This should, in practice, supersede `normalize-db-details`."
+  This should, in practice, supersede `normalize-db-details`."
   {:added "0.52.12" :arglists '([driver details])}
   dispatch-on-initialized-driver-safe-keys
   :hierarchy #'hierarchy)
@@ -1408,7 +1408,7 @@
 
 (defmulti create-schema-if-needed!
   "Creates a schema if it does not already exist.
-   Used to create new schemas for transforms."
+  Used to create new schemas for transforms."
   {:added "0.57.0" :arglists '([driver conn-spec schema])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -1511,18 +1511,18 @@
 
 (defmulti rename-tables!*
   "Driver-specific implementation of table renaming. Takes a pre-sorted map of {from-table to-table}.
-   The input map has already been topologically sorted by the public rename-tables! function.
-   Implementations should perform the actual rename operations atomically as supported by the database.
-   NOTE: Do not call this directly - use rename-tables! instead which handles the topological sort."
+  The input map has already been topologically sorted by the public rename-tables! function.
+  Implementations should perform the actual rename operations atomically as supported by the database.
+  NOTE: Do not call this directly - use rename-tables! instead which handles the topological sort."
   {:added "0.57.0", :arglists '([driver db-id sorted-rename-map])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 (defn rename-tables!
   "Rename multiple tables atomically. Takes a map of {from-table to-table}.
-   Performs topological sort to determine correct rename order, then delegates to driver-specific implementation.
-   Implementations should use transactions, compound operations, or metadata locks as supported by the database.
-   Table names may be qualified by schema e.g. :schema/table"
+  Performs topological sort to determine correct rename order, then delegates to driver-specific implementation.
+  Implementations should use transactions, compound operations, or metadata locks as supported by the database.
+  Table names may be qualified by schema e.g. :schema/table"
   {:added "0.57.0"}
   [driver db-id rename-map]
   (let [sorted-rename-map (-> rename-map
@@ -1762,10 +1762,10 @@
 (defmulti adjust-schema-qualification
   "Adjust the given schema to either add or remove further schema qualification.
 
-   In general, the database detail property `multi-level-schema` ought to drive whether a schema gets qualified or not.
-   If it is true, schemas should be fully qualified to `catalog` or other addressable hierarchical concept. If false, they should not be.
+  In general, the database detail property `multi-level-schema` ought to drive whether a schema gets qualified or not.
+  If it is true, schemas should be fully qualified to `catalog` or other addressable hierarchical concept. If false, they should not be.
 
-   Returns a string either of the unchanged `schema` or the adjusted value."
+  Returns a string either of the unchanged `schema` or the adjusted value."
   {:added "0.55.0" :arglists '([driver database schema])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -1790,9 +1790,9 @@
 (defmulti table-exists?
   "Check if a table exists in the database. Returns true if the table exists, false otherwise.
 
-   If you need proactively to check for table existence, this is the preferred method.
-   The default implementation uses describe-table and catches exceptions, but drivers can override
-   this with more efficient implementations for databases that support them.."
+  If you need proactively to check for table existence, this is the preferred method.
+  The default implementation uses describe-table and catches exceptions, but drivers can override
+  this with more efficient implementations for databases that support them.."
   {:added "0.57.0" :arglists '([driver database table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -1815,31 +1815,31 @@
 
 (defmulti init-workspace-isolation!
   "Initialize database isolation for a workspace. Creates an isolated schema/database,
-   user credentials, and grants appropriate permissions for the workspace to operate
-   within its own namespace.
+  user credentials, and grants appropriate permissions for the workspace to operate
+  within its own namespace.
 
-   Returns a map with:
-   - :schema           - The name of the isolated schema/database created
-   - :database_details - Connection details (user, password, etc.) for the isolated user
+  Returns a map with:
+  - :schema           - The name of the isolated schema/database created
+  - :database_details - Connection details (user, password, etc.) for the isolated user
 
-   Implementations should:
-   - Create an isolated schema or database for the workspace
-   - Create a user with credentials that can only access that schema
-   - Grant appropriate permissions (CREATE, INSERT, SELECT, etc.) on the isolated schema
+  Implementations should:
+  - Create an isolated schema or database for the workspace
+  - Create a user with credentials that can only access that schema
+  - Grant appropriate permissions (CREATE, INSERT, SELECT, etc.) on the isolated schema
 
-   This is an enterprise feature. Drivers must also return true for
-   (database-supports? driver :workspace database) to indicate support."
+  This is an enterprise feature. Drivers must also return true for
+  (database-supports? driver :workspace database) to indicate support."
   {:added "0.59.0" :arglists '([driver database workspace])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 (defmulti destroy-workspace-isolation!
   "Destroy all database resources created for workspace isolation.
-   This includes dropping schemas/databases, users, roles, and any other
-   resources created by init-workspace-isolation!.
+  This includes dropping schemas/databases, users, roles, and any other
+  resources created by init-workspace-isolation!.
 
-   Should be called when deleting a workspace. Implementations should be
-   idempotent - calling on an already-destroyed workspace should not error."
+  Should be called when deleting a workspace. Implementations should be
+  idempotent - calling on an already-destroyed workspace should not error."
   {:added "0.59.0" :arglists '([driver database workspace])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

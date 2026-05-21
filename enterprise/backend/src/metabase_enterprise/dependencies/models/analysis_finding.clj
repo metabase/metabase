@@ -31,7 +31,7 @@
 
 (defn- error->finding-error-row
   "Convert an error from lib/find-bad-refs-with-source to a row for analysis_finding_error table.
-   We use `:message` for the error detail if there was an `validation-exception-error`."
+  We use `:message` for the error detail if there was an `validation-exception-error`."
   [error]
   {:error-type          (:type error)
    ;; error-detail cannot be longer than 254
@@ -41,7 +41,7 @@
 
 (defn upsert-analysis!
   "Given the details of an AnalysisFinding row, upsert the data into the actual db.
-   Also writes individual errors to the analysis_finding_error table with source information."
+  Also writes individual errors to the analysis_finding_error table with source information."
   [type instance-id result finding-details]
   (t2/with-transaction [_conn]
     (let [update {:analyzed_at (mi/now)

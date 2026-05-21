@@ -118,8 +118,8 @@
 
 (defn prepare-advanced-field-values
   "Fetch and construct the FieldValues for `field` with type `fv-type`. This does not do any insertion.
-   The human_readable_values of Advanced FieldValues will be automatically fixed up based on the
-   list of values and human_readable_values of the full FieldValues of the same field."
+  The human_readable_values of Advanced FieldValues will be automatically fixed up based on the
+  list of values and human_readable_values of the full FieldValues of the same field."
   [field hash-key constraints]
   (when-let [{wrapped-values :values :keys [has_more_values]}
              (fetch-advanced-field-values field constraints)]

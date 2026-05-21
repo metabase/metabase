@@ -58,8 +58,8 @@
 
 (defn start-run!
   "Start a run. If `user_id` is provided in properties, it will be stored with the run
-   and used for attribution in the audit log (avoiding 'External user' for scheduled runs).
-   Also captures `transform_name` and `transform_entity_id` for historical reference."
+  and used for attribution in the audit log (avoiding 'External user' for scheduled runs).
+  Also captures `transform_name` and `transform_entity_id` for historical reference."
   ([transform-id]
    (start-run! transform-id {}))
   ([transform-id properties]
@@ -249,8 +249,8 @@
 
 (defn- translate-tag-name-clause
   "Returns a HoneySQL `:case` expression that translates built-in tag names.
-   `name-field` is the keyword for the name column (e.g. `:transform_tag.name`),
-   `built-in-type-field` is the keyword for the built_in_type column (e.g. `:transform_tag.built_in_type`)."
+  `name-field` is the keyword for the name column (e.g. `:transform_tag.name`),
+  `built-in-type-field` is the keyword for the built_in_type column (e.g. `:transform_tag.built_in_type`)."
   [name-field built-in-type-field]
   [:case
    [:= built-in-type-field "hourly"]  (tru "hourly")
@@ -261,7 +261,7 @@
 
 (defn- first-tag-name-subquery
   "Returns a correlated subquery that selects the translated name of the first tag
-   (by minimum position) assigned to the transform for a transform run."
+  (by minimum position) assigned to the transform for a transform run."
   []
   {:select [[(translate-tag-name-clause :tt.name :tt.built_in_type) :tag_name]]
    :from   [[:transform_transform_tag :ttt]]

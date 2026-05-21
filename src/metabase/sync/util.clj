@@ -173,7 +173,7 @@
 
 (defn- with-start-and-finish-logging
   "Log `message` about a process starting, then run `f`, and then log a `message` about it finishing.
-   (The final message includes a summary of how long it took to run `f`.)"
+  (The final message includes a summary of how long it took to run `f`.)"
   {:style/indent [:form]}
   [message f]
   (fn []
@@ -481,7 +481,7 @@
 
 (defn refingerprint-reducible-sync-tables
   "A reducible collection of all the Tables that should go through the sync processes for `database-or-id`, in the
-   order they should be refingerprinted (by earliest last_analyzed timestamp)."
+  order they should be refingerprinted (by earliest last_analyzed timestamp)."
   [database-or-id]
   (eduction (map t2.realize/realize)
             (t2/reducible-select :model/Table

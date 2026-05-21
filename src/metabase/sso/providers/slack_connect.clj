@@ -33,11 +33,11 @@
 
 (defn- extract-slack-claims
   "Extract Slack-specific claims from ID token.
-   Returns map with Slack team and user information for storage in login_attributes.
-   Keys are strings to match the login_attributes schema [:map-of :string :string].
+  Returns map with Slack team and user information for storage in login_attributes.
+  Keys are strings to match the login_attributes schema [:map-of :string :string].
 
-   NOTE: team_name is NOT included in Slack ID tokens per research.
-   Use team_id only or make additional API call if team name is required."
+  NOTE: team_name is NOT included in Slack ID tokens per research.
+  Use team_id only or make additional API call if team name is required."
   [id-token-claims]
   (let [team-id-claim (sso-settings/slack-connect-attribute-team-id)]
     (cond-> {}
@@ -58,7 +58,7 @@
 
 (defn- build-slack-oidc-config
   "Build OIDC configuration map for parent provider.
-   Uses Slack settings and hardcoded Slack-specific values."
+  Uses Slack settings and hardcoded Slack-specific values."
   [request]
   (when (and (sso-settings/slack-connect-client-id)
              (sso-settings/slack-connect-client-secret))
@@ -145,7 +145,7 @@
 
 (defn- create-auth-identity-for-link!
   "Create an AuthIdentity record linking an authenticated user to their Slack identity.
-   Used in link-only mode where we don't create users or sessions."
+  Used in link-only mode where we don't create users or sessions."
   [user-id provider-id]
   (when (and user-id provider-id)
     (when-not (t2/exists? :model/AuthIdentity

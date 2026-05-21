@@ -226,7 +226,7 @@
 
 (defn- run-bulk-transaction!
   "Like [[clojure.core/run!]] but exhaustively executing the procedures within nested transactions.
-   Rolls back the outer transaction if there are any failures, and returns [errors success], golang style."
+  Rolls back the outer transaction if there are any failures, and returns [errors success], golang style."
   [{:keys [database proc coll]}]
   (with-jdbc-transaction [conn (:id database)]
     (transduce

@@ -158,7 +158,7 @@
 
 (defn- rewrite-and-parse
   "Run a remapping through the rewriter, then parse the result. Returns the set of
-   `{:db?, :schema?, :table}` references in the rewritten SQL."
+  `{:db?, :schema?, :table}` references in the rewritten SQL."
   [driver canonical-sql remappings]
   (let [rewritten (sql-tools/replace-names driver canonical-sql {:tables remappings} {:allow-unused? true})]
     {:rewritten rewritten
@@ -241,18 +241,18 @@
 
 (defn- fixture-wsd
   "Pull the single workspace-database entry from a fixture: returns
-   `[<db-name-string>, <wsd-config-map>]` where wsd-config has `:input_schemas`
-   and `:output_namespace`."
+  `[<db-name-string>, <wsd-config-map>]` where wsd-config has `:input_schemas`
+  and `:output_namespace`."
   [section]
   (let [[db-name-kw wsd] (-> section :databases first)]
     [(name db-name-kw) wsd]))
 
 (def ^:private fixture-rewriter-test-cases
   "Per-driver chain test cases. The fixture YAML carries `:input_schemas` and
-   `:output_namespace`; the catalog (SQL Server/BigQuery) is pulled from
-   `Database.details`. Each test case adds the engine + details needed to drive
-   the loader's expansion path, plus the SQL the QP would emit for a
-   representative source table."
+  `:output_namespace`; the catalog (SQL Server/BigQuery) is pulled from
+  `Database.details`. Each test case adds the engine + details needed to drive
+  the loader's expansion path, plus the SQL the QP would emit for a
+  representative source table."
   [{:fixture-driver :postgres
     :driver         :postgres
     :engine         :postgres

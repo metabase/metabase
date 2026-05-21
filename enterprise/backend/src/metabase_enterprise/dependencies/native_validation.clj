@@ -30,18 +30,18 @@
 
 (defn- has-substitutable-template-tags?
   "Returns true if the query has any card or table template tags that need
-   placeholder substitution before compilation."
+  placeholder substitution before compilation."
   [query]
   (some #(#{:card :table} (:type %)) (lib/all-template-tags query)))
 
 (def ^:private card-placeholder-prefix
   "Prefix used to generate placeholder table names for card references.
-   Card ref {{#N}} becomes mb__validat_card__N in the SQL sent to SQLGlot."
+  Card ref {{#N}} becomes mb__validat_card__N in the SQL sent to SQLGlot."
   "mb__validat_card__")
 
 (defn- parse-card-placeholder
   "If table-name is a card placeholder (e.g. \"mb__VALIDAT_card__42\" or \"MB__VALIDAT_CARD__42\"),
-   return the card ID. Returns nil otherwise. Case-insensitive to handle driver normalization."
+  return the card ID. Returns nil otherwise. Case-insensitive to handle driver normalization."
   [table-name]
   (let [lower (u/lower-case-en (str table-name))]
     (when (str/starts-with? lower card-placeholder-prefix)
@@ -49,16 +49,16 @@
 
 (def ^:private table-placeholder-prefix
   "Prefix used to generate placeholder table names for table-type template tags.
-   Table tag {{table_one}} becomes mb__validat_table__N in the SQL sent to SQLGlot."
+  Table tag {{table_one}} becomes mb__validat_table__N in the SQL sent to SQLGlot."
   "mb__validat_table__")
 
 (defn- compile-toplevel-query
   "Compile a query replacing card and table references with placeholder table names.
-   Card refs like {{#1}} are replaced with mb__validat_card__1.
-   Table refs like {{table_one}} are replaced with mb__validat_table__N.
+  Card refs like {{#1}} are replaced with mb__validat_card__1.
+  Table refs like {{table_one}} are replaced with mb__validat_table__N.
 
-   Returns the compiled native-only-query, or nil if the original SQL contains
-   the placeholder prefix (collision guard)."
+  Returns the compiled native-only-query, or nil if the original SQL contains
+  the placeholder prefix (collision guard)."
   [query]
   (let [stage     (first (:stages query))
         sql       (:native stage)
@@ -102,8 +102,8 @@
 
 (defn- table-deps
   "Returns the set of table dep maps (e.g. {:table \"products\" :schema \"public\"})
-   referenced directly in the compiled native query.
-   Excludes card and table placeholder tables."
+  referenced directly in the compiled native query.
+  Excludes card and table placeholder tables."
   [driver compiled]
   (into #{}
         (filter (fn [dep]
@@ -114,12 +114,12 @@
 
 (defn- extract-source-entity
   "Extract source entity info from a :single-column col-spec's source-columns.
-   When card-placeholders? is true, recognizes card placeholder table names (mb__validat_card__N).
-   Returns:
-   - {:kind :table, :spec table-spec} for a single real table source
-   - {:kind :card, :card-id N} for a single card placeholder source (only when card-placeholders?)
-   - :multiple for ambiguous sources (multiple sources of any kind)
-   - nil otherwise (no recognizable sources, or not a :single-column spec)"
+  When card-placeholders? is true, recognizes card placeholder table names (mb__validat_card__N).
+  Returns:
+  - {:kind :table, :spec table-spec} for a single real table source
+  - {:kind :card, :card-id N} for a single card placeholder source (only when card-placeholders?)
+  - :multiple for ambiguous sources (multiple sources of any kind)
+  - nil otherwise (no recognizable sources, or not a :single-column spec)"
   [card-placeholders? col-spec]
   (let [card-id-fn (if card-placeholders?
                      (fn [source] (some-> source :table :table parse-card-placeholder))
@@ -149,7 +149,7 @@
 
 (defn- resolve-table-id
   "Map a SQL table spec {:table name, :schema schema} to a Metabase table ID.
-   Returns table ID or nil if not found."
+  Returns table ID or nil if not found."
   [driver mp table-spec]
   (:table (sql-tools/find-table-or-transform
            driver
@@ -167,10 +167,10 @@
 
 (defn- enrich-error
   "Enrich a :missing-column error with source entity information from its col-spec.
-   When card-placeholders? is true, checks card placeholder columns against card metadata:
-   valid columns return nil (suppressed), invalid ones get source attribution.
-   Suppresses :missing-table-alias errors for card placeholder table names.
-   For other error types, returns the error unchanged."
+  When card-placeholders? is true, checks card placeholder columns against card metadata:
+  valid columns return nil (suppressed), invalid ones get source attribution.
+  Suppresses :missing-table-alias errors for card placeholder table names.
+  For other error types, returns the error unchanged."
   [driver mp card-placeholders? col-spec error]
   (cond
     ;; Suppress missing-table-alias for card placeholders (e.g. SELECT * FROM mb__validat_card__1)
@@ -207,9 +207,9 @@
 
 (defn- validate-with-sources
   "Validate a compiled native query, enriching errors with source entity information
-   derived from the col-spec's source-columns.
-   When card-placeholders? is true, card placeholder sources are recognized and valid
-   columns are filtered out (enrich-error returns nil)."
+  derived from the col-spec's source-columns.
+  When card-placeholders? is true, card placeholder sources are recognized and valid
+  columns are filtered out (enrich-error returns nil)."
   [driver compiled card-placeholders?]
   (let [sql (lib/raw-native-query compiled)
         mp (lib/->metadata-provider compiled)
@@ -228,7 +228,7 @@
 
 (defn- fallback-enrich
   "Second-pass enrichment for errors that validate-with-sources couldn't attribute
-   (e.g., subquery sources). Falls back to the table-count approach."
+  (e.g., subquery sources). Falls back to the table-count approach."
   [driver compiled errors]
   (if (every? :source-entity-type errors)
     errors
@@ -266,9 +266,9 @@
 (mu/defn validate-native-query
   "Compiles a (native) query and validates that the fields and tables it refers to really exist.
 
-   Returns a set of errors, each enriched with source entity information when possible.
-   Returns empty set for queries with table-type template tags since the actual
-   table (and therefore columns) is unknown at check time."
+  Returns a set of errors, each enriched with source entity information when possible.
+  Returns empty set for queries with table-type template tags since the actual
+  table (and therefore columns) is unknown at check time."
   [driver :- :keyword
    query  :- ::lib.schema/query]
   (if (has-table-template-tags? query)
@@ -296,8 +296,8 @@
 
 (mu/defn native-result-metadata
   "Compiles a (native) query and calculates its result metadata.
-   Returns nil for queries with table-type template tags since the actual
-   table (and therefore columns) is unknown at check time."
+  Returns nil for queries with table-type template tags since the actual
+  table (and therefore columns) is unknown at check time."
   [driver :- :keyword
    query  :- ::lib.schema/query]
   (when-not (has-table-template-tags? query)

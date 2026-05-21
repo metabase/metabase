@@ -356,8 +356,8 @@
 
 (defn wait-for-idle!
   "Block until the ingestion queue has been drained and no more items arrive.
-   Polls the queue and considers it idle when it has been empty for `settle-ms`
-   (default 500ms). Gives up after `timeout-ms` (default 30s)."
+  Polls the queue and considers it idle when it has been empty for `settle-ms`
+  (default 500ms). Gives up after `timeout-ms` (default 30s)."
   [& {:keys [settle-ms timeout-ms poll-ms]
       :or   {settle-ms 500, timeout-ms 30000, poll-ms 50}}]
   (let [deadline-ns (+ (System/nanoTime) (* (long timeout-ms) 1000000))

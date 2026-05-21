@@ -6,7 +6,7 @@
 
 (defn- detect-provider
   "Detect database provider from host and engine using regex patterns.
-   Returns provider name string or nil if no match found."
+  Returns provider name string or nil if no match found."
   [host providers]
   (when-not (str/blank? host)
     (some (fn [{provider-name :name pat :pattern}]

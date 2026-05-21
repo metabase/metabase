@@ -46,7 +46,7 @@
 
 (defn parse-aisdk-line
   "Parse a single AI SDK stream line into [type content].
-   Each line has a 2-char type prefix followed by a JSON payload."
+  Each line has a 2-char type prefix followed by a JSON payload."
   [line]
   [(get prefix-type (subs line 0 2)) (json/decode+kw (subs line 2))])
 

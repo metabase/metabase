@@ -23,15 +23,15 @@
 
 (defn- parse-frontend-trace-id
   "Extract the trace ID from a W3C traceparent header.
-   Returns nil if the header is missing or malformed.
-   Format: 00-{32-hex-trace-id}-{16-hex-parent-id}-{2-hex-flags}"
+  Returns nil if the header is missing or malformed.
+  Format: 00-{32-hex-trace-id}-{16-hex-parent-id}-{2-hex-flags}"
   ^String [request]
   (when-let [tp (get-in request [:headers "traceparent"])]
     (second (re-matches #"00-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}" tp))))
 
 (defn- end-span-with-status!
   "End a span from its context, setting HTTP status code and OTel status.
-   Sets OK for 1xx-4xx, ERROR for 5xx (per OTel HTTP server span conventions)."
+  Sets OK for 1xx-4xx, ERROR for 5xx (per OTel HTTP server span conventions)."
   [^Span span ^Context span-ctx status-code]
   (when status-code
     (.setAttribute span "http.status_code" (long status-code))
@@ -42,19 +42,19 @@
 
 (defn- api-request?
   "Returns true for API requests (/api/*) which are the only requests worth tracing.
-   Excludes static files (/app/*, /favicon*), the root page (/), and any other
-   non-API routes that would create noise as independent traces in the collector."
+  Excludes static files (/app/*, /favicon*), the root page (/), and any other
+  non-API routes that would create noise as independent traces in the collector."
   [request]
   (.startsWith (str (:uri request)) "/api/"))
 
 (defn wrap-trace
   "Middleware that wraps each HTTP request in an OpenTelemetry span (`:api` group).
-   Extracts trace ID from the frontend's traceparent header for correlation.
-   Includes HTTP method, URI, and request ID as span attributes.
-   Skips static file requests (/app/*, /favicon*) to avoid trace noise.
+  Extracts trace ID from the frontend's traceparent header for correlation.
+  Includes HTTP method, URI, and request ID as span attributes.
+  Skips static file requests (/app/*, /favicon*) to avoid trace noise.
 
-   Uses clj-otel's `new-span!`/`end-span!` for manual span lifecycle to correctly
-   handle async Ring handlers — the span stays open until `respond` or `raise` is called."
+  Uses clj-otel's `new-span!`/`end-span!` for manual span lifecycle to correctly
+  handle async Ring handlers — the span stays open until `respond` or `raise` is called."
   [handler]
   (fn [request respond raise]
     (if (and (tracing/group-enabled? :api)

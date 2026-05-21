@@ -81,7 +81,7 @@
 
 (defenterprise batch-model-eligible?
   "Batch check if model instances are eligible for remote sync based on spec rules.
-   Returns a map of instance-id -> eligible? boolean."
+  Returns a map of instance-id -> eligible? boolean."
   :feature :none
   [model-key instances]
   (if-let [spec (spec/spec-for-model-key model-key)]

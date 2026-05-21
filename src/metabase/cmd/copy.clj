@@ -51,8 +51,8 @@
 
 (def entities
   "Entities in the order they should be serialized/deserialized in `load-from-h2`. This is done so we make sure that
-   we load instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before
-   `Fields`."
+  we load instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before
+  `Fields`."
   (concat
    [:model/Channel
     :model/ChannelTemplate
@@ -258,7 +258,7 @@
 
 (defn- assert-has-no-users
   "Make sure [target] application DB has no users set up before we start copying data. This is a safety check to make
-   sure we're not accidentally copying data into an existing application DB."
+  sure we're not accidentally copying data into an existing application DB."
   [data-source]
   ;; check that there are no Users yet
   (let [[{:keys [cnt]}] (jdbc/query {:datasource data-source} ["SELECT count(*) AS cnt FROM core_user where not id = ?;"

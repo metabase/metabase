@@ -42,7 +42,7 @@
 
 (defn- invoke-or-unwrap
   "Invoke a method on target, unwrapping InvocationTargetException to preserve
-   checked exception semantics (e.g. SQLException)."
+  checked exception semantics (e.g. SQLException)."
   [^Method method target ^objects args]
   (try
     (.invoke method target args)
@@ -75,7 +75,7 @@
 
 (defn- traced-statement
   "Wrap a Statement in a proxy that creates a :quartz span around execute* methods.
-   Unlike PreparedStatement, Statement receives SQL at execute time."
+  Unlike PreparedStatement, Statement receives SQL at execute time."
   [^Statement stmt]
   (Proxy/newProxyInstance
    (.getClassLoader Statement)
@@ -102,7 +102,7 @@
 
 (defn- traced-connection
   "Wrap a Connection in a proxy that intercepts prepareStatement, createStatement,
-   rollback, and commit to provide full JDBC-level tracing."
+  rollback, and commit to provide full JDBC-level tracing."
   [^Connection conn]
   (Proxy/newProxyInstance
    (.getClassLoader Connection)
@@ -137,7 +137,7 @@
 
 (defn- connection-interceptor
   "Connection wrapping function installed into bootstrap's ConnectionProvider.
-   Checks `:quartz` group at call time — wraps only when enabled."
+  Checks `:quartz` group at call time — wraps only when enabled."
   [^Connection conn]
   (if (tracing/group-enabled? :quartz)
     (traced-connection conn)
@@ -151,7 +151,7 @@
 
 (defn- create-tracing-job-listener
   "Create a JobListener that wraps each job execution in a :quartz span.
-   The span becomes the parent of the defjob span (via OTel context propagation)."
+  The span becomes the parent of the defjob span (via OTel context propagation)."
   ^JobListener []
   (reify JobListener
     (getName [_]

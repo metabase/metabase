@@ -29,7 +29,7 @@
 
 (defn- with-provisioned-workspace-db!
   "Set the in-process workspace atom so `db-workspace-namespace` returns
-   `{:schema output-schema}` for `db-id`, run `f`, clear the atom on the way out."
+  `{:schema output-schema}` for `db-id`, run `f`, clear the atom on the way out."
   [db-id output-schema f]
   (try
     (ws/set-instance-workspace! {:name "table-remapping-test-ws"
@@ -134,9 +134,9 @@
 
 (defn- with-provisioned-workspace-db-namespace!
   "Variant of `with-provisioned-workspace-db!` that takes a full
-   `::table-namespace` map (`{:db ?, :schema ?}`) instead of just a schema
-   string. Used to exercise cross-DB workspaces (SQL Server / BigQuery) where
-   the to-side `:db` slot must flow through to the `TableRemapping` row."
+  `::table-namespace` map (`{:db ?, :schema ?}`) instead of just a schema
+  string. Used to exercise cross-DB workspaces (SQL Server / BigQuery) where
+  the to-side `:db` slot must flow through to the `TableRemapping` row."
   [db-id output-namespace f]
   (try
     (ws/set-instance-workspace! {:name "ws-3-slot"
@@ -663,9 +663,9 @@
 
 (defn- with-database-cache-config!
   "Ensure a `:database` CacheConfig row exists for `db-id` with a known `invalidated_at`.
-   Runs `f` with the row's actual stored `invalidated_at` (read back to avoid
-   `OffsetDateTime` vs `ZonedDateTime` typing mismatches across drivers) and cleans
-   up the row on the way out."
+  Runs `f` with the row's actual stored `invalidated_at` (read back to avoid
+  `OffsetDateTime` vs `ZonedDateTime` typing mismatches across drivers) and cleans
+  up the row on the way out."
   [db-id f]
   (try
     (t2/insert! :model/CacheConfig

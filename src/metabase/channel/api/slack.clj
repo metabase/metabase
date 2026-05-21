@@ -134,7 +134,7 @@
 
 (def SlackManifest
   "Malli schema for Slack app manifest. OSS uses a simple manifest, while EE with metabot-v3
-   returns a full manifest with additional features like slash commands, event subscriptions, etc."
+  returns a full manifest with additional features like slash commands, event subscriptions, etc."
   [:map
    [:display_information [:map
                           [:name :string]
@@ -186,7 +186,7 @@
 
 (def SlackAppInfo
   "Malli schema for Slack app info response. Fields are nullable when
-   Slack is not configured or the token doesn't provide app info."
+  Slack is not configured or the token doesn't provide app info."
   [:map {:closed true}
    [:app_id  [:maybe ms/NonBlankString]]
    [:team_id [:maybe ms/NonBlankString]]
@@ -198,7 +198,7 @@
 
 (defn- app-info
   "Returns the team_id, scopes, and app_id (requires users:read scope) from Slack's API.
-   Returns nil values if Slack is not configured or the info isn't available."
+  Returns nil values if Slack is not configured or the info isn't available."
   []
   (let [not-configured {:app_id nil :team_id nil :scopes nil}]
     (if-not (channel.settings/slack-configured?)

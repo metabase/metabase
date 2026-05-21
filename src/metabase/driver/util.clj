@@ -197,13 +197,13 @@
 
 (def supports?-timeout-ms
   "The maximum time in milliseconds that [[supports?]] should take to execute. This should be enough for a driver to
-   query the database and check if it supports a feature under normal circumstances, but not so high that it delays
-   critical metabase features that use this check."
+  query the database and check if it supports a feature under normal circumstances, but not so high that it delays
+  critical metabase features that use this check."
   5000)
 
 (def ^:dynamic *memoize-supports?*
   "If true, [[supports?]] is memoized for the application DB. Memoization is disabled in dev and test mode by default to avoid
-   accidental coupling between tests."
+  accidental coupling between tests."
   (not (or config/is-test? config/is-dev?)))
 
 (defn- supports?* [driver feature database]
@@ -732,7 +732,7 @@
 
 (defn- fields-hidden-by-form-marker
   "Returns the set of field names (strings) whose resolved `visible-if` includes `marker false`,
-   meaning they are hidden when the named form marker is set on the connection-edit form."
+  meaning they are hidden when the named form marker is set on the connection-edit form."
   [driver marker]
   (when-some [conn-prop-fn (get-method driver/connection-properties driver)]
     (let [all-props     (conn-prop-fn driver)
@@ -746,15 +746,15 @@
 
 (defn fields-hidden-for-write-data-connection
   "Returns the set of field names (strings) that should NOT appear in `write_data_details` for the given `driver`.
-   These are fields whose resolved `visible-if` includes `\"write-data-connection\" false`, meaning they are hidden
-   when the write-data-connection form marker is true."
+  These are fields whose resolved `visible-if` includes `\"write-data-connection\" false`, meaning they are hidden
+  when the write-data-connection form marker is true."
   [driver]
   (fields-hidden-by-form-marker driver "write-data-connection"))
 
 (defn fields-hidden-for-admin-connection
   "Returns the set of field names (strings) that should NOT appear in `admin_details` for the given `driver`.
-   These are fields whose resolved `visible-if` includes `\"admin-connection\" false`, meaning they are hidden
-   when the admin-connection form marker is true."
+  These are fields whose resolved `visible-if` includes `\"admin-connection\" false`, meaning they are hidden
+  when the admin-connection form marker is true."
   [driver]
   (fields-hidden-by-form-marker driver "admin-connection"))
 
@@ -803,7 +803,7 @@
 
 (defn workspace-isolated-schema-clause
   "Returns a HoneySQL [:like column pattern] clause that matches workspace isolation schemas.
-   `column` is typically `:schema`."
+  `column` is typically `:schema`."
   [column]
   [:like column workspace-isolated-like-pattern])
 
@@ -831,8 +831,8 @@
 
 (defn random-workspace-password
   "Generate a random password suitable for most database engines.
-   Ensures the password contains characters from all sets (uppercase, lowercase, digits, special)
-   by cycling through the character sets. Result is shuffled for randomness."
+  Ensures the password contains characters from all sets (uppercase, lowercase, digits, special)
+  by cycling through the character sets. Result is shuffled for randomness."
   []
   (->> (cycle workspace-password-char-sets)
        (take (+ 32 (rand-int 32)))
@@ -856,9 +856,9 @@
 (defn temp-table-name
   "Generate a temporary table name with a random suffix for uniqueness.
 
-   Takes a `table` keyword like `:schema/table_name` where the namespace is the schema.
+  Takes a `table` keyword like `:schema/table_name` where the namespace is the schema.
 
-   Format: <prefix>_<random_suffix>"
+  Format: <prefix>_<random_suffix>"
   [_driver table]
   (let [schema (some-> table namespace)
         rand   (subs (str (random-uuid)) 0 8)]

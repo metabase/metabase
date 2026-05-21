@@ -15,7 +15,7 @@
 
 (defn- measure-definition
   "Create an MBQL5 measure definition with the given aggregation clause.
-   Uses lib/aggregate to create a proper MBQL5 query."
+  Uses lib/aggregate to create a proper MBQL5 query."
   [aggregation-clause]
   (let [mp (mt/metadata-provider)
         table-metadata (lib.metadata/table mp (mt/id :venues))]

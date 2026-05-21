@@ -34,7 +34,7 @@
 
 (defn- version-in-range?
   "True if `version` is >= min and < fixed. A nil `version` (e.g. vLOCAL_DEV or
-   vUNKNOWN, which don't parse) is treated as not in any range."
+  vUNKNOWN, which don't parse) is treated as not in any range."
   [version {:keys [min fixed]}]
   (when version
     (let [^Semver min-v   (parse-version min)
@@ -123,16 +123,16 @@
 
 (defn evaluate-advisory!
   "Evaluate a single advisory: run the matching query, resolve the status, and
-   update the DB. 2-arity takes a pre-parsed instance version to avoid re-parsing
-   in batch.
+  update the DB. 2-arity takes a pre-parsed instance version to avoid re-parsing
+  in batch.
 
-   Short-circuits entirely (no query, no DB update) when the version is outside
-   every affected range and the advisory is already in a terminal state.
+  Short-circuits entirely (no query, no DB update) when the version is outside
+  every affected range and the advisory is already in a terminal state.
 
-   Reactivation: when an acked advisory previously deemed unaffected
-   (`:resolved` / `:not_affected`) transitions to `:active` or `:error` — the
-   appdb evidence now contradicts the prior ack — the acknowledgement is
-   cleared so the next repeat-notification cycle picks it up."
+  Reactivation: when an acked advisory previously deemed unaffected
+  (`:resolved` / `:not_affected`) transitions to `:active` or `:error` — the
+  appdb evidence now contradicts the prior ack — the acknowledgement is
+  cleared so the next repeat-notification cycle picks it up."
   ([advisory]
    (evaluate-advisory! advisory (parse-version (:tag config/mb-version-info))))
   ([advisory instance-version]
@@ -151,7 +151,7 @@
 
 (defn evaluate-all-advisories!
   "Re-evaluate every advisory, including acknowledged ones — an acked
-   advisory may apply again if appdb state changes."
+  advisory may apply again if appdb state changes."
   []
   (let [instance-version (parse-version (:tag config/mb-version-info))]
     (->>

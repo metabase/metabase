@@ -114,9 +114,9 @@
 
 (defn pulse->task-run-info
   "Extract task run info from a pulse for use with [[metabase.task-history.core/with-task-run]].
-   - Dashboard subscriptions: entity_type :dashboard
-   - Legacy pulses (no dashboard): entity_type :card (first card)
-   - Returns nil if neither dashboard_id nor cards are present."
+  - Dashboard subscriptions: entity_type :dashboard
+  - Legacy pulses (no dashboard): entity_type :card (first card)
+  - Returns nil if neither dashboard_id nor cards are present."
   [{:keys [dashboard_id cards]}]
   (cond
     dashboard_id

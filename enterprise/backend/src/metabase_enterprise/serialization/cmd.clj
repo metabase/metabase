@@ -59,7 +59,7 @@
 (mu/defn v2-load!
   "SerDes v2 load entry point.
 
-   opts are passed to load-metabase"
+  opts are passed to load-metabase"
   [path :- :string
    opts :- [:map
             [:backfill? {:optional true} [:maybe :boolean]]

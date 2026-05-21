@@ -19,7 +19,7 @@
 
 (defn- poll-run
   "Poll a run until it's no longer active or we hit the timeout.
-   Returns the final run state."
+  Returns the final run state."
   [run-id & {:keys [timeout-ms interval-ms]
              :or   {timeout-ms 10000 interval-ms 100}}]
   (let [deadline (+ (System/currentTimeMillis) timeout-ms)]

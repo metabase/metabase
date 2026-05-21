@@ -15,7 +15,7 @@
 
 (defn- pr-env-dir
   "Return the .bot directory inside the current user cwd (the worktree).
-   Creates it if it doesn't exist."
+  Creates it if it doesn't exist."
   []
   (let [dir (java.io.File. ^String (System/getProperty "user.dir") ".bot")]
     (.mkdirs dir)
@@ -26,7 +26,7 @@
 
 (defn- login!
   "POST to {base-url}/api/session with creds. Returns the session token string,
-   or throws an ex-info with :status and :body on failure."
+  or throws an ex-info with :status and :body on failure."
   [base-url username password]
   (let [url  (str base-url "/api/session")
         body (json/write-str {:username username :password password})
@@ -76,7 +76,7 @@
 
 (defn pr-env-active?
   "True when the current worktree is configured for remote PR-env mode
-   (detected by the presence of .bot/pr-env.env)."
+  (detected by the presence of .bot/pr-env.env)."
   []
   (.exists (env-file)))
 
@@ -94,7 +94,7 @@
 
 (defn refresh-session!
   "Re-login using the cached creds and overwrite the session token file.
-   Returns the new token. Throws on failure."
+  Returns the new token. Throws on failure."
   []
   (let [env (read-env-file)]
     (when-not env
@@ -107,7 +107,7 @@
 
 (defn setup!
   "CLI entry point: write .bot/pr-env.env, log in, cache session token.
-   Required options: --url, --pr"
+  Required options: --url, --pr"
   [{:keys [options]}]
   (let [{:keys [url pr]} options]
     (when (or (str/blank? url) (str/blank? pr))

@@ -57,7 +57,7 @@
 
 (defn- validate-collection-id
   "Validate that `collection_id` in `data` points to a known collection.
-   Returns a failure map or nil."
+  Returns a failure map or nil."
   [store data]
   (when-let [coll-id (:collection_id data)]
     (let [kind (store/index-kind-of store coll-id)]
@@ -72,7 +72,7 @@
 
 (defn- validate-dashboard-id
   "Validate that `dashboard_id` in `data` points to a known dashboard.
-   Returns a failure map or nil."
+  Returns a failure map or nil."
   [store data]
   (when-let [dash-id (:dashboard_id data)]
     (let [kind (store/index-kind-of store dash-id)]
@@ -87,7 +87,7 @@
 
 (defn- validate-parent-id
   "Validate that `parent_id` on a collection points to a known collection.
-   Returns a failure map or nil."
+  Returns a failure map or nil."
   [store data]
   (when-let [parent-id (:parent_id data)]
     (let [kind (store/index-kind-of store parent-id)]
@@ -102,7 +102,7 @@
 
 (defn- validate-document-id
   "Validate that `document_id` in `data` points to a known document.
-   Returns a failure map or nil."
+  Returns a failure map or nil."
   [store data]
   (when-let [doc-id (:document_id data)]
     (let [kind (store/index-kind-of store doc-id)]
@@ -117,7 +117,7 @@
 
 (defn- validate-container-exclusion
   "Validate that a card doesn't have both dashboard_id and document_id set.
-   Returns a failure map or nil."
+  Returns a failure map or nil."
   [_store data]
   (when (and (:dashboard_id data) (:document_id data))
     {:type :container-conflict
@@ -125,7 +125,7 @@
 
 (defn- validate-container-collection-match
   "Validate that a card nested under a dashboard or document has the same
-   collection_id as its container. Returns a failure map or nil."
+  collection_id as its container. Returns a failure map or nil."
   [store data]
   (when-let [container-id (or (:dashboard_id data) (:document_id data))]
     (let [container-kind (if (:dashboard_id data) :dashboard :document)
@@ -143,7 +143,7 @@
 
 (defn- check-common
   "Run checks that apply to any entity (card, dashboard, metric, etc.).
-   Returns a vector of failure maps, or empty vector if all checks pass."
+  Returns a vector of failure maps, or empty vector if all checks pass."
   [store data]
   (filterv some?
            [(validate-collection-id store data)
@@ -168,7 +168,7 @@
 
 (defn- validate-dashcard-card-ref
   "Validate that a dashcard's card_id points to a known card.
-   Virtual cards (headings, text) have null card_id — that's fine."
+  Virtual cards (headings, text) have null card_id — that's fine."
   [store dashcard]
   (let [card-id (:card_id dashcard)]
     (when (and card-id (not (store/exists? store :card card-id)))
@@ -179,7 +179,7 @@
 
 (defn- validate-dashcard-tab-ref
   "Validate that a dashcard's dashboard_tab_id references a tab in this dashboard.
-   dashboard_tab_id is [dashboard-entity-id, tab-entity-id]."
+  dashboard_tab_id is [dashboard-entity-id, tab-entity-id]."
   [tab-entity-ids dashcard]
   (when-let [tab-ref (:dashboard_tab_id dashcard)]
     (let [tab-eid (if (vector? tab-ref) (second tab-ref) tab-ref)]
@@ -220,7 +220,7 @@
 
 (defn- check-dashboard
   "Run dashboard-specific semantic checks on loaded dashboard data.
-   Returns a vector of failure maps."
+  Returns a vector of failure maps."
   [store data]
   (let [tabs          (:tabs data)
         dashcards     (:dashcards data)
@@ -256,7 +256,7 @@
 
 (defn- extract-entity-links
   "Walk a ProseMirror content tree and extract entity references from link hrefs.
-   Links like /dashboard/ABC or /question/ABC reference entities by entity_id."
+  Links like /dashboard/ABC or /question/ABC reference entities by entity_id."
   [node]
   (when (map? node)
     (let [;; Check marks on text nodes for links
@@ -304,7 +304,7 @@
 
 (defn- partition-errors
   "Split a set of check-entity errors into :bad-refs (MBQL issues) and
-   :native-errors (SQL validation issues like :missing-column, :syntax-error)."
+  :native-errors (SQL validation issues like :missing-column, :syntax-error)."
   [errors]
   (let [{native true, mbql false} (group-by #(contains? #{:missing-column :syntax-error :missing-table-alias} (:type %))
                                             errors)]
@@ -313,7 +313,7 @@
 
 (defn- humanize-source-entity
   "Replace synthetic :source-entity-id integers with portable refs (entity-ids
-   or path strings) so error output is meaningful."
+  or path strings) so error output is meaningful."
   [store error]
   (if-let [src-id (:source-entity-id error)]
     (let [kind   (:source-entity-type error)
@@ -339,9 +339,9 @@
 
 (defn- check-transform
   "Run transform-specific semantic checks via deps.analysis/check-entity.
-   Loads the transform from the store (which caches and assigns IDs), then
-   delegates query validation to deps.analysis.
-   Returns a result map with :unresolved, :native-errors, :bad-refs, :error, :sql keys."
+  Loads the transform from the store (which caches and assigns IDs), then
+  delegates query validation to deps.analysis.
+  Returns a result map with :unresolved, :native-errors, :bad-refs, :error, :sql keys."
   [store provider entity-id]
   (let [data (store/load-transform! store entity-id)]
     (if (not= "query" (get-in data [:source :type]))
@@ -435,8 +435,8 @@
 
 (defn- extract-entity-refs-from-raw-data
   "Extract snippet, measure, metric, and segment references from raw card data.
-   These are extracted from the YAML structure before resolution, since the
-   resolved lib query normalizes them away."
+  These are extracted from the YAML structure before resolution, since the
+  resolved lib query normalizes them away."
   [data]
   (let [stages (get-in data [:dataset_query :stages])]
     (reduce
@@ -515,9 +515,9 @@
 
 (defn- check-entity
   "Check a single entity by kind. Runs common checks on all entities,
-   plus type-specific checks (query validation for cards/transforms,
-   structural checks for dashboards/documents).
-   Returns [entity-id result-map]."
+  plus type-specific checks (query validation for cards/transforms,
+  structural checks for dashboards/documents).
+  Returns [entity-id result-map]."
   [store provider kind entity-id]
   (try
     (let [load-fn        (or (kind->load-fn kind) store/load-card!)
@@ -552,7 +552,7 @@
 
 (defn- check-duplicate-entity-ids
   "Check for duplicate entity_ids in the index. Returns a map of
-   synthetic key → result for each duplicate group."
+  synthetic key → result for each duplicate group."
   [index]
   (when-let [dupes (:duplicates index)]
     (into {}
@@ -570,13 +570,13 @@
 
 (defn check-entities
   "Check all entities: cards, dashboards, collections, documents, transforms, etc.
-   Returns `{entity-id result-map}`. See the Results processing section for the
-   result-map shape.
+  Returns `{entity-id result-map}`. See the Results processing section for the
+  result-map shape.
 
-   `schema-source` — a SchemaSource for resolving databases/tables/fields
-   `assets-source` — an AssetsSource for resolving cards/snippets/transforms/segments
-   `index`         — a file index (see store/make-store)
-   `entity-ids`    — optional seq of entity-ids to check (defaults to all entities)"
+  `schema-source` — a SchemaSource for resolving databases/tables/fields
+  `assets-source` — an AssetsSource for resolving cards/snippets/transforms/segments
+  `index`         — a file index (see store/make-store)
+  `entity-ids`    — optional seq of entity-ids to check (defaults to all entities)"
   ([schema-source assets-source index]
    (check-entities schema-source assets-source index nil))
   ([schema-source assets-source index entity-ids]
@@ -632,7 +632,7 @@
 
 (defn result-status
   "Compute the status of a single entity result.
-   Returns :error, :unresolved, :native-errors, :issues, or :ok (checked in priority order)."
+  Returns :error, :unresolved, :native-errors, :issues, or :ok (checked in priority order)."
   [result]
   (cond
     (:error result)               :error
@@ -693,7 +693,7 @@
 
 (defn- issue-line
   "Render a single issue as `  - <type>: <detail>`. Skips refs that are nil
-   and uses the first non-empty detail field."
+  and uses the first non-empty detail field."
   [{:keys [type path entity-id name message]}]
   (let [type-name (clojure.core/name type)
         type-label (-> type-name
@@ -739,7 +739,7 @@
 
 (defn format-error
   "Format a single card error concisely for LLM consumption.
-   Returns nil for :ok results. Only includes actionable error information."
+  Returns nil for :ok results. Only includes actionable error information."
   [[entity-id result]]
   (let [status (result-status result)]
     (when (not= :ok status)
@@ -763,8 +763,8 @@
 
 (defn- make-schema-source
   "Construct a schema source. `schema-format` is one of :serdes or :concise.
-   For :serdes, `schema-path` is a directory containing database subdirectories.
-   For :concise, `schema-path` is a single JSON file with the concise metadata."
+  For :serdes, `schema-path` is a directory containing database subdirectories.
+  For :concise, `schema-path` is a single JSON file with the concise metadata."
   [schema-format schema-path]
   (case schema-format
     :concise (concise-schema/make-source schema-path)
@@ -775,8 +775,8 @@
 
 (defn- make-sources-and-index
   "Build schema and assets sources, plus the merged assets index (cards,
-   dashboards, segments, etc.). `opts` may contain `:schema-format` (defaults
-   to :serdes)."
+  dashboards, segments, etc.). `opts` may contain `:schema-format` (defaults
+  to :serdes)."
   [export-dir schema-path & {:keys [schema-format] :or {schema-format :serdes}}]
   (let [schema-source (make-schema-source schema-format schema-path)
         assets-source (serdes-assets/make-source export-dir)
@@ -786,13 +786,13 @@
 (defn check
   "Check entities in an export directory against database schemas.
 
-   `export-dir`  — directory containing serdes-exported entities (collections/)
-   `schema-path` — path to schema source (directory for :serdes, file for :concise)
-   `entity-ids`  — optional seq of entity-ids to check (defaults to all entities)
-   `opts`        — optional map; `:schema-format` is :serdes (default) or :concise
+  `export-dir`  — directory containing serdes-exported entities (collections/)
+  `schema-path` — path to schema source (directory for :serdes, file for :concise)
+  `entity-ids`  — optional seq of entity-ids to check (defaults to all entities)
+  `opts`        — optional map; `:schema-format` is :serdes (default) or :concise
 
-   Returns `{:results results-map}` where results-map is `{entity-id result-map}`.
-   See the Results processing section above for the result-map and summary-map shapes."
+  Returns `{:results results-map}` where results-map is `{entity-id result-map}`.
+  See the Results processing section above for the result-map and summary-map shapes."
   ([export-dir schema-path]
    (check export-dir schema-path nil nil))
   ([export-dir schema-path entity-ids]
@@ -829,8 +829,8 @@
 
 (defn check-one
   "Check a single entity by entity-id using a pre-built context from [[setup]].
-   Looks up the entity's kind from the store. Returns the result map.
-   With :verbose true, also prints formatted output."
+  Looks up the entity's kind from the store. Returns the result map.
+  With :verbose true, also prints formatted output."
   [{:keys [store provider]} entity-id & {:keys [verbose]}]
   (binding [mu.fn/*enforce* false
             qp.i/*skip-middleware-because-app-db-access* true]

@@ -76,11 +76,11 @@
 (defn config-str
   "Retrieve value for a single configuration key.  Accepts either a keyword or a string.
 
-   We resolve properties from these places:
+  We resolve properties from these places:
 
-   1.  environment variables (ex: MB_DB_TYPE -> :mb-db-type)
-   2.  jvm options (ex: -Dmb.db.type -> :mb-db-type)
-   3.  hard coded `app-defaults`"
+  1.  environment variables (ex: MB_DB_TYPE -> :mb-db-type)
+  2.  jvm options (ex: -Dmb.db.type -> :mb-db-type)
+  3.  hard coded `app-defaults`"
   [k]
   (let [k       (keyword k)
         env-val (k env/env)]
@@ -143,7 +143,7 @@
 
 (def ^String mb-version-string
   "A formatted version string representing the currently running application.
-   Looks something like `v0.25.0-snapshot (1de6f3f nested-queries-icon)`."
+  Looks something like `v0.25.0-snapshot (1de6f3f nested-queries-icon)`."
   (let [{:keys [tag hash]} mb-version-info]
     (format "%s (%s)" tag hash)))
 
@@ -153,8 +153,8 @@
 
 (def ^String mb-app-id-string
   "A formatted version string including the word 'Metabase' appropriate for passing along
-   with database connections so admins can identify them as Metabase ones.
-   Looks something like `Metabase v0.25.0.RC1`."
+  with database connections so admins can identify them as Metabase ones.
+  Looks something like `Metabase v0.25.0.RC1`."
   (str "Metabase " (mb-version-info :tag)))
 
 (defn major-version
@@ -190,7 +190,7 @@
 
 (def ^:const internal-mb-user-id
   "The user-id of the internal metabase user.
-   This is needed in the OSS edition to filter out users for setup/has-user-setup."
+  This is needed in the OSS edition to filter out users for setup/has-user-setup."
   13371338)
 
 (def ^:dynamic *disable-setting-cache*

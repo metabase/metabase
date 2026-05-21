@@ -11,7 +11,7 @@
 
 (def ^:dynamic *metabot-id*
   "The resolved metabot ID for the current agent session. Bound during the agent loop
-   so that tools can scope queries to the correct metabot instance's collection."
+  so that tools can scope queries to the correct metabot instance's collection."
   nil)
 
 (defn current-memory

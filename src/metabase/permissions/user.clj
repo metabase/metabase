@@ -49,7 +49,7 @@
 
 (defn query-creation-capabilities
   "Returns a map with `:can-create-queries` and `:can-create-native-queries` for the given user,
-   based on their create-queries permissions across all databases."
+  based on their create-queries permissions across all databases."
   [user-id]
   (let [db-ids             (t2/select-pks-set :model/Database)
         _                  (data-perms/prime-db-cache db-ids)

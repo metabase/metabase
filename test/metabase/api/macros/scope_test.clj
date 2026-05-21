@@ -5,7 +5,7 @@
 
 (defn- invoke-handler
   "Invoke an async Ring handler and return the response, with a generous timeout in case things go wrong.
-   Note: Clojure promises implement IFn via `deliver`, so they work directly as Ring `respond` callbacks."
+  Note: Clojure promises implement IFn via `deliver`, so they work directly as Ring `respond` callbacks."
   [handler request]
   (let [result (promise)]
     (handler request result identity)

@@ -11,11 +11,11 @@
 
 (defn execute-async!
   "Start an async source replacement run. Inserts a run record, launches `work-fn` in a
-   virtual thread, and returns the run record immediately.
+  virtual thread, and returns the run record immediately.
 
-   `work-fn` receives a single argument implementing `IRunnerProgress`.
+  `work-fn` receives a single argument implementing `IRunnerProgress`.
 
-   Throws 409 if another run is already active."
+  Throws 409 if another run is already active."
   [work-fn progress]
   (when (replacement-run/active-run)
     (throw (ex-info "A source replacement is already running" {:status-code 409})))

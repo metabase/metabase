@@ -17,7 +17,7 @@
 
 (defn- druid-id
   "Transform mt/id calls for `:timestamp` field to `:__time`. Reason being that `:druid` renames `:__time` to
-   `:timestamp`. With this transform in place existing timeseries tests are usable also with `:druid-jdbc`."
+  `:timestamp`. With this transform in place existing timeseries tests are usable also with `:druid-jdbc`."
   [& args]
   (if (and (> (count args) 1)
            (= :druid-jdbc driver/*driver*)
@@ -34,7 +34,7 @@
 
 (defn- adjust-result-cols
   "Transform column names in query results from `__time` to `timestamp`. With this transformation in place, existing
-   timesries tests are usable for both `:druid` and `:druid-jdbc`."
+  timesries tests are usable for both `:druid` and `:druid-jdbc`."
   [result]
   (as-> result r
     (if (-> r :data :cols seq)

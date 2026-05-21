@@ -302,7 +302,7 @@
 
 (defn- maybe-update-session-activity!
   "Update the `last_active_at` column for the session identified by `session-key`, throttled to avoid a DB write on
-   every request. Uses raw SQL to bypass the Session model's no-update restriction."
+  every request. Uses raw SQL to bypass the Session model's no-update restriction."
   [session-key]
   (when (request/enabled-session-timeout-seconds)
     (let [hashed (session/hash-session-key session-key)]
@@ -331,7 +331,7 @@
 
 (defn reset-session-timeout
   "Middleware that resets the expiry date on session cookies according to the session-timeout setting.
-   Will not change anything if the session-timeout setting is nil, or the timeout cookie has already expired."
+  Will not change anything if the session-timeout setting is nil, or the timeout cookie has already expired."
   [handler]
   (fn [request respond raise]
     (let [;; The expiry time for the cookie is relative to the time the request is received, rather than the time of the

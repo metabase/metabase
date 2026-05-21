@@ -18,13 +18,13 @@
 (defprotocol RemappingStore
   "Protocol for accessing workspace table remappings.
 
-   Reads are pure functions of `db-id`. Writes take pre-normalized `::table-spec` maps
-   (`{:db, :schema, :table}`) — callers should normalize `nil`/missing slots to the
-   empty-string sentinel before invoking the store. The convenience writers in
-   [[metabase-enterprise.workspaces.table-remapping]] do this normalization.
+  Reads are pure functions of `db-id`. Writes take pre-normalized `::table-spec` maps
+  (`{:db, :schema, :table}`) — callers should normalize `nil`/missing slots to the
+  empty-string sentinel before invoking the store. The convenience writers in
+  [[metabase-enterprise.workspaces.table-remapping]] do this normalization.
 
-   Writes are idempotent on the `(database_id, from_db, from_schema, from_table_name)`
-   unique key: duplicate inserts no-op, missing removes return 0."
+  Writes are idempotent on the `(database_id, from_db, from_schema, from_table_name)`
+  unique key: duplicate inserts no-op, missing removes return 0."
   ;; reads
   (enabled-for-db?* [store db-id]
     "Returns true if `db-id` has any active workspace remappings.")
@@ -166,14 +166,14 @@
 
 (def ^:dynamic *skip-remapping?*
   "When true, [[enabled-for-db?]] always returns false. Used by workspace execution contexts
-   that need to query the isolation schema directly without remapping."
+  that need to query the isolation schema directly without remapping."
   false)
 
 ;;; ------------------------------------------------ Public API ---------------------------------------------------
 
 (defn enabled-for-db?
   "Returns true if database `db-id` has any active workspace remappings.
-   Returns false when [[*skip-remapping?*]] is true."
+  Returns false when [[*skip-remapping?*]] is true."
   [db-id]
   (and (not *skip-remapping?*)
        (enabled-for-db?* *remapping-store* db-id)))
@@ -192,16 +192,16 @@
 
 (defn get-mapping
   "Targeted lookup: return the to-side `::table-spec` for `from-spec`, or nil if no
-   matching remap exists. Hot path during sync -- O(1) per call."
+  matching remap exists. Hot path during sync -- O(1) per call."
   [db-id from-spec]
   (get-mapping* *remapping-store* db-id from-spec))
 
 (defn insert-mapping!
   "Idempotently ensure a remapping exists in the active store. Specs MUST be
-   pre-normalized `::table-spec` maps — `\"\"` (not nil) for slots a driver doesn't
-   emit. The user-facing wrappers in `table-remapping` handle that normalization.
+  pre-normalized `::table-spec` maps — `\"\"` (not nil) for slots a driver doesn't
+  emit. The user-facing wrappers in `table-remapping` handle that normalization.
 
-   Returns truthy when the remapping is in place after the call (insert or already-existed)."
+  Returns truthy when the remapping is in place after the call (insert or already-existed)."
   [db-id from-spec to-spec]
   (insert-mapping!* *remapping-store* db-id from-spec to-spec))
 

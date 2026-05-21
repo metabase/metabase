@@ -48,43 +48,43 @@
 
 (defn- random-suffix
   "Eight hex chars from a random UUID — uniquifies the per-run schema/table/user
-   identifiers so we don't collide with leftover state in the shared test DB."
+  identifiers so we don't collide with leftover state in the shared test DB."
   []
   (subs (str (random-uuid)) 0 8))
 
 (def workspaces-supported-drivers
   "Drivers covered by the full e2e. Mirror the set of drivers that declare
-   `:workspace true` in their `database-supports?` map -- update both when
-   adding a workspace-supported driver.
+  `:workspace true` in their `database-supports?` map -- update both when
+  adding a workspace-supported driver.
 
-   JDBC drivers go through `jdbc/execute!`+`jdbc/query`; `:bigquery-cloud-sdk`
-   goes through the BQ Java API via
-   `metabase.driver.bigquery-cloud-sdk.workspace-test-util` (loaded lazily
-   via `requiring-resolve`). Each helper below dispatches on driver.
+  JDBC drivers go through `jdbc/execute!`+`jdbc/query`; `:bigquery-cloud-sdk`
+  goes through the BQ Java API via
+  `metabase.driver.bigquery-cloud-sdk.workspace-test-util` (loaded lazily
+  via `requiring-resolve`). Each helper below dispatches on driver.
 
-   The `workspace-full-e2e-test` exercises this whole set. The smaller
-   `native-transform-references-prior-canonical-output-test` deliberately
-   runs on `#{:postgres :mysql}` only -- not because Redshift/etc.
-   aren't workspace-supported, but because that test depends on
-   workspace-user `describe-database` returning the source table, and
-   on Redshift the workspace user's `describe-database` returns
-   `{:tables #{}}` even when USAGE/SELECT grants are intact (root cause
-   pending investigation; see that test's docstring). Don't add drivers
-   to the smaller test without first fixing the underlying sync visibility."
+  The `workspace-full-e2e-test` exercises this whole set. The smaller
+  `native-transform-references-prior-canonical-output-test` deliberately
+  runs on `#{:postgres :mysql}` only -- not because Redshift/etc.
+  aren't workspace-supported, but because that test depends on
+  workspace-user `describe-database` returning the source table, and
+  on Redshift the workspace user's `describe-database` returns
+  `{:tables #{}}` even when USAGE/SELECT grants are intact (root cause
+  pending investigation; see that test's docstring). Don't add drivers
+  to the smaller test without first fixing the underlying sync visibility."
   #{:postgres :sqlserver :clickhouse :mysql :redshift :bigquery-cloud-sdk})
 
 (defn- three-slot-driver?
   "True when the driver emits `db.schema.table` (SQL Server / BigQuery).
-   Drives whether the workspace input/output namespace map populates `:db`."
+  Drives whether the workspace input/output namespace map populates `:db`."
   [driver]
   (boolean (some #{:db} (driver/qualified-name-components driver))))
 
 (defn- workspace-input-schema
   "Canonical input schema string for `add-database!`. For 2-slot drivers (and
-   ClickHouse) it's the schema name. For MySQL — which has no schema layer —
-   the same string is interpreted as the database name. For 3-slot drivers
-   (SQL Server, BigQuery) the catalog is read from `Database.details`
-   inside the driver's `grant!` impl; only the schema is supplied here."
+  ClickHouse) it's the schema name. For MySQL — which has no schema layer —
+  the same string is interpreted as the database name. For 3-slot drivers
+  (SQL Server, BigQuery) the catalog is read from `Database.details`
+  inside the driver's `grant!` impl; only the schema is supplied here."
   [_driver _admin-details main-schema]
   main-schema)
 
@@ -97,7 +97,7 @@
 
 (defn- admin-warehouse
   "Build whatever `admin-warehouse` value the rest of the helpers need for
-   this driver."
+  this driver."
   [driver admin-details]
   (case driver
     :bigquery-cloud-sdk ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/admin-client) admin-details)
@@ -105,8 +105,8 @@
 
 (defn- qualified-table-sql
   "Return the dialect-correct schema-qualified table reference for a native SQL
-   string, e.g. `\"PUBLIC\".\"VENUES\"` on Postgres, `` `project.dataset.table` ``
-   on BigQuery."
+  string, e.g. `\"PUBLIC\".\"VENUES\"` on Postgres, `` `project.dataset.table` ``
+  on BigQuery."
   [driver admin-details schema table]
   (case driver
     :bigquery-cloud-sdk (format "`%s.%s.%s`"
@@ -115,9 +115,9 @@
 
 (defn- create-table-tail
   "Driver-specific suffix appended to `CREATE TABLE ...` statements. ClickHouse
-   requires every MergeTree-family table to declare a storage engine and (for
-   MergeTree-family) an ORDER BY key; SQL drivers don't. Mirror
-   `driver-isolation-test/create-table-tail`."
+  requires every MergeTree-family table to declare a storage engine and (for
+  MergeTree-family) an ORDER BY key; SQL drivers don't. Mirror
+  `driver-isolation-test/create-table-tail`."
   [driver]
   (case driver
     :clickhouse " ENGINE = MergeTree() ORDER BY id"
@@ -141,8 +141,8 @@
 
 (defn- create-output-table!
   "Pre-create the canonical *output* target with `rows` (each `[id v]`). Used
-   by the canonical-table-protection test to seed `main_schema.tgt-name` with
-   distinct rows before the workspace transform writes to that same name."
+  by the canonical-table-protection test to seed `main_schema.tgt-name` with
+  distinct rows before the workspace transform writes to that same name."
   [driver admin-warehouse admin-details schema table rows]
   (let [values (str/join ", " (map (fn [[id v]] (format "(%d, '%s')" id v)) rows))
         qual   (qualified-table-sql driver admin-details schema table)]
@@ -160,11 +160,11 @@
 
 (defn- canonical-schema-name
   "Pick the warehouse \"schema\" (in this test's vocabulary) the canonical input
-   tables will live in for this driver.
+  tables will live in for this driver.
 
-   Schema-having JDBC drivers + BigQuery get a freshly-created per-run schema /
-   dataset. MySQL has no schema-within-database — reuse the bound database;
-   concurrency-isolation falls to the per-run table-name suffix."
+  Schema-having JDBC drivers + BigQuery get a freshly-created per-run schema /
+  dataset. MySQL has no schema-within-database — reuse the bound database;
+  concurrency-isolation falls to the per-run table-name suffix."
   [driver run-id admin-details]
   (case driver
     :mysql (:db admin-details)
@@ -172,15 +172,15 @@
 
 (defn- table-row-schema-value
   "Translate the warehouse \"schema\" name to the value Metabase stores in
-   `:model/Table.schema` for this driver. MySQL reports no schema at all so
-   synced Table rows have `:schema nil`. Other drivers store the schema name
-   verbatim."
+  `:model/Table.schema` for this driver. MySQL reports no schema at all so
+  synced Table rows have `:schema nil`. Other drivers store the schema name
+  verbatim."
   [driver schema]
   (if (= :mysql driver) nil schema))
 
 (defn- create-canonical-schema!
   "Create the canonical schema/dataset, except on MySQL (the bound database
-   already exists)."
+  already exists)."
   [driver admin-warehouse admin-details schema]
   (case driver
     :mysql              nil
@@ -218,8 +218,8 @@
 
 (defn- read-canonical-rows
   "Read all rows from `(schema.table)` on the warehouse via admin perms,
-   returning a set of `[id v]` vectors. Used by the canonical-table-protection
-   assertion."
+  returning a set of `[id v]` vectors. Used by the canonical-table-protection
+  assertion."
   [driver admin-warehouse admin-details schema table]
   (case driver
     :bigquery-cloud-sdk
@@ -244,9 +244,9 @@
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (defn- with-redshift-describe-filter-disabled
   "Redshift test infra normally filters describe-database to only return tables
-   prefixed by dataset name (`<dataset>_<name>`). Workspace e2e creates tables
-   with non-conforming names (`x_input_table_<run-id>`), so disable the filter
-   for the duration of `thunk`. No-op for non-Redshift drivers."
+  prefixed by dataset name (`<dataset>_<name>`). Workspace e2e creates tables
+  with non-conforming names (`x_input_table_<run-id>`), so disable the filter
+  for the duration of `thunk`. No-op for non-Redshift drivers."
   [thunk]
   (if (= :redshift driver/*driver*)
     (with-bindings* {(requiring-resolve 'metabase.test.data.redshift/*override-describe-database-to-filter-by-db-name?*)

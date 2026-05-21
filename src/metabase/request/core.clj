@@ -65,7 +65,7 @@
 
 (defn enabled-session-timeout-seconds
   "Return the session timeout in seconds if the session-timeout-config premium feature is enabled and a timeout is
-   configured, otherwise nil."
+  configured, otherwise nil."
   []
   (when (premium-features/enable-session-timeout-config?)
     (session-timeout-seconds)))

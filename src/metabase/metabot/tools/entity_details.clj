@@ -20,7 +20,7 @@
 
 (defn- convert-measure-or-segment
   "Convert a measure or segment metadata object to the format expected by the API.
-   `definition-key` is `:aggregation` for measures and `:filters` for segments."
+  `definition-key` is `:aggregation` for measures and `:filters` for segments."
   [metadata definition-key]
   (let [definition (:definition metadata)]
     (-> (select-keys metadata [:id :name :display-name :description])
@@ -94,7 +94,7 @@
 
 (defn- get-field-values
   "Get field values for a field, creating them if they don't exist.
-   Uses the user-aware API that respects sandboxing/impersonation."
+  Uses the user-aware API that respects sandboxing/impersonation."
   [id->values id]
   (-> (get id->values id)
       (or (params.field-values/get-or-create-field-values! (t2/select-one :model/Field :id id)))
@@ -219,7 +219,7 @@
 
 (defn related-tables
   "Constructs a list of tables, optionally including their fields, that are related to the given query via foreign key.
-   Creates separate entries for each FK path when the same table is reachable through multiple foreign keys."
+  Creates separate entries for each FK path when the same table is reachable through multiple foreign keys."
   [query with-fields? field-values-fn]
   (let [all-main-cols (lib/visible-columns query)
         fk-cols       (filter :fk-field-id all-main-cols)

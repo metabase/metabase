@@ -71,7 +71,7 @@
 
 (defn- select-best-matching-name
   "Returns a key function for use with [[sort-by]] that ranks items based on how closely their `:schema` and `:name` match the given target values.
-   Items with matching `:schema` and `:name` are prioritized, with exact matches ranked higher than non-exact matches."
+  Items with matching `:schema` and `:name` are prioritized, with exact matches ranked higher than non-exact matches."
   [target-schema target-name]
   (fn [item]
     [(not= (:schema item) target-schema)

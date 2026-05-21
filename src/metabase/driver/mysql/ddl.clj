@@ -50,8 +50,8 @@
 
 (defn- execute-with-timeout!
   "Spins up another channel to execute the statement.
-   If `timeout-ms` passes, send a kill statement to stop execution and throw exception
-   Otherwise return results returned by channel."
+  If `timeout-ms` passes, send a kill statement to stop execution and throw exception
+  Otherwise return results returned by channel."
   [driver conn db-spec timeout-ms sql+params]
   (let [conn-chan    (a/promise-chan)
         exec-chan    (exec-async driver conn-chan db-spec sql+params)

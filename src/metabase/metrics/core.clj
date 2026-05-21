@@ -31,7 +31,7 @@
 
 (defn aggregation-column-name
   "Extract the result column name for the first aggregation in a query.
-   `database-id` is the ID of the database, `query-map` is the dataset_query or definition."
+  `database-id` is the ID of the database, `query-map` is the dataset_query or definition."
   [database-id query-map]
   (try
     (let [mp    (lib-be/application-database-metadata-provider database-id)
@@ -46,7 +46,7 @@
 
 (defmulti save-dimensions!
   "Persists dimensions and dimension-mappings to the entity's storage.
-   This is the only impure operation - it writes to the database."
+  This is the only impure operation - it writes to the database."
   {:arglists '([entity dimensions dimension-mappings])}
   (fn [entity _dimensions _dimension-mappings] (:lib/type entity)))
 
@@ -54,14 +54,14 @@
 
 (defn sync-dimensions!
   "Compute dimensions from visible-columns, reconcile with persisted data,
-   and persist to the database if changed.
+  and persist to the database if changed.
 
-   Arguments:
-   - `metadata-type` - the metadata type, either `:metadata/metric` or `:metadata/measure`
-   - `id` - the entity ID
+  Arguments:
+  - `metadata-type` - the metadata type, either `:metadata/metric` or `:metadata/measure`
+  - `id` - the entity ID
 
-   This function only handles the side-effect of syncing dimensions to the database.
-   Callers should fetch the entity separately after calling this function."
+  This function only handles the side-effect of syncing dimensions to the database.
+  Callers should fetch the entity separately after calling this function."
   [metadata-type id]
   (when-let [entity (first (lib.metadata.protocols/metadatas
                             (lib-metric/metadata-provider)

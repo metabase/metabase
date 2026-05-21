@@ -113,7 +113,7 @@
 
 (def ^:private legacy-data-layer->current
   "Map old medallion data_layer values to current values.
-   Used to handle values from pre-v59 databases or serialization exports."
+  Used to handle values from pre-v59 databases or serialization exports."
   {:copper :hidden
    :bronze :final
    :silver :final
@@ -347,8 +347,8 @@
 
 (defenterprise current-user-can-write-table?
   "OSS implementation. Returns a boolean whether the current user can write the given table.
-   Checks both that the user is a superuser and that the table is editable (not in a remote-synced
-   collection in read-only mode)."
+  Checks both that the user is a superuser and that the table is editable (not in a remote-synced
+  collection in read-only mode)."
   metabase-enterprise.advanced-permissions.common
   [instance]
   (and (remote-sync/table-editable? instance)

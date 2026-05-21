@@ -24,16 +24,16 @@
 
 (def ^:private table-mention-pattern
   "Regex to extract table IDs from markdown-style metabase:// links.
-   Frontend serializes @mentions as: [Display Name](metabase://table/123)"
+  Frontend serializes @mentions as: [Display Name](metabase://table/123)"
   #"\[[^\]]+\]\(metabase://table/(\d+)\)")
 
 (defn parse-table-mentions
   "Extract table IDs from metabase://table/{id} links in prompt text.
 
-   Frontend serializes @mentions as markdown links:
-   [Display Name](metabase://table/123)
+  Frontend serializes @mentions as markdown links:
+  [Display Name](metabase://table/123)
 
-   Returns a set of table IDs (integers), or nil if input is nil."
+  Returns a set of table IDs (integers), or nil if input is nil."
   [prompt-text]
   (when (string? prompt-text)
     (->> (re-seq table-mention-pattern prompt-text)
@@ -43,7 +43,7 @@
 
 (defn- table-match-clause
   "Build a WHERE clause to match a table by name and optionally schema.
-   When schema is present, matches both; otherwise matches just the table name."
+  When schema is present, matches both; otherwise matches just the table name."
   [{:keys [schema table]}]
   (let [table-lower (u/lower-case-en table)]
     (if schema
@@ -55,13 +55,13 @@
 (defn extract-tables-from-sql
   "Extract table IDs from a raw SQL string.
 
-   Parses the SQL to identify referenced table names, then queries the
-   database to resolve those names to table IDs. When the SQL includes
-   schema-qualified references (e.g., schema.table), matches on both
-   schema and table name.
+  Parses the SQL to identify referenced table names, then queries the
+  database to resolve those names to table IDs. When the SQL includes
+  schema-qualified references (e.g., schema.table), matches on both
+  schema and table name.
 
-   Returns a set of table IDs (integers), or empty set if parsing fails
-   or no tables are found."
+  Returns a set of table IDs (integers), or empty set if parsing fails
+  or no tables are found."
   [database-id sql-string]
   (if (and database-id (seq sql-string))
     (try
@@ -83,8 +83,8 @@
 
 (defn extract-card-ids-from-template-tags
   "Extract referenced Card IDs from native query template tags. Card template
-   tags cover both saved questions and models. Returns an empty set when no
-   card tags are present."
+  tags cover both saved questions and models. Returns an empty set when no
+  card tags are present."
   [template-tags]
   (if (map? template-tags)
     (into #{}
@@ -99,7 +99,7 @@
 
 (defn- fetch-accessible-tables
   "Fetch tables by ID, filtering to only those the current user can access.
-   Returns a map of table-id -> table record."
+  Returns a map of table-id -> table record."
   [table-ids]
   (when (seq table-ids)
     (let [{:keys [clause with]} (mi/visible-filter-clause
@@ -131,8 +131,8 @@
 
 (defn- fetch-table-columns
   "Use metadata provider to get visible columns for a table.
-   Returns sequence of column maps with metadata for DDL generation.
-   By default excludes implicitly-joinable columns; pass opts to override."
+  Returns sequence of column maps with metadata for DDL generation.
+  By default excludes implicitly-joinable columns; pass opts to override."
   ([mp table-id]
    (fetch-table-columns mp table-id {}))
   ([mp table-id opts]
@@ -153,11 +153,11 @@
 
 (defn- fetch-field-values
   "Fetch or create FieldValues for columns that should have them.
-   Uses get-or-create-full-field-values! which will:
-   - Create field values if missing and field should have them
-   - Update field values if inactive (not used recently)
-   - Query source database if necessary to populate values
-   Returns map of field-id -> values vector."
+  Uses get-or-create-full-field-values! which will:
+  - Create field values if missing and field should have them
+  - Update field values if inactive (not used recently)
+  - Query source database if necessary to populate values
+  Returns map of field-id -> values vector."
   [columns]
   (let [field-ids (->> columns
                        (keep :id)
@@ -174,7 +174,7 @@
 
 (defn- fetch-fk-targets
   "Fetch table.field names for FK target fields.
-   Returns map of target-field-id -> {:table name :field name}"
+  Returns map of target-field-id -> {:table name :field name}"
   [columns]
   (let [target-ids (->> columns
                         (keep :fk_target_field_id)
@@ -194,8 +194,8 @@
 
 (defn- enrich-fingerprints-on-demand!
   "For columns missing fingerprints, trigger re-fingerprinting.
-   Returns a map of field-id -> fingerprint for columns that were missing them.
-   This queries the source database to compute fingerprints if they don't exist."
+  Returns a map of field-id -> fingerprint for columns that were missing them.
+  This queries the source database to compute fingerprints if they don't exist."
   [columns]
   (let [missing-fp-ids (->> columns
                             (filter #(and (:id %) (nil? (:fingerprint %))))
@@ -228,7 +228,7 @@
 
 (defn- format-text-stats
   "Format text fingerprint as readable string.
-   Includes average-length from type fingerprint and distinct-count/nil% from global."
+  Includes average-length from type fingerprint and distinct-count/nil% from global."
   [type-fp global-fp]
   (let [{:keys [average-length]} type-fp
         {:keys [distinct-count nil%]} global-fp
@@ -246,8 +246,8 @@
 
 (defn- semantic-type->hint
   "Extract the type name from a semantic type keyword for DDL comments.
-   e.g. :type/Email -> \"Email\", :type/CreationTimestamp -> \"CreationTimestamp\"
-   Returns nil if semantic-type is nil."
+  e.g. :type/Email -> \"Email\", :type/CreationTimestamp -> \"CreationTimestamp\"
+  Returns nil if semantic-type is nil."
   [semantic-type]
   (some-> semantic-type name))
 
@@ -266,7 +266,7 @@
 
 (defn- build-column-comment
   "Build an informative comment for a column based on available metadata.
-   Returns nil if no useful metadata is available."
+  Returns nil if no useful metadata is available."
   [{:keys [description semantic_type fingerprint fk_target_field_id]}
    field-values
    fk-target-info]
@@ -330,7 +330,7 @@
 
 (defn- format-column-ddl
   "Format a single column definition. If column has a :comment, emit it as a SQL comment
-   on the line before the column definition."
+  on the line before the column definition."
   [{:keys [^String database_type ^String comment], col-name :name} ^Writer writer first?]
   (when comment
     (when-not first?
@@ -416,21 +416,21 @@
 (defn build-schema-context
   "Fetch table metadata for mentioned tables and format as DDL for LLM context.
 
-   Uses the metadata provider to get visible columns, respecting field
-   visibility settings. Includes field descriptions, sample values, and
-   statistical information when available.
+  Uses the metadata provider to get visible columns, respecting field
+  visibility settings. Includes field descriptions, sample values, and
+  statistical information when available.
 
-   For fields missing fingerprints or field values, this function will
-   trigger on-demand creation by querying the source database.
+  For fields missing fingerprints or field values, this function will
+  trigger on-demand creation by querying the source database.
 
-   Parameters:
-   - database-id: Database containing the tables
-   - table-ids: Set of table IDs to include
+  Parameters:
+  - database-id: Database containing the tables
+  - table-ids: Set of table IDs to include
 
-   Returns a map with:
-   - :ddl - DDL string for LLM context
-   - :tables - structured table metadata for API response
-   Or nil if no accessible tables found."
+  Returns a map with:
+  - :ddl - DDL string for LLM context
+  - :tables - structured table metadata for API response
+  Or nil if no accessible tables found."
   [database-id table-ids]
   (when (and database-id (seq table-ids))
     (let [accessible-tables (fetch-accessible-tables table-ids)]
@@ -490,14 +490,14 @@
 
 (defn get-tables-with-columns
   "Fetch tables with their columns for the extract-sources endpoint.
-   Returns lightweight metadata without triggering fingerprinting or field values.
+  Returns lightweight metadata without triggering fingerprinting or field values.
 
-   Parameters:
-   - database-id: Database containing the tables
-   - table-ids: Set of table IDs to include
+  Parameters:
+  - database-id: Database containing the tables
+  - table-ids: Set of table IDs to include
 
-   Returns a vector of table maps with :id, :name, :schema, :display_name,
-   :description, and :columns (with FK targets resolved), or nil."
+  Returns a vector of table maps with :id, :name, :schema, :display_name,
+  :description, and :columns (with FK targets resolved), or nil."
   [database-id table-ids]
   (when (and database-id (seq table-ids))
     (let [accessible-tables (fetch-accessible-tables table-ids)]

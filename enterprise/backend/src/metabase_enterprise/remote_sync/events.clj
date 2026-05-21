@@ -26,9 +26,9 @@
 
 (defn sync-snippet-tracking!
   "Called when the Library collection's remote sync status changes.
-   When enabled: mark all existing snippets and snippets-namespace collections
-   as 'create' for initial sync.
-   When disabled: remove all snippet-related tracking entries."
+  When enabled: mark all existing snippets and snippets-namespace collections
+  as 'create' for initial sync.
+  When disabled: remove all snippet-related tracking entries."
   [enabled?]
   (let [timestamp (t/offset-date-time)]
     (if enabled?
@@ -105,7 +105,7 @@
 
 (defn- create-or-update-sync-object-from-spec!
   "Creates or updates a RemoteSyncObject entry using a spec for field hydration.
-   This is the spec-based version of create-or-update-remote-sync-object-entry!."
+  This is the spec-based version of create-or-update-remote-sync-object-entry!."
   [model-spec model-id status]
   (let [model-type (:model-type model-spec)
         existing   (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)]
@@ -142,8 +142,8 @@
 
 (defn- cascade-to-children!
   "When a parent model becomes eligible/ineligible, cascade to its children.
-   For eligible: query child entities using :parent-fk and derived filter, check eligibility, create RSOs.
-   For ineligible: query existing RSOs by model_table_id and mark as removed."
+  For eligible: query child entities using :parent-fk and derived filter, check eligibility, create RSOs.
+  For ineligible: query existing RSOs by model_table_id and mark as removed."
   [model-spec model-id status eligible?]
   (doseq [child-spec (spec/children-specs (:model-key model-spec))]
     (let [fk     (:parent-fk child-spec)
@@ -162,7 +162,7 @@
 
 (defn- handle-model-event-from-spec
   "Generic event handler that uses a spec for all configuration.
-   Checks eligibility, determines status, and creates/updates the sync object."
+  Checks eligibility, determines status, and creates/updates the sync object."
   [model-spec topic {:keys [object]}]
   (let [model-type     (:model-type model-spec)
         model-id       (:id object)
@@ -186,7 +186,7 @@
 
 (defn- register-events-for-spec!
   "Registers event handlers for a single spec. Creates event hierarchy and
-   registers a methodical handler for the parent event."
+  registers a methodical handler for the parent event."
   [model-spec]
   (let [event-kws (spec/event-keywords model-spec)
         parent-kw (:parent event-kws)]
@@ -220,7 +220,7 @@
 
 (defn- handle-library-sync-status-change!
   "When the Library collection's is_remote_synced status changes, trigger snippet sync tracking.
-   This ensures all snippets are tracked/untracked when Library sync is enabled/disabled."
+  This ensures all snippets are tracked/untracked when Library sync is enabled/disabled."
   [is-now-synced?]
   (let [snippets-already-tracked? (t2/exists? :model/RemoteSyncObject :model_type "NativeQuerySnippet")]
     (cond

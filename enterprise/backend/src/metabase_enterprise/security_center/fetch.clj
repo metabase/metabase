@@ -127,8 +127,8 @@
 
 (defn- upsert-advisory!
   "Insert or update a single advisory by :advisory_id.
-   On insert, match_status starts as :unknown until the matching engine evaluates it.
-   On update, merges new data but preserves :match_status, :last_evaluated_at, and acknowledgement fields."
+  On insert, match_status starts as :unknown until the matching engine evaluates it.
+  On update, merges new data but preserves :match_status, :last_evaluated_at, and acknowledgement fields."
   [advisory]
   (mdb/update-or-insert! :model/SecurityAdvisory
                          {:advisory_id (:advisory_id advisory)}

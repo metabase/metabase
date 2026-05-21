@@ -90,7 +90,7 @@
 
 (defn- analytics-collection-ids
   "Returns a set of collection IDs that are in the 'analytics' namespace (internal analytics collections).
-   These collections are intentionally excluded from serialization."
+  These collections are intentionally excluded from serialization."
   []
   (let [analytics-roots (t2/select :model/Collection {:where [:= :namespace "analytics"]})]
     (into (set (map :id analytics-roots))
@@ -99,12 +99,12 @@
 
 (defn- escape-analysis
   "Analyzes the dependency graph to find cards that are outside the collection set (escapees).
-   Returns a map with:
-   - :reportable-escaped - escapees that should trigger warnings (non-analytics)
-   - :analytics-card-ids - card IDs in analytics collections (should be removed from extraction but not block export)
+  Returns a map with:
+  - :reportable-escaped - escapees that should trigger warnings (non-analytics)
+  - :analytics-card-ids - card IDs in analytics collections (should be removed from extraction but not block export)
 
-   Cards that depend on analytics cards are allowed to be exported - the references will be converted
-   to entity_ids during export and resolved on import since analytics cards have stable entity_ids."
+  Cards that depend on analytics cards are allowed to be exported - the references will be converted
+  to entity_ids during export and resolved on import since analytics cards have stable entity_ids."
   [{colls "Collection" cards "Card" :as _by-model} nodes]
   (log/tracef "Running escape analysis for %d colls and %d cards" (count colls) (count cards))
   (when-let [colls (-> colls set not-empty)]

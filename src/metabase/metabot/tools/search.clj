@@ -141,8 +141,8 @@
 
 (defn- join-results-by-rrf
   "Execute multiple search queries in parallel and combine results using Reciprocal Rank Fusion.
-   Items appearing in multiple result lists are boosted in the final ranking.
-   May return more results than requested limit."
+  Items appearing in multiple result lists are boosted in the final ranking.
+  May return more results than requested limit."
   [search-fn search-engine all-queries]
   ;; Zero queries case is handled nicely by the >1 branch
   (if (= 1 (count all-queries))

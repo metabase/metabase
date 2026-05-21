@@ -79,8 +79,8 @@
 
 (defn valid-id?
   "Return true if `session-id` looks like a UUID (the format `create!` produces).
-   Format check only — authentication is handled separately by cookie or bearer token,
-   not by the session ID itself."
+  Format check only — authentication is handled separately by cookie or bearer token,
+  not by the session ID itself."
   [session-id]
   (and (string? session-id)
        (try (UUID/fromString session-id) true
@@ -88,19 +88,19 @@
 
 (defn create!
   "Create a new MCP session. Returns a UUID string.
-   No database row is written — the session is just an opaque correlator until
-   a resource read materializes it into a `core_session`.
+  No database row is written — the session is just an opaque correlator until
+  a resource read materializes it into a `core_session`.
 
-   `user-id` is accepted but not persisted: since MCP sessions are currently
-   stateless (no server-side token store), we don't validate the user against
-   future requests. This parameter exists so we can add durable, user-scoped
-   sessions in the future without changing the call-site contract."
+  `user-id` is accepted but not persisted: since MCP sessions are currently
+  stateless (no server-side token store), we don't validate the user against
+  future requests. This parameter exists so we can add durable, user-scoped
+  sessions in the future without changing the call-site contract."
   [_user-id]
   (str (UUID/randomUUID)))
 
 (defn- get-or-create-embedding-session!
   "Materialize and return the `core_session` row backing this MCP session.
-   Idempotent — repeated calls collapse to the same row in the common case."
+  Idempotent — repeated calls collapse to the same row in the common case."
   [session-id user-id]
   (let [session-key (derive-embedding-session-key session-id)
         key-hashed  (session/hash-session-key session-key)]
@@ -129,14 +129,14 @@
 
 (defn get-or-create-session-key!
   "Ensure a `core_session` exists for this MCP session and return its (plaintext)
-   session key, HMAC-derived from the MCP session id."
+  session key, HMAC-derived from the MCP session id."
   [session-id user-id]
   (get-or-create-embedding-session! session-id user-id)
   (derive-embedding-session-key session-id))
 
 (defn owned-by-user?
   "Return true if no `core_session` has been materialized for this session yet
-   (i.e. no ownership to violate), or if the existing row belongs to `user-id`."
+  (i.e. no ownership to violate), or if the existing row belongs to `user-id`."
   [session-id user-id]
   (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))
         owner      (t2/select-one-fn :user_id :core_session :key_hashed key-hashed)]
@@ -151,12 +151,12 @@
 (defn store-handle!
   "Insert a new handle row binding `encoded-query` to the calling user, and return the handle UUID.
 
-   `mcp-session-id` is recorded so DELETE /api/mcp can sweep the session's handles, and so reads can log
-   when a handle is resolved across sessions (see [[find-handle-row]]) — the read path itself is purely
-   user-scoped, since handle UUIDs are globally unique.
+  `mcp-session-id` is recorded so DELETE /api/mcp can sweep the session's handles, and so reads can log
+  when a handle is resolved across sessions (see [[find-handle-row]]) — the read path itself is purely
+  user-scoped, since handle UUIDs are globally unique.
 
-   `prompt` is optional, but should be supplied for construct_query handles so visualize_query can later
-   return both the query and original user prompt to the MCP iframe for feedback submission."
+  `prompt` is optional, but should be supplied for construct_query handles so visualize_query can later
+  return both the query and original user prompt to the MCP iframe for feedback submission."
   ([mcp-session-id user-id encoded-query]
    (store-handle! mcp-session-id user-id encoded-query nil))
   ([mcp-session-id user-id encoded-query prompt]
@@ -175,10 +175,10 @@
 
 (defn- find-handle-row
   "Look up the handle row by `handle-id`, scoped to `user-id`.
-   Handle ids are globally unique UUIDs, so the join's `WHERE mqh.id = handle-id` returns at most one
-   row by definition — no ordering or session-preference logic is needed. `mcp-session-id` is recorded
-   on the row only so harnesses that rotate MCP sessions between calls (e.g. ChatGPT) can be logged as
-   cross-session resolutions for telemetry."
+  Handle ids are globally unique UUIDs, so the join's `WHERE mqh.id = handle-id` returns at most one
+  row by definition — no ordering or session-preference logic is needed. `mcp-session-id` is recorded
+  on the row only so harnesses that rotate MCP sessions between calls (e.g. ChatGPT) can be logged as
+  cross-session resolutions for telemetry."
   [mcp-session-id user-id handle-id]
   (when (and user-id handle-id)
     ;; Single round-trip: join `mcp_query_handle` to `core_session` and filter on
@@ -197,26 +197,26 @@
 
 (defn read-handle
   "Return the encoded query for `handle-id` owned by `user-id`, or nil if no row exists.
-   Lookup is user-scoped — see [[find-handle-row]] for how `mcp-session-id` is used."
+  Lookup is user-scoped — see [[find-handle-row]] for how `mcp-session-id` is used."
   [mcp-session-id user-id handle-id]
   (:encoded_query (find-handle-row mcp-session-id user-id handle-id)))
 
 (defn resolve-query-handle
   "Return {:encoded_query ... :prompt ...} for `handle-id` owned by `user-id`, or nil.
-   Lookup is user-scoped — see [[find-handle-row]] for how `mcp-session-id` is used."
+  Lookup is user-scoped — see [[find-handle-row]] for how `mcp-session-id` is used."
   [mcp-session-id user-id handle-id]
   (when-let [row (find-handle-row mcp-session-id user-id handle-id)]
     (select-keys row [:encoded_query :prompt])))
 
 (defn delete!
   "Delete the `core_session` backing this MCP session (if one was ever created)
-   and any associated query handles. Scoped to `user-id` so that one user cannot
-   delete another user's session.
+  and any associated query handles. Scoped to `user-id` so that one user cannot
+  delete another user's session.
 
-   Handles tied to a `core_session` are also reaped by the FK cascade when the
-   session row goes; the explicit handle-delete here covers handles whose
-   `core_session_id` was never set — e.g. handles for regular query payloads that
-   aren't backed by an MCP iframe and so never materialize a `core_session`."
+  Handles tied to a `core_session` are also reaped by the FK cascade when the
+  session row goes; the explicit handle-delete here covers handles whose
+  `core_session_id` was never set — e.g. handles for regular query payloads that
+  aren't backed by an MCP iframe and so never materialize a `core_session`."
   [session-id user-id]
   (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))]
     (t2/query {:delete-from :core_session

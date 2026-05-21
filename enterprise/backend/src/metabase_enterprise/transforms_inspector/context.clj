@@ -28,7 +28,7 @@
 
 (defmulti extract-sources
   "Extract source table information for a transform.
-   Returns a seq of maps with :table-id, :table-name, :schema, and :db-id."
+  Returns a seq of maps with :table-id, :table-name, :schema, and :db-id."
   {:arglists '([transform])}
   (fn [transform] (transforms-base.u/transform-source-type (:source transform))))
 
@@ -78,7 +78,7 @@
 
 (defn- get-target-table
   "Get the target table for a transform. Returns nil if the target doesn't exist or hasn't been materialized yet.
-   Provisional tables (inactive, never deactivated) created by the after-insert hook are excluded."
+  Provisional tables (inactive, never deactivated) created by the after-insert hook are excluded."
   [{:keys [target] :as transform}]
   (let [db-id (transforms-base.i/target-db-id transform)
         table (transforms-base.u/target-table db-id target)]
@@ -155,7 +155,7 @@
 
 (defn- match-columns-by-name
   "Find columns that relate between input and output tables using name-based matching.
-   Used for native queries where we don't have field IDs."
+  Used for native queries where we don't have field IDs."
   [sources target join-structure]
   (let [alias->source-table (into {} (map (juxt :alias :source-table) join-structure))
         source-fields (for [{:keys [table_id table_name fields]} sources

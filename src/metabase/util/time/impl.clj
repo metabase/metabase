@@ -358,7 +358,7 @@
 
 (defn format-unit
   "Formats a temporal-value (iso date/time string, int for extraction units) given the temporal-bucketing unit.
-   If unit is nil, formats the full date/time"
+  If unit is nil, formats the full date/time"
   ([input unit] (format-unit input unit nil))
   ([input unit locale]
    (cond
@@ -416,7 +416,7 @@
 
 (defn format-diff
   "Formats a time difference between two temporal values.
-   Drops redundant information."
+  Drops redundant information."
   [temporal-value-1 temporal-value-2]
   (let [default-format #(str (format-unit temporal-value-1 nil)
                              " – "
@@ -475,8 +475,8 @@
 
 (defn format-relative-date-range
   "Given a `n` `unit` time interval and the current date, return a string representing the date-time range.
-   Provide an `offset-n` and `offset-unit` time interval to change the date used relative to the current date.
-   `options` is a map and supports `:include-current` to include the current given unit of time in the range."
+  Provide an `offset-n` and `offset-unit` time interval to change the date used relative to the current date.
+  `options` is a map and supports `:include-current` to include the current given unit of time in the range."
   ([n unit offset-n offset-unit opts]
    (format-relative-date-range (now) n unit offset-n offset-unit opts))
   ([t n unit offset-n offset-unit {:keys [include-current]}]
@@ -529,7 +529,7 @@
 
 (defn format-date-for-filter
   "Format a value as a date or datetime string for filter clauses.
-   See CLJS implementation for full behavior - this JVM version just formats."
+  See CLJS implementation for full behavior - this JVM version just formats."
   [t with-time?]
   (if (string? t)
     t

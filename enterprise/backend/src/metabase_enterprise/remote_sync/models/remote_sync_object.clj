@@ -21,8 +21,8 @@
 
 (defn dirty?
   "Checks if any collection has changes since the last sync.
-   Returns true if any remote-synced object has a status other than 'synced', false otherwise.
-   Excludes transform model types when transform sync is disabled."
+  Returns true if any remote-synced object has a status other than 'synced', false otherwise.
+  Excludes transform model types when transform sync is disabled."
   []
   (let [excluded (spec/excluded-model-types)]
     (if (empty? excluded)
@@ -33,9 +33,9 @@
 
 (defn dirty-objects
   "Gets all models in any collection that are dirty with their sync status.
-   Returns a sequence of model maps that have changed since the last remote sync,
-   including details about their current state and sync status.
-   Excludes transform model types when transform sync is disabled."
+  Returns a sequence of model maps that have changed since the last remote sync,
+  including details about their current state and sync status.
+  Excludes transform model types when transform sync is disabled."
   []
   (let [excluded (spec/excluded-model-types)
         query (if (empty? excluded)

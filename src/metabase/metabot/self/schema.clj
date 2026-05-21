@@ -10,8 +10,8 @@
 (defn- filter-map-entries
   "Filter map schema entries, keeping only those whose :feature is available.
 
-   Each map entry is [key props child-schema]. If props contains :feature,
-   check availability. Strip :feature from output props (internal metadata)."
+  Each map entry is [key props child-schema]. If props contains :feature,
+  check availability. Strip :feature from output props (internal metadata)."
   [schema]
   (let [props    (mc/properties schema)
         children (mc/children schema)]
@@ -27,8 +27,8 @@
 (defn filter-schema-by-features
   "Walk a schema and remove any map properties that require unavailable features.
 
-   Uses Malli's schema-walker to recursively process nested schemas.
-   Only :map schemas are filtered; other schema types pass through unchanged."
+  Uses Malli's schema-walker to recursively process nested schemas.
+  Only :map schemas are filtered; other schema types pass through unchanged."
   [schema]
   (mc/walk schema
            (mc/schema-walker

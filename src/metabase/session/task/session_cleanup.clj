@@ -16,7 +16,7 @@
 
 (defn- cleanup-sessions!
   "Deletes sessions from the database which are no longer valid. Removes sessions that exceed MAX_SESSION_AGE
-   (absolute lifetime) and also sessions that have been idle longer than the session-timeout setting (if configured)."
+  (absolute lifetime) and also sessions that have been idle longer than the session-timeout setting (if configured)."
   []
   (let [oldest-allowed [:inline (h2x/add-interval-honeysql-form (mdb/db-type)
                                                                 :%now

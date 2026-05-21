@@ -21,7 +21,7 @@
 
 (defn sandbox-origin?
   "Returns true if the origin matches an enabled MCP client's non-standard sandbox pattern.
-   Currently handles vscode-webview:// origins used by VS Code and Cursor."
+  Currently handles vscode-webview:// origins used by VS Code and Cursor."
   [raw-origin]
   (when raw-origin
     (condp #(str/starts-with? %2 %1) raw-origin
@@ -30,7 +30,7 @@
 
 (defn all-scopes
   "All supported OAuth scopes: those declared on agent-api endpoints via
-   defendpoint metadata, plus scopes from MCP UI resources (e.g. visualize_query)."
+  defendpoint metadata, plus scopes from MCP UI resources (e.g. visualize_query)."
   []
   (into (mcp.resources/resource-scopes)
         (comp (keep #(get-in % [:form :metadata :scope]))

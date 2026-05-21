@@ -249,7 +249,7 @@
 
 (mu/defn comparison-dashboard
   "Create a comparison dashboard based on dashboard `dashboard` comparing subsets of
-   the dataset defined by segments `left` and `right`."
+  the dataset defined by segments `left` and `right`."
   [dashboard left right opts]
   ;; disable ref validation because X-Rays does stuff in a wacko manner, it adds a bunch of filters and whatever that
   ;; use columns from joins before adding the joins themselves (same with expressions), which is technically invalid

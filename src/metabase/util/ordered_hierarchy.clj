@@ -41,19 +41,19 @@
 
 (defn ancestors
   "Returns the immediate and indirect parents of tag, as established via derive. Earlier derivations are shown first.
-   This method is just a proxy, it exists only to prevent accidentally using the global hierarchy."
+  This method is just a proxy, it exists only to prevent accidentally using the global hierarchy."
   [h tag]
   (clojure.core/ancestors h tag))
 
 (defn descendants
   "Returns the immediate and indirect children of tag, as established via derive. Earlier derivations are shown later.
-   This method is just a proxy, it exists only to prevent accidentally using the global hierarchy."
+  This method is just a proxy, it exists only to prevent accidentally using the global hierarchy."
   [h tag]
   (clojure.core/descendants h tag))
 
 (defn parents
   "Returns the immediate parents of tag, as established via derive. Earlier derivations are shown first.
-   This method is just a proxy, it exists only to prevent accidentally using the global hierarchy."
+  This method is just a proxy, it exists only to prevent accidentally using the global hierarchy."
   [h tag]
   (clojure.core/parents h tag))
 

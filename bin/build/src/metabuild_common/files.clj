@@ -155,7 +155,7 @@
 
 (defn zip-directory->file
   "Given a source directory and a destination zip file path,
-   zip the directory and writes it to the destination"
+  zip the directory and writes it to the destination"
   ([source-dir zip-file]
    (zip-directory->file source-dir zip-file {}))
   ([^String source-dir ^String zip-file {:keys [_verbose]}]

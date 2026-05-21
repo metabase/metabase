@@ -128,11 +128,11 @@
 
 (defn- enforce-effective-type-invariant
   "GHY-3388 invariant: a Field row with no coercion_strategy must have effective_type=base_type.
-   When effective_type is set but diverges from base_type without a coercion to justify it, this
-   normalizes effective_type to match base_type (and logs a warning so the silent fix is visible).
-   Does not touch rows where coercion_strategy is set (legitimate divergence), where effective_type
-   is nil (separate concern, GHY-3367 territory), or where either type is not a valid descendant of
-   :type/* (so the transform's invalid-type validation still fires)."
+  When effective_type is set but diverges from base_type without a coercion to justify it, this
+  normalizes effective_type to match base_type (and logs a warning so the silent fix is visible).
+  Does not touch rows where coercion_strategy is set (legitimate divergence), where effective_type
+  is nil (separate concern, GHY-3367 territory), or where either type is not a valid descendant of
+  :type/* (so the transform's invalid-type validation still fires)."
   [field]
   (let [coercion      (:coercion_strategy field)
         effective-raw (:effective_type field)
@@ -225,8 +225,8 @@
 
 (defenterprise current-user-can-write-field?
   "OSS implementation. Returns a boolean whether the current user can write the given field.
-   Checks both that the user is a superuser and that the parent table is editable (not in a
-   remote-synced collection in read-only mode)."
+  Checks both that the user is a superuser and that the parent table is editable (not in a
+  remote-synced collection in read-only mode)."
   metabase-enterprise.advanced-permissions.common
   [instance]
   (let [table (or (:table instance)

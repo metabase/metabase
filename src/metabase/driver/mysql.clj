@@ -155,7 +155,7 @@
 
 (defn- mysql?
   "Returns true if the database is MySQL (not MariaDB).
-   Returns true for unsynced databases (unknown flavor)."
+  Returns true for unsynced databases (unknown flavor)."
   [db]
   (= "MySQL"
      (if-let [conn (:connection db)]
@@ -1120,9 +1120,9 @@
 
 (defn- privilege-grants-for-user
   "Returns a list of parsed privilege grants for a user, taking into account the roles that the user has.
-   It does so by first querying: `SHOW GRANTS FOR <user>`. If the results include any roles granted to the user,
-   we query `SHOW GRANTS FOR <user> USING <role1> [,<role2>] ...`. The results from this query will contain
-   all privileges granted for the user, either directly or indirectly through the role hierarchy."
+  It does so by first querying: `SHOW GRANTS FOR <user>`. If the results include any roles granted to the user,
+  we query `SHOW GRANTS FOR <user> USING <role1> [,<role2>] ...`. The results from this query will contain
+  all privileges granted for the user, either directly or indirectly through the role hierarchy."
   [conn-spec user]
   (let [query  (fn [q] (->> (jdbc/query conn-spec q {:as-arrays? true})
                             (drop 1)
@@ -1139,12 +1139,12 @@
 
 (defn- table-names->privileges
   "Given a set of parsed grants for a user, a database name, and a list of table names in the database,
-   return a map with table names as keys, and the set of privilege types that the user has on the table as values.
+  return a map with table names as keys, and the set of privilege types that the user has on the table as values.
 
-   The rules are:
-   - global grants apply to all tables
-   - database grants apply to all tables in the database
-   - table grants apply to the table"
+  The rules are:
+  - global grants apply to all tables
+  - database grants apply to all tables in the database
+  - table grants apply to the table"
   [privilege-grants database-name table-names]
   (let [{global-grants   :global
          database-grants :database

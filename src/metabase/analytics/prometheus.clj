@@ -836,7 +836,7 @@
 
 (defn inc!
   "Call iapetos.core/inc on the metric in the global registry.
-   Inits registry if it's not been initialized yet."
+  Inits registry if it's not been initialized yet."
   ([metric] (inc! metric nil 1))
   ([metric labels-or-amount]
    (if (number? labels-or-amount)
@@ -860,7 +860,7 @@
 
 (defn set!
   "Call iapetos.core/set on the metric in the global registry.
-   Inits registry if it's not been initialized yet."
+  Inits registry if it's not been initialized yet."
   ([metric amount]
    (assert (not (seq? amount)) "Cannot only provide labels")
    ;; Escape var to avoid confusing it with the special form of the same name.

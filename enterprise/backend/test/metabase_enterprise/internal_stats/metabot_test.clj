@@ -22,7 +22,7 @@
 
 (defn- send-message!
   "Send a message through the real streaming endpoint, returning the HTTP response body.
-   The LLM is mocked to return a simple text response with the given model/usage."
+  The LLM is mocked to return a simple text response with the given model/usage."
   [conversation-id message model prompt-tokens completion-tokens]
   (let [message-id (str (random-uuid))
         mock-fn    (fn [_]
@@ -343,7 +343,7 @@
 
 (defn- generate-example-questions!
   "Call the example question generator with a mocked LLM that returns structured output
-   with the given model/usage."
+  with the given model/usage."
   [tables model prompt-tokens completion-tokens]
   (let [mock-fn (fn [_]
                   (mut/mock-llm-response

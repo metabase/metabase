@@ -30,7 +30,7 @@
 
 (def ^:dynamic ^:private *skip-cluster-locks*
   "When true, skip per-(db-id, perm-type) cluster locks. Should only be bound to true
-   when a coarser lock is already held by the calling code."
+  when a coarser lock is already held by the calling code."
   false)
 
 ;; Permission mutation locks form a two-level intent-lock hierarchy over the
@@ -986,7 +986,7 @@
 
 (defenterprise new-table-view-data-permission-levels
   "Returns a map of {group-id → permission-level} for multiple groups and a single DB.
-   On OSS, all are `:unrestricted`."
+  On OSS, all are `:unrestricted`."
   metabase-enterprise.advanced-permissions.common
   [_db-id group-ids]
   (zipmap group-ids (repeat :unrestricted)))
@@ -1002,9 +1002,9 @@
 
 (defn set-default-group-permissions!
   "Bulk-sets default permissions for a newly-created group across all databases.
-   When `use-all-users-perms?` is true (regular groups), values are based on the All Users group's
-   current permissions. When false (tenant/external groups), uses the most restrictive values.
-   Uses batch SQL operations instead of per-row mutations."
+  When `use-all-users-perms?` is true (regular groups), values are based on the All Users group's
+  current permissions. When false (tenant/external groups), uses the most restrictive values.
+  Uses batch SQL operations instead of per-row mutations."
   [group-or-id db-ids use-all-users-perms?]
   (when (seq db-ids)
     (let [group-id (u/the-id group-or-id)]
@@ -1052,9 +1052,9 @@
 
 (defn set-default-database-permissions!
   "Bulk-sets default permissions for a newly-created database across all groups.
-   For tenant groups, uses least-permissive values. For audit DBs, uses hardcoded values.
-   For other groups, values are based on the group's lowest existing permission level.
-   Uses batch SQL operations instead of per-row mutations."
+  For tenant groups, uses least-permissive values. For audit DBs, uses hardcoded values.
+  For other groups, values are based on the group's lowest existing permission level.
+  Uses batch SQL operations instead of per-row mutations."
   [database groups]
   (when (seq groups)
     (let [db-id        (u/the-id database)

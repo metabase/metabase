@@ -20,13 +20,13 @@
 
 (defmulti lens-applicable?
   "Check if a lens applies to the given context.
-   Should be a cheap check - no query execution.
+  Should be a cheap check - no query execution.
 
-   Arguments:
-   - lens-type: keyword like :generic-summary, :join-analysis
-   - ctx: context map with :has-joins?, :column-matches, etc.
+  Arguments:
+  - lens-type: keyword like :generic-summary, :join-analysis
+  - ctx: context map with :has-joins?, :column-matches, etc.
 
-   Returns true if the lens can be generated for this transform."
+  Returns true if the lens can be generated for this transform."
   {:arglists '([lens-type ctx])}
   (fn [lens-type _ctx] lens-type))
 
@@ -84,7 +84,7 @@
 
 (defn with-metadata
   "Merge lens-metadata into a lens map. Use this in make-lens implementations
-   to avoid duplicating id, display_name, description, and complexity."
+  to avoid duplicating id, display_name, description, and complexity."
   [lens-type ctx lens-map]
   (merge (lens-metadata lens-type ctx) lens-map))
 
@@ -97,8 +97,8 @@
 
 (defn register-lens!
   "Register a lens type. Call this at namespace load time.
-   Priority controls ordering - lower numbers appear first.
-   Set drill? true for lenses only available via triggers."
+  Priority controls ordering - lower numbers appear first.
+  Set drill? true for lenses only available via triggers."
   ([lens-type priority]
    (register-lens! lens-type priority false))
   ([lens-type priority drill?]
@@ -122,8 +122,8 @@
 
 (defn available-lenses
   "Return metadata for applicable lenses (Phase 1).
-   Filters to only lenses that apply to the given context.
-   Order is by priority - first lens is the default."
+  Filters to only lenses that apply to the given context.
+  Order is by priority - first lens is the default."
   [ctx]
   (->> (registered-lens-types)
        (filter #(lens-applicable? % ctx))
@@ -141,7 +141,7 @@
 
 (defn params->id-suffix
   "Generate a suffix for card IDs based on params to ensure uniqueness across
-   different parameterizations of the same lens. Returns empty string if no params."
+  different parameterizations of the same lens. Returns empty string if no params."
   [params]
   (if (seq params)
     (str "@" (->> params
@@ -152,15 +152,15 @@
 
 (defn make-card-id
   "Create a card ID with optional params suffix for uniqueness in parametric lenses.
-   Use this everywhere you create or reference card IDs in parametric lenses."
+  Use this everywhere you create or reference card IDs in parametric lenses."
   [base-id params]
   (str base-id (params->id-suffix params)))
 
 (defn get-lens
   "Generate a lens by ID (Phase 2).
-   Returns the full lens with sections, cards, and triggers.
-   Filters drill_lens_triggers to only include applicable sublenses.
-   Optional params can filter/customize drill lens output."
+  Returns the full lens with sections, cards, and triggers.
+  Filters drill_lens_triggers to only include applicable sublenses.
+  Optional params can filter/customize drill lens output."
   ([ctx lens-id]
    (get-lens ctx lens-id nil))
   ([ctx lens-id params]

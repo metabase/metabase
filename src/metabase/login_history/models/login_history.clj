@@ -82,9 +82,9 @@
 
 (defn too-many-new-device-emails-recently?
   "Per-user circuit breaker — true if this user has already triggered
-   `new-device-email-rate-limit-cap` first-time `(user_id, device_id)` events in the last
-   window. Over-counts first-login-ever rows (those never email) — safe direction for a
-   breaker."
+  `new-device-email-rate-limit-cap` first-time `(user_id, device_id)` events in the last
+  window. Over-counts first-login-ever rows (those never email) — safe direction for a
+  breaker."
   [user-id]
   (let [cutoff (h2x/add-interval-honeysql-form
                 (mdb/db-type) :%now (- new-device-email-rate-limit-window-hours) :hour)]

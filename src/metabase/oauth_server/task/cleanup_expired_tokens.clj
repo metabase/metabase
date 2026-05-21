@@ -13,7 +13,7 @@
 
 (defn cleanup-expired-tokens!
   "Delete expired authorization codes/access tokens/refresh tokens, and any access/refresh rows
-   that have been explicitly revoked. Returns a map of counts of rows deleted."
+  that have been explicitly revoked. Returns a map of counts of rows deleted."
   []
   (let [now (System/currentTimeMillis)]
     ;; Issue expiry- and revocation-based deletes as separate statements so each can use the appropriate

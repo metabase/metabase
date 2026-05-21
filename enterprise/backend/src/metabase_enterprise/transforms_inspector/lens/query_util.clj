@@ -7,7 +7,7 @@
 
 (defn bare-query-with-n-joins
   "Stripped-down copy of `query` retaining only `:source-table` and the first `n` joins.
-   All other stage keys (`:fields`, `:filters`, `:breakout`, etc.) are removed."
+  All other stage keys (`:fields`, `:filters`, `:breakout`, etc.) are removed."
   [query n]
   (lib/update-query-stage query 0
                           (fn [stage]
@@ -17,7 +17,7 @@
 
 (defn extract-field-info
   "Extract `{:field-id ... :join-alias ...}` from a `:field` ref clause.
-   `:join-alias` will be nil for base-table fields."
+  `:join-alias` will be nil for base-table fields."
   [[tag opts id-or-name :as field-ref]]
   (when (and (vector? field-ref)
              (= :field tag)
@@ -27,7 +27,7 @@
 
 (defn get-rhs-field-info
   "Field info for the RHS (joined-table side) of a single-condition join.
-   Returns nil for multi-condition joins (we don't try to analyze compound conditions)."
+  Returns nil for multi-condition joins (we don't try to analyze compound conditions)."
   [conditions]
   (when (= 1 (count conditions))
     (when-let [[_op _opts _lhs rhs] (first conditions)]
@@ -37,7 +37,7 @@
 
 (defn get-lhs-field-info
   "Field info for the LHS (base or previously-joined side) of a single-condition join.
-   Returns nil for multi-condition joins (we don't try to analyze compound conditions)."
+  Returns nil for multi-condition joins (we don't try to analyze compound conditions)."
   [conditions]
   (when (= 1 (count conditions))
     (when-let [[_op _opts lhs _rhs] (first conditions)]

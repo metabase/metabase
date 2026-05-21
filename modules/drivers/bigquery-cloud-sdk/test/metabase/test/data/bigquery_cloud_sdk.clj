@@ -370,7 +370,7 @@
 
 (defn- orphan-isolation-datasets
   "Return iso dataset names (`mb__isolation_*`) older than 3 hours.
-   Pure: queries `INFORMATION_SCHEMA.SCHEMATA`, returns a seq of strings."
+  Pure: queries `INFORMATION_SCHEMA.SCHEMATA`, returns a seq of strings."
   []
   (->> (execute!
         (str "SELECT schema_name FROM `%s`.INFORMATION_SCHEMA.SCHEMATA "
@@ -383,12 +383,12 @@
 (defn- orphan-isolation-service-accounts
   "Return iso SA email addresses (`mb__isolation_*@...`) older than 3 hours.
 
-   Age comes from the `created-at:<iso-instant>` marker encoded in the SA
-   `description` field by
-   [[metabase.driver.bigquery-cloud-sdk/ws-sa-description->created-at]].
-   SAs without that marker are NOT returned (we don't know their age).
+  Age comes from the `created-at:<iso-instant>` marker encoded in the SA
+  `description` field by
+  [[metabase.driver.bigquery-cloud-sdk/ws-sa-description->created-at]].
+  SAs without that marker are NOT returned (we don't know their age).
 
-   Pure: lists SAs via the IAM client and filters in-memory."
+  Pure: lists SAs via the IAM client and filters in-memory."
   []
   (let [details    (test-db-details)
         iam-client (#'bigquery.ws/ws-database-details->iam-client details)
@@ -414,7 +414,7 @@
 
 (defn- drop-orphan-isolation-datasets!
   "Destroy iso datasets returned by [[orphan-isolation-datasets]].
-   Per-entry try/catch: one failure won't block the others."
+  Per-entry try/catch: one failure won't block the others."
   []
   (doseq [dataset-name (orphan-isolation-datasets)]
     (log/info (u/format-color 'blue "Deleting orphan workspace isolation dataset older than 3h: %s" dataset-name))
@@ -425,8 +425,8 @@
 
 (defn- drop-orphan-isolation-service-accounts!
   "Delete iso service accounts returned by [[orphan-isolation-service-accounts]].
-   Per-entry try/catch: one failure won't block the others. Opens its own IAM
-   client (separate from the enumerator's) so the lifecycle is local."
+  Per-entry try/catch: one failure won't block the others. Opens its own IAM
+  client (separate from the enumerator's) so the lifecycle is local."
   []
   (let [details    (test-db-details)
         iam-client (#'bigquery.ws/ws-database-details->iam-client details)]

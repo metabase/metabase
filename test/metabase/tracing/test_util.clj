@@ -15,12 +15,12 @@
 
 (defmacro with-span-exporter
   "Run `body` with clj-otel's default tracer pointed at an in-memory span exporter.
-   `exporter-binding` is bound to the exporter — pass it to [[finished-spans]] to
-   read captured spans as Clojure maps.
+  `exporter-binding` is bound to the exporter — pass it to [[finished-spans]] to
+  read captured spans as Clojure maps.
 
-   SimpleSpanProcessor exports synchronously on span end, so reads after the body
-   are deterministic. On exit, the default tracer is reset to nil (clj-otel's
-   initial state)."
+  SimpleSpanProcessor exports synchronously on span end, so reads after the body
+  are deterministic. On exit, the default tracer is reset to nil (clj-otel's
+  initial state)."
   [[exporter-binding] & body]
   `(let [~exporter-binding         (InMemorySpanExporter/create)
          provider# ^SdkTracerProvider (-> (SdkTracerProvider/builder)

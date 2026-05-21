@@ -79,11 +79,11 @@
 
 (defenterprise apply-workspace-remapping
   "**Workspace remapping, Phase 1 — preprocess.** Mutates cached MBQL table metadata so
-   downstream middleware and HoneySQL compilation see workspace identifiers.
+  downstream middleware and HoneySQL compilation see workspace identifiers.
 
-   Phase 1 is for pipeline coherence; Phase 2 ([[apply-workspace-sql-remapping]]) is the
-   authoritative security boundary. Native SQL is intentionally untouched here. See the EE
-   impl namespace docstring for the full design rationale."
+  Phase 1 is for pipeline coherence; Phase 2 ([[apply-workspace-sql-remapping]]) is the
+  authoritative security boundary. Native SQL is intentionally untouched here. See the EE
+  impl namespace docstring for the full design rationale."
   metabase-enterprise.workspaces.query-processor.middleware
   [query]
   query)
@@ -92,15 +92,15 @@
 
 (defenterprise apply-workspace-sql-remapping
   "**Workspace remapping, Phase 2 — execute (post-compilation).** Authoritative SQL rewriter
-   and the security boundary for workspace isolation.
+  and the security boundary for workspace isolation.
 
-   Runs after all preprocess work — snippets, card refs, params, and MBQL compilation are
-   complete — so the query is reduced to one canonical SQL string. Parses it, rewrites every
-   `from` table ref to its `to` counterpart, re-emits.
+  Runs after all preprocess work — snippets, card refs, params, and MBQL compilation are
+  complete — so the query is reduced to one canonical SQL string. Parses it, rewrites every
+  `from` table ref to its `to` counterpart, re-emits.
 
-   **Fails closed:** on parse failure throws `ex-info` with `:type qp.error-type/qp`. There
-   is no fallback to the original SQL — a silent pass-through would breach workspace
-   isolation."
+  **Fails closed:** on parse failure throws `ex-info` with `:type qp.error-type/qp`. There
+  is no fallback to the original SQL — a silent pass-through would breach workspace
+  isolation."
   metabase-enterprise.workspaces.query-processor.middleware
   [qp]
   qp)
@@ -116,7 +116,7 @@
 
 (defenterprise swap-destination-db
   "Must be the last middleware before we actually hit the database. If a Router Database is specified, swaps out the
-   Metadata Provider for one that has the appropriate destination database."
+  Metadata Provider for one that has the appropriate destination database."
   metabase-enterprise.database-routing.middleware
   [qp]
   qp)

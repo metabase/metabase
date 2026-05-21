@@ -51,20 +51,20 @@
 
 (def ^:dynamic *response*
   "The `HttpServletResponse` for the current streaming response.
-   Bound automatically inside `streaming-response` bodies in the Jetty async path.
-   Use the helper functions [[committed?]], [[set-status!]], [[set-header!]], and
-   [[set-content-type!]] to interact with it."
+  Bound automatically inside `streaming-response` bodies in the Jetty async path.
+  Use the helper functions [[committed?]], [[set-status!]], [[set-header!]], and
+  [[set-content-type!]] to interact with it."
   nil)
 
 (def ^:dynamic *completed?*
   "An `AtomicBoolean` that is set to `true` when the async context has been completed,
-   either by the worker thread or by Jetty's timeout/error callbacks. When `true`, the
-   response object may have been recycled and must not be touched."
+  either by the worker thread or by Jetty's timeout/error callbacks. When `true`, the
+  response object may have been recycled and must not be touched."
   nil)
 
 (defn- async-context-completed?
   "Returns true if the async context has already been completed (by timeout, error, or worker thread).
-   When true, the response object may have been recycled by Jetty and must not be touched."
+  When true, the response object may have been recycled by Jetty and must not be touched."
   []
   (and *completed?* (.get ^AtomicBoolean *completed?*)))
 
@@ -75,15 +75,15 @@
 
 (defn committed?
   "Returns true if the HTTP response has already been committed (headers sent to client).
-   Raises if called outside a `streaming-response` context."
+  Raises if called outside a `streaming-response` context."
   []
   (assert-response-bound!)
   (.isCommitted ^HttpServletResponse *response*))
 
 (defn set-status!
   "Set the HTTP status code on the response. No-op if the response is already committed
-   or the async context has already been completed (response may be recycled).
-   Raises if called outside a `streaming-response` context."
+  or the async context has already been completed (response may be recycled).
+  Raises if called outside a `streaming-response` context."
   [code]
   (assert-response-bound!)
   (when-not (or (async-context-completed?)
@@ -92,8 +92,8 @@
 
 (defn set-header!
   "Set a header on the HTTP response. No-op if the response is already committed
-   or the async context has already been completed (response may be recycled).
-   Raises if called outside a `streaming-response` context."
+  or the async context has already been completed (response may be recycled).
+  Raises if called outside a `streaming-response` context."
   [name value]
   (assert-response-bound!)
   (when-not (or (async-context-completed?)
@@ -102,8 +102,8 @@
 
 (defn set-content-type!
   "Set the Content-Type on the HTTP response. No-op if the response is already committed
-   or the async context has already been completed (response may be recycled).
-   Raises if called outside a `streaming-response` context."
+  or the async context has already been completed (response may be recycled).
+  Raises if called outside a `streaming-response` context."
   [ct]
   (assert-response-bound!)
   (when-not (or (async-context-completed?)
@@ -128,7 +128,7 @@
 
 (defn write-error!
   "Write an error to the output stream, formatting it nicely. Closes output stream afterwards.
-   No-op if the async context has already been completed (response and stream may be recycled)."
+  No-op if the async context has already been completed (response and stream may be recycled)."
   ([os obj export-format]
    (write-error! os obj export-format nil))
   ([^OutputStream os obj export-format status-code]

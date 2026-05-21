@@ -2,9 +2,9 @@
 
 (def statuses
   "Possible statuses from an entity-id -> id translation:
-   If the translation from entity-id -> id is successful, the status is `:ok`.
-   If the id is not found, the status is `:not-found`.
-   If the format of the entity-id is invalid, the status is `:invalid-format`."
+  If the translation from entity-id -> id is successful, the status is `:ok`.
+  If the id is not found, the status is `:not-found`.
+  If the format of the entity-id is invalid, the status is `:invalid-format`."
   [:ok :not-found :invalid-format])
 
 (def Status

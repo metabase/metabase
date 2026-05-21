@@ -200,7 +200,7 @@
 
 (defmulti hash-fields
   "Returns a seq of functions which will be transformed into a seq of values for hash calculation by calling each
-   function on an entity map."
+  function on an entity map."
   {:arglists '([model-or-instance])}
   mi/dispatch-on-model)
 
@@ -605,11 +605,11 @@
 
 (defmulti descendants
   "Returns map of `{[model-name database-id] {initiating-model id}}` for all entities contained or used by this
-   entity. e.g. the Dashboard implementation should return pairs for all DashboardCard entities it contains, etc.
+  entity. e.g. the Dashboard implementation should return pairs for all DashboardCard entities it contains, etc.
 
-   NOTE: This is called during **EXPORT**.
+  NOTE: This is called during **EXPORT**.
 
-   Dispatched on model-name."
+  Dispatched on model-name."
   {:arglists '([model-name db-id opts])}
   (fn [model-name _ _] model-name))
 
@@ -618,12 +618,12 @@
 
 (defmulti required
   "Returns map of `{[model-name database-id] {initiating-model id}}` for all entities that are necessary to load this
-   entity back. Sort of reverse method for `dependencies`. This method will be called after determining all
-   `descendants` to figure out if we're lacking containers etc.
+  entity back. Sort of reverse method for `dependencies`. This method will be called after determining all
+  `descendants` to figure out if we're lacking containers etc.
 
-   NOTE: This is called during **EXPORT**.
+  NOTE: This is called during **EXPORT**.
 
-   Dispatched on model-name."
+  Dispatched on model-name."
   {:arglists '([model-name db-id])}
   (fn [model-name _] model-name))
 

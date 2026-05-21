@@ -25,8 +25,8 @@
 
 (defn- font-face-css
   "Generate @font-face CSS rules for the given font, loading woff2 files from Metabase's
-   bundled font directory. Returns an empty string for custom (non-bundled) fonts since
-   they are loaded via application-font-files."
+  bundled font directory. Returns an empty string for custom (non-bundled) fonts since
+  they are loaded via application-font-files."
   [font-name]
   (let [dir-name      (str/replace font-name " " "_")
         file-stem     (str/replace font-name " " "")
@@ -50,7 +50,7 @@
 
 (defn- sanitize-css-color
   "Return `color` if it looks like a safe CSS color value (hex or named color),
-   otherwise return the default brand color. Prevents CSS injection via `h/raw` interpolation."
+  otherwise return the default brand color. Prevents CSS injection via `h/raw` interpolation."
   [color]
   (if (and (string? color)
            (or (re-matches #"[a-zA-Z]+" color)

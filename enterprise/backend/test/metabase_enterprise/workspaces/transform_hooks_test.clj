@@ -53,8 +53,8 @@
 
 (defn- with-instance-workspace-for-db!
   "Set the in-process workspace atom so that `db-workspace-namespace` returns
-   `{:schema output-schema}` for the test database, run `body-fn`, clear it on
-   the way out."
+  `{:schema output-schema}` for the test database, run `body-fn`, clear it on
+  the way out."
   [output-schema body-fn]
   (try
     (ws/set-instance-workspace! {:name "test-ws"

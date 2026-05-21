@@ -37,8 +37,8 @@
 
 (defn drop-target!
   "Drop transform target `target` and clean up its metadata.
-   `target` can be a string or a map. If `target` is a string, type :table is assumed.
-   If no schema is provided, uses the driver's default schema."
+  `target` can be a string or a map. If `target` is a string, type :table is assumed.
+  If no schema is provided, uses the driver's default schema."
   [target]
   (let [driver driver/*driver*
         target (cond-> (if (map? target)
@@ -152,7 +152,7 @@
 
 (defn wait-for-transform-completion
   "Wait for a transform run to complete without triggering a new run.
-   Polls the transform status until it succeeds or times out."
+  Polls the transform status until it succeeds or times out."
   [transform-id timeout-ms]
   (let [start-time (u/start-timer)]
     (loop []
@@ -169,7 +169,7 @@
 
 (defn- poll-field
   "Poll until `pred` is satisfied for the active-field lookup of `field-name` on `table-name`.
-   Returns the first truthy result of `pred`, or throws after `timeout-ms`."
+  Returns the first truthy result of `pred`, or throws after `timeout-ms`."
   [table-name field-name timeout-ms pred timeout-msg]
   (let [timer (u/start-timer)]
     (loop []
@@ -199,13 +199,13 @@
 
 (defn get-test-schema
   "Get the schema from the products table in the test dataset.
-   This is needed for databases like BigQuery that require a schema/dataset."
+  This is needed for databases like BigQuery that require a schema/dataset."
   []
   (t2/select-one-fn :schema :model/Table (mt/id :transforms_products)))
 
 (defn default-schema-or-public
   "Returns the driver's default schema (e.g., 'dbo' for SQL Server) or 'public' as fallback.
-   Useful for tests that need to create tables with a schema matching transform targets."
+  Useful for tests that need to create tables with a schema matching transform targets."
   []
   (or (when (get-method driver.sql/default-schema driver/*driver*)
         (driver.sql/default-schema driver/*driver*))

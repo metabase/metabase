@@ -66,7 +66,7 @@
 
 (defn- duplicate-model-ids
   "Returns a set of IDs of duplicate models in the RecentViews table. Duplicate means that the same model and model_id
-   shows up more than once. This returns the ids for the copies that are not the most recent entry."
+  shows up more than once. This returns the ids for the copies that are not the most recent entry."
   [user-id context]
   (->> (t2/select :model/RecentViews
                   :user_id user-id

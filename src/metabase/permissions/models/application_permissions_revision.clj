@@ -21,7 +21,7 @@
 
 (defn latest-id
   "Return the ID of the newest `ApplicationPermissionsRevision`, or zero if none have been made yet.
-   (This is used by the permissions graph update logic that checks for changes since the original graph was fetched)."
+  (This is used by the permissions graph update logic that checks for changes since the original graph was fetched)."
   []
   (or (:id (t2/select-one [:model/ApplicationPermissionsRevision [:%max.id :id]]))
       0))

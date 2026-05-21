@@ -22,9 +22,9 @@
 
 (defn public-or-matches?
   "Like [[matches?]] but treats a nil `required-scope` as \"public to any caller\"
-   rather than \"internal-only.\" Use this for entities (e.g. MCP resources) whose
-   nil-scope contract is documented as public, instead of re-implementing the
-   nil-check at every call site."
+  rather than \"internal-only.\" Use this for entities (e.g. MCP resources) whose
+  nil-scope contract is documented as public, instead of re-implementing the
+  nil-check at every call site."
   [token-scopes required-scope]
   (or (nil? required-scope)
       (matches? token-scopes required-scope)))

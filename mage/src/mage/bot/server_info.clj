@@ -154,8 +154,8 @@
 
 (defn server-info!
   "Print server configuration for bot agents.
-   Selects between local-dev and remote PR-env output based on whether
-   .bot/pr-env.env exists in the current worktree."
+  Selects between local-dev and remote PR-env output based on whether
+  .bot/pr-env.env exists in the current worktree."
   [& _]
   (if (pr-env/pr-env-active?)
     (print-pr-env-info!)

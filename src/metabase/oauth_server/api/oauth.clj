@@ -44,7 +44,7 @@
 
 (defn- canonical-params-string
   "Deterministic serialization of oauth-params for HMAC signing.
-   Sorts by key name, uses pr-str for values to avoid ambiguity with special characters."
+  Sorts by key name, uses pr-str for values to avoid ambiguity with special characters."
   [oauth-params]
   (->> oauth-params
        (remove (comp nil? val))
@@ -99,7 +99,7 @@
 
 (defn- login-redirect-url
   "Build a redirect URL to the login page that will redirect back to the given path after login.
-   Only allows redirecting back to OAuth paths to prevent open-redirect attacks."
+  Only allows redirecting back to OAuth paths to prevent open-redirect attacks."
   [request]
   (let [site-url    (system/site-url)
         uri         (:uri request)
@@ -141,7 +141,7 @@
 
 (defmacro ^:private with-throttling-429
   "Like [[throttle/with-throttling]], but turns a throttle exception into an
-   OAuth-flavoured 429 response (`too_many_requests`) with Retry-After."
+  OAuth-flavoured 429 response (`too_many_requests`) with Retry-After."
   {:style/indent 1}
   [bindings & body]
   `(try

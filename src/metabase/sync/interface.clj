@@ -187,7 +187,7 @@
 
 (def ^:dynamic *fingerprint-version->types-that-should-be-re-fingerprinted*
   "Map of fingerprint version to the set of Field base types that need to be upgraded to this version the next
-   time we do analysis. The highest-numbered entry is considered the latest version of fingerprints."
+  time we do analysis. The highest-numbered entry is considered the latest version of fingerprints."
   {1 #{:type/*}
    2 #{:type/Number}
    3 #{:type/DateTime}

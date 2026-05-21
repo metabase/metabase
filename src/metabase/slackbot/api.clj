@@ -119,8 +119,8 @@
 
 (defn- send-auth-link
   "Respond to an incoming slack message with a request to authorize.
-   In channels, sends an ephemeral message (only visible to the user).
-   In DMs, sends a regular threaded reply."
+  In channels, sends an ephemeral message (only visible to the user).
+  In DMs, sends a regular threaded reply."
   [client event]
   (let [msg     "Connect your Slack account to Metabase. Once linked, I can use your permissions to query data on your behalf."
         dm?     (slackbot.events/dm? event)
@@ -146,7 +146,7 @@
 
 (defn- require-authenticated-slack-user!
   "Returns Metabase user-id if authenticated, nil otherwise.
-   Sends auth link as side-effect when not authenticated."
+  Sends auth link as side-effect when not authenticated."
   [client event]
   (if-let [user-id (slack-id->user-id (:user event))]
     user-id
@@ -222,7 +222,7 @@
 
 (defn- process-async
   "Process an event asynchronously with logging and error handling.
-   Authenticates the user and calls handler with [client event]."
+  Authenticates the user and calls handler with [client event]."
   [handler client event]
   (let [event-type (or (:subtype event) (:channel_type event) (:type event))]
     (log/debugf "[slackbot] Processing %s event" event-type)
@@ -450,7 +450,7 @@
 
 (def SlackBotSettingsRequest
   "Malli schema for the request body of PUT /api/metabot/slack/settings.
-   All credential fields must be provided together (either all set or all nil)."
+  All credential fields must be provided together (either all set or all nil)."
   [:map
    [:slack-connect-client-id      [:maybe ms/NonBlankString]]
    [:slack-connect-client-secret  [:maybe ms/NonBlankString]]
@@ -540,11 +540,11 @@
 
 (defn- handle-feedback-action
   "Handle a metabot feedback button click from Slack.
-   Opens the detail modal immediately (trigger_id expires in 3s).
-   `:message_external_id` in the button payload is the hardened identifier for
-   the rated assistant message; `:channel_id` / `:message_ts` are kept in
-   private_metadata as a fallback for buttons emitted before that plumbing
-   shipped."
+  Opens the detail modal immediately (trigger_id expires in 3s).
+  `:message_external_id` in the button payload is the hardened identifier for
+  the rated assistant message; `:channel_id` / `:message_ts` are kept in
+  private_metadata as a fallback for buttons emitted before that plumbing
+  shipped."
   [{:keys [action trigger-id slack-user-id channel-id message-ts]}]
   (let [{:keys [conversation_id positive message_external_id]} (json/decode (:value action) true)
         client  {:token (channel.settings/unobfuscated-slack-app-token)}
@@ -565,7 +565,7 @@
 
 (defn- handle-delete-action
   "Handle replacing a metabot response message with a removed notice.
-   Only the user who triggered the response can do this."
+  Only the user who triggered the response can do this."
   [{:keys [slack-user-id channel-id message-ts]}]
   (let [authorization (authorize-delete-request slack-user-id channel-id message-ts)]
     (case (:status authorization)
@@ -582,10 +582,10 @@
 
 (defn- resolve-message-external-id
   "Resolve the rated `metabot_message.external_id` from the modal's
-   `private_metadata`. Prefers `:message_external_id` (present when the button
-   was emitted with the hardened payload); falls back to a
-   `(channel_id, slack_msg_id)` reverse lookup for buttons issued before that
-   change shipped."
+  `private_metadata`. Prefers `:message_external_id` (present when the button
+  was emitted with the hardened payload); falls back to a
+  `(channel_id, slack_msg_id)` reverse lookup for buttons issued before that
+  change shipped."
   [{:keys [message_external_id channel_id message_ts]}]
   (or message_external_id
       (when (and channel_id message_ts)
@@ -595,9 +595,9 @@
 
 (defn- handle-feedback-modal-submission
   "Handle submission of the feedback details modal.
-   Persists the feedback locally under the Slack submitter's user binding (so
-   the `can-read?` participation check in `metabot.feedback/persist-feedback!`
-   runs against the real submitter)."
+  Persists the feedback locally under the Slack submitter's user binding (so
+  the `can-read?` participation check in `metabot.feedback/persist-feedback!`
+  runs against the real submitter)."
   [payload]
   (let [private-metadata (json/decode (get-in payload [:view :private_metadata]) true)
         {:keys [conversation_id positive user_id]} private-metadata

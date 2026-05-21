@@ -90,8 +90,8 @@
 
 (mu/defn sync-metabase-metadata!
   "Sync the `_metabase_metadata` table, a special table with Metabase metadata, if present.
-   This table contains information about type information, descriptions, and other properties that
-   should be set for Metabase objects like Tables and Fields."
+  This table contains information about type information, descriptions, and other properties that
+  should be set for Metabase objects like Tables and Fields."
   ([database :- i/DatabaseInstance]
    (sync-metabase-metadata! database (fetch-metadata/db-metadata database)))
 

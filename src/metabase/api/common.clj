@@ -108,7 +108,7 @@
 ;;; TODO -- move this to [[metabase.request.current]]
 (def ^:dynamic *current-user*
   "Delay that returns the `User` (or nil) associated with the current API call.
-   ex. `@*current-user*`"
+  ex. `@*current-user*`"
   (atom nil)) ; default binding is just something that will return nil when dereferenced
 
 ;;; TODO -- move this to [[metabase.request.current]]

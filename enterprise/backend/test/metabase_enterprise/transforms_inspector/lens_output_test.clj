@@ -68,7 +68,7 @@
 
 (defn- build-joined-context
   "Build a test context using real test dataset tables with a LEFT JOIN.
-   Uses products as a fake 'target' to avoid running a transform."
+  Uses products as a fake 'target' to avoid running a transform."
   []
   (let [orders-info   (build-table-info (mt/id :orders))
         products-info (build-table-info (mt/id :products))

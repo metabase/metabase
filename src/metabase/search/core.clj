@@ -168,7 +168,7 @@
 
 (defn sync-from-restored-db!
   "Reconcile all search engine state with the current database.
-   Use after snapshot restore instead of reindex! to avoid redundant work."
+  Use after snapshot restore instead of reindex! to avoid redundant work."
   []
   (when (supports-index?)
     (doseq [e (search.engine/active-engines)]

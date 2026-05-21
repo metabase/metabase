@@ -50,7 +50,7 @@
 
 (defn- maybe-reactivate-tenant!
   "If the tenant is disabled and user provisioning is enabled,
-   reactivate the tenant. Otherwise throw an error if the tenant is disabled."
+  reactivate the tenant. Otherwise throw an error if the tenant is disabled."
   [existing-tenant user-provisioning-enabled?]
   (when (and existing-tenant (not (:is_active existing-tenant)))
     (if user-provisioning-enabled?
@@ -63,7 +63,7 @@
 
 (defn- maybe-update-tenant-attributes!
   "If tenant exists and there are new attributes to add, update the tenant.
-   Only adds attributes that don't already exist (preserves existing)."
+  Only adds attributes that don't already exist (preserves existing)."
   [existing-tenant tenant-attributes]
   (when (and existing-tenant tenant-attributes)
     ;; merge new attrs into existing, with existing taking precedence (existing wins)

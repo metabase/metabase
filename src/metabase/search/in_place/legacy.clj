@@ -171,7 +171,7 @@
 
 (defn add-table-where-clauses
   "Add a `WHERE` clause to the query to only return tables the current user has access to.
-   Also adds any CTEs required for permission filtering."
+  Also adds any CTEs required for permission filtering."
   [qry model search-ctx]
   (let [col (case model "table" :table.id "search-index" :search_index.model_id)
         {:keys [with clause]} (search.permissions/permitted-tables-clause search-ctx col)]
@@ -647,11 +647,11 @@
 
 (defn- extract-and-hoist-ctes
   "Extract :with clauses from a collection of queries and return a map with:
-   - :ctes - all CTEs collected from queries (deduplicated by name)
-   - :queries - queries with their :with clauses removed
+  - :ctes - all CTEs collected from queries (deduplicated by name)
+  - :queries - queries with their :with clauses removed
 
-   This is needed because MySQL/MariaDB doesn't support CTEs inside UNION ALL subqueries -
-   the WITH clause must be at the outermost level of the statement."
+  This is needed because MySQL/MariaDB doesn't support CTEs inside UNION ALL subqueries -
+  the WITH clause must be at the outermost level of the statement."
   [queries]
   (let [all-ctes (into [] (comp (mapcat :with) (distinct)) queries)
         queries-without-ctes (mapv #(dissoc % :with) queries)]

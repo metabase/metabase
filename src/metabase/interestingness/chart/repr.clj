@@ -396,9 +396,9 @@
 
 (defn- generate-chart-representation
   "Shared generator for all chart types.
-   `type-label`       — e.g. \"Categorical\", \"Scatter\"
-   `render-series-fn` — (fn [series-name series-stats] => string)
-   `extra-sections`   — seq of additional section strings to insert after limits (may contain nils)"
+  `type-label`       — e.g. \"Categorical\", \"Scatter\"
+  `render-series-fn` — (fn [series-name series-stats] => string)
+  `extra-sections`   — seq of additional section strings to insert after limits (may contain nils)"
   [{:keys [title display-type stats timeline-events]} type-label render-series-fn extra-sections]
   (let [{:keys [series-count series correlations limits]} stats
         header          (str "# Chart Analysis\n"

@@ -35,12 +35,12 @@
 
 (defn- find-sql-exception
   "Find a `java.sql.SQLException` reachable from `t`, or nil. Walks the cause
-   chain and also peeks into each level's `ex-data` for Throwable values:
-   `clojure.java.jdbc/db-transaction*` (which `execute!` uses by default)
-   wraps a caught Throwable in an `ex-info` with the original stashed under
-   `:handling` when the rollback path also fails - observed on Redshift,
-   where permission-denied inside an implicit transaction surfaces this way
-   instead of as a bare SQLException with the SQLException as `.getCause`."
+  chain and also peeks into each level's `ex-data` for Throwable values:
+  `clojure.java.jdbc/db-transaction*` (which `execute!` uses by default)
+  wraps a caught Throwable in an `ex-info` with the original stashed under
+  `:handling` when the rollback path also fails - observed on Redshift,
+  where permission-denied inside an implicit transaction surfaces this way
+  instead of as a bare SQLException with the SQLException as `.getCause`."
   [^Throwable t]
   (letfn [(walk [^Throwable t seen]
             (cond
@@ -58,17 +58,17 @@
 
 (defn- reuse-bound-db-as-input?
   "Drivers where the workspace input namespace IS the bound database, i.e. the
-   `:details.db` of the canonical `Database` row. MySQL has no schema-within-DB,
-   so the only shipping workspace config (see `workspace_config_mysql.yml`) lists
-   the bound DB as the input namespace. The driver-isolation tests mirror that
-   shape: source tables live in the bound DB; `grant-workspace-read-access!`
-   grants `SELECT ON <bound-db>.*`; the JDBC handshake's DB-access check finds
-   the resulting `mysql.db` row and lets the iso user connect with the bound
-   DB as the default.
+  `:details.db` of the canonical `Database` row. MySQL has no schema-within-DB,
+  so the only shipping workspace config (see `workspace_config_mysql.yml`) lists
+  the bound DB as the input namespace. The driver-isolation tests mirror that
+  shape: source tables live in the bound DB; `grant-workspace-read-access!`
+  grants `SELECT ON <bound-db>.*`; the JDBC handshake's DB-access check finds
+  the resulting `mysql.db` row and lets the iso user connect with the bound
+  DB as the default.
 
-   For these drivers we skip [[create-input-namespace-sql]] (the bound DB already
-   exists) and [[drop-input-namespace-sqls]] (we don't own the bound DB, only the
-   per-run tables inside it -- caller cleans those up explicitly)."
+  For these drivers we skip [[create-input-namespace-sql]] (the bound DB already
+  exists) and [[drop-input-namespace-sqls]] (we don't own the bound DB, only the
+  per-run tables inside it -- caller cleans those up explicitly)."
   [driver]
   (= driver :mysql))
 
@@ -88,7 +88,7 @@
 
 (defn- create-input-namespace-sql
   "DDL to create a fresh per-run input namespace (a schema for schema'd drivers,
-   a database for schema-less ones like MySQL/ClickHouse)."
+  a database for schema-less ones like MySQL/ClickHouse)."
   [driver namespace-name]
   (case driver
     (:postgres :redshift) (str "CREATE SCHEMA \"" namespace-name "\"")
@@ -97,8 +97,8 @@
 
 (defn- maybe-create-input-namespace!
   "Create the per-run input namespace UNLESS the caller is using the bound DB as
-   the input (the [[reuse-bound-db-as-input?]] path on MySQL) -- in which case the
-   namespace already exists and is owned by the test DB, not by us."
+  the input (the [[reuse-bound-db-as-input?]] path on MySQL) -- in which case the
+  namespace already exists and is owned by the test DB, not by us."
   [admin-spec driver database namespace-name]
   (when-not (and (reuse-bound-db-as-input? driver)
                  (= namespace-name (-> database :details :db)))
@@ -106,12 +106,12 @@
 
 (defn- drop-input-namespace-sqls
   "DDL to drop the per-run input namespace and any tables left in it. Schema'd
-   drivers with CASCADE (postgres/redshift) and database-as-namespace
-   drivers (mysql/clickhouse) take a single statement; SQL Server has no DROP
-   SCHEMA CASCADE so each source table has to be dropped explicitly first.
+  drivers with CASCADE (postgres/redshift) and database-as-namespace
+  drivers (mysql/clickhouse) take a single statement; SQL Server has no DROP
+  SCHEMA CASCADE so each source table has to be dropped explicitly first.
 
-   `table-names` may be a single name or a sequence -- the cross-workspace test
-   creates more than one source table in the same input namespace."
+  `table-names` may be a single name or a sequence -- the cross-workspace test
+  creates more than one source table in the same input namespace."
   [driver namespace-name table-names]
   (let [tables (if (sequential? table-names) table-names [table-names])]
     (case driver
@@ -124,10 +124,10 @@
 
 (defn- maybe-drop-input-namespace!
   "Issue [[drop-input-namespace-sqls]] UNLESS the caller is using the bound DB
-   as the input (the [[reuse-bound-db-as-input?]] path on MySQL) -- in which
-   case we don't own the bound DB and only need to drop the per-run tables
-   inside it. Errors are swallowed per-statement so we keep cleaning up after
-   a partial-failure run."
+  as the input (the [[reuse-bound-db-as-input?]] path on MySQL) -- in which
+  case we don't own the bound DB and only need to drop the per-run tables
+  inside it. Errors are swallowed per-statement so we keep cleaning up after
+  a partial-failure run."
   [admin-spec driver database namespace-name table-names]
   (let [tables (if (sequential? table-names) table-names [table-names])]
     (if (and (reuse-bound-db-as-input? driver)
@@ -140,11 +140,11 @@
 
 (defn- list-namespaces-sql
   "SQL that enumerates the namespaces visible to the connecting user. JDBC
-   `information_schema.schemata` and ClickHouse's `system.databases` both
-   row-level-filter their output by the caller's privileges, so a workspace
-   user with no grants on another workspace's namespace should not see it
-   appear. Used by the cross-workspace test to check catalog-level isolation
-   in addition to data-level isolation."
+  `information_schema.schemata` and ClickHouse's `system.databases` both
+  row-level-filter their output by the caller's privileges, so a workspace
+  user with no grants on another workspace's namespace should not see it
+  appear. Used by the cross-workspace test to check catalog-level isolation
+  in addition to data-level isolation."
   [driver]
   (case driver
     (:postgres :redshift :sqlserver :mysql)
@@ -155,9 +155,9 @@
 
 (defn- list-tables-sql
   "SQL that enumerates `(namespace, table)` pairs visible to the connecting
-   user. Stronger than [[list-namespaces-sql]] — even if the namespace itself
-   is hidden, an over-broad grant on the tables table would let a workspace
-   discover other workspaces' table names."
+  user. Stronger than [[list-namespaces-sql]] — even if the namespace itself
+  is hidden, an over-broad grant on the tables table would let a workspace
+  discover other workspaces' table names."
   [driver]
   (case driver
     (:postgres :redshift :sqlserver :mysql)
@@ -168,7 +168,7 @@
 
 (defn- visible-namespaces
   "Lowercased set of namespace names visible to `user-spec` through the
-   driver's catalog views."
+  driver's catalog views."
   [driver user-spec]
   (->> (jdbc/query user-spec [(list-namespaces-sql driver)])
        (map (comp u/lower-case-en str :ns))
@@ -176,7 +176,7 @@
 
 (defn- visible-tables
   "Lowercased set of `[namespace table]` pairs visible to `user-spec` through
-   the driver's catalog views."
+  the driver's catalog views."
   [driver user-spec]
   (->> (jdbc/query user-spec [(list-tables-sql driver)])
        (map (juxt (comp u/lower-case-en str :ns)
@@ -185,15 +185,15 @@
 
 (defn- qualify
   "Per-driver identifier-quoted `schema.table` (or `database.table` for schema-less
-   drivers — see [[input-schema]]). Uses `sql.u/quote-name` so identifiers with
-   hyphens or other special chars (e.g. MySQL's `test-data` db-name) survive."
+  drivers — see [[input-schema]]). Uses `sql.u/quote-name` so identifiers with
+  hyphens or other special chars (e.g. MySQL's `test-data` db-name) survive."
   [driver schema table]
   (sql.u/quote-name driver :table schema table))
 
 (defn- create-table-tail
   "Trailing clause appended to `CREATE TABLE ... (cols)` per driver. ClickHouse
-   requires every table to declare a storage engine and (for MergeTree-family)
-   an ORDER BY key; SQL drivers don't."
+  requires every table to declare a storage engine and (for MergeTree-family)
+  an ORDER BY key; SQL drivers don't."
   [driver]
   (case driver
     :clickhouse " ENGINE = MergeTree() ORDER BY id"
@@ -201,10 +201,10 @@
 
 (defn- supports-update-delete-as-perm-test?
   "True for drivers whose UPDATE/DELETE failure on the input schema, and
-   UPDATE/DELETE success on the output schema, are meaningful signals about
-   workspace permissions. False for column-oriented engines where standard
-   UPDATE/DELETE aren't supported regardless of perms (ClickHouse MergeTree
-   needs `ALTER TABLE … UPDATE/DELETE` mutation syntax instead)."
+  UPDATE/DELETE success on the output schema, are meaningful signals about
+  workspace permissions. False for column-oriented engines where standard
+  UPDATE/DELETE aren't supported regardless of perms (ClickHouse MergeTree
+  needs `ALTER TABLE … UPDATE/DELETE` mutation syntax instead)."
   [driver]
   (case driver
     :clickhouse false
@@ -224,14 +224,14 @@
 
 (defn- verify-jdbc-destroy!
   "Assert post-destroy state for a JDBC workspace: the workspace user can no
-   longer open a fresh connection, and the output namespace is gone from the
-   admin's catalog. Called right after `destroy-workspace-isolation!` to
-   confirm cleanup actually happened.
+  longer open a fresh connection, and the output namespace is gone from the
+  admin's catalog. Called right after `destroy-workspace-isolation!` to
+  confirm cleanup actually happened.
 
-   `user-spec` is an unpooled JDBC spec — each `jdbc/query` opens a new
-   connection, so after destroy the auth handshake must fail (user/role
-   dropped on most drivers). Any exception is acceptable; what specifically
-   fails is driver-defined."
+  `user-spec` is an unpooled JDBC spec — each `jdbc/query` opens a new
+  connection, so after destroy the auth handshake must fail (user/role
+  dropped on most drivers). Any exception is acceptable; what specifically
+  fails is driver-defined."
   [driver admin-spec user-spec out-schema]
   (testing "workspace user cannot open a fresh connection"
     (try
@@ -248,13 +248,13 @@
 
 (defn- escalation-attempt-sqls
   "Per-driver list of `[label sql]` pairs that probe the privilege-escalation
-   surface — account-/server-/role-level operations the workspace user should
-   never be allowed to execute. Each SQL is shaped so denial surfaces as a
-   permission error (the user lacks CREATEROLE / CREATE USER / IMPERSONATE /
-   ACCOUNTADMIN / etc.) rather than a parse error, so a successful execution
-   would indicate a real privilege-escalation bug rather than slip past as a
-   benign syntax denial. Names embed `hacker-name` (the test's run-id-derived
-   suffix) so the operation name is fresh per run."
+  surface — account-/server-/role-level operations the workspace user should
+  never be allowed to execute. Each SQL is shaped so denial surfaces as a
+  permission error (the user lacks CREATEROLE / CREATE USER / IMPERSONATE /
+  ACCOUNTADMIN / etc.) rather than a parse error, so a successful execution
+  would indicate a real privilege-escalation bug rather than slip past as a
+  benign syntax denial. Names embed `hacker-name` (the test's run-id-derived
+  suffix) so the operation name is fresh per run."
   [driver hacker-name]
   (case driver
     :postgres   [[:create-role  (str "CREATE ROLE \"" hacker-name "\"")]
@@ -276,10 +276,10 @@
 
 (defn- rename-input-table-sql
   "Per-driver SQL the workspace user attempts when renaming a granted input
-   table — RENAME requires ALTER on the table, which the workspace user only
-   has SELECT on. Engines spell rename three different ways: `ALTER TABLE …
-   RENAME TO …` (postgres / mysql / redshift), `RENAME TABLE …
-   TO …` (clickhouse), and `EXEC sp_rename '…', '…'` (sql server)."
+  table — RENAME requires ALTER on the table, which the workspace user only
+  has SELECT on. Engines spell rename three different ways: `ALTER TABLE …
+  RENAME TO …` (postgres / mysql / redshift), `RENAME TABLE …
+  TO …` (clickhouse), and `EXEC sp_rename '…', '…'` (sql server)."
   [driver schema src-name new-name]
   (case driver
     :clickhouse (str "RENAME TABLE `" schema "`.`" src-name "` TO `" schema "`.`" new-name "`")
@@ -289,15 +289,15 @@
 
 (defn- storage-escape-sqls
   "Per-driver list of `[label sql]` pairs probing the warehouse's bridges to
-   external storage (S3, internal stages, etc.) — the high-value bypass paths
-   that would let a workspace user exfiltrate granted-input or output data
-   outside the warehouse sandbox. Each SQL is shaped to fail at permission
-   check, not parse: if denial flips to success, the workspace user has
-   storage perms it shouldn't.
+  external storage (S3, internal stages, etc.) — the high-value bypass paths
+  that would let a workspace user exfiltrate granted-input or output data
+  outside the warehouse sandbox. Each SQL is shaped to fail at permission
+  check, not parse: if denial flips to success, the workspace user has
+  storage perms it shouldn't.
 
-   Drivers without a meaningful storage-bridge primitive (postgres / mysql /
-   sqlserver / clickhouse — all of which keep data in-engine without an
-   external-storage SQL surface) return an empty list."
+  Drivers without a meaningful storage-bridge primitive (postgres / mysql /
+  sqlserver / clickhouse — all of which keep data in-engine without an
+  external-storage SQL surface) return an empty list."
   [driver hacker-name]
   (case driver
     :redshift  [;; COPY from S3 — needs S3 read perms via IAM_ROLE; workspace user
@@ -311,7 +311,7 @@
 
 (defn- random-suffix
   "Eight hex chars from a random UUID. Per-run unique enough to avoid collisions
-   from leftover state in the shared test DB."
+  from leftover state in the shared test DB."
   []
   (subs (str (random-uuid)) 0 8))
 
@@ -768,15 +768,15 @@
 
 (defn- supports-cross-database-isolation-test?
   "True for drivers where a second database can be created in the test admin
-   connection and the workspace user (created in the first DB) is naturally
-   excluded from it. SQL Server (separate user mappings per DB) qualifies; the
-   rest don't fit the shape."
+  connection and the workspace user (created in the first DB) is naturally
+  excluded from it. SQL Server (separate user mappings per DB) qualifies; the
+  rest don't fit the shape."
   [driver]
   (contains? #{:sqlserver} driver))
 
 (defn- create-second-db-sql
   "DDL the admin connection runs to create a second database used by the
-   cross-database test."
+  cross-database test."
   [driver db-name]
   (case driver
     :sqlserver (str "CREATE DATABASE [" db-name "]")))
@@ -788,7 +788,7 @@
 
 (defn- create-table-in-second-db-sqls
   "DDL to create a `secret` table inside the second database. SQL Server's
-   default schema after CREATE DATABASE is `dbo`."
+  default schema after CREATE DATABASE is `dbo`."
   [driver db-name table-name]
   (case driver
     :sqlserver [(str "CREATE TABLE [" db-name "].dbo.[" table-name "] (id INT, secret VARCHAR(64))")
@@ -796,7 +796,7 @@
 
 (defn- second-db-qualified
   "Driver-specific fully-qualified `db.schema.table` reference used for the
-   workspace user's denied SELECT."
+  workspace user's denied SELECT."
   [driver db-name table-name]
   (case driver
     :sqlserver (str "[" db-name "].dbo.[" table-name "]")))
@@ -870,21 +870,21 @@
 
 (defn- supports-public-default-grant-test?
   "True for drivers with a meaningful default principal (anonymous user) whose
-   grants on workspace resources we want to verify are absent."
+  grants on workspace resources we want to verify are absent."
   [driver]
   (contains? #{:mysql} driver))
 
 (defn- public-grant-probe-sql
   "Per-driver SQL that, run as admin, returns rows iff the anonymous user holds
-   *any* grant whose target name contains `ws-fragment` (the workspace's
-   deterministic id-derived suffix). The workspace's role, schema/database, and
-   user names all embed `ws-fragment`, so a single LIKE match catches every
-   flavor.
+  *any* grant whose target name contains `ws-fragment` (the workspace's
+  deterministic id-derived suffix). The workspace's role, schema/database, and
+  user names all embed `ws-fragment`, so a single LIKE match catches every
+  flavor.
 
-   MySQL: `mysql.tables_priv` and `mysql.db` are the system tables that store
-   per-table and per-database grants; filtering by `User = ''` finds anonymous-
-   user grants. The anonymous user is often disabled on modern installs (no
-   row exists), so the query returns 0 rows in the happy path."
+  MySQL: `mysql.tables_priv` and `mysql.db` are the system tables that store
+  per-table and per-database grants; filtering by `User = ''` finds anonymous-
+  user grants. The anonymous user is often disabled on modern installs (no
+  row exists), so the query returns 0 rows in the happy path."
   [driver ws-fragment]
   (case driver
     :mysql     (str "SELECT CONCAT(Db, '.', COALESCE(Table_name, '*')) AS resource "
@@ -894,7 +894,7 @@
 
 (defn- public-grant-pre-query-sql
   "Some drivers need an introspection query run *before* the probe. Returns nil
-   for drivers that don't need a setup step."
+  for drivers that don't need a setup step."
   [_driver]
   nil)
 

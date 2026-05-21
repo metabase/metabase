@@ -917,7 +917,7 @@
 
 (def ^:private default-base-types
   "Map of default Postgres column types -> Field base types.
-   Add more mappings here as you come across them."
+  Add more mappings here as you come across them."
   {:array         :type/*
    :bigint        :type/BigInteger
    :bigserial     :type/BigInteger
@@ -1441,15 +1441,15 @@
 (defn- public-create-grant?
   "True if `schema-name` grants CREATE to the PUBLIC pseudo-role on PostgreSQL.
 
-   When this is the case, REVOKE-ing CREATE from the workspace user is a no-op:
-   the user still inherits CREATE through PUBLIC, can create tables in input
-   schemas, and the resulting orphaned objects make `DROP USER` fail at
-   deprovisioning time. Workspace isolation can't enforce read-only on input
-   schemas in this state.
+  When this is the case, REVOKE-ing CREATE from the workspace user is a no-op:
+  the user still inherits CREATE through PUBLIC, can create tables in input
+  schemas, and the resulting orphaned objects make `DROP USER` fail at
+  deprovisioning time. Workspace isolation can't enforce read-only on input
+  schemas in this state.
 
-   Historical default on PostgreSQL ≤14; PostgreSQL 15 changed the default to
-   drop CREATE for PUBLIC on `public`. Redshift uses a different check (see
-   the redshift driver) because it can't cast `aclitem[]` to text."
+  Historical default on PostgreSQL ≤14; PostgreSQL 15 changed the default to
+  drop CREATE for PUBLIC on `public`. Redshift uses a different check (see
+  the redshift driver) because it can't cast `aclitem[]` to text."
   [conn schema-name]
   (let [{:keys [acl]} (first (jdbc/query conn ["SELECT nspacl::text AS acl FROM pg_namespace WHERE nspname = ?" schema-name]))]
     (boolean
@@ -1461,8 +1461,8 @@
 
 (defn raise-public-create-grant!
   "Throw the standard ex-info for the public-CREATE-grant pre-condition. Shared
-   between drivers (Postgres uses [[public-create-grant?]]; Redshift uses its
-   own check via `SVV_SCHEMA_PRIVILEGES`)."
+  between drivers (Postgres uses [[public-create-grant?]]; Redshift uses its
+  own check via `SVV_SCHEMA_PRIVILEGES`)."
   [schema-name]
   (throw (ex-info (format (str "Schema \"%s\" grants CREATE to PUBLIC; workspace isolation cannot "
                                "enforce input-schema read-only until this is revoked. Run:\n\n"
@@ -1474,9 +1474,9 @@
 
 (defn assert-no-public-create-grant!
   "Throws when `schema-name` has CREATE granted to PUBLIC on PostgreSQL. Called
-   from `grant-workspace-read-access!` for each input schema being granted —
-   we want this check per-schema (only the schemas actually used as inputs
-   matter), not a blanket check on `public` at init time."
+  from `grant-workspace-read-access!` for each input schema being granted —
+  we want this check per-schema (only the schemas actually used as inputs
+  matter), not a blanket check on `public` at init time."
   [conn schema-name]
   (when (public-create-grant? conn schema-name)
     (raise-public-create-grant! schema-name)))

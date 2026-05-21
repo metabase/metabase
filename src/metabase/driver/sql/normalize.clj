@@ -32,7 +32,7 @@
 
 (defn normalize-error
   "Normalize error names using driver-specific case normalization.
-   This ensures error names match database metadata conventions."
+  This ensures error names match database metadata conventions."
   [driver error]
   (if-let [error-name (:name error)]
     (assoc error :name (normalize-name driver error-name))

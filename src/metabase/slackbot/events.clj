@@ -104,7 +104,7 @@
 
 (defn app-mention-with-files?
   "Check if event is an app_mention with file attachments.
-   These are skipped because file_share events handle file uploads."
+  These are skipped because file_share events handle file uploads."
   [event]
   (and (app-mention? event)
        (has-files? event)))
@@ -116,7 +116,7 @@
 
 (defn mentions-bot?
   "Check if event @mentions the bot.
-   Some events, like file uploads in channels, don't come through as app_mention."
+  Some events, like file uploads in channels, don't come through as app_mention."
   [event bot-user-id]
   (some-> (:text event)
           (str/includes? (user-mention bot-user-id))))

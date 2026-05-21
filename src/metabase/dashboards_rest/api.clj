@@ -321,7 +321,7 @@
 
 (defn- apply-card-permission-filters
   "Apply collection-permission-aware filtering to dashboard cards. Hides details of
-   cards the current user cannot read and sets download permission levels."
+  cards the current user cannot read and sets download permission levels."
   [dashboard]
   (-> dashboard
       hide-unreadable-cards

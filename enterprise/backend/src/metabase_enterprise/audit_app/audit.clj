@@ -181,7 +181,7 @@
 
 (defn ia-content->plugins
   "Load instance analytics content (collections/dashboards/cards/etc.) from resources dir or a zip file
-   and copies it into the provided directory (by default, plugins/instance_analytics)."
+  and copies it into the provided directory (by default, plugins/instance_analytics)."
   [plugins-dir]
   (let [ia-dir (instance-analytics-plugin-dir plugins-dir)]
     (when (fs/exists? (u.files/relative-path ia-dir))
@@ -210,8 +210,8 @@
 
 (defn directory-content-checksum
   "Stable hash of the relative paths and contents of files under `root` (recursively) whose filenames
-   end with `suffix` (e.g. `.sql`). Detects renames (paths are included) and content swaps between
-   files (single hash over sorted pairs)."
+  end with `suffix` (e.g. `.sql`). Detects renames (paths are included) and content swaps between
+  files (single hash over sorted pairs)."
   ([root] (directory-content-checksum root ""))
   ([^Path root suffix]
    (with-open [stream (Files/walk root (u/varargs FileVisitOption))]
@@ -227,8 +227,8 @@
 
 (defn analytics-checksum
   "Checksum of the serialized analytics content (collections, dashboards, cards) on the classpath.
-   Stored in the `last-analytics-checksum` setting; when it changes, `ensure-audit-db-installed!`
-   re-runs `serialization.cmd/v2-load-internal!` on boot."
+  Stored in the `last-analytics-checksum` setting; when it changes, `ensure-audit-db-installed!`
+  re-runs `serialization.cmd/v2-load-internal!` on boot."
   []
   (-> (plugins/plugins-dir)
       instance-analytics-plugin-dir
@@ -253,11 +253,11 @@
 (defn- maybe-load-analytics-content!
   "Loads serialized audit content from the classpath if its checksum has changed.
 
-   Returns true iff loading required swapping the audit DB engine type to match the host
-   (i.e. the host is not postgres and we just rewrote the engine row from postgres back to
-   h2/mysql). The boolean tells `maybe-sync-audit-db!` whether field metadata needs to be
-   re-scanned for the new dialect — this transient swap isn't visible from outside the
-   function, which is why it has to be returned explicitly."
+  Returns true iff loading required swapping the audit DB engine type to match the host
+  (i.e. the host is not postgres and we just rewrote the engine row from postgres back to
+  h2/mysql). The boolean tells `maybe-sync-audit-db!` whether field metadata needs to be
+  re-scanned for the new dialect — this transient swap isn't visible from outside the
+  function, which is why it has to be returned explicitly."
   [audit-db]
   (boolean
    (when analytics-dir-resource
@@ -310,8 +310,8 @@
 
 (defn- views-checksum
   "Checksum of the `instance_analytics_views` SQL files. Stored in the `last-analytics-views-checksum`
-   setting; when it changes, `ensure-audit-db-installed!` triggers a one-shot audit DB schema sync
-   so that newly added or renamed views become discoverable without waiting for the next scheduled sync."
+  setting; when it changes, `ensure-audit-db-installed!` triggers a one-shot audit DB schema sync
+  so that newly added or renamed views become discoverable without waiting for the next scheduled sync."
   []
   (when (io/resource "migrations/instance_analytics_views")
     (u.files/with-open-path-to-resource [views-dir "migrations/instance_analytics_views"]

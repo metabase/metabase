@@ -36,7 +36,7 @@
 
 (defn- mcp-request
   "Make a POST request to /api/mcp with the given JSON-RPC body and optional extra headers.
-   Authenticates as :crowberto (superuser) by default."
+  Authenticates as :crowberto (superuser) by default."
   ([body]
    (mcp-request body {}))
   ([body extra-headers]
@@ -72,7 +72,7 @@
 
 (defn- mcp-delete
   "Make a DELETE request to /api/mcp with optional headers.
-   Authenticates as :crowberto (superuser) by default."
+  Authenticates as :crowberto (superuser) by default."
   [extra-headers]
   (client/client-full-response (test.users/username->token :crowberto)
                                :delete "mcp"
@@ -96,7 +96,7 @@
 
 (defn- initialize!
   "Perform the full MCP initialize handshake (initialize + notifications/initialized).
-   Returns [session-id init-response]."
+  Returns [session-id init-response]."
   []
   (let [response   (mcp-request (jsonrpc-request "initialize"))
         session-id (get-in response [:headers "Mcp-Session-Id"])]
@@ -117,11 +117,11 @@
 
 (defn- call-tool
   "Call an MCP tool within an initialized session. Returns the parsed MCP result
-   content (the JSON-decoded text from the first content block).
-   Records test failures if the response status is not 200 or the tool returns an error.
-   Also enforces the MCP spec contract: every successful tool result with content
-   must include `structuredContent` (because every tool in our manifest declares
-   `outputSchema`, and the spec mandates structuredContent for those)."
+  content (the JSON-decoded text from the first content block).
+  Records test failures if the response status is not 200 or the tool returns an error.
+  Also enforces the MCP spec contract: every successful tool result with content
+  must include `structuredContent` (because every tool in our manifest declares
+  `outputSchema`, and the spec mandates structuredContent for those)."
   [session-id tool-name arguments]
   (let [response (mcp-request (jsonrpc-request "tools/call"
                                                {:name tool-name :arguments arguments})
@@ -651,9 +651,9 @@
 
 (def ^:private smoke-tested-tools
   "Tools exercised by `tools-call-smoke-test`. New tools must be added here (and
-   below) — the test compares this set against the Agent API-backed tools and
-   fails when they diverge, ensuring no Agent API tool ships without a basic
-   invocation check."
+  below) — the test compares this set against the Agent API-backed tools and
+  fails when they diverge, ensuring no Agent API tool ships without a basic
+  invocation check."
   #{"get_table" "get_table_field_values" "get_metric" "get_metric_field_values"
     "search" "construct_query" "query" "execute_query"
     "create_question" "create_dashboard"})
@@ -1099,7 +1099,7 @@
 
 (defn- insert-expired-oauth-token!
   "Insert an OAuth access token into the DB with an expiry in the past.
-   Returns the token string."
+  Returns the token string."
   [user-id client-id]
   (let [token   (str (random-uuid))
         expired (- (quot (System/currentTimeMillis) 1000) 3600)]

@@ -29,7 +29,7 @@
 
 (def ^:private cacheable-304-headers
   "Headers that a 304 response MUST echo from the corresponding 200 response
-   per RFC 9110 §15.4.5. ETag is always set separately."
+  per RFC 9110 §15.4.5. ETag is always set separately."
   #{"Cache-Control" "Content-Location" "Expires" "Vary"})
 
 (defn- carry-over-304-headers

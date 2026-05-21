@@ -41,9 +41,9 @@
 
 (defn- alter-index-tables!
   "Run `alter-fn` against each existing index table whose `index_version` is below `target-version`, then bump those
-   rows' `index_version` to `target-version`. `alter-fn` is `(fn [execute! table-name])`. Tables listed in
-   `index_metadata` but missing from the database (e.g. dropped externally) are skipped — leaving the metadata row
-   in place to be cleaned up or re-created elsewhere."
+  rows' `index_version` to `target-version`. `alter-fn` is `(fn [execute! table-name])`. Tables listed in
+  `index_metadata` but missing from the database (e.g. dropped externally) are skipped — leaving the metadata row
+  in place to be cleaned up or re-created elsewhere."
   [tx index-metadata target-version alter-fn]
   (let [metadata-table  (keyword (:metadata-table-name index-metadata))
         execute!        (fn [q] (jdbc/execute! tx (sql/format q)))

@@ -67,7 +67,7 @@
 
 (defn- make-json-advisory
   "Build a JSON-shaped advisory map (as it arrives from the store API, before parsing).
-   Uses string severity and `id` instead of `advisory_id`."
+  Uses string severity and `id` instead of `advisory_id`."
   [advisory-id & {:as overrides}]
   (merge {"id"                advisory-id
           "severity"          "high"

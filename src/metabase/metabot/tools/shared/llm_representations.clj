@@ -17,10 +17,10 @@
 
 (defn- encode-uri-segment
   "URL-encode a single URI path segment. Coerces keywords/numbers to strings first.
-   Per-segment encoding (vs encoding the whole URI) lets us preserve the literal `/`
-   between segments while still protecting against `/` characters inside a segment
-   value — e.g. a database schema name like `weird/name` that would otherwise
-   collide with the path separator and corrupt downstream URI parsing."
+  Per-segment encoding (vs encoding the whole URI) lets us preserve the literal `/`
+  between segments while still protecting against `/` characters inside a segment
+  value — e.g. a database schema name like `weird/name` that would otherwise
+  collide with the path separator and corrupt downstream URI parsing."
   [s]
   (codec/url-encode (cond
                       (keyword? s) (name s)
@@ -48,7 +48,7 @@
 
 (defn escape-xml
   "Escape XML special characters in a string.
-   Only needed for content that bypasses Selmer's auto-escaping (marked with |safe)."
+  Only needed for content that bypasses Selmer's auto-escaping (marked with |safe)."
   [s]
   (when s
     (-> (str s)
@@ -114,8 +114,8 @@
 
 (defn format-fields-table
   "Format fields as markdown table for LLM.
-   Matches Python render_table output format.
-   Note: This output is used with |safe in templates, so we must escape manually."
+  Matches Python render_table output format.
+  Note: This output is used with |safe in templates, so we must escape manually."
   [fields & [{:keys [columns] :or {columns {:name          "Field Name"
                                             :field_id      "Field ID"
                                             :type          "Type"
@@ -132,7 +132,7 @@
 
 (defn field->xml
   "Format a field/column as XML element.
-   Matches Python Column.llm_representation exactly."
+  Matches Python Column.llm_representation exactly."
   [{:keys [field_id name display_name type database_type description]}]
   (render-llm-template
    :field
@@ -146,7 +146,7 @@
 
 (defn collection->xml
   "Format collection for LLM consumption.
-   Matches Python Collection.llm_representation exactly."
+  Matches Python Collection.llm_representation exactly."
   [{:keys [name description authority_level]}]
   (render-llm-template
    :collection
@@ -191,7 +191,7 @@
 
 (defn metric->xml
   "Format metric for LLM consumption.
-   Matches Python Metric.get_llm_representation exactly."
+  Matches Python Metric.get_llm_representation exactly."
   [{:keys [id name description verified queryable-dimensions collection
            default_time_dimension_field]}]
   (render-llm-template
@@ -214,7 +214,7 @@
 
 (defn table->xml
   "Format table for LLM consumption.
-   Matches Python Table.get_llm_representation exactly."
+  Matches Python Table.get_llm_representation exactly."
   [{:keys [id name database_id database_engine database_schema
            description fields related_tables measures segments]}]
   (let [fqn (fully-qualified-name database_schema name)]
@@ -248,8 +248,8 @@
 
 (defn model->xml
   "Format model for LLM consumption.
-   Matches Python Model.get_llm_representation exactly.
-   Note: Python uses <metabase-model> tag but closes with </model>."
+  Matches Python Model.get_llm_representation exactly.
+  Note: Python uses <metabase-model> tag but closes with </model>."
   [{:keys [id name description verified fields database_id database_engine
            related_tables measures segments]}]
   (let [fqn (model-fully-qualified-name id name)]
@@ -278,7 +278,7 @@
 
 (defn- format-rows-table
   "Format query result rows as a markdown table.
-   Note: Uses |safe in template, so values must be escaped."
+  Note: Uses |safe in template, so values must be escaped."
   [columns rows]
   (let [header    (format-markdown-row (map :name columns))
         data-rows (map (fn [row]
@@ -288,7 +288,7 @@
 
 (defn query-result->xml
   "Format query result for LLM consumption.
-   Matches Python QueryResult.llm_representation exactly."
+  Matches Python QueryResult.llm_representation exactly."
   [{:keys [result_columns rows]}]
   (render-llm-template
    :query_results
@@ -303,12 +303,12 @@
 
 (defn query->xml
   "Format query for LLM consumption.
-   Matches Python Query.llm_representation exactly.
+  Matches Python Query.llm_representation exactly.
 
-   Accepts either canonical keys (`:query-type`, `:database_id`) or the keys
-   produced by the SQL / notebook tool results (`:result-type`, `:database`).
-   For SQL tool results the `:query` map carries `:type :native` which we surface
-   as query-type \"sql\"."
+  Accepts either canonical keys (`:query-type`, `:database_id`) or the keys
+  produced by the SQL / notebook tool results (`:result-type`, `:database`).
+  For SQL tool results the `:query` map carries `:type :native` which we surface
+  as query-type \"sql\"."
   [{:keys [query-type result-type query-id database database_id query query-content result]}]
   (let [qtype (or query-type
                   (when (or (= :native (:type query))
@@ -326,7 +326,7 @@
 
 (defn visualization->xml
   "Format visualization/chart for LLM consumption.
-   Matches Python Visualization.get_llm_representation exactly."
+  Matches Python Visualization.get_llm_representation exactly."
   [{:keys [chart-id queries visualization_settings]}]
   (render-llm-template
    :visualization
@@ -338,7 +338,7 @@
 
 (defn chart->xml
   "Format chart for LLM consumption - simplified version.
-   For full chart representation, use visualization->xml."
+  For full chart representation, use visualization->xml."
   [{:keys [chart-id query-id chart-type]}]
   (render-llm-template
    :chart
@@ -398,7 +398,7 @@
 
 (defn dashboard->xml
   "Format dashboard for LLM consumption.
-   Matches Python Dashboard.llm_representation exactly."
+  Matches Python Dashboard.llm_representation exactly."
   [{:keys [id name description verified collection dashcards]}]
   ;; Group cards by tab and sort
   (let [tabs (group-by :dashboard_tab_id dashcards)
@@ -436,7 +436,7 @@
 
 (defn database->xml
   "Format database for LLM consumption.
-   Matches Python Database.llm_representation exactly."
+  Matches Python Database.llm_representation exactly."
   [{:keys [id name description schemas]}]
   (render-llm-template
    :database
@@ -448,8 +448,8 @@
 
 (defn user->xml
   "Format user for LLM consumption.
-   Matches Python DummyGetCurrentUserResultSchema.llm_representation exactly.
-   Note: Glossary rows are used with |safe, so we must escape manually."
+  Matches Python DummyGetCurrentUserResultSchema.llm_representation exactly.
+  Note: Glossary rows are used with |safe, so we must escape manually."
   [{:keys [id name email glossary]}]
   (let [glossary-rows (when (seq glossary)
                         (str/join "\n"
@@ -465,7 +465,7 @@
 
 (defn- search-result-tag-name
   "Get the XML tag name for a search result type.
-   Maps to Python naming conventions."
+  Maps to Python naming conventions."
   [result-type]
   (case result-type
     :metric "metric"
@@ -483,8 +483,8 @@
 
 (defn search-result->xml
   "Format a single search result as XML element.
-   Includes database_id, database_engine, and fully_qualified_name for table/model results
-   to match Python AI Service search output."
+  Includes database_id, database_engine, and fully_qualified_name for table/model results
+  to match Python AI Service search output."
   [{:keys [id type name description verified collection
            database_id database_engine database_schema]}]
   (let [fqn (cond
@@ -522,8 +522,8 @@
 
 (defn field-values-metadata->xml
   "Format field values metadata for LLM consumption.
-   Matches Python FieldValuesMetadata.llm_representation exactly.
-   Note: Tables are used with |safe in the template, so values must be escaped."
+  Matches Python FieldValuesMetadata.llm_representation exactly.
+  Note: Tables are used with |safe in the template, so values must be escaped."
   [{:keys [field_values statistics]}]
   (let [escape-value        (fn [_k v] (escape-xml (str v)))
         sample-values-table (when (seq field_values)
@@ -545,7 +545,7 @@
 
 (defn field-metadata->xml
   "Format field metadata for LLM consumption.
-   Matches Python GetFieldMetadataResultSchema.llm_representation exactly."
+  Matches Python GetFieldMetadataResultSchema.llm_representation exactly."
   [{:keys [field_id value_metadata]}]
   (render-llm-template
    :field_metadata
@@ -555,7 +555,7 @@
 
 (defn get-metadata-result->xml
   "Format get_metadata result for LLM consumption.
-   Matches Python GetMetadataResultSchema.llm_representation exactly."
+  Matches Python GetMetadataResultSchema.llm_representation exactly."
   [{:keys [metrics tables models errors]}]
   (let [metadata-metrics (when (seq metrics)
                            (str "<metrics>\n"

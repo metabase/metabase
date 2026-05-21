@@ -30,7 +30,7 @@
 
 (mu/defn default-query->remark
   "Generates the default query remark. Exists as a separate function so that overrides of the query->remark multimethod
-   can access the default value."
+  can access the default value."
   [{{:keys [executed-by query-hash], :as _info} :info, :as query} :- ::qp.schema/any-query]
   (let [query-type (if (:lib/type query)
                      (case (keyword (:lib/type (lib/query-stage query -1)))

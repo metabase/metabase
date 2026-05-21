@@ -145,7 +145,7 @@
 
 (defn start-service!
   "Kill existing container and start a new one.
-   suffix is typically \"app\" or \"wh\" (warehouse)."
+  suffix is typically \"app\" or \"wh\" (warehouse)."
   [root-dir service-key suffix slot]
   (let [spec           (get service-specs service-key)
         container-name (str (container-prefix root-dir) (name service-key) (when suffix (str "-" suffix)))
@@ -165,8 +165,8 @@
 
 (defn- update-mise-local!
   "Incrementally update mise.local.toml [env] section. Merges `env-pairs` (a map of
-   {\"KEY\" \"value\"}) into the existing file, preserving keys not in `env-pairs`.
-   Creates the file if it doesn't exist. Optionally prepends `header-lines` (comment strings)."
+  {\"KEY\" \"value\"}) into the existing file, preserving keys not in `env-pairs`.
+  Creates the file if it doesn't exist. Optionally prepends `header-lines` (comment strings)."
   ([root-dir env-pairs]
    (update-mise-local! root-dir env-pairs nil))
   ([root-dir env-pairs header-lines]
@@ -274,8 +274,8 @@
 
 (defn- generate-mise-local!
   "Incrementally update mise.local.toml with dev-env configuration.
-   Preserves existing keys not being set. When bot-name is provided,
-   uses Docker-based ports; otherwise uses shared local DB instances."
+  Preserves existing keys not being set. When bot-name is provided,
+  uses Docker-based ports; otherwise uses shared local DB instances."
   [slot {:keys [app-db edition token bot-name]}]
   (let [wt-name    (worktree-name (root))
         bot-mode?  (some? bot-name)
@@ -606,7 +606,7 @@
 
 (defn- stand-up!
   "Orchestrate: prompt -> validate -> check docker -> start containers -> write toml -> optionally run.
-   When --bot is provided, skips interactive prompts and uses Docker containers."
+  When --bot is provided, skips interactive prompts and uses Docker containers."
   [opts]
   (let [bot-name    (:bot opts)
         bot-mode?   (some? bot-name)

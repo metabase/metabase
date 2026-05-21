@@ -19,13 +19,13 @@
 
 (defn- returned-column-names
   "Extract just the column names from returned-columns result.
-   Normalizes to lowercase for cross-database comparison."
+  Normalizes to lowercase for cross-database comparison."
   [columns]
   (mapv (comp u/lower-case-en :name) columns))
 
 (defn- returned-column-aliases
   "Extract just the column aliases from returned-columns result.
-   Normalizes to lowercase for cross-database comparison."
+  Normalizes to lowercase for cross-database comparison."
   [columns]
   (mapv (comp u/lower-case-en :lib/desired-column-alias) columns))
 

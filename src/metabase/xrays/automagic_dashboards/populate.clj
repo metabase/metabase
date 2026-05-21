@@ -212,8 +212,8 @@
 
 (mu/defn- accommodates?
   "Can we place card on grid starting at [x y] (top left corner)?
-   Since we are filling the grid top to bottom and the cards are rectangular,
-   it suffices to check just the first (top) row."
+  Since we are filling the grid top to bottom and the cards are rectangular,
+  it suffices to check just the first (top) row."
   [grid                   :- ::grid
    [x y]                  :- [:tuple nat-int? nat-int?]
    {:keys [width height]} :- [:map
@@ -225,10 +225,10 @@
 
 (mu/defn- dashcard-position
   "Find position on the grid where to put the card.
-   We use the dumbest possible algorithm (the grid size is relatively small, so
-   we should be fine): starting at top left move along the grid from left to
-   right, row by row and try to place the card at each position until we find an
-   unoccupied area. Mark the area as occupied."
+  We use the dumbest possible algorithm (the grid size is relatively small, so
+  we should be fine): starting at top left move along the grid from left to
+  right, row by row and try to place the card at each position until we find an
+  unoccupied area. Mark the area as occupied."
   [grid :- ::grid
    start-row
    dashcard]
@@ -243,7 +243,7 @@
 
 (mu/defn- bottom-row
   "Find the bottom of the grid. Bottom is the first completely empty row with
-   another empty row below it."
+  another empty row below it."
   [grid :- ::grid]
   (let [row {:height 0, :width grid-width}]
     (loop [bottom (long 0)]

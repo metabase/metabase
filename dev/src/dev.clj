@@ -137,7 +137,7 @@
 
 (def initialized?
   "Was Metabase already initialized? Used in `init!` to prevent calling `core/init!`
-   more than once (during `start!`, for example)."
+  more than once (during `start!`, for example)."
   (atom nil))
 
 (defn init!

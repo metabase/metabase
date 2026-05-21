@@ -24,9 +24,9 @@
 
 (defn- random-vec-for-name
   "Deterministic 8-dim Gaussian vector seeded by the name's hash.
-   Same name always returns the same vector across catalogs, so library ⊆ universe synonym
-   pairs holds; different names produce visibly different vectors, so the synonym axis exercises
-   real cosine work instead of collapsing to zero."
+  Same name always returns the same vector across catalogs, so library ⊆ universe synonym
+  pairs holds; different names produce visibly different vectors, so the synonym axis exercises
+  real cosine work instead of collapsing to zero."
   ^floats [^String n]
   (let [rng (java.util.Random. (long (hash n)))]
     (float-array (repeatedly 8 #(.nextGaussian rng)))))
@@ -36,9 +36,9 @@
 
 (defn- internal-metabot-id
   "Primary key of the internal Metabot row — used by the tests that temporarily tweak its
-   `use_verified_content`/`collection_id` via `mt/with-temp-vals-in-db`. Calls
-   `mt/initialize-if-needed!` so the row is populated by migrations even when this test runs in
-   isolation (the endpoint tests piggyback on the web-server init and miss this failure mode)."
+  `use_verified_content`/`collection_id` via `mt/with-temp-vals-in-db`. Calls
+  `mt/initialize-if-needed!` so the row is populated by migrations even when this test runs in
+  isolation (the endpoint tests piggyback on the web-server init and miss this failure mode)."
   []
   (mt/initialize-if-needed! :db)
   (t2/select-one-pk :model/Metabot

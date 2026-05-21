@@ -76,12 +76,12 @@
 
 (defn split-compound-table-spec
   "Macaw doesn't understand multi-part identifiers like BigQuery's `dataset.table` or
-   `project.dataset.table`, returning them as a single compound `:table` value.
-   This splits such compound names into separate `:schema` and `:table` parts.
+  `project.dataset.table`, returning them as a single compound `:table` value.
+  This splits such compound names into separate `:schema` and `:table` parts.
 
-   - `table`                 → `{:table \"table\"}`
-   - `schema.table`          → `{:schema \"schema\", :table \"table\"}`
-   - `catalog.schema.table`  → `{:schema \"schema\", :table \"table\"}`"
+  - `table`                 → `{:table \"table\"}`
+  - `schema.table`          → `{:schema \"schema\", :table \"table\"}`
+  - `catalog.schema.table`  → `{:schema \"schema\", :table \"table\"}`"
   [{:keys [table schema] :as table-spec}]
   (if (and table (nil? schema) (str/includes? table "."))
     (let [parts (str/split table #"\.")]

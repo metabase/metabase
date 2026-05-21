@@ -66,14 +66,14 @@
 
 (def ^:const ^:private max-uncompressed-bytes
   "Cap on total uncompressed bytes from a bundle archive. Set to 5x the
-   compressed cap, which comfortably fits a real JS bundle + image assets but
-   refuses tar bombs (which need 1000x+ ratios to be interesting)."
+  compressed cap, which comfortably fits a real JS bundle + image assets but
+  refuses tar bombs (which need 1000x+ ratios to be interesting)."
   (* 5 max-bundle-bytes))
 
 (def ^:const ^:private max-entries
   "Cap on entry count in a bundle archive. A real plugin has a manifest, the JS
-   bundle, and a handful of image assets; 256 leaves plenty of slack without
-   inviting denial-of-service via metadata-only entries."
+  bundle, and a handful of image assets; 256 leaves plenty of slack without
+  inviting denial-of-service via metadata-only entries."
   256)
 
 (def ^:private untgz-opts
@@ -92,9 +92,9 @@
 
 (defn validate-bundle!
   "Extract an uploaded tar+gzip `bundle-bytes` into a scratch directory and
-   validate its contents against the expected layout. Returns
-   `{:bytes bundle-bytes :hash sha :manifest m :version-str v}` on success.
-   Throws ex-info with `:status-code 400` for any user-facing failure."
+  validate its contents against the expected layout. Returns
+  `{:bytes bundle-bytes :hash sha :manifest m :version-str v}` on success.
+  Throws ex-info with `:status-code 400` for any user-facing failure."
   [^bytes bundle-bytes]
   (when (or (nil? bundle-bytes) (zero? (alength bundle-bytes)))
     (throw (ex-info "Bundle is empty" {:status-code 400})))
@@ -142,9 +142,9 @@
 
 (defn- custom-viz-cache-root
   "The on-disk cache root for extracted plugin bundles. Placed under the OS
-   temp dir so it's per-instance and naturally reclaimed when the host is
-   rebooted; [[ensure-unpacked!]] will lazily re-extract from the DB on the
-   next serve after a wipe."
+  temp dir so it's per-instance and naturally reclaimed when the host is
+  rebooted; [[ensure-unpacked!]] will lazily re-extract from the DB on the
+  next serve after a wipe."
   ^Path []
   (doto (u.files/get-path (System/getProperty "java.io.tmpdir") "metabase-custom-viz")
     u.files/create-dir-if-not-exists!))
@@ -154,9 +154,9 @@
 
 (defn- safe-resolve
   "Resolve `rel-path` under `base`, refusing to escape it. Used on the serve
-   side to guard against caller-supplied asset paths that attempt traversal —
-   the archive extraction itself is already zip-slip-safe via
-   [[u.compress/untgz]]."
+  side to guard against caller-supplied asset paths that attempt traversal —
+  the archive extraction itself is already zip-slip-safe via
+  [[u.compress/untgz]]."
   ^Path [^Path base ^String rel-path]
   (let [resolved (.normalize (.resolve base rel-path))]
     (when (.startsWith resolved base)
@@ -174,9 +174,9 @@
 
 (defn- unpack-bundle!
   "Extract `bundle-bytes` into `dir`, creating it. Atomic-ish: unpacks into a
-   sibling temp directory and renames into place so other threads never observe
-   a half-written cache dir. Zip-slip is handled by `u.compress/untgz`, which
-   resolves each entry under the temp dir via `TarArchiveEntry.resolveIn`."
+  sibling temp directory and renames into place so other threads never observe
+  a half-written cache dir. Zip-slip is handled by `u.compress/untgz`, which
+  resolves each entry under the temp dir via `TarArchiveEntry.resolveIn`."
   [^Path dir ^bytes bundle-bytes]
   (let [parent (.getParent dir)
         _      (u.files/create-dir-if-not-exists! parent)
@@ -194,11 +194,11 @@
 
 (defn- ensure-unpacked!
   "Guarantee that the cache dir for `plugin` is on disk. If `bundle` is null in the
-   row (dev-only plugin) this returns nil. Returns the directory `Path` on success.
+  row (dev-only plugin) this returns nil. Returns the directory `Path` on success.
 
-   Recomputes the SHA-256 of the stored bytes against `bundle_hash` before unpacking
-   so a mismatch (DB corruption or tampering with one column but not the other) is
-   refused rather than served."
+  Recomputes the SHA-256 of the stored bytes against `bundle_hash` before unpacking
+  so a mismatch (DB corruption or tampering with one column but not the other) is
+  refused rather than served."
   ^Path [{:keys [id bundle_hash]}]
   (when bundle_hash
     (let [dir (plugin-cache-dir id bundle_hash)]
@@ -214,7 +214,7 @@
 
 (defn purge-plugin-cache!
   "Remove on-disk cache dirs for `plugin` (typically because it's being deleted or
-   updated). Safe to call even if no dir exists."
+  updated). Safe to call even if no dir exists."
   [{:keys [id]}]
   (let [prefix (str id "-")]
     (doseq [^Path child (u.files/files-seq (custom-viz-cache-root))
@@ -237,7 +237,7 @@
 
 (defn save-bundle!
   "Persist a validated bundle for an existing plugin row, evict stale on-disk
-   caches, and return the refreshed row."
+  caches, and return the refreshed row."
   [{:keys [id]} validated]
   (t2/update! :model/CustomVizPlugin id (derived-columns validated))
   (purge-plugin-cache! {:id id})
@@ -245,7 +245,7 @@
 
 (defn insert-bundle!
   "Insert a new plugin row from a validated bundle and an `:identifier`. Returns
-   the inserted row."
+  the inserted row."
   [identifier validated]
   (t2/insert-returning-instance!
    :model/CustomVizPlugin
@@ -257,7 +257,7 @@
 
 (defn- read-cached-bytes
   "Read the bytes of `dist-rel-path` from the on-disk cache for `plugin`. Returns
-   nil if the plugin has no bundle or the file is missing."
+  nil if the plugin has no bundle or the file is missing."
   ^bytes [plugin ^String dist-rel-path]
   (when-let [dir (try (ensure-unpacked! plugin)
                       (catch Exception e
@@ -270,7 +270,7 @@
 
 (defn get-bundle
   "Get the JS bundle for an upload-backed plugin. Returns
-   `{:content str :hash str}` or nil."
+  `{:content str :hash str}` or nil."
   [plugin]
   (when-let [bytes (read-cached-bytes plugin (dist-path bundle-rel-path))]
     {:content (String. bytes "UTF-8")
@@ -319,7 +319,7 @@
 
 (defn fetch-dev-bundle
   "Fetch a JS bundle from a dev base URL.
-   Returns {:content str :hash str} or nil."
+  Returns {:content str :hash str} or nil."
   [^String base-url]
   (let [content (:body (http/get (dev-url base-url bundle-rel-path)
                                  (assoc http-opts :as :string)))]
@@ -328,7 +328,7 @@
 
 (defn fetch-dev-manifest
   "Fetch and parse the manifest from a dev base URL.
-   Returns the parsed manifest map or nil on failure."
+  Returns the parsed manifest map or nil on failure."
   [^String base-url]
   (try
     (let [content (:body (http/get (dev-url base-url (manifest/manifest-path))
@@ -340,7 +340,7 @@
 
 (defn fetch-dev-asset
   "Fetch a static asset from a dev base URL.
-   Returns the bytes or nil on failure."
+  Returns the bytes or nil on failure."
   ^bytes [^String base-url ^String asset-name]
   (:body (http/get (dev-url base-url (asset-rel-path asset-name))
                    (assoc http-opts :as :byte-array))))
@@ -354,7 +354,7 @@
 
 (defn resolve-dev-bundle
   "Resolve the dev bundle URL for a plugin from the database. Returns the URL string or nil.
-   Always returns nil when dev mode is disabled."
+  Always returns nil when dev mode is disabled."
   [id]
   (when (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
     (not-empty (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id id))))
@@ -363,7 +363,7 @@
 
 (defn resolve-bundle
   "Resolve the JS bundle for a plugin, respecting dev bundle URL if set.
-   Returns {:content str :hash str} or nil."
+  Returns {:content str :hash str} or nil."
   [plugin]
   (let [id      (:id plugin)
         dev-url (resolve-dev-bundle id)]
@@ -373,8 +373,8 @@
 
 (defn resolve-asset
   "Resolve a static asset for a plugin, respecting dev base URL if set.
-   Only serves assets whitelisted by the plugin's manifest.
-   Returns a byte array or nil."
+  Only serves assets whitelisted by the plugin's manifest.
+  Returns a byte array or nil."
   ^bytes [plugin ^String asset-name]
   (when (asset-whitelisted? plugin asset-name)
     (if-let [dev-url (resolve-dev-bundle (:id plugin))]

@@ -28,9 +28,9 @@
 
 (defmacro ^:private with-ensure-encryption!
   "Ensures an encryption key is available for OIDC state operations.
-   Uses the existing encryption key if one is configured, otherwise
-   sets a test key. This avoids conflicts with encrypted settings
-   in the DB that were written with the real key."
+  Uses the existing encryption key if one is configured, otherwise
+  sets a test key. This avoids conflicts with encrypted settings
+  in the DB that were written with the real key."
   [& body]
   `(if (encryption/default-encryption-enabled?)
      (do ~@body)
@@ -222,7 +222,7 @@
 
 (defn- do-with-group-sync-login!
   "Helper that sets up the OIDC provider with group sync config, performs a login, and calls `f`
-   with the login result."
+  with the login result."
   [provider-config claims email f]
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:audit-app}

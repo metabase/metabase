@@ -25,10 +25,10 @@
 (defn make-store
   "Create a fresh store for a checking session.
 
-   `schema-source` is a SchemaSource for resolving databases/tables/fields.
-   `assets-source` is an AssetsSource for resolving cards/snippets/transforms/segments.
-   `index` is a file index: `{kind {ref file-path}}` — databases from the schema
-   source, cards/dashboards/collections/transforms/segments/measures from assets."
+  `schema-source` is a SchemaSource for resolving databases/tables/fields.
+  `assets-source` is an AssetsSource for resolving cards/snippets/transforms/segments.
+  `index` is a file index: `{kind {ref file-path}}` — databases from the schema
+  source, cards/dashboards/collections/transforms/segments/measures from assets."
   [schema-source assets-source index]
   (atom {:schema-source   schema-source
          :assets-source   assets-source
@@ -49,7 +49,7 @@
 
 (defn exists?
   "Is `ref` of `kind` known to the store?
-   Databases are checked via the schema source (not the assets index)."
+  Databases are checked via the schema source (not the assets index)."
   [store kind ref]
   (if (= kind :database)
     (contains? (set (source/all-database-names (:schema-source @store))) ref)
@@ -163,8 +163,8 @@
 
 (defn ensure-table-id!
   "Ensure a table path has an assigned integer ID and minimal metadata cached.
-   Does NOT parse the table YAML — derives name/schema from the path.
-   Use [[load-table!]] when full table data is needed."
+  Does NOT parse the table YAML — derives name/schema from the path.
+  Use [[load-table!]] when full table data is needed."
   [store [db-name schema table-name :as table-path]]
   (or (cached-entity store :table table-path)
       (let [id    (get-or-assign! store :table table-path)
@@ -177,7 +177,7 @@
 
 (defn load-table!
   "Load and cache a table, assigning it and its database integer IDs.
-   Parses the table YAML for full metadata."
+  Parses the table YAML for full metadata."
   [store table-path]
   (let [cached (cached-entity store :table table-path)]
     (if (and cached (contains? cached :display_name))

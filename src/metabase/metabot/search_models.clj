@@ -13,7 +13,7 @@
 
 (defn entity-type->search-model
   "Metabot entity-type (string or keyword) → search `model` string.
-   Unknown types yield themselves, even if they're not actual entity types."
+  Unknown types yield themselves, even if they're not actual entity types."
   [entity-type]
   (let [s (if (keyword? entity-type) (name entity-type) (str entity-type))]
     (get entity->search s s)))

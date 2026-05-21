@@ -764,10 +764,10 @@
 
 (defn- expected-keys-for-catalog
   "For a catalog result, return `#{[wire-key score], ...}` matching what emit-snowplow! should emit:
-   grand `total`, one `<group>.total` per group, and one `<group>.<leaf>` per sub-component (the
-   `total` suffix is a Snowplow wire-format convention — the in-memory node uses `:score`). Walks
-   the score tree directly, so any future restructuring (extra depth, renamed groups) is exercised
-   by the helper and the production walk together."
+  grand `total`, one `<group>.total` per group, and one `<group>.<leaf>` per sub-component (the
+  `total` suffix is a Snowplow wire-format convention — the in-memory node uses `:score`). Walks
+  the score tree directly, so any future restructuring (extra depth, renamed groups) is exercised
+  by the helper and the production walk together."
   [{root-score :score :keys [components]}]
   (set
    (cons ["total" root-score]

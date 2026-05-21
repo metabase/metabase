@@ -36,8 +36,8 @@
 
 (p/defprotocol+ Refresher
   "This protocol is just a wrapper of the ddl.interface multimethods to ease for testing. Rather than defing some
-   multimethods on fake engine types, just work against this, and it will dispatch to the ddl.interface normally, or
-   allow for easy to control custom behavior in tests."
+  multimethods on fake engine types, just work against this, and it will dispatch to the ddl.interface normally, or
+  allow for easy to control custom behavior in tests."
   (refresh! [this database definition dataset-query]
     "Refresh a persisted model. Returns a map with :state that is :success or :error. If :state is :error, includes a
     key :error with a string message. See [[metabase.driver.ddl.interface/refresh!]] for more information.")
@@ -199,7 +199,7 @@
 
 (defn- prune-all-deletable!
   "Prunes all deletable PersistInfos, should not be called from tests as
-   it will orphan cache tables if refresher is replaced."
+  it will orphan cache tables if refresher is replaced."
   [refresher]
   (let [deletables (deletable-models)]
     (prune-deletables! refresher deletables)))
@@ -422,18 +422,18 @@
 
 (defn enable-persisting!
   "Enable persisting
-   - The prune job is scheduled anew.
-   - Refresh jobs are added when persist is enabled on a db."
+  - The prune job is scheduled anew.
+  - Refresh jobs are added when persist is enabled on a db."
   []
   (unschedule-all-refresh-triggers! prune-job-key)
   (task/add-trigger! prune-scheduled-trigger))
 
 (defn disable-persisting!
   "Disable persisting
-   - All PersistedInfo are marked for deletion.
-   - Refresh job triggers are removed.
-   - Prune scheduled job trigger is removed.
-   - The prune job is triggered to run immediately. "
+  - All PersistedInfo are marked for deletion.
+  - Refresh job triggers are removed.
+  - Prune scheduled job trigger is removed.
+  - The prune job is triggered to run immediately. "
   []
   (persisted-info/mark-for-pruning! {})
   (unschedule-all-refresh-triggers! refresh-job-key)

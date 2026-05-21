@@ -494,8 +494,8 @@
 
 (defn- with-search-count-fixture!
   "Seed conversations with varying numbers of search tool-input blocks so we
-   can assert both list and detail `:search_count` behavior without perturbing
-   the existing list fixture."
+  can assert both list and detail `:search_count` behavior without perturbing
+  the existing list fixture."
   [thunk]
   (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/User {test-user-id :id} {:email      "metabot-analytics-search-count@metabase.com"
@@ -591,9 +591,9 @@
 
 (defn- with-query-count-fixture!
   "Seed conversations that exercise `:query_count` for every query-generation
-   tool — create_sql_query, edit_sql_query, replace_sql_query, and
-   construct_notebook_query. Non-query tool calls (search) are sprinkled in
-   to verify they don't bump `:query_count`."
+  tool — create_sql_query, edit_sql_query, replace_sql_query, and
+  construct_notebook_query. Non-query tool calls (search) are sprinkled in
+  to verify they don't bump `:query_count`."
   [thunk]
   (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/User {test-user-id :id} {:email      "metabot-analytics-query-count@metabase.com"
@@ -706,7 +706,7 @@
 
 (defn- with-ip-address-fixture!
   "Seed conversations with varying IP-address state so we can assert both list
-   and detail `:ip_address` behavior without perturbing the list fixture."
+  and detail `:ip_address` behavior without perturbing the list fixture."
   [thunk]
   (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/User {test-user-id :id} {:email      "metabot-analytics-ip@metabase.com"

@@ -78,7 +78,7 @@
 
 (defn add-table-where-clauses
   "Add a `WHERE` clause to the query to only return tables the current user has access to.
-   Also adds any CTEs required for permission filtering."
+  Also adds any CTEs required for permission filtering."
   [search-ctx qry]
   (let [model-id-col [:cast :search_index.model_id (case (mdb/db-type)
                                                      :mysql :signed

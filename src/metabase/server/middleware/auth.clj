@@ -11,7 +11,7 @@
 
 (def ^:private ^:const max-slack-timestamp-age-seconds
   "Maximum age in seconds for a Slack request timestamp. Requests older than this are rejected
-   to prevent replay attacks. Slack recommends 5 minutes (300 seconds)."
+  to prevent replay attacks. Slack recommends 5 minutes (300 seconds)."
   300)
 
 (defn- current-unix-timestamp
@@ -21,7 +21,7 @@
 
 (defn- slack-timestamp-valid?
   "Check if the Slack request timestamp is within the acceptable time window.
-   Returns false if timestamp is missing, malformed, or too old."
+  Returns false if timestamp is missing, malformed, or too old."
   [timestamp]
   (if timestamp
     (try
@@ -55,8 +55,8 @@
 
 (defn- verify-slack-signature
   "Verify that the request came from Slack using signature verification.
-   Returns nil if no signing secret is configured, false if timestamp is too old
-   (replay attack prevention) or signature is invalid, true if valid."
+  Returns nil if no signing secret is configured, false if timestamp is too old
+  (replay attack prevention) or signature is invalid, true if valid."
   [request-body timestamp slack-signature]
   (when-let [signing-secret (server.settings/unobfuscated-metabot-slack-signing-secret)]
     (and (slack-timestamp-valid? timestamp)

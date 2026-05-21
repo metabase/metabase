@@ -340,12 +340,12 @@
 
 (defn- adjust-metric-stages
   "`expanded-stages` are the result of :stages from fetch-source-query.
-   All source-card stages have been spliced in already.
+  All source-card stages have been spliced in already.
 
-   To adjust:
+  To adjust:
 
-   We look for the transition between the last stage of a metric and the next stage following it.
-   We adjust those two stages - as explained in `expand`.
+  We look for the transition between the last stage of a metric and the next stage following it.
+  We adjust those two stages - as explained in `expand`.
    "
   [query path expanded-stages]
   ;; Find a transition point, if it exists

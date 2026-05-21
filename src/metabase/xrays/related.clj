@@ -62,12 +62,12 @@
 
 (defn- similarity
   "How similar are entities `a` and `b` based on a structural comparison of their
-   definition (MBQL).
-   For the purposes of finding related entities we are only interested in
-   context-bearing subforms (field, segment, and metric references). We also
-   don't care about generalizations (less context-bearing forms) and refinements
-   (more context-bearing forms), so we just check if the less specific form is a
-   subset of the more specific one."
+  definition (MBQL).
+  For the purposes of finding related entities we are only interested in
+  context-bearing subforms (field, segment, and metric references). We also
+  don't care about generalizations (less context-bearing forms) and refinements
+  (more context-bearing forms), so we just check if the less specific form is a
+  subset of the more specific one."
   [a b]
   (let [context-a (-> a definition collect-context-bearing-forms lib.schema.util/remove-lib-uuids)
         context-b (-> b definition collect-context-bearing-forms lib.schema.util/remove-lib-uuids)
@@ -85,8 +85,8 @@
 
 (defn- interesting-mix
   "Create an interesting mix of matches. The idea is to have a balanced mix
-   between close (best) matches and more diverse matches to cover a wider field
-   of intents."
+  between close (best) matches and more diverse matches to cover a wider field
+  of intents."
   [matches]
   (let [[best rest] (split-at max-best-matches matches)]
     (concat best (->> rest shuffle (take max-serendipity-matches)))))

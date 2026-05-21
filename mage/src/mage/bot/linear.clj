@@ -45,8 +45,8 @@
 
 (defn fetch-issue
   "Fetch a Linear issue by identifier (e.g. MB-12345).
-   Returns a map with :identifier, :title, :description, :url, :state, :comments
-   or nil if not found."
+  Returns a map with :identifier, :title, :description, :url, :state, :comments
+  or nil if not found."
   [issue-id]
   (let [api-key  (get-api-key!)
         payload  (json/write-str {:query     issue-query

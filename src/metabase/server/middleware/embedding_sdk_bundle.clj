@@ -37,11 +37,11 @@
 
 (defn serve-bundle-handler
   "Serve /app/embedding-sdk.js.
-   When `packageVersion` query param is present and `useLegacyMonolithicBundle`
-   is not `true`, serve the bootstrap entry (chunked loading with parallel auth).
-   Otherwise, serve the legacy monolithic bundle (backward compat for old packages).
-   Prod: ETag + 60s caching (200/304).
-   Dev: no-store."
+  When `packageVersion` query param is present and `useLegacyMonolithicBundle`
+  is not `true`, serve the bootstrap entry (chunked loading with parallel auth).
+  Otherwise, serve the legacy monolithic bundle (backward compat for old packages).
+  Prod: ETag + 60s caching (200/304).
+  Dev: no-store."
   []
   (fn [request]
     (let [{{package-version "packageVersion"
@@ -59,10 +59,10 @@
 
 (defn serve-chunk-handler
   "Serve /app/embedding-sdk/chunks/:filename — split chunks loaded by the bootstrap.
-   Chunk filenames contain content hashes, so we always use far-future caching.
-   Path traversal is prevented by the route regex `#\"[^/]+\\.js\"` which only allows
-   leaf filenames ending in .js (no slashes). Additionally, Java's class loader
-   resource-response returns nil for paths containing '..'"
+  Chunk filenames contain content hashes, so we always use far-future caching.
+  Path traversal is prevented by the route regex `#\"[^/]+\\.js\"` which only allows
+  leaf filenames ending in .js (no slashes). Additionally, Java's class loader
+  resource-response returns nil for paths containing '..'"
   [filename]
   (let [resource (str "frontend_client/app/embedding-sdk/chunks/" filename)]
     (fn [request]

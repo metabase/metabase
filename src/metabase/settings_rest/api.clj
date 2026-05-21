@@ -19,7 +19,7 @@
 
 (defmacro ^:private with-setting-access-control
   "Executes the given body with setting access enforcement enabled, and adds some exception handling to make sure we
-   return generic 403s to non-admins who try to read or write settings they don't have access to."
+  return generic 403s to non-admins who try to read or write settings they don't have access to."
   [& body]
   `(do-with-setting-access-control (fn [] ~@body)))
 

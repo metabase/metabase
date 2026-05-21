@@ -162,7 +162,7 @@
 
 (defn- age-cache-entry!
   "Rewrite the `updated_at` timestamp for `token` in the cache table to be `age-ms` milliseconds in the past.
-   Also ages the local cache entry if a `local-cache` atom is provided."
+  Also ages the local cache entry if a `local-cache` atom is provided."
   ([token age-ms]
    (age-cache-entry! token age-ms nil))
   ([token age-ms local-cache]

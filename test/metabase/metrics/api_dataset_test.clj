@@ -1136,8 +1136,8 @@
 
 (defn- create-orders-products-join-sum-price-query
   "Create a MBQL 5 query joining Orders with Products, aggregating SUM(Products.PRICE).
-   This exercises the case where the aggregation references a column from the joined table,
-   which requires the join's fields to be visible across the two-stage query boundary."
+  This exercises the case where the aggregation references a column from the joined table,
+  which requires the join's fields to be visible across the two-stage query boundary."
   ([]
    (create-orders-products-join-sum-price-query nil))
   ([join-fields]

@@ -372,7 +372,7 @@
 
 (defn formatted-rows+column-names
   "Return the result rows and column names from query `results`, or throw an Exception if they're missing. Format
-   the rows using `fns`."
+  the rows using `fns`."
   [fns results]
   {:rows (formatted-rows fns results), :columns (map :name (cols results))})
 

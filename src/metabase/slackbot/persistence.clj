@@ -77,7 +77,7 @@
 
 (defn response-owner-user-id
   "Find the Metabase user ID who triggered the assistant response for this Slack channel/message.
-   Returns nil when the message is not tracked."
+  Returns nil when the message is not tracked."
   [channel-id slack-msg-id]
   (t2/select-one-fn :user_id
                     :model/MetabotMessage

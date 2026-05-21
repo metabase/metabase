@@ -71,7 +71,7 @@
 
 (mu/defn- classify!
   "Run various classifiers on `field` and its `fingerprint`, and save any detected changes.
-   Returns updated `field`"
+  Returns updated `field`"
   ([field :- i/FieldInstance opts]
    (classify! field opts
               (or (:fingerprint field)

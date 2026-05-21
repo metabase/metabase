@@ -15,7 +15,7 @@
 
 (defn successful-login?
   "Return true if the response indicates a successful user login.
-   Checks for the presence of a session cookie in the response."
+  Checks for the presence of a session cookie in the response."
   [resp]
   (or
    (string? (get-in resp [:cookies request/metabase-session-cookie :value]))
@@ -24,9 +24,9 @@
 (defn call-with-login-attributes-cleared!
   "Execute `thunk` and ensure login_attributes are cleared afterward.
 
-   If login_attributes remain after tests run, depending on the order that the tests run,
-   lots of tests will fail as the login_attributes data from this test is unexpected in
-   those other tests."
+  If login_attributes remain after tests run, depending on the order that the tests run,
+  lots of tests will fail as the login_attributes data from this test is unexpected in
+  those other tests."
   [thunk]
   (try
     (thunk)
@@ -37,11 +37,11 @@
 
 (defn do-with-other-sso-types-disabled!
   "Execute `thunk` with LDAP and Slack Connect SSO types disabled.
-   Useful when testing a specific SSO provider in isolation.
+  Useful when testing a specific SSO provider in isolation.
 
-   Note: This OSS version only disables OSS SSO types. EE tests should use
-   [[metabase-enterprise.sso.test-setup/do-with-other-sso-types-disabled!]]
-   which also disables SAML and JWT."
+  Note: This OSS version only disables OSS SSO types. EE tests should use
+  [[metabase-enterprise.sso.test-setup/do-with-other-sso-types-disabled!]]
+  which also disables SAML and JWT."
   [thunk]
   (mt/with-temporary-setting-values
     [ldap-enabled          false
@@ -50,8 +50,8 @@
 
 (defn localhost-site-url
   "Return a valid localhost site URL for tests, even when no Jetty server is running.
-   The CLI test runner often executes without a live server instance, so `server-port`
-   can be nil in that mode."
+  The CLI test runner often executes without a live server instance, so `server-port`
+  can be nil in that mode."
   []
   (str "http://localhost:"
        (or (server.instance/server-port)
@@ -77,7 +77,7 @@
 
 (defmacro with-slack-default-setup!
   "Set up default Slack Connect configuration for tests.
-   Includes other SSO types disabled, login attributes cleanup, and default Slack config."
+  Includes other SSO types disabled, login attributes cleanup, and default Slack config."
   [& body]
   `(mt/test-helpers-set-global-values!
      (mt/with-premium-features #{:audit-app}

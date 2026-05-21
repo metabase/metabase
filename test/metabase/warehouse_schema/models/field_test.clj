@@ -231,7 +231,7 @@
 
 (defn- assert-coercion-effective-type-invariant!
   "Reads the field row and asserts the GHY-3388 invariant:
-   coercion_strategy is nil ⇒ effective_type = base_type."
+  coercion_strategy is nil ⇒ effective_type = base_type."
   [field-id label]
   (let [{:keys [base_type effective_type coercion_strategy]} (t2/select-one :model/Field :id field-id)]
     (when (nil? coercion_strategy)

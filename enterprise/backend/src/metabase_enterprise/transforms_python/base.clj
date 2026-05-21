@@ -219,8 +219,8 @@
 (defn- run-python-transform-impl!
   "Core Python transform execution. Returns {:status :result :logs :events}.
 
-   Options:
-   - `with-stage-timing-fn` - optional, (fn [run-id stage thunk] result) for instrumentation"
+  Options:
+  - `with-stage-timing-fn` - optional, (fn [run-id stage thunk] result) for instrumentation"
   [{:keys [source] :as transform} db run-id cancel-chan message-log {:keys [with-stage-timing-fn source-range-params]}]
   ;; Resolve name-based source table refs to table IDs (throws if any not found)
   (let [resolved-source-tables (transforms-base.u/resolve-source-tables (:source-tables source))]

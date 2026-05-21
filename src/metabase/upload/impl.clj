@@ -344,7 +344,7 @@
 
 (defn- auto-pk-column?
   "Returns true if there should be an auto-incrementing primary key column in any table created or updated from an
-   upload."
+  upload."
   [driver db]
   (driver.u/supports? driver :upload-with-auto-pk db))
 
@@ -369,7 +369,7 @@
 
 (defn- create-from-csv!
   "Creates a table from a CSV file. If the table already exists, it will throw an error.
-   Returns the file size, number of rows, and number of columns."
+  Returns the file size, number of rows, and number of columns."
   [driver db table-name filename ^File csv-file]
   (let [parse (infer-parser filename csv-file)]
     (with-open [reader (->reader csv-file)]
@@ -410,7 +410,7 @@
 
 (def ^:dynamic *auxiliary-sync-steps*
   "For testing purposes, we'd like to control whether the analyze and field values steps of sync are run synchronously, or not at all.
-   In production this should always be asynchronous, so users can use the table earlier."
+  In production this should always be asynchronous, so users can use the table earlier."
   :asynchronous)
 
 (defn- scan-and-sync-table!

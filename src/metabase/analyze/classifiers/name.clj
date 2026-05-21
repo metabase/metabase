@@ -24,12 +24,12 @@
 
 (def ^:private pattern+base-types+semantic-type
   "Tuples of `[name-pattern set-of-valid-base-types semantic-type]`.
-   Fields whose name matches the pattern and one of the base types should be given the semantic type.
-   Be mindful that patterns are tried top to bottom when matching derived types (eg. Date should be
-   before DateTime).
+  Fields whose name matches the pattern and one of the base types should be given the semantic type.
+  Be mindful that patterns are tried top to bottom when matching derived types (eg. Date should be
+  before DateTime).
 
-   *  Convert field name to lowercase before matching against a pattern
-   *  Consider a nil set-of-valid-base-types to mean \"match any base type\""
+  *  Convert field name to lowercase before matching against a pattern
+  *  Consider a nil set-of-valid-base-types to mean \"match any base type\""
   [[#"^id$"                        any-type         :type/PK]
    [#"^lon$"                       float-type       :type/Longitude]
    [#"^.*_lon$"                    float-type       :type/Longitude]

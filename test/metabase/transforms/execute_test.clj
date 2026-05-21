@@ -24,7 +24,7 @@
 
 (defn- make-query
   "Create a query using the shared test utility.
-   Maintains the same signature for compatibility with existing tests."
+  Maintains the same signature for compatibility with existing tests."
   ([source-table]
    (query-test-util/make-query {:source-table source-table}))
   ([source-table source-column constraint-fn & constraint-params]

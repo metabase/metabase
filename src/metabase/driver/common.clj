@@ -334,7 +334,7 @@
 
 (defn class->base-type
   "Return the `Field.base_type` that corresponds to a given class returned by the DB.
-   This is used to infer the types of results that come back from native queries."
+  This is used to infer the types of results that come back from native queries."
   [klass]
   (condp #(isa? %2 %1) klass
     Boolean                        :type/Boolean

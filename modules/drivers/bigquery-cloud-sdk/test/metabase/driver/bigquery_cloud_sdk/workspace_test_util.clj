@@ -41,22 +41,22 @@
 
 (defn admin-credentials
   "Parse `ServiceAccountCredentials` from the admin SA JSON in `details`. Used
-   both to build the admin BigQuery client and as the source for
-   `ImpersonatedCredentials` against the workspace SA."
+  both to build the admin BigQuery client and as the source for
+  `ImpersonatedCredentials` against the workspace SA."
   ^ServiceAccountCredentials [details]
   (ServiceAccountCredentials/fromStream
    (ByteArrayInputStream. (.getBytes ^String (:service-account-json details)))))
 
 (defn admin-client
   "Build an admin `BigQuery` client for `details`. Thin re-export of the BQ
-   driver's private `database-details->client` so workspace tests don't need to
-   reach into the driver themselves."
+  driver's private `database-details->client` so workspace tests don't need to
+  reach into the driver themselves."
   ^BigQuery [details]
   (#'bigquery/database-details->client details))
 
 (defn iam-client
   "Build an IAM admin client scoped to `cloud-platform` for `details`. Used to
-   create / delete / grant impersonation on workspace service accounts."
+  create / delete / grant impersonation on workspace service accounts."
   ^IAMClient [details]
   (let [creds (.createScoped (admin-credentials details)
                              (doto (java.util.ArrayList.)
@@ -69,9 +69,9 @@
 
 (defn impersonated-client
   "BigQuery client that authenticates as `ws-sa-email` via service-account
-   impersonation. Requires the admin creds to hold
-   `iam.serviceAccounts.getAccessToken` on `ws-sa-email`, which the driver's
-   `init-workspace-isolation!` grants during provisioning."
+  impersonation. Requires the admin creds to hold
+  `iam.serviceAccounts.getAccessToken` on `ws-sa-email`, which the driver's
+  `init-workspace-isolation!` grants during provisioning."
   ^BigQuery [^ServiceAccountCredentials admin-creds ws-sa-email project-id]
   (let [imp-creds (ImpersonatedCredentials/create
                    admin-creds
@@ -88,8 +88,8 @@
 
 (defn project-id
   "Project ID for `details`: explicit `:project-id` field if set, else parsed
-   out of the admin SA JSON. Thin re-export of the BQ driver's
-   `bigquery-cloud-sdk.common/get-project-id`."
+  out of the admin SA JSON. Thin re-export of the BQ driver's
+  `bigquery-cloud-sdk.common/get-project-id`."
   [details]
   (bigquery.common/get-project-id details))
 
@@ -104,9 +104,9 @@
 
 (defn drop-dataset!
   "Drop a BQ dataset and its contents. Idempotent: no-op if not present.
-   Distinct from `metabase.test.data.bigquery-cloud-sdk/destroy-dataset!`,
-   which also writes to the test-tracking table — workspace tests don't want
-   that side-effect."
+  Distinct from `metabase.test.data.bigquery-cloud-sdk/destroy-dataset!`,
+  which also writes to the test-tracking table — workspace tests don't want
+  that side-effect."
   [^BigQuery client project-id dataset-name]
   (let [ds-id (DatasetId/of project-id dataset-name)]
     (when (.getDataset client ds-id (u/varargs BigQuery$DatasetOption []))
@@ -116,7 +116,7 @@
 
 (defn list-tables
   "Return a vector of `{:schema dataset :table table-id}` maps for every table
-   in `dataset-name`. Empty vector when the dataset doesn't exist."
+  in `dataset-name`. Empty vector when the dataset doesn't exist."
   [^BigQuery client project-id dataset-name]
   (let [ds-id (DatasetId/of project-id dataset-name)]
     (if-let [_ds (.getDataset client ds-id (u/varargs BigQuery$DatasetOption []))]
@@ -128,20 +128,20 @@
 
 (defn execute!
   "Run a BigQuery SQL string on `client`, returning nil. Mirrors `jdbc/execute!`
-   semantics — for DDL/DML the result is uninteresting. Distinct from
-   `metabase.test.data.bigquery-cloud-sdk/execute!` which runs as the test admin
-   SA only; this one runs on whatever client you pass (admin or impersonated)."
+  semantics — for DDL/DML the result is uninteresting. Distinct from
+  `metabase.test.data.bigquery-cloud-sdk/execute!` which runs as the test admin
+  SA only; this one runs on whatever client you pass (admin or impersonated)."
   [^BigQuery client sql]
   (.query client (QueryJobConfiguration/of sql) (into-array BigQuery$JobOption []))
   nil)
 
 (defn query
   "Run a SELECT and eagerly materialize results to `[{:col val ...}]`. Mirrors
-   `jdbc/query` semantics. Column values are coerced via `.getValue` (returns a
-   String — BQ's lossy-but-uniform coercion). Callers needing typed values
-   should `Long/parseLong` etc. at the use site.
+  `jdbc/query` semantics. Column values are coerced via `.getValue` (returns a
+  String — BQ's lossy-but-uniform coercion). Callers needing typed values
+  should `Long/parseLong` etc. at the use site.
 
-   Materializes synchronously; not suitable for huge result sets."
+  Materializes synchronously; not suitable for huge result sets."
   [^BigQuery client sql]
   (let [^TableResult result (.query client (QueryJobConfiguration/of sql) (into-array BigQuery$JobOption []))
         col-names           (mapv #(.getName ^com.google.cloud.bigquery.Field %)
@@ -163,7 +163,7 @@
 
 (defn expect-write-denied!
   "Assert that running `sql` on `client` is denied with a 403. Use for the
-   strict case where only forbidden is acceptable (input-dataset writes)."
+  strict case where only forbidden is acceptable (input-dataset writes)."
   [^BigQuery client sql label]
   (testing (format "%s on input dataset is denied" label)
     (try
@@ -180,9 +180,9 @@
 
 (defn expect-denied!
   "Like `expect-write-denied!` but accepts any 4xx — cross-workspace reads can
-   return 403 (forbidden) or 404 (resource not found from caller's POV), and
-   storage/external-table escapes can surface as either. Both mean the
-   operation was correctly denied."
+  return 403 (forbidden) or 404 (resource not found from caller's POV), and
+  storage/external-table escapes can surface as either. Both mean the
+  operation was correctly denied."
   [^BigQuery client sql label]
   (testing (format "%s is denied" label)
     (try
@@ -200,13 +200,13 @@
 
 (defn verify-destroy!
   "Assert post-destroy state for BigQuery workspace isolation: the workspace's
-   output dataset is gone. Called right after `destroy-workspace-isolation!`.
+  output dataset is gone. Called right after `destroy-workspace-isolation!`.
 
-   Note: the natural companion check — \"workspace SA can no longer issue access
-   tokens\" — is *not* asserted because GCP IAM propagation of
-   `deleteServiceAccount` is documented as taking up to 24 hours: deleted
-   service accounts can keep issuing tokens during that window. Dataset
-   deletion is reliable; SA deletion is not (immediately)."
+  Note: the natural companion check — \"workspace SA can no longer issue access
+  tokens\" — is *not* asserted because GCP IAM propagation of
+  `deleteServiceAccount` is documented as taking up to 24 hours: deleted
+  service accounts can keep issuing tokens during that window. Dataset
+  deletion is reliable; SA deletion is not (immediately)."
   [project-id ^BigQuery admin-client out-dataset]
   (testing "workspace output dataset is dropped"
     (let [ds-id (DatasetId/of project-id out-dataset)
@@ -216,8 +216,8 @@
 
 (defn delete-sa-direct!
   "Belt-and-suspenders SA deletion that bypasses `destroy-workspace-isolation!` —
-   call from `finally` so we always attempt to clean up the workspace SA even
-   when destroy itself failed mid-run."
+  call from `finally` so we always attempt to clean up the workspace SA even
+  when destroy itself failed mid-run."
   [^IAMClient iam-client project-id workspace]
   (let [sa-id    (#'bigquery.ws/ws-service-account-id workspace)
         sa-email (format "%s@%s.iam.gserviceaccount.com" sa-id project-id)

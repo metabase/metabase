@@ -105,8 +105,8 @@
 
 (def ^:private construct-query-mcp-output-malli
   "MCP-visible output of `construct_query`.
-   The agent_api endpoint returns `{:query base64}`; the MCP body transform stores that and emits
-   `{:query_handle}`."
+  The agent_api endpoint returns `{:query base64}`; the MCP body transform stores that and emits
+  `{:query_handle}`."
   [:map
    [:query_handle
     {:tool/description (str "Opaque UUID handle for the stored query. "
@@ -129,8 +129,8 @@
 
 (defn- apply-schema-overrides
   "Replace `:inputSchema`/`:outputSchema` on tools whose MCP-visible shape differs from the wire shape.
-   The `overrides-cover-known-tools-test` test asserts every key here matches a real tool name; a
-   misspelled or drifted key would otherwise silently no-op and leave the wire shape published."
+  The `overrides-cover-known-tools-test` test asserts every key here matches a real tool name; a
+  misspelled or drifted key would otherwise silently no-op and leave the wire shape published."
   [tools]
   (mapv (fn [{tool-name :name :as tool}]
           (cond-> tool
@@ -161,7 +161,7 @@
 
 (defn list-tools
   "Return the tool definitions suitable for MCP `tools/list` responses.
-   When `token-scopes` is provided, only tools whose scope matches are included."
+  When `token-scopes` is provided, only tools whose scope matches are included."
   [token-scopes]
   (let [{:keys [tools]} (manifest)]
     (into []
@@ -187,8 +187,8 @@
 
 (defn- format-validation-detail
   "Flatten a defendpoint schema-error map — humanized by `malli.error`, whose leaves
-   are vectors of message strings and whose intermediate nodes may be nested maps —
-   into a compact `field: msg, msg; field: msg` rendering for MCP error text."
+  are vectors of message strings and whose intermediate nodes may be nested maps —
+  into a compact `field: msg, msg; field: msg` rendering for MCP error text."
   [errors-map]
   (->> errors-map
        (map (fn [[k v]]
@@ -201,11 +201,11 @@
 
 (defn- extract-error-message
   "Pull the best human-readable string out of an agent-api error response. Agent-api
-   returns `:specific-errors`/`:errors` for schema-validation 400s (see
-   [[metabase.api.macros/decode-and-validate-params]]) and `:message`/`:error` for
-   other failures — surfacing the validation detail turns \"Invalid body\" into an
-   actionable message for MCP clients. String bodies (e.g. 404 \"Not found.\") are
-   surfaced as the message rather than collapsed to a bare \"Agent API error: <status>\"."
+  returns `:specific-errors`/`:errors` for schema-validation 400s (see
+  [[metabase.api.macros/decode-and-validate-params]]) and `:message`/`:error` for
+  other failures — surfacing the validation detail turns \"Invalid body\" into an
+  actionable message for MCP clients. String bodies (e.g. 404 \"Not found.\") are
+  surfaced as the message rather than collapsed to a bare \"Agent API error: <status>\"."
   [response]
   (let [body                                              (:body response)
         body-map                                          (when (map? body) body)
@@ -226,10 +226,10 @@
 
 (defn- resolve-query-arg
   "Resolve the query argument for tools that accept a handle.
-   If :query_handle is present, look it up and replace with :query.
-   If :query is itself a UUID (the LLM passed the handle in the wrong field), resolve
-   it too (and log a warning).
-   Returns updated arguments, or ::handle-not-found if the handle doesn't exist."
+  If :query_handle is present, look it up and replace with :query.
+  If :query is itself a UUID (the LLM passed the handle in the wrong field), resolve
+  it too (and log a warning).
+  Returns updated arguments, or ::handle-not-found if the handle doesn't exist."
   [session-id tool-name arguments]
   (let [user-id api/*current-user-id*]
     (cond
@@ -255,14 +255,14 @@
 
 (defn- make-store-construct-query-result
   "Build a body-transform fn for construct_query.
-   The fn stores the base64 payload server-side under the calling user (with the current MCP session id
-   recorded for cleanup) and returns {:query_handle uuid} instead of {:query base64}, so the LLM carries
-   a short opaque UUID rather than the full base64 string.
-   The optional prompt is stored with the handle for later feedback submission.
+  The fn stores the base64 payload server-side under the calling user (with the current MCP session id
+  recorded for cleanup) and returns {:query_handle uuid} instead of {:query base64}, so the LLM carries
+  a short opaque UUID rather than the full base64 string.
+  The optional prompt is stored with the handle for later feedback submission.
 
-   The fn validates its emitted shape against `construct-query-mcp-output-malli` — the same schema the
-   manifest publishes as the tool's outputSchema — keeping the published schema and the actual emitted
-   body in lockstep."
+  The fn validates its emitted shape against `construct-query-mcp-output-malli` — the same schema the
+  manifest publishes as the tool's outputSchema — keeping the published schema and the actual emitted
+  body in lockstep."
   [session-id user-id]
   (fn [body]
     (if-let [encoded (:query body)]
@@ -283,9 +283,9 @@
 
 (defn- text-content
   "Wrap a value as an MCP tool-call result.
-   Map/sequential values are surfaced as `structuredContent` — MCP spec requires this for any tool that
-   declares an `outputSchema`.
-   The `content` array carries a text serialization for clients that don't consume structuredContent."
+  Map/sequential values are surfaced as `structuredContent` — MCP spec requires this for any tool that
+  declares an `outputSchema`.
+  The `content` array carries a text serialization for clients that don't consume structuredContent."
   [v]
   (cond-> {:content [{:type "text" :text (if (string? v) v (json/encode v))}]}
     (or (map? v) (sequential? v)) (assoc :structuredContent v)))
@@ -299,10 +299,10 @@
 
 (defn- capture-streaming-response
   "Execute a StreamingResponse in-process by writing to a ByteArrayOutputStream,
-   then parse the JSON output and return it as MCP text content.
+  then parse the JSON output and return it as MCP text content.
 
-   This buffers the full response in memory (~120KB for 200 rows), which is fine for
-   the row limits we enforce."
+  This buffers the full response in memory (~120KB for 200 rows), which is fine for
+  the row limits we enforce."
   [^StreamingResponse response]
   (let [baos         (ByteArrayOutputStream.)
         canceled-chan (a/promise-chan)
@@ -312,9 +312,9 @@
 
 (defn- deliver-agent-api-response
   "Dispatch to agent API routes and deliver response to promise.
-   For POST requests, `params` is sent as the request body.
-   For GET/DELETE requests, `params` is sent as parsed query params.
-   Materializes StreamingResponse bodies in-process before delivering."
+  For POST requests, `params` is sent as the request body.
+  For GET/DELETE requests, `params` is sent as parsed query params.
+  Materializes StreamingResponse bodies in-process before delivering."
   [result method path token-scopes params]
   (agent-api/routes
    (cond-> {:request-method   method
@@ -335,14 +335,14 @@
 
 (defn- invoke-agent-api
   "Invoke an Agent API endpoint with a synthetic Ring request.
-   Returns MCP content (text-content on success, error-content on failure).
-   For POST, `params` becomes the request body; for GET/DELETE, `params` becomes query-params.
+  Returns MCP content (text-content on success, error-content on failure).
+  For POST, `params` becomes the request body; for GET/DELETE, `params` becomes query-params.
 
-   Propagates `token-scopes` from the original MCP request so that scope restrictions
-   are preserved through the synthetic request.
+  Propagates `token-scopes` from the original MCP request so that scope restrictions
+  are preserved through the synthetic request.
 
-   `body-transform-fn`, when provided, is applied to the 200 response body before
-   wrapping with text-content. Used to post-process construct_query results."
+  `body-transform-fn`, when provided, is applied to the 200 response body before
+  wrapping with text-content. Used to post-process construct_query results."
   [method path token-scopes params & {:keys [body-transform-fn]}]
   (let [result (promise)]
     (deliver-agent-api-response result method path token-scopes params)
@@ -361,7 +361,7 @@
 
 (defn- interpolate-path
   "Replace `{param}` placeholders in `path` with values from `arguments`.
-   Returns `[resolved-path remaining-args]` where remaining-args has path params removed."
+  Returns `[resolved-path remaining-args]` where remaining-args has path params removed."
   [path arguments]
   (let [params    (re-seq #"\{([^}]+)\}" path)
         resolved  (reduce (fn [p [placeholder k]]
@@ -377,15 +377,15 @@
 
 (defn- strip-api-prefix
   "Strip the `/api/agent` prefix from manifest paths, since `invoke-agent-api`
-   calls `agent-api/routes` directly which expects `/v1/...` paths."
+  calls `agent-api/routes` directly which expects `/v1/...` paths."
   [path]
   (str/replace-first path #"^/api/agent" ""))
 
 (defn- dispatch-via-agent-api
   "Generic dispatch for tools whose responseFormat is \"json\".
-   Looks up method/path from the tool definition, interpolates path params,
-   and calls `invoke-agent-api`. For POST requests, remaining args are sent as the
-   request body. For GET/DELETE requests, remaining args are sent as query params."
+  Looks up method/path from the tool definition, interpolates path params,
+  and calls `invoke-agent-api`. For POST requests, remaining args are sent as the
+  request body. For GET/DELETE requests, remaining args are sent as query params."
   [tool-def arguments token-scopes session-id]
   (let [{:keys [method path]} (:endpoint tool-def)
         tool-name             (:name tool-def)
@@ -419,18 +419,18 @@
 ;; normalization runs (e.g. as a pre-processing step inside `call-tool`).
 (defn- drop-nil-args
   "Strip nil-valued top-level keys from MCP tool arguments.
-   Nested values are left alone — the strict-tool transform only rewrites top-level properties."
+  Nested values are left alone — the strict-tool transform only rewrites top-level properties."
   [arguments]
   (when arguments
     (into {} (remove (comp nil? val)) arguments)))
 
 (defn call-tool
   "Dispatch an MCP `tools/call` request to the appropriate handler.
-   `token-scopes` from the original MCP session are propagated to the synthetic
-   agent-api request so that scope restrictions are enforced by the agent API's
-   `defendpoint` middleware. UI tool response-fns receive `{:session-id session-id}`
-   as opts in case a tool needs to scope reads to the calling MCP session.
-   Returns MCP content on success, or error content on failure."
+  `token-scopes` from the original MCP session are propagated to the synthetic
+  agent-api request so that scope restrictions are enforced by the agent API's
+  `defendpoint` middleware. UI tool response-fns receive `{:session-id session-id}`
+  as opts in case a tool needs to scope reads to the calling MCP session.
+  Returns MCP content on success, or error content on failure."
   [token-scopes session-id tool-name arguments]
   (let [arguments (drop-nil-args arguments)]
     (if-let [ui-tool (some #(when (= tool-name (:name %)) %) (mcp.resources/list-ui-tools))]

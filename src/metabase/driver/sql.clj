@@ -145,8 +145,8 @@
 
 (defmulti db-slot-value
   "Returns the project-id / catalog string a driver places in the `db` segment of a fully-qualified
-   table reference. Meaningful only for drivers whose [[table-qualification-style]] includes a `db`
-   segment; returns `nil` otherwise."
+  table reference. Meaningful only for drivers whose [[table-qualification-style]] includes a `db`
+  segment; returns `nil` otherwise."
   {:added "0.62.0" :arglists '([driver database])}
   (fn [driver _] driver)
   :hierarchy #'driver/hierarchy)
@@ -276,9 +276,9 @@
 
 (defn validate-impersonated-query*
   "Validates a native query by parsing it and ensuring that it is a single statement.
-   Checks driver.conn/*connection-type* to determine if it is a regular impersonated query or a custom action.
-   For regular impersonated queries, ensure that it is a single select statement.
-   For custom actions, ensure that it is a single write statement (insert, update, delete)."
+  Checks driver.conn/*connection-type* to determine if it is a regular impersonated query or a custom action.
+  For regular impersonated queries, ensure that it is a single select statement.
+  For custom actions, ensure that it is a single write statement (insert, update, delete)."
   [driver query]
   (update query :stages
           (fn [stages]

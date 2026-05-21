@@ -16,7 +16,7 @@
 
 (def ^:private generate-sql-tool
   "Tool definition for structured SQL output.
-   Forces the model to return a JSON object with sql and optional explanation."
+  Forces the model to return a JSON object with sql and optional explanation."
   {:name        "generate_sql"
    :description "Generate SQL query from the user's request. Always use this tool to return your response."
    :input_schema {:type       "object"
@@ -45,7 +45,7 @@
 
 (defn- extract-tool-input
   "Extract the tool input from Anthropic messages response.
-   Returns the parsed JSON input from the tool_use content block."
+  Returns the parsed JSON input from the tool_use content block."
   [response-body]
   (let [content (:content response-body)]
     (->> content
@@ -80,15 +80,15 @@
 
 (defn chat-completion
   "Send a chat completion request to Anthropic.
-   Returns a map with:
-   - :result      - Map with :sql and optionally :explanation from the tool response
-   - :usage       - Map with :model, :prompt (input tokens), :completion (output tokens)
-   - :duration-ms - Request duration in milliseconds
+  Returns a map with:
+  - :result      - Map with :sql and optionally :explanation from the tool response
+  - :usage       - Map with :model, :prompt (input tokens), :completion (output tokens)
+  - :duration-ms - Request duration in milliseconds
 
-   Options:
-   - :model    - Model to use (default: configured model or claude-sonnet-4-20250514)
-   - :system   - System prompt
-   - :messages - Vector of {:role :content} maps for conversation history"
+  Options:
+  - :model    - Model to use (default: configured model or claude-sonnet-4-20250514)
+  - :system   - System prompt
+  - :messages - Vector of {:role :content} maps for conversation history"
   [{:keys [model system messages]}]
   (let [model      (or model (llm.settings/llm-anthropic-model))
         request    {:model    model

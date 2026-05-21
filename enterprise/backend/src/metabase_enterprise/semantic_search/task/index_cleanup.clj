@@ -85,8 +85,8 @@
 
 (defn- stale-index-tables
   "Returns a list of semantic search index tables that are considered stale and can be dropped.
-   An index is considered stale if it is not the active index and has not been used or updated
-   within the retention period defined in settings."
+  An index is considered stale if it is not the active index and has not been used or updated
+  within the retention period defined in settings."
   [pgvector {:keys [metadata-table-name control-table-name]}]
   (let [retention-cutoff     (t/minus (t/offset-date-time) (t/hours (semantic.settings/stale-index-retention-hours)))
         stale-index-sql (-> {:select [:meta.table_name]

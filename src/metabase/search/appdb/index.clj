@@ -64,7 +64,7 @@
 
 (defn sync-from-restored-db!
   "Re-sync tracking atoms with the current database state.
-   Used after snapshot restore where the index tables are already present."
+  Used after snapshot restore where the index tables are already present."
   []
   (reset! next-sync-at nil)
   (sync-tracking-atoms!))
@@ -250,9 +250,9 @@
 
 (defn- strip-junk-chars
   "Replace control characters (\\p{Cc}: C0 controls including \\t \\n \\r, DEL, C1 controls) and surrogate
-   code points (\\p{Cs}) with a single space so they act as token boundaries for full-text indexing instead
-   of accidentally fusing adjacent words. Postgres also outright rejects literal NUL (0x00) in text columns,
-   so this is required to keep reindex batches from aborting. Non-string values pass through unchanged."
+  code points (\\p{Cs}) with a single space so they act as token boundaries for full-text indexing instead
+  of accidentally fusing adjacent words. Postgres also outright rejects literal NUL (0x00) in text columns,
+  so this is required to keep reindex batches from aborting. Non-string values pass through unchanged."
   [v]
   (cond-> v (string? v) (str/replace #"(?U)[\p{Cc}\p{Cs}]" " ")))
 
@@ -367,7 +367,7 @@
 
 (defn index-docs!
   "Indexes the documents. The context should be :search/updating or :search/reindexing.
-   Context should be :search/updating or :search/reindexing to help control how to manage the updates"
+  Context should be :search/updating or :search/reindexing to help control how to manage the updates"
   [context document-reducible]
   (tracing/with-span :search "search.appdb.index-docs" {:search/context (name context)}
     (transduce (comp (partition-all insert-batch-size)

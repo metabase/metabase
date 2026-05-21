@@ -321,10 +321,10 @@
 
 (defn run-in-scope-locked
   "Run function `f` in a scope on the Liquibase instance `liquibase`.
-   Liquibase scopes are used to hold configuration and parameters (akin to binding dynamic variables in
-   Clojure). This function initializes the database and the resource accessor which are often required.
-   In order to ensure that mutual exclusion of these scopes across all running Metabase instances, we take a lock
-   in the app database. It's the responsibility of inner functions which require the lock to call [[assert-locked]]."
+  Liquibase scopes are used to hold configuration and parameters (akin to binding dynamic variables in
+  Clojure). This function initializes the database and the resource accessor which are often required.
+  In order to ensure that mutual exclusion of these scopes across all running Metabase instances, we take a lock
+  in the app database. It's the responsibility of inner functions which require the lock to call [[assert-locked]]."
   [^Liquibase liquibase f]
   ;; Disallow nested locking in dev and CI, in order to force a clear lexical boundary where locking begins.
   ;; Inner functions that require the lock to be held should
@@ -353,9 +353,9 @@
 
 (defmacro with-scope-locked
   "Run `body` in a scope on the Liquibase instance `liquibase`.
-   Liquibase scopes are used to hold configuration and parameters (akin to binding dynamic variables in
-   Clojure). This function initializes the database and the resource accessor which are often required.
-   The underlying locks are re-entrant, so it is safe to nest these blocks."
+  Liquibase scopes are used to hold configuration and parameters (akin to binding dynamic variables in
+  Clojure). This function initializes the database and the resource accessor which are often required.
+  The underlying locks are re-entrant, so it is safe to nest these blocks."
   {:style/indent 1}
   [liquibase & body]
   `(run-in-scope-locked ~liquibase (fn [] ~@body)))

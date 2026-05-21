@@ -18,7 +18,7 @@
 
 (defn- metering-interval-ms
   "Returns the metering interval in milliseconds, clamped between 1 minute and 12 hours.
-   Defaults to 15 minutes if not set."
+  Defaults to 15 minutes if not set."
   []
   (if-let [v (settings/send-metering-interval-ms)]
     (max min-interval-ms (min max-interval-ms v))

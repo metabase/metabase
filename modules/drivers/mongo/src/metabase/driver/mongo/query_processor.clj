@@ -103,13 +103,13 @@
 
 (def ^:dynamic ^:private *next-alias-index*
   "Tracks index of next alias for join compilation. It is bound in [[mbql->native]] to `volatile!` valued 0. Hence
-   every compilation starts with a fresh 0. Indices are used in [[handle-join]] to make aliases unique. Index values
-   are gathered using [[next-alias-index]], hence first used index is of value 1."
+  every compilation starts with a fresh 0. Indices are used in [[handle-join]] to make aliases unique. Index values
+  are gathered using [[next-alias-index]], hence first used index is of value 1."
   nil)
 
 (defn- next-alias-index
   "Increment [[*next-alias-index*]] counter and return new index. Further context can be found in
-   [[*next-alias-index*]] docstring."
+  [[*next-alias-index*]] docstring."
   []
   (vswap! *next-alias-index* inc))
 
@@ -1447,15 +1447,15 @@ function(bin) {
 
 (defn- group-and-post-aggregations
   "Mongo is picky about which top-level aggregations it allows with groups. Eg. even
-   though [:/ [:count-if ...] [:count]] is a perfectly fine reduction, it's not allowed. Therefore
-   more complex aggregations are split in two: the reductions are done in `$group` stage after which
-   we do postprocessing in `$addFields` stage to arrive at the final result.
-   The groups are assumed to be independent an collapsed into a single stage, but separate
-   `$addFields` stages are created for post processing so that stages can refer to the results
-   of preceding stages.
-   The intermittent results accrued in `$group` stage are discarded in the final `$project` stage.
-   Meanwhile, cumulative aggregations cannot be done in either a `$group` or a `$addFields` stage
-   and instead need their own `$setWindowFields` stage."
+  though [:/ [:count-if ...] [:count]] is a perfectly fine reduction, it's not allowed. Therefore
+  more complex aggregations are split in two: the reductions are done in `$group` stage after which
+  we do postprocessing in `$addFields` stage to arrive at the final result.
+  The groups are assumed to be independent an collapsed into a single stage, but separate
+  `$addFields` stages are created for post processing so that stages can refer to the results
+  of preceding stages.
+  The intermittent results accrued in `$group` stage are discarded in the final `$project` stage.
+  Meanwhile, cumulative aggregations cannot be done in either a `$group` or a `$addFields` stage
+  and instead need their own `$setWindowFields` stage."
   [id breakouts aggregations order-by]
   (let [expanded-ags (map expand-aggregations aggregations)
         group-ags    (mapcat :group expanded-ags)

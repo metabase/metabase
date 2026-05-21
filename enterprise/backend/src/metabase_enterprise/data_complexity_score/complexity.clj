@@ -114,7 +114,7 @@
 ;;;
 (def ^:private ^:const in-clause-chunk-size
   "Cap on the number of table-ids we put into a single `IN (...)` query. PostgreSQL prepared
-   statements top out at 65,535 parameters and we leave headroom for other clauses."
+  statements top out at 65,535 parameters and we leave headroom for other clauses."
   50000)
 
 (defn- table-field-counts
@@ -145,9 +145,9 @@
 
 (defn- ->card-entity
   "Shape a Card row into an entity map for scoring. Cards don't contribute to `:field-count` in
-   v1 — the proposal's +1-per-field rule is about physical Table fields, not Card result columns —
-   so we can skip the fat `result_metadata` column entirely. Measures are a separate first-class
-   model tied to Tables, not Cards, so Cards also don't contribute to `:measure-names`."
+  v1 — the proposal's +1-per-field rule is about physical Table fields, not Card result columns —
+  so we can skip the fat `result_metadata` column entirely. Measures are a separate first-class
+  model tied to Tables, not Cards, so Cards also don't contribute to `:measure-names`."
   [{:keys [id name type]}]
   {:id            id
    :name          name
@@ -172,10 +172,10 @@
 
 (defn- metabot-collection-scope-ids
   "Set of collection IDs the internal Metabot can see — its `collection_id` plus descendants.
-   nil when no collection scope is configured (Metabot retrieves from everywhere). If the
-   collection row can't be loaded (stale/invalid id) we still return a singleton set with the
-   raw id so the catalog matches `metabot-metrics-and-models-query`, which filters on the raw
-   `collection_id` and returns an empty result rather than dropping the filter."
+  nil when no collection scope is configured (Metabot retrieves from everywhere). If the
+  collection row can't be loaded (stale/invalid id) we still return a singleton set with the
+  raw id so the catalog matches `metabot-metrics-and-models-query`, which filters on the raw
+  `collection_id` and returns an empty result rather than dropping the filter."
   [collection-id]
   (when collection-id
     (into #{collection-id}
@@ -184,8 +184,8 @@
 
 (defn- verified-card-id-set
   "Set of Card ids whose most-recent moderation review is `verified`. Called only when
-   `metabot-scope` requests verified-only filtering — avoids a `moderation_review` join on the
-   universe Card select by pushing the check into a small auxiliary lookup."
+  `metabot-scope` requests verified-only filtering — avoids a `moderation_review` join on the
+  universe Card select by pushing the check into a small auxiliary lookup."
   []
   (t2/select-fn-set :moderated_item_id :model/ModerationReview
                     :moderated_item_type "card"
@@ -194,17 +194,17 @@
 
 (defn- routed-child-database-id-set
   "Set of database ids whose `router_database_id` is non-nil — the routed child databases whose
-   tables Metabot/search hide. Tables with `:db_id` in this set are excluded from the `:metabot`
-   catalog, mirroring the table-visibility rule in `metabase.warehouse-schema.models.table`."
+  tables Metabot/search hide. Tables with `:db_id` in this set are excluded from the `:metabot`
+  catalog, mirroring the table-visibility rule in `metabase.warehouse-schema.models.table`."
   []
   (t2/select-fn-set :id :model/Database :router_database_id [:not= nil]))
 
 (defn- pick-by-row
   "Filter `entities` by `row-pred` applied to the correspondingly-indexed `rows`. Preserves
-   reference identity on the kept entity maps so library/metabot vectors share map instances
-   with the universe vector rather than allocating fresh ones.
-   A nil `row-pred` short-circuits to `[]` — callers whose filter is statically empty (e.g. no
-   Library collections on this instance) pass nil to skip enumeration entirely."
+  reference identity on the kept entity maps so library/metabot vectors share map instances
+  with the universe vector rather than allocating fresh ones.
+  A nil `row-pred` short-circuits to `[]` — callers whose filter is statically empty (e.g. no
+  Library collections on this instance) pass nil to skip enumeration entirely."
   [row-pred rows entities]
   (if row-pred
     (into []
@@ -214,20 +214,20 @@
 
 (defn- enumerate-catalogs
   "One-pass enumeration of all three scoring catalogs. Returns
-   `{:library [...] :universe [...] :metabot [...]}` where entity maps are shared *by reference*
-   across catalogs — a Card or Table that appears in more than one catalog is one map in memory,
-   not three.
+  `{:library [...] :universe [...] :metabot [...]}` where entity maps are shared *by reference*
+  across catalogs — a Card or Table that appears in more than one catalog is one map in memory,
+  not three.
 
-   An earlier revision fetched the three catalogs separately, which duplicated DB work up to 3×
-   per scoring run — most expensively on [[table-field-counts]] and [[table-measure-names]],
-   each a `GROUP BY` scan over `metabase_field` / `measure`. We now fetch the universe superset
-   once and derive the `:library` and `:metabot` subsets by in-memory filter, which collapses 6
-   DB round-trips + 2 auxiliaries into 4 + up-to-2 and lets the aggregates run once each.
+  An earlier revision fetched the three catalogs separately, which duplicated DB work up to 3×
+  per scoring run — most expensively on [[table-field-counts]] and [[table-measure-names]],
+  each a `GROUP BY` scan over `metabase_field` / `measure`. We now fetch the universe superset
+  once and derive the `:library` and `:metabot` subsets by in-memory filter, which collapses 6
+  DB round-trips + 2 auxiliaries into 4 + up-to-2 and lets the aggregates run once each.
 
-   `metabot-scope` is `{:verified-only? <bool> :collection-id <nil|Long>}` describing how the
-   internal Metabot narrows its Cards further — it only adds filters, never widens. The caller
-   owns the scope decision (premium-feature gate + Metabot row lookup); this namespace does not
-   read settings, premium-feature gates, or Metabot rows directly."
+  `metabot-scope` is `{:verified-only? <bool> :collection-id <nil|Long>}` describing how the
+  internal Metabot narrows its Cards further — it only adds filters, never widens. The caller
+  owns the scope decision (premium-feature gate + Metabot row lookup); this namespace does not
+  read settings, premium-feature gates, or Metabot rows directly."
   [{:keys [verified-only? collection-id]}]
   (let [library-cids      (library-collection-ids)
         metabot-cids      (metabot-collection-scope-ids collection-id)
@@ -283,7 +283,7 @@
 
 (defn- repeated-names
   "Count of name occurrences past the first (normalized for comparison). Single pass, no
-   intermediate frequency map. `raw-names` may contain nils — they're skipped."
+  intermediate frequency map. `raw-names` may contain nils — they're skipped."
   [raw-names]
   (second
    (reduce (fn [[seen repeats] raw-name]
@@ -316,12 +316,12 @@
 
 (defn- synonym-pair?
   "True when two vectors' cosine similarity is ≥ sqrt(`threshold-sq`).
-   Uses the squared form of the inequality — `(a·b)² ≥ t² · ‖a‖² · ‖b‖²` when `a·b ≥ 0`, avoiding
-   two `Math/sqrt` calls a direct cosine-similarity computation would need.
-   The non-negative guard keeps it sound (squaring a negative `a·b` would flip the inequality).
+  Uses the squared form of the inequality — `(a·b)² ≥ t² · ‖a‖² · ‖b‖²` when `a·b ≥ 0`, avoiding
+  two `Math/sqrt` calls a direct cosine-similarity computation would need.
+  The non-negative guard keeps it sound (squaring a negative `a·b` would flip the inequality).
 
-   `norms-product` is `‖a‖² · ‖b‖²` precomputed by the caller; folding it into one arg keeps us
-   within Clojure's 4-argument cap for primitive-typed `defn`s."
+  `norms-product` is `‖a‖² · ‖b‖²` precomputed by the caller; folding it into one arg keeps us
+  within Clojure's 4-argument cap for primitive-typed `defn`s."
   [^floats a ^floats b ^double norms-product ^double threshold-sq]
   (and (pos? norms-product)
        (let [dot-ab (dot a b)]
@@ -330,13 +330,13 @@
 
 (defn- synonym-pair-count
   "Count of vector pairs whose cosine similarity is ≥ `threshold`. Walks the upper triangle of the
-   N×N pair matrix; each vector's `‖v‖²` is precomputed once and reused across every comparison it
-   participates in.
+  N×N pair matrix; each vector's `‖v‖²` is precomputed once and reused across every comparison it
+  participates in.
 
-   TODO: this is O(N²) in the distinct-name count. Fine while the signal source is the shared
-   search-index (bounded by what the indexer has seen), but once we introduce a dedicated name-only
-   embedder this should revisit — either as a chunked `M·Mᵀ` via Neanderthal/dtype-next or as a
-   dedicated pgvector name-index doing the join in SQL."
+  TODO: this is O(N²) in the distinct-name count. Fine while the signal source is the shared
+  search-index (bounded by what the indexer has seen), but once we introduce a dedicated name-only
+  embedder this should revisit — either as a chunked `M·Mᵀ` via Neanderthal/dtype-next or as a
+  dedicated pgvector name-index doing the join in SQL."
   [embeddings threshold]
   (let [n                 (count embeddings)
         threshold-sq      (* threshold threshold)
@@ -378,7 +378,7 @@
 
 (defn- nil-safe-sum
   "Sum `xs` (numbers and/or nils). Returns nil if any element is nil — used to cascade an
-   uncomputed sub-score through aggregates instead of silently low-biasing the total with zeros."
+  uncomputed sub-score through aggregates instead of silently low-biasing the total with zeros."
   [xs]
   (when (every? some? xs)
     (reduce + xs)))

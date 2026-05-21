@@ -54,15 +54,15 @@
 
 (defmacro with-fallback-template
   "Test-only: install an inline Mustache fallback for the embed-mcp template for
-   the duration of `body`. Backend-only test runs don't produce the built template,
-   so tests that exercise `resources/read` need this."
+  the duration of `body`. Backend-only test runs don't produce the built template,
+  so tests that exercise `resources/read` need this."
   [& body]
   `(do-with-fallback-template (fn [] ~@body)))
 
 (defn render-embed-mcp-template
   "Render the embed-mcp.html Mustache template with the given vars map.
-   Expected keys: :instanceUrl (JSON-encoded), :instanceUrlRaw, :sessionToken (JSON-encoded or nil),
-   :mcpSessionId (JSON-encoded or nil)."
+  Expected keys: :instanceUrl (JSON-encoded), :instanceUrlRaw, :sessionToken (JSON-encoded or nil),
+  :mcpSessionId (JSON-encoded or nil)."
   [vars]
   (cond
     (io/resource embed-mcp-template-path)
@@ -89,9 +89,9 @@
 
 (defn- chatgpt-client?
   "True when the in-flight request's User-Agent identifies the ChatGPT MCP/Apps
-   client. ChatGPT empirically sends `openai-mcp/...`; Claude rejects
-   `_meta.ui.domain` unless it's a Claude-issued subdomain, so we gate the field
-   on this check."
+  client. ChatGPT empirically sends `openai-mcp/...`; Claude rejects
+  `_meta.ui.domain` unless it's a Claude-issued subdomain, so we gate the field
+  on this check."
   []
   (boolean (some-> (request/current-request)
                    (get-in [:headers "user-agent"])
@@ -99,9 +99,9 @@
 
 (defn- site-origin
   "Origin (scheme://host[:port]) extracted from `site-url`, dropping any path segment.
-   ChatGPT's MCP host treats `_meta.ui.domain` and the CSP domain lists as origins, so an instance
-   hosted under a subpath would otherwise leak the path and fail validation. Returns nil when
-   `site-url` is unset — callers degrade gracefully rather than NPE on a misconfigured instance."
+  ChatGPT's MCP host treats `_meta.ui.domain` and the CSP domain lists as origins, so an instance
+  hosted under a subpath would otherwise leak the path and fail validation. Returns nil when
+  `site-url` is unset — callers degrade gracefully rather than NPE on a misconfigured instance."
   []
   (when-let [url (system/site-url)]
     (let [^URI uri (URI. url)
@@ -174,7 +174,7 @@
 
 (defn- malli->ui-output-schema
   "Convert a Malli schema for a UI-tool output into the published JSON Schema.
-   No strict transform — outputs aren't constrained by OpenAI's strict-tool rules."
+  No strict transform — outputs aren't constrained by OpenAI's strict-tool rules."
   [schema]
   (tools-manifest/malli->json-schema schema))
 
@@ -220,7 +220,7 @@
 
 (defn check-resource-access
   "Check whether `uri` exists and is accessible under `token-scopes`.
-   Returns :ok, :not-found, or :scope-denied."
+  Returns :ok, :not-found, or :scope-denied."
   [uri token-scopes]
   (if-let [{:keys [scope]} (get-in @registry [:uri->resource uri])]
     (if (mcp.scope/public-or-matches? token-scopes scope)
@@ -230,9 +230,9 @@
 
 (defn read-resource
   "Read a registered resource by URI, gated by `token-scopes`. Returns one of
-   `{:status :ok :contents [...]}`, `{:status :scope-denied}`, or
-   `{:status :not-found}`. Single registry lookup keeps the gate atomic with the
-   render, so callers cannot bypass the scope check."
+  `{:status :ok :contents [...]}`, `{:status :scope-denied}`, or
+  `{:status :not-found}`. Single registry lookup keeps the gate atomic with the
+  render, so callers cannot bypass the scope check."
   [uri token-scopes opts]
   (if-let [{:keys [render-fn scope ui?] :as resource} (get-in @registry [:uri->resource uri])]
     (if (mcp.scope/public-or-matches? token-scopes scope)
@@ -247,8 +247,8 @@
 
 (defn classpath-text-resource
   "Build a `:render-fn` that returns the contents of `path` on the classpath.
-   Throws on registration if the file is missing, surfacing a clear error at boot
-   rather than the first `resources/read` call."
+  Throws on registration if the file is missing, surfacing a clear error at boot
+  rather than the first `resources/read` call."
   [path]
   (let [url (io/resource path)]
     (when-not url

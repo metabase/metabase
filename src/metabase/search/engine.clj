@@ -53,7 +53,7 @@
 
 (defmulti init!
   "Ensure that the search index exists, and is ready to take search queries.
-   Returns a map of the number of documents indexed in each model"
+  Returns a map of the number of documents indexed in each model"
   {:arglists '([engine opts])}
   (fn [engine _opts]
     engine))
@@ -70,8 +70,8 @@
 
 (defmulti sync-from-restored-db!
   "Reconcile in-memory search state with what's currently in the database.
-   Used after snapshot restore where the DB already contains valid index data.
-   Engines that store their index in the appdb can skip reindexing."
+  Used after snapshot restore where the DB already contains valid index data.
+  Engines that store their index in the appdb can skip reindexing."
   {:arglists '([engine])}
   identity)
 
@@ -83,7 +83,7 @@
 
 (defn supported-engines
   "List the search engines that are supported, in order of usage preference.
-   The configured engine comes first, if it is supported."
+  The configured engine comes first, if it is supported."
   []
   (let [configured-engine (some->> (settings/search-engine) name (keyword "search.engine"))
         potential-engines (cond->> default-engine-precedence configured-engine (cons configured-engine))]
@@ -91,7 +91,7 @@
 
 (defn active-engines
   "A list of supported search engines for which we will maintain an index, in order of usage preference.
-   Excludes :search.engine/in-place, which does not use an index."
+  Excludes :search.engine/in-place, which does not use an index."
   []
   (remove #{:search.engine/in-place} (supported-engines)))
 
@@ -103,7 +103,7 @@
 
 (defmulti disjunction
   "Given multiple terms to search for, reduce this to a search expression that matches any of them in a single search.
-   If this is not possible, return a list of terms to be searched for separately."
+  If this is not possible, return a list of terms to be searched for separately."
   {:arglists '([search-engine terms])}
   (fn [search-engine _terms] search-engine))
 

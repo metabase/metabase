@@ -86,7 +86,7 @@
 
 (defn- with-search-engine-mocks!
   "Sets up search engine mocks for the semantic & appdb backends for testing fallback behavior.
-   fallback-results can be a collection of results or a function that takes a context."
+  fallback-results can be a collection of results or a function that takes a context."
   [semantic-results fallback-results thunk]
   (with-redefs [semantic.pgvector-api/query (fn [_pgvector _index-metadata _search-ctx]
                                               (if (map? semantic-results)

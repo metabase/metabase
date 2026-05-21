@@ -145,11 +145,11 @@
 
 (defn- field-def->row
   "Convert a FieldDefinition to a Field row map for fake-sync insertion.
-   Creates the metadata row that would normally come from syncing the database.
-   Handles three forms of base-type:
-   1. {:native \"BINARY(8)\"} - driver-specific native type string
-   2. {:natives {:postgres \"BYTEA\" :redshift \"VARBYTE\"}} - per-driver native types
-   3. :type/Text - standard base type keyword"
+  Creates the metadata row that would normally come from syncing the database.
+  Handles three forms of base-type:
+  1. {:native \"BINARY(8)\"} - driver-specific native type string
+  2. {:natives {:postgres \"BYTEA\" :redshift \"VARBYTE\"}} - per-driver native types
+  3. :type/Text - standard base type keyword"
   [driver position {:keys [field-name base-type semantic-type visibility-type
                            effective-type coercion-strategy field-comment fk pk?]}]
   (let [database-type    (cond
@@ -191,7 +191,7 @@
 
 (defn- table-def->rows
   "Convert a TableDefinition to a map of {:table-name, :table-row, :field-rows}.
-   This is a pure function - no database insertion."
+  This is a pure function - no database insertion."
   [driver db-id database-name {:keys [table-name table-comment field-definitions] :as _table-def}]
   (let [schema          (tx/fake-sync-schema driver)
         sync-table-name (tx/fake-sync-table-name driver database-name table-name)
@@ -224,8 +224,8 @@
 
 (defn- dbdef->fake-sync-rows
   "Convert database definition to table and field rows for fake sync.
-   This is a pure function - no database insertion.
-   Returns a vector of {:table-name, :table-row, :field-rows} maps."
+  This is a pure function - no database insertion.
+  Returns a vector of {:table-name, :table-row, :field-rows} maps."
   [driver db-id {:keys [database-name table-definitions]}]
   (mapv #(table-def->rows driver db-id database-name %) table-definitions))
 
@@ -233,7 +233,7 @@
 
 (defn- insert-fake-sync-rows!
   "Insert pre-computed table and field rows into the app DB.
-   Returns map of table-name -> inserted table for FK resolution."
+  Returns map of table-name -> inserted table for FK resolution."
   [rows]
   (into {}
         (for [{:keys [table-name table-row field-rows]} rows]
@@ -266,8 +266,8 @@
 
 (defn- fake-sync-database!
   "Insert Table and Field rows directly from the dbdef instead of calling sync-database!.
-   This skips network calls for metadata sync, which is useful for slow remote databases like Redshift.
-   When scan is :full, also runs fingerprinting to enable fingerprint-dependent tests."
+  This skips network calls for metadata sync, which is useful for slow remote databases like Redshift.
+  When scan is :full, also runs fingerprinting to enable fingerprint-dependent tests."
   [driver {:keys [database-name] :as database-definition} db scan]
   (log/infof "Using FAKE SYNC for %s Database %s (skipping network calls to database)" driver database-name)
   (let [rows            (dbdef->fake-sync-rows driver (:id db) database-definition)

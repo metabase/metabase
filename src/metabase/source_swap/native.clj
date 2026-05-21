@@ -32,7 +32,7 @@
 
 (defn- process-tokens
   "Process a sequence of parsed tokens, returning {:sql ... :placeholders ... :idx ...}.
-   Recursively handles optional clause contents."
+  Recursively handles optional clause contents."
   [tokens initial-idx]
   (loop [tokens tokens
          sql ""
@@ -68,10 +68,10 @@
 
 (defn- sql->placeholders
   "Convert SQL with template tags to SQL with placeholders.
-   - Template tags {{x}} become __MB_N__ placeholders
-   - Optional clauses [[...]] become /*__MB_OPT_START__*/.../*__MB_OPT_END__*/
+  - Template tags {{x}} become __MB_N__ placeholders
+  - Optional clauses [[...]] become /*__MB_OPT_START__*/.../*__MB_OPT_END__*/
 
-   Returns {:sql \"...\" :placeholders {\"__MB_0__\" \"{{x}}\" ...}}"
+  Returns {:sql \"...\" :placeholders {\"__MB_0__\" \"{{x}}\" ...}}"
   [sql]
   (let [parsed (lib.params.parse/parse sql)
         {:keys [sql placeholders]} (process-tokens parsed 0)]
@@ -82,9 +82,9 @@
 
 (defn- restore-placeholders
   "Restore original syntax from placeholder SQL.
-   - Replaces __MB_N__ with original {{tag}} syntax
-   - Replaces /*__MB_OPT_START__*/ and /*__MB_OPT_END__*/ markers back to [[ and ]]
-   - Handles spacing variations SQL parsers may introduce in comments"
+  - Replaces __MB_N__ with original {{tag}} syntax
+  - Replaces /*__MB_OPT_START__*/ and /*__MB_OPT_END__*/ markers back to [[ and ]]
+  - Handles spacing variations SQL parsers may introduce in comments"
   [sql placeholders]
   (-> (reduce (fn [s [placeholder original]]
                 (str/replace s placeholder original))
@@ -96,7 +96,7 @@
 
 (defn- card-slug
   "Generate a slug for a card name, matching the frontend `slugg` library behavior.
-   Collapses consecutive hyphens and trims leading/trailing hyphens."
+  Collapses consecutive hyphens and trims leading/trailing hyphens."
   [card-name]
   (-> (u/slugify card-name)
       (str/replace "_" "-")
@@ -111,7 +111,7 @@
 
 (defn- find-table-tags
   "Find all template tags of :type :table that reference the given table-id.
-   Returns a seq of [tag-key tag-map] pairs."
+  Returns a seq of [tag-key tag-map] pairs."
   [template-tags table-id]
   (filter (fn [[_k v]]
             (and (= (:type v) :table)
@@ -120,7 +120,7 @@
 
 (defn- replace-tag-in-sql
   "Replace {{old-tag-name}} with {{new-tag-name}} in parsed SQL tokens.
-   Returns the reconstructed SQL string."
+  Returns the reconstructed SQL string."
   [parsed old-tag-name new-tag-name]
   (apply str
          (for [token parsed]
@@ -139,7 +139,7 @@
 
 (defn- update-table-tags-for-table-swap
   "Update :type :table template tags when swapping table→table.
-   Just updates the :table-id field."
+  Just updates the :table-id field."
   [template-tags old-table-id new-table-id]
   (reduce-kv
    (fn [acc k tag]
@@ -158,7 +158,7 @@
 
 (defn- update-dimension-tags
   "Update :type :dimension and :type :temporal-unit template tags, remapping field IDs from old table to new table.
-   Finds matching fields by name."
+  Finds matching fields by name."
   [query template-tags old-table-id new-table-id]
   (let [old-fields (lib.metadata/fields query old-table-id)
         new-fields (lib.metadata/fields query new-table-id)]
@@ -175,9 +175,9 @@
 
 (defn- update-table-tags-for-card-swap
   "Update :type :table template tags when swapping table→card.
-   Changes tag type from :table to :card, updates SQL to use {{#id-slug}} syntax.
-   Preserves optional fields like :required and :default from the original tag.
-   Returns {:sql new-sql :template-tags new-tags}."
+  Changes tag type from :table to :card, updates SQL to use {{#id-slug}} syntax.
+  Preserves optional fields like :required and :default from the original tag.
+  Returns {:sql new-sql :template-tags new-tags}."
   [sql template-tags old-table-id new-card-id new-card-name]
   (let [table-tags   (find-table-tags template-tags old-table-id)
         slug         (card-slug new-card-name)
@@ -208,8 +208,8 @@
 
 (defn- unquote-template-refs
   "The SQL AST tool quotes identifiers containing special characters. Card template refs
-   like {{#123-slug}} get turned into \"{{#123-slug}}\", but they must be unquoted for the
-   native query processor to recognize them."
+  like {{#123-slug}} get turned into \"{{#123-slug}}\", but they must be unquoted for the
+  native query processor to recognize them."
   [sql]
   (-> sql
       (str/replace "\"{{" "{{")
@@ -217,16 +217,16 @@
 
 (defn- replace-table-in-native-sql
   "Replace table names in native SQL, preserving template tags.
-   Uses sql-tools/replace-names for AST-level table renaming.
+  Uses sql-tools/replace-names for AST-level table renaming.
 
-   Both old-table and new-table use the same convention:
-   - A string like \"ORDERS\" (no schema)
-   - A map like {:table \"ORDERS\" :schema \"PUBLIC\"} (with schema)
-   - {:table \"ORDERS\"} or {:table \"ORDERS\" :schema nil} (no schema, same as string)
+  Both old-table and new-table use the same convention:
+  - A string like \"ORDERS\" (no schema)
+  - A map like {:table \"ORDERS\" :schema \"PUBLIC\"} (with schema)
+  - {:table \"ORDERS\"} or {:table \"ORDERS\" :schema nil} (no schema, same as string)
 
-   When old-table has a schema and new-table doesn't, the schema is actively cleared
-   from the SQL AST (e.g., `FROM public.orders` → `FROM new_orders`, not
-   `FROM public.new_orders`)."
+  When old-table has a schema and new-table doesn't, the schema is actively cleared
+  from the SQL AST (e.g., `FROM public.orders` → `FROM new_orders`, not
+  `FROM public.new_orders`)."
   [driver sql old-table new-table]
   (let [{placeholder-sql :sql
          placeholders :placeholders} (sql->placeholders sql)
@@ -262,14 +262,14 @@
 
 (defn- replace-table-in-native-query
   "Replace table references in a native query's SQL.
-   Handles both:
-   - Raw SQL table names (AST-level replacement)
-   - Table template tags (:type :table with :table-id)
+  Handles both:
+  - Raw SQL table names (AST-level replacement)
+  - Table template tags (:type :table with :table-id)
 
-   Parameters:
-   - query: MBQL 5 query with native stage
-   - old-table-id: ID of table to replace
-   - new-table-id: ID of replacement table"
+  Parameters:
+  - query: MBQL 5 query with native stage
+  - old-table-id: ID of table to replace
+  - new-table-id: ID of replacement table"
   [query old-table-id new-table-id]
   (or (when-let [database  (lib.metadata/database query)]
         (when-let [old-table (lib.metadata/table query old-table-id)]
@@ -294,17 +294,17 @@
 
 (defn- replace-table-with-card-in-native
   "Replace table references in native SQL with a card template tag.
-   Handles both:
-   - Raw SQL table names → {{#card-id-slug}}
-   - Table template tags ({{my_table}}) → {{#card-id-slug}}
+  Handles both:
+  - Raw SQL table names → {{#card-id-slug}}
+  - Table template tags ({{my_table}}) → {{#card-id-slug}}
 
-   E.g., `FROM orders` → `FROM {{#123-my-card}}`
-   E.g., `FROM {{my_table}}` → `FROM {{#123-my-card}}`
+  E.g., `FROM orders` → `FROM {{#123-my-card}}`
+  E.g., `FROM {{my_table}}` → `FROM {{#123-my-card}}`
 
-   Parameters:
-   - query: MBQL 5 query with native stage
-   - old-table-id: ID of table to replace
-   - new-card-id: ID of card to reference"
+  Parameters:
+  - query: MBQL 5 query with native stage
+  - old-table-id: ID of table to replace
+  - new-card-id: ID of card to reference"
   [query old-table-id new-card-id]
   (or (when-let [database  (lib.metadata/database query)]
         (when-let [old-table (lib.metadata/table query old-table-id)]
@@ -338,7 +338,7 @@
 
 (defn- replace-card-refs-with-table
   "Walk parsed SQL tokens, replacing card references to old-card-id with table-name.
-   Returns the reconstructed SQL string."
+  Returns the reconstructed SQL string."
   [parsed old-card-id table-name]
   (let [old-tag (str "#" old-card-id)]
     (apply str
@@ -362,14 +362,14 @@
 
 (defn- replace-card-with-table-in-native
   "Replace card template tag reference in native SQL with a direct table reference.
-   E.g., `FROM {{#123-my-card}}` → `FROM orders`
+  E.g., `FROM {{#123-my-card}}` → `FROM orders`
 
-   This is the inverse of `replace-table-with-card-in-native`.
+  This is the inverse of `replace-table-with-card-in-native`.
 
-   Parameters:
-   - query: MBQL 5 query with native stage
-   - old-card-id: ID of card template tag to replace
-   - new-table-id: ID of table to reference directly"
+  Parameters:
+  - query: MBQL 5 query with native stage
+  - old-card-id: ID of card template tag to replace
+  - new-table-id: ID of table to reference directly"
   [query old-card-id new-table-id]
   (or (when-let [database  (lib.metadata/database query)]
         (when-let [new-table (lib.metadata/table query new-table-id)]
@@ -387,7 +387,7 @@
 
 (defn- replace-template-tags
   "Replaces references to `old-card-id` with `new-card-id` in a template-tags map.
-   Preserves slug format: if old key was `#42-my-query`, new key will be `#99-new-query-name`."
+  Preserves slug format: if old key was `#42-my-query`, new key will be `#99-new-query-name`."
   [tags old-card-id new-card-id new-card-name]
   (let [old-tag (str "#" old-card-id)
         new-slug (when new-card-name
@@ -411,9 +411,9 @@
 
 (defn- replace-card-refs-in-parsed
   "Walk parsed SQL tokens, replacing card references to old-card-id with new-card-id.
-   Returns the reconstructed SQL string.
-   Handles card refs with slugs like {{#42-my-query-name}}.
-   When a slugged ref is found, generates a new slug from `new-card-name`."
+  Returns the reconstructed SQL string.
+  Handles card refs with slugs like {{#42-my-query-name}}.
+  When a slugged ref is found, generates a new slug from `new-card-name`."
   [parsed old-card-id new-card-id new-card-name]
   (let [old-tag (str "#" old-card-id)
         new-slug (when new-card-name
@@ -448,13 +448,13 @@
 
 (defn- swap-card-in-native-query
   "Pure transformation: replaces references to `old-card-id` with `new-card-id`
-   in a native query's SQL text and template-tag map.
+  in a native query's SQL text and template-tag map.
 
-   Uses the Metabase parameter parser to properly identify card references,
-   handling edge cases like:
-   - Card refs with slugs: {{#42-my-query}}
-   - Card refs with whitespace: {{ #42 }}
-   - Card refs in optional clauses: [[...{{#42}}...]]"
+  Uses the Metabase parameter parser to properly identify card references,
+  handling edge cases like:
+  - Card refs with slugs: {{#42-my-query}}
+  - Card refs with whitespace: {{ #42 }}
+  - Card refs in optional clauses: [[...{{#42}}...]]"
   [query old-card-id new-card-id]
   (or (when-let [new-card (lib.metadata/card query new-card-id)]
         (let [sql           (lib/raw-native-query query)
@@ -469,7 +469,7 @@
 
 (defn swap-source-in-native-stages
   "Dispatch native query updates based on old/new source types.
-   Handles all four combinations: card→card, table→table, table→card, card→table."
+  Handles all four combinations: card→card, table→table, table→card, card→table."
   [query [old-source-type old-source-id] [new-source-type new-source-id]]
   (case [old-source-type new-source-type]
     [:card  :card]  (swap-card-in-native-query query old-source-id new-source-id)

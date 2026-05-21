@@ -54,7 +54,7 @@
 
 (defn- make-query
   "Create a query filtering products by category, using shared utility.
-   Returns a legacy MBQL query structure for API compatibility."
+  Returns a legacy MBQL query structure for API compatibility."
   [category]
   (let [table-name (t2/select-one-fn :name :model/Table (mt/id :transforms_products))]
     (query-test-util/make-query
@@ -798,7 +798,7 @@
 
 (defn- wait-for-table
   "Wait for a table to appear in metadata, with timeout.
-   Copied from execute_test.clj - will consolidate later."
+  Copied from execute_test.clj - will consolidate later."
   [table-name timeout-ms]
   (let [mp    (mt/metadata-provider)
         limit (+ (System/currentTimeMillis) timeout-ms)]

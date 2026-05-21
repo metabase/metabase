@@ -93,7 +93,7 @@
 
 (defn- parse-charset
   "Parse charset from content-type header, e.g. 'application/json; charset=utf-8' -> 'utf-8'.
-   Returns nil if no charset is specified."
+  Returns nil if no charset is specified."
   [content-type]
   (when content-type
     (second (re-find #"(?i)charset=([^\s;]+)" content-type))))

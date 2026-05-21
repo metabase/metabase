@@ -45,7 +45,7 @@
 
 (defn- run-standalone-mode
   "Errors if --mode is specified but not recognized.
-   The mode's -main function is responsible for calling System/exit."
+  The mode's -main function is responsible for calling System/exit."
   [mode args]
   (let [startup (case mode
                   ;; schema checker was moved out to js. Perhaps this will get a long running server mode checker? Or

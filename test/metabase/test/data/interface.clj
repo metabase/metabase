@@ -526,8 +526,8 @@
 
 (defmulti fake-sync-schema
   "Return the schema name to use for fake sync Table rows. Returns nil by default.
-   Drivers opting into fake sync (via `:test/use-fake-sync` feature) should implement this to return
-   their session schema name."
+  Drivers opting into fake sync (via `:test/use-fake-sync` feature) should implement this to return
+  their session schema name."
   {:arglists '([driver]), :added "0.56.0"}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
@@ -538,10 +538,10 @@
 
 (defmulti fake-sync-table-name
   "Return the table name to use for fake sync Table rows.
-   Default uses `db-qualified-table-name` (e.g., 'test_data_venues') for drivers
-   that share a single database across datasets (like Redshift, Oracle).
-   Drivers with separate databases per dataset (like Snowflake) should override
-   to return just the table name."
+  Default uses `db-qualified-table-name` (e.g., 'test_data_venues') for drivers
+  that share a single database across datasets (like Redshift, Oracle).
+  Drivers with separate databases per dataset (like Snowflake) should override
+  to return just the table name."
   {:arglists '([driver database-name table-name]), :added "0.57.0"}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
@@ -552,10 +552,10 @@
 
 (defmulti fake-sync-database-type
   "Return the database_type string for fake sync Field rows.
-   By default uses `sql.tx/field-base-type->sql-type` (the DDL type used to create columns).
-   Drivers where the reported type differs from the creation type (like Snowflake where
-   TEXT becomes VARCHAR, FLOAT becomes DOUBLE) should override to return what the
-   database actually reports in INFORMATION_SCHEMA."
+  By default uses `sql.tx/field-base-type->sql-type` (the DDL type used to create columns).
+  Drivers where the reported type differs from the creation type (like Snowflake where
+  TEXT becomes VARCHAR, FLOAT becomes DOUBLE) should override to return what the
+  database actually reports in INFORMATION_SCHEMA."
   {:arglists '([driver base-type]), :added "0.57.0"}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
@@ -567,9 +567,9 @@
 
 (defmulti fake-sync-base-type
   "Return the base_type for fake sync Field rows.
-   By default returns the base-type from the test definition unchanged.
-   Drivers where the reported type differs (like Snowflake where INTEGER columns
-   are reported as NUMBER with base_type :type/Number) should override."
+  By default returns the base-type from the test definition unchanged.
+  Drivers where the reported type differs (like Snowflake where INTEGER columns
+  are reported as NUMBER with base_type :type/Number) should override."
   {:arglists '([driver base-type]), :added "0.57.0"}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
@@ -581,10 +581,10 @@
 
 (defmulti fake-sync-native-base-type
   "Return the base_type for fake sync Field rows when using native database types.
-   Called when base-type is a map like {:native \"timestamptz\"} and no effective-type
-   is specified. By default returns :type/*, but drivers should override this to
-   return the base_type that sync would actually produce for that native type.
-   For example, Snowflake should map \"timestamptz\" -> :type/DateTimeWithLocalTZ."
+  Called when base-type is a map like {:native \"timestamptz\"} and no effective-type
+  is specified. By default returns :type/*, but drivers should override this to
+  return the base_type that sync would actually produce for that native type.
+  For example, Snowflake should map \"timestamptz\" -> :type/DateTimeWithLocalTZ."
   {:arglists '([driver native-type-string]), :added "0.57.0"}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
@@ -596,12 +596,12 @@
 
 (defn on-master-or-release-branch?
   "Returns true if running on master or a release-* branch.
-   Detection methods (in priority order):
-   1. GITHUB_REF_NAME env var (set in GitHub Actions CI)
-   2. Git branch name via shell (local development)
+  Detection methods (in priority order):
+  1. GITHUB_REF_NAME env var (set in GitHub Actions CI)
+  2. Git branch name via shell (local development)
 
-   Used to conditionally enable features like fake-sync that should be disabled
-   on master/release branches to ensure full test coverage."
+  Used to conditionally enable features like fake-sync that should be disabled
+  on master/release branches to ensure full test coverage."
   []
   (let [branch-name (or (System/getenv "GITHUB_REF_NAME")
                         (try (-> (shell/sh "git" "rev-parse" "--abbrev-ref" "HEAD")
@@ -631,7 +631,7 @@
 
 (defmulti track-dataset
   "Track the creation or the usage of the database.
-   This is useful for cloud databases with shared state to ensure that stale datasets can be deleted and dataset loading is not done more than necessary. Pairs well with [[dataset-already-loaded?]]"
+  This is useful for cloud databases with shared state to ensure that stale datasets can be deleted and dataset loading is not done more than necessary. Pairs well with [[dataset-already-loaded?]]"
   {:arglists '([driver dbdef]) :added "0.56.0"}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)

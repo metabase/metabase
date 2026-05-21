@@ -354,7 +354,7 @@
 
 (defn- raise-data-one-level
   "Raise the :data key inside the given result map up to the top level.
-   This is the expected shape of `add-dashcard-timeline`."
+  This is the expected shape of `add-dashcard-timeline`."
   [{:keys [result] :as m}]
   (-> m
       (assoc :data (:data result))
@@ -520,7 +520,7 @@
 
 (defn- summable-col?
   "Check if a column is summable (numeric but not temporal, location, or entity).
-   Works with snake_case column keys from result metadata."
+  Works with snake_case column keys from result metadata."
   [col]
   (let [effective-type (or (:effective_type col) (:base_type col))
         semantic-type  (:semantic_type col)]
@@ -533,7 +533,7 @@
 
 (defn- metric-col?
   "Check if a column should be treated as a metric, matching frontend isMetric logic.
-   A metric is summable, not from breakout, not named like an ID, and not binned."
+  A metric is summable, not from breakout, not named like an ID, and not binned."
   [col]
   (and (not= (:source col) "breakout")
        (summable-col? col)
@@ -545,7 +545,7 @@
 
 (defn- reorder-cols-for-funnel
   "Reorder :cols and :rows so that the dimension column is first and metric column is second.
-   Finds columns by name, mirroring the frontend FunnelNormal.tsx findIndex logic."
+  Finds columns by name, mirroring the frontend FunnelNormal.tsx findIndex logic."
   [data dim-col-name metric-col-name]
   (let [cols    (:cols data)
         dim-idx (first (keep-indexed (fn [i c] (when (= (:name c) dim-col-name) i)) cols))
@@ -565,8 +565,8 @@
 
 (defn- normalize-funnel-data
   "Ensure funnel data has dimension column first and metric column second.
-   Reorders both :cols and :rows if needed. When explicit funnel.dimension and
-   funnel.metric settings are present, finds columns by name (like the frontend)."
+  Reorders both :cols and :rows if needed. When explicit funnel.dimension and
+  funnel.metric settings are present, finds columns by name (like the frontend)."
   [card dashcard data]
   (let [cols (:cols data)]
     (if (or (< (count cols) 2)

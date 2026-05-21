@@ -33,8 +33,8 @@
 
 (defn- quoted-namespace
   "Driver-correct quoted reference to a schema (or database, for schema-less
-   drivers like MySQL). Used in CREATE/DROP statements where the helper builds
-   the SQL by string concatenation."
+  drivers like MySQL). Used in CREATE/DROP statements where the helper builds
+  the SQL by string concatenation."
   [driver namespace-name]
   (case driver
     (:postgres :redshift :h2) (str \" namespace-name \")
@@ -43,7 +43,7 @@
 
 (defn- create-namespace-sql
   "DDL to create a fresh per-run schema (or database, for schema-less drivers
-   like MySQL/ClickHouse)."
+  like MySQL/ClickHouse)."
   [driver namespace-name]
   (case driver
     (:postgres :redshift :h2) (str "CREATE SCHEMA " (quoted-namespace driver namespace-name))
@@ -52,9 +52,9 @@
 
 (defn- drop-namespace-sqls
   "DDL to drop the per-run namespace and any tables left in it. Schema'd
-   drivers with CASCADE (postgres/redshift/h2) and database-as-namespace
-   drivers (mysql/clickhouse) take a single statement; SQL Server has no DROP
-   SCHEMA CASCADE so the source table has to be dropped explicitly first."
+  drivers with CASCADE (postgres/redshift/h2) and database-as-namespace
+  drivers (mysql/clickhouse) take a single statement; SQL Server has no DROP
+  SCHEMA CASCADE so the source table has to be dropped explicitly first."
   [driver namespace-name table-name]
   (case driver
     (:postgres :redshift :h2) [(str "DROP SCHEMA " (quoted-namespace driver namespace-name) " CASCADE")]
@@ -69,8 +69,8 @@
 
 (defn- create-table-tail
   "Trailing clause appended to `CREATE TABLE ... (cols)` per driver. ClickHouse
-   requires every table to declare a storage engine and an ORDER BY key; SQL
-   drivers don't."
+  requires every table to declare a storage engine and an ORDER BY key; SQL
+  drivers don't."
   [driver]
   (case driver
     :clickhouse " ENGINE = MergeTree() ORDER BY id"
@@ -83,14 +83,14 @@
 
 (def ^:private cross-driver-test-drivers
   "Drivers we exercise with these end-to-end remap tests. Restricted to a small
-   set on purpose: the [[with-workspace-tables!]] fixture sends literal DDL
-   (`INT`, `DOUBLE PRECISION`, etc.) to whatever driver runs, and the test queries assume
-   case-insensitive identifier handling. That holds on H2 / Postgres but breaks
-   on ClickHouse (case-sensitive, no `LEFT JOIN`) and SQL Server (different type names).
-   Other drivers' workspace remap
-   behavior is covered by [[metabase-enterprise.workspaces.table-remapping-test]]
-   unit tests and the SQLGlot corpus tests in
-   [[metabase-enterprise.workspaces.query-processor.driver-corpus-test]]."
+  set on purpose: the [[with-workspace-tables!]] fixture sends literal DDL
+  (`INT`, `DOUBLE PRECISION`, etc.) to whatever driver runs, and the test queries assume
+  case-insensitive identifier handling. That holds on H2 / Postgres but breaks
+  on ClickHouse (case-sensitive, no `LEFT JOIN`) and SQL Server (different type names).
+  Other drivers' workspace remap
+  behavior is covered by [[metabase-enterprise.workspaces.table-remapping-test]]
+  unit tests and the SQLGlot corpus tests in
+  [[metabase-enterprise.workspaces.query-processor.driver-corpus-test]]."
   #{:h2 :postgres})
 
 (defn- canonical-schema
@@ -100,28 +100,28 @@
 
 (defn- canonical-table-name
   "The :name of the orders :model/Table, as the driver stores it (e.g. \"ORDERS\"
-   on H2, \"orders\" on Postgres). Phase 1's metadata override matches by name,
-   so the remapping's from-name has to be exactly this string."
+  on H2, \"orders\" on Postgres). Phase 1's metadata override matches by name,
+  so the remapping's from-name has to be exactly this string."
   []
   (t2/select-one-fn :name :model/Table :id (mt/id :orders)))
 
 (defn- admin-spec
   "JDBC connection-spec usable for raw DDL and inserts against the current
-   driver's test database."
+  driver's test database."
   [driver]
   (sql-jdbc.conn/connection-details->spec driver (:details (mt/db))))
 
 (defn- with-workspace-tables!
   "Provision a workspace schema and one or more tables, each shaped to match a
-   canonical-table's MBQL field references for the test query.
+  canonical-table's MBQL field references for the test query.
 
-   `tables` is a vector of `{:canonical-kw <kw>, :columns \"col1 type, col2 type\",
-   :insert-rows [[id, val] ...]}` maps. Each table is created in the workspace
-   schema with the given DDL, named the same as its canonical counterpart
-   (case-matched), and seeded with the rows. Row values are interpolated raw
-   into the INSERT — wrap strings in literal quotes (`\"'foo'\"`).
+  `tables` is a vector of `{:canonical-kw <kw>, :columns \"col1 type, col2 type\",
+  :insert-rows [[id, val] ...]}` maps. Each table is created in the workspace
+  schema with the given DDL, named the same as its canonical counterpart
+  (case-matched), and seeded with the rows. Row values are interpolated raw
+  into the INSERT — wrap strings in literal quotes (`\"'foo'\"`).
 
-   Runs `body-fn` with the schema name; tears everything down afterward."
+  Runs `body-fn` with the schema name; tears everything down afterward."
   [tables body-fn]
   (let [driver         driver/*driver*
         suffix         (random-suffix)
@@ -148,7 +148,7 @@
 
 (defn- with-workspace-table!
   "Single-table convenience wrapper. Creates a workspace `orders` table with
-   `(id INT, v VARCHAR(32))` columns and the given `[[id v] ...]` rows."
+  `(id INT, v VARCHAR(32))` columns and the given `[[id v] ...]` rows."
   [orders-rows body-fn]
   (with-workspace-tables!
     [{:canonical-kw :orders
@@ -158,11 +158,11 @@
 
 (defn- with-remapping!
   "Insert a TableRemapping row pointing canonical -> workspace, run `body-fn`,
-   delete the row on the way out.
+  delete the row on the way out.
 
-   Nil schema (MySQL/ClickHouse) is normalized to the empty-string sentinel so the
-   row can be persisted regardless of warehouse. The QP rewriter prunes the sentinel
-   before handing the key to SQLGlot."
+  Nil schema (MySQL/ClickHouse) is normalized to the empty-string sentinel so the
+  row can be persisted regardless of warehouse. The QP rewriter prunes the sentinel
+  before handing the key to SQLGlot."
   [from-schema from-name to-schema to-name body-fn]
   (let [{remap-id :id} (t2/insert-returning-instance!
                         :model/TableRemapping
@@ -178,9 +178,9 @@
 
 (defn- canonical-row-count
   "Row count of the canonical orders table — used as the disambiguator. The
-   workspace table we create has a tiny number of rows so the read-side
-   assertion can compare counts and tell whether we read from the workspace
-   schema or the canonical one."
+  workspace table we create has a tiny number of rows so the read-side
+  assertion can compare counts and tell whether we read from the workspace
+  schema or the canonical one."
   []
   (-> (mt/process-query
        {:database (mt/id)
@@ -192,8 +192,8 @@
 
 (defn- count-via-qp
   "Run `SELECT COUNT(*) FROM orders` through the QP via the canonical orders
-   table id. If a TableRemapping is in effect, the rewriter should redirect
-   this to the workspace schema."
+  table id. If a TableRemapping is in effect, the rewriter should redirect
+  this to the workspace schema."
   []
   (-> (mt/process-query
        {:database (mt/id)

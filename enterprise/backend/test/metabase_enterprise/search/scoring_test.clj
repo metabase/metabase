@@ -101,13 +101,13 @@
 
 (defn- all-permutations-all-orders
   "(all-permutations-all-orders [1]) ;; => [[] [1]]
-   (all-permutations-all-orders [1 2])
-   ;; => [[] [1] [2] [1 2] [2 1]]
-   (all-permutations-all-orders [1 2 3])
-   ;; => [[]                                               ;; size 0
-   ;;     [1]             [2]             [3]              ;; size 1
-   ;;     [1 2]   [2 1]   [1 3]   [3 1]   [2 3]   [3 2]    ;; size 2
-   ;;     [1 2 3] [1 3 2] [2 1 3] [2 3 1] [3 1 2] [3 2 1]] ;; size 3
+  (all-permutations-all-orders [1 2])
+  ;; => [[] [1] [2] [1 2] [2 1]]
+  (all-permutations-all-orders [1 2 3])
+  ;; => [[]                                               ;; size 0
+  ;;     [1]             [2]             [3]              ;; size 1
+  ;;     [1 2]   [2 1]   [1 3]   [3 1]   [2 3]   [3 2]    ;; size 2
+  ;;     [1 2 3] [1 3 2] [2 1 3] [2 3 1] [3 1 2] [3 2 1]] ;; size 3
   "
   [values]
   {:pre [(> 10 (count values))]}

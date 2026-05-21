@@ -56,7 +56,7 @@
 
 (defn- try-to-extract-sample-database!
   "Tries to extract the sample database out of the JAR (for performance) and then returns a db-details map
-   containing a path to the copied database."
+  containing a path to the copied database."
   []
   (let [resource (io/resource sample-database-filename)]
     (when-not resource

@@ -31,7 +31,7 @@
 
 (defn redirect-to-https-middleware
   "Redirect users to HTTPS sessions when certain conditions are met.
-   See `no-redirect-https-uris` for URIs excluded from https redirects."
+  See `no-redirect-https-uris` for URIs excluded from https redirects."
   [handler]
   (fn [request respond raise]
     (cond

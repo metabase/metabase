@@ -54,7 +54,7 @@
 
 (defn- accepts-encoding?
   "Returns true if the request Accept-Encoding header includes `encoding` with a
-   quality value greater than 0."
+  quality value greater than 0."
   [request encoding]
   (let [accepted (-> request
                      (response/get-header "accept-encoding")
@@ -70,10 +70,10 @@
 
 (defn- compressed-resource
   "Try to serve a pre-compressed variant of `resource-path`. Returns a Ring
-   response map if a compressed variant exists and the client accepts it,
-   otherwise nil.
+  response map if a compressed variant exists and the client accepts it,
+  otherwise nil.
 
-   If encoding is :identity, we don't compress at all and serve the raw resource."
+  If encoding is :identity, we don't compress at all and serve the raw resource."
   [request resource-path encoding]
   (when (accepts-encoding? request encoding)
     (some-> (response/resource-response (compressed-path resource-path encoding))
@@ -93,8 +93,8 @@
 
 (defn precompressed-resources
   "A Ring handler that serves classpath resources from `root`, preferring
-   pre-compressed (.br, .gz) variants when the client supports them.
-   Drop-in replacement for `compojure.route/resources`."
+  pre-compressed (.br, .gz) variants when the client supports them.
+  Drop-in replacement for `compojure.route/resources`."
   [path {root :root}]
   (compojure/GET (add-wildcard path) request
     (let [{{request-path :*} :route-params} request

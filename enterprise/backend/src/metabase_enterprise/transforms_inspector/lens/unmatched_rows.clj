@@ -66,7 +66,7 @@
 
 (defn- make-base-unmatched-query
   "Stripped-down query with joins up to `step`, plus field metadata for both sides.
-   Returns nil when the join condition can't be parsed."
+  Returns nil when the join condition can't be parsed."
   [ctx step]
   (when-let [{:keys [lhs-table-id lhs-field-id rhs-field-id
                      lhs-join-alias rhs-join-alias]} (resolve-join-sides ctx step)]
@@ -104,7 +104,7 @@
 
 (defn- make-orphan-query
   "Query for rows in `source-table` whose key has no match in `target-table`.
-   LEFT JOINs target, then filters source key NOT NULL / target key IS NULL."
+  LEFT JOINs target, then filters source key NOT NULL / target key IS NULL."
   [ctx source-table-id target-table-id source-field-id target-field-id]
   (let [{:keys [db-id]} ctx
         mp (lib-be/application-database-metadata-provider db-id)
@@ -180,7 +180,7 @@
 
 (defn- orphan-card
   "Card: rows on `side` (:rhs or :lhs) with no match on the other side.
-   `strategies` is the set of join strategies for which this card applies."
+  `strategies` is the set of join strategies for which this card applies."
   [ctx step params side strategies make-query-fn]
   (let [{:keys [join-structure]} (:mbql-context ctx)
         join (nth join-structure (dec step))

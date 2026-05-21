@@ -42,8 +42,8 @@
 
 (defn do-with-library-synced
   "Implementation for with-library-synced macro.
-   If a Library collection exists, temporarily sets is_remote_synced to true.
-   If no Library collection exists, creates a temporary one with is_remote_synced true."
+  If a Library collection exists, temporarily sets is_remote_synced to true.
+  If no Library collection exists, creates a temporary one with is_remote_synced true."
   [f]
   (if-let [library (collection/library-collection)]
     (let [original-synced (:is_remote_synced library)]
@@ -63,7 +63,7 @@
 
 (defn do-with-library-not-synced
   "Implementation for with-library-not-synced macro.
-   If a Library collection exists, temporarily sets is_remote_synced to false."
+  If a Library collection exists, temporarily sets is_remote_synced to false."
   [f]
   (if-let [library (collection/library-collection)]
     (let [original-synced (:is_remote_synced library)]

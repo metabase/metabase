@@ -25,7 +25,7 @@
 
 (defn find-classpath-root
   "Finds the classpath directory that contains the given file path.
-   Returns the portion of the path to strip, or nil if not found."
+  Returns the portion of the path to strip, or nil if not found."
   [classpath file-path]
   (let [canonical-file (try
                          (.getCanonicalPath (File. ^String file-path))
@@ -67,7 +67,7 @@
 
 (defn file-path->namespace
   "Converts a file path to a namespace symbol using classpath information.
-   Example: enterprise/backend/src/foo/bar/baz.clj -> foo.bar.baz"
+  Example: enterprise/backend/src/foo/bar/baz.clj -> foo.bar.baz"
   [file-path classpath]
   (when (and file-path (re-find #".cljc?$" file-path))
     (when-let [root (find-classpath-root classpath file-path)]
@@ -117,8 +117,8 @@
 
 (defn reload!
   "Reloads all changed files from git that are already loaded as namespaces
-   and have been modified since last reload.
-   Returns a map with :reloaded, :skipped, and :failed keys."
+  and have been modified since last reload.
+  Returns a map with :reloaded, :skipped, and :failed keys."
   []
   (let [{:keys [to-reload
                 skipped]} (changed-namespaces)

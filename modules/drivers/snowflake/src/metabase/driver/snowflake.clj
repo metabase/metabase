@@ -475,8 +475,8 @@
 
 (defn- time-zoned-datediff
   "Same as snowflake's `datediff` but converts the args to the results time zone
-   before calculating date boundaries. This is needed when an argument could be of
-   timestamptz type and the unit is day, week, month, quarter or year."
+  before calculating date boundaries. This is needed when an argument could be of
+  timestamptz type and the unit is day, week, month, quarter or year."
   [unit x y]
   (let [x (if (h2x/is-of-type? x "timestamptz")
             [:convert_timezone (driver-api/results-timezone-id) x]

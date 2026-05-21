@@ -40,7 +40,7 @@
 
 (defn- valid-checkpoint-transform-combo?
   "Check if a checkpoint type and transform type combination is valid.
-   With table tag expansion, all combinations are now supported."
+  With table tag expansion, all combinations are now supported."
   [_checkpoint-type _transform-type]
   true)
 

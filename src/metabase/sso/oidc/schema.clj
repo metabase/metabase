@@ -111,7 +111,7 @@
 
 (defn discovery-based?
   "Returns true if the configuration relies on discovery (only required fields present),
-   false if endpoints are manually specified."
+  false if endpoints are manually specified."
   [config]
   (not (or (:authorization-endpoint config)
            (:token-endpoint config)

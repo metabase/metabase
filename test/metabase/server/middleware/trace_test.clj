@@ -8,7 +8,7 @@
 
 (defn- call-handler
   "Call wrap-trace middleware with a mock handler, returning the response or exception.
-   The mock handler immediately calls respond with {:status 200}."
+  The mock handler immediately calls respond with {:status 200}."
   [request]
   (let [handler   (fn [_req respond _raise] (respond {:status 200}))
         wrapped   (mw.trace/wrap-trace handler)

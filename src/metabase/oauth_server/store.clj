@@ -11,10 +11,10 @@
 
 (defn- parse-user-id
   "Parse a user-id string to a long, returning nil if not a valid positive integer.
-   The oidc-provider library passes user-id as a string. For most grants this is a
-   stringified Metabase user ID. We don't support client_credentials yet, but when we
-   do the library will pass the client-id (a UUID) which is not a valid integer — the
-   lenient nil return keeps this path open."
+  The oidc-provider library passes user-id as a string. For most grants this is a
+  stringified Metabase user ID. We don't support client_credentials yet, but when we
+  do the library will pass the client-id (a UUID) which is not a valid integer — the
+  lenient nil return keeps this path open."
   [user-id]
   (let [s (str user-id)]
     (when (re-matches #"[1-9]\d*" s)
@@ -22,7 +22,7 @@
 
 (defn- parse-user-id-or-throw
   "Like [[parse-user-id]] but throws if the user-id is missing or not a valid positive integer.
-   Use this in flows (e.g. authorization_code) where a real user must be present."
+  Use this in flows (e.g. authorization_code) where a real user must be present."
   [user-id]
   (or (parse-user-id user-id)
       (throw (ex-info "Expected a valid user ID, but it was not a positive integer"
@@ -48,8 +48,8 @@
 
 (defn- db-row->client-config
   "Convert a DB row from :model/OAuthClient to the protocol's ClientConfig shape.
-   Aliases :registration-access-token-hash as :registration-access-token so that
-   the oidc-provider library can find the hash where it expects it."
+  Aliases :registration-access-token-hash as :registration-access-token so that
+  the oidc-provider library can find the hash where it expects it."
   [row]
   (when row
     (let [m          (select-and-kebab-keys row client-db-columns)
@@ -71,8 +71,8 @@
 
 (defn- db-row->auth-code
   "Convert a DB row from :model/OAuthAuthorizationCode to the protocol's map shape.
-   Converts user-id to a string since the oidc-provider library expects string user IDs.
-   Ensures :resource is a vector (JSON deserialization may return a list)."
+  Converts user-id to a string since the oidc-provider library expects string user IDs.
+  Ensures :resource is a vector (JSON deserialization may return a list)."
   [row]
   (when row
     (-> (select-and-kebab-keys row auth-code-db-columns)

@@ -98,7 +98,7 @@
 
 (defn- old-dataset-names
   "Return a collection of all dataset names that are old
-   -- tracked that haven't been touched in a while or are not tracked and too old"
+  -- tracked that haven't been touched in a while or are not tracked and too old"
   []
   (let [days-ago -5
         ;; tracked UNION ALL untracked
@@ -113,7 +113,7 @@
 
 (defn- orphan-isolation-schemas
   "Return a collection of schema names with mb__isolation_ prefix that are more than 3 hours old,
-   along with their database names."
+  along with their database names."
   []
   (sql-jdbc.execute/do-with-connection-with-options
    :snowflake
@@ -170,8 +170,8 @@
 
 (defn- orphan-isolation-roles
   "Return iso role names older than 3 hours. NOTE: roles use a different prefix
-   (`MB_ISOLATION_ROLE_`) than schemas/users -- see `isolation-role-name` in
-   `metabase.driver.snowflake`."
+  (`MB_ISOLATION_ROLE_`) than schemas/users -- see `isolation-role-name` in
+  `metabase.driver.snowflake`."
   []
   (old-snowflake-objects "ROLES" "MB_ISOLATION_ROLE_%"))
 
@@ -269,14 +269,14 @@
 
 (defn- delete-old-test-data!
   "Delete old test data:
-   - Datasets (databases) prefixed by sha_ that are two days ago or older
-   - Isolation schemas prefixed by mb__isolation_ that are more than 3 hours old
-   - Isolation users prefixed by mb__isolation_ that are more than 3 hours old
-   - Isolation roles prefixed by MB_ISOLATION_ROLE_ that are more than 3 hours old
+  - Datasets (databases) prefixed by sha_ that are two days ago or older
+  - Isolation schemas prefixed by mb__isolation_ that are more than 3 hours old
+  - Isolation users prefixed by mb__isolation_ that are more than 3 hours old
+  - Isolation roles prefixed by MB_ISOLATION_ROLE_ that are more than 3 hours old
 
-   Glue. Each drop step is independent; a failure in one doesn't block the
-   others. To preview from a REPL, call the corresponding `orphan-isolation-*`
-   enumerator instead."
+  Glue. Each drop step is independent; a failure in one doesn't block the
+  others. To preview from a REPL, call the corresponding `orphan-isolation-*`
+  enumerator instead."
   []
   ;; the printlns are on purpose because we want them to show up when running tests, even on CI, to make sure this
   ;; stuff is working correctly. We can change it to `log` in the future when we're satisfied everything is working as

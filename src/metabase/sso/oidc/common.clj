@@ -18,7 +18,7 @@
 
 (defn build-query-string
   "Build a URL query string from a map of parameters.
-   Properly encodes parameter names and values."
+  Properly encodes parameter names and values."
   [params]
   (str/join "&"
             (for [[k v] params]
@@ -29,15 +29,15 @@
 (defn generate-authorization-url
   "Generate the authorization URL for OIDC flow.
 
-   Parameters:
-   - authorization-endpoint: The authorization endpoint URL
-   - client-id: OAuth client ID
-   - redirect-uri: Callback URI for the authorization response
-   - scopes: Vector of scope strings (e.g., [\"openid\" \"email\" \"profile\"])
-   - state: CSRF protection state token
-   - nonce: Token validation nonce
+  Parameters:
+  - authorization-endpoint: The authorization endpoint URL
+  - client-id: OAuth client ID
+  - redirect-uri: Callback URI for the authorization response
+  - scopes: Vector of scope strings (e.g., [\"openid\" \"email\" \"profile\"])
+  - state: CSRF protection state token
+  - nonce: Token validation nonce
 
-   Returns the complete authorization URL."
+  Returns the complete authorization URL."
   [authorization-endpoint client-id redirect-uri scopes state nonce]
   (let [params {:response_type "code"
                 :client_id client-id
@@ -51,15 +51,15 @@
 (defn extract-oidc-config
   "Extract OIDC configuration from various sources.
 
-   Tries in order:
-   1. :oidc-config key in request
-   2. :metadata field in :auth-identity
-   3. Direct keys in request
+  Tries in order:
+  1. :oidc-config key in request
+  2. :metadata field in :auth-identity
+  3. Direct keys in request
 
-   Parameters:
-   - request: Ring request map
+  Parameters:
+  - request: Ring request map
 
-   Returns the OIDC configuration map or nil."
+  Returns the OIDC configuration map or nil."
   [request]
   (not-empty (or (:oidc-config request)
                  (get-in request [:auth-identity :metadata])
@@ -70,10 +70,10 @@
 (defn parse-token-response
   "Parse the token endpoint response.
 
-   Parameters:
-   - response-body: Token endpoint response body (map)
+  Parameters:
+  - response-body: Token endpoint response body (map)
 
-   Returns a map with :id-token, :access-token, :refresh-token (if present)."
+  Returns a map with :id-token, :access-token, :refresh-token (if present)."
   [response-body]
   {:id-token (:id_token response-body)
    :access-token (:access_token response-body)
@@ -83,14 +83,14 @@
 (defn validate-callback-params
   "Validate OIDC callback parameters.
 
-   Parameters:
-   - params: Query parameters from callback request
+  Parameters:
+  - params: Query parameters from callback request
 
-   Returns a map with:
-   - :valid? - boolean indicating if params are valid
-   - :code - authorization code if valid
-   - :state - state token if valid
-   - :error - error information if invalid"
+  Returns a map with:
+  - :valid? - boolean indicating if params are valid
+  - :code - authorization code if valid
+  - :state - state token if valid
+  - :error - error information if invalid"
   [params]
   (cond
     ;; Error response from provider

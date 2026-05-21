@@ -49,14 +49,14 @@
 
 (defmacro with-new-search-if-available-without-fallback
   "Create a temporary index table for the duration of the body.
-   Only runs if the appdb search engine is supported."
+  Only runs if the appdb search engine is supported."
   [& body]
   `(when (search.engine/supported-engine? :search.engine/appdb)
      (with-new-search-if-available* ~@body)))
 
 (defmacro with-legacy-search
   "Ensure legacy search, which doesn't require an index, is used.
-   Semantic queries go to :search.engine/semantic and keyword queries fall back to :search.engine/in-place."
+  Semantic queries go to :search.engine/semantic and keyword queries fall back to :search.engine/in-place."
   [& body]
   `(mt/with-dynamic-fn-redefs [search.engine/default-engine (constantly :search.engine/in-place)
                                search.engine/supported-engines (constantly [:search.engine/semantic :search.engine/in-place])]

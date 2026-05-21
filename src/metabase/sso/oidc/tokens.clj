@@ -16,7 +16,7 @@
 
 (def ^:private jwks-cache-ttl-ms
   "JWKS cache TTL: 1 hour. After this time, cached JWKS will be re-fetched.
-   This ensures key rotations by IdPs are picked up within a reasonable timeframe."
+  This ensures key rotations by IdPs are picked up within a reasonable timeframe."
   3600000)
 
 (defn- cache-expired?
@@ -34,7 +34,7 @@
 
 (defn invalidate-jwks-cache!
   "Invalidate cached JWKS for a specific URI. Useful when signature verification fails
-   and keys may have been rotated by the IdP."
+  and keys may have been rotated by the IdP."
   [jwks-uri]
   (swap! jwks-cache dissoc jwks-uri)
   nil)
@@ -52,7 +52,7 @@
 
 (defn get-jwks
   "Get JWKS from URI, with TTL-based caching. Returns JWKS map or nil.
-   Cached entries expire after [[jwks-cache-ttl-ms]] milliseconds."
+  Cached entries expire after [[jwks-cache-ttl-ms]] milliseconds."
   [jwks-uri]
   (when jwks-uri
     (let [cached (get @jwks-cache jwks-uri)]
@@ -69,7 +69,7 @@
 
 (defn- find-signing-key
   "Find the signing key from JWKS that matches the JWT kid (key ID).
-   Returns the public key or nil if not found."
+  Returns the public key or nil if not found."
   [jwks kid]
   (when-let [keys (:keys jwks)]
     (some (fn [key-data]
@@ -79,13 +79,13 @@
 
 (def ^:private allowed-algorithms
   "Allowlist of acceptable JWT signing algorithms.
-   Includes RSA and ECDSA families commonly used by OIDC providers."
+  Includes RSA and ECDSA families commonly used by OIDC providers."
   #{:rs256 :rs384 :rs512 :es256 :es384 :es512})
 
 (defn- get-key-algorithm
   "Extract and validate the signing algorithm from a JWK.
-   Returns the algorithm keyword if valid, or :rs256 as default if not specified.
-   Throws an exception if the algorithm is specified but not in the allowlist."
+  Returns the algorithm keyword if valid, or :rs256 as default if not specified.
+  Throws an exception if the algorithm is specified but not in the allowlist."
   [key-data]
   (if-let [alg (:alg key-data)]
     (let [alg-kw (keyword (u/lower-case-en alg))]
@@ -99,11 +99,11 @@
 (defn- verify-signature
   "Verify JWT signature using JWKS.
 
-   Parameters:
-   - token: JWT string
-   - jwks-uri: URI to fetch JWKS from
+  Parameters:
+  - token: JWT string
+  - jwks-uri: URI to fetch JWKS from
 
-   Returns the verified claims map or nil if verification fails."
+  Returns the verified claims map or nil if verification fails."
   [token jwks-uri]
   (try
     (when-let [jwks (get-jwks jwks-uri)]
@@ -122,10 +122,10 @@
 (defn- validate-expiry
   "Validate that the token has not expired.
 
-   Parameters:
-   - claims: Token claims map
+  Parameters:
+  - claims: Token claims map
 
-   Returns true if token is not expired, false otherwise."
+  Returns true if token is not expired, false otherwise."
   [claims]
   (when-let [exp (:exp claims)]
     (let [now (quot (t/to-millis-from-epoch (t/instant)) 1000)]
@@ -134,22 +134,22 @@
 (defn- validate-issuer
   "Validate that the token issuer matches expected issuer.
 
-   Parameters:
-   - claims: Token claims map
-   - expected-issuer: Expected issuer URL
+  Parameters:
+  - claims: Token claims map
+  - expected-issuer: Expected issuer URL
 
-   Returns true if issuer matches, false otherwise."
+  Returns true if issuer matches, false otherwise."
   [claims expected-issuer]
   (= (:iss claims) expected-issuer))
 
 (defn- validate-audience
   "Validate that the token audience includes the expected client ID.
 
-   Parameters:
-   - claims: Token claims map
-   - expected-audience: Expected client ID
+  Parameters:
+  - claims: Token claims map
+  - expected-audience: Expected client ID
 
-   Returns true if audience matches, false otherwise."
+  Returns true if audience matches, false otherwise."
   [claims expected-audience]
   (let [aud (:aud claims)]
     (cond
@@ -160,26 +160,26 @@
 (defn- validate-nonce
   "Validate that the token nonce matches the expected nonce.
 
-   Parameters:
-   - claims: Token claims map
-   - expected-nonce: Expected nonce value
+  Parameters:
+  - claims: Token claims map
+  - expected-nonce: Expected nonce value
 
-   Returns true if nonce matches, false otherwise."
+  Returns true if nonce matches, false otherwise."
   [claims expected-nonce]
   (= (:nonce claims) expected-nonce))
 
 (defn validate-id-token
   "Validate an OIDC ID token.
 
-   Parameters:
-   - token: JWT string
-   - config: Map with :jwks-uri, :issuer-uri, :client-id
-   - nonce: Expected nonce value (optional)
+  Parameters:
+  - token: JWT string
+  - config: Map with :jwks-uri, :issuer-uri, :client-id
+  - nonce: Expected nonce value (optional)
 
-   Returns a map with:
-   - :valid? - boolean indicating if token is valid
-   - :claims - the token claims if valid
-   - :error - error message if invalid"
+  Returns a map with:
+  - :valid? - boolean indicating if token is valid
+  - :claims - the token claims if valid
+  - :error - error message if invalid"
   [token {:keys [jwks-uri issuer-uri client-id]} nonce]
   (try
     ;; First verify signature

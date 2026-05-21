@@ -23,7 +23,7 @@
 
 (def ^:private display-aspect-ratios
   "Non-default aspect ratios (width:height) for display types, derived from dashboard card size defaults.
-   Most display types use the default 2:1 ratio."
+  Most display types use the default 2:1 ratio."
   {:pie       3/2  ; 12:8
    :waterfall 7/3  ; 14:6
    :sankey    8/5}) ; 16:10
@@ -34,7 +34,7 @@
 
 (defn- render-dimensions
   "Calculate render dimensions for a display type based on aspect ratios.
-   Keeps height consistent at render-base-height-px and scales width by aspect ratio."
+  Keeps height consistent at render-base-height-px and scales width by aspect ratio."
   [display]
   (let [aspect-ratio (get display-aspect-ratios (keyword display) default-aspect-ratio)
         render-width (long (* render-base-height-px aspect-ratio))]
@@ -73,7 +73,7 @@
 
 (def slack-table-row-limit
   "Maximum data rows for Slack table blocks.
-   Slack allows 100 total rows including header, so we use 99 for data."
+  Slack allows 100 total rows including header, so we use 99 for data."
   99)
 
 (def ^:private slack-table-max-cols
@@ -86,8 +86,8 @@
 
 (def ^:dynamic *slack-table-max-chars*
   "Undocumented Slack limit: table blocks exceeding 10,000 characters are rejected with
-   `table_character_count_must_not_exceed_10000`. We use 9,500 as a budget for cell text content
-   to leave headroom for any structural overhead Slack may count."
+  `table_character_count_must_not_exceed_10000`. We use 9,500 as a budget for cell text content
+  to leave headroom for any structural overhead Slack may count."
   9500)
 
 (def ^:private no-data-table-blocks
@@ -113,8 +113,8 @@
 
 (defn- format-cell
   "Format a cell value for Slack table display.
-   Empty values are replaced with \"-\" since Slack requires non-empty text.
-   Long values are truncated with ellipsis."
+  Empty values are replaced with \"-\" since Slack requires non-empty text.
+  Long values are truncated with ellipsis."
   [value formatter]
   (let [formatted (if (nil? value)
                     ""
@@ -159,11 +159,11 @@
 
 (defn format-results-as-table-blocks
   "Format query results as Slack table blocks.
-   Truncates results if they exceed Slack's limits (100 rows, 20 columns, ~10k chars).
-   Cell text is truncated to [[*slack-table-max-cell-length*]] characters.
-   Works for any result shape including single-cell scalars.
-   Filters hidden columns and handles FK remapping.
-   Adds a context block with truncation message if results were truncated."
+  Truncates results if they exceed Slack's limits (100 rows, 20 columns, ~10k chars).
+  Cell text is truncated to [[*slack-table-max-cell-length*]] characters.
+  Works for any result shape including single-cell scalars.
+  Filters hidden columns and handles FK remapping.
+  Adds a context block with truncation message if results were truncated."
   [results]
   (let [{:keys [cols rows]} (:data results)
         timezone-id         (get results :results_timezone)
@@ -208,11 +208,11 @@
 
 (defn generate-adhoc-output
   "Generate output for an ad-hoc query based on display type.
-   Returns a map with :type (:table or :image) and :content.
-   Always executes the query directly.
+  Returns a map with :type (:table or :image) and :content.
+  Always executes the query directly.
 
-   - Chart display types (bar, line, pie, etc.) render as PNG
-   - Table display (or nil) renders as native Slack table blocks"
+  - Chart display types (bar, line, pie, etc.) render as PNG
+  - Table display (or nil) renders as native Slack table blocks"
   [query & {:keys [display]
             :or   {display :table}}]
   (let [display (keyword display)
@@ -258,10 +258,10 @@
 
 (defn generate-card-output
   "Generate output for a saved card based on its display type.
-   Returns a map with :type (:table or :image), :content, and :card-name.
+  Returns a map with :type (:table or :image), :content, and :card-name.
 
-   - `table` and display types not supported by static viz render as native Slack table blocks
-   - static viz chart types render as PNG"
+  - `table` and display types not supported by static viz render as native Slack table blocks
+  - static viz chart types render as PNG"
   [card-id]
   (let [card      (t2/select-one :model/Card :id card-id)
         _         (when-not card

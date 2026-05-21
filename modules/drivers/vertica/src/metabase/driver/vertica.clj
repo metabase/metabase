@@ -292,7 +292,7 @@
 
 (defn- materialized-views
   "Fetch the Materialized Views for a Vertica `database`.
-   These are returned as a set of maps, the same format as `:tables` returned by `describe-database`."
+  These are returned as a set of maps, the same format as `:tables` returned by `describe-database`."
   [database]
   (try (set (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
                         ["SELECT TABLE_SCHEMA AS \"schema\", TABLE_NAME AS \"name\" FROM V_CATALOG.VIEWS;"]))

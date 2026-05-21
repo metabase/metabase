@@ -251,11 +251,11 @@
 
 (defn test-mutations
   "Test all mutations of a function with specific tests.
-   Returns a map with:
-   - :killed - mutations that caused test failures
-   - :survived - mutations that passed all tests
-   - :total - total number of mutations
-   - :kill-rate - percentage of mutations killed"
+  Returns a map with:
+  - :killed - mutations that caused test failures
+  - :survived - mutations that passed all tests
+  - :total - total number of mutations
+  - :kill-rate - percentage of mutations killed"
   [fq-name test-names]
   (when-let [mutation-data (generate-mutations fq-name)]
     (let [ns-sym (symbol (namespace fq-name))

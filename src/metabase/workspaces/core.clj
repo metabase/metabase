@@ -78,14 +78,14 @@
 
 (defenterprise workspace-mode?
   "True if this instance is running in workspace mode — a `:workspace` section
-   was loaded from `config.yml` at boot. Instance-level state set once at boot.
+  was loaded from `config.yml` at boot. Instance-level state set once at boot.
 
-   For the per-database check, use the EE function
-   `metabase-enterprise.workspaces.core/db-workspace-namespace` (returns the
-   workspace-isolated output namespace map if this instance is in workspace mode
-   AND the workspace's `:databases` map includes this database).
+  For the per-database check, use the EE function
+  `metabase-enterprise.workspaces.core/db-workspace-namespace` (returns the
+  workspace-isolated output namespace map if this instance is in workspace mode
+  AND the workspace's `:databases` map includes this database).
 
-   The OSS fallback returns false."
+  The OSS fallback returns false."
   metabase-enterprise.workspaces.core
   []
   false)
@@ -110,10 +110,10 @@
 (defn check-not-in-workspace-mode!
   "Throws an HTTP 400 `ex-info` if this instance is running in workspace mode.
 
-   Use at API entry points for features that must be refused on a workspace
-   child instance (DB routing, connection impersonation, writeback, CSV upload,
-   model persistence enable). The check is *instance-level*, not per-database
-   — see namespace docstring for the rationale."
+  Use at API entry points for features that must be refused on a workspace
+  child instance (DB routing, connection impersonation, writeback, CSV upload,
+  model persistence enable). The check is *instance-level*, not per-database
+  — see namespace docstring for the rationale."
   [feature-name]
   (when (workspace-mode?)
     (throw (ex-info (str feature-name " is not supported on a workspace instance.")

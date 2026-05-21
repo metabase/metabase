@@ -29,7 +29,7 @@
 
 (defn- execute-all-cards
   "Execute all cards in a lens and compute card results.
-   Returns a map of card-id -> result map."
+  Returns a map of card-id -> result map."
   [lens-id lens]
   (into {}
         (map (fn [card]
@@ -53,8 +53,8 @@
 
 (defn- mbql-multi-join-query
   "ORDERS INNER JOIN PEOPLE, LEFT JOIN PRODUCTS, LEFT JOIN REVIEWS.
-   The 3rd LEFT JOIN (reviews on product_id) produces unmatched rows
-   since not every order's product has a review."
+  The 3rd LEFT JOIN (reviews on product_id) produces unmatched rows
+  since not every order's product has a review."
   []
   (let [mp (mt/metadata-provider)]
     (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
@@ -83,14 +83,14 @@
 
 (defn- qt
   "Quote a table name for the current driver, with schema qualification.
-   Uses actual physical table name from metadata."
+  Uses actual physical table name from metadata."
   [s]
   (let [{:keys [name schema]} (t2/select-one [:model/Table :name :schema] :id (mt/id (keyword s)))]
     (sql.u/quote-name driver/*driver* :table schema name)))
 
 (defn- qf
   "Quote a field/column name for the current driver.
-   Uses actual physical column name from metadata."
+  Uses actual physical column name from metadata."
   [table-key col-key]
   (let [col-name (t2/select-one-fn :name :model/Field :id (mt/id table-key col-key))]
     (sql.u/quote-name driver/*driver* :field col-name)))
@@ -117,10 +117,10 @@
 
 (defn- run-inspector-loop
   "Run the full inspector loop for a transform:
-   1. Discover available lenses
-   2. For each applicable lens: get → execute cards → compute results → evaluate triggers
-   3. For any fired drill triggers: get drill lens → execute its cards
-   Returns a map of results for assertions."
+  1. Discover available lenses
+  2. For each applicable lens: get → execute cards → compute results → evaluate triggers
+  3. For any fired drill triggers: get drill lens → execute its cards
+  Returns a map of results for assertions."
   [transform]
   (let [discovery (inspector/discover-lenses transform)]
     (when (= :ready (:status discovery))
@@ -156,8 +156,8 @@
 
 (defn- assert-inspector-loop
   "Shared assertions for both MBQL and native e2e tests.
-   source-type is :mbql or :native — drill lens assertions are MBQL-only
-   since unmatched-rows lens requires preprocessed MBQL query."
+  source-type is :mbql or :native — drill lens assertions are MBQL-only
+  since unmatched-rows lens requires preprocessed MBQL query."
   [result source-type]
   (testing "discovery succeeds with join-analysis available"
     (is (= :ready (get-in result [:discovery :status])))

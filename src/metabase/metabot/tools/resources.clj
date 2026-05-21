@@ -75,7 +75,7 @@
 
 (def ^:private max-list-items
   "Maximum number of items returned in a single list response. When exceeded the response
-   includes :truncated true and :total so the agent knows there are more items it can drill into."
+  includes :truncated true and :total so the agent knows there are more items it can drill into."
   25)
 
 (defn- truncate-list
@@ -89,7 +89,7 @@
 
 (defn- list-result
   "Build a structured-output map for a list of items.
-   `list-type` is a keyword like :databases, :collection-items, :recents, etc."
+  `list-type` is a keyword like :databases, :collection-items, :recents, etc."
   [list-type items]
   (let [{:keys [items total truncated]} (truncate-list items)]
     {:structured-output
@@ -106,7 +106,7 @@
 
 (defn- parse-query-string
   "Parse a URI query string like \"tree=true&foo=bar\" into a keyword-keyed map.
-   Returns nil for empty or nil input."
+  Returns nil for empty or nil input."
   [qs]
   (when (and qs (not (str/blank? qs)))
     (->> (str/split qs #"&")
@@ -119,13 +119,13 @@
 (defn- parse-uri
   "Parse a metabase:// URI into a vector of path segments and a query-params map.
 
-   Each segment is URL-decoded after splitting on `/`, so encoded values like
-   `weird%2Fname` (a database schema with a literal `/`) round-trip correctly
-   from `metabase-uri` back into the matched pattern.
+  Each segment is URL-decoded after splitting on `/`, so encoded values like
+  `weird%2Fname` (a database schema with a literal `/`) round-trip correctly
+  from `metabase-uri` back into the matched pattern.
 
-   Returns:
-   - :segments     - vector of non-empty path segments (e.g. [\"database\" \"1\" \"tables\"])
-   - :query-params - {keyword string} map (e.g. {:tree \"true\"}), or nil if no query string"
+  Returns:
+  - :segments     - vector of non-empty path segments (e.g. [\"database\" \"1\" \"tables\"])
+  - :query-params - {keyword string} map (e.g. {:tree \"true\"}), or nil if no query string"
   [uri]
   (when-not (str/starts-with? uri "metabase://")
     (throw (ex-info (str "Invalid URI scheme. Expected 'metabase://' but got: " uri)
@@ -405,7 +405,7 @@
 
 (defn- table-details
   "Shared `entity-details/get-table-details` call for both /table/{id} and /table/{id}/fields.
-   `entity-type` is :table, :model, or :question."
+  `entity-type` is :table, :model, or :question."
   [entity-type id with-fields?]
   (entity-details/get-table-details {:entity-type          entity-type
                                      :entity-id            id
@@ -557,10 +557,10 @@
 
 (defn- dispatch
   "Route a parsed URI to the right fetch handler. The match-one table is the canonical
-   list of supported URI shapes — adding a new URI = adding a clause here + a handler.
+  list of supported URI shapes — adding a new URI = adding a clause here + a handler.
 
-   Pattern ordering: more-specific patterns (no rest-binding) must come before less-specific
-   ones (with rest-binding) so the exact-length match wins for the no-extra-segments case."
+  Pattern ordering: more-specific patterns (no rest-binding) must come before less-specific
+  ones (with rest-binding) so the exact-length match wins for the no-extra-segments case."
   [uri]
   (let [{:keys [segments query-params]} (parse-uri uri)]
     (match/match-one segments
@@ -637,8 +637,8 @@
 
 (defn- format-content
   "Format a tool result as an LLM-ready string.
-   Dispatches to the right llm-rep formatter based on :result-type.
-   Returns the :output string directly for error results (404s etc.)."
+  Dispatches to the right llm-rep formatter based on :result-type.
+  Returns the :output string directly for error results (404s etc.)."
   [content]
   (if-let [structured (:structured-output content)]
     (case (:result-type structured)

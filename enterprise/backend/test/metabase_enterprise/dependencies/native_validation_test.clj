@@ -25,7 +25,7 @@
 
 (defn- normalize-error
   "Normalize error :name using driver conventions for comparison.
-   This matches what sql-tools/common.clj does when returning errors."
+  This matches what sql-tools/common.clj does when returning errors."
   [driver error]
   (if-let [error-name (:name error)]
     (assoc error :name (driver.sql/normalize-name driver error-name))
@@ -33,8 +33,8 @@
 
 (defn- normalize-error-names
   "Normalize :name values in validation errors using driver conventions.
-   Both SQLGlot and Macaw errors are normalized by sql-tools/common.clj,
-   so we need to normalize expected values to match."
+  Both SQLGlot and Macaw errors are normalized by sql-tools/common.clj,
+  so we need to normalize expected values to match."
   [driver errors]
   (into #{}
         (map (partial normalize-error driver))

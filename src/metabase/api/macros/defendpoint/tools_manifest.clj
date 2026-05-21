@@ -22,10 +22,10 @@
 
 (defn- inline-malli-refs
   "Walk a malli schema, replacing all registered-schema refs with their dereferenced content.
-   This ensures `mjs/transform` never sees refs and thus never generates `$ref` or `$defs`.
-   Malli's `::mc/walked-refs` tracking prevents infinite recursion on cyclic schemas —
-   when a cycle is detected, the walker receives the raw ref name (a string) instead of a
-   walked schema, and we fall back to `:any`."
+  This ensures `mjs/transform` never sees refs and thus never generates `$ref` or `$defs`.
+  Malli's `::mc/walked-refs` tracking prevents infinite recursion on cyclic schemas —
+  when a cycle is detected, the walker receives the raw ref name (a string) instead of a
+  walked schema, and we fall back to `:any`."
   [schema]
   (mc/walk
    schema
@@ -40,18 +40,18 @@
 
 (defn- collect-root-maps
   "Walk the root of a malli schema tree using a worklist, collecting leaf `:map` schemas.
-   Composite nodes (`:and`, `:or`, `:multi`) are expanded and their children enqueued.
-   Other non-map nodes (e.g. `:schema` wrappers) are deref'd and re-enqueued.
+  Composite nodes (`:and`, `:or`, `:multi`) are expanded and their children enqueued.
+  Other non-map nodes (e.g. `:schema` wrappers) are deref'd and re-enqueued.
 
-   Returns a vector of `{:schema <map-schema> :optional? <bool>}` where `:optional?` is true
-   when the schema was reached through an `:or` or `:multi` branch (meaning all its keys
-   should become optional in the merged result).
+  Returns a vector of `{:schema <map-schema> :optional? <bool>}` where `:optional?` is true
+  when the schema was reached through an `:or` or `:multi` branch (meaning all its keys
+  should become optional in the merged result).
 
-   Tracks already-deref'd schemas to detect cycles — composite types (`:and`, `:or`, `:multi`)
-   and `:map` always terminate, so only the deref fallback path needs cycle detection.
+  Tracks already-deref'd schemas to detect cycles — composite types (`:and`, `:or`, `:multi`)
+  and `:map` always terminate, so only the deref fallback path needs cycle detection.
 
-   Only the outermost composite schemas are consumed — nested `anyOf`/`allOf` within `:map`
-   properties are preserved since LLM clients handle them fine."
+  Only the outermost composite schemas are consumed — nested `anyOf`/`allOf` within `:map`
+  properties are preserved since LLM clients handle them fine."
   [schema]
   (loop [worklist [{:schema schema :optional? false}]
          results  []
@@ -104,13 +104,13 @@
 
 (defn- flatten-root-schema
   "Flatten the root of a malli schema into a single `:map` for MCP inputSchema compatibility.
-   Only the outermost composite schemas (`:and`, `:or`, `:multi`) are consumed — nested
-   `anyOf`/`allOf` within `:map` properties are preserved.
+  Only the outermost composite schemas (`:and`, `:or`, `:multi`) are consumed — nested
+  `anyOf`/`allOf` within `:map` properties are preserved.
 
-   Collects all leaf `:map` schemas from the root composite tree, marks keys as optional
-   when reached through `:or`/`:multi` branches, then merges everything into one `:map`.
+  Collects all leaf `:map` schemas from the root composite tree, marks keys as optional
+  when reached through `:or`/`:multi` branches, then merges everything into one `:map`.
 
-   Returns the schema unchanged if it is already a `:map` or cannot be simplified."
+  Returns the schema unchanged if it is already a `:map` or cannot be simplified."
   [schema]
   (let [leaves (collect-root-maps schema)]
     (case (count leaves)
@@ -146,9 +146,9 @@
 
 (defn malli->json-schema
   "Transform a malli schema to JSON Schema with all refs inlined (no `$ref` or `$defs`).
-   Inlines registered-schema refs, flattens root-level composite schemas (`:or`, `:and`,
-   `:multi`) into a single `:map`, applies tool-description preferences, then transforms
-   to JSON Schema. Nested `anyOf`/`allOf` within properties are preserved."
+  Inlines registered-schema refs, flattens root-level composite schemas (`:or`, `:and`,
+  `:multi`) into a single `:map`, applies tool-description preferences, then transforms
+  to JSON Schema. Nested `anyOf`/`allOf` within properties are preserved."
   [malli-schema]
   (let [prepared (-> malli-schema inline-malli-refs flatten-root-schema prefer-tool-descriptions)]
     (mjs/transform prepared)))
@@ -179,9 +179,9 @@
 
 (defn infer-annotations
   "Compute MCP ToolAnnotations from HTTP method defaults merged with explicit `:annotations`.
-   Returns `{:annotations <merged> :redundant <pairs> :contradictory? <bool>}`.
-   Callers should reject `:redundant` entries (explicit declarations must add information beyond
-   the HTTP-method default) and `:contradictory?` (a tool can't be both read-only and destructive)."
+  Returns `{:annotations <merged> :redundant <pairs> :contradictory? <bool>}`.
+  Callers should reject `:redundant` entries (explicit declarations must add information beyond
+  the HTTP-method default) and `:contradictory?` (a tool can't be both read-only and destructive)."
   [method explicit-annotations]
   (let [method-defaults (method-default-annotations method)
         explicit        (into {}
@@ -243,11 +243,11 @@
 
 (defn assert-optional-fields-nullable!
   "Throw if any optional field reachable from `malli-schema` rejects an explicit null.
-   The strict-tool transform forces every property into `:required` (it does not widen property types),
-   so the only way for a strict MCP client to express \"no value\" is by sending null. If the Malli source
-   marks a field `:optional true` without `[:maybe ...]`, the published JSON Schema is required-and-non-
-   nullable — the `:optional` marker has no observable effect and the contract drifts from what the
-   schema says. The fix is at the schema definition: pair `:optional true` with `[:maybe ...]`."
+  The strict-tool transform forces every property into `:required` (it does not widen property types),
+  so the only way for a strict MCP client to express \"no value\" is by sending null. If the Malli source
+  marks a field `:optional true` without `[:maybe ...]`, the published JSON Schema is required-and-non-
+  nullable — the `:optional` marker has no observable effect and the contract drifts from what the
+  schema says. The fix is at the schema definition: pair `:optional true` with `[:maybe ...]`."
   [malli-schema tool-name]
   (when malli-schema
     (mc/walk
@@ -324,7 +324,7 @@
 
 (defn- name->title
   "Default convention: convert a snake_case tool name to a Title Case title.
-   `get_table` → `Get Table`."
+  `get_table` → `Get Table`."
   [tool-name]
   (->> (str/split tool-name #"_")
        (map str/capitalize)
@@ -332,7 +332,7 @@
 
 (defn- assert-claude-connector-compliant!
   "Throw if `annotations` lack the readOnlyHint or destructiveHint that the Claude
-   connector requires (every tool must declare one or the other)."
+  connector requires (every tool must declare one or the other)."
   [tool-name annotations]
   (let [{:keys [readOnlyHint destructiveHint]} annotations]
     (when-not (or (true? readOnlyHint) (boolean? destructiveHint))

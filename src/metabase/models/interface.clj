@@ -244,7 +244,7 @@
 
 (def transform-edn
   "Transform that stores Clojure data as EDN strings. Preserves keywords, sets, and other
-   types that JSON cannot represent. Strings are assumed to already be EDN and passed through."
+  types that JSON cannot represent. Strings are assumed to already be EDN and passed through."
   {:in  (fn [v] (cond (nil? v)    nil
                       (string? v) v
                       :else       (pr-str v)))
@@ -275,8 +275,8 @@
 
 (defn transform-validator-with-fixes
   "Like [[transform-validator]], but applies `fixes` (a fn of old-value->new-value) before validation on both read
-   and write. Use this when an enum has been renamed and old values may still exist in the database or in
-   serialization exports."
+  and write. Use this when an enum has been renamed and old values may still exist in the database or in
+  serialization exports."
   [tf assert-fn fixes]
   (-> tf
       (update :out (fn [f]
@@ -352,7 +352,7 @@
 ;;; also [[metabase.models.visualization-settings]].
 (defn normalize-visualization-settings
   "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
-   to MBQL 4 clauses so things work correctly."
+  to MBQL 4 clauses so things work correctly."
   [viz-settings]
   (letfn [(normalize-column-settings-key [k]
             (some-> k
@@ -866,8 +866,8 @@
 
 (defmulti exclude-internal-content-hsql
   "Returns a HoneySQL expression to exclude instances of the model that were created automatically as part of internally
-   used content, such as Metabase Analytics, the sample database, or the sample dashboard. If a `table-alias` (string
-   or keyword) is provided any columns will have a table alias in the returned expression."
+  used content, such as Metabase Analytics, the sample database, or the sample dashboard. If a `table-alias` (string
+  or keyword) is provided any columns will have a table alias in the returned expression."
   {:arglists '([model & {:keys [table-alias]}])}
   dispatch-on-model)
 

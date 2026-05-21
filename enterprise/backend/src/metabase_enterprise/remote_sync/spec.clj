@@ -333,13 +333,13 @@
 
 (defn export-conditions
   "Returns conditions to apply when querying entities for export.
-   Uses :export-conditions if present, else falls back to :conditions."
+  Uses :export-conditions if present, else falls back to :conditions."
   [spec]
   (or (:export-conditions spec) (:conditions spec)))
 
 (defn removal-conditions
   "Returns conditions to apply when removing unsynced entities.
-   Uses :removal-conditions if present, else falls back to :conditions."
+  Uses :removal-conditions if present, else falls back to :conditions."
   [spec]
   (or (:removal-conditions spec) (:conditions spec)))
 
@@ -381,8 +381,8 @@
 
 (defn specs-for-deletion
   "Returns specs with :entity-id identity type, topologically sorted for safe deletion.
-   Uses :delete-after declarations to ensure models are deleted before their dependencies.
-   If model A has :delete-after [:model/B], then A will be deleted before B."
+  Uses :delete-after declarations to ensure models are deleted before their dependencies.
+  If model A has :delete-after [:model/B], then A will be deleted before B."
   []
   (let [entity-id-specs (specs-by-identity-type :entity-id)
         ;; Build dependency graph: model -> set of models that must be deleted after it
@@ -421,8 +421,8 @@
 
 (defn excluded-model-types
   "Returns a set of model type strings that should be excluded from dirty detection
-   based on current settings. Models with a setting-based or library-synced :enabled?
-   that is currently false will be excluded."
+  based on current settings. Models with a setting-based or library-synced :enabled?
+  that is currently false will be excluded."
   []
   (->> remote-sync-specs
        (filter (fn [[_ spec]]
@@ -441,8 +441,8 @@
 
 (defn optional-feature-specs
   "Returns specs for optional features, grouped by their enabling setting keyword.
-   Optional features are those with a keyword `:enabled?` value (not `true`).
-   Returns map of {setting-keyword {model-key spec}}."
+  Optional features are those with a keyword `:enabled?` value (not `true`).
+  Returns map of {setting-keyword {model-key spec}}."
   []
   (-> remote-sync-specs
       (->> (filter (fn [[_ spec]] (keyword? (:enabled? spec))))
@@ -475,14 +475,14 @@
 
 (def transform-models
   "Models that indicate transforms content in a snapshot.
-   Derived from specs with `:enabled? :remote-sync-transforms`.
-   Excludes TransformTag since built-in tags are always present and don't indicate
-   user transform content. Non-built-in TransformTags are checked separately."
+  Derived from specs with `:enabled? :remote-sync-transforms`.
+  Excludes TransformTag since built-in tags are always present and don't indicate
+  user transform content. Non-built-in TransformTags are checked separately."
   (disj (models-for-setting :remote-sync-transforms) "TransformTag"))
 
 (defn models-in-import
   "Returns set of model-type strings present in the import.
-   Takes an ingest-list (sequence of serdes paths from serialization/ingest-list)."
+  Takes an ingest-list (sequence of serdes paths from serialization/ingest-list)."
   [ingest-list]
   (->> ingest-list
        (map (fn [path] (:model (last path))))
@@ -490,9 +490,9 @@
 
 (defn check-entity-id-conflicts
   "Checks if imported entity_ids exist locally but are NOT in RemoteSyncObject.
-   Returns map of {model-type #{conflicting-entity-ids}}.
+  Returns map of {model-type #{conflicting-entity-ids}}.
 
-   Excludes the Library collection entity_id since that's handled by the library-conflict check."
+  Excludes the Library collection entity_id since that's handled by the library-conflict check."
   [imported-entity-ids-by-model]
   (into {}
         (for [[model-type entity-ids] imported-entity-ids-by-model
@@ -519,9 +519,9 @@
 
 (defn- has-unsynced-entities-for-feature?
   "Returns true if any model in the feature group has local entities not tracked in RemoteSyncObject.
-   Excludes entities filtered by export-conditions (e.g., built-in TransformTags) from the count since
-   they are system-created and not user data. Namespace collections are not checked here because they are
-   organizational containers, not user data that would be lost on import."
+  Excludes entities filtered by export-conditions (e.g., built-in TransformTags) from the count since
+  they are system-created and not user data. Namespace collections are not checked here because they are
+  organizational containers, not user data that would be lost on import."
   [specs-for-feature]
   (some (fn [[_ spec]]
           (let [model-key (:model-key spec)
@@ -537,12 +537,12 @@
 
 (defn check-feature-conflicts
   "Checks if import contains models that conflict with existing local entities that are NOT already remote synced.
-   Derives conflict categories from specs with keyword `:enabled?` values (optional features).
-   Only triggers conflict when local has unsynced entities AND import has matching entities.
-   If local entities are already synced, dirty tracking handles conflicts instead.
+  Derives conflict categories from specs with keyword `:enabled?` values (optional features).
+  Only triggers conflict when local has unsynced entities AND import has matching entities.
+  If local entities are already synced, dirty tracking handles conflicts instead.
 
-   `import-namespace-collections` is a set of namespace strings (e.g., #{\"transforms\" \"snippets\"})
-   found in Collection entities in the import."
+  `import-namespace-collections` is a set of namespace strings (e.g., #{\"transforms\" \"snippets\"})
+  found in Collection entities in the import."
   [models-present import-namespace-collections]
   (let [feature-groups (optional-feature-specs)]
     (into []
@@ -561,11 +561,11 @@
 
 (defn check-namespace-collection-conflicts
   "Checks if import contains namespace collections (transforms/snippets) that conflict with local
-   unsynced namespace collections. Only flags a conflict when the local collections were NOT created
-   by the sync system (i.e., have no matching entity_id in the import).
+  unsynced namespace collections. Only flags a conflict when the local collections were NOT created
+  by the sync system (i.e., have no matching entity_id in the import).
 
-   `import-namespace-collections` is a set of namespace strings found in the import.
-   `import-ns-collection-entity-ids` is a map of namespace string -> set of entity_ids from the import."
+  `import-namespace-collections` is a set of namespace strings found in the import.
+  `import-ns-collection-entity-ids` is a map of namespace string -> set of entity_ids from the import."
   [import-namespace-collections import-ns-collection-entity-ids]
   (let [ns-configs [{:ns-name "transforms" :setting-kw :remote-sync-transforms :category "Transforms"}
                     {:ns-name "snippets"   :setting-kw :library-synced         :category "Snippets"}]]
@@ -613,7 +613,7 @@
 
 (defn should-sync-collection?
   "Check if a collection should be synced - either remote-synced, transforms-namespace with setting enabled,
-   or snippets-namespace with Library synced."
+  or snippets-namespace with Library synced."
   [collection]
   (or (collections/remote-synced-collection? collection)
       (and (rs-settings/remote-sync-transforms)
@@ -623,12 +623,12 @@
 
 (defn all-syncable-collection-ids
   "Returns a vector of all collection IDs that are eligible for remote sync.
-   This includes:
-   - Collections with is_remote_synced=true
-   - Transforms-namespace collections (when remote-sync-transforms setting is enabled)
-   - Snippets-namespace collections (when Library is remote-synced)
+  This includes:
+  - Collections with is_remote_synced=true
+  - Transforms-namespace collections (when remote-sync-transforms setting is enabled)
+  - Snippets-namespace collections (when Library is remote-synced)
 
-   Used by import cleanup to determine which collections to scope deletions to."
+  Used by import cleanup to determine which collections to scope deletions to."
   []
   (into []
         cat
@@ -640,7 +640,7 @@
 
 (defmulti check-eligibility
   "Determines if a model instance should be tracked for remote sync.
-   Dispatches on the eligibility type defined in the spec."
+  Dispatches on the eligibility type defined in the spec."
   {:arglists '([spec object])}
   (fn [spec _object] (get-in spec [:eligibility :type])))
 
@@ -713,13 +713,13 @@
 (defn model-editable?
   "Determines if a model instance is editable based on remote sync configuration.
 
-   Returns false if:
-   - The model has a spec in remote-sync-specs AND
-   - The instance is eligible for sync (via check-eligibility) AND
-   - remote-sync-type is :read-only
+  Returns false if:
+  - The model has a spec in remote-sync-specs AND
+  - The instance is eligible for sync (via check-eligibility) AND
+  - remote-sync-type is :read-only
 
-   For models with global eligibility (e.g., :library-synced, :setting), the instance
-   argument can be nil or an empty map since eligibility doesn't depend on instance data."
+  For models with global eligibility (e.g., :library-synced, :setting), the instance
+  argument can be nil or an empty map since eligibility doesn't depend on instance data."
   [model-key instance]
   (if-let [spec (spec-for-model-key model-key)]
     (or (= (rs-settings/remote-sync-type) :read-write)
@@ -741,7 +741,7 @@
 
 (defn hydrate-model-details
   "Hydrates model details for RemoteSyncObject based on spec.
-   Returns a map with the fields needed to populate the sync object."
+  Returns a map with the fields needed to populate the sync object."
   [{:keys [model-key tracking]} model-id]
   (if-let [query (:hydrate-query tracking)]
     ;; Use custom query for joins (Field, Segment)
@@ -756,7 +756,7 @@
 
 (defn build-sync-object-fields
   "Builds the fields map for RemoteSyncObject from hydrated model details.
-   Applies any transform functions defined in field-mappings."
+  Applies any transform functions defined in field-mappings."
   [{:keys [tracking]} model-details]
   (when model-details
     (into {}
@@ -779,7 +779,7 @@
 
 (defmulti extract-identity
   "Extracts the identity for a model instance based on the spec's identity strategy.
-   Used for matching during import/export."
+  Used for matching during import/export."
   {:arglists '([spec instance])}
   (fn [spec _instance] (:identity spec)))
 
@@ -802,16 +802,16 @@
 
 (def ^:private serdes-path-identity-hierarchy
   "Hierarchy for extract-identity-from-serdes-path dispatch. Both :entity-id and :hybrid models
-   extract identity the same way (entity_id from last path element)."
+  extract identity the same way (entity_id from last path element)."
   (-> (make-hierarchy)
       (derive :entity-id ::entity-id-extractor)
       (derive :hybrid ::entity-id-extractor)))
 
 (defmulti extract-identity-from-serdes-path
   "Extracts identity data from a serdes path based on the spec's identity strategy. For entity-id
-   and hybrid models, returns the entity_id string from the last path element. For path-based models
-   like Table and Field, returns a map with database, schema, and table/field names that can be used
-   to look up the entity."
+  and hybrid models, returns the entity_id string from the last path element. For path-based models
+  like Table and Field, returns a map with database, schema, and table/field names that can be used
+  to look up the entity."
   {:arglists '([spec serdes-path])}
   (fn [spec _path] (:identity spec))
   :hierarchy #'serdes-path-identity-hierarchy)
@@ -835,8 +835,8 @@
 
 (defn extract-imported-entities
   "Processes serdes paths from an import and extracts entity identities grouped by how they should be looked up.
-   Returns a map with :by-entity-id containing entity_ids grouped by model type, and :by-path containing
-   path lookup maps for models like Table and Field that use path-based identity."
+  Returns a map with :by-entity-id containing entity_ids grouped by model type, and :by-path containing
+  path lookup maps for models like Table and Field that use path-based identity."
   [seen-paths]
   (reduce
    (fn [acc path]
@@ -892,7 +892,7 @@
 
 (defn fields-for-sync
   "Returns the fields to select for a model during sync operations.
-   Falls back to default if not specified in spec."
+  Falls back to default if not specified in spec."
   [model-type-str]
   (if-let [spec (spec-for-model-type model-type-str)]
     (or (get-in spec [:tracking :select-fields])
@@ -1021,8 +1021,8 @@
 
 (defn sync-all-entities!
   "Builds RemoteSyncObject entries for all imported entities based on their specs. Iterates over enabled
-   specs and queries the database to hydrate the fields needed for each sync object. Returns a sequence
-   of maps ready for insertion into the RemoteSyncObject table."
+  specs and queries the database to hydrate the fields needed for each sync object. Returns a sequence
+  of maps ready for insertion into the RemoteSyncObject table."
   [timestamp {:keys [by-entity-id by-path]}]
   (into []
         (for [[model-key spec] (enabled-specs)
@@ -1040,8 +1040,8 @@
 
 (defmulti query-export-roots
   "Queries for root-level export targets based on eligibility configuration.
-   Returns a sequence of [model-type id] tuples for initial targets, or nil if
-   this model type's targets are derived from other models (e.g., via serdes/descendants)."
+  Returns a sequence of [model-type id] tuples for initial targets, or nil if
+  this model type's targets are derived from other models (e.g., via serdes/descendants)."
   {:arglists '([spec])}
   (fn [spec] (get-in spec [:eligibility :type])))
 
@@ -1105,8 +1105,8 @@
 
 (defn- resolve-targets
   "Expands collection IDs to include all descendant collections.
-   Takes a set of collection IDs and returns a set including the original IDs
-   plus all IDs of nested collections."
+  Takes a set of collection IDs and returns a set including the original IDs
+  plus all IDs of nested collections."
   [targets opts]
   (when (seq targets)
     (merge-with into
@@ -1116,16 +1116,16 @@
 (defn extract-entities-for-export
   "Extracts all entities for remote-sync export based on enabled specs.
 
-   Returns a lazy sequence of serialized entities ready for storage.
+  Returns a lazy sequence of serialized entities ready for storage.
 
-   Iterates over enabled specs and uses `query-export-roots` to find root targets
-   for each model type. Models with `:export-scope :derived` or no export-scope
-   are expanded from other targets via serdes/descendants.
+  Iterates over enabled specs and uses `query-export-roots` to find root targets
+  for each model type. Models with `:export-scope :derived` or no export-scope
+  are expanded from other targets via serdes/descendants.
 
-   Only extracts models that:
-   1. Have a spec in remote-sync-specs
-   2. Are currently enabled (based on :enabled? field)
-   3. Are in one of the provided collections (or descendants)"
+  Only extracts models that:
+  1. Have a spec in remote-sync-specs
+  2. Are currently enabled (based on :enabled? field)
+  3. Are in one of the provided collections (or descendants)"
   []
   (let [specs (enabled-specs)
         ;; Collect all root targets by iterating over enabled specs

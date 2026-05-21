@@ -45,8 +45,8 @@
 
 (defn validate-collection-move-permissions
   "Validates that the current user has write permissions for both old and new collections
-   when moving a document. Uses the same permission pattern as check-allowed-to-change-collection.
-   Throws 403 exception if permissions are insufficient."
+  when moving a document. Uses the same permission pattern as check-allowed-to-change-collection.
+  Throws 403 exception if permissions are insufficient."
   [old-collection-id new-collection-id]
   (when old-collection-id
     (api/write-check :model/Collection old-collection-id))

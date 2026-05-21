@@ -46,7 +46,7 @@
 
 (defn logo-url
   "Return the URL for the application logo. If the logo is the default, return a URL to the Metabase logo.
-   For data URIs, returns the cid: reference (requires logo-attachment to be included in email)."
+  For data URIs, returns the cid: reference (requires logo-attachment to be included in email)."
   []
   (:image-src (logo-bundle)))
 
@@ -94,7 +94,7 @@
 
 (defn- send-email-with-logo!
   "Send an email, including the logo as an attachment if it's a data URI.
-   Takes the same args as email/send-message! but handles logo attachments automatically."
+  Takes the same args as email/send-message! but handles logo attachments automatically."
   [{:keys [message] :as email-args}]
   (if-let [attachment (logo-attachment)]
     (email/send-message!
@@ -186,8 +186,8 @@
 
 (defn- admin-or-ee-monitoring-details-emails
   "Find emails for users that have an interest in monitoring the database.
-   If oss that means admin users.
-   If ee that also means users with monitoring and details permissions."
+  If oss that means admin users.
+  If ee that also means users with monitoring and details permissions."
   [database-id]
   (let [monitoring (perms/application-perms-path :monitoring)
         user-ids-with-monitoring (when (premium-features/enable-advanced-permissions?)

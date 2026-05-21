@@ -10,12 +10,12 @@
 
 (def ^:private ^:dynamic *proxy-depths*
   "Thread-local map from redefined var to current recursion depth through its proxy.
-   Used to detect capture bugs that would otherwise manifest as StackOverflowError."
+  Used to detect capture bugs that would otherwise manifest as StackOverflowError."
   {})
 
 (def ^:private max-proxy-depth
   "If a single var's proxy is re-entered this many times on one thread, assume a capture bug.
-   Generous enough to permit deliberate recursion, low enough to fail fast before SOE."
+  Generous enough to permit deliberate recursion, low enough to fail fast before SOE."
   128)
 
 (defn dynamic-value
@@ -26,17 +26,17 @@
 
 (defn original-fn
   "Return the original (unpatched) function for `a-var`. If the var has been
-   patched by [[with-dynamic-fn-redefs]], returns the stored original; otherwise
-   returns the var's current root value."
+  patched by [[with-dynamic-fn-redefs]], returns the stored original; otherwise
+  returns the var's current root value."
   [a-var]
   (or (::original (meta a-var)) @a-var))
 
 (defn- var->proxy
   "Build a proxy function to intercept the given var. The proxy checks the current scope for what to call.
-   Uses unconditional throws (not `assert`) so the safety checks fire even when `*assert*` is false.
+  Uses unconditional throws (not `assert`) so the safety checks fire even when `*assert*` is false.
 
-   Accepts any `IFn` root value — keywords and collections work via their `IFn` impl
-   (`(:a {:a 1})` → `1`, `({:a 1} :a)` → `1`), so the proxy's `apply` delegates correctly."
+  Accepts any `IFn` root value — keywords and collections work via their `IFn` impl
+  (`(:a {:a 1})` → `1`, `({:a 1} :a)` → `1`), so the proxy's `apply` delegates correctly."
   [a-var]
   (let [v @a-var]
     (when-not (ifn? v)

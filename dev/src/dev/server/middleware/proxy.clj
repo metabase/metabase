@@ -184,7 +184,7 @@
 
 (defn wrap-remote-api-proxy
   "Middleware that proxies API requests to a remote backend when MB_REMOTE_API_URL is set.
-   Only active in dev mode."
+  Only active in dev mode."
   [handler]
   (if-let [url (and config/is-dev? (remote-api-url))]
     (do

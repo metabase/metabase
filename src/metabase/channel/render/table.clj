@@ -92,11 +92,11 @@
 
 (defn calculate-pct-widths
   "Calculate the widths for label and minibar as percentages.
-   Returns a vector of [label-width minibar-width] in the format '<value>%'.
+  Returns a vector of [label-width minibar-width] in the format '<value>%'.
 
-   The minibar-width is calculated as 70% of cell-width unless that would exceed `max-bar-width`,
-   in which case it's the percentage equivalent to 100px of the cell-width.
-   The label-width is calculated as the remaining percentage (100% - minibar-width)."
+  The minibar-width is calculated as 70% of cell-width unless that would exceed `max-bar-width`,
+  in which case it's the percentage equivalent to 100px of the cell-width.
+  The label-width is calculated as the remaining percentage (100% - minibar-width)."
   [cell-width]
   (let [minibar-percent 70
         minibar-max-percent (if (> cell-width 0)
@@ -241,11 +241,11 @@
 
 (defn- column-has-width
   "Check if a column has a valid width in the column-widths array.
-   Returns true if:
-   - column-widths is present
-   - column-index is not nil
-   - column-index is within bounds of column-widths
-   - The width at column-index is not nil"
+  Returns true if:
+  - column-widths is present
+  - column-index is not nil
+  - column-index is within bounds of column-widths
+  - The width at column-index is not nil"
   [column-widths column-index]
   (and column-widths
        (some? column-index)

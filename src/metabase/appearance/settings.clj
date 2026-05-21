@@ -48,7 +48,7 @@
 
 (defn- coerce-to-relative-url
   "Get the path of a given URL if the URL contains an origin.
-   Otherwise make the landing-page a relative path."
+  Otherwise make the landing-page a relative path."
   [landing-page]
   (cond
     (u/url? landing-page) (-> landing-page io/as-url .getPath)

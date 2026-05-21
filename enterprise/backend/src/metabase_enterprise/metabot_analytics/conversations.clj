@@ -24,7 +24,7 @@
 
 (defn- date-string->constraints
   "Parse a serialized date-param string into half-open HoneySQL predicates on `col`.
-   Throws 400 on a malformed string. Returns nil when no bound is produced."
+  Throws 400 on a malformed string. Returns nil when no bound is produced."
   [col date-string]
   (let [{:keys [start end]}
         (try
@@ -43,7 +43,7 @@
 
 (defn- list-where-clause
   "Compose a conjunctive WHERE from optional filters. Returns `nil` when no
-   filter applies so the caller can `cond->` cleanly."
+  filter applies so the caller can `cond->` cleanly."
   [{:keys [user-id group-id tenant-id date]}]
   (let [clauses (cond-> []
                   user-id (conj [:= :c.user_id user-id])
@@ -66,14 +66,14 @@
 
 (defn- trim-user
   "Trim a hydrated core_user down to the minimal shape the frontend uses
-   (`MetabotUserInfo`)."
+  (`MetabotUserInfo`)."
   [user]
   (some-> user (select-keys [:id :email :first_name :last_name :tenant_id])))
 
 (def ^:private sort-columns
   "Allow-list of API sort keys → vectors of HoneySQL ORDER BY expressions (sans
-   direction). A vector lets a single sort key emit multiple ORDER BY terms that
-   share the same direction (e.g. user sort orders by first_name then last_name)."
+  direction). A vector lets a single sort key emit multiple ORDER BY terms that
+  share the same direction (e.g. user sort orders by first_name then last_name)."
   {"created_at"    [:c.created_at]
    "message_count" [:message_count]
    "total_tokens"  [:total_tokens]
@@ -84,8 +84,8 @@
 
 (def ^:private list-query
   "HoneySQL query that selects one row per conversation with the aggregate
-   message stats the frontend needs. Filters, sorting, and paging are applied
-   by [[list-conversations]]."
+  message stats the frontend needs. Filters, sorting, and paging are applied
+  by [[list-conversations]]."
   {:select    [:c.*
                [[:count :m.id] :message_count]
                [[:count [:case [:= :m.role "user"] 1]] :user_message_count]
@@ -113,8 +113,8 @@
 
 (defn- row->summary
   "Reshape a raw list-query row into the response shape the frontend expects:
-   renames the conversation's `:id` to `:conversation_id`, trims the hydrated
-   user, and keeps only the aggregate fields the summary payload needs."
+  renames the conversation's `:id` to `:conversation_id`, trims the hydrated
+  user, and keeps only the aggregate fields the summary payload needs."
   [row]
   {:conversation_id         (:id row)
    :created_at              (:created_at row)
@@ -136,9 +136,9 @@
 
 (defn- hydrate-tool-counts
   "Batch-load `metabot_message` data for a page of conversations and attach
-   `:search_count` and `:query_count` to each row. One query per page
-   regardless of row count — messages are grouped in-memory by
-   `:conversation_id` and both counts are computed from the same fetch."
+  `:search_count` and `:query_count` to each row. One query per page
+  regardless of row count — messages are grouped in-memory by
+  `:conversation_id` and both counts are computed from the same fetch."
   [rows]
   (let [conversation-ids (map :id rows)
         messages-by-conv (when (seq conversation-ids)
@@ -156,9 +156,9 @@
 
 (defn list-conversations
   "Return a paginated `{:data :total :limit :offset}` map of conversation
-   summaries. Supports optional filtering by `user-id`, `group-id`, `tenant-id`,
-   and a serialized `date` parameter string, plus sorting by an allow-listed
-   `sort-by` column in either direction (defaults to newest-first)."
+  summaries. Supports optional filtering by `user-id`, `group-id`, `tenant-id`,
+  and a serialized `date` parameter string, plus sorting by an allow-listed
+  `sort-by` column in either direction (defaults to newest-first)."
   [{:keys [limit offset user-id group-id tenant-id date sort-by sort-dir]}]
   (let [limit      (or limit default-limit)
         offset     (or offset default-offset)
@@ -193,9 +193,9 @@
 
 (defn- fetch-conversation-feedback
   "Return all `metabot_feedback` rows for messages in `conversation-id`, ordered
-   by submission time. Rows are keyed per-`(message, submitter)` — a shared
-   thread can yield multiple rows for the same message — so the submitter is
-   hydrated as `:user` for display."
+  by submission time. Rows are keyed per-`(message, submitter)` — a shared
+  thread can yield multiple rows for the same message — so the submitter is
+  hydrated as `:user` for display."
   [conversation-id]
   (let [rows (t2/select :model/MetabotFeedback
                         {:select   [:metabot_feedback.id
@@ -218,8 +218,8 @@
 
 (defn fetch-conversation-detail
   "Fetch a conversation with its user info, the frontend-ready flattened
-   chat messages, the queries the bot generated, and any user-submitted feedback.
-   404s via `api/check-404` if no conversation matches `conversation-id`."
+  chat messages, the queries the bot generated, and any user-submitted feedback.
+  404s via `api/check-404` if no conversation matches `conversation-id`."
   [conversation-id]
   (let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
     (api/check-404 conversation)

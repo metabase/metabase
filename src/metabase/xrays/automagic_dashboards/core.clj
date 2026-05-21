@@ -387,8 +387,8 @@
 
 (defn- matching-dashboard-templates
   "Return matching dashboard templates ordered by specificity.
-   Most specific is defined as entity type specification the longest ancestor
-   chain."
+  Most specific is defined as entity type specification the longest ancestor
+  chain."
   [dashboard-templates {:keys [source entity]}]
   ;; Should this be here or lifted to the calling context. It's a magic step.
   (let [table-type (or (:entity_type source) :entity/GenericTable)]
@@ -402,8 +402,8 @@
 
 (defn- linked-tables
   "Return all tables accessible from a given table with the paths to get there.
-   If there are multiple FKs pointing to the same table, multiple entries will
-   be returned."
+  If there are multiple FKs pointing to the same table, multiple entries will
+  be returned."
   [table]
   (for [{:keys [id target]} (field/with-targets
                               (t2/select :model/Field
@@ -586,7 +586,7 @@
 
 (defn- fill-related
   "We fill available slots round-robin style. Each selector is a list of fns that are tried against
-   `related` in sequence until one matches."
+  `related` in sequence until one matches."
   [available-slots selectors related]
   (let [pop-first         (fn [m ks]
                             (loop [[k & ks] ks]
@@ -672,7 +672,7 @@
 
 (mu/defn- related
   "Build a balanced list of related X-rays. General composition of the list is determined for each
-   root type individually via `related-selectors`. That recipe is then filled round-robin style."
+  root type individually via `related-selectors`. That recipe is then filled round-robin style."
   [root
    available-dimensions
    dashboard-template :- [:maybe dashboard-templates/DashboardTemplate]]
@@ -961,14 +961,14 @@
 
 (defn candidate-tables
   "Return a list of tables in database with ID `database-id` for which it makes sense
-   to generate an automagic dashboard. Results are grouped by schema and ranked
-   according to interestingness (both schemas and tables within each schema). Each
-   schema contains up to `max-candidate-tables` tables.
+  to generate an automagic dashboard. Results are grouped by schema and ranked
+  according to interestingness (both schemas and tables within each schema). Each
+  schema contains up to `max-candidate-tables` tables.
 
-   Tables are ranked based on how specific dashboard template has been used, and
-   the number of fields.
-   Schemes are ranked based on the number of distinct entity types and the
-   interestingness of tables they contain (see above)."
+  Tables are ranked based on how specific dashboard template has been used, and
+  the number of fields.
+  Schemes are ranked based on the number of distinct entity types and the
+  interestingness of tables they contain (see above)."
   ([database] (candidate-tables database nil))
   ([database schema]
    (let [dashboard-templates (dashboard-templates/get-dashboard-templates ["table"])]

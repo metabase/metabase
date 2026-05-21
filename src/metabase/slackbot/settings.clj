@@ -6,13 +6,13 @@
 
 (defn metabot-slack-signing-secret
   "Signing secret for verifying requests from the Metabot Slack app.
-   Delegates to [[metabase.server.settings/metabot-slack-signing-secret]]."
+  Delegates to [[metabase.server.settings/metabot-slack-signing-secret]]."
   []
   (server.settings/metabot-slack-signing-secret))
 
 (defn unobfuscated-metabot-slack-signing-secret
   "Get the unobfuscated value of [[metabot-slack-signing-secret]].
-   Delegates to [[metabase.server.settings/unobfuscated-metabot-slack-signing-secret]]."
+  Delegates to [[metabase.server.settings/unobfuscated-metabot-slack-signing-secret]]."
   []
   (server.settings/unobfuscated-metabot-slack-signing-secret))
 

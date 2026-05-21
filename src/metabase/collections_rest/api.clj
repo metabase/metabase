@@ -49,8 +49,8 @@
 
 (defn- location-from-collection-id-clause
   "Clause to restrict which collections are being selected based off collection-id. If collection-id is nil,
-   then restrict to the children and the grandchildren of the root collection. If collection-id is an an integer,
-   then restrict to that collection's parents and children."
+  then restrict to the children and the grandchildren of the root collection. If collection-id is an an integer,
+  then restrict to that collection's parents and children."
   [collection-id]
   (if collection-id
     [:and

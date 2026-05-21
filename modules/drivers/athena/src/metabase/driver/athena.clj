@@ -356,7 +356,7 @@
 
 (defn- run-query
   "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.
-   Such as prepare statement"
+  Such as prepare statement"
   [database query]
   (log/infof "Running Athena query : '%s'..." query)
   (try

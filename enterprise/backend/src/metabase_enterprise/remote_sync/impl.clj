@@ -26,12 +26,12 @@
 
 (defn- snapshot-has-transforms?
   "Checks if the snapshot contains any Transform, PythonLibrary entities,
-   non-built-in TransformTags, or transforms-namespace collections.
-   Used to auto-enable/disable remote-sync-transforms setting during import.
+  non-built-in TransformTags, or transforms-namespace collections.
+  Used to auto-enable/disable remote-sync-transforms setting during import.
 
-   Uses the ingestable to list all entities and checks their :model metadata,
-   then also checks if any Collection entities have namespace=transforms.
-   Built-in TransformTags are excluded since they are system-created and always present."
+  Uses the ingestable to list all entities and checks their :model metadata,
+  then also checks if any Collection entities have namespace=transforms.
+  Built-in TransformTags are excluded since they are system-created and always present."
   [ingestable]
   (let [serdes-paths (serialization/ingest-list ingestable)
         models-present (spec/models-in-import serdes-paths)]
@@ -64,7 +64,7 @@
 
 (defn- build-entity-id-where-clause
   "Builds a HoneySQL WHERE clause for entity_id filtering.
-   Combines the imported entity-ids exclusion with any spec-level entity_id condition."
+  Combines the imported entity-ids exclusion with any spec-level entity_id condition."
   [entity-ids spec-entity-id-condition]
   (let [imported-condition (when (seq entity-ids)
                              [:not-in :entity_id entity-ids])
@@ -174,13 +174,13 @@
 
 (defn- get-conflicts
   "Detects conflicts that would prevent or complicate import.
-   Returns a map with :conflicts (detailed list) and :summary (set of category names).
+  Returns a map with :conflicts (detailed list) and :summary (set of category names).
 
-   Conflict types detected:
-   - :entity-id-conflict - Items with existing entity IDs that are NOT already synced
-   - :library-conflict - First import only, local Library exists, import has Library
-   - :transforms-not-enabled - Import has Transform/TransformTag/PythonLibrary, setting disabled
-   - :snippets-without-library - Import has NativeQuerySnippet, Library not remote-synced"
+  Conflict types detected:
+  - :entity-id-conflict - Items with existing entity IDs that are NOT already synced
+  - :library-conflict - First import only, local Library exists, import has Library
+  - :transforms-not-enabled - Import has Transform/TransformTag/PythonLibrary, setting disabled
+  - :snippets-without-library - Import has NativeQuerySnippet, Library not remote-synced"
   [ingestable first-import?]
   (let [ingest-list (serialization/ingest-list ingestable)
         imported-data (spec/extract-imported-entities ingest-list)
@@ -223,9 +223,9 @@
 
 (defn- branch-changed-since-scheduling?
   "Returns true if `pre-task-branch` was captured by the async-* function and the
-   `remote-sync-branch` setting has since drifted to a different value. Used as a
-   defense-in-depth check against any future code path that bypasses the operation-level
-   guards and mutates the setting between scheduling and the work running."
+  `remote-sync-branch` setting has since drifted to a different value. Used as a
+  defense-in-depth check against any future code path that bypasses the operation-level
+  guards and mutates the setting between scheduling and the work running."
   [pre-task-branch]
   (and (some? pre-task-branch)
        (not= pre-task-branch (settings/remote-sync-branch))))
@@ -408,16 +408,16 @@
 
 (defn has-remote-changes?
   "Check if remote has new changes compared to last imported version.
-   Uses cache to avoid frequent git operations. Returns map with:
-   - :has-changes? boolean
-   - :remote-version string (git SHA)
-   - :local-version string (git SHA of last import, or nil)
-   - :cached? boolean (whether result came from cache)
+  Uses cache to avoid frequent git operations. Returns map with:
+  - :has-changes? boolean
+  - :remote-version string (git SHA)
+  - :local-version string (git SHA of last import, or nil)
+  - :cached? boolean (whether result came from cache)
 
-   Cache is invalidated if:
-   - TTL has expired
-   - Branch setting has changed
-   - force-refresh? is true"
+  Cache is invalidated if:
+  - TTL has expired
+  - Branch setting has changed
+  - force-refresh? is true"
   ([]
    (has-remote-changes? nil))
   ([{:keys [force-refresh?]}]
@@ -579,8 +579,8 @@
 
 (defn create-branch!
   "Creates a new remote branch from `base-branch` and switches `remote-sync-branch`
-   to the new name. Does not publish events or return a response map; the caller
-   is responsible for those concerns."
+  to the new name. Does not publish events or return a response map; the caller
+  is responsible for those concerns."
   [name base-branch]
   (guards/ensure-no-active-task!)
   (let [source (source/source-from-settings)]
@@ -589,7 +589,7 @@
 
 (defn stash!
   "Creates a new remote branch from the current `remote-sync-branch` and starts an
-   async export to it. Returns the resulting RemoteSyncTask. Does not publish events."
+  async export to it. Returns the resulting RemoteSyncTask. Does not publish events."
   [new-branch message & {:keys [on-success]}]
   (guards/ensure-no-active-task!)
   (let [source (source/source-from-settings)]

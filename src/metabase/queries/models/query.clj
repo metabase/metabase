@@ -29,15 +29,15 @@
 
 (defn average-execution-time-ms
   "Fetch the average execution time (in milliseconds) for query with QUERY-HASH if available.
-   Returns `nil` if no information is available."
+  Returns `nil` if no information is available."
   ^Integer [^bytes query-hash]
   {:pre [(instance? (Class/forName "[B") query-hash)]}
   (t2/select-one-fn :average_execution_time :model/Query :query_hash query-hash))
 
 (defn- int-casting-type
   "Return appropriate type for use in SQL `CAST(x AS type)` statement.
-   MySQL doesn't accept `integer`, so we have to use `unsigned`; Postgres doesn't accept `unsigned`.
-   so we have to use `integer`. Yay SQL dialect differences :D"
+  MySQL doesn't accept `integer`, so we have to use `unsigned`; Postgres doesn't accept `unsigned`.
+  so we have to use `integer`. Yay SQL dialect differences :D"
   []
   (if (= (mdb/db-type) :mysql)
     :unsigned
@@ -45,7 +45,7 @@
 
 (defn- update-rolling-average-execution-time!
   "Update the rolling average execution time for query with `query-hash`. Returns `true` if a record was updated,
-   or `false` if no matching records were found."
+  or `false` if no matching records were found."
   ^Boolean [query ^bytes query-hash ^Integer execution-time-ms]
   (let [avg-execution-time (h2x/cast (int-casting-type) (h2x/round (h2x/+ (h2x/* [:inline 0.9] :average_execution_time)
                                                                           [:inline (* 0.1 execution-time-ms)])

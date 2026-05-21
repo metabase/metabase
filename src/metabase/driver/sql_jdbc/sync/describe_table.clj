@@ -204,7 +204,7 @@
 
 (defn describe-fields-xf
   "Returns a transducer for computing metadata about the fields in `db`.
-   Takes an optional map of `:table-schema` and `:table-name` to be used as fallbacks if they're not available in `col`"
+  Takes an optional map of `:table-schema` and `:table-name` to be used as fallbacks if they're not available in `col`"
   ([driver db] (describe-fields-xf driver db {}))
   ([driver db table-info]
    (map (fn [col]
@@ -352,8 +352,8 @@
 
 (defmulti describe-fields-pre-process-xf
   "Returns a (possibly stateful) transducer for computing metadata about the fields in `db`.
-   Occurs on the results of [[describe-fields-sql]].
-   Same args as [[describe-fields]]."
+  Occurs on the results of [[describe-fields-sql]].
+  Same args as [[describe-fields]]."
   {:added    "0.53.10"
    :arglists '([driver db & args])}
   driver/dispatch-on-initialized-driver

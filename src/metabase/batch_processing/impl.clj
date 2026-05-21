@@ -50,7 +50,7 @@
 
 (mu/defn submit!
   "A wrapper of [[grouper.core/submit!]] that returns nil instead of a promise.
-   We use grouper for fire-and-forget scenarios, so we don't care about the result."
+  We use grouper for fire-and-forget scenarios, so we don't care about the result."
   [grouper-wrapper :- ::grouper-wrapper object & options]
   (let [synchronous? (or (batch-processing.settings/synchronous-batch-updates)
                          ;; if we're in the middle of a transaction, we need to do this synchronously in case we roll

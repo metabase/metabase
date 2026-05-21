@@ -171,7 +171,7 @@
 
 (defn- validate-transform-output
   "Validate that the Python transform output preserves types and data correctly,
-   assuming output is in JSONL format."
+  assuming output is in JSONL format."
   [result expected-columns expected-row-count]
   (testing "Transform execution succeeded"
     (is (some? result))

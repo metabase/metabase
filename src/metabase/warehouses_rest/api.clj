@@ -64,7 +64,7 @@
 
 (defn- add-tables
   "Hydrate tables for each database. Optional `can-query?` and `can-write-metadata?` filters
-   can be applied to filter tables by permission level."
+  can be applied to filter tables by permission level."
   [dbs & {:keys [can-query? can-write-metadata?]}]
   (let [all-tables (t2/select :model/Table
                               :active          true
@@ -212,8 +212,8 @@
 
 (mu/defn- cards-virtual-tables
   "Return a sequence of 'virtual' Table metadata for eligible Cards.
-   (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query
-   Builder.)"
+  (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query
+  Builder.)"
   [card-type :- ::queries.schema/card-type
    & {:keys [include-fields?]}]
   (for [card (source-query-cards card-type)]
@@ -953,7 +953,7 @@
 
 (defn- validate-overlay-details!
   "Common guardrails for overlay-details (write_data_details, admin_details).
-   Throws 400 on violation."
+  Throws 400 on violation."
   [existing-database overlay-details
    {:keys [marker-key article+noun hidden-fields-fn]}]
   (let [[article noun] article+noun
@@ -1577,7 +1577,7 @@
 
 (defn- database-local-settings
   "Return a sorted map of all database-local settings with their enabled status for the given database.
-   Settings that require unavailable premium features are omitted entirely."
+  Settings that require unavailable premium features are omitted entirely."
   [database]
   (let [settings         @setting/registered-settings
         driver           (driver.u/database->driver database)

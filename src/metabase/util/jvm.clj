@@ -162,12 +162,12 @@
 
 (defn do-with-auto-retries
   "Execute `f`, a function that takes no arguments, and return the results.
-   If `f` fails with an exception, retry `f` up to `num-retries` times until it succeeds.
+  If `f` fails with an exception, retry `f` up to `num-retries` times until it succeeds.
 
-   Consider using the `auto-retry` macro instead of calling this function directly.
+  Consider using the `auto-retry` macro instead of calling this function directly.
 
-   For implementing more fine grained retry policies like exponential backoff,
-   consider using the `metabase.util.retry` namespace."
+  For implementing more fine grained retry policies like exponential backoff,
+  consider using the `metabase.util.retry` namespace."
   [num-retries f]
   (if (<= num-retries 0)
     (f)

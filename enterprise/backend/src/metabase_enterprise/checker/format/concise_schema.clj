@@ -111,7 +111,7 @@
 
 (defn make-source
   "Create a SchemaSource from a single concise metadata JSON file.
-   Loads everything into memory at construction time."
+  Loads everything into memory at construction time."
   [schema-file]
   (let [{:keys [databases tables fields]} (build-model (io/file schema-file))
         fi (fields-by-table fields)]

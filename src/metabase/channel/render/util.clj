@@ -19,7 +19,7 @@
 
 (defn- value-source->card-id
   "Extracts the card entity_id out of a visualizer value source map
-   e.g. {:sourceId 'card:UfzksyybSdOZv1wM7jYnn', ...} -> 'UfzksyybSdOZv1wM7jYnn'"
+  e.g. {:sourceId 'card:UfzksyybSdOZv1wM7jYnn', ...} -> 'UfzksyybSdOZv1wM7jYnn'"
   [{:keys [sourceId]}]
   (second (str/split sourceId #":")))
 
@@ -42,7 +42,7 @@
 
 (defn is-scalar-funnel?
   "Check if the visualization is a scalar funnel.
-   Matches the frontend implementation in frontend/src/metabase/visualizer/visualizations/funnel.ts"
+  Matches the frontend implementation in frontend/src/metabase/visualizer/visualizations/funnel.ts"
   [{:keys [display settings]}]
   (and (= display "funnel")
        (= (get settings :funnel.metric) "METRIC")
@@ -50,7 +50,7 @@
 
 (defn- process-column-mapping
   "Processes a single mapping entry to create a visualization column.
-   Returns nil for string mappings (name references) or when required data is missing."
+  Returns nil for string mappings (name references) or when required data is missing."
   [mapping series-data]
   (when-not (string? mapping) ;; Skip string values which are name references
     (let [card-entity-id (value-source->card-id mapping)
@@ -67,7 +67,7 @@
 
 (defn get-visualization-columns
   "Creates visualization columns for a visualizer entity.
-   Similar to the frontend implementation in src/metabase/visualizer/utils/get-visualization-columns.ts"
+  Similar to the frontend implementation in src/metabase/visualizer/utils/get-visualization-columns.ts"
   [visualizer-definition series-data]
   (let [{:keys [columnValuesMapping settings] :as viz-def} visualizer-definition]
     (cond

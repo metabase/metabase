@@ -781,7 +781,7 @@
 
 (defn- fetch-visible-db-ids
   "Helper to fetch visible database IDs using visible-filter-clause.
-   Handles the :with/:clause return value format."
+  Handles the :with/:clause return value format."
   [db-ids user-info permission-mapping column-field]
   (let [{:keys [clause]} (mi/visible-filter-clause :model/Database column-field user-info permission-mapping)]
     (t2/select-pks-set :model/Database

@@ -20,24 +20,24 @@
 
 (defn parse-scopes
   "Parse a space-delimited OAuth scope string into a set of scope strings.
-   Returns nil if `scope-string` is nil, blank, or not a string."
+  Returns nil if `scope-string` is nil, blank, or not a string."
   [scope-string]
   (api-scope/parse-scopes scope-string))
 
 (defn scope-satisfied?
   "Check if `token-scopes` (a set) satisfies `required-scope` (a string).
-   Supports hierarchical wildcards: `\"agent:*\"` covers `\"agent:workspaces\"`."
+  Supports hierarchical wildcards: `\"agent:*\"` covers `\"agent:workspaces\"`."
   [token-scopes required-scope]
   (api-scope/scope-matches? token-scopes required-scope))
 
 (defn enforce-scope
   "Returns a Ring middleware that checks `:token-scopes` on the request against `required-scope` (a string).
-   Passes through when `:token-scopes` is nil (normal session auth) or contains `::unrestricted`
-   (session auth or unscoped JWT).
+  Passes through when `:token-scopes` is nil (normal session auth) or contains `::unrestricted`
+  (session auth or unscoped JWT).
 
-   On success, sets `:token-scopes-checked` on the request so that downstream [[ensure-scopes-checked]]
-   middleware knows scope enforcement already happened. This allows `enforce-scope` to be applied at the
-   namespace level while individual endpoints use `ensure-scopes-checked` as a safety net."
+  On success, sets `:token-scopes-checked` on the request so that downstream [[ensure-scopes-checked]]
+  middleware knows scope enforcement already happened. This allows `enforce-scope` to be applied at the
+  namespace level while individual endpoints use `ensure-scopes-checked` as a safety net."
   [required-scope]
   ;; Dev-time warning only — fires at middleware construction (load time), not per-request.
   ;; The middleware is returned regardless; this just surfaces unregistered scopes early.
@@ -60,15 +60,15 @@
 
 (defn ensure-scopes-checked
   "Security middleware that prevents scoped authorization tokens from accessing endpoints that have not
-   declared a required scope. When authorization is scoped (i.e. `:token-scopes` is present on the request),
-   only endpoints with an explicit `:scope` in their metadata — or that sit behind a namespace-level
-   [[enforce-scope]] middleware — should be reachable. This middleware is applied automatically by
-   `defendpoint` to any endpoint without `:scope` metadata to enforce that invariant.
+  declared a required scope. When authorization is scoped (i.e. `:token-scopes` is present on the request),
+  only endpoints with an explicit `:scope` in their metadata — or that sit behind a namespace-level
+  [[enforce-scope]] middleware — should be reachable. This middleware is applied automatically by
+  `defendpoint` to any endpoint without `:scope` metadata to enforce that invariant.
 
-   Passes through when:
-   - `:token-scopes` is nil (request did not go through scope-aware auth)
-   - `:token-scopes` contains `::unrestricted` (session auth or unscoped JWT)
-   - `:token-scopes-checked` is true ([[enforce-scope]] already ran, e.g. at the namespace level)"
+  Passes through when:
+  - `:token-scopes` is nil (request did not go through scope-aware auth)
+  - `:token-scopes` contains `::unrestricted` (session auth or unscoped JWT)
+  - `:token-scopes-checked` is true ([[enforce-scope]] already ran, e.g. at the namespace level)"
   [handler]
   (fn [request respond raise]
     (let [token-scopes (:token-scopes request)]

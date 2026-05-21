@@ -156,10 +156,10 @@
 
 (defenterprise reconcile-workspace-database-refs-before-delete!
   "Hook called from the `:model/Database` before-delete. In workspaces mode this refuses
-   the delete (409) if any non-`:unprovisioned` `workspace_database` rows reference `db-id`,
-   and explicitly removes any `:unprovisioned` rows so the FK RESTRICT is satisfied. OSS
-   implementation is a no-op — fresh OSS installs have no workspace_database table, and
-   feature-off EE instances have nothing to reconcile."
+  the delete (409) if any non-`:unprovisioned` `workspace_database` rows reference `db-id`,
+  and explicitly removes any `:unprovisioned` rows so the FK RESTRICT is satisfied. OSS
+  implementation is a no-op — fresh OSS installs have no workspace_database table, and
+  feature-off EE instances have nothing to reconcile."
   metabase-enterprise.workspaces.models.workspace-database
   [_db-id]
   nil)
@@ -243,7 +243,7 @@
 
 (defn maybe-test-and-migrate-details!
   "When a driver has db-details to test and migrate:
-   we loop through them until we find one that works and update the database with the working details."
+  we loop through them until we find one that works and update the database with the working details."
   [{:keys [engine] :as database}]
   (let [details (driver.conn/default-details database)
         test-and-migrate! (fn [details-to-test]
@@ -265,7 +265,7 @@
 
 (defn- check-connection!
   "Checks connectivity for a set of database details. Returns true on success, false on failure.
-   Reports analytics with the given connection-type label."
+  Reports analytics with the given connection-type label."
   [database driver engine details-map connection-type]
   (try
     (log/info (u/format-color :cyan "Health check [%s]: checking %s {:id %d}"
@@ -292,10 +292,10 @@
 
 (defn health-check-database!
   "Checks database health off-thread.
-   - checks connectivity for the default connection
-   - checks connectivity for the write connection (if configured)
-   - checks connectivity for the admin connection (if configured)
-   - cleans-up ambiguous legacy db-details"
+  - checks connectivity for the default connection
+  - checks connectivity for the write connection (if configured)
+  - checks connectivity for the admin connection (if configured)
+  - cleans-up ambiguous legacy db-details"
   [{:keys [engine] :as database}]
   (when-not (or (:is_audit database) (:is_sample database))
     (log/info (u/format-color :cyan "Health check: queueing %s {:id %d}" (:name database) (:id database)))

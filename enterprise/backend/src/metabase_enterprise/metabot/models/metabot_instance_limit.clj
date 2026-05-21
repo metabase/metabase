@@ -12,13 +12,13 @@
 
 (defn instance-limit
   "Returns the limit for a given tenant, or the instance-wide limit when `tenant-id` is nil.
-   Returns nil if no limit is set."
+  Returns nil if no limit is set."
   [tenant-id]
   (t2/select-one :model/MetabotInstanceLimit :tenant_id tenant-id))
 
 (defn set-instance-limit!
   "Sets or removes the limit for a given tenant (or instance-wide when `tenant-id` is nil).
-   Pass nil for `max-usage` to remove the limit. Returns the updated row, or nil if removed."
+  Pass nil for `max-usage` to remove the limit. Returns the updated row, or nil if removed."
   [tenant-id max-usage]
   (if (nil? max-usage)
     (t2/delete! :model/MetabotInstanceLimit :tenant_id tenant-id)

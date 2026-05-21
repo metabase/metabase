@@ -950,7 +950,7 @@
 
 (defn is-conn-open?
   "Checks if the conn is open.
-   If `:check-valid?` is passed, ensures the connection is actually usable. If it isn't, closes it"
+  If `:check-valid?` is passed, ensures the connection is actually usable. If it isn't, closes it"
   [^Connection conn & {:keys [check-valid?]}]
   (let [is-open (not (.isClosed conn))]
     (if (and is-open check-valid?)

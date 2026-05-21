@@ -14,7 +14,7 @@
 
 (defn handle-agent-error
   "Return an agent output for agent errors, re-throw `e` otherwise.
-   Preserves :status-code from ex-data for proper HTTP status codes in agent API."
+  Preserves :status-code from ex-data for proper HTTP status codes in agent API."
   [e]
   (let [{:keys [agent-error? status-code]} (ex-data e)]
     (if agent-error?

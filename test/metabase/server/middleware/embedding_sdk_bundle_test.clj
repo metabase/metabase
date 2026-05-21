@@ -17,7 +17,7 @@
 
 (defn- fake-static-resource
   "A fake for `static/static-resource` that returns a response with Content-Type
-   and Vary headers, mimicking what the real implementation does."
+  and Vary headers, mimicking what the real implementation does."
   [_request _resource-path]
   {:status 200
    :headers {"Content-Type" js-ct

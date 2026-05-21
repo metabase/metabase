@@ -17,7 +17,7 @@
 
 (defn- post-drill
   "POST /api/embed-mcp/drills as `user` (default :crowberto), with optional headers
-   and an `expected-status` for non-200 cases."
+  and an `expected-status` for non-200 cases."
   ([body extra-headers]
    (post-drill :crowberto 200 body extra-headers))
   ([user expected-status body extra-headers]

@@ -60,9 +60,9 @@
 
 (defn- copy-tree-if-exists!
   "Copy a directory tree from main to worktree. Tries APFS copy-on-write
-   (`cp -rc`) first; on non-APFS filesystems (including Linux) falls back
-   to a regular recursive copy. Replaces existing destination. Skips if
-   source doesn't exist."
+  (`cp -rc`) first; on non-APFS filesystems (including Linux) falls back
+  to a regular recursive copy. Replaces existing destination. Skips if
+  source doesn't exist."
   [main-path worktree-root relative-path]
   (let [src  (str main-path "/" relative-path)
         dest (str worktree-root "/" relative-path)]

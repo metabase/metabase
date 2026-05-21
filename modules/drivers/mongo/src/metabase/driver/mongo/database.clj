@@ -13,7 +13,7 @@
 
 (defn- fqdn?
   "A very simple way to check if a hostname is fully-qualified:
-   Check if there are two or more periods in the name."
+  Check if there are two or more periods in the name."
   [host]
   (<= 2 (-> host frequencies (get \. 0))))
 

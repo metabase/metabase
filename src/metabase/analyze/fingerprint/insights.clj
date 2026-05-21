@@ -115,8 +115,8 @@
 
 (defn mae
   "Given two functions: (fŷ input) and (fy input), returning the predicted and actual values of y
-   respectively, calculates the mean absolute error of the estimate.
-   https://en.wikipedia.org/wiki/Mean_absolute_error"
+  respectively, calculates the mean absolute error of the estimate.
+  https://en.wikipedia.org/wiki/Mean_absolute_error"
   [fy-hat fy]
   ((map (fn [x]
           (when x
@@ -161,8 +161,8 @@
 
 (defn- best-fit
   "Fit curves from `trendline-function-families` and pick the one with the smallest RMSE.
-   To keep the operation single pass we collect a small validation set as we go using reservoir
-   sampling, and use it to calculate RMSE."
+  To keep the operation single pass we collect a small validation set as we go using reservoir
+  sampling, and use it to calculate RMSE."
   [fx fy]
   (redux/post-complete
    (fingerprinters/robust-fuse
@@ -290,7 +290,7 @@
 
 (defn- resolve-agg-datetimes
   "If no breakout datetime exists, we use aggregated datetimes as :datetimes
-   Otherwise, move them to :others"
+  Otherwise, move them to :others"
   [{:keys [agg-datetimes datetimes] :as cols-by-type}]
   (cond-> (dissoc cols-by-type :agg-datetimes)
     (and (seq agg-datetimes) (empty? datetimes))

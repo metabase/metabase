@@ -235,13 +235,13 @@
 
 (defn- parse-entity-name
   "Extract the entity name from embeddable text format.
-   E.g., '[dashboard]\\nname: My Dashboard\\n...' -> 'My Dashboard'"
+  E.g., '[dashboard]\\nname: My Dashboard\\n...' -> 'My Dashboard'"
   [text]
   (second (re-find #"(?m)^name:\s*(.+)$" text)))
 
 (defn get-mock-embedding
   "Lookup the embedding for `text` in [[*extra-mock-embeddings*]] first, then [[mock-embeddings]].
-   Lookups try both the raw text and the parsed entity name from embeddable text format."
+  Lookups try both the raw text and the parsed entity name from embeddable text format."
   [text]
   (let [entity-name (parse-entity-name text)]
     (or (get *extra-mock-embeddings* text)

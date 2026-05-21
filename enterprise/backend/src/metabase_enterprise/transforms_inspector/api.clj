@@ -30,13 +30,13 @@
 
 (defn- lens-type-label
   "Clamp `lens-id` (a user-controlled path param) to its registered form or
-   \"unknown\", bounding the cardinality of the `:lens-type` metric label."
+  \"unknown\", bounding the cardinality of the `:lens-type` metric label."
   [lens-id]
   (if (known-lens-id? lens-id) lens-id "unknown"))
 
 (defn- lens-labels
   "Return clamped `:lens-type` and `:complexity` metric labels for `lens-id`.
-   For unregistered lens-ids both fall back to \"unknown\"."
+  For unregistered lens-ids both fall back to \"unknown\"."
   [lens-id]
   (let [known? (known-lens-id? lens-id)]
     {:lens-type  (if known? lens-id "unknown")
@@ -46,9 +46,9 @@
 
 (defn- query-result->status-label
   "Classify a `qp/process-query` outcome for the `:status` Prometheus label.
-   `canceled?` short-circuits to \"canceled\"; otherwise the keyword in
-   `(:status result)` decides. Unknown keywords fall through to
-   \"unknown\" as a drift sentinel."
+  `canceled?` short-circuits to \"canceled\"; otherwise the keyword in
+  `(:status result)` decides. Unknown keywords fall through to
+  \"unknown\" as a drift sentinel."
   [canceled? result]
   (cond
     (or canceled? (nil? result))      "canceled"

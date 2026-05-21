@@ -55,7 +55,7 @@
 
 (defn- is-invalid-mb-version?
   "These variations are not valid Metabase versions that can be found in production. They are mostly used for local
-   development, or as fallback values if a :tag is missing altogether."
+  development, or as fallback values if a :tag is missing altogether."
   [version]
   (or (= version "vLOCAL_DEV") (= version "vUNKNOWN") (str/ends-with? version "-SNAPSHOT")))
 

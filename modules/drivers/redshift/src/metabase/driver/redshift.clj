@@ -76,7 +76,7 @@
 
 (defn- remove-duplicate-fields
   "Redshift views can have duplicate column names, but when these columns appear in a query
-   they produce an ambiguous column error. To avoid this remove all duplicate columns"
+  they produce an ambiguous column error. To avoid this remove all duplicate columns"
   [fields]
   (let [field-key      (fn [f] (perf/select-keys f [:table-schema :table-name :name]))
         key-counts     (frequencies (map field-key fields))
@@ -745,10 +745,10 @@
 
 (defn- public-create-grant?
   "Redshift-flavored check for `public-create-grant?`. Postgres reads
-   `pg_namespace.nspacl::text`, but Redshift refuses to cast `aclitem` to
-   character varying — so we use Redshift's own `SVV_SCHEMA_PRIVILEGES`
-   system view instead, which exposes the equivalent grant info as plain
-   columns."
+  `pg_namespace.nspacl::text`, but Redshift refuses to cast `aclitem` to
+  character varying — so we use Redshift's own `SVV_SCHEMA_PRIVILEGES`
+  system view instead, which exposes the equivalent grant info as plain
+  columns."
   [conn schema-name]
   (boolean
    (seq (jdbc/query conn

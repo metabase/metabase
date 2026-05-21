@@ -266,11 +266,11 @@
 
 (defn- convert-content-block
   "Convert a single raw content block from `:data` into a frontend `MetabotChatMessage` map.
-   Returns nil for blocks that should be skipped (tool-output, unknown types).
+  Returns nil for blocks that should be skipped (tool-output, unknown types).
 
-   `external-id` (the parent row's `metabot_message.external_id`) is attached to
-   agent text and data part chat messages as `:externalId` — the stable key for
-   feedback; the per-block `:id` stays unique."
+  `external-id` (the parent row's `metabot_message.external_id`) is attached to
+  agent text and data part chat messages as `:externalId` — the stable key for
+  feedback; the per-block `:id` stays unique."
   [external-id block]
   (let [block-type (:type block)
         block-role (:role block)]
@@ -380,11 +380,11 @@
 
 (defn message->chat-messages
   "Convert a single `MetabotMessage` model instance into a seq of `MetabotChatMessage` maps.
-   Each message's `:data` (vector of content blocks) is flattened into typed chat messages.
-   Assistant rows that produced zero chat messages but carry `:error`,
-   `:finished false`, or `:finished nil` (a stale placeholder past the grace
-   window) get a synthetic empty text message so the FE has something to render
-   the alert on."
+  Each message's `:data` (vector of content blocks) is flattened into typed chat messages.
+  Assistant rows that produced zero chat messages but carry `:error`,
+  `:finished false`, or `:finished nil` (a stale placeholder past the grace
+  window) get a synthetic empty text message so the FE has something to render
+  the alert on."
   [message]
   (let [blocks       (or (:data message) [])
         external-id  (:external_id message)

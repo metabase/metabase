@@ -81,7 +81,7 @@
 
 (def ^:private ^java.time.Period active-field-values-cutoff
   "How many days until a FieldValues is considered inactive. Inactive FieldValues will not be synced until
-   they are used again."
+  they are used again."
   (t/days 14))
 
 (def advanced-field-values-types
@@ -441,7 +441,7 @@
 
 (defn get-latest-full-field-values
   "This returns the full FieldValues for the given Field.
-   This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
+  This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
   [field-id]
   (get-latest-field-values field-id :full nil))
 

@@ -183,7 +183,7 @@
 
 (defmacro with-conflict-retry
   "Retry a database mutation a single time if it fails due to concurrent insertions.
-   May retry for other reasons."
+  May retry for other reasons."
   [& body]
   `(try
      ~@body
@@ -196,21 +196,21 @@
 (defn select-or-insert!
   "Return a database record if it exists, otherwise create it.
 
-   The `select-map` is used to query the `model`, and if a result is found it is immediately returned.
-   If no value is found, `insert-fn` is called to generate the entity to be inserted.
+  The `select-map` is used to query the `model`, and if a result is found it is immediately returned.
+  If no value is found, `insert-fn` is called to generate the entity to be inserted.
 
-   Note that this generated entity must be consistent with `select-map`, if it disagrees on any keys then an exception
-   will be thrown. It is OK for the entity to omit fields from `select-map`, they will implicitly be added on.
+  Note that this generated entity must be consistent with `select-map`, if it disagrees on any keys then an exception
+  will be thrown. It is OK for the entity to omit fields from `select-map`, they will implicitly be added on.
 
-   This is more general than using `UPSERT`, `MERGE` or `INSERT .. ON CONFLICT`, and it also allows one to avoid
-   calculating initial values that may be expensive, or require side effects.
+  This is more general than using `UPSERT`, `MERGE` or `INSERT .. ON CONFLICT`, and it also allows one to avoid
+  calculating initial values that may be expensive, or require side effects.
 
-   In the case where there is an underlying db constraint to prevent duplicates, this method takes care of handling
-   rejection from the database due to a concurrent insert, and will retry a single time to pick up the existing row.
-   This may result in `insert-fn` being called a second time.
+  In the case where there is an underlying db constraint to prevent duplicates, this method takes care of handling
+  rejection from the database due to a concurrent insert, and will retry a single time to pick up the existing row.
+  This may result in `insert-fn` being called a second time.
 
-   In the case where there is no underlying db constraint, concurrent calls may still result in duplicates.
-   To prevent this in a database agnostic way, during an existing non-serializable transaction, would be non-trivial."
+  In the case where there is no underlying db constraint, concurrent calls may still result in duplicates.
+  To prevent this in a database agnostic way, during an existing non-serializable transaction, would be non-trivial."
   [model select-map insert-fn]
   (let [select-kvs (mapcat identity select-map)
         insert-fn  #(let [instance (insert-fn)]
@@ -228,26 +228,26 @@
 (defn update-or-insert!
   "Update a database record, if it exists, otherwise create it.
 
-   The `select-map` is used to query the `model`, and if a result is found then we will update that entity, otherwise
-   a new entity will be created. We use `update-fn` to calculate both updates and initial values - in the first case
-   it will be called with the existing value, and in the second case it will be called with nil, analogous to the way
-   that [[clojure.core/update]] calls its function.
+  The `select-map` is used to query the `model`, and if a result is found then we will update that entity, otherwise
+  a new entity will be created. We use `update-fn` to calculate both updates and initial values - in the first case
+  it will be called with the existing value, and in the second case it will be called with nil, analogous to the way
+  that [[clojure.core/update]] calls its function.
 
-   Note that the generated entity must be consistent with `select-map`, if it disagrees on any keys then an exception
-   will be thrown. It is OK for the entity to omit fields from `select-map`, they will implicitly be added on.
+  Note that the generated entity must be consistent with `select-map`, if it disagrees on any keys then an exception
+  will be thrown. It is OK for the entity to omit fields from `select-map`, they will implicitly be added on.
 
-   When called with an existing record, `update-fn` may return nil to signal that no update is needed. In this case
-   the existing row is left untouched and its primary key is returned. This is useful for \"get-or-create\" patterns.
+  When called with an existing record, `update-fn` may return nil to signal that no update is needed. In this case
+  the existing row is left untouched and its primary key is returned. This is useful for \"get-or-create\" patterns.
 
-   This is more general than using `UPSERT`, `MERGE` or `INSERT .. ON CONFLICT`, and it also allows one to avoid
-   calculating initial values that may be expensive, or require side effects.
+  This is more general than using `UPSERT`, `MERGE` or `INSERT .. ON CONFLICT`, and it also allows one to avoid
+  calculating initial values that may be expensive, or require side effects.
 
-   In the case where there is an underlying db constraint to prevent duplicates, this method takes care of handling
-   rejection from the database due to a concurrent insert, and will retry a single time to pick up the existing row.
-   This may result in `update-fn` being called a second time.
+  In the case where there is an underlying db constraint to prevent duplicates, this method takes care of handling
+  rejection from the database due to a concurrent insert, and will retry a single time to pick up the existing row.
+  This may result in `update-fn` being called a second time.
 
-   In the case where there is no underlying db constraint, concurrent calls may still result in duplicates.
-   To prevent this in a database agnostic way, during an existing non-serializable transaction, would be non-trivial."
+  In the case where there is no underlying db constraint, concurrent calls may still result in duplicates.
+  To prevent this in a database agnostic way, during an existing non-serializable transaction, would be non-trivial."
   [model select-map & [update-fn]]
   (let [update-fn  (or update-fn (constantly select-map))
         select-kvs (mapcat identity select-map)

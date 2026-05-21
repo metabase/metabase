@@ -27,7 +27,7 @@
 
 (defn check-metabot-enabled!
   "Throws a 403 if metabot is not enabled. When called with no arguments, checks that at least one metabot instance is
-   enabled. When called with a `metabot-id`, checks the specific instance's setting."
+  enabled. When called with a `metabot-id`, checks the specific instance's setting."
   ([]
    (api/check (llm.settings/ai-features-enabled?)
               [403 "AI features are not enabled."])
@@ -69,7 +69,7 @@
 
 (defn resolve-dynamic-metabot-id
   "Resolve dynamic metabot ID with logical fall backs
-   Precedence: explicit metabot-id > env metabot-id > default (internal)"
+  Precedence: explicit metabot-id > env metabot-id > default (internal)"
   [metabot-id]
   (or metabot-id
       (metabot.settings/metabot-id)
@@ -77,7 +77,7 @@
 
 (defn resolve-dynamic-profile-id
   "Resolve the ultimate ai-service profile ID with logical fall backs
-   Precedence: explicit profile_id > env profile_id > metabot-id->profile-id > default (embedding_next)"
+  Precedence: explicit profile_id > env profile_id > metabot-id->profile-id > default (embedding_next)"
   ([profile-id]
    (resolve-dynamic-profile-id profile-id (resolve-dynamic-metabot-id nil)))
   ([profile-id metabot-id]

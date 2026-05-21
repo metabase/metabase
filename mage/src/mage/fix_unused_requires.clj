@@ -56,7 +56,7 @@
 
 (defn- remove-require-entry
   "Remove a require entry matching the namespace from a :require form.
-   Returns the updated zipper location positioned at the root of the require form."
+  Returns the updated zipper location positioned at the root of the require form."
   [require-loc ns-sym]
   (loop [loc (z/down require-loc)]
     (if (nil? loc)
@@ -90,7 +90,7 @@
 
 (defn- fix-file!
   "Fix unused requires in a single file.
-   Returns true if changes were made."
+  Returns true if changes were made."
   [filename unused-namespaces]
   (let [content (slurp filename)
         zloc (z/of-string content {:track-position? true})

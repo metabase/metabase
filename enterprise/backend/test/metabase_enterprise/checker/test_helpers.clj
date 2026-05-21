@@ -24,8 +24,8 @@
 
 (defn make-assets-source
   "Create an in-memory AssetsSource from maps of entities.
-   Supports :cards, :snippets, :transforms, :segments, :dashboards,
-   :collections, :documents, :measures."
+  Supports :cards, :snippets, :transforms, :segments, :dashboards,
+  :collections, :documents, :measures."
   [{:keys [cards snippets transforms segments dashboards collections documents measures]}]
   (reify
     source/AssetsSource
@@ -40,7 +40,7 @@
 
 (defn make-schema-index
   "Create a file index for an in-memory schema source.
-   Values are :memory since resolution goes through the source, not files."
+  Values are :memory since resolution goes through the source, not files."
   [{:keys [databases tables fields]}]
   {:database (zipmap (keys databases) (repeat :memory))
    :table    (zipmap (keys tables) (repeat :memory))
@@ -48,7 +48,7 @@
 
 (defn make-assets-index
   "Create a file index for an in-memory assets source.
-   Values are :memory since resolution goes through the source, not files."
+  Values are :memory since resolution goes through the source, not files."
   [{:keys [cards snippets transforms segments dashboards collections documents measures]}]
   (cond-> {:card (zipmap (keys cards) (repeat :memory))}
     snippets    (assoc :snippet    (zipmap (keys snippets) (repeat :memory)))
@@ -61,7 +61,7 @@
 
 (defn make-sources-and-index
   "Convenience: split an entities map into schema-source, assets-source, and merged index.
-   Returns [schema-source assets-source index]."
+  Returns [schema-source assets-source index]."
   [entities]
   [(make-schema-source entities)
    (make-assets-source entities)

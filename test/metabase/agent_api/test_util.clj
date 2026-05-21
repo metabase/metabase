@@ -32,8 +32,8 @@
 
 (defn agent-client
   "Helper for making authenticated agent API requests.
-   Takes a test user keyword (e.g. :rasta, :crowberto), method, expected status, endpoint,
-   and optional body for POST/PUT requests."
+  Takes a test user keyword (e.g. :rasta, :crowberto), method, expected status, endpoint,
+  and optional body for POST/PUT requests."
   [user method expected-status endpoint & [body]]
   (let [email   (:username (mt/user->credentials user))
         headers (auth-headers email)]

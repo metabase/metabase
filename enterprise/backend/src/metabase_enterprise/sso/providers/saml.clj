@@ -45,7 +45,7 @@
 
 (defn- unwrap-user-attributes
   "For some reason all of the user attributes coming back from the saml library are wrapped in a list,
-   instead of 'Oisin', it's ('Oisin'). This function discards the list if there's just a single item in it."
+  instead of 'Oisin', it's ('Oisin'). This function discards the list if there's just a single item in it."
   [m]
   (m/map-vals (fn [maybe-coll]
                 (if (and (coll? maybe-coll)

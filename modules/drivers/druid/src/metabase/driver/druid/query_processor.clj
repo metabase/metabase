@@ -18,8 +18,8 @@
 (def ^:private ^:const topN-max-results
   "Maximum number of rows the topN query in Druid should return. Huge values cause significant issues with the engine.
 
-   Coming from the default value hardcoded in the Druid engine itself
-   http://druid.io/docs/latest/querying/topnquery.html"
+  Coming from the default value hardcoded in the Druid engine itself
+  http://druid.io/docs/latest/querying/topnquery.html"
   1000)
 
 ;;             +-----> ::scan        +----> :groupBy
@@ -39,7 +39,7 @@
 
 (def ^:private ^:dynamic *query*
   "The INNER part of the query currently being processed.
-   (`:settings` is merged in from the outer query as well so we can access timezone info)."
+  (`:settings` is merged in from the outer query as well so we can access timezone info)."
   nil)
 
 (defn- query-type-dispatch-fn

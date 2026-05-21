@@ -64,7 +64,7 @@
 
 (defn with-min
   "Execute `f` if the ClickHouse version is greater or equal to `major.minor` (e.g., 24.4);
-   otherwise, execute `fallback-f`, if it's provided."
+  otherwise, execute `fallback-f`, if it's provided."
   ([major minor f]
    (with-min major minor f nil))
   ([major minor f fallback-f]

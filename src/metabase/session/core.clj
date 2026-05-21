@@ -25,8 +25,8 @@
 
 (def ^:private session-last-update-times
   "In-memory cache of {session-key-hash -> timer} used to throttle DB writes for last_active_at updates.
-   Each session's last_active_at is only written to the DB at most once per `activity-update-throttle-ms`.
-   Timer values are opaque, created by [[metabase.util/start-timer]]."
+  Each session's last_active_at is only written to the DB at most once per `activity-update-throttle-ms`.
+  Timer values are opaque, created by [[metabase.util/start-timer]]."
   (atom {}))
 
 (def ^:private activity-update-throttle-ms
@@ -35,7 +35,7 @@
 
 (defn record-session-activity-update!
   "Atomically record that a session activity update is happening now if enough time has elapsed since the last update.
-   Returns true if the caller should proceed with the DB write, false if throttled."
+  Returns true if the caller should proceed with the DB write, false if throttled."
   [key-hash]
   (let [now     (u/start-timer)
         old-val @session-last-update-times
@@ -47,7 +47,7 @@
 
 (defn prune-session-activity-cache!
   "Remove entries from the session activity throttle cache that are older than the throttle window.
-   Called by the session cleanup task to prevent unbounded growth."
+  Called by the session cleanup task to prevent unbounded growth."
   []
   (swap! session-last-update-times
          (fn [m] (into {} (filter (fn [[_ timer]] (<= (u/since-ms timer) activity-update-throttle-ms))) m))))

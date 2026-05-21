@@ -57,7 +57,7 @@
 
 (defn- executions-overlap?
   "Check if any two executions overlap in time. Each entry is [tid :started/:ended timestamp].
-   Returns true if there's any overlap (which would indicate lock failure)."
+  Returns true if there's any overlap (which would indicate lock failure)."
   [log]
   (let [by-thread (group-by first log)]
     (when (= 2 (count by-thread))

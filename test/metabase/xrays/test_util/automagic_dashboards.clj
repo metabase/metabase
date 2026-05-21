@@ -45,8 +45,8 @@
 
 (defn test-dashboard-is-valid
   "Is generated dashboard valid?
-   Tests that the dashboard has (the correct number of) cards, the queries for those cards are valid,
-   all related URLs are valid, and that it has correct metadata."
+  Tests that the dashboard has (the correct number of) cards, the queries for those cards are valid,
+  all related URLs are valid, and that it has correct metadata."
   [dashboard cardinality]
   (testing "Dashboard should be valid"
     (testing (format "\nDashboard =\n%s\n" (u/pprint-to-str dashboard))

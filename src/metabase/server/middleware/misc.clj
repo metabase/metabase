@@ -23,7 +23,7 @@
 
 (defn add-version
   "Middleware that adds an `x-metabase-version` header (from `:tag mb-version-info`)
-   to all API-call responses. Non-API calls are left untouched."
+  to all API-call responses. Non-API calls are left untouched."
   [handler]
   (fn [request respond raise]
     (handler request

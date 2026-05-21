@@ -39,8 +39,8 @@
 (defn- test-graph
   "Create an in-memory dependency graph from a seq of edges.
 
-   Each edge is `[dependent dependency]` - meaning the first entity depends on the second.
-   Returns a graph suitable for passing to `replacement.usages/transitive-usages`."
+  Each edge is `[dependent dependency]` - meaning the first entity depends on the second.
+  Returns a graph suitable for passing to `replacement.usages/transitive-usages`."
   [edges]
   (graph/in-memory (deps->adjacency-map edges)))
 

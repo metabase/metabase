@@ -172,10 +172,10 @@
 (defn- from-api-definition
   "Create a MetricDefinition from API definition parameters.
 
-   The definition map is passed through directly as the internal MetricDefinition,
-   since the API format and internal format now match.
+  The definition map is passed through directly as the internal MetricDefinition,
+  since the API format and internal format now match.
 
-   Permission checks are performed on all referenced entities in the expression."
+  Permission checks are performed on all referenced entities in the expression."
   [provider definition]
   (let [{:keys [expression filters projections]} definition]
     ;; Permission check all expression leaves
@@ -189,8 +189,8 @@
 
 (defn- execute-leaf-queries
   "Execute all leaf queries in parallel, collecting results eagerly.
-   Must be called OUTSIDE streaming context to avoid JSON writer conflicts.
-   Returns {uuid -> qp-result}."
+  Must be called OUTSIDE streaming context to avoid JSON writer conflicts.
+  Returns {uuid -> qp-result}."
   [leaves]
   (let [uuid->future (into {}
                            (map (fn [[uuid leaf-plan]]
@@ -202,7 +202,7 @@
 
 (defn- stream-arithmetic-results
   "Join leaf results and stream the computed output through the QP reduce pipeline.
-   Called INSIDE streaming context with the rff."
+  Called INSIDE streaming context with the rff."
   [{:keys [plan/expression plan/breakout-count]} uuid->result rff]
   (let [{:keys [cols rows]} (lib-metric/join-and-compute expression uuid->result breakout-count)
         reducible (reify clojure.lang.IReduceInit

@@ -261,7 +261,7 @@
 
 (defn complete!
   "Completes the file upload to a Slack channel by calling the `files.completeUploadExternal` endpoint, and polls the
-   same endpoint until the file is uploaded to the channel. Returns the URL of the uploaded file."
+  same endpoint until the file is uploaded to the channel. Returns the URL of the uploaded file."
   [& {:keys [file-id filename]}]
   (let [complete! (fn []
                     (POST "files.completeUploadExternal"
@@ -295,7 +295,7 @@
 
 (mu/defn upload-file!
   "Calls Slack API `files.getUploadURLExternal` and `files.completeUploadExternal` endpoints to upload a file and returns
-   the URL of the uploaded file."
+  the URL of the uploaded file."
   [file       :- NonEmptyByteArray
    filename   :- ms/NonBlankString]
   {:pre [(channel.settings/slack-configured?)]}

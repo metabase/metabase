@@ -187,7 +187,7 @@
 
 (defn- create-test-client!
   "Insert a static OAuth client directly into the database and return a map
-   with the client fields plus the plaintext `:client_secret`."
+  with the client fields plus the plaintext `:client_secret`."
   ([]
    (create-test-client! {}))
   ([overrides]
@@ -263,7 +263,7 @@
 
 (defn- get-consent-page!
   "GET the consent page and return the full response (including CSRF cookie).
-   Accepts optional extra query params (e.g. PKCE code_challenge)."
+  Accepts optional extra query params (e.g. PKCE code_challenge)."
   ([user client-id]
    (get-consent-page! user client-id nil))
   ([user client-id extra-params]
@@ -288,7 +288,7 @@
 
 (defn- extract-csrf-cookie
   "Extract the CSRF cookie value from the response.
-   Checks both the :cookies map and the Set-Cookie header (which may be a string or vector of strings)."
+  Checks both the :cookies map and the Set-Cookie header (which may be a string or vector of strings)."
   [response]
   (or
    ;; Try :cookies map first (set by ring.util.response/set-cookie, before wrap-cookies processing)
@@ -507,7 +507,7 @@
 
 (defn- authorize-and-get-code!
   "Complete the authorize flow and return the authorization code.
-   Creates a client, authorizes, and extracts the code from the redirect."
+  Creates a client, authorizes, and extracts the code from the redirect."
   [client-id]
   (let [consent-resp (get-consent-page! :crowberto client-id)
         body         (:body consent-resp)

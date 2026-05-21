@@ -28,7 +28,7 @@
 
 (defmulti ^:private -check-entity
   "Implementation multimethod for [[check-entity]]. Extend this to add support
-   for new entity types."
+  for new entity types."
   {:arglists '([metadata-provider entity-type entity-id])}
   (fn [_metadata-provider entity-type _entity-id]
     entity-type))
@@ -80,10 +80,10 @@
 (defn check-entity
   "Check a single entity for bad refs against a MetadataProvider.
 
-   Returns a set of errors with source information, or nil if the entity is clean.
-   Dispatches to entity-type-specific analysis (MBQL bad refs, native SQL validation,
-   transform duplicate columns, etc.).
+  Returns a set of errors with source information, or nil if the entity is clean.
+  Dispatches to entity-type-specific analysis (MBQL bad refs, native SQL validation,
+  transform duplicate columns, etc.).
 
-   Supported entity types: :card, :transform, :segment. Other types return nil."
+  Supported entity types: :card, :transform, :segment. Other types return nil."
   [metadata-provider entity-type entity-id]
   (-check-entity metadata-provider entity-type entity-id))

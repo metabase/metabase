@@ -131,8 +131,8 @@
 
 (defenterprise transform-metered-as
   "Return the meter bucket a new transform run of the given source-type counts toward,
-   based on the instance's current premium features. Returns nil when the run is not metered
-   (including all OSS runs, since premium features are never present there)."
+  based on the instance's current premium features. Returns nil when the run is not metered
+  (including all OSS runs, since premium features are never present there)."
   metabase-enterprise.transforms.core
   [_source-type]
   nil)
@@ -250,7 +250,7 @@
 
 (defn assert-valid-airgap-user-count!
   "Asserts that, in an airgap context, the current user count does not exceed the allowed maximum.
-   Throws if the limit is exceeded. Called when setting the token."
+  Throws if the limit is exceeded. Called when setting the token."
   []
   (when-let [max-users (max-users-allowed)]
     (let [current-users (active-user-count)]
@@ -261,7 +261,7 @@
 
 (defn assert-airgap-allows-user-creation!
   "Asserts that creating a new personal user would not exceed the airgap user limit.
-   Throws if adding another user would overflow the limit. Called in user pre-insert."
+  Throws if adding another user would overflow the limit. Called in user pre-insert."
   []
   (when-let [max-users (max-users-allowed)]
     (when (>= (active-user-count) max-users)
@@ -349,7 +349,7 @@
 
 (defn- canonicalize-for-hash
   "Prepare a token status map for deterministic hashing. Sorts map keys (via sorted-map)
-   and sorts sequential values that may arrive in arbitrary order from the MetaStore."
+  and sorts sequential values that may arrive in arbitrary order from the MetaStore."
   [m]
   (cond
     (map? m)        (into (sorted-map) (update-vals m canonicalize-for-hash))
@@ -369,8 +369,8 @@
 
 (defn- write-cache-to-db!
   "Upsert a token status hash into the premium_features_token_cache table.
-   Uses update-first to avoid poisoning PostgreSQL transactions on duplicate key.
-   Catches constraint violations from concurrent inserters and retries with an update."
+  Uses update-first to avoid poisoning PostgreSQL transactions on duplicate key.
+  Catches constraint violations from concurrent inserters and retries with an update."
   [token-hash result-hash]
   (t2/with-connection [_conn (app-db/app-db)]
     (let [now     (t/offset-date-time)
@@ -394,14 +394,14 @@
 
 (defn- extract-locks
   "Project a `:meters` map to `{meter-keyword -> boolean}` of `:is-locked` values.
-   Meters without an `:is-locked` field are dropped."
+  Meters without an `:is-locked` field are dropped."
   [meters]
   (into {} (keep (fn [[k v]] (when-some [locked (:is-locked v)] [k locked]))) meters))
 
 (defn- update-locked-meters!
   "Mirror the `:is-locked` flag for each meter in `result` to the local `:locked-meters`
-   setting, when `:meters` is present in a successful token-check response. Best-effort:
-   failures are logged but never propagated to the refresh path."
+  setting, when `:meters` is present in a successful token-check response. Best-effort:
+  failures are logged but never propagated to the refresh path."
   [result]
   (when (contains? result :meters)
     (try
@@ -411,20 +411,20 @@
 
 (def ^:dynamic *testing-only-call-after-refresh*
   "When non-nil, a zero-arg function called after async background refresh completes.
-   For testing only — do not use in production."
+  For testing only — do not use in production."
   nil)
 
 (defn db-hash-aware-token-checker
   "Wraps a token checker with a DB-hash-aware local cache.
-   The DB stores only a hash of the token status (never the actual features). The full token status
-   lives exclusively in the local in-memory cache. The DB hash is used to:
-   1. Validate that the local cache is consistent with what other instances see
-   2. Detect when another instance has refreshed and got different features (hash mismatch)
+  The DB stores only a hash of the token status (never the actual features). The full token status
+  lives exclusively in the local in-memory cache. The DB hash is used to:
+  1. Validate that the local cache is consistent with what other instances see
+  2. Detect when another instance has refreshed and got different features (hash mismatch)
 
-   - `soft-ttl`: local entries younger than this are fresh; older triggers async refresh
-   - `hard-ttl`: local entries older than this are expired; synchronous fetch required
-   - `local-cache`: optional atom for the local cache (default: fresh atom). Exposed for testing.
-   - Hash mismatch or cold start always triggers a synchronous fetch."
+  - `soft-ttl`: local entries younger than this are fresh; older triggers async refresh
+  - `hard-ttl`: local entries older than this are expired; synchronous fetch required
+  - `local-cache`: optional atom for the local cache (default: fresh atom). Exposed for testing.
+  - Hash mismatch or cold start always triggers a synchronous fetch."
   [token-checker {:keys [soft-ttl hard-ttl local-cache]}]
   (let [local-cache          (or local-cache (atom {}))
         refresh-in-progress? (atom false)]
@@ -485,7 +485,7 @@
 
 (defn local-cached-token-checker
   "Wraps a token checker with short-lived in-memory TTL memoization.
-   Avoids hitting the DB on every request."
+  Avoids hitting the DB on every request."
   [token-checker {:keys [local-ttl]}]
   (let [cached-check (memoize/ttl
                       (fn [token] (-check-token token-checker token))
@@ -705,7 +705,7 @@
 
 (defn is-trial?
   "True if the current premium token is a trial subscription.
-   Returns false if there is no token or the status cannot be fetched."
+  Returns false if there is no token or the status cannot be fetched."
   []
   (-> (-token-status) :trial boolean))
 

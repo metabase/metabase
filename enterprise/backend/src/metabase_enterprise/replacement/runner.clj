@@ -171,12 +171,12 @@
 
 (def ^:private metadata-override-keys
   "Field columns that correspond to user-editable model metadata overrides.
-   These are in snake_case matching both result_metadata storage and Field columns."
+  These are in snake_case matching both result_metadata storage and Field columns."
   [:description :display_name :semantic_type :fk_target_field_id :settings :visibility_type])
 
 (defn- copy-model-metadata-overrides!
   "Copy user-edited metadata from a model's result_metadata onto the Fields of the
-   output table. Writes to both Field and FieldUserSettings so overrides survive sync."
+  output table. Writes to both Field and FieldUserSettings so overrides survive sync."
   [card-id table-id]
   (let [card            (t2/select-one :model/Card :id card-id)
         result-metadata (:result_metadata card)
@@ -191,11 +191,11 @@
 
 (defn run-swap-model-with-transform!
   "Execute a transform, find the output table, then swap all dependents of the card
-   to point at the new table. Finally un-persist and convert the card to a saved question.
+  to point at the new table. Finally un-persist and convert the card to a saved question.
 
-   `card-id`      — the model card to replace
-   `transform-id` — the transform to execute
-   `progress`     — IRunnerProgress for tracking"
+  `card-id`      — the model card to replace
+  `transform-id` — the transform to execute
+  `progress`     — IRunnerProgress for tracking"
   ([card-id transform-id]
    (run-swap-model-with-transform! card-id transform-id noop-progress))
   ([card-id transform-id progress & {:keys [user-id]}]

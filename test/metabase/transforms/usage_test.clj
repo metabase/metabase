@@ -10,7 +10,7 @@
 
 (defn- with-mocked-routing!
   "Call zero-arg `f` with [[premium-features/transform-metered-as]] redefined to return
-   the given fixed `bucket` string."
+  the given fixed `bucket` string."
   [bucket f]
   (with-redefs [premium-features/transform-metered-as (constantly bucket)]
     (f)))

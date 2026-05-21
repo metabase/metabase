@@ -33,9 +33,9 @@
 
 (defn- check-upload!
   "Validate an incoming multipart `file` part before we spend any IO reading it.
-   Rejects oversized uploads with 413 using `:size` (populated by Ring from the
-   bytes it actually buffered, not a client header) and rejects missing files with
-   400. Returns the `java.io.File` tempfile."
+  Rejects oversized uploads with 413 using `:size` (populated by Ring from the
+  bytes it actually buffered, not a client header) and rejects missing files with
+  400. Returns the `java.io.File` tempfile."
   ^File [file]
   (let [tempfile (:tempfile file)]
     (when-not (instance? File tempfile)
@@ -92,8 +92,8 @@
 
 (defn- plugin->runtime-response
   "Convert a plugin record to the safe runtime response shape.
-   `bundle_url` is suffixed with `?v=<bundle_hash>` so that a re-uploaded bundle is fetched
-   instead of served from the browser's `immutable` cache."
+  `bundle_url` is suffixed with `?v=<bundle_hash>` so that a re-uploaded bundle is fetched
+  instead of served from the browser's `immutable` cache."
   [{:keys [id identifier display_name icon bundle_hash manifest dev_bundle_url]}]
   (cond-> {:id           id
            :identifier   identifier

@@ -235,7 +235,7 @@
 
 (defn- filter-fields
   "Find all fields belonging to table `table` for which all predicates in
-   `preds` are true. `preds` is a map with keys :fieldspec, :named, and :max-cardinality."
+  `preds` are true. `preds` is a map with keys :fieldspec, :named, and :max-cardinality."
   [preds fields]
   (filter (->> preds
                (keep (fn [[k v]]
@@ -246,7 +246,7 @@
 
 (defn- matching-fields
   "Given a context and a dimension definition, find all fields from the context
-   that match the definition of this dimension."
+  that match the definition of this dimension."
   [{{:keys [fields]} :source :keys [tables] :as context}
    {:keys [field_type links_to named max_cardinality] :as constraints}]
   (if links_to

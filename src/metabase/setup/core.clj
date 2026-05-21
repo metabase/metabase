@@ -11,7 +11,7 @@
 
 (defn token-match?
   "Function for checking if the supplied string matches our setup token.
-   Returns boolean `true` if supplied token matches the setup token, `false` otherwise."
+  Returns boolean `true` if supplied token matches the setup token, `false` otherwise."
   [token]
   {:pre [(string? token)]}
   (= token (setup.settings/setup-token)))

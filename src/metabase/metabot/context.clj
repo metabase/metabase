@@ -124,7 +124,7 @@
 
 (defn- database-tables-for-context
   "Get database tables formatted for metabot context. Only includes tables used in the query, formatted for API output.
-   Removes duplicate tables by id while preserving first occurrence order."
+  Removes duplicate tables by id while preserving first occurrence order."
   [{:keys [query]}]
   (try
     (if query

@@ -24,10 +24,10 @@
 
 (defn incomplete-analysis-kvs
   "Key-value pairs corresponding to the state of Fields that have the latest fingerprint, but have not yet
-   *completed* analysis. All Fields who get new fingerprints should get marked as having the latest fingerprint
-   version, but we'll clear their values for `last_analyzed`. This way we know these fields haven't 'completed'
-   analysis for the latest fingerprints. This is a function because `*latest-fingerprint-version* may be rebound
-   in tests."
+  *completed* analysis. All Fields who get new fingerprints should get marked as having the latest fingerprint
+  version, but we'll clear their values for `last_analyzed`. This way we know these fields haven't 'completed'
+  analysis for the latest fingerprints. This is a function because `*latest-fingerprint-version* may be rebound
+  in tests."
   []
   {:fingerprint_version i/*latest-fingerprint-version*
    :last_analyzed       nil})

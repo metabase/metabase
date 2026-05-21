@@ -114,9 +114,9 @@
 
 (defn- resolve-nil-schema
   "When a table has nil schema, check if the physical table exists under the driver's
-   default schema. If so, return that schema. Otherwise return nil.
-   This handles the case where transforms create tables without explicit schema
-   but the driver needs a schema to find the table during sync."
+  default schema. If so, return that schema. Otherwise return nil.
+  This handles the case where transforms create tables without explicit schema
+  but the driver needs a schema to find the table during sync."
   [driver database table]
   (when-let [default-schema (try (sql.normalize/default-schema driver) (catch Exception _ nil))]
     (when (driver/table-exists? driver database {:schema default-schema :name (:name table)})
@@ -124,15 +124,15 @@
 
 (defn qualified-table-name
   "Return the transform target as a `:schema/name` (or bare `:name`) HoneySQL
-   identifier. Consumers downstream rely on `name`/`namespace` to extract the
-   parts (e.g. `metabase.driver.sql/run-transform! [:sql :table]`), so this stays
-   2-segment.
+  identifier. Consumers downstream rely on `name`/`namespace` to extract the
+  parts (e.g. `metabase.driver.sql/run-transform! [:sql :table]`), so this stays
+  2-segment.
 
-   The `:db` slot — populated for engines whose `qualified-name-components`
-   includes `:db` (Snowflake / SQL Server / BigQuery / MySQL) — is **not** encoded
-   here. It travels separately on `transform-details` as `:output-db` and is
-   prepended at the SQL emission site. See
-   [[metabase.driver.sql.query-processor/compile-transform :sql]]."
+  The `:db` slot — populated for engines whose `qualified-name-components`
+  includes `:db` (Snowflake / SQL Server / BigQuery / MySQL) — is **not** encoded
+  here. It travels separately on `transform-details` as `:output-db` and is
+  prepended at the SQL emission site. See
+  [[metabase.driver.sql.query-processor/compile-transform :sql]]."
   [_driver {:keys [schema name]}]
   (if (str/blank? schema)
     (keyword name)
@@ -255,10 +255,10 @@
 (defn- inject-filters-into-table-tag
   "Inject `:source-filters` into the table template tag matching the checkpoint field's table.
 
-   Instead of manually expanding {{tag}} to a subquery SQL string, this adds filter metadata
-   to the template tag so the QP's existing pipeline handles substitution. The filters specify
-   field-id-based comparisons (e.g. :> lo, :<= hi) that get rendered as a filtered subquery
-   in `->replacement-snippet-info`."
+  Instead of manually expanding {{tag}} to a subquery SQL string, this adds filter metadata
+  to the template tag so the QP's existing pipeline handles substitution. The filters specify
+  field-id-based comparisons (e.g. :> lo, :<= hi) that get rendered as a filtered subquery
+  in `->replacement-snippet-info`."
   [query source-range-params]
   (let [{:keys [checkpoint-filter-field-id lo hi column]} source-range-params
         table-id  (:table-id column)
@@ -335,10 +335,10 @@
 (defn preprocess-incremental-query
   "Add checkpoint filtering to a query for incremental execution.
 
-   For native queries, injects `:source-filters` into the table template tag matching the checkpoint
-   field's table. The QP's substitution pipeline renders these as a filtered subquery.
-   For MBQL queries, adds filter clauses `WHERE checkpoint_column > lo AND checkpoint_column <= hi`.
-   Returns the query unchanged when source-range-params is nil."
+  For native queries, injects `:source-filters` into the table template tag matching the checkpoint
+  field's table. The QP's substitution pipeline renders these as a filtered subquery.
+  For MBQL queries, adds filter clauses `WHERE checkpoint_column > lo AND checkpoint_column <= hi`.
+  Returns the query unchanged when source-range-params is nil."
   [query source-range-params]
   (if source-range-params
     (if (lib/native? query)
@@ -398,17 +398,17 @@
 
 (defn- canonicalize-target
   "If `target` is workspace-rewritten (i.e. its `(schema, name)` matches the
-   to-side of an active TableRemapping for `db-id`), return `target` with
-   `:schema` and `:name` swapped back to canonical. Else return `target`
-   unchanged. The transform pipeline mutates `:target.schema` to the workspace
-   output schema in `metabase.transforms.execute/resolve-target` so writes
-   land in isolation; `:model/Table` rows must stay at the canonical schema,
-   so we invert here.
+  to-side of an active TableRemapping for `db-id`), return `target` with
+  `:schema` and `:name` swapped back to canonical. Else return `target`
+  unchanged. The transform pipeline mutates `:target.schema` to the workspace
+  output schema in `metabase.transforms.execute/resolve-target` so writes
+  land in isolation; `:model/Table` rows must stay at the canonical schema,
+  so we invert here.
 
-   `canonical-schema+name` returns a `{:db :schema :name}` map with slot
-   values already normalized to `:model/Table` row vocabulary (nil for
-   engines that don't emit a slot, string otherwise) — directly usable as a
-   Table-row predicate without further translation."
+  `canonical-schema+name` returns a `{:db :schema :name}` map with slot
+  values already normalized to `:model/Table` row vocabulary (nil for
+  engines that don't emit a slot, string otherwise) — directly usable as a
+  Table-row predicate without further translation."
   [db-id target]
   (let [lookup-spec {:db (:db target) :schema (:schema target) :name (:name target)}]
     (if-let [{:keys [db schema name]} (ws.table-remapping/canonical-schema+name db-id lookup-spec)]
@@ -522,7 +522,7 @@
 
 (defn rename-tables!
   "Rename multiple tables atomically within a transaction using the new driver/rename-tables method.
-   This is a simpler, composable operation that only handles renaming."
+  This is a simpler, composable operation that only handles renaming."
   [driver database-id rename-map]
   (log/infof "Renaming tables: %s" (pr-str rename-map))
   (driver/rename-tables! driver database-id rename-map))
@@ -532,15 +532,15 @@
 (defn complete-execution!
   "Post-processing steps after a transform has been executed successfully.
 
-   Performs:
-   - Sync target table to AppDB
-   - Set `transform_id` on the target table
-   - Publish Metabase events (unless `:publish-events?` is false)
-   - Create/drop secondary indexes
+  Performs:
+  - Sync target table to AppDB
+  - Set `transform_id` on the target table
+  - Publish Metabase events (unless `:publish-events?` is false)
+  - Create/drop secondary indexes
 
-   This is called after the core execution completes. Callers that use
-   `run-cancelable-transform!` should call this AFTER `succeed-started-run!`
-   to preserve the correct order of operations."
+  This is called after the core execution completes. Callers that use
+  `run-cancelable-transform!` should call this AFTER `succeed-started-run!`
+  to preserve the correct order of operations."
   [transform opts]
   (let [{:keys [target]} transform
         {:keys [publish-events?]
@@ -767,7 +767,7 @@
 
 (defn throw-if-db-routing-enabled!
   "Throws if the database has routing enabled. Call before any driver operations to get a
-   clear error message rather than a confusing driver-level failure."
+  clear error message rather than a confusing driver-level failure."
   [transform database]
   (when (database-routing/db-routing-enabled? database)
     (throw (ex-info (i18n/tru "Failed to run the transform ({0}) because the database ({1}) has database routing turned on. Running transforms on databases with db routing enabled is not supported."

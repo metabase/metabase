@@ -30,12 +30,12 @@
 
 (def ^:private ^:const default-timeout-ms
   "Default timeout for Python operations in milliseconds.
-   GraalVM Python can occasionally hang (DEV-1393), so we wrap calls with a timeout."
+  GraalVM Python can occasionally hang (DEV-1393), so we wrap calls with a timeout."
   30000) ; 30 seconds
 
 (defn- with-timeout*
   "Execute f in a future with timeout. On timeout, throws TimeoutException.
-   The caller is responsible for cleaning up resources (e.g., disposing context)."
+  The caller is responsible for cleaning up resources (e.g., disposing context)."
   [timeout-ms f]
   (let [fut (future (f))]
     (try
@@ -50,9 +50,9 @@
 
 (defmacro ^:private with-python-timeout
   "Execute body with a timeout. If timeout is reached:
-   1. Interrupts the GraalVM context (actually stops execution)
-   2. Poisons context so it gets disposed rather than returned to pool
-   3. Logs warning and throws TimeoutException"
+  1. Interrupts the GraalVM context (actually stops execution)
+  2. Poisons context so it gets disposed rather than returned to pool
+  3. Logs warning and throws TimeoutException"
   [ctx timeout-ms & body]
   `(let [result# (with-timeout* ~timeout-ms (^:once fn* [] ~@body))]
      (if (= result# ::timeout)
@@ -90,8 +90,8 @@
 
 (defn- skip-balanced-parens
   "Starting at an opening `(`, advance past the matching `)`.
-   Handles nested parens and SQL string literals (single and double quoted, with doubled-quote escaping).
-   Returns the position immediately after the closing `)`."
+  Handles nested parens and SQL string literals (single and double quoted, with doubled-quote escaping).
+  Returns the position immediately after the closing `)`."
   ^long [^String sql ^long pos ^long n]
   (loop [pos pos, depth (int 0), in-str false, str-ch \space]
     (if (>= pos n)
@@ -115,7 +115,7 @@
 
 (defn- count-top-level-commas
   "Count top-level comma-separated items inside a tuple's content string.
-   `(1, 'a', 3)` → inner content `1, 'a', 3` → 3 items."
+  `(1, 'a', 3)` → inner content `1, 'a', 3` → 3 items."
   ^long [^String content]
   (let [n (.length content)]
     (loop [i 0, depth (int 0), in-str false, str-ch \space, items (int 1)]
@@ -132,7 +132,7 @@
 
 (defn- count-and-skip-tuples
   "Starting after the first tuple, count how many more `, (...)` tuples follow.
-   Returns [total-tuple-count position-after-last-tuple]."
+  Returns [total-tuple-count position-after-last-tuple]."
   [^String sql ^long pos ^long n]
   (loop [pos pos, count (int 1)]
     (let [pos (skip-whitespace sql pos n)]
@@ -159,7 +159,7 @@
 
 (defn- strip-large-values*
   "Walk through SQL, replacing any VALUES clause with more than `values-strip-threshold`
-   tuples with a single-row NULL placeholder. Preserves column count from the first tuple."
+  tuples with a single-row NULL placeholder. Preserves column count from the first tuple."
   ^String [^String sql]
   (let [matcher (re-matcher values-keyword-pattern sql)
         n       (int (.length sql))]
@@ -191,11 +191,11 @@
 (defn strip-large-values
   "Replace large VALUES clauses with a single-row NULL placeholder.
 
-   Preserves the column count from the first tuple and all surrounding SQL structure.
-   Only triggers when a VALUES clause has more than `values-strip-threshold` tuples.
+  Preserves the column count from the first tuple and all surrounding SQL structure.
+  Only triggers when a VALUES clause has more than `values-strip-threshold` tuples.
 
-   This runs on the JVM side (fast) before passing SQL to GraalPy (slow at char scanning).
-   On any error, returns the original SQL unchanged so parsing can proceed normally."
+  This runs on the JVM side (fast) before passing SQL to GraalPy (slow at char scanning).
+  On any error, returns the original SQL unchanged so parsing can proceed normally."
   ^String [^String sql]
   (try
     (strip-large-values* sql)
@@ -208,11 +208,11 @@
 (defn referenced-tables
   "Extract table references from SQL.
 
-   Returns a vector of [catalog schema table] 3-tuples:
-   [[nil nil \"users\"] [nil \"public\" \"orders\"] [\"myproject\" \"analytics\" \"events\"]]
+  Returns a vector of [catalog schema table] 3-tuples:
+  [[nil nil \"users\"] [nil \"public\" \"orders\"] [\"myproject\" \"analytics\" \"events\"]]
 
-   This is the pure parsing layer - it returns what's literally in the SQL.
-   Default schema resolution happens in the matching layer (core.clj)."
+  This is the pure parsing layer - it returns what's literally in the SQL.
+  Default schema resolution happens in the matching layer (core.clj)."
   [dialect sql]
   (let [sql (strip-large-values sql)]
     (-> (with-open [^Closeable ctx (python.pool/python-context)]
@@ -226,26 +226,26 @@
 (defn referenced-fields
   "Extract field references from SQL, returning only fields from actual database tables.
 
-   Returns a vector of [catalog schema table field] 4-tuples:
-   [[nil nil \"users\" \"id\"] [nil \"public\" \"orders\" \"total\"]]
+  Returns a vector of [catalog schema table field] 4-tuples:
+  [[nil nil \"users\" \"id\"] [nil \"public\" \"orders\" \"total\"]]
 
-   Includes:
-   - Wildcards as [catalog schema table \"*\"]
-   - All specific column references
+  Includes:
+  - Wildcards as [catalog schema table \"*\"]
+  - All specific column references
 
-   Excludes:
-   - Fields from CTEs or subqueries
-   - Table aliases (returns actual table names)
+  Excludes:
+  - Fields from CTEs or subqueries
+  - Table aliases (returns actual table names)
 
-   Examples:
-   (referenced-fields \"postgres\" \"SELECT id FROM users\")
-   => [[nil nil \"users\" \"id\"]]
+  Examples:
+  (referenced-fields \"postgres\" \"SELECT id FROM users\")
+  => [[nil nil \"users\" \"id\"]]
 
-   (referenced-fields \"postgres\" \"SELECT * FROM public.users\")
-   => [[nil \"public\" \"users\" \"*\"]]
+  (referenced-fields \"postgres\" \"SELECT * FROM public.users\")
+  => [[nil \"public\" \"users\" \"*\"]]
 
-   (referenced-fields \"bigquery\" \"SELECT * FROM myproject.analytics.events\")
-   => [[\"myproject\" \"analytics\" \"events\" \"*\"]]"
+  (referenced-fields \"bigquery\" \"SELECT * FROM myproject.analytics.events\")
+  => [[\"myproject\" \"analytics\" \"events\" \"*\"]]"
   [dialect sql]
   (let [sql (strip-large-values sql)]
     (-> (with-open [^Closeable ctx (python.pool/python-context)]
@@ -259,20 +259,20 @@
 (defn returned-columns-lineage
   "Extract column lineage from SQL query, showing which output columns depend on which source columns.
 
-   Returns a vector of [alias pure? [[schema table col]...]] tuples:
-   - alias: The output column name/alias
-   - pure?: Boolean - true if the column is a direct pass-through from a source column
-   - deps: Vector of [schema table column] dependencies
+  Returns a vector of [alias pure? [[schema table col]...]] tuples:
+  - alias: The output column name/alias
+  - pure?: Boolean - true if the column is a direct pass-through from a source column
+  - deps: Vector of [schema table column] dependencies
 
-   Requires a schema map of the form:
-   {\"schema_name\" {\"table_name\" {\"column_name\" \"TYPE\"}}}
+  Requires a schema map of the form:
+  {\"schema_name\" {\"table_name\" {\"column_name\" \"TYPE\"}}}
 
-   Examples:
-   (returned-columns-lineage \"postgres\" \"SELECT id FROM users\" nil {nil {\"users\" {\"id\" \"INT\"}}})
-   => [[\"id\" true [[[nil \"users\" \"id\"]]]]]
+  Examples:
+  (returned-columns-lineage \"postgres\" \"SELECT id FROM users\" nil {nil {\"users\" {\"id\" \"INT\"}}})
+  => [[\"id\" true [[[nil \"users\" \"id\"]]]]]
 
-   (returned-columns-lineage \"postgres\" \"SELECT id + 1 as computed FROM users\" nil schema)
-   => [[\"computed\" false [[[nil \"users\" \"id\"]]]]]"
+  (returned-columns-lineage \"postgres\" \"SELECT id + 1 as computed FROM users\" nil schema)
+  => [[\"computed\" false [[[nil \"users\" \"id\"]]]]]"
   [dialect sql default-table-schema sqlglot-schema]
   (let [sql (strip-large-values sql)]
     (-> (with-open [^Closeable ctx (python.pool/python-context)]
@@ -329,22 +329,22 @@
 (defn simple-query?
   "Check if SQL is a simple SELECT without LIMIT, OFFSET, or CTEs.
 
-   Used by Workspaces to determine if automatic checkpoints can be inserted.
+  Used by Workspaces to determine if automatic checkpoints can be inserted.
 
-   Parameters:
-   - dialect: SQLGlot dialect string (e.g., \"postgres\", \"mysql\"), or nil for default
-   - sql: The SQL query string to check
+  Parameters:
+  - dialect: SQLGlot dialect string (e.g., \"postgres\", \"mysql\"), or nil for default
+  - sql: The SQL query string to check
 
-   Returns a map with:
-   - :is_simple - boolean indicating if query is simple
-   - :reason - string explaining why query is not simple (when false)
+  Returns a map with:
+  - :is_simple - boolean indicating if query is simple
+  - :reason - string explaining why query is not simple (when false)
 
-   Examples:
-   (simple-query? \"postgres\" \"SELECT * FROM users\")
-   => {:is_simple true}
+  Examples:
+  (simple-query? \"postgres\" \"SELECT * FROM users\")
+  => {:is_simple true}
 
-   (simple-query? nil \"SELECT * FROM users LIMIT 10\")
-   => {:is_simple false :reason \"Contains a LIMIT\"}"
+  (simple-query? nil \"SELECT * FROM users LIMIT 10\")
+  => {:is_simple false :reason \"Contains a LIMIT\"}"
   [dialect sql]
   (let [sql (strip-large-values sql)]
     (-> (with-open [^Closeable ctx (python.pool/python-context)]
@@ -357,18 +357,18 @@
 (defn add-into-clause
   "Add an INTO clause to a SELECT statement for SQL Server SELECT INTO syntax.
 
-   Transforms: 'SELECT * FROM products'
-   Into:       'SELECT * INTO \"TABLE\" FROM products'
+  Transforms: 'SELECT * FROM products'
+  Into:       'SELECT * INTO \"TABLE\" FROM products'
 
-   Used by SQL Server compile-transform which requires SELECT INTO syntax
-   instead of CREATE TABLE AS SELECT.
+  Used by SQL Server compile-transform which requires SELECT INTO syntax
+  instead of CREATE TABLE AS SELECT.
 
-   Parameters:
-   - dialect: SQLGlot dialect string (e.g., \"tsql\" for SQL Server)
-   - sql: The SELECT SQL query string
-   - table-name: The target table name (already formatted/quoted)
+  Parameters:
+  - dialect: SQLGlot dialect string (e.g., \"tsql\" for SQL Server)
+  - sql: The SELECT SQL query string
+  - table-name: The target table name (already formatted/quoted)
 
-   Returns: Modified SQL string with INTO clause"
+  Returns: Modified SQL string with INTO clause"
   [dialect sql table-name]
   (with-open [^Closeable ctx (python.pool/python-context)]
     (with-python-timeout ctx default-timeout-ms
@@ -469,23 +469,23 @@
 (defn field-references
   "Extract field references from SQL, returning used and returned fields.
 
-   This is the SQLGlot equivalent of Macaw's field-references function.
-   Returns a map with:
-   - :used-fields - set of field specs from WHERE, JOIN ON, GROUP BY, ORDER BY
-   - :returned-fields - vector of field specs from SELECT clause (ordered)
-   - :errors - set of validation errors
+  This is the SQLGlot equivalent of Macaw's field-references function.
+  Returns a map with:
+  - :used-fields - set of field specs from WHERE, JOIN ON, GROUP BY, ORDER BY
+  - :returned-fields - vector of field specs from SELECT clause (ordered)
+  - :errors - set of validation errors
 
-   Each field spec has:
-   - :type - :single-column, :all-columns, :custom-field, :composite-field, or :unknown-columns
-   - :column - column name (for single-column)
-   - :alias - column alias (nil if none)
-   - :source-columns - nested list of possible source columns
-   - :table - table info (for all-columns)
-   - :used-fields - set of fields used (for custom-field)
-   - :member-fields - list of fields (for composite-field)
+  Each field spec has:
+  - :type - :single-column, :all-columns, :custom-field, :composite-field, or :unknown-columns
+  - :column - column name (for single-column)
+  - :alias - column alias (nil if none)
+  - :source-columns - nested list of possible source columns
+  - :table - table info (for all-columns)
+  - :used-fields - set of fields used (for custom-field)
+  - :member-fields - list of fields (for composite-field)
 
-   On timeout, returns an error map instead of throwing, consistent with the
-   'fail soft' pattern used for parsing failures."
+  On timeout, returns an error map instead of throwing, consistent with the
+  'fail soft' pattern used for parsing failures."
   [dialect sql]
   (let [sql (strip-large-values sql)]
     (try
@@ -535,7 +535,7 @@
 
 (defn is-single-stmt-of-type?
   "Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
-   and returns the query reconstructed from the parsed AST."
+  and returns the query reconstructed from the parsed AST."
   [dialect sql stmt-type]
   (let [sql (strip-large-values sql)]
     (-> (with-open [^Closeable ctx (python.pool/python-context)]

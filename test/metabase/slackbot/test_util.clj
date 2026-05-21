@@ -47,7 +47,7 @@
 
 (defmacro with-ensure-encryption
   "Use the existing encryption key if one is configured, otherwise set a test key.
-   Avoids conflicts with encrypted settings in the DB that were written with the real key."
+  Avoids conflicts with encrypted settings in the DB that were written with the real key."
   [& body]
   `(if (encryption/default-encryption-enabled?)
      (do ~@body)
@@ -56,8 +56,8 @@
 
 (defmacro with-slackbot-setup
   "Wrap body with all required settings for slackbot to be fully configured.
-   Uses `with-temporary-raw-setting-values` to avoid settings with masking getters
-   saving/restoring the obfuscated value instead of the original."
+  Uses `with-temporary-raw-setting-values` to avoid settings with masking getters
+  saving/restoring the obfuscated value instead of the original."
   [& body]
   `(with-redefs [slackbot.config/validate-bot-token! (constantly {:ok true})
                  slackbot.client/get-bot-user-id     (constantly "UBOT123")]

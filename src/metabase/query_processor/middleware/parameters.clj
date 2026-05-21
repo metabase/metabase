@@ -96,8 +96,8 @@
 
 (defn- stage-has-non-default-params?
   "True if a stage has parameters with non-default values.
-   For MBQL stages, any parameters count as non-default.
-   For native stages, only parameters whose value differs from the template tag default."
+  For MBQL stages, any parameters count as non-default.
+  For native stages, only parameters whose value differs from the template tag default."
   [stage]
   (when-let [params (seq (:parameters stage))]
     (if-not (lib/native-stage? stage)

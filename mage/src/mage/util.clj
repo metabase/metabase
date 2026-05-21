@@ -133,7 +133,7 @@
 
 (defn with-throbber
   "Calls a function f and displays a throbber animation while waiting
-   for it to complete. Returns the result of calling f."
+  for it to complete. Returns the result of calling f."
   [message f]
   (let [frames ["⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏"]
         delay  100

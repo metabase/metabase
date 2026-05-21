@@ -38,7 +38,7 @@
 
 (defn init-db!
   "Initialize c3p0 connection pool for semantic search database.
-   Requires MB_PGVECTOR_DB_URL environment variable."
+  Requires MB_PGVECTOR_DB_URL environment variable."
   []
   (locking data-source
     (or @data-source

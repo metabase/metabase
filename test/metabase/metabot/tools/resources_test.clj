@@ -84,8 +84,8 @@
 
 (def ^:private dispatch-cases
   "Each row: [uri expected-handler-tag expected-handler-args]. Adding a new URI pattern
-   to the dispatch should mean adding one row here. Args are positional and string-typed
-   the way the dispatch passes them to the handler."
+  to the dispatch should mean adding one row here. Args are positional and string-typed
+  the way the dispatch passes them to the handler."
   [;; ----- Top-level navigation -----
    ["metabase://databases"                                 :databases-list             []]
    ["metabase://collections"                               :collections-list           [nil]]

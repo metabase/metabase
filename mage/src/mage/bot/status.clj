@@ -87,8 +87,8 @@
 (defn- render-display
   "Render the full status pane display.
 
-   mode is either :local (port-based) or :pr-env (remote URL).
-   In :pr-env mode, `ports` is nil and the first line is derived from pr-env-cfg."
+  mode is either :local (port-based) or :pr-env (remote URL).
+  In :pr-env mode, `ports` is nil and the first line is derived from pr-env-cfg."
   [mode ports pr-env-cfg be-status db-status llm-status pr-info]
   (let [sb (StringBuilder.)]
     (case mode
@@ -131,7 +131,7 @@
 
 (defn run!
   "Watch llm-status.txt and periodically check service health.
-   Auto-detects PR-env mode via .bot/pr-env.env."
+  Auto-detects PR-env mode via .bot/pr-env.env."
   [{:keys [arguments]}]
   (let [file-path   (or (first arguments) ".bot/autobot/llm-status.txt")
         f           (File. ^String file-path)

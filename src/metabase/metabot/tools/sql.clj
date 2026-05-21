@@ -37,8 +37,8 @@
 
 (defn- format-query-output
   "Format a query result for LLM consumption.
-   `preamble` is optional text placed before the query XML inside <result>
-   (e.g. \"SQL query successfully constructed.\")."
+  `preamble` is optional text placed before the query XML inside <result>
+  (e.g. \"SQL query successfully constructed.\")."
   [structured instruction-text & {:keys [preamble?]}]
   (let [query-xml (llm-rep/query->xml structured)]
     (te/lines

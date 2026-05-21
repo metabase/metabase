@@ -24,7 +24,7 @@
 
 (defenterprise swap-destination-db
   "Must be the last middleware before we actually hit the database. If a Router Database is specified, swaps out the
-   Metadata Provider for one that has the appropriate destination database."
+  Metadata Provider for one that has the appropriate destination database."
   :feature :database-routing
   [qp]
   (fn [query rff]

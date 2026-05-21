@@ -26,13 +26,13 @@
 (defn set-config!
   "Set configuration for mutation testing.
 
-   Required keys:
-   - :team-id   — Linear team ID
-   - :project-id — Linear project ID (can be set after creating a project)
+  Required keys:
+  - :team-id   — Linear team ID
+  - :project-id — Linear project ID (can be set after creating a project)
 
-   Optional keys:
-   - :base-branch — git branch to create feature branches from (default: \"master\")
-   - :project-id  — Linear project ID to add issues to (skips project creation in run!)"
+  Optional keys:
+  - :base-branch — git branch to create feature branches from (default: \"master\")
+  - :project-id  — Linear project ID to add issues to (skips project creation in run!)"
   [m]
   (swap! config merge m))
 
@@ -55,7 +55,7 @@
 
 (defn- graphql-request
   "Execute a GraphQL request against the Linear API.
-   Returns the parsed response body."
+  Returns the parsed response body."
   [query variables]
   (let [response (http/post "https://api.linear.app/graphql"
                             {:headers {"Authorization" (api-key)
@@ -70,7 +70,7 @@
 
 (defn list-teams!
   "List all Linear teams accessible to the authenticated user.
-   Returns a seq of {:id ... :name ... :key ...} maps."
+  Returns a seq of {:id ... :name ... :key ...} maps."
   []
   (let [query "query { teams { nodes { id name key } } }"
         result (graphql-request query {})]
@@ -79,14 +79,14 @@
 (defn create-project!
   "Create a new Linear project.
 
-   Options:
-   - :name        — project name (required)
-   - :description — short project description, ≤255 chars (optional)
-   - :content     — long-form project content as markdown (optional)
-   - :status-id   — project status ID (optional)
+  Options:
+  - :name        — project name (required)
+  - :description — short project description, ≤255 chars (optional)
+  - :content     — long-form project content as markdown (optional)
+  - :status-id   — project status ID (optional)
 
-   Returns a map with :project-id.
-   Also updates config with the new project-id."
+  Returns a map with :project-id.
+  Also updates config with the new project-id."
   [{:keys [name description content status-id]}]
   (let [query "mutation($input: ProjectCreateInput!) {
                      projectCreate(input: $input) {
@@ -108,11 +108,11 @@
 (defn create-issue!
   "Create a new Linear issue in the configured team and project.
 
-   Options:
-   - :title       — issue title (required)
-   - :description — issue description (optional)
+  Options:
+  - :title       — issue title (required)
+  - :description — issue description (optional)
 
-   Returns a map with :issue-id and :identifier (e.g., \"QUE-1234\")."
+  Returns a map with :issue-id and :identifier (e.g., \"QUE-1234\")."
   [{:keys [title description]}]
   (let [query "mutation($input: IssueCreateInput!) {
                      issueCreate(input: $input) {
@@ -136,22 +136,22 @@
 (defn pr-title
   "Generate a PR title for a mutation testing PR.
 
-   Example: [Mutation Testing] Kill mutations in metabase.lib.order-by/orderable-columns"
+  Example: [Mutation Testing] Kill mutations in metabase.lib.order-by/orderable-columns"
   [target-ns fn-name]
   (str "[Mutation Testing] Kill mutations in " target-ns "/" fn-name))
 
 (defn pr-description
   "Generate a PR description for a mutation testing PR.
 
-   Options:
-   - :target-ns           — the namespace under test
-   - :fn-names            — seq of function name strings covered by this PR
-   - :linear-identifier   — Linear issue identifier (e.g., \"QUE-1234\")
-   - :mutations-before    — number of surviving mutations before this PR (for these functions only)
-   - :tests-added         — number of new tests being added
-   - :killed              — seq of mutation description strings
-   - :not-killed          — seq of {:description ... :rationale ...} maps (can be empty)
-   - :suggested-changes   — seq of short description strings for code improvements posted as suggested changes"
+  Options:
+  - :target-ns           — the namespace under test
+  - :fn-names            — seq of function name strings covered by this PR
+  - :linear-identifier   — Linear issue identifier (e.g., \"QUE-1234\")
+  - :mutations-before    — number of surviving mutations before this PR (for these functions only)
+  - :tests-added         — number of new tests being added
+  - :killed              — seq of mutation description strings
+  - :not-killed          — seq of {:description ... :rationale ...} maps (can be empty)
+  - :suggested-changes   — seq of short description strings for code improvements posted as suggested changes"
   [{:keys [target-ns fn-names linear-identifier mutations-before tests-added killed not-killed suggested-changes]}]
   (let [killed-count (count killed)
         remaining (- mutations-before killed-count)]
@@ -190,7 +190,7 @@
 (defn linear-issue-title
   "Generate a Linear issue title for a mutation testing issue.
 
-   Example: Mutation testing: metabase.lib.order-by/orderable-columns"
+  Example: Mutation testing: metabase.lib.order-by/orderable-columns"
   [target-ns fn-name]
   (str "Mutation testing: " target-ns "/" fn-name))
 
@@ -214,7 +214,7 @@
 
 (defn- sh
   "Run a shell command and return {:exit ... :out ... :err ...}.
-   Throws on non-zero exit."
+  Throws on non-zero exit."
   [& args]
   (let [result (apply shell/sh args)]
     (when-not (zero? (:exit result))
@@ -224,14 +224,14 @@
 
 (defn branch-name
   "Generate a branch name for mutation testing a function.
-   Example: mutation-testing-lib-order-by-orderable-columns"
+  Example: mutation-testing-lib-order-by-orderable-columns"
   [target-ns fn-name]
   (let [short-ns (last (str/split (str target-ns) #"\."))]
     (str "mutation-testing-lib-" short-ns "-" fn-name)))
 
 (defn create-branch!
   "Create and checkout a new branch from the base branch for mutation testing a function.
-   Fails early if there are uncommitted changes."
+  Fails early if there are uncommitted changes."
   [target-ns fn-name]
   (let [status (:out (sh "git" "status" "--porcelain" "-uno"))]
     (when-not (str/blank? status)
@@ -245,7 +245,7 @@
 
 (defn commit-and-push!
   "Stage changed files, commit with a message, and push the current branch.
-   `files` is a seq of file paths to stage."
+  `files` is a seq of file paths to stage."
   [target-ns fn-name files]
   (doseq [f files]
     (sh "git" "add" f))
@@ -257,16 +257,16 @@
 (defn create-draft-pr!
   "Create a draft PR on GitHub and return the PR URL.
 
-   Options:
-   - :target-ns         — the namespace under test
-   - :fn-name           — the function name (used for PR title)
-   - :fn-names          — seq of function name strings (used in PR body)
-   - :linear-identifier — Linear issue identifier (e.g., \"QUE-1234\")
-   - :mutations-before  — number of surviving mutations before this PR
-   - :tests-added       — number of new tests being added
-   - :killed            — seq of mutation description strings
-   - :not-killed        — seq of {:description ... :rationale ...} maps
-   - :suggested-changes — seq of short description strings"
+  Options:
+  - :target-ns         — the namespace under test
+  - :fn-name           — the function name (used for PR title)
+  - :fn-names          — seq of function name strings (used in PR body)
+  - :linear-identifier — Linear issue identifier (e.g., \"QUE-1234\")
+  - :mutations-before  — number of surviving mutations before this PR
+  - :tests-added       — number of new tests being added
+  - :killed            — seq of mutation description strings
+  - :not-killed        — seq of {:description ... :rationale ...} maps
+  - :suggested-changes — seq of short description strings"
   [{:keys [target-ns fn-name] :as opts}]
   (let [title (pr-title target-ns fn-name)
         body (pr-description opts)
@@ -299,15 +299,15 @@
 
 (defn add-suggested-change!
   "Add an inline review comment with a suggested change on a PR.
-   This uses GitHub's suggestion syntax so the reviewer can apply it with one click.
+  This uses GitHub's suggestion syntax so the reviewer can apply it with one click.
 
-   Options:
-   - :pr-url       — the PR URL or number
-   - :path         — file path relative to repo root
-   - :start-line   — first line of the range to replace (1-indexed)
-   - :end-line     — last line of the range to replace (1-indexed, can equal start-line for single line)
-   - :suggestion   — the replacement code (string, will be placed inside a ```suggestion block)
-   - :comment      — explanation of the suggested change"
+  Options:
+  - :pr-url       — the PR URL or number
+  - :path         — file path relative to repo root
+  - :start-line   — first line of the range to replace (1-indexed)
+  - :end-line     — last line of the range to replace (1-indexed, can equal start-line for single line)
+  - :suggestion   — the replacement code (string, will be placed inside a ```suggestion block)
+  - :comment      — explanation of the suggested change"
   [{:keys [pr-url path start-line end-line suggestion comment]}]
   (let [pr-num (pr-number-from-url pr-url)
         nwo (repo-nwo)
@@ -340,8 +340,8 @@
 
 (defn report-stats
   "Parse a mutation testing report file and return summary statistics.
-   Returns a map with :total-fns, :uncovered, :partially-covered, :fully-covered,
-   :pct-fully-covered, :total-surviving-mutations."
+  Returns a map with :total-fns, :uncovered, :partially-covered, :fully-covered,
+  :pct-fully-covered, :total-surviving-mutations."
   [report-path]
   (let [content (slurp report-path)
         count-headings (fn [section-re]
@@ -365,15 +365,15 @@
 
 (defn project-name
   "Generate a Linear project name for a namespace.
-   Example: Mutation Testing: metabase.lib.order-by"
+  Example: Mutation Testing: metabase.lib.order-by"
   [target-ns]
   (str "Mutation Testing: " target-ns))
 
 (defn project-description
   "Generate a Linear project description with business value and report statistics.
-   Must be ≤255 characters (Linear limit).
+  Must be ≤255 characters (Linear limit).
 
-   `stats` is a map from `report-stats`."
+  `stats` is a map from `report-stats`."
   [target-ns stats]
   (str "Mutation testing for " target-ns ". "
        (:total-fns stats) " fns: "
@@ -386,7 +386,7 @@
 (defn project-content
   "Generate long-form markdown content for a Linear project.
 
-   `stats` is a map from `report-stats`."
+  `stats` is a map from `report-stats`."
   [target-ns stats]
   (str "## Goal\n"
        "\n"
@@ -414,9 +414,9 @@
 
 (defn create-project-for-namespace!
   "Create a Linear project for mutation testing a specific namespace.
-   Reads statistics from the baseline report file.
-   Sets status to 'In Progress'.
-   Returns the project map and sets :project-id in config."
+  Reads statistics from the baseline report file.
+  Sets status to 'In Progress'.
+  Returns the project map and sets :project-id in config."
   [target-ns report-path]
   (let [stats (report-stats report-path)]
     (create-project! {:name (project-name target-ns)
@@ -426,7 +426,7 @@
 
 (defn create-issue-for-function!
   "Create a Linear issue for mutation testing a specific function.
-   Returns the issue map with :identifier, :url, etc."
+  Returns the issue map with :identifier, :url, etc."
   [target-ns fn-name]
   (create-issue! {:title (linear-issue-title target-ns fn-name)
                   :description (linear-issue-description target-ns fn-name)}))
@@ -435,7 +435,7 @@
 
 (defn parse-namespace
   "Parse a namespace symbol into all derived paths and names.
-   Auto-detects .cljc vs .clj by checking which file exists."
+  Auto-detects .cljc vs .clj by checking which file exists."
   [target-ns-sym]
   (let [target-ns (str target-ns-sym)
         test-ns (str target-ns "-test")
@@ -466,13 +466,13 @@
 
 (defn group-functions
   "Group functions from coverage results for batch processing.
-   Takes the output of coverage/test-namespace.
+  Takes the output of coverage/test-namespace.
 
-   Logic:
-   - Public functions with surviving mutations each become a group
-   - Private functions get assigned to the public function with the most test overlap
-   - Functions with zero surviving mutations are skipped
-   - Uncovered or unassignable private functions get their own group"
+  Logic:
+  - Public functions with surviving mutations each become a group
+  - Private functions get assigned to the public function with the most test overlap
+  - Functions with zero surviving mutations are skipped
+  - Uncovered or unassignable private functions get their own group"
   [coverage-results]
   (let [with-survivors (into {} (filter (fn [[_ v]] (seq (:survived v))) coverage-results))
         public? (fn [fn-sym]
@@ -593,7 +593,7 @@
 
 (defn verify-and-retry!
   "Verify mutations are killed. Retry with Claude if needed.
-   Returns {:status :success|:partial, :killed [...], :survived [...]}."
+  Returns {:status :success|:partial, :killed [...], :survived [...]}."
   [{:keys [fn-names test-ns test-path max-retries]
     :or {max-retries 2}}]
   (loop [retries-left max-retries]
@@ -628,7 +628,7 @@
 
 (defn process-group!
   "Process one group of functions: branch → tests → verify → commit → PR.
-   Returns {:pr-url ... :issue ... :killed ... :not-killed ...}."
+  Returns {:pr-url ... :issue ... :killed ... :not-killed ...}."
   [session group]
   (let [{:keys [target-ns test-ns test-path]} session
         {:keys [primary-fn fn-names mutations]} group
@@ -727,14 +727,14 @@
 
 (defn run-one!
   "Run mutation testing for a single function. No branching or PR creation.
-   Generates a report, invokes Claude to write tests, and verifies mutations are killed.
+  Generates a report, invokes Claude to write tests, and verifies mutations are killed.
 
-   Arguments:
-   - fq-fn-sym  — fully-qualified function symbol (e.g. 'my.ns/my-fn)
-   - test-ns-sym — test namespace symbol (e.g. 'my.ns-test)
+  Arguments:
+  - fq-fn-sym  — fully-qualified function symbol (e.g. 'my.ns/my-fn)
+  - test-ns-sym — test namespace symbol (e.g. 'my.ns-test)
 
-   Options:
-   - :max-retries — max Claude retries for surviving mutations (default 2)"
+  Options:
+  - :max-retries — max Claude retries for surviving mutations (default 2)"
   ([fq-fn-sym test-ns-sym] (run-one! fq-fn-sym test-ns-sym {}))
   ([fq-fn-sym test-ns-sym opts]
    (let [fq-fn-name   (symbol fq-fn-sym)
@@ -792,15 +792,15 @@
 (defn run!
   "Main entry point. Runs the full mutation testing workflow for a namespace.
 
-   Prerequisites:
-   - nREPL running
-   - LINEAR_API_KEY env var set
-   - gh CLI authenticated
-   - team-id configured via (set-config! {:team-id \"...\"})
+  Prerequisites:
+  - nREPL running
+  - LINEAR_API_KEY env var set
+  - gh CLI authenticated
+  - team-id configured via (set-config! {:team-id \"...\"})
 
-   Options (optional second arg):
-   - :base-branch — git branch to create feature branches from (default: from config, or \"master\")
-   - :project-id  — existing Linear project ID to use (skips creating a new project)"
+  Options (optional second arg):
+  - :base-branch — git branch to create feature branches from (default: from config, or \"master\")
+  - :project-id  — existing Linear project ID to use (skips creating a new project)"
   ([target-ns-sym] (run! target-ns-sym {}))
   ([target-ns-sym opts]
    (when-let [bb (:base-branch opts)]

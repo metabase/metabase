@@ -51,12 +51,12 @@
 
 (defn- with-test-db-before-and-after-altering
   "Testing function that performs the following steps:
-   1.  Create a temporary test database & syncs it
-   2.  Optionally executes `(do-something-before database)`
-   3.  Executes `(f database)`
-   4.  Drops one of the columns from the test DB & syncs it again
-   5.  Executes `(f database)` a second time
-   6.  Returns a map containing results from both calls to `f` for comparison."
+  1.  Create a temporary test database & syncs it
+  2.  Optionally executes `(do-something-before database)`
+  3.  Executes `(f database)`
+  4.  Drops one of the columns from the test DB & syncs it again
+  5.  Executes `(f database)` a second time
+  6.  Returns a map containing results from both calls to `f` for comparison."
   {:style/indent [:fn]}
   [alter-sql f]
   ;; first, create a new in-memory test DB and add some data to it

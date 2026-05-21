@@ -91,16 +91,16 @@
 
 (def ^:const transforms-root-id
   "Sentinel value for the virtual Transforms root collection.
-   Used to represent the entire transforms feature being enabled/disabled."
+  Used to represent the entire transforms feature being enabled/disabled."
   -1)
 
 (defn sync-transform-tracking!
   "Called when remote-sync-transforms setting changes.
-   Creates a single 'Transforms' RSO entry with model_id=-1 as a sentinel value.
-   When enabled: status is 'create' to indicate transforms should be synced.
-   When disabled: status is 'delete' to indicate transforms should be removed.
-   When disabling and there's no existing Transforms RSO, does nothing (avoids creating
-   spurious 'delete' entries when going from default false to explicitly false)."
+  Creates a single 'Transforms' RSO entry with model_id=-1 as a sentinel value.
+  When enabled: status is 'create' to indicate transforms should be synced.
+  When disabled: status is 'delete' to indicate transforms should be removed.
+  When disabling and there's no existing Transforms RSO, does nothing (avoids creating
+  spurious 'delete' entries when going from default false to explicitly false)."
   [enabled?]
   (let [timestamp (t/offset-date-time)
         existing-rso (t2/select-one :model/RemoteSyncObject
@@ -236,7 +236,7 @@
 
 (defn library-is-remote-synced?
   "Returns true if the Library collection exists and is remote-synced.
-   When true, all snippets and snippet collections should be synced."
+  When true, all snippets and snippet collections should be synced."
   []
   (boolean
    (when-let [library (collection/library-collection)]

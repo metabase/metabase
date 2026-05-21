@@ -13,12 +13,12 @@
 
 (def ^:private discovery-cache
   "Cache of discovery documents with TTL.
-   Map of issuer URL string -> {:document discovery-map :fetched-at timestamp}."
+  Map of issuer URL string -> {:document discovery-map :fetched-at timestamp}."
   (atom {}))
 
 (def ^:private discovery-cache-ttl-ms
   "Discovery document cache TTL: 24 hours. After this time, cached documents will be re-fetched.
-   This ensures endpoint changes by IdPs are picked up within a reasonable timeframe."
+  This ensures endpoint changes by IdPs are picked up within a reasonable timeframe."
   86400000)
 
 (defn- cache-expired?
@@ -42,7 +42,7 @@
 
 (defn- fetch-discovery-document
   "Fetch the OIDC discovery document from the issuer.
-   Returns the parsed JSON document or nil on error."
+  Returns the parsed JSON document or nil on error."
   [issuer]
   (let [url (discovery-url issuer)]
     (try
@@ -59,13 +59,13 @@
 
 (defn clear-cache!
   "Clear all cached discovery documents.
-   Useful for testing or when configuration changes."
+  Useful for testing or when configuration changes."
   []
   (reset! discovery-cache {}))
 
 (defn invalidate-cache!
   "Invalidate cached discovery document for a specific issuer.
-   Useful when an admin wants to force a refresh."
+  Useful when an admin wants to force a refresh."
   [issuer]
   (when issuer
     (let [normalized (normalize-issuer issuer)]
@@ -76,11 +76,11 @@
 (defn discover-oidc-configuration
   "Fetch and cache the OIDC discovery document for the given issuer.
 
-   Parameters:
-   - issuer: The issuer URL (e.g., \"https://accounts.google.com\")
+  Parameters:
+  - issuer: The issuer URL (e.g., \"https://accounts.google.com\")
 
-   Returns the discovery document map or nil if discovery fails.
-   Results are cached per issuer with TTL-based expiration (see [[discovery-cache-ttl-ms]])."
+  Returns the discovery document map or nil if discovery fails.
+  Results are cached per issuer with TTL-based expiration (see [[discovery-cache-ttl-ms]])."
   [issuer]
   (when issuer
     (let [normalized-issuer (normalize-issuer issuer)
@@ -98,14 +98,14 @@
 
 (defn- get-endpoint
   "Extract an endpoint from the discovery document or manual configuration.
-   Validates the endpoint URL against `oidc-allowed-networks`.
+  Validates the endpoint URL against `oidc-allowed-networks`.
 
-   Parameters:
-   - config: Map containing either :discovery-document or manual endpoint configurations
-   - discovery-key: Key in the discovery document (e.g., :authorization_endpoint)
-   - manual-key: Key in manual configuration (e.g., :authorization-endpoint)
+  Parameters:
+  - config: Map containing either :discovery-document or manual endpoint configurations
+  - discovery-key: Key in the discovery document (e.g., :authorization_endpoint)
+  - manual-key: Key in manual configuration (e.g., :authorization-endpoint)
 
-   Returns the endpoint URL string or nil. Throws if the URL is blocked by network restrictions."
+  Returns the endpoint URL string or nil. Throws if the URL is blocked by network restrictions."
   [config discovery-key manual-key]
   (when-let [url (or (get-in config [:discovery-document discovery-key])
                      (get config manual-key))]
@@ -117,40 +117,40 @@
 (defn get-authorization-endpoint
   "Get the authorization endpoint from discovery document or manual config.
 
-   Parameters:
-   - config: Map with either :discovery-document or :authorization-endpoint
+  Parameters:
+  - config: Map with either :discovery-document or :authorization-endpoint
 
-   Returns the authorization endpoint URL."
+  Returns the authorization endpoint URL."
   [config]
   (get-endpoint config :authorization_endpoint :authorization-endpoint))
 
 (defn get-token-endpoint
   "Get the token endpoint from discovery document or manual config.
 
-   Parameters:
-   - config: Map with either :discovery-document or :token-endpoint
+  Parameters:
+  - config: Map with either :discovery-document or :token-endpoint
 
-   Returns the token endpoint URL."
+  Returns the token endpoint URL."
   [config]
   (get-endpoint config :token_endpoint :token-endpoint))
 
 (defn get-jwks-uri
   "Get the JWKS URI from discovery document or manual config.
 
-   Parameters:
-   - config: Map with either :discovery-document or :jwks-uri
+  Parameters:
+  - config: Map with either :discovery-document or :jwks-uri
 
-   Returns the JWKS URI."
+  Returns the JWKS URI."
   [config]
   (get-endpoint config :jwks_uri :jwks-uri))
 
 (defn validate-configuration
   "Validate that a configuration has all required endpoints.
 
-   Parameters:
-   - config: Configuration map (from discovery or manual)
+  Parameters:
+  - config: Configuration map (from discovery or manual)
 
-   Returns true if all required endpoints are present, false otherwise."
+  Returns true if all required endpoints are present, false otherwise."
   [config]
   (and (get-authorization-endpoint config)
        (get-token-endpoint config)

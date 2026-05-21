@@ -29,7 +29,7 @@
 
 (defn check-group-manager
   "If `advanced-permissions` is enabled, check is `*current-user*` a manager of at least one group.
-   Set `require-superuser?` to `false` to disable superuser checks if `advanced-permissions` is not enabled."
+  Set `require-superuser?` to `false` to disable superuser checks if `advanced-permissions` is not enabled."
   ([]
    (check-group-manager true))
 

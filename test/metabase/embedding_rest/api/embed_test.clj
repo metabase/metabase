@@ -143,8 +143,8 @@
 
 (def successful-card-info
   "Data that should be returned if `GET /api/embed/card/:token` completes successfully (minus `:id` and `:name`).
-   This should only be the bare minimum amount of info needed to display the Card, leaving out other data we wouldn't
-   want the public to have access to."
+  This should only be the bare minimum amount of info needed to display the Card, leaving out other data we wouldn't
+  want the public to have access to."
   {:description            nil
    :display                "table"
    :visualization_settings {}

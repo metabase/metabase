@@ -144,8 +144,8 @@
 
 (defn- simulate-metadata-lookups
   "Simulates what happens during indexing: the engine function calls
-   `application-database-metadata-provider` several times for the same database-id,
-   as it would when processing multiple cards from the same database."
+  `application-database-metadata-provider` several times for the same database-id,
+  as it would when processing multiple cards from the same database."
   []
   ;; Three lookups for the same db — mimics processing multiple cards from one database.
   (metadata.jvm/application-database-metadata-provider 1)

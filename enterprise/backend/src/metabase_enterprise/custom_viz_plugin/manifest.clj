@@ -31,9 +31,9 @@
 
 (defn compatible?
   "Check whether a plugin with the given metabase_version range string is compatible with the
-   current Metabase version. Uses npm/node-semver range syntax against the full edition-prefixed
-   version (e.g. \">=1.60.0\", \"^1.60\", \">=1.59 <1.61\"). Returns true if no range is specified,
-   or if the current version satisfies the range. In dev mode (no version info), always returns true."
+  current Metabase version. Uses npm/node-semver range syntax against the full edition-prefixed
+  version (e.g. \">=1.60.0\", \"^1.60\", \">=1.59 <1.61\"). Returns true if no range is specified,
+  or if the current version satisfies the range. In dev mode (no version info), always returns true."
   [{:keys [metabase_version]}]
   (let [current-version (:tag config/mb-version-info)]
     (if (or config/is-dev? (nil? current-version) (str/blank? metabase_version))
@@ -78,9 +78,9 @@
 
 (defn asset-paths
   "List the static asset paths whitelisted by the manifest.
-   Includes paths from the `assets` array (filtered to allowed extensions and
-   safe relative paths) and the `icon` (if it's an image filename).
-   Only explicitly listed paths are supported — no glob patterns."
+  Includes paths from the `assets` array (filtered to allowed extensions and
+  safe relative paths) and the `icon` (if it's an image filename).
+  Only explicitly listed paths are supported — no glob patterns."
   [manifest]
   (let [declared  (filter (every-pred allowed-asset-file? safe-relative-path?) (get manifest :assets []))
         icon-name (when-let [icon (:icon manifest)]
@@ -89,7 +89,7 @@
 
 (defn asset-content-type
   "Return the MIME content type for an allowed asset file, or nil if not recognized.
-   Allows image files and JSON files (for locale translations)."
+  Allows image files and JSON files (for locale translations)."
   [^String path]
   (cond
     (str/ends-with? path ".json")

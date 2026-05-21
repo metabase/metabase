@@ -112,9 +112,9 @@
 (defprotocol AssetsSource
   "Resolve serialized entity references to entity data.
 
-   Each `resolve-*` method takes an `entity-id` string and returns the raw
-   entity map (or nil if not found). Maps use snake_case keys matching the
-   serialized YAML/JSON form."
+  Each `resolve-*` method takes an `entity-id` string and returns the raw
+  entity map (or nil if not found). Maps use snake_case keys matching the
+  serialized YAML/JSON form."
 
   (resolve-card [this entity-id]
     "Resolve a card by entity-id. Returns a map or nil.

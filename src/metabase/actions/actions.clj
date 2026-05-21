@@ -153,7 +153,7 @@
 
 (defn check-actions-enabled!
   "Throws an appropriate error if actions are unsupported or disabled for the database of the action's model,
-   otherwise returns nil."
+  otherwise returns nil."
   [action-or-id]
   (check-actions-enabled-for-database! (api/check-404 (database-for-action action-or-id))))
 
@@ -210,8 +210,8 @@
 
 (defn perform-nested-action!
   "Similar to [[perform-action!]] but taking an existing context.
-   Assumes (for now) that the schemas have been checked and args coerced, etc. Also doesn't do perms checks yet.
-   Use this if you want to explicitly call an action from within an action and have it traced in the audit log etc."
+  Assumes (for now) that the schemas have been checked and args coerced, etc. Also doesn't do perms checks yet.
+  Use this if you want to explicitly call an action from within an action and have it traced in the audit log etc."
   [action-kw context inputs]
   ;; For now, we are handling effects whenever we "pop" an action, but in future we may want them to propagate.
   ;; The rationale for this is that it would allow us batch things more atomically (e.g., for notifications)

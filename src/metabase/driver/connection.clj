@@ -71,18 +71,18 @@
 (def ^:dynamic *connection-type*
   "Which connection details [[effective-details]] should resolve.
 
-   - `:default` — primary `:details`
-   - `:write-data` — `:write-data-details` merged over `:details` (if configured)
-   - `:admin` — `:admin-details` merged over `:details` (if configured)
+  - `:default` — primary `:details`
+  - `:write-data` — `:write-data-details` merged over `:details` (if configured)
+  - `:admin` — `:admin-details` merged over `:details` (if configured)
 
-   Bind via [[with-write-connection]], [[with-default-connection]], or [[with-admin-connection]], not directly."
+  Bind via [[with-write-connection]], [[with-default-connection]], or [[with-admin-connection]], not directly."
   :default)
 
 (defmacro with-write-connection
   "Establishes a write-connection context for body.
 
-   [[effective-details]] calls within this scope resolve to take `:write-data-details`
-   into account (if configured) instead of only primary `:details`."
+  [[effective-details]] calls within this scope resolve to take `:write-data-details`
+  into account (if configured) instead of only primary `:details`."
   [& body]
   `(binding [*connection-type* :write-data]
      ~@body))
@@ -90,11 +90,11 @@
 (defmacro with-admin-connection
   "Establishes an admin-connection context for body.
 
-   [[effective-details]] calls within this scope resolve to take `:admin-details`
-   into account (if configured) instead of only primary `:details`. The admin
-   connection carries the highest-privilege credentials for a database (DDL,
-   ownership, schema management). Code that needs admin access must opt in
-   explicitly."
+  [[effective-details]] calls within this scope resolve to take `:admin-details`
+  into account (if configured) instead of only primary `:details`. The admin
+  connection carries the highest-privilege credentials for a database (DDL,
+  ownership, schema management). Code that needs admin access must opt in
+  explicitly."
   [& body]
   `(let [prior# *connection-type*]
      (when (not= prior# :admin)
@@ -105,7 +105,7 @@
 (defmacro with-default-connection
   "Establishes a default-connection context for body.
 
-   Use this to compile or execute a read query from inside a broader write-connection context."
+  Use this to compile or execute a read query from inside a broader write-connection context."
   [& body]
   `(binding [*connection-type* :default]
      ~@body))
@@ -115,37 +115,37 @@
 
 (defmacro without-resolution-telemetry
   "Suppresses [[effective-details]] from incrementing the `:metabase-db-connection/type-resolved`
-   Prometheus counter. Use for infrastructure calls (e.g., health checks) that resolve
-   write-data-details but should not inflate feature-usage metrics."
+  Prometheus counter. Use for infrastructure calls (e.g., health checks) that resolve
+  write-data-details but should not inflate feature-usage metrics."
   [& body]
   `(binding [*suppress-resolution-telemetry* true]
      ~@body))
 
 (defmacro with-swapped-connection-details
   "Re-export of [[metabase.driver.connection.workspaces/with-swapped-connection-details]]
-   on the driver module's public API surface, so consumers outside the module can apply
-   per-database connection-detail overrides through `metabase.driver.connection`."
+  on the driver module's public API surface, so consumers outside the module can apply
+  per-database connection-detail overrides through `metabase.driver.connection`."
   {:style/indent 2}
   [database-id swap-map & body]
   `(driver.w/do-with-swapped-connection-details ~database-id ~swap-map (fn [] ~@body)))
 
 (defenterprise database-write-data-details
   "Returns the `:write-data-details` for a database, or `nil` if the writable-connection feature is not available.
-   OSS implementation always returns `nil`."
+  OSS implementation always returns `nil`."
   metabase-enterprise.connection-overlays.core
   [_database]
   nil)
 
 (defenterprise database-admin-details
   "Returns the `:admin-details` for a database, or `nil` if the workspaces feature is not available.
-   OSS implementation always returns `nil`."
+  OSS implementation always returns `nil`."
   metabase-enterprise.connection-overlays.core
   [_database]
   nil)
 
 (defn- overlay-details-for-type
   "Returns the connection-type-specific details overlay for `database`, or nil if the
-   requested type has no configured overlay (or is `:default`)."
+  requested type has no configured overlay (or is `:default`)."
   [database connection-type]
   (case connection-type
     :default    nil
@@ -155,13 +155,13 @@
 (defn effective-details
   "Returns the connection details map appropriate for the current context.
 
-   Accepts a database (Toucan2 instance or lib/metadata). Returns nil for nil input.
+  Accepts a database (Toucan2 instance or lib/metadata). Returns nil for nil input.
 
-   By default, returns the primary `:details`. Within a [[with-write-connection]] or
-   [[with-admin-connection]] scope, takes the corresponding `:write-data-details` /
-   `:admin-details` into account (if configured). Within a
-   [[driver.w/with-swapped-connection-details]] scope, applies workspace isolation
-   overrides on top."
+  By default, returns the primary `:details`. Within a [[with-write-connection]] or
+  [[with-admin-connection]] scope, takes the corresponding `:write-data-details` /
+  `:admin-details` into account (if configured). Within a
+  [[driver.w/with-swapped-connection-details]] scope, applies workspace isolation
+  overrides on top."
   [database]
   (when-let [database (some-> database driver.u/ensure-lib-database)]
     (let [overlay  (perf/not-empty (overlay-details-for-type database *connection-type*))
@@ -183,9 +183,9 @@
 (defn details-for-exact-type
   "Returns the details map for exactly the given connection-type, with no fallback or merging.
 
-   Unlike [[effective-details]], `:write-data` and `:admin` return only their respective
-   overlay maps (possibly nil), not a merge with `:details`. Use when you need to inspect
-   or update a specific details map without resorting to raw key access."
+  Unlike [[effective-details]], `:write-data` and `:admin` return only their respective
+  overlay maps (possibly nil), not a merge with `:details`. Use when you need to inspect
+  or update a specific details map without resorting to raw key access."
   [database connection-type]
   (let [database (driver.u/ensure-lib-database database)]
     (case connection-type
@@ -220,12 +220,12 @@
 
 (defn track-connection-acquisition!
   "Increments a Prometheus counter tracking connection acquisitions by connection type
-   and logs the connection type + database ID at DEBUG.
+  and logs the connection type + database ID at DEBUG.
 
-   Accepts a map of connection details, expected to be the output of [[effective-details]]
+  Accepts a map of connection details, expected to be the output of [[effective-details]]
 
-   Call at the point where a driver actually obtains a connection (e.g., pool checkout).
-   Non-JDBC drivers that manage their own connections should call this explicitly."
+  Call at the point where a driver actually obtains a connection (e.g., pool checkout).
+  Non-JDBC drivers that manage their own connections should call this explicitly."
   [connection-details]
   (if-let [conn-type (::effective-connection-type connection-details)]
     (do
@@ -237,8 +237,8 @@
 (defn default-details
   "Returns primary `:details`, ignoring [[*connection-type*]].
 
-   For operations that must always use the base configuration regardless of context —
-   configuration migrations, admin-initiated writes, credential caching. For normal
-   driver operations, prefer [[effective-details]]."
+  For operations that must always use the base configuration regardless of context —
+  configuration migrations, admin-initiated writes, credential caching. For normal
+  driver operations, prefer [[effective-details]]."
   [database]
   (:details database))

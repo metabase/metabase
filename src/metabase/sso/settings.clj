@@ -294,8 +294,8 @@
 
 (defn sso-source-enabled?
   "Returns true if the given SSO source's authentication provider is currently enabled.
-   When a provider is disabled (e.g., after license downgrade), returns false so users
-   can fall back to password authentication."
+  When a provider is disabled (e.g., after license downgrade), returns false so users
+  can fall back to password authentication."
   [sso-source]
   (boolean
    (case (keyword sso-source)

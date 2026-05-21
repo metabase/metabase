@@ -18,9 +18,9 @@
 
 (defn logo-bundle
   "Create a logo bundle from the application logo URL.
-   Returns {:image-src <url-or-cid> :attachment <attachment-map-or-nil>}.
-   For data URIs, converts to an embedded attachment for email compatibility.
-   For the default logo asset path, uses the static Metabase logo URL."
+  Returns {:image-src <url-or-cid> :attachment <attachment-map-or-nil>}.
+  For data URIs, converts to an embedded attachment for email compatibility.
+  For the default logo asset path, uses the static Metabase logo URL."
   [logo-url]
   (cond
     (nil? logo-url)

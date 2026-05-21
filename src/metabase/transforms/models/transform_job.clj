@@ -114,8 +114,8 @@
 
 (defn update-job-tags!
   "Update the tags associated with a job using smart diff logic.
-   Only modifies what has changed: deletes removed tags, updates positions for moved tags,
-   and inserts new tags. Duplicate tag IDs are automatically deduplicated."
+  Only modifies what has changed: deletes removed tags, updates positions for moved tags,
+  and inserts new tags. Duplicate tag IDs are automatically deduplicated."
   [job-id tag-ids]
   (when job-id
     (t2/with-transaction [_conn]

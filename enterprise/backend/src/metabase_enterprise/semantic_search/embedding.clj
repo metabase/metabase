@@ -87,10 +87,10 @@
 
 (defn- create-batches
   "Split texts into batches that don't exceed the threshold.
-   Returns a vector of batches, where each batch is a vector of texts.
-   - threshold: Maximum allowed measure per batch
-   - measure: Function to measure each text (e.g., count-tokens)
-   - texts: Collection of texts to batch"
+  Returns a vector of batches, where each batch is a vector of texts.
+  - threshold: Maximum allowed measure per batch
+  - measure: Function to measure each text (e.g., count-tokens)
+  - texts: Collection of texts to batch"
   [threshold measure texts]
   (let [step (fn [{:keys [current-batch current-measure batches] :as acc} text]
                (let [text-measure (measure text)]

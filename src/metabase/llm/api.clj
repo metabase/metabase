@@ -30,8 +30,8 @@
 
 (def ^:private sql-gen-throttlers
   "Throttlers for SQL generation endpoints.
-   - :user-id limits requests per user (default 20/minute)
-   - :ip-address limits requests per IP (default 100/minute)"
+  - :user-id limits requests per user (default 20/minute)
+  - :ip-address limits requests per IP (default 100/minute)"
   {:user-id    (throttle/make-throttler :user-id
                                         :attempts-threshold (llm.settings/llm-rate-limit-per-user)
                                         :attempt-ttl-ms 60000)
@@ -47,8 +47,8 @@
 
 (def ^:private load-dialect-instructions
   "Load dialect-specific instructions from resources, if available.
-   Returns nil if no instructions file exists for the given engine.
-   Memoized since dialect files are static resources."
+  Returns nil if no instructions file exists for the given engine.
+  Memoized since dialect files are static resources."
   (memoize
    (fn [engine]
      (when engine
@@ -68,7 +68,7 @@
 
 (defn- build-system-prompt
   "Build the system prompt for SQL generation with dialect, schema, and optional dialect instructions.
-   When source-sql is provided, includes the existing query for context."
+  When source-sql is provided, includes the existing query for context."
   [{:keys [dialect schema-ddl dialect-instructions source-sql]}]
   (stencil/render-file sql-generation-prompt-template
                        (cond-> {:dialect              dialect

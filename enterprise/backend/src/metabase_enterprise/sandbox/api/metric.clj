@@ -10,9 +10,9 @@
 
 (defn- source-card-allowed-field-ids
   "Extract the set of allowed field IDs from a sandbox source card's result_metadata.
-   Tries field IDs first; falls back to resolving column names against the table's fields
-   (for native query source cards whose result_metadata lacks :id).
-   Returns nil when result_metadata is absent (attribute-only sandbox or missing card)."
+  Tries field IDs first; falls back to resolving column names against the table's fields
+  (for native query source cards whose result_metadata lacks :id).
+  Returns nil when result_metadata is absent (attribute-only sandbox or missing card)."
   [table-id {:keys [result_metadata]}]
   (when (seq result_metadata)
     (let [by-id (into #{} (keep u/id) result_metadata)]
@@ -30,13 +30,13 @@
 
 (defenterprise sandbox-restricted-fields
   "For sandboxed tables, returns {table-id -> #{allowed-field-ids}} for tables with
-   column-level sandbox restrictions. Tables not in the map have no column restriction.
-   Returns nil if no sandboxes apply.
+  column-level sandbox restrictions. Tables not in the map have no column restriction.
+  Returns nil if no sandboxes apply.
 
-   Uses :feature :none so this code runs even when the :sandboxes feature is unavailable.
-   When the feature is off but sandboxes are configured, returns empty sets to block all
-   dimensions from sandboxed tables (fail closed). When the feature is on, resolves
-   allowed fields from source card result_metadata."
+  Uses :feature :none so this code runs even when the :sandboxes feature is unavailable.
+  When the feature is off but sandboxes are configured, returns empty sets to block all
+  dimensions from sandboxed tables (fail closed). When the feature is on, resolves
+  allowed fields from source card result_metadata."
   :feature :none
   [table-ids]
   (when-let [sandboxes (seq (filter #(contains? table-ids (:table_id %))

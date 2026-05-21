@@ -81,17 +81,17 @@
 
 (defn- expand-output
   "Expand a driver-opaque `output_namespace` string into the `{:db ?, :schema ?}`
-   atom shape that QP middleware, transform_hooks, and table_remapping consume.
+  atom shape that QP middleware, transform_hooks, and table_remapping consume.
 
-   The atom contract is map-shaped on purpose: doing this expansion once at
-   boot lets the per-query hot path read both slots without re-running the
-   per-engine case. For 3-slot drivers (SQL Server, BigQuery) the
-   `:db` slot is filled from `Database.details`. For 2-slot drivers the
-   `output_namespace` string lands in the schema slot.
+  The atom contract is map-shaped on purpose: doing this expansion once at
+  boot lets the per-query hot path read both slots without re-running the
+  per-engine case. For 3-slot drivers (SQL Server, BigQuery) the
+  `:db` slot is filled from `Database.details`. For 2-slot drivers the
+  `output_namespace` string lands in the schema slot.
 
-   `output_namespace` blank means the workspace database isn't provisioned yet —
-   the atom carries `{:db ? :schema nil}` and QP/transform consumers treat the
-   workspace as having no output mapping."
+  `output_namespace` blank means the workspace database isn't provisioned yet —
+  the atom carries `{:db ? :schema nil}` and QP/transform consumers treat the
+  workspace as having no output mapping."
   [db output-namespace]
   (let [components (set (driver/qualified-name-components (:engine db)))
         positions  (ws/engine-namespace-positions db)

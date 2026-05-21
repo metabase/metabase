@@ -88,10 +88,10 @@
 
 (defn pii-fields-from
   "Like the request-bound `pii-fields` but takes an explicit info map (for callers
-   that have already extracted request fields on-thread, e.g. before async hand-off).
-   Returns the PII map when `analytics-pii-retention-enabled` is true, else nil.
-   Callers that always want the ungated `embedding_hostname` should compute it
-   separately via `extract-hostname` and not read it off the returned map."
+  that have already extracted request fields on-thread, e.g. before async hand-off).
+  Returns the PII map when `analytics-pii-retention-enabled` is true, else nil.
+  Callers that always want the ungated `embedding_hostname` should compute it
+  separately via `extract-hostname` and not read it off the returned map."
   [info]
   (when (analytics.settings/analytics-pii-retention-enabled)
     (pii-request-info info)))

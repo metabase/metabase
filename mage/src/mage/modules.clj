@@ -155,7 +155,7 @@
 
 (defn- affected-modules
   "Set of modules that are direct or indirect dependents of `modules`, and thus are affected by changes to them.
-   Includes the changed modules themselves (a module is always affected by its own changes)."
+  Includes the changed modules themselves (a module is always affected by its own changes)."
   [deps modules]
   (let [sorted-modules (into (sorted-set) modules)]
     (into sorted-modules
@@ -217,7 +217,7 @@
 
 (defn driver-deps-affected?
   "Returns true if any of `trigger-modules` are affected by the changed modules.
-   1-arity and 2-arity use [[default-modules-which-trigger-drivers]] for backwards compatibility."
+  1-arity and 2-arity use [[default-modules-which-trigger-drivers]] for backwards compatibility."
   ([modules]
    (driver-deps-affected? (dependencies) modules))
   ([deps modules]
@@ -281,7 +281,7 @@
 
 (def ^:private driver-directory->drivers
   "Maps driver directory names to the driver keyword(s) they correspond to.
-   Most directories map to a single driver, but some (like mongo) map to multiple test jobs."
+  Most directories map to a single driver, but some (like mongo) map to multiple test jobs."
   {"athena" [:athena]
    "bigquery-cloud-sdk" [:bigquery]
    "clickhouse" [:clickhouse]
@@ -346,16 +346,16 @@
 (defn- driver-decision
   "Determine if a driver should run and why.
 
-   Returns a map with :should-run (boolean) and :reason (string).
+  Returns a map with :should-run (boolean) and :reason (string).
 
-   For the decision priority order, see: mage -driver-decisions -h
+  For the decision priority order, see: mage -driver-decisions -h
 
-   ## What counts as 'driver deps affected'?
+  ## What counts as 'driver deps affected'?
 
-   The driver module is considered affected when:
-   - Files in modules/drivers/* are changed (triggers all drivers)
-   - deps.edn is changed (triggers all drivers)
-   - Clojure modules that the 'driver' module depends on are changed"
+  The driver module is considered affected when:
+  - Files in modules/drivers/* are changed (triggers all drivers)
+  - deps.edn is changed (triggers all drivers)
+  - Clojure modules that the 'driver' module depends on are changed"
   [driver
    {:keys [is-master-or-release pr-labels skip particular-driver-changed? verbose?]}
    driver-deps-affected?

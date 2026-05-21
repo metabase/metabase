@@ -39,8 +39,8 @@
 
 (defn- resolve-output-path
   "Determine the output path for the JFR recording file.
-   - `\"true\"` generates a timestamped filename like `metabase-20260115_143000.jfr`
-   - Any value ending in `.jfr` is used as-is"
+  - `\"true\"` generates a timestamped filename like `metabase-20260115_143000.jfr`
+  - Any value ending in `.jfr` is used as-is"
   ^Path [setting-value]
   (let [filename (if (= "true" setting-value)
                    (generate-timestamped-filename)
@@ -56,7 +56,7 @@
 
 (defn- directory-mode?
   "Returns true if the setting value should be treated as a directory for rolling JFR files.
-   Directory mode is any value that is not \"true\", \"false\", blank, or ending in \".jfr\"."
+  Directory mode is any value that is not \"true\", \"false\", blank, or ending in \".jfr\"."
   [setting-value]
   (and (not (str/blank? setting-value))
        (not= "false" setting-value)
@@ -71,7 +71,7 @@
 
 (defn- start-periodic-dump!
   "Starts a background thread that periodically dumps the JFR recording to disk.
-   This ensures data survives hard kills (SIGKILL, OOM) where shutdown hooks don't run."
+  This ensures data survives hard kills (SIGKILL, OOM) where shutdown hooks don't run."
   [^Recording recording ^Path output-path interval-minutes]
   (let [executor (ScheduledThreadPoolExecutor. 1
                                                (reify ThreadFactory
@@ -99,8 +99,8 @@
 
 (defn- start-rolling-mode!
   "Start rolling directory mode. Every `interval-minutes`, dumps the current recording
-   to a timestamped file in `dir-path` and starts a new recording. Data is only written
-   to disk at the end of each interval."
+  to a timestamped file in `dir-path` and starts a new recording. Data is only written
+  to disk at the end of each interval."
   [^Path dir-path interval-minutes]
   (Files/createDirectories dir-path (into-array FileAttribute []))
   (let [recording (create-recording!)
@@ -133,10 +133,10 @@
 
 (defn maybe-enable-monitoring!
   "If `MB_MONITOR_PERFORMANCE` is set, starts a JFR recording.
-   - Value `\"true\"` auto-generates a timestamped filename (includes date+time)
-   - Value ending in `.jfr` is used as the output filename
-   - `\"\"` or `\"false\"` disables monitoring
-   - Any other value is treated as a directory for rolling 30-minute JFR files"
+  - Value `\"true\"` auto-generates a timestamped filename (includes date+time)
+  - Value ending in `.jfr` is used as the output filename
+  - `\"\"` or `\"false\"` disables monitoring
+  - Any other value is treated as a directory for rolling 30-minute JFR files"
   []
   (try
     (let [setting (config/config-str :mb-monitor-performance)]

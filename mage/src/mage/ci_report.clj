@@ -11,10 +11,10 @@
 
 (defn- sh-nil
   "Run shell command, return stdout or nil on error.
-   Use for commands where non-zero exit is expected - e.g., `gh pr checks`
-   returns exit 1 when checks fail but output is still valid JSON, and
-   `gh pr view` returns exit 1 when no PR exists for the branch.
-   For commands that should fail loudly, use `mage.util/sh` instead."
+  Use for commands where non-zero exit is expected - e.g., `gh pr checks`
+  returns exit 1 when checks fail but output is still valid JSON, and
+  `gh pr view` returns exit 1 when no PR exists for the branch.
+  For commands that should fail loudly, use `mage.util/sh` instead."
   [& args]
   (try
     (let [result @(apply p/process {:out :string :err :string :in nil} args)]
@@ -42,8 +42,8 @@
 
 (defn- resolve-carriage-returns
   "Simulate carriage return behavior: for each line, keep only content after last \\r.
-   This handles terminal progress animations that use \\r to overwrite the line.
-   Also trims leading whitespace since terminal overwrites pad with spaces."
+  This handles terminal progress animations that use \\r to overwrite the line.
+  Also trims leading whitespace since terminal overwrites pad with spaces."
   [s]
   (->> (str/split-lines s)
        (map (fn [line]
@@ -86,7 +86,7 @@
 
 (defn- find-test-report-start
   "Find the line index where the test report section starts.
-   Tries multiple markers for robustness against format changes."
+  Tries multiple markers for robustness against format changes."
   [lines]
   (or
    ;; Primary: 📚 Test Report header from trunk-analytics-cli
@@ -110,8 +110,8 @@
 
 (defn- extract-test-report-section
   "Extract the test report section from logs.
-   For jobs with verbose cleanup output, the test report may be buried
-   far from the end of the logs."
+  For jobs with verbose cleanup output, the test report may be buried
+  far from the end of the logs."
   [logs]
   (let [lines (str/split-lines logs)
         report-idx (find-test-report-start lines)]
@@ -165,8 +165,8 @@
 
 (defn- strip-timestamp
   "Remove GitHub Actions timestamp prefix from log line.
-   Format: 2026-02-06T02:38:25.1443042Z <content>
-   Strips the timestamp plus one trailing space, preserves remaining indentation."
+  Format: 2026-02-06T02:38:25.1443042Z <content>
+  Strips the timestamp plus one trailing space, preserves remaining indentation."
   [line]
   (str/replace line #"^\d{4}-\d{2}-\d{2}T[\d:.]+Z " ""))
 
@@ -242,7 +242,7 @@
 
 (defn- extract-failure-blocks
   "Extract full FAIL/ERROR blocks from logs.
-   Splits on FAIL in|ERROR in|LONG TEST and keeps FAIL/ERROR blocks."
+  Splits on FAIL in|ERROR in|LONG TEST and keeps FAIL/ERROR blocks."
   [logs]
   (let [clean-logs (strip-ansi logs)
         lines (->> (str/split-lines clean-logs)
@@ -324,7 +324,7 @@
 
 (defn- fetch-failed-logs-parallel
   "Fetch logs for failed checks in parallel using futures.
-   When detailed? is true, fetches full logs; otherwise just the test report section."
+  When detailed? is true, fetches full logs; otherwise just the test report section."
   [failed-checks {:keys [detailed?]}]
   (let [job-ids (->> failed-checks
                      (map :link)
@@ -352,7 +352,7 @@
 
 (defn- generate-report
   "Generate markdown report.
-   pr-number and pr-info may be nil for branch/SHA reports."
+  pr-number and pr-info may be nil for branch/SHA reports."
   [pr-number pr-info checks logs-by-job-id {:keys [detailed? progress-log branch sha]}]
   (let [{:keys [failed pending passed]} (categorize-checks checks)
         branch (or (:headRefName pr-info) branch)
@@ -480,7 +480,7 @@
 
 (defn- classify-arg
   "Classify an argument as a PR number, commit SHA, or branch name.
-   Returns {:type (:pr|:branch|:sha), :value string}."
+  Returns {:type (:pr|:branch|:sha), :value string}."
   [arg]
   (cond
     ;; GitHub PR URL
@@ -498,7 +498,7 @@
 
 (defn- normalize-check-state
   "Map GitHub Check Runs API status/conclusion to the state strings
-   that categorize-checks expects (SUCCESS, FAILURE, PENDING, etc)."
+  that categorize-checks expects (SUCCESS, FAILURE, PENDING, etc)."
   [{:keys [status conclusion]}]
   (if (= status "completed")
     (case conclusion
@@ -516,7 +516,7 @@
 
 (defn- commit-check-runs
   "Fetch check runs for a commit SHA. Returns vec of {:name :state :link} maps
-   matching the shape returned by pr-checks."
+  matching the shape returned by pr-checks."
   [sha]
   (loop [page 1
          all-runs []]
@@ -534,7 +534,7 @@
 
 (defn- resolve-branch-head
   "Resolve a branch name to its latest CI commit SHA.
-   Uses the GitHub Actions runs API to find the most recent workflow run."
+  Uses the GitHub Actions runs API to find the most recent workflow run."
   [branch]
   (when-let [result (gh-api (format "repos/%s/actions/runs?branch=%s&per_page=1"
                                     repo (java.net.URLEncoder/encode branch "UTF-8")))]

@@ -115,7 +115,7 @@
 
 (defn- encode-floats-to-base64
   "Helper function to base64 encode a vector of floats using little-endian byte order.
-   Inverse of [[metabase-enterprise.semantic-search.embedding/extract-base64-response-embeddings]] "
+  Inverse of [[metabase-enterprise.semantic-search.embedding/extract-base64-response-embeddings]] "
   [float-vector]
   (let [byte-count (* (count float-vector) 4)
         buffer (doto (ByteBuffer/allocate byte-count)

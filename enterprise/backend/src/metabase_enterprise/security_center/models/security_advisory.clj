@@ -37,8 +37,8 @@
 
 (defn acknowledge!
   "Acknowledge a security advisory. Sets `acknowledged_by` and `acknowledged_at`,
-   and publishes an audit event. Returns the updated advisory with `:acknowledged_by` hydrated.
-   Throws if already acknowledged."
+  and publishes an audit event. Returns the updated advisory with `:acknowledged_by` hydrated.
+  Throws if already acknowledged."
   [advisory user-id]
   (when (:acknowledged_at advisory)
     (throw (ex-info "Advisory already acknowledged" {:status-code 409})))
@@ -57,7 +57,7 @@
 
 (defn acknowledge-many!
   "Acknowledge multiple security advisories by their advisory_id strings. Skips already-acknowledged
-   advisories. Returns a sequence of updated advisories with `:acknowledged_by` hydrated."
+  advisories. Returns a sequence of updated advisories with `:acknowledged_by` hydrated."
   [advisory-ids user-id]
   (let [advisories (t2/select :model/SecurityAdvisory :advisory_id [:in (set advisory-ids)] :acknowledged_at nil)]
     (mapv #(acknowledge! % user-id) advisories)))

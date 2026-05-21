@@ -23,7 +23,7 @@
 
 (defn submit-to-harbormaster!
   "Submit metabot feedback to Harbormaster via the Store API.
-   Returns the HTTP response on success, or nil if the token or Store API URL is missing."
+  Returns the HTTP response on success, or nil if the token or Store API URL is missing."
   [feedback]
   (let [token    (premium-features/premium-embedding-token)
         base-url (store-api/store-api-url)]
@@ -55,9 +55,9 @@
 
 (defn mcp-harbormaster-payload
   "Build a Harbormaster feedback payload for MCP Apps visualization feedback.
-   MCP Apps do not create `metabot_message` rows, so this path intentionally
-   skips local `metabot_feedback` persistence and forwards the MCP context
-   supplied by the client."
+  MCP Apps do not create `metabot_message` rows, so this path intentionally
+  skips local `metabot_feedback` persistence and forwards the MCP context
+  supplied by the client."
   ([body]
    (mcp-harbormaster-payload body api/*current-user-id*))
   ([body submitter-user-id]
@@ -124,7 +124,7 @@
 
 (defn persist-source-feedback!
   "Upsert a `metabot_source_feedback` row for a source used by the rated message.
-   Returns the resolved `metabot_message` row (with its `:conversation`)."
+  Returns the resolved `metabot_message` row (with its `:conversation`)."
   [{:keys [message_id] :as body}]
   (let [message (resolve-rated-message message_id)]
     (upsert-source-feedback! (:id message) api/*current-user-id* body)

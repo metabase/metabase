@@ -38,7 +38,7 @@
 
 (defn fake-inbox-email-fn
   "A function that can be used in place of `send-email!`.
-   Put all messages into `inbox` instead of actually sending them."
+  Put all messages into `inbox` instead of actually sending them."
   [_ email]
   (doseq [recipient (concat (:to email) (:bcc email))]
     (swap! inbox assoc recipient (-> (get @inbox recipient [])

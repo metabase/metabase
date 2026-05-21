@@ -28,7 +28,7 @@
 
 (defn- due-for-notification?
   "True if enough time has passed since `last_notified_at` for this advisory's
-   severity cadence. Always true if never notified."
+  severity cadence. Always true if never notified."
   [{:keys [severity last_notified_at]}]
   (if (nil? last_notified_at)
     true
@@ -45,7 +45,7 @@
 
 (defn send-repeat-notifications!
   "Check all unacknowledged active/error advisories and send repeat notifications
-   for those that are due based on their severity cadence."
+  for those that are due based on their severity cadence."
   []
   (doseq [advisory (unacknowledged-active-advisories)
           :when (due-for-notification? advisory)]

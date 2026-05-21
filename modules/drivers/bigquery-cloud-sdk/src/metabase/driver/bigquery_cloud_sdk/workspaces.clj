@@ -36,10 +36,10 @@
 
 (defn create-dataset!
   "Create `dataset-name` in `project-id` via `client`. Idempotent — no-op when
-   the dataset already exists. `:description` (in `opts`) is optional metadata.
+  the dataset already exists. `:description` (in `opts`) is optional metadata.
 
-   Used by [[init-workspace-isolation!]] to provision the workspace's output
-   dataset, and by tests to set up per-run source datasets."
+  Used by [[init-workspace-isolation!]] to provision the workspace's output
+  dataset, and by tests to set up per-run source datasets."
   [^BigQuery client ^String project-id ^String dataset-name & [{:keys [^String description]}]]
   (let [dataset-id (DatasetId/of project-id dataset-name)]
     (when-not (.getDataset client dataset-id
@@ -54,10 +54,10 @@
 
 (defn drop-dataset!
   "Delete `dataset-name` in `project-id` via `client`, including all its tables.
-   Idempotent — no-op when the dataset doesn't exist.
+  Idempotent — no-op when the dataset doesn't exist.
 
-   Used by [[destroy-workspace-isolation!]] to tear down the workspace's output
-   dataset, and by tests to clean up per-run source datasets."
+  Used by [[destroy-workspace-isolation!]] to tear down the workspace's output
+  dataset, and by tests to clean up per-run source datasets."
   [^BigQuery client ^String project-id ^String dataset-name]
   (let [dataset-id (DatasetId/of project-id dataset-name)]
     (when (.getDataset client dataset-id
@@ -72,10 +72,10 @@
 
 (defn- sa-propagation-error?
   "True for the GCP race where an API call references a service account that was
-   just created but hasn't yet propagated to the API receiving the call. GCP
-   surfaces this as `INVALID_ARGUMENT: Service account <email> does not exist.`
-   even though `iam.googleapis.com` already created it. Retrying the same call
-   eventually succeeds once propagation completes (usually <30s)."
+  just created but hasn't yet propagated to the API receiving the call. GCP
+  surfaces this as `INVALID_ARGUMENT: Service account <email> does not exist.`
+  even though `iam.googleapis.com` already created it. Retrying the same call
+  eventually succeeds once propagation completes (usually <30s)."
   [^Throwable t]
   (when-let [msg (ex-message t)]
     (and (instance? com.google.api.gax.rpc.InvalidArgumentException t)
@@ -109,10 +109,10 @@
 
 (defn ws-sa-description->created-at
   "Parse the `created-at:<iso-instant>` token out of a workspace iso SA
-   `description` string. Returns the parsed `java.time.Instant`, or nil
-   when the marker is absent / malformed.
+  `description` string. Returns the parsed `java.time.Instant`, or nil
+  when the marker is absent / malformed.
 
-   Round-trip contract: `(= i (ws-sa-description->created-at (ws-sa-description i)))`."
+  Round-trip contract: `(= i (ws-sa-description->created-at (ws-sa-description i)))`."
   ^java.time.Instant [description]
   (when description
     (when-let [match (re-find #"created-at:(\S+)" description)]
@@ -150,9 +150,9 @@
 
 (defn- with-sa-propagation-retry!
   "Run `f` (a no-arg fn), retrying when GCP rejects it because a freshly-created
-   workspace SA isn't yet visible to the API being called. Used for IAM bindings
-   that reference the SA as a member — these can race with SA creation across
-   GCP services (IAM ↔ Cloud Resource Manager) even after the create returned."
+  workspace SA isn't yet visible to the API being called. Used for IAM bindings
+  that reference the SA as a member — these can race with SA creation across
+  GCP services (IAM ↔ Cloud Resource Manager) even after the create returned."
   [{:keys [max-attempts interval-ms]
     :or   {max-attempts 60
            interval-ms  1000}}
@@ -176,12 +176,12 @@
 (defn- ws-grant-impersonation-permission!
   "Grant the main service account permission to impersonate the workspace service account.
 
-   The pre-check `ws-has-role-binding?` makes the only no-op-of-concern (the binding
-   already exists) a non-write. Any exception raised by `getIamPolicy` or `setIamPolicy`
-   reflects a real failure -- `PERMISSION_DENIED`, `RESOURCE_EXHAUSTED`, `INVALID_ARGUMENT`,
-   network/`UNAVAILABLE`, or an etag race between concurrent provisioners -- and must
-   propagate so the caller's `init-workspace-isolation!` flow fails loudly instead of
-   timing out 120s downstream in `ws-wait-for-impersonation-ready!` with no signal."
+  The pre-check `ws-has-role-binding?` makes the only no-op-of-concern (the binding
+  already exists) a non-write. Any exception raised by `getIamPolicy` or `setIamPolicy`
+  reflects a real failure -- `PERMISSION_DENIED`, `RESOURCE_EXHAUSTED`, `INVALID_ARGUMENT`,
+  network/`UNAVAILABLE`, or an etag race between concurrent provisioners -- and must
+  propagate so the caller's `init-workspace-isolation!` flow fails loudly instead of
+  timing out 120s downstream in `ws-wait-for-impersonation-ready!` with no signal."
   [^IAMClient iam-client ^String project-id ^String main-sa-email ^String workspace-sa-email]
   (let [resource (format "projects/%s/serviceAccounts/%s" project-id workspace-sa-email)
         role     "roles/iam.serviceAccountTokenCreator"
@@ -227,13 +227,13 @@
 
 (defn ws-sa-description
   "Format an IAM service account `description` field for a workspace iso SA.
-   The string carries `created-at:<ISO-8601 instant>` so that CI cleanup can
-   age-gate orphan SAs without needing IAM audit-log access.
+  The string carries `created-at:<ISO-8601 instant>` so that CI cleanup can
+  age-gate orphan SAs without needing IAM audit-log access.
 
-   This is the single source of truth for the description format. The cleanup
-   side ([[ws-sa-description->created-at]]) reads from it -- keep them in
-   lockstep by going through these two fns rather than building/parsing
-   the string inline anywhere else."
+  This is the single source of truth for the description format. The cleanup
+  side ([[ws-sa-description->created-at]]) reads from it -- keep them in
+  lockstep by going through these two fns rather than building/parsing
+  the string inline anywhere else."
   ^String [^java.time.Instant instant]
   (str ws-sa-description-prefix instant))
 
@@ -262,19 +262,19 @@
 
 (defn- ws-wait-for-dataset-visible-via-impersonation!
   "Poll until the impersonated workspace SA can see `target-dataset` from
-   BOTH `getDataset` AND `listDatasets`. BigQuery dataset ACL updates are
-   eventually consistent and the two endpoints sync independently:
-   `getDataset` typically picks up a dataViewer grant within ~1s, but
-   `listDatasets` (which `can-connect-with-details?` uses) can lag tens
-   of seconds behind. Returning from the wait when only `getDataset` agrees
-   leaves the next `can-connect-with-details?` call hitting `listDatasets`
-   with the still-stale cache, which throws `Looks like we cannot find any
-   matching datasets` and surfaces as `Failed to connect to Database` in
-   `init-from-config-file!`.
+  BOTH `getDataset` AND `listDatasets`. BigQuery dataset ACL updates are
+  eventually consistent and the two endpoints sync independently:
+  `getDataset` typically picks up a dataViewer grant within ~1s, but
+  `listDatasets` (which `can-connect-with-details?` uses) can lag tens
+  of seconds behind. Returning from the wait when only `getDataset` agrees
+  leaves the next `can-connect-with-details?` call hitting `listDatasets`
+  with the still-stale cache, which throws `Looks like we cannot find any
+  matching datasets` and surfaces as `Failed to connect to Database` in
+  `init-from-config-file!`.
 
-   Gate on the `listDatasets` outcome so the wait returns only once the
-   exact endpoint can-connect uses agrees. Each iteration builds a fresh
-   impersonated client to avoid carrying token / negative-cache state."
+  Gate on the `listDatasets` outcome so the wait returns only once the
+  exact endpoint can-connect uses agrees. Each iteration builds a fresh
+  impersonated client to avoid carrying token / negative-cache state."
   [details ^String target-sa-email ^String project-id ^String target-dataset
    & {:keys [max-attempts interval-ms]
       :or   {max-attempts 90
@@ -335,21 +335,21 @@
 
 (defn- ws-wait-for-impersonation-ready!
   "Poll until impersonation is working. GCP IAM changes can take up to 60 seconds to propagate.
-   Tests by actually creating impersonated credentials and making a simple API call.
+  Tests by actually creating impersonated credentials and making a simple API call.
 
-   Each iteration builds a fresh `ServiceAccountCredentials` source (and the
-   derived `ImpersonatedCredentials` + `BigQuery` client). Reusing one across
-   iterations would let GCP's auth-library token-cache and retry/backoff state
-   from an early failure persist for the duration of the loop, so even after
-   the underlying IAM grant propagates, every subsequent check inherits the
-   negative-cached state and the loop times out. Per-iteration creation
-   isolates each attempt.
+  Each iteration builds a fresh `ServiceAccountCredentials` source (and the
+  derived `ImpersonatedCredentials` + `BigQuery` client). Reusing one across
+  iterations would let GCP's auth-library token-cache and retry/backoff state
+  from an early failure persist for the duration of the loop, so even after
+  the underlying IAM grant propagates, every subsequent check inherits the
+  negative-cached state and the loop times out. Per-iteration creation
+  isolates each attempt.
 
-   On timeout, throws an `ex-info` with a verbose diagnostic so CI logs
-   immediately show why we gave up: total wait time, ceiling vs Google's
-   documented worst case (7 min for direct IAM policy edits), last GCP error
-   message + class, and a histogram of error classes seen across attempts.
-   See https://docs.cloud.google.com/iam/docs/access-change-propagation."
+  On timeout, throws an `ex-info` with a verbose diagnostic so CI logs
+  immediately show why we gave up: total wait time, ceiling vs Google's
+  documented worst case (7 min for direct IAM policy edits), last GCP error
+  message + class, and a histogram of error classes seen across attempts.
+  See https://docs.cloud.google.com/iam/docs/access-change-propagation."
   [details ^String target-sa-email & {:keys [max-attempts interval-ms]
                                       :or   {max-attempts 120
                                              interval-ms  1000}}]
@@ -442,17 +442,17 @@
 (defn- ws-wait-for-service-account!
   "Poll IAM until the SA created by `ws-create-service-account!` is visible.
 
-   GCP IAM is eventually consistent: `.createServiceAccount` returns once the
-   create request is accepted by the control plane, but the SA record then
-   propagates to read endpoints (`getServiceAccount`) and policy enforcement
-   (`setIamPolicy`) over the next few seconds. Subsequent grants in
-   `init-workspace-isolation!` reference this SA and fail with
-   `INVALID_ARGUMENT: ... does not exist` if they fire before the SA is
-   visible to those endpoints -- the failure mode that left workspace e2e
-   red on BigQuery before this wait existed.
+  GCP IAM is eventually consistent: `.createServiceAccount` returns once the
+  create request is accepted by the control plane, but the SA record then
+  propagates to read endpoints (`getServiceAccount`) and policy enforcement
+  (`setIamPolicy`) over the next few seconds. Subsequent grants in
+  `init-workspace-isolation!` reference this SA and fail with
+  `INVALID_ARGUMENT: ... does not exist` if they fire before the SA is
+  visible to those endpoints -- the failure mode that left workspace e2e
+  red on BigQuery before this wait existed.
 
-   `ws-service-account-exists?` already swallows `NotFoundException` and
-   returns false, so the loop just polls its boolean return."
+  `ws-service-account-exists?` already swallows `NotFoundException` and
+  returns false, so the loop just polls its boolean return."
   [^IAMClient iam-client ^String project-id ^String sa-email
    & {:keys [max-attempts interval-ms]
       :or   {max-attempts 60
@@ -489,7 +489,7 @@
 
 (defn- ws-grant-project-role!
   "Grant a project-level IAM role to a service account.
-   This is needed for roles like bigquery.jobUser that must be granted at project level."
+  This is needed for roles like bigquery.jobUser that must be granted at project level."
   [details ^String project-id ^String service-account-email ^String role]
   (log/infof "Granting project role %s to %s" role service-account-email)
   (let [creds          (.createScoped (ws-service-account-credentials details)
@@ -530,11 +530,11 @@
 
 (defn- ws-create-service-account!
   "Create a service account for a workspace if it doesn't exist.
-   Returns the service account email.
+  Returns the service account email.
 
-   The SA `description` field is built via [[ws-sa-description]] so CI cleanup
-   can age-gate orphan SAs. See [[ws-sa-description->created-at]] for the parse
-   side, and `metabase.test.data.bigquery-cloud-sdk` for the cleanup loop."
+  The SA `description` field is built via [[ws-sa-description]] so CI cleanup
+  can age-gate orphan SAs. See [[ws-sa-description->created-at]] for the parse
+  side, and `metabase.test.data.bigquery-cloud-sdk` for the cleanup loop."
   [^IAMClient iam-client ^String project-id workspace]
   (let [sa-id        (ws-service-account-id workspace)
         sa-email     (format "%s@%s.iam.gserviceaccount.com" sa-id project-id)

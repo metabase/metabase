@@ -21,7 +21,7 @@
 
 (defn- check-session-header!
   "Validate the `Mcp-Session-Id` header against `user-id`. Throws an api/check
-   exception on failure so defendpoint surfaces the right status code."
+  exception on failure so defendpoint surfaces the right status code."
   [session-id user-id]
   (api/check (not (str/blank? session-id))
              [400 (tru "Missing Mcp-Session-Id header")])
@@ -92,5 +92,5 @@
 
 (def ^{:arglists '([request respond raise])} routes
   "Iframe-callback routes mounted at `/api/embed-mcp`. MCP-feature gated; auth is
-   handled by the upstream `+auth` middleware in api-routes."
+  handled by the upstream `+auth` middleware in api-routes."
   (mcp.validation/+mcp-enabled (api.macros/ns-handler *ns*)))

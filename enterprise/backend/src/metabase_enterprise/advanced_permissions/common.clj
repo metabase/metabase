@@ -11,8 +11,8 @@
 
 (defenterprise current-user-can-write-field?
   "Enterprise version. Returns a boolean whether the current user can write the given field.
-   Checks both that the user has manage-table-metadata permission and that the parent table
-   is editable (not in a remote-synced collection in read-only mode)."
+  Checks both that the user has manage-table-metadata permission and that the parent table
+  is editable (not in a remote-synced collection in read-only mode)."
   :feature :advanced-permissions
   [instance]
   (let [table (or (:table instance)
@@ -51,7 +51,7 @@
 
 (defenterprise current-user-can-write-table?
   "Enterprise version. Checks both that the user has manage-table-metadata permission and
-   that the table is editable (not in a remote-synced collection in read-only mode)."
+  that the table is editable (not in a remote-synced collection in read-only mode)."
   :feature :advanced-permissions
   [table]
   (and (remote-sync/table-editable? table)

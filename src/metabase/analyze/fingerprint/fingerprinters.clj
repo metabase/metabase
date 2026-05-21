@@ -99,7 +99,7 @@
 
 (defn robust-fuse
   "Like `redux/fuse` but wraps every reducing fn in `with-error-handling` and returns `nil` for
-   that fn if an error has been encountered during transducing."
+  that fn if an error has been encountered during transducing."
   [kfs]
   (redux/fuse (m/map-kv-vals (fn [k f]
                                (redux/post-complete

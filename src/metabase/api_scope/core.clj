@@ -85,7 +85,7 @@
 
 (defn parse-scopes
   "Parse a space-delimited OAuth scope string into a set of scope strings.
-   Returns nil if `scope-string` is nil, blank, or not a string."
+  Returns nil if `scope-string` is nil, blank, or not a string."
   [scope-string]
   (when (string? scope-string)
     (when-not (str/blank? scope-string)

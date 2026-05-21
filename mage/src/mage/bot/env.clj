@@ -11,9 +11,9 @@
 
 (defn- parse-toml-value
   "Parse a TOML scalar value (RHS of `key = value`). Returns the unquoted string
-   for basic strings (with `\\\"` and `\\\\` escapes), the inner text for literal
-   strings, or the raw token for bare scalars (ints, bools). Returns nil for
-   values we don't handle (multi-line strings, arrays, inline tables)."
+  for basic strings (with `\\\"` and `\\\\` escapes), the inner text for literal
+  strings, or the raw token for bare scalars (ints, bools). Returns nil for
+  values we don't handle (multi-line strings, arrays, inline tables)."
   [v]
   (let [v (str/trim v)]
     (cond
@@ -36,8 +36,8 @@
 
 (defn read-mise-local-toml
   "Parse mise.local.toml [env] section and return a map of env var name -> value.
-   Handles double-quoted strings (with escapes), single-quoted literal strings,
-   and bare scalars. Keys may contain word chars, hyphens, or dots."
+  Handles double-quoted strings (with escapes), single-quoted literal strings,
+  and bare scalars. Keys may contain word chars, hyphens, or dots."
   ([] (read-mise-local-toml u/project-root-directory))
   ([root-dir]
    (let [path (str root-dir "/mise.local.toml")]
@@ -55,7 +55,7 @@
 
 (defn read-dot-env
   "Parse .env file and return a map of env var name -> value.
-   Supports KEY=value, export KEY=value, and quoted values."
+  Supports KEY=value, export KEY=value, and quoted values."
   ([] (read-dot-env u/project-root-directory))
   ([root-dir]
    (let [path (str root-dir "/.env")]
@@ -94,7 +94,7 @@
 
 (defn resolve-env
   "Resolve an environment variable with priority: mise.local.toml > .env > .lein-env > system env.
-   Returns the value or nil if not found in any source."
+  Returns the value or nil if not found in any source."
   ([var-name]
    (resolve-env var-name u/project-root-directory))
   ([var-name root-dir]
@@ -105,7 +105,7 @@
 
 (defn resolve-all
   "Resolve all environment variables from all sources, with mise.local.toml > .env > .lein-env > system env.
-   Returns a sorted map of all resolved vars."
+  Returns a sorted map of all resolved vars."
   ([] (resolve-all u/project-root-directory))
   ([root-dir]
    (let [mise-map    (or (read-mise-local-toml root-dir) {})

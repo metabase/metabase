@@ -49,7 +49,7 @@
 
 (defn fresh-collection-for-transform!
   "Create a new collection for all the artefacts belonging to transform, or reset it if it already
-   exists."
+  exists."
   [{:keys [name description]}]
   (if-let [collection-id (get-collection name)]
     (t2/delete! :model/Card :collection_id collection-id)

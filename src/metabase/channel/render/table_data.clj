@@ -6,13 +6,13 @@
 
 (defn show-in-table?
   "Should this column be shown in a rendered table?
-   Filters out sensitive, retired, and details-only columns."
+  Filters out sensitive, retired, and details-only columns."
   [{:keys [visibility_type] :as _column}]
   (not (contains? #{:details-only :retired :sensitive} visibility_type)))
 
 (defn create-remapping-lookup
   "Creates a map from column names to the index of their remapped column.
-   Used to handle FK remapping where columns have :remapped_from metadata."
+  Used to handle FK remapping where columns have :remapped_from metadata."
   [cols]
   (into {}
         (for [[col-idx {:keys [remapped_from]}] (map-indexed vector cols)
@@ -21,10 +21,10 @@
 
 (defn prepare-table-data
   "Prepare query results for table rendering.
-   - Filters out columns that shouldn't be shown (sensitive, retired, details-only)
-   - Handles FK remapping: removes duplicate columns and substitutes values
+  - Filters out columns that shouldn't be shown (sensitive, retired, details-only)
+  - Handles FK remapping: removes duplicate columns and substitutes values
 
-   Returns {:cols [...] :rows [...]} with the prepared data."
+  Returns {:cols [...] :rows [...]} with the prepared data."
   [cols rows]
   (let [remapping-lookup (create-remapping-lookup cols)
         ;; Build list of columns to keep (visible and not remapped_from)

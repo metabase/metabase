@@ -273,7 +273,7 @@
 
 (def ^:private test-schema
   "Test schema for validation tests.
-   Structure: {schema-name {table-name {column-name type}}}"
+  Structure: {schema-name {table-name {column-name type}}}"
   {"PUBLIC" {"PRODUCTS" {"ID" "INT"
                          "TITLE" "VARCHAR"
                          "CATEGORY" "VARCHAR"
@@ -414,7 +414,7 @@
 
 (defn- normalize-fields
   "Normalize field references for comparison (sort and ensure consistent format).
-   Handles both 2-tuples (expected format in test cases) and 4-tuples (actual API format)."
+  Handles both 2-tuples (expected format in test cases) and 4-tuples (actual API format)."
   [fields]
   (vec (sort-by (fn [f]
                   (if (= 4 (count f))

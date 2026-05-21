@@ -178,7 +178,7 @@
 
 (defn- privilege-fn-from-map
   "Given a privilege map (schema -> table -> #{:select :write}), return a privilege-checking function.
-   Falls back to N+1 probe for Postgres FOREIGN TABLEs which aren't covered by current-user-table-privileges."
+  Falls back to N+1 probe for Postgres FOREIGN TABLEs which aren't covered by current-user-table-privileges."
   [driver conn privilege-map]
   (fn [{schema :schema table :name ttype :type} privilege]
     (assert (#{:select :write} privilege))

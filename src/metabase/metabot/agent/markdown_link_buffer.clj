@@ -32,7 +32,7 @@
 
 (defn- find-potential-markdown-link-start
   "Find the index of a potential incomplete markdown link start (unmatched '[').
-   Returns nil if no potential incomplete link exists."
+  Returns nil if no potential incomplete link exists."
   [text]
   (let [last-open (str/last-index-of text "[")]
     (when last-open
@@ -51,9 +51,9 @@
 
 (defn- find-potential-slack-link-start
   "Find the index of a potential incomplete Slack-format metabase:// link.
-   Detects both complete `<metabase://` prefixes and partial prefixes at the end
-   of text (e.g., `<meta`, `<metabase:/`) to handle streaming chunk boundaries.
-   Returns nil if no potential incomplete link exists."
+  Detects both complete `<metabase://` prefixes and partial prefixes at the end
+  of text (e.g., `<meta`, `<metabase:/`) to handle streaming chunk boundaries.
+  Returns nil if no potential incomplete link exists."
   [text]
   (let [idx (str/last-index-of text slack-link-prefix)]
     (if idx
@@ -71,8 +71,8 @@
 
 (defn- find-potential-link-start
   "Find the index of the earliest potential incomplete link start.
-   Checks both markdown [text](url) and Slack <metabase://...|text> formats.
-   Returns nil if no potential incomplete link exists."
+  Checks both markdown [text](url) and Slack <metabase://...|text> formats.
+  Returns nil if no potential incomplete link exists."
   [text]
   (let [md-idx    (find-potential-markdown-link-start text)
         slack-idx (find-potential-slack-link-start text)]
@@ -83,7 +83,7 @@
 
 (defn step
   "Process a chunk of text through the state machine.
-   Returns [new-state output-string]."
+  Returns [new-state output-string]."
   [{:keys [buffer] :as state} chunk]
   (let [text        (str buffer chunk)
         ;; Resolve complete markdown links, then Slack-format links
@@ -99,7 +99,7 @@
 
 (defn flush-state
   "Flush remaining buffered content from state.
-   Returns the buffered content string."
+  Returns the buffered content string."
   [state]
   (:buffer state ""))
 
@@ -114,16 +114,16 @@
 (defn resolve-xf
   "Stateful transducer that resolves metabase:// links in text parts.
 
-   This transducer:
-   1. Accumulates queries/charts from tool-output parts (via :structured-output)
-   2. Buffers markdown links to handle links split across text chunks
-   3. Resolves metabase:// URLs to proper Metabase paths
-   4. Flushes any remaining buffered content at stream end
+  This transducer:
+  1. Accumulates queries/charts from tool-output parts (via :structured-output)
+  2. Buffers markdown links to handle links split across text chunks
+  3. Resolves metabase:// URLs to proper Metabase paths
+  4. Flushes any remaining buffered content at stream end
 
-   Parameters:
-   - initial-queries: Initial map of query-id to query data
-   - initial-charts: Initial map of chart-id to chart data
-   - link-registry-atom: Atom of {resolved-url original-metabase-uri}"
+  Parameters:
+  - initial-queries: Initial map of query-id to query data
+  - initial-charts: Initial map of chart-id to chart data
+  - link-registry-atom: Atom of {resolved-url original-metabase-uri}"
   [initial-queries initial-charts link-registry-atom]
   (fn [rf]
     (let [state   (volatile! (with-context initial-state

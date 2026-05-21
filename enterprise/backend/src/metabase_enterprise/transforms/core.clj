@@ -12,7 +12,7 @@
 
 (defenterprise transform-metered-as
   "Return the meter bucket a new transform run of the given source-type counts toward,
-   based on the instance's current premium features. Returns nil when the run is not metered."
+  based on the instance's current premium features. Returns nil when the run is not metered."
   :feature :none
   [source-type]
   (let [hosted?   (premium-features/has-feature? :hosting)

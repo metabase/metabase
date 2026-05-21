@@ -41,7 +41,7 @@
 
 (defn- process-csv-file
   "Process a single CSV file upload. Returns a result map with either
-   :model-id/:model-name (success) or :error (failure)."
+  :model-id/:model-name (success) or :error (failure)."
   [{:keys [db_id schema_name table_prefix]} {:keys [name url_private] :as file}]
   (if-let [size-error (validate-file-size file)]
     (do
@@ -72,8 +72,8 @@
 
 (defn- process-file-uploads
   "Process all files from a Slack event. Returns a map with:
-   :results - seq of individual file results
-   :skipped - seq of non-CSV filenames that were skipped"
+  :results - seq of individual file results
+  :skipped - seq of non-CSV filenames that were skipped"
   [settings files]
   (let [{csv-files true other-files false} (group-by csv-file? files)
         skipped (mapv :name other-files)]
@@ -111,7 +111,7 @@
 
 (defn handle-file-uploads
   "Handle file uploads if present. Returns nil if no files, otherwise
-   returns upload result map and messages to inject into AI request."
+  returns upload result map and messages to inject into AI request."
   [files]
   (when (seq files)
     (if-let [{:keys [db_id schema_name] :as settings} (upload-settings)]

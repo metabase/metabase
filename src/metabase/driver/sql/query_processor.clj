@@ -357,10 +357,10 @@
 
 (defmulti datetime-diff
   "Returns a HoneySQL form for calculating the datetime-diff for a given unit.
-   This method is used by implementations of `->honeysql` for the `:datetime-diff`
-   clause. It is recommended to implement this if you want to use the default SQL
-   implementation of `->honeysql` for the `:datetime-diff`, which includes
-   validation of argument types across all units."
+  This method is used by implementations of `->honeysql` for the `:datetime-diff`
+  clause. It is recommended to implement this if you want to use the default SQL
+  implementation of `->honeysql` for the `:datetime-diff`, which includes
+  validation of argument types across all units."
   {:arglists '([driver unit field-or-value field-or-value]), :added "0.46.0"}
   (fn [driver unit _ _] [(driver/dispatch-on-initialized-driver driver) unit])
   :hierarchy #'driver/hierarchy)
@@ -1487,8 +1487,8 @@
 
 (defn datetime-diff-check-args
   "This util function is used by SQL implementations of ->honeysql for the `:datetime-diff` clause.
-   It raises an exception if the database-type of the arguments `x` and `y` do not match the given predicate.
-   Note this doesn't raise an error if the database-type is nil, which can be the case for some drivers."
+  It raises an exception if the database-type of the arguments `x` and `y` do not match the given predicate.
+  Note this doesn't raise an error if the database-type is nil, which can be the case for some drivers."
   [x y pred]
   (doseq [arg [x y]
           :let [db-type (h2x/database-type arg)]
@@ -1798,7 +1798,7 @@
 
 (mu/defn maybe-cast-uuid-for-text-compare
   "For :contains, :starts-with, and :ends-with.
-   Comparing UUID fields against with these operations requires casting as the right side will have `%` for `LIKE` operations."
+  Comparing UUID fields against with these operations requires casting as the right side will have `%` for `LIKE` operations."
   [driver field]
   (if (uuid-field? field)
     (mbql-clause driver ::cast-to-text field)

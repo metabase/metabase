@@ -24,7 +24,7 @@
 
 (def ExpandedSchedulesMap
   "Schema for the `:schedules` key we add to the response containing 'expanded' versions of the CRON schedules.
-   This same key is used in reverse to update the schedules."
+  This same key is used in reverse to update the schedules."
   [:ref ::ExpandedSchedulesMap])
 
 (mu/defn schedule-map->cron-strings :- CronSchedulesMap

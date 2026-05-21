@@ -23,7 +23,7 @@
 
 (defn- non-ref-nested-models
   "Return a map of nested models that don't have a ref-in-parent.
-   When row is provided, only return models that are present in the row."
+  When row is provided, only return models that are present in the row."
   ([nested-specs]
    (into {} (filter (comp not :ref-in-parent second)) nested-specs))
   ([nested-specs row]
@@ -124,7 +124,7 @@
 
 (defn- handle-rows-update!
   "Process updates for a single row, handling both parent refs and nested models.
-   Returns true if any changes were made."
+  Returns true if any changes were made."
   [row existing-rows {:keys [model nested-specs id-col] :as spec} path & {:keys [force-update?] :or {force-update? true}}]
   (let [existing-row (m/find-first #(= (id-col row) (id-col %)) existing-rows)
         update-path (if force-update? (conj path (id-col row)) path)

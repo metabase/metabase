@@ -16,8 +16,8 @@
 
 (p/defprotocol+ Provisioner
   "Wrapper around driver workspace-isolation multimethods for testability.
-   The default [[dispatching-provisioner]] delegates to the real driver multimethods.
-   Tests can reify custom implementations that fail on demand, count calls, etc."
+  The default [[dispatching-provisioner]] delegates to the real driver multimethods.
+  Tests can reify custom implementations that fail on demand, count calls, etc."
   (init!    [this driver database workspace]
     "Create isolated schema + user. Returns {:schema ... :database_details ...}.")
   (grant!   [this driver database workspace schemas]
@@ -145,7 +145,7 @@
 
 (defn provision-single!
   "Flip a single WorkspaceDatabase to `:provisioning` and provision it synchronously.
-   The row must be `:unprovisioned`. Returns the updated WorkspaceDatabase row."
+  The row must be `:unprovisioned`. Returns the updated WorkspaceDatabase row."
   ([wsd-id]
    (provision-single! wsd-id dispatching-provisioner))
   ([wsd-id provisioner]
@@ -155,7 +155,7 @@
 
 (defn deprovision-single!
   "Flip a single WorkspaceDatabase to `:deprovisioning` and deprovision it synchronously.
-   The row must be `:provisioned`. Returns the updated WorkspaceDatabase row."
+  The row must be `:provisioned`. Returns the updated WorkspaceDatabase row."
   ([wsd-id]
    (deprovision-single! wsd-id dispatching-provisioner))
   ([wsd-id provisioner]

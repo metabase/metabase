@@ -443,12 +443,12 @@
 (defn- broken-entities-filter-clause
   "Returns a HoneySQL WHERE clause for filtering to only broken entities.
 
-   Accepts two arguments:
-   - `entity-type-field`: Database column name for entity type (e.g., :from_entity_type)
-   - `entity-id-field`: Database column name for entity ID (e.g., :from_entity_id)
+  Accepts two arguments:
+  - `entity-type-field`: Database column name for entity type (e.g., :from_entity_type)
+  - `entity-id-field`: Database column name for entity ID (e.g., :from_entity_id)
 
-   Returns a clause that joins with the analysis_finding table to filter to entities
-   that have failed analysis (analysis_finding.result = false)."
+  Returns a clause that joins with the analysis_finding table to filter to entities
+  that have failed analysis (analysis_finding.result = false)."
   [entity-type-field entity-id-field]
   (into [:or]
         (keep (fn [[entity-type _model]]
@@ -504,9 +504,9 @@
 
 (defn- node-downstream-errors
   "Fetches errors caused by the given source entities (what downstream entities they're breaking).
-   Filters out errors where the analyzed entity is not visible to the current user.
-   Unlike `node-errors` which fetches errors on an entity, this fetches errors that
-   the entity is causing in other entities that depend on it."
+  Filters out errors where the analyzed entity is not visible to the current user.
+  Unlike `node-errors` which fetches errors on an entity, this fetches errors that
+  the entity is causing in other entities that depend on it."
   [nodes-by-type]
   (letfn [(errors-by-source-type-and-id [[source-type ids]]
             (when (seq ids)
@@ -524,8 +524,8 @@
 
 (defn- node-errors
   "Fetches and normalizes AnalysisFindingErrors for the given entities.
-   Filters out errors where the source entity is not visible to the current user.
-   Returns {[entity-type entity-id] #{error-maps...}}, or nil if none."
+  Filters out errors where the source entity is not visible to the current user.
+  Returns {[entity-type entity-id] #{error-maps...}}, or nil if none."
   [nodes-by-type]
   (letfn [(normalize-finding-error
             [{:keys [error_type error_detail]}]
@@ -572,7 +572,7 @@
 
 (defn- fetch-and-hydrate-nodes
   "Fetches and hydrates entities for the given nodes.
-   Returns a map from [entity-type entity-id] -> hydrated entity."
+  Returns a map from [entity-type entity-id] -> hydrated entity."
   [nodes-by-type]
   (into {}
         (mapcat (fn [[entity-type entity-ids]]

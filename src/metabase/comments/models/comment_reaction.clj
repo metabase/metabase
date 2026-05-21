@@ -64,7 +64,7 @@
 (defn reactions-for-comments
   "Get all reactions for a list of comment IDs, grouped and formatted for API response.
 
-   Returns a map of `{comment-id {emoji [user1 user2...]}}."
+  Returns a map of `{comment-id {emoji [user1 user2...]}}."
   [current-user-id comment-ids]
   (when (seq comment-ids)
     (let [reactions   (-> (t2/select :model/CommentReaction

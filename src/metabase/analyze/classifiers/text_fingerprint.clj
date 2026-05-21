@@ -11,7 +11,7 @@
 
 (def ^:private ^:const ^Double percent-valid-threshold
   "Fields that have at least this percent of values that are satisfy some predicate (such as `u/email?`)
-   should be given the corresponding semantic type (such as `:type/Email`)."
+  should be given the corresponding semantic type (such as `:type/Email`)."
   0.95)
 
 (def ^:private ^Double lower-percent-valid-threshold

@@ -42,7 +42,7 @@
 
 (def ^:private override-path
   "If non-nil, takes precedence over DEV_DEBUG_LOG and the default.
-   Set via [[set-file!]] or `#d [:set-file! path]`."
+  Set via [[set-file!]] or `#d [:set-file! path]`."
   (atom nil))
 
 (defn log-path
@@ -58,15 +58,15 @@
 
 (defn where
   "Print the current debug log path. Useful when (a) you don't remember it,
-   (b) you're agent-driven and want explicit visibility into where the log
-   is going."
+  (b) you're agent-driven and want explicit visibility into where the log
+  is going."
   []
   (println "dev.debug log:" (log-path)))
 
 (defn set-file!
   "Override the log file path until the JVM exits. Pass nil to clear the
-   override and fall back to the env var / default. Returns the path now in
-   effect."
+  override and fall back to the env var / default. Returns the path now in
+  effect."
   [path]
   (reset! override-path path)
   (where)
@@ -76,14 +76,14 @@
 
 (def ^:private max-value-bytes
   "Truncate rendered values larger than this. Prevents one giant query map
-   from filling the log. ~4KB."
+  from filling the log. ~4KB."
   4096)
 
 (defn- render-value
   "Render `v` with `pr-str` (single line, fast, machine-readable). Truncate
-   output that exceeds `max-value-bytes` so a single huge value doesn't blow
-   up the log. Pretty-printing is left to the caller — pipe the log through
-   a formatter if you want it pretty (`bat -l edn`, `puget`, etc.)."
+  output that exceeds `max-value-bytes` so a single huge value doesn't blow
+  up the log. Pretty-printing is left to the caller — pipe the log through
+  a formatter if you want it pretty (`bat -l edn`, `puget`, etc.)."
   [v]
   (let [s (pr-str v)]
     (if (> (count s) max-value-bytes)
@@ -94,21 +94,21 @@
 
 (defn- spit-line!
   "Append `line` (no trailing newline expected) to the resolved log path,
-   swallowing IO errors so a debug helper never crashes the program."
+  swallowing IO errors so a debug helper never crashes the program."
   [line]
   (try (spit (log-path) (str line "\n") :append true)
        (catch Throwable _ nil)))
 
 (defn print-debug-entry!
   "Runtime impl of `#d`. Public so the reader macro's expansion can call it
-   across compilation boundaries."
+  across compilation boundaries."
   [loc form-str value]
   (spit-line! (str "#d[" loc "]  " form-str " => " (render-value value)))
   value)
 
 (defn stack!
   "Spit a filtered call stack at the call point. Filters JDK/clojure.lang
-   frames so the user code path stands out. `tag` is optional context."
+  frames so the user code path stands out. `tag` is optional context."
   ([] (stack! nil))
   ([tag]
    (let [frames (->> (Thread/currentThread)
@@ -128,9 +128,9 @@
 
 (defn clear!
   "Truncate the log. Call before each debug run so output isn't mixed with
-   prior runs. Writes a single marker line into the freshly-cleared file so
-   anyone tailing it sees the clear point. Prints the path to stdout so you
-   always know where output is going."
+  prior runs. Writes a single marker line into the freshly-cleared file so
+  anyone tailing it sees the clear point. Prints the path to stdout so you
+  always know where output is going."
   []
   (try (spit (log-path) "") (catch Throwable _ nil))
   (spit-line! (str "#d :clear  (" (java.time.Instant/now) ")"))
@@ -152,12 +152,12 @@
 
 (def ^:private ^:const inner-marker
   "Sentinel keyword embedded in `#d`'s expansion so a containing `#d` can
-   recognize it and substitute the original form."
+  recognize it and substitute the original form."
   ::inner)
 
 (defn- strip-inner
   "Walk `form`, replacing any `#d` expansion with the original form it
-   wraps. Recognizes the expansion by the `inner-marker` sentinel."
+  wraps. Recognizes the expansion by the `inner-marker` sentinel."
   [form]
   (walk/postwalk
    (fn [x]

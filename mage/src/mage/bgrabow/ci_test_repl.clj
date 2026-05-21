@@ -27,7 +27,7 @@
 
 (defn- host-port-for-image
   "Look up the host port for a Docker image from the port map.
-   Falls back to the container port from the CI YAML if not mapped."
+  Falls back to the container port from the CI YAML if not mapped."
   [image ci-port-mapping]
   (let [container-port (second (str/split ci-port-mapping #":"))]
     (if-let [mapped (get port-map image)]
@@ -57,8 +57,8 @@
 
 (defn- resolve-matrix-expr
   "Resolve a GitHub Actions expression like '${{ matrix.version.image }}' or
-   '${{ matrix.version.env.enable-ssl-tests }}' using the given matrix-version map.
-   Returns the original string if not resolvable."
+  '${{ matrix.version.env.enable-ssl-tests }}' using the given matrix-version map.
+  Returns the original string if not resolvable."
   [s matrix-version]
   (if (and (string? s) (str/includes? s "${{"))
     (str/replace s #"\$\{\{\s*matrix\.version\.([\w.-]+)\s*\}\}"
@@ -97,8 +97,8 @@
 
 (defn- extract-test-jobs-with-matrix
   "Extract test jobs with their matrix version variants.
-   Returns a seq of maps with :workflow, :job, :junit-name, :version-name,
-   :matrix-version, :job-map."
+  Returns a seq of maps with :workflow, :job, :junit-name, :version-name,
+  :matrix-version, :job-map."
   [workflow-name parsed]
   (when-let [jobs (:jobs parsed)]
     (for [[job-key job-map] jobs
@@ -127,7 +127,7 @@
 
 (defn- display-name
   "Format a test job entry for display in fzf.
-   Format: workflow/job/junit-name, or workflow/job (version-name) as fallback."
+  Format: workflow/job/junit-name, or workflow/job (version-name) as fallback."
   [{:keys [workflow job junit-name version-name]}]
   (cond
     junit-name   (str workflow "/" job "/" junit-name)
@@ -276,7 +276,7 @@
 
 (defn- start-services!
   "Start Docker containers for all services in a job, resolving matrix expressions.
-   Returns a map of {ci-host-port → local-host-port} for port remapping in env vars."
+  Returns a map of {ci-host-port → local-host-port} for port remapping in env vars."
   [{:keys [job-map matrix-version]}]
   (into {}
         (for [[_svc-name svc-def] (:services job-map)
@@ -333,7 +333,7 @@
 
 (defn- find-test-job
   "Find a test job by workflow/job name. For matrix jobs, if multiple versions exist,
-   use fzf to select; for single-version matrix jobs, use the only version."
+  use fzf to select; for single-version matrix jobs, use the only version."
   [workflow job]
   (let [jobs    (all-test-jobs)
         matches (filter #(and (= workflow (:workflow %))
@@ -366,7 +366,7 @@
 
 (defn- docker-cmds-for-services
   "Build docker run command vectors for all services in a job without executing them.
-   Returns a seq of command vectors."
+  Returns a seq of command vectors."
   [{:keys [job-map matrix-version]}]
   (for [[_svc-name svc-def] (:services job-map)
         :let [resolved (resolve-service-map svc-def matrix-version)
@@ -391,7 +391,7 @@
 
 (defn- compute-port-remaps
   "Compute the port remappings that would result from starting services.
-   Returns a map of {ci-host-port → local-host-port}."
+  Returns a map of {ci-host-port → local-host-port}."
   [{:keys [job-map matrix-version]}]
   (into {}
         (for [[_svc-name svc-def] (:services job-map)
@@ -429,8 +429,8 @@
 
 (defn ci-test-repl
   "Start a REPL replicating the CI environment for a given workflow/job.
-   If no arguments are provided, present an interactive fuzzy finder.
-   Pass :dry-run? true to print commands without executing."
+  If no arguments are provided, present an interactive fuzzy finder.
+  Pass :dry-run? true to print commands without executing."
   [{:keys [workflow job dry-run?]}]
   (let [test-job (if (and workflow job)
                    (find-test-job workflow job)

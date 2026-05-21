@@ -14,7 +14,7 @@
 
 (def audit-db-view-names
   "Used for giving granular permissions into the audit db. Instead of granting permissions to
-   all of the audit db, we query the audit db using the names of each view that starts with v_."
+  all of the audit db, we query the audit db using the names of each view that starts with v_."
   #{"v_audit_log"
     "v_content"
     "v_dashboardcard"

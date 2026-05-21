@@ -175,8 +175,8 @@
 
 (mu/defn update-dashboard-card!
   "Updates an existing DashboardCard including all DashboardCardSeries.
-   `old-dashboard-card` is provided to avoid an extra DB call if there are no changes.
-   Returns nil."
+  `old-dashboard-card` is provided to avoid an extra DB call if there are no changes.
+  Returns nil."
   [{dashcard-id :id :keys [series] :as dashboard-card} :- DashboardCardUpdates
    old-dashboard-card :- DashboardCardUpdates]
   (t2/with-transaction [_conn]
@@ -231,8 +231,8 @@
 
 (defn- cleanup-orphaned-inline-parameters!
   "Remove inline parameter IDs from the dashboard's parameters list when dashcards are deleted.
-   Since inline parameters can only be referenced by a single card, all inline parameters
-   from deleted cards become orphaned."
+  Since inline parameters can only be referenced by a single card, all inline parameters
+  from deleted cards become orphaned."
   [dashboard-card-ids]
   (when (seq dashboard-card-ids)
     (let [cards-being-deleted (t2/select :model/DashboardCard :id [:in dashboard-card-ids])

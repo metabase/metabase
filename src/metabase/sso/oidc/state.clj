@@ -48,7 +48,7 @@
 
 (defn- uri-origin
   "Extract the origin (scheme://host:port) from a URI string.
-   Returns nil if the URI is invalid or has no scheme/host."
+  Returns nil if the URI is invalid or has no scheme/host."
   [^String uri-str]
   (when-let [^URI uri (parse-uri uri-str)]
     (let [scheme (.getScheme uri)
@@ -63,7 +63,7 @@
 
 (defn- relative-url?
   "Returns true if the URL is a relative path (starts with /).
-   Rejects protocol-relative URLs (//example.com) which could redirect to external sites."
+  Rejects protocol-relative URLs (//example.com) which could redirect to external sites."
   [^String url]
   (and (str/starts-with? url "/")
        (not (str/starts-with? url "//"))))
@@ -71,15 +71,15 @@
 (defn valid-redirect-url?
   "Validates that a redirect URL is safe for use after OIDC authentication.
 
-   A redirect URL is considered safe if it is:
-   1. A relative URL starting with '/' (but not protocol-relative '//')
-   2. An absolute URL with the same origin as the site-url
+  A redirect URL is considered safe if it is:
+  1. A relative URL starting with '/' (but not protocol-relative '//')
+  2. An absolute URL with the same origin as the site-url
 
-   Parameters:
-   - redirect-url: The URL to validate
-   - site-url: The configured site URL (optional, will use system setting if not provided)
+  Parameters:
+  - redirect-url: The URL to validate
+  - site-url: The configured site URL (optional, will use system setting if not provided)
 
-   Returns true if the redirect URL is safe, false otherwise."
+  Returns true if the redirect URL is safe, false otherwise."
   ([redirect-url]
    (valid-redirect-url? redirect-url (system/site-url)))
   ([redirect-url site-url]
@@ -103,7 +103,7 @@
 
 (defn- validate-redirect-url!
   "Validates a redirect URL and throws an exception if invalid.
-   This prevents open redirect attacks by ensuring redirects stay within the application."
+  This prevents open redirect attacks by ensuring redirects stay within the application."
   [redirect-url]
   (when-not (valid-redirect-url? redirect-url)
     (log/warnf "OIDC redirect URL validation failed: %s" redirect-url)
@@ -116,20 +116,20 @@
 (defn create-oidc-state
   "Create an OIDC state payload for encryption.
 
-   Required options:
-   - :state      - CSRF protection token
-   - :nonce      - ID token validation nonce
-   - :redirect   - Post-auth redirect URL (must be relative or same-origin)
-   - :provider   - Provider identifier keyword or string (e.g., :slack-connect)
+  Required options:
+  - :state      - CSRF protection token
+  - :nonce      - ID token validation nonce
+  - :redirect   - Post-auth redirect URL (must be relative or same-origin)
+  - :provider   - Provider identifier keyword or string (e.g., :slack-connect)
 
-   Optional:
-   - :ttl-ms     - Time-to-live in milliseconds (default: 600000 = 10 min)
-   - :browser-id - Browser identifier for request forgery protection
+  Optional:
+  - :ttl-ms     - Time-to-live in milliseconds (default: 600000 = 10 min)
+  - :browser-id - Browser identifier for request forgery protection
 
-   Returns a map suitable for encryption.
+  Returns a map suitable for encryption.
 
-   Throws an exception if the redirect URL is invalid (not relative or not same-origin).
-   This prevents open redirect attacks."
+  Throws an exception if the redirect URL is invalid (not relative or not same-origin).
+  This prevents open redirect attacks."
   [{:keys [state nonce redirect provider ttl-ms browser-id]
     :or   {ttl-ms default-ttl-ms}}]
   {:pre [(some? state) (some? nonce) (some? redirect) (some? provider)]}
@@ -156,8 +156,8 @@
 (defn encrypt-state
   "Encrypt OIDC state payload to a URL-safe string.
 
-   Uses Metabase's AES256-CBC-HMAC-SHA512 encryption with MB_ENCRYPTION_SECRET_KEY.
-   Throws an exception if encryption is not enabled."
+  Uses Metabase's AES256-CBC-HMAC-SHA512 encryption with MB_ENCRYPTION_SECRET_KEY.
+  Throws an exception if encryption is not enabled."
   [state-map]
   (assert-encryption-enabled!)
   (-> state-map
@@ -167,13 +167,13 @@
 (defn decrypt-state
   "Decrypt and validate OIDC state from encrypted string.
 
-   Returns the state map if valid, or nil if:
-   - Decryption fails (tampered or wrong key)
-   - State has expired (based on :expires-at)
-   - State is malformed
+  Returns the state map if valid, or nil if:
+  - Decryption fails (tampered or wrong key)
+  - State has expired (based on :expires-at)
+  - State is malformed
 
-   Options:
-   - :validate-browser-id - If provided, validates that :browser-id matches"
+  Options:
+  - :validate-browser-id - If provided, validates that :browser-id matches"
   ([encrypted-state]
    (decrypt-state encrypted-state nil))
   ([encrypted-state {:keys [validate-browser-id]}]
@@ -235,13 +235,13 @@
 (defn set-oidc-state-cookie
   "Add encrypted OIDC state cookie to response.
 
-   Parameters:
-   - response    - Ring response map
-   - request     - Ring request (for determining secure/https)
-   - state-data  - Map with :state, :nonce, :redirect, :provider keys
-   - options     - Optional map with :ttl-ms (default 600000), :browser-id
+  Parameters:
+  - response    - Ring response map
+  - request     - Ring request (for determining secure/https)
+  - state-data  - Map with :state, :nonce, :redirect, :provider keys
+  - options     - Optional map with :ttl-ms (default 600000), :browser-id
 
-   Returns updated response with cookie set."
+  Returns updated response with cookie set."
   ([response request state-data]
    (set-oidc-state-cookie response request state-data {}))
   ([response request state-data {:keys [ttl-ms browser-id] :or {ttl-ms default-ttl-ms}}]
@@ -257,12 +257,12 @@
 (defn get-oidc-state
   "Retrieve and validate OIDC state from request cookies.
 
-   Parameters:
-   - request - Ring request with :cookies
-   - options - Optional map with :validate-browser-id, :expected-provider
+  Parameters:
+  - request - Ring request with :cookies
+  - options - Optional map with :validate-browser-id, :expected-provider
 
-   Returns decrypted state map if valid, nil otherwise.
-   Validates expiration and optionally browser-id and provider."
+  Returns decrypted state map if valid, nil otherwise.
+  Validates expiration and optionally browser-id and provider."
   ([request]
    (get-oidc-state request {}))
   ([request {:keys [validate-browser-id expected-provider]}]
@@ -278,7 +278,7 @@
 (defn clear-oidc-state-cookie
   "Clear the OIDC state cookie from response.
 
-   Should be called after successful authentication to prevent replay."
+  Should be called after successful authentication to prevent replay."
   [response]
   (response/set-cookie response
                        oidc-state-cookie-name
@@ -291,15 +291,15 @@
 (defn wrap-oidc-redirect
   "Wrap an OIDC redirect response with state cookie.
 
-   Takes the auth-result from authenticate (with :redirect-url, :state, :nonce)
-   and returns a Ring redirect response with encrypted state cookie.
+  Takes the auth-result from authenticate (with :redirect-url, :state, :nonce)
+  and returns a Ring redirect response with encrypted state cookie.
 
-   Parameters:
-   - auth-result - Map from authenticate with :redirect-url, :state, :nonce
-   - request     - Ring request
-   - provider    - Provider keyword (e.g., :slack-connect)
-   - redirect    - Final redirect URL after auth completes
-   - options     - Optional: :ttl-ms, :browser-id"
+  Parameters:
+  - auth-result - Map from authenticate with :redirect-url, :state, :nonce
+  - request     - Ring request
+  - provider    - Provider keyword (e.g., :slack-connect)
+  - redirect    - Final redirect URL after auth completes
+  - options     - Optional: :ttl-ms, :browser-id"
   ([auth-result request provider redirect]
    (wrap-oidc-redirect auth-result request provider redirect {}))
   ([auth-result request provider redirect options]
@@ -314,19 +314,19 @@
 (defn validate-oidc-callback
   "Validate OIDC callback request against stored state.
 
-   Checks:
-   1. State cookie exists and is valid (not expired, not tampered)
-   2. State parameter matches stored state (CSRF protection)
-   3. Provider matches expected provider
-   4. Optionally validates browser-id
+  Checks:
+  1. State cookie exists and is valid (not expired, not tampered)
+  2. State parameter matches stored state (CSRF protection)
+  3. Provider matches expected provider
+  4. Optionally validates browser-id
 
-   Parameters:
-   - request          - Ring request with :cookies
-   - expected-state   - State parameter from callback query string
-   - expected-provider - Expected provider keyword
-   - options          - Optional: :validate-browser-id
+  Parameters:
+  - request          - Ring request with :cookies
+  - expected-state   - State parameter from callback query string
+  - expected-provider - Expected provider keyword
+  - options          - Optional: :validate-browser-id
 
-   Returns map with :valid? and either :state-data/:nonce/:redirect or :error/:message"
+  Returns map with :valid? and either :state-data/:nonce/:redirect or :error/:message"
   ([request expected-state expected-provider]
    (validate-oidc-callback request expected-state expected-provider {}))
   ([request expected-state expected-provider options]

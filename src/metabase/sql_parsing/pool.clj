@@ -201,16 +201,16 @@
 
 (defn poison!
   "Mark a PooledContext as poisoned. When closed, it will be disposed from the pool
-   rather than released back. Use this when GraalVM hangs to prevent returning a
-   broken context to the pool."
+  rather than released back. Use this when GraalVM hangs to prevent returning a
+  broken context to the pool."
   [ctx]
   (when (instance? PooledContext ctx)
     (reset! (:poisoned? ctx) true)))
 
 (defn interrupt!
   "Interrupt Python execution in this context. Returns true if interrupted successfully.
-   If interrupt times out (guest in uninterruptible code), forces context closure with close(true).
-   This is necessary because future-cancel doesn't actually stop GraalVM execution."
+  If interrupt times out (guest in uninterruptible code), forces context closure with close(true).
+  This is necessary because future-cancel doesn't actually stop GraalVM execution."
   [ctx ^long timeout-ms]
   (when-let [^Context raw-ctx (when (instance? PooledContext ctx)
                                 (:context ctx))]

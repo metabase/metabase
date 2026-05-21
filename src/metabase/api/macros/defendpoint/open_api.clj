@@ -18,7 +18,7 @@
 
 (defn- sanitize-schema-name
   "Sanitize schema names to match OpenAPI's required pattern: ^[a-zA-Z0-9.\\-_]+$
-   Only replaces characters that are invalid in OpenAPI schema names."
+  Only replaces characters that are invalid in OpenAPI schema names."
   [s]
   (-> s
       ;; ~1 is JSON Pointer encoding for / - decode first

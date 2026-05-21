@@ -87,7 +87,7 @@
 
 (defn- discover-socket-repl
   "Return {:host ... :port ...} for a socket REPL if one is discoverable,
-   else nil. Prefers PR-env mode (remote) over local mode."
+  else nil. Prefers PR-env mode (remote) over local mode."
   []
   (if (pr-env/pr-env-active?)
     (let [env (pr-env/load-pr-env)]
@@ -100,7 +100,7 @@
 
 (defn- resolve-backend
   "Pick the best available REPL backend and return {:type :host :port} or nil.
-   Auto-detect: nREPL first, socket REPL fallback."
+  Auto-detect: nREPL first, socket REPL fallback."
   []
   (or (when-let [port (discover-nrepl-port)]
         {:type "nrepl" :host "localhost" :port port})
@@ -112,7 +112,7 @@
 
 (defn- eval-via-nrepl!
   "Eval code against an nREPL server using the clj-nrepl-eval CLI.
-   Returns exit code; prints output directly."
+  Returns exit code; prints output directly."
   [port code]
   (let [user-cwd (System/getProperty "user.dir")
         {:keys [exit out err]} (shell/sh* {:quiet? true :dir user-cwd}
@@ -131,8 +131,8 @@
 
 (defn- eval-via-socket-repl!
   "Open a TCP socket to host:port, send one Clojure form, read everything
-   the REPL prints until the read timeout, and print it to stdout.
-   Returns 0 on success, non-zero on failure."
+  the REPL prints until the read timeout, and print it to stdout.
+  Returns 0 on success, non-zero on failure."
   [host port code]
   (try
     (with-open [sock (Socket.)]
@@ -184,8 +184,8 @@
 
 (defn- looks-like-connect-error?
   "nREPL's clj-nrepl-eval prints a Java exception trace on connection failure.
-   Socket eval returns a non-zero exit with a Connection/Unknown host error.
-   This is a best-effort check — when in doubt, retry once."
+  Socket eval returns a non-zero exit with a Connection/Unknown host error.
+  This is a best-effort check — when in doubt, retry once."
   [exit output]
   (or (not (zero? exit))
       (and output

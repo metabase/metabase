@@ -42,7 +42,7 @@
 
 (defn nullness
   "Linear penalty based on null percentage. Mostly-null fields are noise whether being
-   used as a dimension (empty bars) or a measure (nothing to aggregate)."
+  used as a dimension (empty bars) or a measure (nothing to aggregate)."
   [field]
   (if-let [nil-pct (get-in field [:fingerprint :global :nil%])]
     {:score  (- 1.0 nil-pct)
@@ -53,8 +53,8 @@
 
 (defn numeric-variance
   "Score numeric fields by their statistical spread. Zero-variance fields are
-   uninteresting regardless of role — nothing to show as a dim (one bucket) or
-   as a measure (SUM of a constant)."
+  uninteresting regardless of role — nothing to show as a dim (one bucket) or
+  as a measure (SUM of a constant)."
   [field]
   (let [num-fp (get-in field [:fingerprint :type :type/Number])]
     (if (nil? num-fp)
@@ -127,15 +127,15 @@
 
 (defn distribution-shape
   "Score fields by the shape of their value distribution. Penalizes fields where:
-   - A single value dominates (high mode-fraction): near-constant, poor for visualization
-   - Top-3 values cover nearly everything (few real categories)
-   - Zero values dominate (numeric counters / sparse data)
-   - Distribution is heavily skewed or has extreme tail weight (kurtosis)
+  - A single value dominates (high mode-fraction): near-constant, poor for visualization
+  - Top-3 values cover nearly everything (few real categories)
+  - Zero values dominate (numeric counters / sparse data)
+  - Distribution is heavily skewed or has extreme tail weight (kurtosis)
 
-   Works on numeric, text, and temporal fields, and is role-neutral: a flat/skewed
-   distribution is boring both as a breakout and as an aggregation target. Returns 0.5
-   (neutral) when no distribution data is available. Signals are combined worst-of-N:
-   any single strong boringness signal dominates the score."
+  Works on numeric, text, and temporal fields, and is role-neutral: a flat/skewed
+  distribution is boring both as a breakout and as an aggregation target. Returns 0.5
+  (neutral) when no distribution data is available. Signals are combined worst-of-N:
+  any single strong boringness signal dominates the score."
   [field]
   (let [num-fp    (get-in field [:fingerprint :type :type/Number])
         text-fp   (get-in field [:fingerprint :type :type/Text])
@@ -191,7 +191,7 @@
 
 (defn compose
   "Combine multiple scorers with weights into a single scorer function.
-   Returns `(fn [field]) -> {:score double, :scores map, :field map}`."
+  Returns `(fn [field]) -> {:score double, :scores map, :field map}`."
   [scorer-weight-map]
   (fn [field] (score-field scorer-weight-map field)))
 
@@ -202,7 +202,7 @@
 
 (defn score-and-filter
   "Score all fields with the given scorer-weight-map and return only those at or above `cutoff`.
-   Results are sorted by score descending."
+  Results are sorted by score descending."
   [scorer-weight-map fields cutoff]
   (->> fields
        (map #(score-field scorer-weight-map %))
@@ -220,13 +220,13 @@
 
 (defn normalize-field
   "Convert a snake_case field map (as used in x-rays/raw DB) to the kebab-case shape scorers expect.
-   Keys not in the rename map are passed through unchanged (e.g., :fingerprint)."
+  Keys not in the rename map are passed through unchanged (e.g., :fingerprint)."
   [field]
   (set/rename-keys field snake->kebab-keys))
 
 (defn score-raw-field
   "Score a snake_case field map by normalizing it first. Returns the same shape as `score-field`
-   but with the original (unnormalized) field in `:field`."
+  but with the original (unnormalized) field in `:field`."
   [scorer-weight-map field]
   (let [result (score-field scorer-weight-map (normalize-field field))]
     (assoc result :field field)))

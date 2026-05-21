@@ -51,7 +51,7 @@
 
 (defn wait-for-init!
   "Block until the background search index initialization has completed.
-   No-op if init has not been started (e.g. in unit tests)."
+  No-op if init has not been started (e.g. in unit tests)."
   []
   (some-> @init-promise deref))
 

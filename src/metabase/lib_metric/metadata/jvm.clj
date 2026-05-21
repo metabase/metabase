@@ -29,7 +29,7 @@
 
 (defn- metric-spec->honey-sql
   "Build HoneySQL WHERE clause for fetching metrics.
-   Metrics are Cards with type='metric' - not scoped to any database."
+  Metrics are Cards with type='metric' - not scoped to any database."
   [{id-set :id, name-set :name, :keys [table-id card-id], :as _metadata-spec}]
   (let [active-only? (not (or id-set name-set))
         where-clauses (cond-> [[:= :type [:inline "metric"]]]
@@ -43,7 +43,7 @@
 
 (defn- fetch-metrics
   "Fetch metrics matching spec, not scoped to any database.
-   Returns metrics as metadata objects with :lib/type :metadata/metric."
+  Returns metrics as metadata objects with :lib/type :metadata/metric."
   [metadata-spec]
   (let [query (metric-spec->honey-sql metadata-spec)]
     (try
@@ -57,9 +57,9 @@
 
 (defn- extract-dimensions-from-entity
   "Extract dimensions from a metric or measure, annotating with source info.
-   Each dimension is enriched with its corresponding dimension-mapping if available.
-   Dimensions are normalized after DB read to fix JSON round-trip artifacts
-   (e.g. string enum values for :has-field-values, :status, :sources)."
+  Each dimension is enriched with its corresponding dimension-mapping if available.
+  Dimensions are normalized after DB read to fix JSON round-trip artifacts
+  (e.g. string enum values for :has-field-values, :status, :sources)."
   [entity source-type]
   (let [dims         (:dimensions entity)
         mappings     (:dimension-mappings entity)
@@ -98,7 +98,7 @@
 
 (defn- fetch-dimensions
   "Fetch dimensions by aggregating from metrics and measures.
-   Dimensions are extracted from their parent entities and annotated with source info."
+  Dimensions are extracted from their parent entities and annotated with source info."
   [{id-set :id, :keys [metric-id measure-id table-id]}]
   (let [;; Fetch from metrics if not a measure-specific query
         metric-dims (when-not measure-id

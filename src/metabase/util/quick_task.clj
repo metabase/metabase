@@ -26,15 +26,15 @@
 
 (defn task-timeout-ms
   "Returns the task timeout in milliseconds. Reads from the `MB_QUICK_TASK_TIMEOUT_MINUTES` env var,
-   defaulting to 120 minutes (2 hours)."
+  defaulting to 120 minutes (2 hours)."
   []
   (u/minutes->ms (or (config/config-int :mb-quick-task-timeout-minutes) 120)))
 
 (defn submit-task!
   "Submit a task to the single thread executor. Each task is run on a separate thread with a timeout
-   controlled by the `MB_QUICK_TASK_TIMEOUT_MINUTES` env var (default 120 minutes). If a task exceeds
-   the timeout, it is cancelled and the executor moves on to the next queued task. This prevents a
-   single stuck task from blocking all subsequent tasks."
+  controlled by the `MB_QUICK_TASK_TIMEOUT_MINUTES` env var (default 120 minutes). If a task exceeds
+  the timeout, it is cancelled and the executor moves on to the next queued task. This prevents a
+  single stuck task from blocking all subsequent tasks."
   ^Future [^Callable f]
   {:pre [(some? f)]}
   (let [timeout-ms (long (task-timeout-ms))

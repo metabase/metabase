@@ -14,7 +14,7 @@
 
 (defn throttle-response
   "Build a 429 Ring response from a throttle exception, extracting Retry-After when available.
-   `body` is the response `:body` (callers build whatever shape their endpoint wants)."
+  `body` is the response `:body` (callers build whatever shape their endpoint wants)."
   [^ExceptionInfo e body]
   (let [retry-seconds (some->> (ex-message e) (re-find #"(\d+) seconds") second)]
     (cond-> {:status  429

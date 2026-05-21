@@ -78,7 +78,7 @@
 
 (mu/defn- user-in-group-clause
   "Returns a simple IN clause to check if dp.group_id is in the user's groups.
-   This is more efficient than nested EXISTS subqueries."
+  This is more efficient than nested EXISTS subqueries."
   [user-id :- pos-int?]
   [:in :dp.group_id {:select [:group_id]
                      :from   [:permissions_group_membership]
@@ -86,8 +86,8 @@
 
 (mu/defn- has-perms-for-table-as-honey-sql?
   "Builds an EXIST (SELECT ...) half-join to filter tables that a user has the required permissions for. It builds the subselect by as a
-   GROUP BY table_id HAVING user-most-or-least-restrictive-permission <= required-permission-level. The group by allows us to map the permission
-   value column to the index of the permission value in the `data-perms/Permission` map."
+  GROUP BY table_id HAVING user-most-or-least-restrictive-permission <= required-permission-level. The group by allows us to map the permission
+  value column to the index of the permission value in the `data-perms/Permission` map."
   [user-id          :- pos-int?
    perm-type        :- :keyword
    required-level   :- :keyword
@@ -282,7 +282,7 @@
 
 (mu/defn- has-perms-for-database-as-honey-sql?
   "Builds an EXISTS (SELECT ...) half-join to filter databases that a user has the required permissions for.
-   Similar to has-perms-for-table-as-honey-sql? but specifically for database-level permissions."
+  Similar to has-perms-for-table-as-honey-sql? but specifically for database-level permissions."
   [user-id :- pos-int?
    perm-type :- :keyword
    required-level :- :keyword
@@ -298,7 +298,7 @@
 
 (mu/defn visible-database-filter-select
   "Selects database IDs that are visible to the provided user given a mapping of permission types to the required value.
-   Similar to visible-table-filter-select but for databases."
+  Similar to visible-table-filter-select but for databases."
   [{:keys [user-id is-superuser? is-data-analyst?]} :- UserInfo
    permission-mapping :- PermissionMapping]
   {:select [:md.id]

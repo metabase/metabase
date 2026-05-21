@@ -559,14 +559,14 @@
 
 (defn- close-minute?
   "Tests whether two minute integers are within 1 minute of each other on the clock.
-   0 and 59 are considered close."
+  0 and 59 are considered close."
   [a b]
   (or (<= (mod (- b a) 60) 1)
       (<= (mod (- a b) 60) 1)))
 
 (defn- close-hour?
   "Tests whether two hour integers are within 1 hour of each other on the clock.
-   0 and 23 are considered close."
+  0 and 23 are considered close."
   [a b]
   (or (<= (mod (- b a) 24) 1)
       (<= (mod (- a b) 24) 1)))

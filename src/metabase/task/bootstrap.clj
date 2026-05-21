@@ -15,7 +15,7 @@
 
 (defn set-connection-interceptor!
   "Set an optional function to wrap JDBC connections before Quartz uses them.
-   Called by task.tracing to add SQL-level tracing. Pass nil to remove."
+  Called by task.tracing to add SQL-level tracing. Pass nil to remove."
   [f]
   (reset! connection-interceptor f))
 

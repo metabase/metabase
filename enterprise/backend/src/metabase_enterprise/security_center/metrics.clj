@@ -32,14 +32,14 @@
 
 (defn- last-sync-epoch-seconds
   "Read the last-synced-at setting and convert to Unix epoch seconds, or nil if
-   no sync has ever completed."
+  no sync has ever completed."
   []
   (when-let [^Temporal t (settings/security-center-last-synced-at)]
     (.getLong t ChronoField/INSTANT_SECONDS)))
 
 (defn- vulnerable-counts
   "Return a map of [severity acknowledged?] → count for advisories whose
-   match_status places them in the vulnerable bucket."
+  match_status places them in the vulnerable bucket."
   []
   (->> (t2/reducible-select [:model/SecurityAdvisory :severity :acknowledged_at]
                             :match_status [:in vulnerable-statuses])

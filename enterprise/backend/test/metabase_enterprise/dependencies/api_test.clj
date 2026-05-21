@@ -86,7 +86,7 @@
 
 (defn- create-model-card!
   "Create a model card with the given name and optional collection-id.
-   Returns the created card."
+  Returns the created card."
   [user card-name & {:keys [collection-id archived]}]
   (let [mp (mt/metadata-provider)
         orders (lib.metadata/table mp (mt/id :orders))]
@@ -119,7 +119,7 @@
 
 (defn- break-model-card!
   "Update a model card to query the products table instead of orders.
-   This breaks any downstream cards that depend on columns only in the orders table (like TOTAL)."
+  This breaks any downstream cards that depend on columns only in the orders table (like TOTAL)."
   [model-card]
   (let [mp (mt/metadata-provider)
         products (lib.metadata/table mp (mt/id :products))]
@@ -128,7 +128,7 @@
 
 (defn- run-analysis-for-card!
   "Run analysis for a specific card to detect broken references.
-   Must be called within lib-be/with-metadata-provider-cache."
+  Must be called within lib-be/with-metadata-provider-cache."
   [card-id]
   (dependencies.findings/upsert-analysis! (t2/select-one :model/Card :id card-id)))
 

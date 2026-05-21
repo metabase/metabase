@@ -8,7 +8,7 @@
 
 (defn- bucket-count-score
   "Universal quality curve for bucket/group counts. Sweet spot is 10-25 buckets.
-   Returns 0.0 for ≤1 (hard-zero gate for constant fields)."
+  Returns 0.0 for ≤1 (hard-zero gate for constant fields)."
   [n]
   (cond
     (<= n 1)   0.0
@@ -22,8 +22,8 @@
 
 (def ^:private temporal-bucket-days
   "Temporal bucketing strategies with approximate days per bucket, coarsest first
-   so `reduce` finds the best match efficiently (coarser = fewer buckets, finer
-   granularities only win if coarser ones overshoot)."
+  so `reduce` finds the best match efficiently (coarser = fewer buckets, finer
+  granularities only win if coarser ones overshoot)."
   [[:year    365.25]
    [:quarter 91.31]
    [:month   30.44]
@@ -134,12 +134,12 @@
 
 (defn text-structure
   "Penalize text fields that are structured data (JSON, URLs, email, state codes), mostly
-   blank, or free-form long text. These make poor breakout candidates.
+  blank, or free-form long text. These make poor breakout candidates.
 
-   Email / state percentage checks are a safety net for fields the classifier missed:
-   normally they get `:type/Email` / `:type/State` semantic types which are handled by
-   `type-bonus`, but for borderline or misclassified fields the raw percentages still
-   catch them here."
+  Email / state percentage checks are a safety net for fields the classifier missed:
+  normally they get `:type/Email` / `:type/State` semantic types which are handled by
+  `type-bonus`, but for borderline or misclassified fields the raw percentages still
+  catch them here."
   [field]
   (let [text-fp (get-in field [:fingerprint :type :type/Text])]
     (if (nil? text-fp)
@@ -174,8 +174,8 @@
 
 (def canonical-dimension-weights
   "Canonical weight profile for scoring a field as a *dimension* (breakout column).
-   Persisted as `dimension_interestingness` on metabase_field. Rewards structural
-   cleanliness, good bucket counts, category/temporal types, and balanced distributions."
+  Persisted as `dimension_interestingness` on metabase_field. Rewards structural
+  cleanliness, good bucket counts, category/temporal types, and balanced distributions."
   {impl/type-penalty       0.30
    cardinality             0.20
    impl/nullness           0.10
@@ -188,8 +188,8 @@
 (defn dimension-interestingness
   "Return the canonical `dimension_interestingness` score for `field`.
 
-   Accepts either a raw DB-style field map with snake_case keys or a normalized
-   field map with kebab-case keys. Returns a double in [0.0, 1.0]."
+  Accepts either a raw DB-style field map with snake_case keys or a normalized
+  field map with kebab-case keys. Returns a double in [0.0, 1.0]."
   [field]
   (:score (impl/score-field canonical-dimension-weights
                             (impl/normalize-field field))))

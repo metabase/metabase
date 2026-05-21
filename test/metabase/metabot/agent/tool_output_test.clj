@@ -30,7 +30,7 @@
 
 (def ^:private edn-patterns
   "Regex patterns that indicate raw EDN/Clojure data leaked into the output.
-   If any of these match, a tool is dumping data structures instead of formatted text."
+  If any of these match, a tool is dumping data structures instead of formatted text."
   [#"\{:result-type"
    #":structured-output"
    #":structured_output"
@@ -51,7 +51,7 @@
 
 (defn- assert-formatted-output
   "Assert that a tool result contains a well-formatted :output string.
-   Checks it's a string, matches expected-pattern, has no EDN leaks, and is within size budget."
+  Checks it's a string, matches expected-pattern, has no EDN leaks, and is within size budget."
   [{:keys [output]} description expected-pattern]
   (testing description
     (is (string? output) "tool must return :output string")

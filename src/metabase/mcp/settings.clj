@@ -29,7 +29,7 @@
 
 (defn unobfuscated-mcp-embedding-signing-secret
   "Get the unobfuscated value of [[mcp-embedding-signing-secret]]. Callers must only
-   use this for in-process key derivation, never to expose the secret externally."
+  use this for in-process key derivation, never to expose the secret externally."
   []
   (setting/get-value-of-type :string :mcp-embedding-signing-secret))
 
@@ -37,7 +37,7 @@
 
 (def ^:private mcp-client-apps-sandbox-domains
   "Maps MCP client keys to MCP Apps sandbox domains.
-   vscode-webview:// origins need special handling (prefix match, not wildcard domain)."
+  vscode-webview:// origins need special handling (prefix match, not wildcard domain)."
   {"claude"  ["https://*.claudemcpcontent.com"]
    "chatgpt" ["https://*.web-sandbox.oaiusercontent.com"]
 

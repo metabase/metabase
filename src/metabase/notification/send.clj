@@ -447,10 +447,10 @@
 
 (defn notification->task-run-info
   "Extract task run info from a notification for use with [[metabase.task-history.core/with-task-run]].
-   - Card notifications (alerts): run_type :alert, entity_type :card
-   - Dashboard notifications (subscriptions): run_type :subscription, entity_type :dashboard
-   - Returns nil for other notification types or if entity_id would be nil.
-   Handles both hydrated notifications (with :payload) and non-hydrated (with :payload_id)."
+  - Card notifications (alerts): run_type :alert, entity_type :card
+  - Dashboard notifications (subscriptions): run_type :subscription, entity_type :dashboard
+  - Returns nil for other notification types or if entity_id would be nil.
+  Handles both hydrated notifications (with :payload) and non-hydrated (with :payload_id)."
   [{:keys [payload_type payload payload_id]}]
   (case payload_type
     :notification/card      (when-let [card-id (or (:card_id payload)

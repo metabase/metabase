@@ -78,7 +78,7 @@
 
 (defn- read-yaml-name
   "Read the `name:` field from a YAML file using regex (fast).
-   Falls back to `fallback` if the file doesn't exist or can't be read."
+  Falls back to `fallback` if the file doesn't exist or can't be read."
   [^File yaml-file ^String fallback]
   (if (.exists yaml-file)
     (or (quick-extract (.getPath yaml-file) "name" #"(?m)^name:\s*(.+)")
@@ -92,7 +92,7 @@
 
 (defn extract-model
   "Extract the serdes model from a YAML file (e.g., \"Collection\", \"Card\", \"Dashboard\").
-   Looks for the model field inside serdes/meta to avoid matching embedded refs."
+  Looks for the model field inside serdes/meta to avoid matching embedded refs."
   [file-path]
   (try
     (let [content (slurp file-path)]
@@ -102,8 +102,8 @@
 
 (defn- index-segments-and-measures
   "Walk a table directory's segments/ and measures/ subdirectories.
-   Reads entity_id from each YAML (only a handful exist).
-   Returns a seq of {:kind :ref :file} entries."
+  Reads entity_id from each YAML (only a handful exist).
+  Returns a seq of {:kind :ref :file} entries."
   [^File table-dir]
   (into []
         (mapcat
@@ -119,7 +119,7 @@
 
 (defn- list-table-dirs
   "Return a seq of table directory Files for a database.
-   Walks schemas/<schema>/tables/<table>/ and tables/<table>/ directories."
+  Walks schemas/<schema>/tables/<table>/ and tables/<table>/ directories."
   [^File databases-dir db-name->dir-map db-name]
   (let [^File db (db-dir databases-dir db-name->dir-map db-name)
         result   (volatile! [])]
@@ -186,7 +186,7 @@
 
 (defn- index-collections-tree
   "Walk the collections/ directory and index all entities by their serdes model.
-   Returns entries for cards, dashboards, and collections."
+  Returns entries for cards, dashboards, and collections."
   [export-dir]
   (let [collections-dir (io/file export-dir "collections")]
     (when (.isDirectory collections-dir)
@@ -203,8 +203,8 @@
 
 (defn build-file-index
   "Build index of all entity files in an export directory.
-   Returns `{:index {kind {ref file-path}} :db-name->dir {real-name dir-name}}`
-   where index also has `:duplicates` for refs appearing in multiple files."
+  Returns `{:index {kind {ref file-path}} :db-name->dir {real-name dir-name}}`
+  where index also has `:duplicates` for refs appearing in multiple files."
   [export-dir]
   (let [databases-dir (io/file export-dir "databases")
         schema-result (when (.isDirectory databases-dir)
@@ -232,8 +232,8 @@
 
 (defn index-stats
   "Get statistics about a file index.
-   Note: tables and fields are resolved on demand and won't appear in the index
-   for schema-dir sources. They will be 0 for `build-database-dir-index` results."
+  Note: tables and fields are resolved on demand and won't appear in the index
+  for schema-dir sources. They will be 0 for `build-database-dir-index` results."
   [index]
   {:databases      (count (:database index))
    :tables         (count (:table index))
@@ -281,7 +281,7 @@
 
 (defn make-source
   "Create a MetadataSource for a serdes export directory.
-   The databases-dir for field resolution is export-dir/databases."
+  The databases-dir for field resolution is export-dir/databases."
   [export-dir]
   (let [databases-dir (io/file export-dir "databases")
         index         (build-file-index export-dir)
@@ -290,7 +290,7 @@
 
 (defn source-index
   "Get the assets index from a SerdesSource. Returns a flat map of
-   {[kind ref] file-path} for cards, dashboards, segments, etc."
+  {[kind ref] file-path} for cards, dashboards, segments, etc."
   [^SerdesSource source]
   (.-assets-index source))
 

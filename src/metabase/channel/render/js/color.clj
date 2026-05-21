@@ -34,8 +34,8 @@
 
 (defn- ->js-number
   "Coerce BigDecimal/BigInteger to primitive double/long so Graal's JS context sees them as numbers, not host objects.
-   Returns nil when the value would overflow — BigInteger too wide for long, or BigDecimal magnitude beyond Double's
-   finite range — since silently truncating would feed wrong values into gradient/comparison logic."
+  Returns nil when the value would overflow — BigInteger too wide for long, or BigDecimal magnitude beyond Double's
+  finite range — since silently truncating would feed wrong values into gradient/comparison logic."
   [v]
   (cond
     (instance? BigDecimal v)

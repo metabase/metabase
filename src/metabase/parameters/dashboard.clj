@@ -148,7 +148,7 @@
 
 (defn- find-common-remapping-target
   "Check if ALL field-ids have identical remappings to the same display field.
-   Returns the common target field-id if ALL fields have the same remapping, nil otherwise."
+  Returns the common target field-id if ALL fields have the same remapping, nil otherwise."
   [field-ids]
   (let [target-field-ids (into #{}
                                (map (comp :id chain-filter/remapping))

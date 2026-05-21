@@ -10,7 +10,7 @@
 
 (defn- parse-set-args
   "Parse --set KEY=VALUE arguments into a map of {\"KEY\" \"VALUE\"}.
-   Warns on entries without a `=` so typos surface."
+  Warns on entries without a `=` so typos surface."
   [set-args]
   (into {}
         (keep (fn [s]
@@ -23,8 +23,8 @@
 
 (defn- parse-set-from-file-args
   "Parse --set-from-file KEY=path arguments by reading the referenced file
-   and producing a map of {\"KEY\" \"<file contents>\"}. Missing files become
-   empty strings with a warning."
+  and producing a map of {\"KEY\" \"<file contents>\"}. Missing files become
+  empty strings with a warning."
   [args]
   (into {}
         (keep (fn [s]
@@ -42,8 +42,8 @@
 
 (defn- resolve-file-includes
   "Replace all {{FILE:path}} placeholders with the contents of the referenced files.
-   Paths are relative to the project root. One pass only — included content is
-   not re-scanned for further {{FILE:...}} markers."
+  Paths are relative to the project root. One pass only — included content is
+  not re-scanned for further {{FILE:...}} markers."
   [content]
   (str/replace content
                #"\{\{FILE:([^}]+)\}\}"
@@ -57,10 +57,10 @@
 
 (defn generate-prompt!
   "Fill a template with placeholders and write to output.
-   Expects --template, --output, and one or more --set KEY=VALUE options.
-   Also supports --set-from-file KEY=path to read a value from a file
-   (useful for multi-line values you'd otherwise have to shell-escape).
-   Also resolves {{FILE:path}} includes."
+  Expects --template, --output, and one or more --set KEY=VALUE options.
+  Also supports --set-from-file KEY=path to read a value from a file
+  (useful for multi-line values you'd otherwise have to shell-escape).
+  Also resolves {{FILE:path}} includes."
   [{:keys [options]}]
   (let [template-path  (:template options)
         output-path    (:output options)

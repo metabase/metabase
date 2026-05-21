@@ -309,7 +309,7 @@
 (defn- field->database+base-type
   "Returns a normalized `database-type` and its `base-type` for a type from BigQuery Field type.
 
-   In BQ, an ARRAY of INTEGER has \"REPEATED\" as the mode, and \"INTEGER\" as the type name."
+  In BQ, an ARRAY of INTEGER has \"REPEATED\" as the mode, and \"INTEGER\" as the type name."
   [^Field field]
   (let [field-type (.. field getType name)
         field-mode (.getMode field)
@@ -465,7 +465,7 @@
 ;; we redef this in a test, don't make `^:const`!
 (def ^:private num-table-partitions
   "Number of tables to batch for describe-fields. Too low and we'll do too many queries, which is slow.
-   Too high and we'll hold too many fields of a dataset in memory, which risks causing OOMs."
+  Too high and we'll hold too many fields of a dataset in memory, which risks causing OOMs."
   1024)
 
 (defn- list-table-names [driver database project-id dataset-id]

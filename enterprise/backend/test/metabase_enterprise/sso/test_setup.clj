@@ -20,9 +20,9 @@
 
 (defn do-with-other-sso-types-disabled!
   "Execute `thunk` with LDAP, SAML, JWT, and Slack Connect SSO types disabled.
-   Useful when testing a specific SSO provider in isolation.
+  Useful when testing a specific SSO provider in isolation.
 
-   This EE version disables all SSO types including EE-only SAML and JWT."
+  This EE version disables all SSO types including EE-only SAML and JWT."
   [thunk]
   (mt/with-temporary-setting-values
     [ldap-enabled          false
@@ -53,7 +53,7 @@
 
 (defmacro with-saml-default-setup!
   "Set up default SAML configuration for tests.
-   Includes premium features, login attributes cleanup, and default SAML config."
+  Includes premium features, login attributes cleanup, and default SAML config."
   [& body]
   `(mt/test-helpers-set-global-values!
      (mt/with-additional-premium-features #{:sso-saml}
@@ -88,7 +88,7 @@
 
 (defmacro with-jwt-default-setup!
   "Set up default JWT configuration for tests.
-   Includes premium features, model cleanup, other SSO types disabled, login attributes cleanup, and default JWT config."
+  Includes premium features, model cleanup, other SSO types disabled, login attributes cleanup, and default JWT config."
   [& body]
   `(mt/test-helpers-set-global-values!
      (mt/with-model-cleanup [:model/User :model/Collection :model/Tenant]

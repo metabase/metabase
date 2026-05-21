@@ -111,7 +111,7 @@
 
 (defn create-test-database!
   "Create a test database for performance testing.
-   Returns the database ID."
+  Returns the database ID."
   [run-id]
   (let [{:keys [db-id]} (add-load/from-script
                          [[:model/Database {:?/db-id :id}
@@ -151,7 +151,7 @@
 
 (defn create-tables-batch!
   "Create a batch of tables for the given database.
-   Returns the number of tables created."
+  Returns the number of tables created."
   [db-id prefix start-idx cnt]
   (let [script (vec
                 (for [i (range start-idx (+ start-idx cnt))]
@@ -202,7 +202,7 @@
 
 (defn- create-cards!
   "Create n cards of the given type, distributed across collections round-robin.
-   card-type is \"question\", \"model\", or \"metric\"."
+  card-type is \"question\", \"model\", or \"metric\"."
   [n db-id collection-ids card-type run-id]
   (println (format "Creating %d cards (type=%s)..." n card-type))
   (let [timer   (u/start-timer)
@@ -301,7 +301,7 @@
 
 (defn- create-actions!
   "Create n actions, each backed by a model card from model-card-ids (round-robin).
-   Each action requires an Action row + a QueryAction row."
+  Each action requires an Action row + a QueryAction row."
   [n model-card-ids db-id run-id]
   (let [timer      (u/start-timer)
         prefix     (str "Perf Action " run-id " ")
@@ -332,7 +332,7 @@
 
 (defn create-permission-groups!
   "Create n permission groups for testing.
-   Returns a vector of group IDs."
+  Returns a vector of group IDs."
   [n run-id]
   (println (format "Creating %d permission groups..." n))
   (let [timer  (u/start-timer)
@@ -350,10 +350,10 @@
 
 (defn create-users-with-memberships!
   "Create n users and assign them to permission groups.
-   Each user is assigned to a subset of groups based on their index.
-   Users are also added to the All Users group automatically by the model.
+  Each user is assigned to a subset of groups based on their index.
+  Users are also added to the All Users group automatically by the model.
 
-   Returns a vector of user IDs."
+  Returns a vector of user IDs."
   [n group-ids run-id]
   (println (format "Creating %d users with group memberships..." n))
   (let [timer      (u/start-timer)
@@ -392,13 +392,13 @@
 
 (def ^:private max-tables-for-table-perms
   "Table-level permission grants via set-table-permissions! are very slow per call.
-   Above this threshold we skip table-level grants and use database-level permissions instead."
+  Above this threshold we skip table-level grants and use database-level permissions instead."
   10000)
 
 (defn grant-table-permissions-to-groups!
   "Grant permissions to groups for tables. For small table counts, grants table-level
-   permissions (5% of tables per group). For large counts, grants database-level
-   permissions instead since table-level grants are too slow."
+  permissions (5% of tables per group). For large counts, grants database-level
+  permissions instead since table-level grants are too slow."
   [table-ids group-ids]
   (let [timer      (u/start-timer)
         num-tables (count table-ids)
@@ -452,7 +452,7 @@
 
 (defn- create-all-model-types!
   "Create all searchable model types using data-scale multipliers.
-   Returns a map of created entity IDs."
+  Returns a map of created entity IDs."
   [data-scale run-id prefix]
   (let [counts        (scale->counts data-scale)
         _             (println "\nScaled entity counts:")
@@ -813,13 +813,13 @@
 
 (defn bench-ingestion!
   "Benchmark search ingestion memory usage.
-   Reduces searchable-documents (the full pipeline: search-items-reducible -> query->documents),
-   measuring heap before/after/peak and duration.
+  Reduces searchable-documents (the full pipeline: search-items-reducible -> query->documents),
+  measuring heap before/after/peak and duration.
 
-   Reports both peak delta (allocation watermark, affected by GC timing) and
-   retained delta (actual memory held after GC — the meaningful metric).
+  Reports both peak delta (allocation watermark, affected by GC timing) and
+  retained delta (actual memory held after GC — the meaningful metric).
 
-   Re-run this after making changes to the ingestion code to compare memory impact."
+  Re-run this after making changes to the ingestion code to compare memory impact."
   []
   (println "\n============================================================")
   (println "  Search Ingestion Memory Benchmark")
@@ -855,7 +855,7 @@
 
 (defn bench-reindex!
   "Benchmark a full synchronous reindex of the appdb search engine,
-   measuring heap before/after/peak and duration."
+  measuring heap before/after/peak and duration."
   []
   (println "\n============================================================")
   (println "  Search Reindex Memory Benchmark")
@@ -950,7 +950,7 @@
 
 (defn- counting-reduce
   "Reduce a reducible, touching string values to prevent lazy optimization.
-   Returns {:rows N :duration-ms M :heap-before B :peak-delta D}."
+  Returns {:rows N :duration-ms M :heap-before B :peak-delta D}."
   [label reducible]
   (println (format "\n--- %s ---" label))
   (let [heap-before (measure-heap-baseline)
@@ -1076,11 +1076,11 @@
 
 (defn bench-ingestion-by-model!
   "Benchmark each search model independently to isolate per-model memory behavior.
-   Calls spec-index-reducible per model (same path as production), measuring
-   heap before/after/peak for each model with forced GC between models.
+  Calls spec-index-reducible per model (same path as production), measuring
+  heap before/after/peak for each model with forced GC between models.
 
-   This reveals whether individual models load eagerly (large peak delta)
-   or stream properly (small peak delta)."
+  This reveals whether individual models load eagerly (large peak delta)
+  or stream properly (small peak delta)."
   []
   (println "\n============================================================")
   (println "  Per-Model Memory Benchmark")

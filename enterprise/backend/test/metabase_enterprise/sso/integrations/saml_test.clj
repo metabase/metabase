@@ -64,7 +64,7 @@
 
 (def call-with-default-saml-config!
   "Execute a function with default SAML configuration set up.
-   Delegates to [[sso.test-setup/call-with-default-saml-config!]]."
+  Delegates to [[sso.test-setup/call-with-default-saml-config!]]."
   sso.test-setup/call-with-default-saml-config!)
 
 (defmacro with-default-saml-config! [& body]
@@ -90,7 +90,7 @@
 
 (defmacro with-saml-default-setup!
   "Set up default SAML configuration for tests.
-   Delegates to [[sso.test-setup/with-saml-default-setup!]]."
+  Delegates to [[sso.test-setup/with-saml-default-setup!]]."
   [& body]
   `(sso.test-setup/with-saml-default-setup! ~@body))
 

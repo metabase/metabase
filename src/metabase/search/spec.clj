@@ -16,7 +16,7 @@
 
 (def search-models
   "Search model string names, ordered by indexing priority.
-   Important / cheaper models come first so partial index is usable as soon as possible during a full index."
+  Important / cheaper models come first so partial index is usable as soon as possible during a full index."
   ["collection"
    "dashboard"
    "segment"
@@ -85,8 +85,8 @@
 
 (def legacy-input-excluded-keys
   "Keys present on the ingestion document `m` that must NOT be encoded into `legacy_input`. These are
-   internal signals (ranking, filtering, ingestion bookkeeping) that the search API response should not
-   surface to clients. Consumers: `metabase.search.ingestion/->document`."
+  internal signals (ranking, filtering, ingestion bookkeeping) that the search API response should not
+  surface to clients. Consumers: `metabase.search.ingestion/->document`."
   ;; `:collection_type` and `:collection_location` deliberately stay IN `legacy_input`:
   ;; - `metabase.search.impl/serialize` reads `:collection_type` to build the response's `:collection.type`
   ;; - `metabase.search.impl/add-dataset-collection-hierarchy` reads `:collection_location` to hydrate
@@ -384,20 +384,20 @@
 (defmacro define-spec
   "Define a search specification for indexing and searching a Metabase model.
 
-   Spec keys:
-   - `:model` - Toucan model keyword (required)
-   - `:attrs` - Map of search index attributes (required)
-   - `:search-terms` - Vector of searchable text fields (required)
-   - `:render-terms` - Additional attributes needed for display (required)
-   - `:visibility` - `:all` (default) or `:app-user` (non-sandboxed, non-impersonated users only)
-   - `:where` - HoneySQL where clause to filter indexed records
-   - `:bookmark` - HoneySQL join expression to detect if entity is bookmarked by current user
-   - `:joins` - Map of join aliases to [model join-condition] tuples
+  Spec keys:
+  - `:model` - Toucan model keyword (required)
+  - `:attrs` - Map of search index attributes (required)
+  - `:search-terms` - Vector of searchable text fields (required)
+  - `:render-terms` - Additional attributes needed for display (required)
+  - `:visibility` - `:all` (default) or `:app-user` (non-sandboxed, non-impersonated users only)
+  - `:where` - HoneySQL where clause to filter indexed records
+  - `:bookmark` - HoneySQL join expression to detect if entity is bookmarked by current user
+  - `:joins` - Map of join aliases to [model join-condition] tuples
 
-   Attribute value formats:
-   - `true` - Use column with same name (snake_case)
-   - `:column_name` - Use specified database column
-   - `{:fn function :fields [:field1 :field2]}` - Execute a clojure function at index time with the given fields"
+  Attribute value formats:
+  - `true` - Use column with same name (snake_case)
+  - `:column_name` - Use specified database column
+  - `{:fn function :fields [:field1 :field2]}` - Execute a clojure function at index time with the given fields"
   [search-model spec]
   `(do
      ;; Capture raw form before evaluation (symbols stay as symbols, not function objects)
@@ -467,7 +467,7 @@
 
 (defn- canonicalize
   "Convert a form to a canonical, JSON-serializable representation.
-   Symbols and keywords become strings, maps are sorted."
+  Symbols and keywords become strings, maps are sorted."
   [form]
   (cond
     (symbol? form) (str form)
@@ -496,6 +496,6 @@
 
 (defn index-version-hash
   "Compute a deterministic hash of all search specifications.
-   Includes raw spec forms, default-attrs, and attr-types."
+  Includes raw spec forms, default-attrs, and attr-types."
   []
   (index-version-hash* *testing-only-index-version-hash*))

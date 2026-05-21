@@ -14,7 +14,7 @@
 
 (defn all-agent-scopes
   "All supported OAuth scopes derived from defendpoint metadata on the agent API,
-   plus scopes from MCP UI resources (e.g. visualize_query)."
+  plus scopes from MCP UI resources (e.g. visualize_query)."
   []
   (mcp/all-scopes))
 

@@ -65,7 +65,7 @@
 
 (def ^:private no-level
   "Sentinel string stored in `from_db` / `from_schema` / `to_db` / `to_schema` when the
-   driver does not emit that identifier level. See namespace docstring."
+  driver does not emit that identifier level. See namespace docstring."
   "")
 
 (defn- normalize-level
@@ -86,8 +86,8 @@
 
 (defn db-position-value
   "Value to put in the `:db` slot for `database`. Convenience accessor over
-   [[ws/engine-namespace-positions]]. Only meaningful for drivers whose
-   `qualified-name-components` includes `:db`."
+  [[ws/engine-namespace-positions]]. Only meaningful for drivers whose
+  `qualified-name-components` includes `:db`."
   [database]
   (:db (ws/engine-namespace-positions database)))
 
@@ -118,13 +118,13 @@
 
 (defn- short-hash
   "Short, stable, identifier-safe hash of `s`. Used as a disambiguating suffix
-   when [[remapped-table-name]] must truncate to fit a driver's identifier limit.
+  when [[remapped-table-name]] must truncate to fit a driver's identifier limit.
 
-   Uses base36 (`0-9a-z`) over the leading bytes of SHA-1: ~5.17 bits per character,
-   versus hex's 4. Eight base36 chars carry ~41 bits of entropy; 2^41 inputs are
-   needed for a ~50% birthday collision, which is well past any realistic per-database
-   table count. The alphabet is unquoted-identifier-safe on every supported warehouse
-   (base64 / base64-url include `+`, `/`, or `-` which are not)."
+  Uses base36 (`0-9a-z`) over the leading bytes of SHA-1: ~5.17 bits per character,
+  versus hex's 4. Eight base36 chars carry ~41 bits of entropy; 2^41 inputs are
+  needed for a ~50% birthday collision, which is well past any realistic per-database
+  table count. The alphabet is unquoted-identifier-safe on every supported warehouse
+  (base64 / base64-url include `+`, `/`, or `-` which are not)."
   [^String s]
   (let [md     (java.security.MessageDigest/getInstance "SHA-1")
         bytes  (.digest md (.getBytes s "UTF-8"))
@@ -137,12 +137,12 @@
 
 (defn remapped-table-name-with-limit
   "Implementation of [[remapped-table-name]] taking an explicit `max-bytes`. Exposed so
-   tests can exercise the truncation path with a small limit without driver dispatch.
-   Production callers should use [[remapped-table-name]] which derives `max-bytes` from
-   the driver. Counts and truncates by UTF-8 *bytes*, not characters -- Postgres et al.
-   measure their identifier limits in bytes, and a multi-byte schema name (emoji,
-   kanji) would overflow under naive char-based truncation. Truncation is codepoint-safe:
-   we never split a multi-byte char in the middle."
+  tests can exercise the truncation path with a small limit without driver dispatch.
+  Production callers should use [[remapped-table-name]] which derives `max-bytes` from
+  the driver. Counts and truncates by UTF-8 *bytes*, not characters -- Postgres et al.
+  measure their identifier limits in bytes, and a multi-byte schema name (emoji,
+  kanji) would overflow under naive char-based truncation. Truncation is codepoint-safe:
+  we never split a multi-byte char in the middle."
   [from-spec max-bytes]
   (let [{:keys [schema table]} from-spec
         raw       (str (or schema "") "__" table)
@@ -212,19 +212,19 @@
 
 (defn denormalize-level
   "Inverse of `normalize-level`: `\"\"` (the storage sentinel meaning \"this driver
-   doesn't emit this level\") becomes `nil` (what `:model/Table` rows actually carry
-   for the same level). Anything else passes through unchanged.
+  doesn't emit this level\") becomes `nil` (what `:model/Table` rows actually carry
+  for the same level). Anything else passes through unchanged.
 
-   Public so consumers outside the storage layer (the QP middleware) can apply the
-   same `\"\"`/`nil` equivalence without redefining it."
+  Public so consumers outside the storage layer (the QP middleware) can apply the
+  same `\"\"`/`nil` equivalence without redefining it."
   [v]
   (when-not (or (nil? v) (= no-level v)) v))
 
 (defn prune-no-level
   "Remove map keys whose values are the storage `\"\"` sentinel. Used by callers
-   that need to drop absent slots before passing the map to a downstream tool
-   (e.g. SQLGlot's `replace-names` matcher, which treats absent keys as wildcards
-   but would match an empty string literally)."
+  that need to drop absent slots before passing the map to a downstream tool
+  (e.g. SQLGlot's `replace-names` matcher, which treats absent keys as wildcards
+  but would match an empty string literally)."
   [m]
   (into {} (remove (fn [[_ v]] (= no-level v))) m))
 
@@ -267,8 +267,8 @@
 
 (defn build-table-replacements
   "Convert a `{from-spec to-spec}` remappings map into the format expected by
-   `sql-tools/replace-names`. SQLGlot handles quoting internally based on the
-   dialect, so we pass raw identifiers."
+  `sql-tools/replace-names`. SQLGlot handles quoting internally based on the
+  dialect, so we pass raw identifiers."
   [remappings]
   (into {}
         (map (fn [[from-spec to-spec]]
@@ -278,13 +278,13 @@
 
 (defn rewrite-sql
   "Parse `sql` and rewrite every table reference whose `(catalog, schema, table)` matches a
-   `from-spec` key in `remappings` to its `to-spec` counterpart. Returns the rewritten SQL.
+  `from-spec` key in `remappings` to its `to-spec` counterpart. Returns the rewritten SQL.
 
-   `remappings` is a `{from-spec to-spec}` map of `::table-spec`s. Caller is responsible for
-   fetching it (typically `ws.remapping/remappings-for-db`).
+  `remappings` is a `{from-spec to-spec}` map of `::table-spec`s. Caller is responsible for
+  fetching it (typically `ws.remapping/remappings-for-db`).
 
-   Fail-closed: throws `ex-info` with `:type qp.error-type/qp` on parse failure. A workspace
-   child must not silently pass canonical refs through to the warehouse."
+  Fail-closed: throws `ex-info` with `:type qp.error-type/qp` on parse failure. A workspace
+  child must not silently pass canonical refs through to the warehouse."
   [driver sql remappings]
   (try
     (let [replacements {:tables (build-table-replacements remappings)}]
@@ -299,9 +299,9 @@
 ; TODO Is this the same as prune-no-level?
 (defn- spec->consumer-shape
   "Project a storage `::table-spec` (`{:db :schema :table}` with `\"\"` sentinels) into
-   the consumer-shaped `{:db :schema :name}` map (with `nil` for absent slots). The
-   storage sentinel stays below this line; consumers (`:model/Table` predicates,
-   transform targets, sync's describe-fields lookups) work with `nil`."
+  the consumer-shaped `{:db :schema :name}` map (with `nil` for absent slots). The
+  storage sentinel stays below this line; consumers (`:model/Table` predicates,
+  transform targets, sync's describe-fields lookups) work with `nil`."
   [{:keys [db schema table]}]
   {:db     (denormalize-level db)
    :schema (denormalize-level schema)
@@ -309,7 +309,7 @@
 
 (defn- consumer-shape->spec
   "Project a `{:db :schema :name}` consumer-shape map into a storage `::table-spec`,
-   normalizing nil slots to the empty-string sentinel."
+  normalizing nil slots to the empty-string sentinel."
   [{:keys [db schema name]}]
   {:db     (normalize-level db)
    :schema (normalize-level schema)
@@ -318,12 +318,12 @@
 (defn- enrich-from-spec
   "Fill identifier slots the driver emits but the caller omitted from `from-spec`.
 
-   Callers in `metabase.sync.fetch-metadata` only carry the `:schema` and `:name`
-   they read off the `:model/Table` row — they don't know how to compute `:db`
-   for drivers like MySQL (whose canonical namespace is the connection's bound
-   database, not the Table's `:schema` column). Use `engine-namespace-positions`
-   to derive any missing slot from the `database`, so the driver-aware match in
-   `canonical->isolated` doesn't false-miss on a populated remap row."
+  Callers in `metabase.sync.fetch-metadata` only carry the `:schema` and `:name`
+  they read off the `:model/Table` row — they don't know how to compute `:db`
+  for drivers like MySQL (whose canonical namespace is the connection's bound
+  database, not the Table's `:schema` column). Use `engine-namespace-positions`
+  to derive any missing slot from the `database`, so the driver-aware match in
+  `canonical->isolated` doesn't false-miss on a populated remap row."
   [database from-spec]
   (let [positions (ws/engine-namespace-positions database {:name   (:name from-spec)
                                                            :schema (:schema from-spec)})]
@@ -333,14 +333,14 @@
 
 (defn remap-table
   "Returns `{:db :schema :name}` for the workspace destination of canonical
-   `from-spec`, or nil if no remapping exists.
+  `from-spec`, or nil if no remapping exists.
 
-   Called per-table during sync via the `workspace-remap-schema+name` defenterprise hook.
-   Uses driver-aware key projection so engines like MySQL (whose canonical/isolated
-   tables differ at the `:db` AST position rather than `:schema`) match correctly.
+  Called per-table during sync via the `workspace-remap-schema+name` defenterprise hook.
+  Uses driver-aware key projection so engines like MySQL (whose canonical/isolated
+  tables differ at the `:db` AST position rather than `:schema`) match correctly.
 
-   `from-spec` is `{:db :schema :name}`. Output uses nil-instead-of-empty-string for
-   slots the driver doesn't emit."
+  `from-spec` is `{:db :schema :name}`. Output uses nil-instead-of-empty-string for
+  slots the driver doesn't emit."
   [database-id from-spec]
   (when-let [database (t2/select-one :model/Database :id database-id)]
     (let [driver   (keyword (:engine database))
@@ -352,31 +352,31 @@
 
 (defenterprise workspace-remap-schema+name
   "Enterprise impl of the sync hook. Returns `{:db :schema :name}` for the
-   isolated warehouse table when a `TableRemapping` row exists — sync asks the
-   driver there, while app-db rows keep their logical identity. Deliberately
-   ungated on premium features: if rows exist they must be respected, regardless
-   of current token state."
+  isolated warehouse table when a `TableRemapping` row exists — sync asks the
+  driver there, while app-db rows keep their logical identity. Deliberately
+  ungated on premium features: if rows exist they must be respected, regardless
+  of current token state."
   :feature :none
   [db-id from-spec]
   (remap-table db-id from-spec))
 
 (defn all-mappings-for-db
   "Return all remappings for a given database as a map of `from-spec` to `to-spec`,
-   each a `::table-spec` (`{:db :schema :table}`).
+  each a `::table-spec` (`{:db :schema :table}`).
 
-   Empty-string sentinels in `:db` / `:schema` indicate \"this driver does not emit
-   this level\" and should be dropped before being handed to SQLGlot — see
-   [[metabase-enterprise.workspaces.query-processor.middleware]]."
+  Empty-string sentinels in `:db` / `:schema` indicate \"this driver does not emit
+  this level\" and should be dropped before being handed to SQLGlot — see
+  [[metabase-enterprise.workspaces.query-processor.middleware]]."
   [database-id]
   (ws.remapping/remappings-for-db database-id))
 
 (defenterprise filter-workspace-side-tables
   "Enterprise impl of the table-list filter. Drops tuples whose `(schema, name)`
-   matches the to-side of any active `TableRemapping` row for `db-id`. Workspace
-   isolation tables show up in `describe-database` because the connection has
-   GRANT on the isolation schema, but they must not become `:model/Table` rows —
-   canonical Tables back them via remap. Like the read-side hook, deliberately
-   ungated on premium features: if rows exist, the filter must apply. See DEV-1898."
+  matches the to-side of any active `TableRemapping` row for `db-id`. Workspace
+  isolation tables show up in `describe-database` because the connection has
+  GRANT on the isolation schema, but they must not become `:model/Table` rows —
+  canonical Tables back them via remap. Like the read-side hook, deliberately
+  ungated on premium features: if rows exist, the filter must apply. See DEV-1898."
   :feature :none
   [tuples db-id]
   ;; Storage rows carry the `""` sentinel for absent slots; sync tuples carry
@@ -391,9 +391,9 @@
 
 (defenterprise expand-schema-names-with-workspace
   "Enterprise impl: augment a `:schema-names` list with `to_schema` values for
-   any active remap row whose `from_schema` matches one of the input schemas.
-   Lets sync's FK fetch reach the workspace-isolated warehouse tables that
-   physically back canonical Tables on a workspace child."
+  any active remap row whose `from_schema` matches one of the input schemas.
+  Lets sync's FK fetch reach the workspace-isolated warehouse tables that
+  physically back canonical Tables on a workspace child."
   :feature :none
   [schema-names db-id]
   (if (empty? schema-names)
@@ -407,21 +407,21 @@
 
 (defn- iso-db-swap-maps-for-fk-probe
   "Return a seq of swap-maps to apply per `describe-fks` invocation. Each entry is
-   either `{:db <iso-db>}` (run describe-fks with the JDBC connection pointed at
-   that iso DB) or nil (run with no swap, against the canonical connection).
+  either `{:db <iso-db>}` (run describe-fks with the JDBC connection pointed at
+  that iso DB) or nil (run with no swap, against the canonical connection).
 
-   When the database has any active remap rows whose `to_db` differs from the
-   canonical bound database (today: MySQL workspaces with cross-DB swaps), return
-   only the iso swap-maps -- on a workspace child the canonical DB holds no real
-   tables, so probing it would waste a round-trip and the rows it returns wouldn't
-   correspond to any `:model/Table`. Otherwise return a single nil entry so the
-   probe runs once against the canonical connection, preserving non-workspace
-   behavior.
+  When the database has any active remap rows whose `to_db` differs from the
+  canonical bound database (today: MySQL workspaces with cross-DB swaps), return
+  only the iso swap-maps -- on a workspace child the canonical DB holds no real
+  tables, so probing it would waste a round-trip and the rows it returns wouldn't
+  correspond to any `:model/Table`. Otherwise return a single nil entry so the
+  probe runs once against the canonical connection, preserving non-workspace
+  behavior.
 
-   3-slot engines (BigQuery, SQL Server) populate `:db` on both sides of the
-   remap row but the canonical `:db` already routes through the existing
-   connection, so the iso `:db` matches canonical and this collapses to the
-   single-canonical-run path."
+  3-slot engines (BigQuery, SQL Server) populate `:db` on both sides of the
+  remap row but the canonical `:db` already routes through the existing
+  connection, so the iso `:db` matches canonical and this collapses to the
+  single-canonical-run path."
   [db-id]
   (let [database     (t2/select-one :model/Database :id db-id)
         canonical-db (-> database :details :db)
@@ -436,14 +436,14 @@
 
 (defenterprise call-with-fk-probe-iso-dbs
   "Enterprise impl: invoke `f` once for the canonical bound DB, then once for each
-   distinct iso `:db` differing from the canonical, each iteration inside a
-   `with-swapped-connection-details` scope. Returns a vector of `f`'s results so
-   the caller can concatenate row batches before back-translation.
+  distinct iso `:db` differing from the canonical, each iteration inside a
+  `with-swapped-connection-details` scope. Returns a vector of `f`'s results so
+  the caller can concatenate row batches before back-translation.
 
-   Cross-DB MySQL workspaces store the iso table in a different bound database
-   than the canonical one. Without a per-iso-DB describe-fks call, the JDBC
-   connection only ever talks to the canonical DB and the iso DB's FK rows go
-   undiscovered."
+  Cross-DB MySQL workspaces store the iso table in a different bound database
+  than the canonical one. Without a per-iso-DB describe-fks call, the JDBC
+  connection only ever talks to the canonical DB and the iso DB's FK rows go
+  undiscovered."
   :feature :none
   [db-id f]
   (mapv (fn [swap-map]
@@ -455,16 +455,16 @@
 
 (defenterprise inject-workspace-canonical-tuples
   "Enterprise impl: augment a `describe-database` result with synthetic
-   canonical-side `(from_schema, from_table_name)` tuples for every active
-   remap row. Without this, `sync-tables-and-database!` would diff app-db's
-   canonical Table rows against a `describe-database` result that excludes
-   them (the canonical name only exists virtually, backed by the workspace
-   warehouse table). The diff would then retire those rows on every sync.
+  canonical-side `(from_schema, from_table_name)` tuples for every active
+  remap row. Without this, `sync-tables-and-database!` would diff app-db's
+  canonical Table rows against a `describe-database` result that excludes
+  them (the canonical name only exists virtually, backed by the workspace
+  warehouse table). The diff would then retire those rows on every sync.
 
-   Adds one synthetic tuple per remap row, whether or not the canonical
-   tuple is already present (`into` deduplicates; tuples are equal by value).
-   Tuples carry only `:schema` and `:name` -- the only fields the
-   `sync-tables-and-database!` diff keys on."
+  Adds one synthetic tuple per remap row, whether or not the canonical
+  tuple is already present (`into` deduplicates; tuples are equal by value).
+  Tuples carry only `:schema` and `:name` -- the only fields the
+  `sync-tables-and-database!` diff keys on."
   :feature :none
   [tuples db-id]
   ;; Storage rows carry the `""` sentinel for absent slots; the sync diff
@@ -482,11 +482,11 @@
 
 (defenterprise rewrite-fk-result-canonical
   "Enterprise impl: walk an FK-result collection, rewriting workspace-side
-   `(schema, name)` pairs back to canonical `(from_schema, from_table_name)`
-   on both fk-side and pk-side. Rows whose pairs don't match any active
-   `to_*` tuple pass through unchanged — used for FKs to non-remapped tables
-   and for the legacy `describe-table-fks` fallback whose fk-side is already
-   canonical."
+  `(schema, name)` pairs back to canonical `(from_schema, from_table_name)`
+  on both fk-side and pk-side. Rows whose pairs don't match any active
+  `to_*` tuple pass through unchanged — used for FKs to non-remapped tables
+  and for the legacy `describe-table-fks` fallback whose fk-side is already
+  canonical."
   :feature :none
   [rows db-id]
   ;; Storage `:schema` is the `""` sentinel for absent slots; FK-result rows
@@ -514,17 +514,17 @@
 
 (defenterprise canonical-schema+name
   "Enterprise impl: invert an active workspace remapping. Given a workspace-side
-   `to-spec` (`{:db :schema :name}`), return a `{:db :schema :name}` map for the
-   canonical table if a TableRemapping row records that pair as the destination
-   of a canonical table; nil otherwise. Mirror of `workspace-remap-schema+name`
-   for write-side paths that already have the rewritten target on hand and need
-   the canonical slot before touching `:model/Table` rows.
+  `to-spec` (`{:db :schema :name}`), return a `{:db :schema :name}` map for the
+  canonical table if a TableRemapping row records that pair as the destination
+  of a canonical table; nil otherwise. Mirror of `workspace-remap-schema+name`
+  for write-side paths that already have the rewritten target on hand and need
+  the canonical slot before touching `:model/Table` rows.
 
-   Driver-aware: matches against the slots the driver actually emits, so an
-   engine like MySQL (whose canonical and isolated tables differ at `:db` rather
-   than `:schema`) inverts correctly. Output `:db` / `:schema` slots are nil
-   when the driver doesn't populate them, so the empty-string sentinel never
-   leaks above this boundary."
+  Driver-aware: matches against the slots the driver actually emits, so an
+  engine like MySQL (whose canonical and isolated tables differ at `:db` rather
+  than `:schema`) inverts correctly. Output `:db` / `:schema` slots are nil
+  when the driver doesn't populate them, so the empty-string sentinel never
+  leaks above this boundary."
   :feature :none
   [db-id to-spec]
   (when-let [driver (some-> (t2/select-one [:model/Database :engine] :id db-id) :engine keyword)]
@@ -535,9 +535,9 @@
 
 (defenterprise call-with-display-context
   "Enterprise impl: bind `ws.remapping/*skip-remapping?*` true around `thunk` so Phase 1
-   (metadata override) and Phase 2 (SQLGlot rewrite) both short-circuit. For display
-   paths that want users to see canonical SQL instead of the isolation schema.
-   Deliberately ungated on premium features."
+  (metadata override) and Phase 2 (SQLGlot rewrite) both short-circuit. For display
+  paths that want users to see canonical SQL instead of the isolation schema.
+  Deliberately ungated on premium features."
   :feature :none
   [thunk]
   (binding [ws.remapping/*skip-remapping?* true]
@@ -555,7 +555,7 @@
 
 (defn- normalize-spec
   "Coerce nil `:db` / `:schema` slots to the empty-string sentinel so storage rows
-   carry the canonical shape the unique constraint expects."
+  carry the canonical shape the unique constraint expects."
   [spec]
   (-> spec
       (update :db     normalize-level)

@@ -81,7 +81,7 @@
 
 (defn- duplicate-key-violation?
   "Check if an exception is a duplicate key violation.
-   Returns true for Postgres, MySQL/MariaDB, and H2 duplicate key errors."
+  Returns true for Postgres, MySQL/MariaDB, and H2 duplicate key errors."
   [e]
   (or (and (instance? SQLException e)
            (let [sql-state (sql-jdbc/get-sql-state e)]
@@ -90,8 +90,8 @@
 
 (defn try-start-unless-already-running
   "Start a transform run. Throws ex-info with {:error :already-running} if another
-   run is already active (duplicate key violation). Other errors are rethrown.
-   If `user-id` is provided, it will be stored with the run for attribution purposes."
+  run is already active (duplicate key violation). Other errors are rethrown.
+  If `user-id` is provided, it will be stored with the run for attribution purposes."
   [id run-method user-id]
   (try
     (transform-run/start-run! id (cond-> {:run_method run-method}

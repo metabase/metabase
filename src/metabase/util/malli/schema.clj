@@ -187,8 +187,8 @@
 
 (def FieldTypeKeywordOrString
   "Like `FieldType` (e.g. a valid derivative of `:type/*`) but allows either a keyword or a string.
-   This is useful especially for validating API input or objects coming out of the DB as it is unlikely
-   those values will be encoded as keywords at that point."
+  This is useful especially for validating API input or objects coming out of the DB as it is unlikely
+  those values will be encoded as keywords at that point."
   (mu/with-api-error-message
    [:fn #(isa? (keyword %) :type/*)]
    (deferred-tru "value must be a valid field data type (keyword or string).")))

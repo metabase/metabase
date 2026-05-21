@@ -67,7 +67,7 @@
 
 (def ^:private strategy->hsql-join-type
   "Map our join strategy keywords to HoneySQL :join-by type keywords.
-   HoneySQL uses :join for INNER JOIN, not :inner-join."
+  HoneySQL uses :join for INNER JOIN, not :inner-join."
   {:inner-join :join
    :left-join  :left-join
    :right-join :right-join
@@ -76,7 +76,7 @@
 
 (defn- build-native-join-step-hsql
   "Build a HoneySQL map for [COUNT(*), COUNT(CASE WHEN condition THEN 1 END)] with joins.
-   Uses :join-by to preserve original join ordering across different join types."
+  Uses :join-by to preserve original join ordering across different join types."
   [from-table joins]
   (let [last-join  (last joins)
         outer?     (outer-join? (:strategy last-join))

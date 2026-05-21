@@ -78,7 +78,7 @@
 
 (defn nrepl-eval
   "Evaluate Clojure code in a running nREPL server. With one arg, reads port from .nrepl-port file.
-   With two args, uses the provided port number. Returns and formats the evaluation results."
+  With two args, uses the provided port number. Returns and formats the evaluation results."
   [nns code & [port]]
   (let [port        (nrepl-port port)
         s           (socket! "localhost" port)

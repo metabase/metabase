@@ -17,7 +17,7 @@
 
 (defn- batch-field-info
   "Batch-fetch field visibility_type and table_id for a set of field IDs.
-   Returns {field-id -> {:visibility_type keyword, :table_id int}}."
+  Returns {field-id -> {:visibility_type keyword, :table_id int}}."
   [field-ids]
   (when (seq field-ids)
     (into {}
@@ -27,7 +27,7 @@
 
 (defn- batch-table-db-ids
   "Batch-fetch db_id for a set of table IDs.
-   Returns {table-id -> db-id}."
+  Returns {table-id -> db-id}."
   [table-ids]
   (when (seq table-ids)
     (into {}
@@ -51,9 +51,9 @@
 
 (defenterprise sandbox-restricted-fields
   "For sandboxed tables, returns {table-id -> #{allowed-field-ids}}.
-   Tables not in the returned map have no column restriction. nil means no sandboxes apply.
-   OSS stub returns nil (fail open — :model/Sandbox not available in OSS).
-   EE override uses :feature :none to fail closed when MetaStore is down."
+  Tables not in the returned map have no column restriction. nil means no sandboxes apply.
+  OSS stub returns nil (fail open — :model/Sandbox not available in OSS).
+  EE override uses :feature :none to fail closed when MetaStore is down."
   metabase-enterprise.sandbox.api.metric
   [_table-ids]
   nil)
@@ -62,7 +62,7 @@
 
 (defn- target->field-id
   "Extract the integer field ID from a dimension mapping target ref.
-   Returns nil if the target is not a field ref or uses a name instead of ID."
+  Returns nil if the target is not a field ref or uses a name instead of ID."
   [target]
   (when (and (vector? target)
              (= :field (first target))
@@ -87,13 +87,13 @@
 
 (defn filter-dimensions-for-user
   "Filter dimensions and dimension_mappings on a metric, removing those the
-   current user shouldn't see due to:
-   1. Field visibility_type (:hidden or :sensitive)
-   2. Table-level view-data permissions
-   3. Sandbox column restrictions (EE)
+  current user shouldn't see due to:
+  1. Field visibility_type (:hidden or :sensitive)
+  2. Table-level view-data permissions
+  3. Sandbox column restrictions (EE)
 
-   Superusers bypass all checks. Dimensions without resolvable field IDs are
-   kept (conservative fallback)."
+  Superusers bypass all checks. Dimensions without resolvable field IDs are
+  kept (conservative fallback)."
   [{:keys [dimensions dimension_mappings] :as metric}]
   (if (or api/*is-superuser?*
           (empty? dimensions))

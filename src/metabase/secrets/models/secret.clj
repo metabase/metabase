@@ -50,8 +50,8 @@
 
 (defn upsert-secret-value!
   "Inserts a new secret value, or updates an existing one, for the given parameters.
-   * if there is no existing Secret instance, inserts with the given field values
-   * if there is an existing latest Secret instance, then inserts a new version with the given parameters."
+  * if there is no existing Secret instance, inserts with the given field values
+  * if there is an existing latest Secret instance, then inserts a new version with the given parameters."
   {:added "0.42.0"}
   [existing-id nm kind src value]
   (let [insert-new     (fn [id v]
@@ -146,17 +146,17 @@
 
 (defn- secret-map-from-details
   "Returns a canonical secret-map containing `:source` and `:value` based solely on `:details`
-   When `:details` comes from the client, it may contain updated values for a secret.
-   If these properties are not present, return nil.
+  When `:details` comes from the client, it may contain updated values for a secret.
+  If these properties are not present, return nil.
 
-   This is the case:
-   - before database insert and update
-   - during connection testing.
+  This is the case:
+  - before database insert and update
+  - during connection testing.
 
-   The `-value` property may be base64 encoded and should be decoded.
-   `:value` is type `bytes` or nil
+  The `-value` property may be base64 encoded and should be decoded.
+  `:value` is type `bytes` or nil
 
-   The `-options` property may, or may not be present. If not `-value` should be used."
+  The `-options` property may, or may not be present. If not `-value` should be used."
   [details conn-prop]
   (let [kws (->possible-secret-property-names (:name conn-prop))
         value (when-let [^String value (get details (:value kws))]
@@ -193,11 +193,11 @@
 
 (defn- resolve-secret-map
   "Returns a canonical map containing `:value` and `:source` for the given `secret-property`.
-   May also include `:id` if the value is coming from a persisted Secret.
+  May also include `:id` if the value is coming from a persisted Secret.
 
-   If `:details` contains expanded secrets from the client (i.e. during connection testing) it will be preferred.
-   If a `-id` property exists, that will be used to lookup the Secret.
-   Otherwise return nil."
+  If `:details` contains expanded secrets from the client (i.e. during connection testing) it will be preferred.
+  If a `-id` property exists, that will be used to lookup the Secret.
+  Otherwise return nil."
   [driver details secret-property]
   (let [conn-prop (get (secret-conn-props-by-name driver) secret-property)
         detail-map (secret-map-from-details details conn-prop)
@@ -216,7 +216,7 @@
 (defn- unresolved-value-string
   "Reads the secret-value, which is probably bytes into a string.
 
-   Private because getting the file-path is an implementation detail of Secret."
+  Private because getting the file-path is an implementation detail of Secret."
   [secret-value]
   (cond (string? secret-value)
         secret-value
@@ -227,8 +227,8 @@
 
 (defn value-as-string
   "Retrieves a secret as a string.
-   If the secret source is `:file-path` then read the file and return the contents.
-   Otherwise return the secret value."
+  If the secret source is `:file-path` then read the file and return the contents.
+  Otherwise return the secret value."
   [driver details secret-property]
   (when-let [{source :source secret-value :value} (resolve-secret-map driver details secret-property)]
     (let [s (unresolved-value-string secret-value)]
@@ -325,10 +325,10 @@
 
 (defn to-json-hydrate-redacted-secrets
   "To satisfy clients we need to return the keys they send us in details.
-   This is a transformation on `:model/Database` `to-json`
+  This is a transformation on `:model/Database` `to-json`
 
-   Fetches the stored secret and fills in `-path` `-options` `-value` for each secret property.
-   Operates on `:details`, `:write_data_details`, and `:admin_details`."
+  Fetches the stored secret and fills in `-path` `-options` `-value` for each secret property.
+  Operates on `:details`, `:write_data_details`, and `:admin_details`."
   [database]
   (let [driver  (driver.u/database->driver database)
         hydrate (fn [details]
@@ -342,8 +342,8 @@
 (defn clean-secret-properties-from-details
   "Ensures that all possible secret property values are removed from `:details`.
 
-   This can be used to cleanup `details` in connection properties which should always use
-   secret getters above."
+  This can be used to cleanup `details` in connection properties which should always use
+  secret getters above."
   [details driver]
   (reduce-over-details-secret-values
    driver
@@ -353,7 +353,7 @@
 
 (defn clean-secret-properties-from-database
   "Ensures that all possible secret property values are removed from `:details`, `:write_data_details`, and
-   `:admin_details`. This is a transformation on `:model/Database` `results-transform`."
+  `:admin_details`. This is a transformation on `:model/Database` `results-transform`."
   [database]
   (let [clean #(clean-secret-properties-from-details % (driver.u/database->driver database))]
     ;; Very low-level operation here, so not using driver.conn/* utils:

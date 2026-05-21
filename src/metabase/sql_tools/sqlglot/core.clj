@@ -15,8 +15,8 @@
 
 (defn- convert-error
   "Convert sql-parsing generic error format to lib.validate format.
-   sql-parsing returns generic maps like {:type :syntax-error} or {:type :timeout :message \"...\"},
-   and this function translates them to the lib.validate error format."
+  sql-parsing returns generic maps like {:type :syntax-error} or {:type :timeout :message \"...\"},
+  and this function translates them to the lib.validate error format."
   [error]
   (case (:type error)
     :syntax-error       (lib/syntax-error)
@@ -29,7 +29,7 @@
 ;; TODO(rileythomp, 2026-03): Should this be a driver multimethod?
 (defn driver->dialect
   "Map a Metabase driver keyword to a SQLGlot dialect string.
-   Returns nil for drivers that should use SQLGlot's default dialect (e.g., H2)."
+  Returns nil for drivers that should use SQLGlot's default dialect (e.g., H2)."
   [driver]
   (case driver
     nil                  nil
@@ -82,12 +82,12 @@
 
 (def ^:private ^:const normalizable-keys
   "Keys that should have their string values normalized for case.
-   Matches Macaw's col-fields which normalizes [:type :column :table :schema :database :alias]."
+  Matches Macaw's col-fields which normalizes [:type :column :table :schema :database :alias]."
   #{:type :column :table :schema :database :alias})
 
 (defn- normalize-field
   "Normalize identifier strings in a field spec using driver-specific case rules.
-   Only normalizes specific keys (column, table, schema, etc.) to match Macaw's col-fields."
+  Only normalizes specific keys (column, table, schema, etc.) to match Macaw's col-fields."
   [driver field]
   (if (map? field)
     (reduce-kv (fn [m k v]

@@ -155,7 +155,7 @@
 
 (defn save-ordering!
   "Saves a bookmark ordering of shape `[{:type, :item_id}]`
-   Deletes all existing orderings for user so should be given a total ordering."
+  Deletes all existing orderings for user so should be given a total ordering."
   [user-id orderings]
   (t2/delete! :model/BookmarkOrdering :user_id user-id)
   (t2/insert! :model/BookmarkOrdering (->> orderings

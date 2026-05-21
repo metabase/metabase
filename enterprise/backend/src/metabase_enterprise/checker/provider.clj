@@ -46,8 +46,8 @@
 
 (defn- resolve-ref
   "Try to resolve `ref` of `kind`. Returns integer ID or nil.
-   On failure, appends failure-info to `!failures`.
-   When `sentinel?` is true, assigns a sentinel ID for unresolved refs."
+  On failure, appends failure-info to `!failures`.
+  When `sentinel?` is true, assigns a sentinel ID for unresolved refs."
   [store kind ref !failures failure-info & {:keys [sentinel?]}]
   (when ref
     (or (store/ref->id store kind ref)
@@ -162,8 +162,8 @@
 
 (defn- convert-result-metadata-column
   "Resolve portable refs in a result_metadata column map.
-   Portable refs appear as path vectors in :id, :table_id, :fk_target_field_id,
-   and as MBQL field refs in :field_ref."
+  Portable refs appear as path vectors in :id, :table_id, :fk_target_field_id,
+  and as MBQL field refs in :field_ref."
   [resolver col]
   (let [resolve-or-drop (fn [col k resolve-fn]
                           (let [v (get col k)]
@@ -215,7 +215,7 @@
 
 (defn card-metadata
   "Convert a cached card entity to lib metadata. Returns the metadata map with
-   `:provider/resolution-failures` and `:provider/missing-database` keys when resolution fails."
+  `:provider/resolution-failures` and `:provider/missing-database` keys when resolution fails."
   [store data]
   (let [!failures       (atom [])
         ;; Sentinel resolver: unresolved refs get fake integer IDs so queries can still be constructed and
@@ -445,14 +445,14 @@
 
 (defn make-provider
   "Create a MetadataProvider backed by a store.
-   The store holds sources, index, ID registry, and entity caches —
-   see `checker.store/make-store`."
+  The store holds sources, index, ID registry, and entity caches —
+  see `checker.store/make-store`."
   [store]
   (->SourceMetadataProvider store (atom nil)))
 
 (defn database-name-for-entity
   "Determine the database name for an entity from its raw YAML data.
-   Cards have it in dataset_query.database, transforms in source.query.database."
+  Cards have it in dataset_query.database, transforms in source.query.database."
   [store kind data]
   (let [db-ref (case kind
                  :card      (get-in data [:dataset_query :database])

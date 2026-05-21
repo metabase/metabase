@@ -14,8 +14,8 @@
 
 (defn- temporal-core-fields
   "Return the subset of a temporal fingerprint result containing the historically-asserted fields.
-   We compare only :earliest / :latest (plus :global) to keep tests stable against new distribution
-   stats (skewness, mode-fraction)."
+  We compare only :earliest / :latest (plus :global) to keep tests stable against new distribution
+  stats (skewness, mode-fraction)."
   [result]
   {:global (:global result)
    :type   {:type/DateTime (select-keys (get-in result [:type :type/DateTime])

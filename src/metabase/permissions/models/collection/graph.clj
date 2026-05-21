@@ -228,7 +228,7 @@
 
 (defn fill-revision-details!
   "Updates perm revision, this is used for logging/auditing purposes, and can be quite expensive, so in practice is
-   called after the revision number is updated."
+  called after the revision number is updated."
   [revision-id before changes]
   (future (t2/update! :model/CollectionPermissionGraphRevision revision-id {:before before :after changes})))
 
@@ -271,7 +271,7 @@
 
 (defn- check-data-analyst-library-permissions
   "Check that we're not modifying library collection permissions for the Data Analysts group.
-   Data Analysts always have full read-write access to library collections."
+  Data Analysts always have full read-write access to library collections."
   [changes]
   (let [data-analyst-group-id (u/the-id (perms-group/data-analyst))
         library-collection-ids (t2/select-pks-set :model/Collection

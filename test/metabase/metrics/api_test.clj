@@ -12,7 +12,7 @@
 
 (defn- do-with-sample-metrics-archived
   "Temporarily archive any metric cards belonging to the sample database so they
-   don't interfere with test assertions. Restores them after `thunk` completes."
+  don't interfere with test assertions. Restores them after `thunk` completes."
   [thunk]
   (let [sample-db-id   (t2/select-one-pk :model/Database :is_sample true)
         metric-ids     (when sample-db-id

@@ -39,7 +39,7 @@
 
 (defn- email-recipients
   "Resolve email recipients: configured recipients from the setting,
-   plus the site admin email (if set) as a raw-value recipient."
+  plus the site admin email (if set) as a raw-value recipient."
   []
   (let [configured (or (some-> (settings/security-center-email-recipients)
                                (t2/hydrate :recipients-detail))
@@ -51,7 +51,7 @@
 
 (defn- slack-recipients
   "Resolve Slack recipient from the `security-center-slack-channel` setting.
-   Returns a vector with a single raw-value recipient, or empty if Slack is not configured."
+  Returns a vector with a single raw-value recipient, or empty if Slack is not configured."
   []
   (when-let [channel (settings/security-center-slack-channel)]
     (when (setting/get-value-of-type :boolean :slack-token-valid?)
@@ -72,7 +72,7 @@
 
 (defn- build-notification
   "Build a notification map for a security advisory. This is a plain map (not a
-   Toucan2 instance), so `send-notification!` skips DB hydration and uses it as-is."
+  Toucan2 instance), so `send-notification!` skips DB hydration and uses it as-is."
   [advisory]
   {:payload_type :notification/system-event
    :payload      {:event_info  (advisory-event-info advisory)
@@ -107,8 +107,8 @@
 
 (defn send-test-notification!
   "Send a test notification through the configured channels so admins can verify
-   delivery without waiting for a real advisory. Does NOT publish an audit event
-   or update any advisory row."
+  delivery without waiting for a real advisory. Does NOT publish an audit event
+  or update any advisory row."
   []
   (let [handlers (build-handlers)]
     (when (empty? handlers)
@@ -125,9 +125,9 @@
 
 (defn notify-advisory!
   "Send notifications for a security advisory and update `last_notified_at`.
-   Publishes the system event for audit logging, then sends email (to admins or
-   configured recipients) and Slack (to configured channel) via the notification
-   pipeline."
+  Publishes the system event for audit logging, then sends email (to admins or
+  configured recipients) and Slack (to configured channel) via the notification
+  pipeline."
   ([advisory]
    (notify-advisory! advisory "scheduled"))
   ([advisory triggered-from]

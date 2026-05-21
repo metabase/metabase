@@ -1,7 +1,6 @@
 (ns mage.token-scan
   (:require
    [babashka.fs :as fs]
-   [babashka.process :as p]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.color :as c]
@@ -12,8 +11,8 @@
 
 (def ^:private token-patterns
   "Token regex patterns to scan for and their names for reporting.
-   The keys are human-readable names, the values are regex patterns to match the tokens.
-   These patterns are designed to catch common token formats used in Metabase."
+  The keys are human-readable names, the values are regex patterns to match the tokens.
+  These patterns are designed to catch common token formats used in Metabase."
   {"Airgap Token"    #"airgap_.{400,}" ;; afaik 461 is the absolute minimum, but this is good enough
    "Hash/Dev Token"  #"(mb_dev_[0-9A-Fa-f]{57}|\\b[0-9A-Fa-f]{64}\\b)"
    "OpenAI API Key"  #"sk-[A-Za-z0-9]{43,51}" ;; OpenAI API keys start with sk- and are ~48 chars total

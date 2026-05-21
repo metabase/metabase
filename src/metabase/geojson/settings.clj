@@ -82,7 +82,7 @@
 
 (defn valid-geojson-resource-path?
   "Whether GeoJSON `url` points to a valid resource. Does not check whether the contents are valid GeoJSON or not.
-   User-defined classpath resources are only allowed when MB_ALLOW_CLASSPATH_GEOJSON is true."
+  User-defined classpath resources are only allowed when MB_ALLOW_CLASSPATH_GEOJSON is true."
   [url]
   (and (allow-classpath-geojson?)
        (boolean (io/resource url))))

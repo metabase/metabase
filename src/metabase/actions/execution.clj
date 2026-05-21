@@ -218,7 +218,7 @@
 
 (mu/defn execute-dashcard!
   "Execute the given action in the dashboard/dashcard context with the given parameters
-   of shape `{<parameter-id> <value>}."
+  of shape `{<parameter-id> <value>}."
   [dashboard-id       :- ::lib.schema.id/dashboard
    dashcard-id        :- ::lib.schema.id/dashcard
    request-parameters :- [:maybe [:map-of :string :any]]]

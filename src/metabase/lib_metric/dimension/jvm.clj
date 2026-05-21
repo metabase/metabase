@@ -33,12 +33,12 @@
 
 (defn- field-id-ref
   "Build a field ref using the column's integer ID rather than its name.
-   Source-card columns have integer :id but `lib/ref` produces name-based refs;
-   dimension mappings need integer field IDs for the AST.
+  Source-card columns have integer :id but `lib/ref` produces name-based refs;
+  dimension mappings need integer field IDs for the AST.
 
-   For source-card columns that are FK-remapped (e.g. PRODUCTS.TITLE appearing as
-   display value for ORDERS.PRODUCT_ID), `:lib/original-fk-field-id` captures the FK
-   column. We include it as `:source-field` so the compiled query gets the implicit join."
+  For source-card columns that are FK-remapped (e.g. PRODUCTS.TITLE appearing as
+  display value for ORDERS.PRODUCT_ID), `:lib/original-fk-field-id` captures the FK
+  column. We include it as `:source-field` so the compiled query gets the implicit join."
   [column]
   (let [ref (lib/ref column)]
     (if (and (pos-int? (:id column))
@@ -50,8 +50,8 @@
 
 (defn- column->computed-pair
   "Convert a column to a dimension/mapping pair. IDs are nil until reconciliation.
-   The table-id is extracted from the column's metadata.
-   When `group` is provided, it is attached to the dimension."
+  The table-id is extracted from the column's metadata.
+  When `group` is provided, it is attached to the dimension."
   ([column]
    (column->computed-pair column nil))
   ([column group]
@@ -77,12 +77,12 @@
 
 (defn- db-provider-for-query
   "When the metadata provider is a MetricContextMetadataProvider, return the
-   database-specific provider for the query's source table. The DB provider can
-   resolve column-by-ID lookups that the metric context provider cannot, which
-   is required for FK / implicitly-joinable column resolution.
+  database-specific provider for the query's source table. The DB provider can
+  resolve column-by-ID lookups that the metric context provider cannot, which
+  is required for FK / implicitly-joinable column resolution.
 
-   For source-card queries (metrics based on models or saved questions), resolves
-   the card's table_id and uses that to find the database provider."
+  For source-card queries (metrics based on models or saved questions), resolves
+  the card's table_id and uses that to find the database provider."
   [mp query-with-mp]
   (when (satisfies? lib-metric.provider/MetricMetadataProvider mp)
     (or (when-let [table-id (lib.util/source-table-id query-with-mp)]
@@ -100,9 +100,9 @@
 
 (defn compute-dimension-pairs
   "Compute dimension/mapping pairs from visible columns. IDs not yet assigned.
-   Only includes actual database fields, not expressions.
-   Dimensions are annotated with their source group (main table vs connected tables).
-   Columns are enriched with `:has-field-values` from the database."
+  Only includes actual database fields, not expressions.
+  Dimensions are annotated with their source group (main table vs connected tables).
+  Columns are enriched with `:has-field-values` from the database."
   [metadata-providerable query]
   (let [mp            (lib/->metadata-provider metadata-providerable)
         query-with-mp (lib/query mp query)

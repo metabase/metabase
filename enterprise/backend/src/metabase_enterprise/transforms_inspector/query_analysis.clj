@@ -78,7 +78,7 @@
 
 (defn analyze-mbql-query
   "Analyze an MBQL query for join structure and visited fields.
-   Returns {:join-structure [...] :visited-fields {...}} or nil on failure."
+  Returns {:join-structure [...] :visited-fields {...}} or nil on failure."
   [transform]
   (let [preprocessed (-> transform :source :query
                          transforms-base.u/massage-sql-query
@@ -95,7 +95,7 @@
 
 (defn- macaw-table->hsql
   "Convert a macaw table node to a HoneySQL table reference suitable for a FROM or JOIN entry.
-   Returns `[table-identifier :alias]` when aliased, or `[table-identifier]` when not."
+  Returns `[table-identifier :alias]` when aliased, or `[table-identifier]` when not."
   [driver {:keys [schema table table-alias]}]
   (let [table-id (apply h2x/identifier :table
                         (remove nil? [(some->> schema (sql.normalize/normalize-name driver))
@@ -125,7 +125,7 @@
 
 (defn- macaw-condition->hsql
   "Convert a macaw AST condition to a HoneySQL condition form.
-   Handles AND/OR compound conditions recursively."
+  Handles AND/OR compound conditions recursively."
   [driver condition]
   (when (= (:type condition) :macaw.ast/binary-expression)
     (let [{:keys [operator left right]} condition
@@ -177,7 +177,7 @@
 
 (defn- extract-native-join-structure
   "Extract join structure from macaw AST as HoneySQL data.
-   Returns join info with :join-table and :join-condition as HoneySQL forms."
+  Returns join info with :join-table and :join-condition as HoneySQL forms."
   [ast table->id driver]
   (when-let [join-nodes (:join ast)]
     (mapv (fn [join-node]
@@ -196,9 +196,9 @@
 
 (defn- resolve-native-visited-fields
   "Resolve native SQL column references to Metabase field IDs using sql-tools.
-   Returns a visited-fields map with all referenced field IDs in :all.
-   Per-clause breakdown (filter/group-by/order-by/join) is not available through
-   sql-tools, but is currently unused by consumers."
+  Returns a visited-fields map with all referenced field IDs in :all.
+  Per-clause breakdown (filter/group-by/order-by/join) is not available through
+  sql-tools, but is currently unused by consumers."
   [driver-kw native-query]
   (let [referenced (sql-tools/referenced-fields driver-kw native-query)
         all-ids (into #{} (keep :id) referenced)]
@@ -206,9 +206,9 @@
 
 (defn analyze-native-query
   "Analyze a native SQL query for join structure and visited fields.
-   Requires sources (with field info) for column resolution.
-   Returns HoneySQL data structures for table/column/condition references.
-   Uses sql-tools for visited field resolution, macaw directly for join structure."
+  Requires sources (with field info) for column resolution.
+  Returns HoneySQL data structures for table/column/condition references.
+  Uses sql-tools for visited field resolution, macaw directly for join structure."
   [transform sources]
   (try
     (let [native-query (-> (get-in transform [:source :query])

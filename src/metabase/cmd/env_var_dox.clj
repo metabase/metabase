@@ -67,7 +67,7 @@
 
 (defn- format-prefix
   "Formats an environment variable name with the 'MB_' prefix
-   Example: MB_ENV_VAR_NAME or MB_OLD_SETTING [DEPRECATED]"
+  Example: MB_ENV_VAR_NAME or MB_OLD_SETTING [DEPRECATED]"
   [env-var]
   (let [base-name (setting/env-var-name (:name env-var))]
     (if (:deprecated env-var)
@@ -176,7 +176,7 @@
 
 (defn- setter-none?
   "Used to remove settings that lack a setter (`:setter :none`).
-   For example, settings that are derived from other settings."
+  For example, settings that are derived from other settings."
   [env-var]
    ;; If the `defsetting` has a `:doc` key with a string, we should document it.
    ;; Checking that the `:doc` value is truthy because `:doc false` is a valid value.

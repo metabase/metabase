@@ -160,7 +160,7 @@
 
 (defn ^:command config-template
   "Generates a markdown file with some documentation and an example configuration file in YAML. The YAML template includes Metabase settings and their defaults.
-   Metabase will save the template as `docs/configuring-metabase/config-template.md`."
+  Metabase will save the template as `docs/configuring-metabase/config-template.md`."
   []
   (classloader/require 'metabase.cmd.config-file-gen)
   ((resolve 'metabase.cmd.config-file-gen/generate-config-file-doc!)))

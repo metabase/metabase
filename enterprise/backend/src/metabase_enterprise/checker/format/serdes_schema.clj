@@ -74,16 +74,16 @@
 (defn- resolve-schema-name
   "Resolve a real schema name to the key used in the model.
 
-   Schema names are the one entity type with no canonical YAML file — the directory
-   name is the filesystem key, and the real name comes from the `schema:` field in
-   table YAMLs. These may differ (e.g. dir=`public`, real=`PUBLIC` for H2).
+  Schema names are the one entity type with no canonical YAML file — the directory
+  name is the filesystem key, and the real name comes from the `schema:` field in
+  table YAMLs. These may differ (e.g. dir=`public`, real=`PUBLIC` for H2).
 
-   Strategy:
-   1. Exact match in the model's :schemas
-   2. Case-insensitive match (handles H2-style uppercasing)
-   3. nil for schema-less databases
+  Strategy:
+  1. Exact match in the model's :schemas
+  2. Case-insensitive match (handles H2-style uppercasing)
+  3. nil for schema-less databases
 
-   To change schema resolution in the future, modify this function."
+  To change schema resolution in the future, modify this function."
   [model db-name schema]
   (let [schemas (:schemas (get model db-name))
         lower (fn [s] (.toLowerCase (str s) Locale/US))]
@@ -106,7 +106,7 @@
 
 (defn- read-yaml-schema
   "Read the `schema:` field from a YAML file using regex (fast).
-   Returns nil if not found or if the value is `null`."
+  Returns nil if not found or if the value is `null`."
   [^File yaml-file]
   (when (.exists yaml-file)
     (let [v (quick-extract (.getPath yaml-file) "schema" #"(?m)^schema:\s*(\S+)")]
@@ -115,7 +115,7 @@
 
 (defn- read-yaml-name
   "Read the `name:` field from a YAML file using regex (fast).
-   Falls back to `fallback` if the file doesn't exist or can't be read."
+  Falls back to `fallback` if the file doesn't exist or can't be read."
   [^File yaml-file ^String fallback]
   (if (.exists yaml-file)
     (or (quick-extract (.getPath yaml-file) "name" #"(?m)^name:\s*(.+)")
@@ -155,10 +155,10 @@
 (defn- ensure-schema-indexed!
   "Ensure a schema's tables are indexed in the model. No-op if already done.
 
-   Resolves the requested schema name to a model key (possibly case-insensitive),
-   walks the table directories, reads real names from YAMLs, and stores the results.
-   If the real schema name (from the table YAML `schema:` field) differs from the
-   directory name, the model entry is re-keyed under the real name."
+  Resolves the requested schema name to a model key (possibly case-insensitive),
+  walks the table directories, reads real names from YAMLs, and stores the results.
+  If the real schema name (from the table YAML `schema:` field) differs from the
+  directory name, the model entry is re-keyed under the real name."
   [^File databases-dir db-name->dir db-name schema model]
   (let [model-key (resolve-schema-name @model db-name schema)]
     (when (= ::not-indexed (get-in @model [db-name :schemas model-key]))
@@ -189,9 +189,9 @@
 
 (defn- index-table-fields
   "Walk a table's fields/ directory and return a map of:
-   {real-field-name File ...}
-   Reads real field names from YAMLs via fast regex.
-   Skips FieldValues and FieldUserSettings files."
+  {real-field-name File ...}
+  Reads real field names from YAMLs via fast regex.
+  Skips FieldValues and FieldUserSettings files."
   [table-file-path]
   (let [^File table-dir (.getParentFile (io/file table-file-path))
         ^File fields-dir (io/file table-dir "fields")]
@@ -243,9 +243,9 @@
 
 (defn build-database-dir-index
   "Build index of databases from a schema directory.
-   Tables and fields are resolved on demand.
+  Tables and fields are resolved on demand.
 
-   Returns `{:index {:database {name file-path}} :db-name->dir {real-name dir-name}}`."
+  Returns `{:index {:database {name file-path}} :db-name->dir {real-name dir-name}}`."
   [databases-dir]
   (let [{:keys [entries db-name->dir]} (index-schema-dir databases-dir)]
     {:index        (reduce (fn [idx {:keys [kind ref file]}]
@@ -365,8 +365,8 @@
 
 (defn make-database-source
   "Create a MetadataSource for a directory that IS the databases directory.
-   The directory should contain database subdirectories directly (e.g., `Sample Database/`).
-   This source only resolves databases, tables, and fields — not cards."
+  The directory should contain database subdirectories directly (e.g., `Sample Database/`).
+  This source only resolves databases, tables, and fields — not cards."
   [databases-dir]
   (let [{:keys [index db-name->dir]} (build-database-dir-index databases-dir)
         databases-dir (io/file databases-dir)

@@ -32,11 +32,11 @@
 (defenterprise model-editable?
   "Determines if a model instance is editable based on remote sync configuration.
 
-   Returns false if the instance is eligible for remote sync AND remote-sync-type
-   is :read-only. Always returns true on OSS.
+  Returns false if the instance is eligible for remote sync AND remote-sync-type
+  is :read-only. Always returns true on OSS.
 
-   For models with global eligibility (e.g., :setting, :library-synced), the instance
-   can be nil or empty map."
+  For models with global eligibility (e.g., :setting, :library-synced), the instance
+  can be nil or empty map."
   metabase-enterprise.remote-sync.core
   [_model-key _instance]
   true)
@@ -44,22 +44,22 @@
 (defenterprise batch-model-editable?
   "Batch version of model-editable?. Returns a map of instance-id -> editable? boolean.
 
-   OSS always returns true for all instances."
+  OSS always returns true for all instances."
   metabase-enterprise.remote-sync.core
   [_model-key instances]
   (into {} (map (fn [inst] [(:id inst) true])) instances))
 
 (defenterprise batch-model-eligible?
   "Batch check if model instances are eligible for remote sync based on spec rules.
-   Returns a map of instance-id -> eligible? boolean.
+  Returns a map of instance-id -> eligible? boolean.
 
-   This checks if instances would be synced when remote sync is active, accounting
-   for special eligibility types like :library-synced for snippets.
+  This checks if instances would be synced when remote sync is active, accounting
+  for special eligibility types like :library-synced for snippets.
 
-   OSS uses collection-based eligibility: an instance is eligible if it's in a collection
-   with is_remote_synced=true. Collections are eligible if they have is_remote_synced=true.
-   EE extends this with spec-based eligibility rules for special models like snippets
-   (Library-synced) and transforms (setting-based)."
+  OSS uses collection-based eligibility: an instance is eligible if it's in a collection
+  with is_remote_synced=true. Collections are eligible if they have is_remote_synced=true.
+  EE extends this with spec-based eligibility rules for special models like snippets
+  (Library-synced) and transforms (setting-based)."
   metabase-enterprise.remote-sync.core
   [model-key instances]
   (if (= model-key :model/Collection)

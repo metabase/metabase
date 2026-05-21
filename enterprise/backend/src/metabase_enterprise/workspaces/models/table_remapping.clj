@@ -29,10 +29,10 @@
 
 (defn- coerce-sentinels
   "Replace nil with `\"\"` on every sentinel column present in `m`. When `fill?`,
-   also fill in missing sentinel columns with `\"\"` (used on writes — the unique
-   constraint requires non-null values; absent ≠ valid). On selects we leave
-   absent columns alone so broad lookups like `:database_id 7` don't gain
-   spurious `from_db = \"\"` predicates."
+  also fill in missing sentinel columns with `\"\"` (used on writes — the unique
+  constraint requires non-null values; absent ≠ valid). On selects we leave
+  absent columns alone so broad lookups like `:database_id 7` don't gain
+  spurious `from_db = \"\"` predicates."
   [fill? m]
   (reduce (fn [acc k]
             (cond

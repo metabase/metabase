@@ -55,7 +55,7 @@
 
 (defn- shorthand-definition
   "Expand definition of the form {identifier value} with regards to key `k` into
-   {identifier {k value}}."
+  {identifier {k value}}."
   [k]
   (fn [x]
     (let [[identifier definition] (first x)]
@@ -413,8 +413,8 @@
 
 (mu/defn get-dashboard-templates
   "Get all dashboard templates with prefix `prefix`.
-   prefix is greedy, so [\"table\"] will match table/TransactionTable.yaml, but not
-   table/TransactionTable/ByCountry.yaml"
+  prefix is greedy, so [\"table\"] will match table/TransactionTable.yaml, but not
+  table/TransactionTable/ByCountry.yaml"
   [prefix :- [:sequential :string]]
   (->> prefix
        (get-in @dashboard-templates)

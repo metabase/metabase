@@ -103,7 +103,7 @@
 
 (defn- logo-url
   "Return the URL for the application logo. If the logo is the default, return a URL to the Metabase logo.
-   For data URIs, returns the raw data URI - the email channel will convert it to an attachment."
+  For data URIs, returns the raw data URI - the email channel will convert it to an attachment."
   []
   (let [url (appearance/application-logo-url)]
     (if (= url "app/assets/img/logo.svg")

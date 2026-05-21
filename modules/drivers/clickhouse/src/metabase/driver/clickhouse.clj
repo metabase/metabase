@@ -255,7 +255,7 @@
 
 (defn- create-table!-sql
   "Creates a ClickHouse table with the given name and column definitions. It assumes the engine is MergeTree,
-   so it only works with Clickhouse Cloud and single node on-premise deployments at the moment."
+  so it only works with Clickhouse Cloud and single node on-premise deployments at the moment."
   [_driver table-name column-definitions & {:keys [primary-key] :as opts}]
   (str/join "\n"
             [(#'sql-jdbc/create-table!-sql :sql-jdbc table-name column-definitions opts)

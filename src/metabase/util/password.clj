@@ -99,9 +99,9 @@
 ;; copied from cemerick.friend.credentials EPL v1.0 license
 (defn hash-bcrypt
   "Hashes a given plaintext password using bcrypt and an optional
-   :work-factor (defaults to 10 as of this writing).  Should be used to hash
-   passwords included in stored user credentials that are to be later verified
-   using `bcrypt-credential-fn`."
+  :work-factor (defaults to 10 as of this writing).  Should be used to hash
+  passwords included in stored user credentials that are to be later verified
+  using `bcrypt-credential-fn`."
   [password & {:keys [work-factor]}]
   (BCrypt/hashpw password (if work-factor
                             (BCrypt/gensalt work-factor)

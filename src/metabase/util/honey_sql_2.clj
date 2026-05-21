@@ -55,7 +55,7 @@
 ;; register the `::extract` function with HoneySQL
 (defn- format-extract
   "(sql/format-expr [::extract :a :b])
-   => \"extract(a from b)\""
+  => \"extract(a from b)\""
   [_tag [unit expr]]
   (let [[sql & args] (sql/format-expr expr {:nested true})]
     (into [(clojure.core/format "extract(%s from %s)" (name unit) sql)]
@@ -75,8 +75,8 @@
 ;; register the function `::distinct-count` with HoneySQL
 (defn- format-distinct-count
   "(sql/format-expr [::h2x/distinct-count :x])
-   =>
-   count(distinct x)"
+  =>
+  count(distinct x)"
   [_tag [expr]]
   (let [[sql & args] (sql/format-expr expr)]
     (into [(str "count(distinct " sql ")")]
@@ -291,13 +291,13 @@
 
 (defn database-type
   "Returns the `database-type` from the type-info of `honeysql-form` if present.
-   Otherwise, returns `nil`."
+  Otherwise, returns `nil`."
   [honeysql-form]
   (some-> honeysql-form type-info type-info->db-type))
 
 (defn effective-type
   "Returns the Metabase effective type from the type-info of `honeysql-form` if present,
-   falling back to `:base-type`. Returns `nil` if neither is set."
+  falling back to `:base-type`. Returns `nil` if neither is set."
   [honeysql-form]
   (let [info (type-info honeysql-form)]
     (or (:effective-type info) (:base-type info))))

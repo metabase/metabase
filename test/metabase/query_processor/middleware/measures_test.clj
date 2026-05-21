@@ -14,7 +14,7 @@
 
 (defn- mock-measure
   "Create a mock measure with the given ID and definition query.
-   Returns [measure metadata-provider]."
+  Returns [measure metadata-provider]."
   ([id definition-query]
    (mock-measure meta/metadata-provider id definition-query))
   ([metadata-provider id definition-query]

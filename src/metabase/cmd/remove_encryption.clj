@@ -5,7 +5,7 @@
 
 (defn remove-encryption!
   "Removes the encryption from the current configured db.
-   The current encryption key must be set in the `MB_ENCRYPTION_SECRET_KEY` env var."
+  The current encryption key must be set in the `MB_ENCRYPTION_SECRET_KEY` env var."
   []
   (when-not (mdb/db-is-set-up?)
     (log/info "Checking database configuration prior to decryption")

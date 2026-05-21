@@ -46,7 +46,7 @@
 
 (defn- successful-tool-output?
   "True when `output-block` exists, is not marked errored, and carries
-   structured output."
+  structured output."
   [output-block]
   (and output-block
        (not (:error output-block))
@@ -54,8 +54,8 @@
 
 (defn- sql-for-tool-call
   "Best-effort SQL text for a successful SQL tool call. Prefer the structured
-   output's final query text; for create/replace we can fall back to input args.
-   Edit tool only persists diffs in input, so no fallback there."
+  output's final query text; for create/replace we can fall back to input args.
+  Edit tool only persists diffs in input, so no fallback there."
   [tool-name arguments structured]
   (or (:query-content structured)
       (case tool-name
@@ -136,8 +136,8 @@
 
 (defn count-tool-invocations
   "Count `tool-input` blocks across a seq of `MetabotMessage` instances.
-   `tool-names` may be a single tool-name string or a set of tool-name
-   strings — a block counts if its `:function` matches."
+  `tool-names` may be a single tool-name string or a set of tool-name
+  strings — a block counts if its `:function` matches."
   [messages tool-names]
   (transduce
    (comp (mapcat :data)

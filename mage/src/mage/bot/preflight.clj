@@ -11,8 +11,8 @@
 
 (defn check-mise!
   "Check that mise is installed and activated in the current shell (so that
-   managed tools like clj, bun, bb resolve on PATH without a `mise x --` prefix).
-   Exits on failure."
+  managed tools like clj, bun, bb resolve on PATH without a `mise x --` prefix).
+  Exits on failure."
   []
   (when-not (u/can-run? "mise")
     (println (c/red "mise is not installed."))
@@ -33,7 +33,7 @@
 
 (def ^:private workmux-min-version
   "Minimum workmux version required. 0.1.187 added the --config flag, which
-   we rely on to avoid writing .workmux.yaml at the repo root."
+  we rely on to avoid writing .workmux.yaml at the repo root."
   [0 1 187])
 
 (defn- parse-workmux-version
@@ -101,8 +101,8 @@
 
 (defn check-linear-api-key!
   "Check LINEAR_API_KEY env var.
-   mode :required — exits on failure.
-   mode :optional — warns and returns false if missing, true if present."
+  mode :required — exits on failure.
+  mode :optional — warns and returns false if missing, true if present."
   [mode]
   (let [key (u/env "LINEAR_API_KEY" (constantly nil))]
     (if (str/blank? key)
@@ -126,8 +126,8 @@
 
 (defn check-pr-env-vars!
   "Ensure PR_ENV_USERNAME, PR_ENV_PASSWORD, and PR_ENV_REPL_HOST are set
-   (in mise.local.toml, .env, .lein-env, or the system env). Exits on failure.
-   Returns a map of {var-name value} on success."
+  (in mise.local.toml, .env, .lein-env, or the system env). Exits on failure.
+  Returns a map of {var-name value} on success."
   []
   (let [resolved (into {} (map (fn [v] [v (bot-env/resolve-env v)]) pr-env-vars))
         missing  (->> resolved
@@ -179,8 +179,8 @@
 
 (defn check-backend-health!
   "Check that the Metabase backend is responding on the given port.
-   Retries every 10 seconds for up to 5 minutes to allow startup time.
-   Exits on failure after timeout."
+  Retries every 10 seconds for up to 5 minutes to allow startup time.
+  Exits on failure after timeout."
   [port]
   (let [url        (str "http://localhost:" port "/api/health")
         timeout-ms (* 5 60 1000)
@@ -216,9 +216,9 @@
 
 (defn preflight!
   "Run all prerequisite checks for the given bot. Exits on failure.
-   --bot <name> controls bot-specific policy (currently: whether
-   LINEAR_API_KEY is required). Unknown or missing bot name treats
-   Linear as optional."
+  --bot <name> controls bot-specific policy (currently: whether
+  LINEAR_API_KEY is required). Unknown or missing bot name treats
+  Linear as optional."
   [parsed]
   (let [bot         (:bot (:options parsed))
         linear-mode (case bot

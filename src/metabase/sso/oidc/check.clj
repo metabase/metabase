@@ -13,10 +13,10 @@
 (defn check-discovery
   "Validate that the issuer's discovery document is fetchable and contains required endpoints.
 
-   Invalidates the cache first to ensure a fresh fetch, then checks for authorization,
-   token, and JWKS endpoints.
+  Invalidates the cache first to ensure a fresh fetch, then checks for authorization,
+  token, and JWKS endpoints.
 
-   Returns `{:step :discovery, :success bool, :error str?, :token-endpoint str?}`."
+  Returns `{:step :discovery, :success bool, :error str?, :token-endpoint str?}`."
   [issuer-uri]
   (discovery/invalidate-cache! issuer-uri)
   (let [doc (discovery/discover-oidc-configuration issuer-uri)]
@@ -36,14 +36,14 @@
 (defn check-credentials
   "Validate client credentials by POSTing a client_credentials grant to the token endpoint.
 
-   Interprets the response:
-   - HTTP 200 → credentials confirmed valid
-   - `unsupported_grant_type` / `unauthorized_client` → inconclusive (IdP may not have checked the secret)
-   - `invalid_client` → invalid credentials
-   - Other errors → reported as-is
+  Interprets the response:
+  - HTTP 200 → credentials confirmed valid
+  - `unsupported_grant_type` / `unauthorized_client` → inconclusive (IdP may not have checked the secret)
+  - `invalid_client` → invalid credentials
+  - Other errors → reported as-is
 
-   Returns `{:step :credentials, :success bool, :verified bool, :error str?}`.
-   When `:verified` is false, the IdP did not confirm the credentials but didn't reject them either."
+  Returns `{:step :credentials, :success bool, :verified bool, :error str?}`.
+  When `:verified` is false, the IdP did not confirm the credentials but didn't reject them either."
   [token-endpoint client-id client-secret]
   (try
     (let [response (oidc.http/oidc-post token-endpoint
@@ -81,12 +81,12 @@
 (defn check-oidc-configuration
   "Run full OIDC configuration validation: discovery then credentials.
 
-   Parameters:
-   - issuer-uri: The OIDC issuer URL
-   - client-id: OAuth2 client ID
-   - client-secret: OAuth2 client secret
+  Parameters:
+  - issuer-uri: The OIDC issuer URL
+  - client-id: OAuth2 client ID
+  - client-secret: OAuth2 client secret
 
-   Returns `{:ok bool, :discovery {...}, :credentials {...}}`."
+  Returns `{:ok bool, :discovery {...}, :credentials {...}}`."
   [issuer-uri client-id client-secret]
   (let [disc (check-discovery issuer-uri)]
     (if-not (:success disc)

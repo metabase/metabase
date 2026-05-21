@@ -37,7 +37,7 @@
 
 (def ^:private viz-prefetch-pool-size
   "Maximum number of visualization rendering threads. Limits concurrent query execution
-   during streaming so we don't overwhelm the QP or database connections."
+  during streaming so we don't overwhelm the QP or database connections."
   8)
 
 (defonce ^:private ^ExecutorService viz-prefetch-executor
@@ -73,9 +73,9 @@
 
 (defn- thread->history
   "Convert a Slack thread to an ai-service history object.
-   For user messages: uses Slack text (respects edits), strips bot mentions.
-   For bot messages: merges tool calls/data from DB with text from Slack.
-   This preserves tool history that Slack doesn't store while respecting edits."
+  For user messages: uses Slack text (respects edits), strips bot mentions.
+  For bot messages: merges tool calls/data from DB with text from Slack.
+  This preserves tool history that Slack doesn't store while respecting edits."
   [thread bot-user-id conversation-id]
   (let [bot-msg-ids (thread->bot-msg-ids thread)
         msg-history (slackbot.persistence/message-history conversation-id bot-msg-ids)
@@ -114,7 +114,7 @@
 
 (defn- format-viz-title
   "Build the title text for a visualization message.
-   Combines the title with a link to the query in Metabase."
+  Combines the title with a link to the query in Metabase."
   [title link]
   (let [full-link (when link (str (system/site-url) link))]
     (cond
@@ -154,25 +154,25 @@
 
 (def ^:private min-flush-interval-ms
   "Minimum milliseconds between consecutive text flushes to Slack.
-   At Slack's rate limit of ~100 calls/minute, 600ms spacing leaves
-   headroom for tool-update and other non-text API calls."
+  At Slack's rate limit of ~100 calls/minute, 600ms spacing leaves
+  headroom for tool-update and other non-text API calls."
   600)
 
 (defn- make-streaming-ai-request
   "Run the agent loop for a slackbot conversation, dispatching parts to callbacks.
 
-   Callbacks:
-   - on-text: Called with text content string
-   - on-tool-start: Called with {:id :tool-name} when a tool starts
-   - on-tool-end: Called with {:id :result} when a tool completes
-   - on-data: Called with (index, {:type data-type :value data}) for each data part
-   - req-slack-msg-id: The Slack message ts for the user's incoming message
-   - get-res-slack-msg-id: Function that returns the Slack message ts for the bot's response
+  Callbacks:
+  - on-text: Called with text content string
+  - on-tool-start: Called with {:id :tool-name} when a tool starts
+  - on-tool-end: Called with {:id :result} when a tool completes
+  - on-data: Called with (index, {:type data-type :value data}) for each data part
+  - req-slack-msg-id: The Slack message ts for the user's incoming message
+  - get-res-slack-msg-id: Function that returns the Slack message ts for the bot's response
 
-   Returns `{:msg-id <pk> :external-id <uuid-str>}` so callers can both reference
-   the assistant `metabot_message` row by primary key (e.g. to backfill
-   `slack_msg_id` after `chat.postMessage` returns) and bake the `external_id`
-   into feedback button payloads."
+  Returns `{:msg-id <pk> :external-id <uuid-str>}` so callers can both reference
+  the assistant `metabot_message` row by primary key (e.g. to backfill
+  `slack_msg_id` after `chat.postMessage` returns) and bake the `external_id`
+  into feedback button payloads."
   [conversation-id prompt thread bot-user-id channel-id extra-history
    {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id
            request-prompt team-id thread-ts]}]
@@ -311,8 +311,8 @@
 
 (defn- collect-viz-blocks
   "Wait for all in-flight visualization futures and return blocks to include in stop-stream.
-   Returns {:blocks [...], :errors [Exception ...]}.
-   For saved cards (static_viz), uses the actual card name as the title."
+  Returns {:blocks [...], :errors [Exception ...]}.
+  For saved cards (static_viz), uses the actual card name as the title."
   [prefetched-viz]
   (reduce
    (fn [{:keys [blocks errors] :as acc} [idx {:keys [^Future future filename title link]}]]
@@ -340,7 +340,7 @@
 
 (defn- dismiss-thinking-msg!
   "Delete the 'Thinking...' placeholder message. Idempotent via reset-vals!.
-   Called from agent actions only."
+  Called from agent actions only."
   [client channel thinking-ts]
   (let [[ts] (reset-vals! thinking-ts nil)]
     (when ts
@@ -348,7 +348,7 @@
 
 (defn- drain-pending-text!
   "Drain all accumulated text from pending-text and send to Slack in one call.
-   Called from agent actions only."
+  Called from agent actions only."
   [client stream-state pending-text thinking-ts]
   (when-let [{:keys [stream_ts channel]} @stream-state]
     (let [[text] (reset-vals! pending-text "")]
@@ -389,29 +389,29 @@
 
 (defn- make-streaming-callbacks
   "Create streaming callback functions and associated control functions.
-   Slack API writes are dispatched to a background agent so the AI stream reader is never
-   blocked by Slack I/O. The agent serializes writes to preserve ordering.
+  Slack API writes are dispatched to a background agent so the AI stream reader is never
+  blocked by Slack I/O. The agent serializes writes to preserve ordering.
 
-   Text is coalesced via a shared `pending-text` atom: the callback thread appends text there,
-   and each agent action drains everything accumulated since the last write. This means multiple
-   flushes that pile up while a Slack API call is in flight get combined into a single append,
-   preventing the agent queue from falling further behind over time.
+  Text is coalesced via a shared `pending-text` atom: the callback thread appends text there,
+  and each agent action drains everything accumulated since the last write. This means multiple
+  flushes that pile up while a Slack API call is in flight get combined into a single append,
+  preventing the agent queue from falling further behind over time.
 
-   A 'Thinking...' placeholder message can be posted before the stream starts via
-   `:start-with-thinking!`. It is automatically deleted when the first text or tool update
-   is sent to the stream.
+  A 'Thinking...' placeholder message can be posted before the stream starts via
+  `:start-with-thinking!`. It is automatically deleted when the first text or tool update
+  is sent to the stream.
 
-   Visualization DATA parts are prefetched: when a `static_viz` or `adhoc_viz` DATA part
-   arrives mid-stream, the full visualization pipeline (query execution + rendering) is
-   submitted to the executor immediately, overlapping with remaining text generation.
+  Visualization DATA parts are prefetched: when a `static_viz` or `adhoc_viz` DATA part
+  arrives mid-stream, the full visualization pipeline (query execution + rendering) is
+  submitted to the executor immediately, overlapping with remaining text generation.
 
-   Returns a map with:
-   - `:on-text`, `:on-tool-start`, `:on-tool-end`, `:on-data` — callbacks for [[make-streaming-ai-request]]
-   - `:start-with-thinking!` — posts a 'Thinking...' placeholder in the thread
-   - `:request-flush!` — schedules a drain of pending text to Slack
-   - `:stream-state` — atom holding `{:stream_ts :channel}` once started, nil before
-   - `:slack-writer` — agent; callers should `(await slack-writer)` before stopping the stream
-   - `:prefetched-viz` — atom holding `{index -> {:future Future :filename str :title str :link str}}` for in-flight visualizations"
+  Returns a map with:
+  - `:on-text`, `:on-tool-start`, `:on-tool-end`, `:on-data` — callbacks for [[make-streaming-ai-request]]
+  - `:start-with-thinking!` — posts a 'Thinking...' placeholder in the thread
+  - `:request-flush!` — schedules a drain of pending text to Slack
+  - `:stream-state` — atom holding `{:stream_ts :channel}` once started, nil before
+  - `:slack-writer` — agent; callers should `(await slack-writer)` before stopping the stream
+  - `:prefetched-viz` — atom holding `{index -> {:future Future :filename str :title str :link str}}` for in-flight visualizations"
   [client {:keys [channel thread-ts team-id user-id]}]
   (let [stream-state      (atom nil)
         stream-attempted? (atom false)
@@ -496,17 +496,17 @@
 
 (defn- slack-thread->conversation-id
   "Generate deterministic conversation ID from Slack thread identifiers.
-   Same thread always produces the same UUID (v3)."
+  Same thread always produces the same UUID (v3)."
   [team-id channel thread-ts]
   (str (java.util.UUID/nameUUIDFromBytes
         (.getBytes (str "slack:" team-id ":" channel ":" thread-ts)))))
 
 (defn- feedback-blocks
   "Build the feedback-button block appended to the final assistant reply.
-   `message-external-id` lets the modal handler resolve the rated
-   `metabot_message` row directly, without a `(channel, slack_msg_id)` reverse
-   lookup. Nil is tolerated for safety (e.g. callers racing persistence) but
-   the modal handler will then have to fall back to the slack_msg_id path."
+  `message-external-id` lets the modal handler resolve the rated
+  `metabot_message` row directly, without a `(channel, slack_msg_id)` reverse
+  lookup. Nil is tolerated for safety (e.g. callers racing persistence) but
+  the modal handler will then have to fall back to the slack_msg_id path."
   [conversation-id message-external-id]
   [{:type     "context_actions"
     :block_id "metabot_feedback"
@@ -624,7 +624,7 @@
 
 (defn send-response
   "Send a metabot response using Slack delivery suited to the conversation type.
-   DMs stream progressively; non-DMs use a visible post/update flow."
+  DMs stream progressively; non-DMs use a visible post/update flow."
   ([client event]
    (send-response client event nil))
   ([client event extra-history]

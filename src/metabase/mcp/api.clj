@@ -154,9 +154,9 @@
 
 (defn- normalize-domain
   "Extract and lowercase the domain from a URL or Host-style header value.
-   Bracketed IPv6 forms (`[::1]:3000`) and ports are handled correctly. Returns nil for unparsable input.
-   Uses `try-parse-url` (the silent variant) — `Origin`/`Host` are client-controlled, so malformed inputs
-   are expected and shouldn't spam the error logs."
+  Bracketed IPv6 forms (`[::1]:3000`) and ports are handled correctly. Returns nil for unparsable input.
+  Uses `try-parse-url` (the silent variant) — `Origin`/`Host` are client-controlled, so malformed inputs
+  are expected and shouldn't spam the error logs."
   [url]
   (some-> url str mw.security/try-parse-url :domain u/lower-case-en))
 
@@ -179,8 +179,8 @@
 
 (defn- validate-origin
   "Validate the Origin header to prevent DNS rebinding attacks (MCP spec requirement).
-   Returns a 403 response if Origin is present and is neither same-host nor an explicitly configured
-   MCP app origin. Non-browser clients that omit the Origin header are allowed through."
+  Returns a 403 response if Origin is present and is neither same-host nor an explicitly configured
+  MCP app origin. Non-browser clients that omit the Origin header are allowed through."
   [request]
   (when-let [origin (get-in request [:headers "origin"])]
     (let [host (get-in request [:headers "host"])]
@@ -190,7 +190,7 @@
 
 (defn- require-valid-session
   "Validate the Mcp-Session-Id header value. Checks UUID format and, when a
-   `core_session` has been materialized, verifies it belongs to `user-id`."
+  `core_session` has been materialized, verifies it belongs to `user-id`."
   [user-id session-id]
   (cond
     (str/blank? session-id)
@@ -324,7 +324,7 @@
 
 (def ^{:arglists '([request respond raise])} handler
   "Ring async handler for the MCP endpoint.
-   Uses JSON-RPC 2.0 over HTTP rather than REST, so the OpenAPI spec is empty."
+  Uses JSON-RPC 2.0 over HTTP rather than REST, so the OpenAPI spec is empty."
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
      (let [origin-error (validate-origin request)

@@ -287,7 +287,7 @@
 
 (defn- make-test-callbacks
   "Create streaming callbacks with mocked Slack client functions.
-   Returns the callbacks map plus atoms tracking append calls."
+  Returns the callbacks map plus atoms tracking append calls."
   []
   (let [append-calls (atom [])
         client       {:token "xoxb-test"}]

@@ -324,7 +324,7 @@
 
 (defn- read-streaming-response
   "Read a streaming response, returning a map with `:body` and optionally `:status` if the streaming body
-   changed it (e.g. via `write-error!` setting a 4xx/5xx status)."
+  changed it (e.g. via `write-error!` setting a 4xx/5xx status)."
   [streaming-response content-type]
   (with-open [os (java.io.ByteArrayOutputStream.)]
     (let [f              (.f ^StreamingResponse streaming-response)

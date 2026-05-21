@@ -107,7 +107,7 @@
 
 (defn create-transform!
   "Create new transform in the appdb.
-   Optionally accepts a creator-id to use instead of the current user."
+  Optionally accepts a creator-id to use instead of the current user."
   ([body]
    (create-transform! body nil))
   ([body creator-id]
@@ -136,7 +136,7 @@
 
 (defn update-transform!
   "Update a transform. Validates features, database support, cycles, and target conflicts.
-   Returns the updated transform with hydrated associations."
+  Returns the updated transform with hydrated associations."
   [id body]
   (let [transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race

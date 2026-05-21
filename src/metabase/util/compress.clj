@@ -51,8 +51,8 @@
 
 (defn- copy-tar-entry!
   "Stream the current tar entry into `out`, returning the new running total of
-   uncompressed bytes seen so far. Throws ex-info as soon as the running total
-   would exceed `max-bytes` (when set), so a tar bomb cannot exhaust disk."
+  uncompressed bytes seen so far. Throws ex-info as soon as the running total
+  would exceed `max-bytes` (when set), so a tar bomb cannot exhaust disk."
   ^long [^TarArchiveInputStream tar ^OutputStream out ^long start-total max-bytes]
   (let [buf (byte-array 8192)]
     (loop [total start-total]

@@ -60,7 +60,7 @@
 
 (defn unsign-and-translate-ids
   "Unsign a JWT and translate `entity_id` keys to `card_id` and `dashboard_id` respectively. If they are already
-   sequential ids, they are left as is."
+  sequential ids, they are left as is."
   [message]
   (translate-token-ids (embedding.jwt/unsign message)))
 

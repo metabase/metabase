@@ -225,7 +225,7 @@
 
 (defn- update-field-values-for-on-demand-dbs!
   "If the parameters have changed since last time this Dashboard was saved, we need to update the FieldValues
-   for any Fields that belong to an 'On-Demand' synced DB."
+  for any Fields that belong to an 'On-Demand' synced DB."
   [old-param-field-ids new-param-field-ids]
   (when (and (seq new-param-field-ids)
              (not= old-param-field-ids new-param-field-ids))
@@ -237,9 +237,9 @@
 
 (defn add-dashcards!
   "Add Cards to a Dashboard.
-   This function is provided for convenience and also makes sure various cleanup steps are performed when finished,
-   for example updating FieldValues for On-Demand DBs.
-   Returns newly created DashboardCards."
+  This function is provided for convenience and also makes sure various cleanup steps are performed when finished,
+  for example updating FieldValues for On-Demand DBs.
+  Returns newly created DashboardCards."
   [dashboard-or-id dashcards]
   (let [old-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)
         dashboard-cards     (map (fn [dashcard]
@@ -259,9 +259,9 @@
 
 (mu/defn update-dashcards!
   "Update the `dashcards` belonging to `dashboard`.
-   This function is provided as a convenience instead of doing this yourself; it also makes sure various cleanup steps
-   are performed when finished, for example updating FieldValues for On-Demand DBs.
-   Returns `nil`."
+  This function is provided as a convenience instead of doing this yourself; it also makes sure various cleanup steps
+  are performed when finished, for example updating FieldValues for On-Demand DBs.
+  Returns `nil`."
   [dashboard     :- DashboardWithSeriesAndCard
    new-dashcards :- [:sequential ms/Map]]
   (let [old-dashcards    (:dashcards dashboard)

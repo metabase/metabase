@@ -26,8 +26,8 @@
 
 (defn- ->spec
   "Project a `[schema table]` 2-tuple, `[db schema table]` 3-tuple, or `::table-spec`
-   map into the canonical `::table-spec` shape. Test convenience: callers pass the
-   shape that's most readable for their case."
+  map into the canonical `::table-spec` shape. Test convenience: callers pass the
+  shape that's most readable for their case."
   [x]
   (cond
     (map? x)         x
@@ -36,8 +36,8 @@
 
 (defn- widen-2-tuples
   "Project a map of `{from-key to-key}` (where keys may be 2-tuples, 3-tuples, or
-   spec maps) to the canonical `{::table-spec ::table-spec}` shape the store
-   requires."
+  spec maps) to the canonical `{::table-spec ::table-spec}` shape the store
+  requires."
   [m]
   (into {} (map (fn [[k v]] [(->spec k) (->spec v)])) m))
 
@@ -361,8 +361,8 @@
 
 (defn- rewrite-via-phase-2
   "Run `sql` through Phase 2 with the given remappings and return the rewritten SQL.
-   Convenience for h2 + real `(mt/id)`-based tests; widens 2-tuple remapping keys for
-   ergonomics. For non-h2 drivers or synthetic db-ids, use [[rewrite-via-phase-2-with-driver]]."
+  Convenience for h2 + real `(mt/id)`-based tests; widens 2-tuple remapping keys for
+  ergonomics. For non-h2 drivers or synthetic db-ids, use [[rewrite-via-phase-2-with-driver]]."
   [db-id remappings sql]
   (binding [ws.remapping/*remapping-store* (ws.remapping/map-store
                                             {db-id (widen-2-tuples remappings)})
@@ -560,8 +560,8 @@
 
 (defn- rewrite-via-phase-2-with-driver
   "Phase 2 rewrite for an arbitrary driver and remappings, against a synthetic db-id.
-   Remappings must be `::table-spec`-keyed (no widening). For h2 + real `(mt/id)`, use
-   [[rewrite-via-phase-2]]."
+  Remappings must be `::table-spec`-keyed (no widening). For h2 + real `(mt/id)`, use
+  [[rewrite-via-phase-2]]."
   [driver remappings sql]
   (mt/with-premium-features #{:workspaces}
     (binding [ws.remapping/*remapping-store* (ws.remapping/map-store {synthetic-db-id remappings})
@@ -758,7 +758,7 @@
 
 (defn- remap-provider
   "Wrap `mp` with a remapping layer. Each spec-pair is `[from to]` where from/to
-   are `[schema table]` 2-tuples or `[db schema table]` 3-tuples."
+  are `[schema table]` 2-tuples or `[db schema table]` 3-tuples."
   [mp & spec-pairs]
   (let [remappings (into {} (map (fn [[from to]] [(->spec from) (->spec to)])) spec-pairs)
         transform  (#'ws.middleware/table-transform (#'ws.middleware/table-remapper remappings))]

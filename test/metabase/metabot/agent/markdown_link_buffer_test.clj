@@ -8,7 +8,7 @@
 
 (defn- process
   "Process text through a fresh state with given queries/charts context.
-   Returns [output flushed]."
+  Returns [output flushed]."
   ([text] (process text {} {}))
   ([text queries] (process text queries {}))
   ([text queries charts]

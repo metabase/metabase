@@ -14,10 +14,10 @@
 
 (defn- set-statement-timeout!
   "Must be called within a transaction.
-   Sets the current transaction `statement_timeout` to the minimum
-   of the current (non-zero) value and ten minutes.
+  Sets the current transaction `statement_timeout` to the minimum
+  of the current (non-zero) value and ten minutes.
 
-   This helps to address unexpectedly large/long running queries."
+  This helps to address unexpectedly large/long running queries."
   [tx]
   (let [existing-timeout (->> #_{:clj-kondo/ignore [:discouraged-var]}
                           (sql/format {:select [:setting]

@@ -160,7 +160,7 @@
 (defn- setup-test-repo
   "Creates a test repository with the problematic rebase scenario.
 
-   Returns the path to the temp directory."
+  Returns the path to the temp directory."
   []
   (let [tmp-dir (str (fs/create-temp-dir {:prefix "yaml-merge-test-"}))
         migrations-file "migrations.yaml"
@@ -256,7 +256,7 @@
 
 (defn run-tests
   "Run the integration tests. Call this manually since these tests
-   are not included in the standard test suite."
+  are not included in the standard test suite."
   []
   (println "Running YAML merge driver integration tests...")
   (let [results (clojure.test/run-tests 'mage.merge-yaml-migrations-integration-test)]

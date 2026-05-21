@@ -40,9 +40,9 @@
 
 (defn mark-orphaned-runs!
   "Mark runs as :abandoned if:
-   1. updated_at is older than threshold (no heartbeat), OR
-   2. started_at is older than max run duration (stuck run)
-   Returns the set of run IDs that were marked as orphaned."
+  1. updated_at is older than threshold (no heartbeat), OR
+  2. started_at is older than max run duration (stuck run)
+  Returns the set of run IDs that were marked as orphaned."
   []
   (let [heartbeat-cutoff (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- orphan-threshold-hours) :hour)
         duration-cutoff  (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- max-run-duration-hours) :hour)

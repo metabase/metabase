@@ -19,7 +19,7 @@
 
 (defn- validate-url!
   "Validate that a URL is allowed by the current `oidc-allowed-networks` setting.
-   Throws `ex-info` if the URL is blocked."
+  Throws `ex-info` if the URL is blocked."
   [url]
   (when-not (u.http/valid-host? (sso.settings/oidc-allowed-networks) url)
     (log/warnf "OIDC request to %s blocked by network restrictions (oidc-allowed-networks = %s)"
@@ -29,7 +29,7 @@
 
 (defn oidc-get
   "Perform a validated GET request for OIDC operations.
-   Validates the URL against `oidc-allowed-networks` before making the request."
+  Validates the URL against `oidc-allowed-networks` before making the request."
   ([url]
    (oidc-get url {}))
   ([url opts]
@@ -38,7 +38,7 @@
 
 (defn oidc-post
   "Perform a validated POST request for OIDC operations.
-   Validates the URL against `oidc-allowed-networks` before making the request."
+  Validates the URL against `oidc-allowed-networks` before making the request."
   ([url]
    (oidc-post url {}))
   ([url opts]

@@ -24,9 +24,9 @@
 
 (defn- generate-nonce
   "Generates a random nonce of 10 characters to add to the `Content-Security-Policy` header so that only scripts and
-   inline style elements with the same nonce will be allowed to run. The server generates a unique nonce value each
-   time it sends a response. For more information see
-   https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/style-src."
+  inline style elements with the same nonce will be allowed to run. The server generates a unique nonce value each
+  time it sends a response. For more information see
+  https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/style-src."
   []
   (let [chars         "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
         secure-random (SecureRandom.)]
@@ -62,8 +62,8 @@
 
 (defn try-parse-url
   "Like `parse-url` but returns nil silently on unparsable input. Use this when the caller is parsing
-   client-controlled data (e.g. `Origin`/`Host` headers) where bad input is expected and shouldn't
-   fill the error logs."
+  client-controlled data (e.g. `Origin`/`Host` headers) where bad input is expected and shouldn't
+  fill the error logs."
   [url]
   (if (= url "*")
     {:protocol nil :domain "*" :port "*"}
@@ -75,8 +75,8 @@
 
 (defn parse-url
   "Returns an object with protocol, domain and port for the given url. Logs an error when the input
-   doesn't parse — appropriate for server-side config (where bad input indicates a misconfiguration).
-   For client-controlled input prefer [[try-parse-url]]."
+  doesn't parse — appropriate for server-side config (where bad input indicates a misconfiguration).
+  For client-controlled input prefer [[try-parse-url]]."
   [url]
   (or (try-parse-url url)
       (do (log/errorf "Invalid URL: %s" url) nil)))
@@ -240,7 +240,7 @@
 
 (def ^:private loopback-hosts
   "Set of hostnames/IPs that represent loopback addresses.
-   Note: IPv6 addresses come from parse-url with brackets, e.g. [::1]"
+  Note: IPv6 addresses come from parse-url with brackets, e.g. [::1]"
   #{"localhost" "127.0.0.1" "[::1]"})
 
 (defn- localhost-origin?

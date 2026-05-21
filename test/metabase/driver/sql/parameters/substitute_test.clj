@@ -954,7 +954,7 @@
 
 (defmacro ^:private table-identifier
   "Get the identifier used for `table` for the current driver by looking at what the driver uses when converting MBQL
-   to SQL. Different drivers qualify to different degrees (i.e. `table` vs `schema.table` vs `database.schema.table`)."
+  to SQL. Different drivers qualify to different degrees (i.e. `table` vs `schema.table` vs `database.schema.table`)."
   [table-name]
   `(let [sql# (:query (qp.compile/compile (mt/mbql-query ~table-name)))]
      (second (re-find #"(?m)FROM\s+([^\s()]+)" sql#))))

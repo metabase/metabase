@@ -33,7 +33,7 @@
 
 (defn- make-test-sources
   "Create both schema and assets sources from fixtures.
-   Returns [schema-source assets-source]."
+  Returns [schema-source assets-source]."
   []
   [(serdes-schema/make-database-source (str (fixtures-path) "/databases"))
    (serdes-format/make-source (fixtures-path))])
@@ -911,9 +911,9 @@
 
 (defn- with-temp-dashboard
   "Run checks with a dashboard entity provided via in-memory source.
-   `dashboard-data` is a map representing the dashboard.
-   `extra-index` is merged into the index (e.g. to add cards).
-   Calls `(f results)` with the check results."
+  `dashboard-data` is a map representing the dashboard.
+  `extra-index` is merged into the index (e.g. to add cards).
+  Calls `(f results)` with the check results."
   [dashboard-data extra-index f]
   (let [entity-id  (:entity_id dashboard-data)
         entities   {:databases  {}
@@ -1047,9 +1047,9 @@
 
 (defn- with-temp-transform
   "Run checks with a transform entity provided via in-memory source.
-   `transform-data` is a map representing the transform.
-   `extra-index` is merged into the index (e.g. to add databases).
-   Calls `(f results)` with the check results."
+  `transform-data` is a map representing the transform.
+  `extra-index` is merged into the index (e.g. to add databases).
+  Calls `(f results)` with the check results."
   [transform-data extra-index f]
   (let [entity-id (:entity_id transform-data)
         entities  {:databases  (get extra-index :_databases {})

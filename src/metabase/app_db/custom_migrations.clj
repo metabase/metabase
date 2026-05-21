@@ -155,7 +155,7 @@
 
 (defn- ->v2-paths
   "Converts v1 data permission paths into v2 data and query permissions paths. This is similar to `->v2-path` in
-   metabase.permissions.models.permissions but somewhat simplified for the migration use case."
+  metabase.permissions.models.permissions but somewhat simplified for the migration use case."
   [v1-path]
   (if-let [base-path (second (re-find base-path-regex v1-path))]
     ;; For (almost) all v1 data paths, we simply extract the base path (e.g. "/db/1/schema/PUBLIC/table/1/")
@@ -1118,8 +1118,8 @@
 
 (defn- hash-bcrypt
   "Hashes a given plaintext password using bcrypt.  Should be used to hash
-   passwords included in stored user credentials that are to be later verified
-   using `bcrypt-credential-fn`."
+  passwords included in stored user credentials that are to be later verified
+  using `bcrypt-credential-fn`."
   [password]
   (BCrypt/hashpw password (BCrypt/gensalt)))
 
@@ -1178,8 +1178,8 @@
 
 (def ^:dynamic *create-sample-content*
   "If true, we create sample content in the `CreateSampleContent` migration. This is bound to false sometimes in
-   load-from-h2, during serialization load, and in some tests because the sample content makes tests slow enough to
-   cause timeouts."
+  load-from-h2, during serialization load, and in some tests because the sample content makes tests slow enough to
+  cause timeouts."
   true)
 
 (define-migration CreateSampleContent)
@@ -1996,15 +1996,15 @@
 
 (defn- legacy-checkpoint-column-name
   "Extract the column name from a legacy column-unique-key string.
-   Uses the same format as [[metabase.lib.metadata.column/unpack-unique-key]]:
-   `column-unique-key-v<version>$<column-key>`."
+  Uses the same format as [[metabase.lib.metadata.column/unpack-unique-key]]:
+  `column-unique-key-v<version>$<column-key>`."
   [unique-key]
   (when-let [[_match _version column-key] (re-find #"^column-unique-key-v(\d+)\$(.+$)" unique-key)]
     column-key))
 
 (defn- legacy-checkpoint-source-table-id
   "Extract the source table ID from a parsed transform source for checkpoint migration.
-   Returns nil for native transforms (which can't be migrated)."
+  Returns nil for native transforms (which can't be migrated)."
   [parsed]
   (case (keyword (:type parsed))
     :query  (get-in parsed [:query :stages 0 :source-table])
@@ -2054,8 +2054,8 @@
 
 (defn- batched-data-layer-update!
   "Update `metabase_table.data_layer` in 500K ID-range chunks to avoid timeout on large instances.
-   Computes min/max ID once and strides through the range. A final unbounded UPDATE catches any
-   rows inserted during the migration."
+  Computes min/max ID once and strides through the range. A final unbounded UPDATE catches any
+  rows inserted during the migration."
   [from-values case-expr]
   (let [batch-size 500000
         {:keys [min-id max-id]} (t2/query-one
@@ -2108,7 +2108,7 @@
 
 (defn- find-table-id
   "Find a metabase_table by db-id, schema, and name using case-insensitive matching,
-   preferring an exact case match when one exists."
+  preferring an exact case match when one exists."
   [db-id schema table-name]
   (:id (first (t2/query {:select   [:id]
                          :from     [:metabase_table]

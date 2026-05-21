@@ -240,7 +240,7 @@
 
 (defn- check-settings!
   "We want to disallow setting both deprecated embed settings, and the new ones at the same time. This is to prevent
-   confusion and to make sure that we're not setting the same thing twice."
+  confusion and to make sure that we're not setting the same thing twice."
   [env]
   (check-enable-settings! env)
   (check-origins-settings! env))

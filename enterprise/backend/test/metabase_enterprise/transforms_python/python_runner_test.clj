@@ -31,8 +31,8 @@
 
 (defn template->regex
   "Convert a template string with $var$ placeholders to a regex pattern.
-   Example: template->regex 'File ___PATH___/script.py, line ___LINE___'
-   will match 'File /tmp/unique-path/script.py, line 123'"
+  Example: template->regex 'File ___PATH___/script.py, line ___LINE___'
+  will match 'File /tmp/unique-path/script.py, line 123'"
   [template]
   (-> template
       (str/replace #"(?m)^\d{13}\s*" "")

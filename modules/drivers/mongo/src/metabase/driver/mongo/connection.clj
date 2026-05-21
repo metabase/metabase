@@ -67,8 +67,8 @@
 
 (defn db-details->mongo-client-settings
   "Generate `MongoClientSettings` from `db-details`. `ConnectionString` is generated and applied to
-   `MongoClientSettings$Builder` first. Then credentials are set and ssl context is updated in the `builder` object.
-   Afterwards, `MongoClientSettings` are built using `.build`."
+  `MongoClientSettings$Builder` first. Then credentials are set and ssl context is updated in the `builder` object.
+  Afterwards, `MongoClientSettings` are built using `.build`."
   ^MongoClientSettings
   [{:keys [authdb user pass use-conn-uri ssl additional-options] :as db-details}]
   (let [connection-string (-> db-details
@@ -111,8 +111,8 @@
 
 (defmacro with-mongo-client
   "Create instance of `MongoClient` for `database` and bind it to [[*mongo-client*]]. `database` can be anything
-   digestable by [[mongo.db/details-normalized]]. Call of this macro in its body will reuse existing
-   [[*mongo-client*]]."
+  digestable by [[mongo.db/details-normalized]]. Call of this macro in its body will reuse existing
+  [[*mongo-client*]]."
   {:clj-kondo/lint-as 'clojure.core/let
    :clj-kondo/ignore [:unresolved-symbol :type-mismatch]}
   [[client-sym database] & body]

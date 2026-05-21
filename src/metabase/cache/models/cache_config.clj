@@ -70,7 +70,7 @@
 
 (defn- can-set-cache-policy?
   "Check if the current user can set a cache policy for an entity.
-   Uses collection permissions directly, bypassing remote-sync content lock."
+  Uses collection permissions directly, bypassing remote-sync content lock."
   [{model-id :id :as instance}]
   (mi/can-write? (t2/instance :model/CacheConfig {:model (-> (t2/model instance)
                                                              name
@@ -186,7 +186,7 @@
 
 (mu/defn get-list
   "Get a list of cache configurations for given `models` and a `collection`.
-   Supports pagination via `limit` and `offset`, and sorting via `sort-params`."
+  Supports pagination via `limit` and `offset`, and sorting via `sort-params`."
   [models collection id
    limit       :- [:maybe ms/PositiveInt]
    offset      :- [:maybe ms/IntGreaterThanOrEqualToZero]

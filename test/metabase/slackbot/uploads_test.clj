@@ -19,14 +19,14 @@
 
 (defn- with-upload-mocks!
   "Helper to set up common mocks for CSV upload tests.
-   Options:
-   - :uploads-enabled? - Whether uploads are enabled (default false)
-   - :can-create-upload? - Whether user can create uploads (default true)
-   - :upload-result - Result from create-csv-upload! (default success with id 123)
-   - :download-content - Content returned by download-slack-file (default valid CSV)
+  Options:
+  - :uploads-enabled? - Whether uploads are enabled (default false)
+  - :can-create-upload? - Whether user can create uploads (default true)
+  - :upload-result - Result from create-csv-upload! (default success with id 123)
+  - :download-content - Content returned by download-slack-file (default valid CSV)
 
-   Calls body-fn with a map containing tracking atoms:
-   {:upload-calls, :download-calls}"
+  Calls body-fn with a map containing tracking atoms:
+  {:upload-calls, :download-calls}"
   [{:keys [uploads-enabled? can-create-upload? upload-result download-content db-id]
     :or   {uploads-enabled?   false
            can-create-upload? true

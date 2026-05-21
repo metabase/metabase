@@ -26,15 +26,15 @@
 
 (defn- load-fixture
   "Postgres-shaped fixture used by `fixture-parses-test` and the loader
-   round-trip tests. Sibling fixtures for other drivers live in the same
-   resources dir (see `per-driver-fixtures-test` below)."
+  round-trip tests. Sibling fixtures for other drivers live in the same
+  resources dir (see `per-driver-fixtures-test` below)."
   []
   (load-fixture-by-driver :postgres))
 
 (defn- workspace-section
   "Pull just the `:workspace` section out of the fixture, with the database name
-   rewritten to point at the supplied `db-name` (so tests can use whatever DB
-   `mt/with-temp` creates rather than depending on the fixture's literal name)."
+  rewritten to point at the supplied `db-name` (so tests can use whatever DB
+  `mt/with-temp` creates rather than depending on the fixture's literal name)."
   [db-name]
   (let [section (-> (load-fixture) :config :workspace)]
     (-> section
@@ -297,11 +297,11 @@
 
 (def ^:private per-driver-fixture-expectations
   "Per-driver fixture metadata: db-name + engine + connection details from the fixture,
-   the wire-shape `:input_schemas`, the wire-shape `:output_namespace`, and the
-   expanded `:output` map the atom should hold after loading. The expanded `:output`
-   reflects each engine's catalog source — `:db` comes from `Database.details` for
-   3-slot drivers, `nil` for 2-slot drivers; the schema slot holds the
-   `output_namespace` string (or lands in `:db` for MySQL)."
+  the wire-shape `:input_schemas`, the wire-shape `:output_namespace`, and the
+  expanded `:output` map the atom should hold after loading. The expanded `:output`
+  reflects each engine's catalog source — `:db` comes from `Database.details` for
+  3-slot drivers, `nil` for 2-slot drivers; the schema slot holds the
+  `output_namespace` string (or lands in `:db` for MySQL)."
   {:postgres   {:db-name           "test-data (postgres)"
                 :engine            :postgres
                 :details           {}

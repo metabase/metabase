@@ -52,14 +52,14 @@
 (defmulti debug-permissions
   "Debug permissions for a given entity and user.
 
-   Dispatches on the `:action-type` key in the input map.
+  Dispatches on the `:action-type` key in the input map.
 
-   Expected input map keys:
-   - `:user-id` - The ID of the user to check permissions for
-   - `:model-id` - The ID of the model to check permissions against
-   - `:action-type` - The type of permission to check (e.g., 'view', 'write')
+  Expected input map keys:
+  - `:user-id` - The ID of the user to check permissions for
+  - `:model-id` - The ID of the model to check permissions against
+  - `:action-type` - The type of permission to check (e.g., 'view', 'write')
 
-   Returns a map conforming to the DebuggerSchema defined in the API."
+  Returns a map conforming to the DebuggerSchema defined in the API."
   {:arglists '([debug-info-map])}
   (fn [{:keys [action-type user-id]}]
     (let [user-is-superuser? (t2/select-one-fn :is_superuser :model/User :id user-id)]

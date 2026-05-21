@@ -2,7 +2,6 @@
   (:require
    [methodical.core :as m]
    [toucan2.insert :as insert]
-   [clojure.spec.alpha :as s]
    [toucan2.model :as model]
    [toucan2.tools.with-temp :as t2.with-temp]
    [toucan2.types :as types]
@@ -56,7 +55,7 @@
 
 (defn with-perm
   "Inserts the model with attributes merged into it's with-temp-defaults. This is the primary way to insert models
-   for load testing. If you need to do something special for a particular model, you can implement `do-with-perm*`."
+  for load testing. If you need to do something special for a particular model, you can implement `do-with-perm*`."
   [modelable attributes]
   (let [model (model/resolve-model modelable)]
     (do-with-perm* model attributes)))

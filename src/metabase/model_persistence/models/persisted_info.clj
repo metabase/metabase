@@ -86,10 +86,10 @@
 (defenterprise refreshable-states
   "States of `persisted_info` records which can be refreshed.
 
-   'off' needs to be handled here even though setting the state to off is only possible with :cache-granular-controls
-   enabled. A model could still have state=off if the instance previously had the feature flag, then downgraded to not
-   have it. In that case models with state=off were previously prunable when the feature flag enabled, but they should be
-   refreshable with the feature flag disabled."
+  'off' needs to be handled here even though setting the state to off is only possible with :cache-granular-controls
+  enabled. A model could still have state=off if the instance previously had the feature flag, then downgraded to not
+  have it. In that case models with state=off were previously prunable when the feature flag enabled, but they should be
+  refreshable with the feature flag disabled."
   metabase-enterprise.cache.config
   []
   ;; meant to be the same as the enterprise version except that "off" is not honored and is refreshed
@@ -187,7 +187,7 @@
 
 (defn ready-database!
   "Sets PersistedInfo state to the default state for models without a PeristedInfo or those in a `deletable` state.
-   Will ignore explicitly set `off` models."
+  Will ignore explicitly set `off` models."
   [database-id]
   (t2/query-one
    {:update [:persisted_info]

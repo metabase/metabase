@@ -47,21 +47,21 @@
 
 (def ^:private ^:const page-size
   "Rows returned per page when paginating the combined query endpoint via continuation tokens.
-   Also used as the query processor's per-call row constraint."
+  Also used as the query processor's per-call row constraint."
   200)
 
 (def ^:private ^:const max-total-row-limit
   "Ceiling on the user-requested :limit for the combined query endpoint. Agents can paginate
-   through up to this many rows across pages."
+  through up to this many rows across pages."
   2000)
 
 ;;; ---------------------------------------------------- Helpers ------------------------------------------------------
 
 (defn- check-tool-result
   "Extract :structured-output from a tool result, or throw with the appropriate HTTP status code.
-   Tool functions return {:structured-output ...} on success,
-   {:output \"error\" :status-code 4xx/5xx} on failure.
-   Defaults to 404 if no status-code is provided for backwards compatibility."
+  Tool functions return {:structured-output ...} on success,
+  {:output \"error\" :status-code 4xx/5xx} on failure.
+  Defaults to 404 if no status-code is provided for backwards compatibility."
   [{:keys [structured-output output status-code]}]
   (or structured-output
       (api/check false [(or status-code 404) (or output "Not found.")])))
@@ -319,10 +319,10 @@
 
 (defn- coerce-query-list
   "Defensive coercion for `/v1/search`'s query arguments. Some MCP clients (notably
-   Codex) serialize array args through a string layer, so a caller that intended to
-   send `[\"orders\"]` may actually send `\"[\\\"orders\\\"]\"`. Accept either shape:
-   an array is returned as-is; a string that parses as a JSON array of non-blank
-   strings is unwrapped; any other string is treated as a single-element query."
+  Codex) serialize array args through a string layer, so a caller that intended to
+  send `[\"orders\"]` may actually send `\"[\\\"orders\\\"]\"`. Accept either shape:
+  an array is returned as-is; a string that parses as a JSON array of non-blank
+  strings is unwrapped; any other string is treated as a single-element query."
   [v]
   (cond
     (nil? v)        nil
@@ -579,7 +579,7 @@
 
 (defn- generate-continuation-token
   "Build a base64-encoded continuation token carrying the query and next-page pagination info.
-   :limit is the user's total row cap across all pages, not the per-page size."
+  :limit is the user's total row cap across all pages, not the per-page size."
   [query-map total-limit page]
   (-> {:query      query-map
        :pagination {:limit total-limit :page (inc page)}}
@@ -588,10 +588,10 @@
 
 (defn- decode-continuation-token
   "Decode a base64-encoded continuation token into {:query ... :pagination ...}.
-   The token is client-supplied, so sanity-check the pagination ints to turn
-   garbage into a 400 rather than a downstream 500. This is robustness, not a
-   security boundary — a caller can always issue a fresh program to run any
-   query they want."
+  The token is client-supplied, so sanity-check the pagination ints to turn
+  garbage into a 400 rather than a downstream 500. This is robustness, not a
+  security boundary — a caller can always issue a fresh program to run any
+  query they want."
   [token]
   (let [decoded (-> token u/decode-base64 json/decode+kw)
         {:keys [limit page]} (:pagination decoded)]
@@ -603,28 +603,28 @@
 
 (defn- total-row-limit
   "The user's requested :limit, defaulted when absent and capped at the combined
-   endpoint's hard maximum. This is the app-level total-row budget enforced across
-   paginated responses; each page's QP-level cap comes from `:page.items`, which
-   `remaining-page-rows` clamps to respect this total."
+  endpoint's hard maximum. This is the app-level total-row budget enforced across
+  paginated responses; each page's QP-level cap comes from `:page.items`, which
+  `remaining-page-rows` clamps to respect this total."
   [live-query]
   (min (or (lib/current-limit live-query) default-query-row-limit)
        max-total-row-limit))
 
 (defn- rows-before-page
   "Total rows consumed by the pages preceding `page`. Single source of truth for
-   the page-size * (page - 1) arithmetic used by both sizing and pagination-exit."
+  the page-size * (page - 1) arithmetic used by both sizing and pagination-exit."
   [page]
   (* (dec page) page-size))
 
 (defn- remaining-page-rows
   "Rows to request for this page, respecting the user's total cap.
-   Returns at most page-size, and never more than remaining rows under the cap."
+  Returns at most page-size, and never more than remaining rows under the cap."
   [total-limit page]
   (max 0 (min page-size (- total-limit (rows-before-page page)))))
 
 (defn- more-pages-available?
   "True when this page was filled to its requested size *and* the total cap still
-   has room for more rows — i.e. we should emit a continuation token."
+  has room for more rows — i.e. we should emit a continuation token."
   [page total-limit rows-returned items]
   (and (= rows-returned items)
        (< (rows-before-page (inc page)) total-limit)))
@@ -650,7 +650,7 @@
 
 (defn- prepare-combined-query
   "Apply the tighter row cap used by the combined query endpoint. Each page is bounded
-   by page-size; the user's total-limit is enforced separately via pagination."
+  by page-size; the user's total-limit is enforced separately via pagination."
   [query]
   (assoc (prepare-agent-query query)
          :constraints {:max-results           page-size
@@ -665,8 +665,8 @@
 
 (defn- initial-page-state
   "Normalize the two /v2/query entry points into a single {:query :total-limit :page}
-   shape. A fresh program evaluates the user's program and computes a total-row budget
-   from its `:limit`; a continuation token carries that state from a prior response."
+  shape. A fresh program evaluates the user's program and computes a total-row budget
+  from its `:limit`; a continuation token carries that state from a prior response."
   [body]
   (if-let [token (:continuation_token body)]
     (let [{:keys [query pagination]} (decode-continuation-token token)]
@@ -916,13 +916,13 @@
 
 (defn- authenticate-with-jwt
   "Authenticate a request using a stateless JWT. Returns `{:user <user>}` on success, or
-   `{:error <type> :message <msg>}` on failure. Does NOT create a session.
+  `{:error <type> :message <msg>}` on failure. Does NOT create a session.
 
-   Uses auth-identity/authenticate to validate the JWT, which reuses the same implementation as the /auth/sso endpoint
-   and handles all settings validation.
+  Uses auth-identity/authenticate to validate the JWT, which reuses the same implementation as the /auth/sso endpoint
+  and handles all settings validation.
 
-   When the JWT contains a `\"scope\"` claim, the result includes `:scopes` — a parsed set of scope strings — so that
-   [[enforce-authentication]] can attach it to the request for downstream scope enforcement."
+  When the JWT contains a `\"scope\"` claim, the result includes `:scopes` — a parsed set of scope strings — so that
+  [[enforce-authentication]] can attach it to the request for downstream scope enforcement."
   [token]
   (let [result (auth-identity/authenticate :provider/jwt {:token token})]
     (if (:success? result)

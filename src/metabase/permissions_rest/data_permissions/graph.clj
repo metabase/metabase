@@ -71,7 +71,7 @@
 
 (mu/defn- api-table-perms
   "Helper to transform 'leaf' values with table-level schemas in the data permissions graph into an API-style data permissions value.
-   Coalesces permissions at the schema level if all table-level permissions within a schema are identical."
+  Coalesces permissions at the schema level if all table-level permissions within a schema are identical."
   [type :- ::permissions.schema/data-permission-type
    schema->table-id->api-val]
   (let [transform-val         (fn [perm-val] ((->api-vals type) perm-val))
@@ -196,10 +196,10 @@
 
 (defn- collapse-uniform-view-data
   "If every table-level `:perms/view-data` value across every schema for a given (group, db) is the same
-   scalar, collapse the schema/table map to that scalar at the db level. Without this, a newly-added DB
-   whose tables are all uniformly `:blocked` (e.g. via the going-granular path during sync) is reported
-   as a `{schema {table-id :blocked}}` map, which the frontend interprets as `granular`. Only applied to
-   `:perms/view-data`; other granular perm types intentionally retain their map shape."
+  scalar, collapse the schema/table map to that scalar at the db level. Without this, a newly-added DB
+  whose tables are all uniformly `:blocked` (e.g. via the going-granular path during sync) is reported
+  as a `{schema {table-id :blocked}}` map, which the frontend interprets as `granular`. Only applied to
+  `:perms/view-data`; other granular perm types intentionally retain their map shape."
   [perm-type->value]
   (let [view-data-val (:perms/view-data perm-type->value)
         leaf-vals     (when (map? view-data-val)
@@ -285,7 +285,7 @@
 
 (defn ee-permissions-exception
   "Exception to throw when a permissions operation fails due to missing Enterprise Edition code, or missing a valid
-   token with the advanced-permissions feature."
+  token with the advanced-permissions feature."
   [perm-type]
   (ex-info
    (tru "The {0} permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
@@ -329,7 +329,7 @@
 
 (defn- resolve-api-value
   "Translates an API permission value for a single [group-id db-id api-key] into a map of
-   {table-id-or-nil {:perm_value v :schema_name s}}. A nil key means db-level."
+  {table-id-or-nil {:perm_value v :schema_name s}}. A nil key means db-level."
   [api-key api-value db-id tables-by-db-schema]
   (let [raw-value (if (#{:download :data-model} api-key)
                     (:schemas api-value)
@@ -407,7 +407,7 @@
 
 (defn- add-implications
   "Given a desired-state map and entries just added for a perm-type, merges in implied permission changes.
-   Implications from later-processed perm-types override earlier values."
+  Implications from later-processed perm-types override earlier values."
   [desired group-id db-id perm-type entries]
   (let [has-db-level? (contains? entries nil)
         db-value      (get-in entries [nil :perm_value])
@@ -419,7 +419,7 @@
 
 (defn- compute-desired-state
   "Process the API graph changes in dependency order, producing a desired-state map of
-   {[group-id db-id perm-type] {table-id-or-nil {:perm_value v :schema_name s}}}."
+  {[group-id db-id perm-type] {table-id-or-nil {:perm_value v :schema_name s}}}."
   [graph tables-by-db-schema]
   (reduce
    (fn [desired [group-id db-id api-key api-value]]
@@ -438,7 +438,7 @@
 
 (defn- expand-to-table-level
   "Expands a db-level permission value to table-level entries for all tables in the db.
-   :query-builder-and-native becomes :query-builder per table since it can only be db-level."
+  :query-builder-and-native becomes :query-builder per table since it can only be db-level."
   [perm-value all-tables]
   (let [table-value (if (= perm-value :query-builder-and-native) :query-builder perm-value)]
     (into {}
@@ -462,13 +462,13 @@
 
 (defn- finalize-tuple
   "For a single [group-id db-id perm-type], compute the final desired DataPermissions rows.
-   Merges desired entries with current state for unmentioned tables, then coalesces if possible.
+  Merges desired entries with current state for unmentioned tables, then coalesces if possible.
 
-   Coalescing rules (matching legacy behavior):
-   - Explicit db-level desired (nil key, no table overrides) → always db-level
-   - Mixed (db-level default + table overrides) where all values same → coalesce to db-level
-   - Table-level desired, current was db-level, all values match current → keep db-level (no-op)
-   - Otherwise → table-level rows"
+  Coalescing rules (matching legacy behavior):
+  - Explicit db-level desired (nil key, no table overrides) → always db-level
+  - Mixed (db-level default + table overrides) where all values same → coalesce to db-level
+  - Table-level desired, current was db-level, all values match current → keep db-level (no-op)
+  - Otherwise → table-level rows"
   [group-id db-id perm-type desired-entries current-rows all-tables]
   (let [has-db-level?  (contains? desired-entries nil)
         table-entries  (dissoc desired-entries nil)]
@@ -515,7 +515,7 @@
 
 (defn- compute-diff
   "Given the desired state, current permissions index, and tables-by-db,
-   returns {:to-delete [id ...] :to-insert [row-map ...]}."
+  returns {:to-delete [id ...] :to-insert [row-map ...]}."
   [desired-state current-perms-index tables-by-db]
   (reduce-kv
    (fn [acc [group-id db-id perm-type] desired-entries]
@@ -540,7 +540,7 @@
 
 (defn- check-data-analyst-locked-permissions
   "Check that we're not modifying data-model permission for the Data Analysts group.
-   Data Analysts always have full data-model (manage-table-metadata) permissions."
+  Data Analysts always have full data-model (manage-table-metadata) permissions."
   [group-updates]
   (let [data-analyst-group-id (u/the-id (perms/data-analyst-group))]
     (when-let [da-updates (get group-updates data-analyst-group-id)]
@@ -565,7 +565,7 @@
 
 (mu/defn update-data-perms-graph!*
   "Takes an API-style perms graph and sets the permissions in the database accordingly.
-   Uses bulk operations to minimize database round-trips."
+  Uses bulk operations to minimize database round-trips."
   ([graph]
    (let [affected-group-ids  (keys graph)
          affected-db-ids     (into #{} (mapcat keys) (vals graph))

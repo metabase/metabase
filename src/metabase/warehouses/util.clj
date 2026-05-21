@@ -33,7 +33,7 @@
 
 (defn test-database-connection
   "Try out the connection details for a database and useful error message if connection fails, returns `nil` if
-   connection succeeds."
+  connection succeeds."
   [engine {:keys [host port] :as details}, & {:keys [log-exception]
                                               :or   {log-exception true}}]
   {:pre [(some? engine)]}

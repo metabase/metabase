@@ -112,7 +112,7 @@
 
 (mu/defn- type->model
   "Returns the model from an action type.
-   `action-type` can be a string or a keyword."
+  `action-type` can be a string or a keyword."
   [action-type :- ::actions.schema/type]
   (case action-type
     :http     :model/HTTPAction
@@ -158,7 +158,7 @@
 
 (mu/defn update!
   "Updates an Action and the related type table.
-   Deletes the old type table row if the type has changed."
+  Deletes the old type table row if the type has changed."
   [updates         :- [:map
                        [:id ::actions.schema/id]]
    existing-action :- ::actions.schema/action]
@@ -197,8 +197,8 @@
 
 (defn- select-actions-without-implicit-params
   "Select Actions and fill in sub type information. Don't use this if you need implicit parameters
-   for implicit actions, use [[select-action]] instead.
-   `options` is passed to `t2/select` `& options` arg."
+  for implicit actions, use [[select-action]] instead.
+  `options` is passed to `t2/select` `& options` arg."
   [& options]
   (let [{:keys [query http implicit]} (group-by :type (apply t2/select :model/Action options))
         query-actions                 (normalize-query-actions query)
@@ -377,7 +377,7 @@
 
 (defn- map-assoc-database-enable-actions
   "Adds a boolean field `:database-enabled-actions` to each action according to the `database-enable-actions` setting for
-   the action's database."
+  the action's database."
   [actions]
   (let [action-ids                  (map :id actions)
         get-database-enable-actions (fn [{:keys [settings]}]

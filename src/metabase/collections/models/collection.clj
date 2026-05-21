@@ -75,7 +75,7 @@
 
 (def library-collection-types
   "All library `:type` values — collections users curate as the canonical place to find content.
-   Kept as a set so callers (e.g. search ranking) can enumerate them without hard-coding strings."
+  Kept as a set so callers (e.g. search ranking) can enumerate them without hard-coding strings."
   #{library-collection-type
     library-data-collection-type
     library-metrics-collection-type})
@@ -144,7 +144,7 @@
 
 (defn remote-synced-collection?
   "Is this a remote-synced collection?
-   Returns true if the collection has is_remote_synced=true in the database."
+  Returns true if the collection has is_remote_synced=true in the database."
   [collection-or-id]
   (cond
     (nil? collection-or-id) false ;; the root collection is never remote-synced
@@ -191,11 +191,11 @@
 
 (def ^{:arglists '([id])} root-collection-type-by-id
   "Return the `:type` of the top-level (root) collection with the given `id`, or `nil` if no
-   top-level collection has that id. Caching is keyed by `[app-db-id collection-id]` per the
-   `metabase.app-db.core/memoize-for-application-db` docstring — different ids never share cache
-   entries, which keeps tests isolated even when other tests run ingestion in parallel.
+  top-level collection has that id. Caching is keyed by `[app-db-id collection-id]` per the
+  `metabase.app-db.core/memoize-for-application-db` docstring — different ids never share cache
+  entries, which keeps tests isolated even when other tests run ingestion in parallel.
 
-   Top-level collections change infrequently, so a 1-hour TTL is fine."
+  Top-level collections change infrequently, so a 1-hour TTL is fine."
   (memoize/ttl
    ^{::memoize/args-fn (fn [[id]] [(mdb/unique-identifier) id])}
    (fn [id]
@@ -1271,7 +1271,7 @@
 
 (defn- select-for-eligibility-check
   "Select instances with fields needed for remote-sync eligibility checking.
-   Returns nil for nested models like DashboardCard that don't need separate eligibility checks."
+  Returns nil for nested models like DashboardCard that don't need separate eligibility checks."
   [model-key ids]
   (when (seq ids)
     (case model-key
@@ -1288,9 +1288,9 @@
 
 (defn- filter-eligible-dependents
   "Filter a list of dependent info maps to only include those that are eligible for remote sync.
-   Each dependent-info is a map like {\"Card\" 123} or {\"Dashboard\" 456}.
-   Returns only those where the model instance is eligible for remote sync.
-   Nested models (like DashboardCard) are always considered eligible since their parent is checked."
+  Each dependent-info is a map like {\"Card\" 123} or {\"Dashboard\" 456}.
+  Returns only those where the model instance is eligible for remote sync.
+  Nested models (like DashboardCard) are always considered eligible since their parent is checked."
   [dependent-infos]
   (let [;; Group by model type and collect IDs
         grouped (reduce (fn [acc dependent-info]

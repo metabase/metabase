@@ -78,7 +78,7 @@
 
 (defn init-enabled-groups!
   "Parse the tracing-groups and log-level settings and cache the results.
-   `log-level-str` is the MB_TRACING_LOG_LEVEL value (e.g. \"DEBUG\", \"INFO\")."
+  `log-level-str` is the MB_TRACING_LOG_LEVEL value (e.g. \"DEBUG\", \"INFO\")."
   [groups-str log-level-str]
   (let [groups-str (or groups-str "all")]
     (reset! enabled-groups
@@ -112,13 +112,13 @@
 
 (defn force-trace-id!
   "Set a trace ID to be used by the next root span created on this thread.
-   Consumed (and cleared) by the custom IdGenerator."
+  Consumed (and cleared) by the custom IdGenerator."
   [^String trace-id]
   (.set forced-trace-id-holder trace-id))
 
 (defn get-and-clear-forced-trace-id!
   "Get and atomically clear the forced trace ID for this thread. Returns nil if none set.
-   Called by the custom IdGenerator — should not be called directly."
+  Called by the custom IdGenerator — should not be called directly."
   ^String []
   (let [tid (.get forced-trace-id-holder)]
     (when tid
@@ -156,8 +156,8 @@
 
 (defn get-tracer
   "Return an OTel `Tracer` for the given instrumentation library name.
-   Uses the clj-otel default OTel instance (set during SDK init), NOT
-   `GlobalOpenTelemetry` (which may be no-op if `:set-as-global` was false)."
+  Uses the clj-otel default OTel instance (set during SDK init), NOT
+  `GlobalOpenTelemetry` (which may be no-op if `:set-as-global` was false)."
   ^io.opentelemetry.api.trace.Tracer [^String library-name]
   (let [^io.opentelemetry.api.OpenTelemetry otel-instance (otel/get-default-otel!)]
     (.getTracer otel-instance library-name)))
@@ -210,15 +210,15 @@
 
 (defn pyroscope-available?
   "True if Pyroscope trace-to-profile integration is available.
-   Returns true when pyroscope.jar is on the classpath and the async-profiler
-   supports setTracingContext."
+  Returns true when pyroscope.jar is on the classpath and the async-profiler
+  supports setTracingContext."
   []
   (boolean (and @async-profiler-instance @set-tracing-ctx-method)))
 
 (defn set-pyroscope-context!
   "Tag current thread's profiling samples with span ID and name, and set the
-   `pyroscope.profile.id` attribute on the span (for Grafana trace-to-profile linking).
-   No-op if Pyroscope is not available."
+  `pyroscope.profile.id` attribute on the span (for Grafana trace-to-profile linking).
+  No-op if Pyroscope is not available."
   [^Span span ^String span-id-hex ^String span-name]
   (when-let [^java.lang.reflect.Method method @set-tracing-ctx-method]
     (try
@@ -330,9 +330,9 @@
 
 (defn- make-id-generator
   "Create an IdGenerator that respects forced trace IDs from frontend traceparent
-   headers (via `force-trace-id!`), falling back to random generation.
-   This allows frontend-originated requests to share a trace ID without creating
-   a parent-child link to a non-existent browser span."
+  headers (via `force-trace-id!`), falling back to random generation.
+  This allows frontend-originated requests to share a trace ID without creating
+  a parent-child link to a non-existent browser span."
   ^IdGenerator []
   (let [^IdGenerator default-gen (IdGenerator/random)]
     (reify IdGenerator
@@ -344,7 +344,7 @@
 
 (defn init!
   "Initialize the OTel SDK with OTLP HTTP exporter. No-op when MB_TRACING_ENABLED=false.
-   Should be called as early as possible in startup — has no database dependency."
+  Should be called as early as possible in startup — has no database dependency."
   []
   (if-not (tracing.settings/tracing-enabled)
     (log/info "OpenTelemetry tracing is disabled (MB_TRACING_ENABLED=false)")

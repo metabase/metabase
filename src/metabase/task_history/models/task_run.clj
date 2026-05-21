@@ -69,7 +69,7 @@
 
 (defn with-run-id-meta
   "Given a map, returns the map with `*run-id*` attached to metadata.
-   Used for propagation of run context across threads (e.g., async notification dispatch)."
+  Used for propagation of run context across threads (e.g., async notification dispatch)."
   [m]
   (vary-meta m assoc ::run-id *run-id*))
 
@@ -101,8 +101,8 @@
 
 (mu/defn complete-task-run!
   "Mark a task run as complete, deriving status from child tasks.
-   Must be called manually for async flows, or automatically via [[with-task-run]].
-   Idempotent - only completes if status is still :started."
+  Must be called manually for async flows, or automatically via [[with-task-run]].
+  Idempotent - only completes if status is still :started."
   [run-id :- ms/PositiveInt]
   (let [task-statuses (t2/select-fn-set :status :model/TaskHistory :run_id run-id)
         status        (if (= #{:success} task-statuses)
@@ -114,13 +114,13 @@
 
 (defmacro with-task-run
   "Wrap a root flow to group all tasks under a single run.
-   `run-info` should contain :run_type, :entity_type, :entity_id.
+  `run-info` should contain :run_type, :entity_type, :entity_id.
 
-   If `run-info` is nil or already inside a task run, just executes body without
-   creating a new task run (prevents nesting).
+  If `run-info` is nil or already inside a task run, just executes body without
+  creating a new task run (prevents nesting).
 
-   For async flows (e.g., async notifications), use :auto-complete false and
-   call [[complete-task-run!]] manually when all async work is done."
+  For async flows (e.g., async notifications), use :auto-complete false and
+  call [[complete-task-run!]] manually when all async work is done."
   {:style/indent 1}
   [run-info & body]
   `(if (or *run-id* (nil? ~run-info))

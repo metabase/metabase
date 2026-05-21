@@ -64,7 +64,7 @@ Reference items using: [name](metabase://type/id)")
 
 (defn query-created-instructions-for
   "Generate instructions for a newly created SQL query, embedding the query ID
-   in the link template. Matches Python CreateSQLQueryToolV2._create_result."
+  in the link template. Matches Python CreateSQLQueryToolV2._create_result."
   [query-id]
   (str "The assistant needs to:\n"
        "- Remember you cannot view the results directly yourself\n"
@@ -75,7 +75,7 @@ Reference items using: [name](metabase://type/id)")
 
 (defn edit-sql-query-instructions-for
   "Generate instructions for an edited SQL query, embedding the query ID
-   in the link template. Matches Python EditSqlQueryToolV2._create_result."
+  in the link template. Matches Python EditSqlQueryToolV2._create_result."
   [query-id]
   (str "The updated query is shown in the result data above.\n\n"
        "After you have edited the query, do a thorough analysis of the query to find any potential errors.\n\n"
@@ -88,7 +88,7 @@ Reference items using: [name](metabase://type/id)")
 
 (defn replace-sql-query-instructions-for
   "Generate instructions for a replaced SQL query, embedding the query ID
-   in the link template. Matches Python ReplaceSqlQueryToolV2._create_result."
+  in the link template. Matches Python ReplaceSqlQueryToolV2._create_result."
   [query-id]
   (str "The updated query is shown in the result data above.\n\n"
        "After you have replaced the query, do a thorough analysis of the query to find any potential errors.\n\n"

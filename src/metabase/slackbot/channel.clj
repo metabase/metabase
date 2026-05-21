@@ -31,8 +31,8 @@
 
 (defn- make-channel-callbacks
   "Create callback functions for channel replies.
-   Uses the Slack assistant setStatus API for progress indication.
-   Text is accumulated and sent once in the final message post."
+  Uses the Slack assistant setStatus API for progress indication.
+  Text is accumulated and sent once in the final message post."
   [client {:keys [channel thread-ts tool-name->friendly]}]
   (let [current-text (atom "")]
     (letfn [(set-status! [status]
@@ -53,7 +53,7 @@
 
 (defn send-channel-response
   "Send a visible threaded reply for non-DM Slack conversations.
-   Accumulates AI text during streaming and posts the final response as a single message."
+  Accumulates AI text during streaming and posts the final response as a single message."
   [client event extra-history {:keys [channel-id message-ctx channel thread-ts auth-info thread bot-user-id prompt conversation-id]}
    {:keys [tool-name->friendly
            make-streaming-ai-request collect-viz-blocks feedback-blocks post-viz-error!

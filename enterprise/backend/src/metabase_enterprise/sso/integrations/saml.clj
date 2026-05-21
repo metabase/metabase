@@ -77,9 +77,9 @@
 
 (defn construct-redirect-url
   "Constructs a redirect URL from request parameters.
-   Parameters:
-   - req: The request object containing params, headers, etc.
-   Returns: The constructed redirect URL with appropriate query parameters"
+  Parameters:
+  - req: The request object containing params, headers, etc.
+  Returns: The constructed redirect URL with appropriate query parameters"
   [req]
   (let [redirect (get-in req [:params :redirect])
         origin (get-in req [:headers "origin"])

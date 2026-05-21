@@ -278,7 +278,7 @@
 
 (defn run-transform!
   "Run a transform. Returns a 202 response with run_id.
-   The transform must already be fetched and validated."
+  The transform must already be fetched and validated."
   [transform]
   (transforms.core/check-feature-enabled! transform)
   (api/check (not (transforms.core/transform-locked? transform))

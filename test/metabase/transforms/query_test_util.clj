@@ -21,13 +21,13 @@
 (defn make-query
   "Create a query for testing, with optional filtering.
 
-   Options:
-   - :source-table - Table name (string) or table object to query
-   - :source-column - Name of column to filter on (optional)
-   - :filter-fn - Filter function to use (optional, e.g., lib/=, lib/starts-with)
-   - :filter-values - Values to pass to filter function (optional)
+  Options:
+  - :source-table - Table name (string) or table object to query
+  - :source-column - Name of column to filter on (optional)
+  - :filter-fn - Filter function to use (optional, e.g., lib/=, lib/starts-with)
+  - :filter-values - Values to pass to filter function (optional)
 
-   Returns an MBQL 5 query object."
+  Returns an MBQL 5 query object."
   [& {:keys [source-table source-column filter-fn filter-values]}]
   (let [mp     (mt/metadata-provider)
         table  (if (string? source-table)

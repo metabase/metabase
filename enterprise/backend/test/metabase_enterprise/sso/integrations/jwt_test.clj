@@ -33,7 +33,7 @@
 
 (defmacro ^:private with-jwt-default-setup!
   "Set up default JWT configuration for tests.
-   Delegates to [[sso.test-setup/with-jwt-default-setup!]]."
+  Delegates to [[sso.test-setup/with-jwt-default-setup!]]."
   [& body]
   `(sso.test-setup/with-jwt-default-setup! ~@body))
 

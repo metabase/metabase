@@ -191,12 +191,12 @@
 
 (def ^:dynamic ^Boolean *allow-root-entries*
   "Should we allow permissions entries like `/`? By default, this is disallowed, but you can temporarily disable it here
-   when creating the default entry for `Admin`."
+  when creating the default entry for `Admin`."
   false)
 
 (def ^:dynamic ^Boolean *allow-admin-permissions-changes*
   "Should we allow changes to be made to permissions belonging to the Admin group? By default this is disabled to
-   prevent accidental tragedy, but you can enable it here when creating the default entry for `Admin`."
+  prevent accidental tragedy, but you can enable it here when creating the default entry for `Admin`."
   false)
 
 ;;; --------------------------------------------------- Assertions ---------------------------------------------------
@@ -221,7 +221,7 @@
 
 (defn- assert-valid
   "Check to make sure this `permissions` entry is something that's allowed to be saved (i.e. it has a valid `:object`
-   path and it's not for the admin group)."
+  path and it's not for the admin group)."
   [permissions]
   (doseq [f [assert-not-admin-group
              assert-valid-object]]

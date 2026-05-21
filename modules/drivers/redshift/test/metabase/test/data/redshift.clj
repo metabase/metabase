@@ -267,15 +267,15 @@
 (defn- orphan-isolation-users
   "Iso users (`mb__isolation_*`) older than [[hours-before-expired-threshold]].
 
-   Derived from [[orphan-schemas]] -- iso schema names and iso user names are
-   identical strings by construction (`workspace-isolation-namespace-name` ==
-   `workspace-isolation-user-name`). Schema is always created BEFORE user in
-   `init-workspace-isolation! :redshift`, so an orphan user without a paired
-   schema is structurally impossible; we don't need a separate query.
+  Derived from [[orphan-schemas]] -- iso schema names and iso user names are
+  identical strings by construction (`workspace-isolation-namespace-name` ==
+  `workspace-isolation-user-name`). Schema is always created BEFORE user in
+  `init-workspace-isolation! :redshift`, so an orphan user without a paired
+  schema is structurally impossible; we don't need a separate query.
 
-   REPL-only convenience -- production path consumes the schemas result map
-   directly via [[delete-old-schemas!]]. Kept here so devs can preview without
-   knowing the orphan-map shape."
+  REPL-only convenience -- production path consumes the schemas result map
+  directly via [[delete-old-schemas!]]. Kept here so devs can preview without
+  knowing the orphan-map shape."
   [^java.sql.Connection conn]
   (:expired-isolation (orphan-schemas conn)))
 
@@ -303,15 +303,15 @@
 
 (defn- drop-orphan-isolation-users!
   "Drop iso users paired with expired iso schemas. The schema was dropped first
-   (see [[drop-orphan-schemas!]]), so its default-priv dependencies on the user
-   are already gone -- DROP USER should succeed without REVOKE chasing.
+  (see [[drop-orphan-schemas!]]), so its default-priv dependencies on the user
+  are already gone -- DROP USER should succeed without REVOKE chasing.
 
-   Per-entry try/catch: a lingering grant from a NON-iso schema would block
-   DROP USER, but `grant-workspace-read-access!` issues those against
-   user-named input schemas which the production `destroy-workspace-isolation!`
-   revokes. If production ran, no orphan grants. If it didn't (the case this
-   cleanup catches), the user is dead-state anyway and a logged DROP failure
-   is fine."
+  Per-entry try/catch: a lingering grant from a NON-iso schema would block
+  DROP USER, but `grant-workspace-read-access!` issues those against
+  user-named input schemas which the production `destroy-workspace-isolation!`
+  revokes. If production ran, no orphan grants. If it didn't (the case this
+  cleanup catches), the user is dead-state anyway and a logged DROP failure
+  is fine."
   [^java.sql.Statement stmt iso-usernames]
   (doseq [iso-username iso-usernames]
     (log/infof "Dropping expired workspace isolation user: %s" iso-username)

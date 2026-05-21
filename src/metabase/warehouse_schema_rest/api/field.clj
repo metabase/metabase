@@ -67,7 +67,7 @@
 
 (defn- check-field-in-same-database!
   "Check that `target-field-id` is a valid field in the same database as `source-field-id`. Throws a 400 if
-   the target field does not exist or belongs to a different database. Uses a single query."
+  the target field does not exist or belongs to a different database. Uses a single query."
   [source-field-id target-field-id param-name]
   (let [result (first (t2/query {:select [[:source_t.db_id :source_db_id]
                                           [:target_t.db_id :target_db_id]]
@@ -110,8 +110,8 @@
 
 (defn- update-nested-fields-on-json-unfolding-change!
   "If JSON unfolding was enabled for a JSON field, it activates previously synced nested fields from the JSON field.
-   If JSON unfolding was disabled for that field, it inactivates the nested fields from the JSON field.
-   Returns nil."
+  If JSON unfolding was disabled for that field, it inactivates the nested fields from the JSON field.
+  Returns nil."
   [old-field new-json-unfolding]
   (when (not= new-json-unfolding (:json_unfolding old-field))
     (if new-json-unfolding

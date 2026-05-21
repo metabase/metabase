@@ -17,26 +17,26 @@
 
 (defn- iso-db-slot
   "Value of the `:db` AST slot a `TableRemapping.to_db` carries for `database`'s
-   engine. Empty string for drivers that don't populate the `:db` slot
-   (Postgres, Redshift, H2, ClickHouse) — the storage sentinel. For drivers
-   that do (MySQL, SQL Server, BigQuery), consults
-   [[metabase.driver.sql/db-slot-value]]."
+  engine. Empty string for drivers that don't populate the `:db` slot
+  (Postgres, Redshift, H2, ClickHouse) — the storage sentinel. For drivers
+  that do (MySQL, SQL Server, BigQuery), consults
+  [[metabase.driver.sql/db-slot-value]]."
   [database]
   (or (driver.sql/db-slot-value (:engine database) database) ""))
 
 (defn clear-mappings-for-iso!
   "Delete every `TableRemapping` row on `database`'s id whose `to_*` slots match
-   the iso namespace `(iso-db, iso-schema)` for this workspace_database row.
+  the iso namespace `(iso-db, iso-schema)` for this workspace_database row.
 
-   Idempotent — 0 rows deleted is a valid outcome when nothing was registered
-   (e.g. a workspace_database that was provisioned but never had a transform run).
+  Idempotent — 0 rows deleted is a valid outcome when nothing was registered
+  (e.g. a workspace_database that was provisioned but never had a transform run).
 
-   Scope rationale: the unique constraint on `(database_id, from_db, from_schema,
-   from_table_name)` prevents two workspaces on the same metabase_database from
-   remapping the same canonical table. So deleting by iso namespace is enough
-   to avoid clobbering another workspace's rows on the same database_id.
+  Scope rationale: the unique constraint on `(database_id, from_db, from_schema,
+  from_table_name)` prevents two workspaces on the same metabase_database from
+  remapping the same canonical table. So deleting by iso namespace is enough
+  to avoid clobbering another workspace's rows on the same database_id.
 
-   Returns the count of rows deleted."
+  Returns the count of rows deleted."
   [database database-id output-namespace]
   (long
    (t2/delete! :model/TableRemapping

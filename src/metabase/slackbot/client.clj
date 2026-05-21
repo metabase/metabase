@@ -61,9 +61,9 @@
 
 (defn auth-test
   "Call auth.test and return the response including headers.
-   Throws an exception with appropriate status code if the call fails:
-   - 400 for invalid/revoked tokens
-   - 502 for Slack API errors (e.g., Slack is down)"
+  Throws an exception with appropriate status code if the call fails:
+  - 400 for invalid/revoked tokens
+  - 502 for Slack API errors (e.g., Slack is down)"
   [client]
   (try
     (let [{:keys [body headers]} (slack-post-json client "/auth.test" {})]
@@ -130,7 +130,7 @@
 
 (defn post-image
   "Upload a PNG image and send in a message.
-   Optional initial-comment adds context text alongside the image."
+  Optional initial-comment adds context text alongside the image."
   [client image-bytes filename channel thread-ts & {:keys [initial-comment]}]
   (let [{:keys [ok upload_url file_id] :as res} (get-upload-url client {:filename filename
                                                                         :length (alength ^bytes image-bytes)})]
@@ -195,7 +195,7 @@
 
 (defn download-file-stream
   "Download a file from Slack, returning an InputStream instead of buffering in memory.
-   Caller is responsible for closing the stream (e.g. via `with-open`)."
+  Caller is responsible for closing the stream (e.g. via `with-open`)."
   ^InputStream
   [client url]
   (-> (http/get url {:headers {"Authorization" (str "Bearer " (:token client))}
@@ -229,7 +229,7 @@
 
 (defn append-stream
   "Append chunks to an active stream. Each chunk is a map with :type and type-specific keys,
-   e.g. {:type \"markdown_text\" :text \"...\"} or {:type \"task_update\" :id \"...\" :title \"...\" :status \"...\"}."
+  e.g. {:type \"markdown_text\" :text \"...\"} or {:type \"task_update\" :id \"...\" :title \"...\" :status \"...\"}."
   [client channel stream-ts chunks]
   (let [payload  {:channel channel
                   :ts      stream-ts

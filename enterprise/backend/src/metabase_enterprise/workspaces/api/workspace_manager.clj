@@ -59,7 +59,7 @@
 
 (def ^:private DateTimeWithTimeZone
   "An instant with explicit time-zone info. `Timestamp` would be ambiguous --
-   `TIMESTAMP` in most SQL databases is short for `TIMESTAMP WITHOUT TIME ZONE`."
+  `TIMESTAMP` in most SQL databases is short for `TIMESTAMP WITHOUT TIME ZONE`."
   [:or
    (ms/InstanceOfClass java.time.OffsetDateTime)
    (ms/InstanceOfClass java.time.ZonedDateTime)])
@@ -189,7 +189,7 @@
 
 (defn- workspace-metadata-filters
   "Derive the `:database-ids` and `:schema-ids` filter values from a hydrated workspace.
-   `:schema-ids` is a `{db-id [\"schema\" ...]}` map matching the metadata export schema."
+  `:schema-ids` is a `{db-id [\"schema\" ...]}` map matching the metadata export schema."
   [{:keys [databases]}]
   {:database-ids (mapv :database_id databases)
    :schema-ids   (into {}

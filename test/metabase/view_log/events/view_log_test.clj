@@ -516,7 +516,7 @@
 
 (defn- ->bool
   "Coerce a value to boolean. MySQL JDBC returns Integer 1/0 for TRUE/FALSE
-   in CASE expressions, and byte arrays for bit literals."
+  in CASE expressions, and byte arrays for bit literals."
   [v]
   (cond
     (instance? Boolean v) v

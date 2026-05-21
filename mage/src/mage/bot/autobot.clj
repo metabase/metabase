@@ -48,9 +48,9 @@
 
 (defn find-session
   "Find a session matching the given name or ID. Tries an exact match on the
-   parsed worktree name first; if none, falls back to a case-insensitive
-   substring match on the raw line. Returns the worktree name (suitable for
-   workmux commands) or nil."
+  parsed worktree name first; if none, falls back to a case-insensitive
+  substring match on the raw line. Returns the worktree name (suitable for
+  workmux commands) or nil."
   [name-or-id]
   (let [needle  (str/lower-case (str/trim name-or-id))
         data    (rest (workmux-list-raw))
@@ -92,7 +92,7 @@
 
 (defn- current-worktree-path
   "Return the absolute path of the git worktree the caller is currently in,
-   or nil if not inside a git repo."
+  or nil if not inside a git repo."
   []
   (let [{:keys [exit out]} (shell/sh* {:quiet? true :dir (System/getProperty "user.dir")}
                                       "git" "rev-parse" "--show-toplevel")]
@@ -101,7 +101,7 @@
 
 (defn- main-repo-path
   "Return the absolute path of the main (common) git repo, or nil if not in a git repo.
-   When run from a linked worktree, this returns the main repo, not the worktree."
+  When run from a linked worktree, this returns the main repo, not the worktree."
   []
   (let [{:keys [exit out]} (shell/sh* {:quiet? true :dir (System/getProperty "user.dir")}
                                       "git" "rev-parse" "--git-common-dir")]
@@ -150,8 +150,8 @@
 
 (defn- generate-workmux-config
   "Generate the .workmux.yaml content from a template for a given bot.
-   In PR-env mode (when pr-env-url is non-nil), uses the slim PR-env template
-   instead of the full local-dev template."
+  In PR-env mode (when pr-env-url is non-nil), uses the slim PR-env template
+  instead of the full local-dev template."
   [{:keys [bot-name app-db pr-env-url pr-num]}]
   (let [template-path (if pr-env-url
                         (str u/project-root-directory "/dev/bot/workmux-template-pr-env.yaml")
@@ -167,13 +167,13 @@
 
 (defn- launch-config-path
   "Per-launch workmux config path under <root>/.bot/launch/<session>.yaml.
-   The .bot/ directory is gitignored."
+  The .bot/ directory is gitignored."
   [root session-name]
   (str root "/.bot/launch/" session-name ".yaml"))
 
 (defn- with-workmux-config!
   "Spit `config-content` to `cfg-path`, run `f`, then delete the file even on
-   exception. Used by both launch and relaunch paths."
+  exception. Used by both launch and relaunch paths."
   [cfg-path config-content f]
   (io/make-parents cfg-path)
   (spit cfg-path config-content)
@@ -190,13 +190,13 @@
 
 (defn- launch-workmux-session!
   "Launch a new workmux session (creates worktree from branch).
-   branch-ref is what workmux add receives as its positional arg — either the
-   existing branch name, or origin/<name> to check out a remote branch.
+  branch-ref is what workmux add receives as its positional arg — either the
+  existing branch name, or origin/<name> to check out a remote branch.
 
-   When called from outside tmux, we pass `-s` so workmux creates the tmux
-   session itself (no `tmux new-session` shim, no bootstrap-window cleanup
-   loop). The window_prefix is set to \"\" in the template so the resulting
-   session name matches `session-name` exactly."
+  When called from outside tmux, we pass `-s` so workmux creates the tmux
+  session itself (no `tmux new-session` shim, no bootstrap-window cleanup
+  loop). The window_prefix is set to \"\" in the template so the resulting
+  session name matches `session-name` exactly."
   [{:keys [session-name branch-name branch-ref prompt-file workmux-config display-info]}]
   (let [cfg-path (launch-config-path u/project-root-directory session-name)
         ref      (or branch-ref branch-name)
@@ -269,13 +269,13 @@
 
 (defn- relaunch-existing-session!
   "Relaunch a session in an existing worktree.
-   Launches workmux open with --config pointing at a per-launch yaml under
-   <wt-path>/.bot/launch/<session>.yaml. The worktree's own persistent
-   .workmux.yaml is left untouched. The mode (window vs session) is whatever
-   the original `workmux add` recorded.
+  Launches workmux open with --config pointing at a per-launch yaml under
+  <wt-path>/.bot/launch/<session>.yaml. The worktree's own persistent
+  .workmux.yaml is left untouched. The mode (window vs session) is whatever
+  the original `workmux add` recorded.
 
-   `bot-name` is currently unused but kept in the call signature so
-   bot-specific relaunch behavior can be added later without changing callers."
+  `bot-name` is currently unused but kept in the call signature so
+  bot-specific relaunch behavior can be added later without changing callers."
   [{:keys [_bot-name session-name wt-path prompt-file workmux-config]}]
   ;; Copy prompt file into worktree as prompt.md. Callers always pass an absolute path.
   (let [prompt-dest (str wt-path "/prompt.md")]
@@ -474,7 +474,7 @@
 
 (defn- most-recent-result-md
   "Given a worktree path and a bot name, find the most recent result.md file
-   under <wt>/.bot/<bot>/*/result.md. Returns the java.io.File or nil."
+  under <wt>/.bot/<bot>/*/result.md. Returns the java.io.File or nil."
   [wt-path bot-name]
   (let [bot-dir (java.io.File. (str wt-path "/.bot/" bot-name))]
     (when (.isDirectory bot-dir)
@@ -488,7 +488,7 @@
 
 (defn result!
   "Print the most recent result.md for a given branch+bot combination.
-   Usage: ./bin/mage -autobot-result <branch> <bot>"
+  Usage: ./bin/mage -autobot-result <branch> <bot>"
   [{:keys [arguments]}]
   (let [[branch bot-name] arguments]
     (when (or (str/blank? branch) (str/blank? bot-name))
@@ -520,7 +520,7 @@
 
 (defn stop!
   "Stop a session (kill tmux + dev env, keep worktree).
-   Works with a session name argument, or detects current session if no args."
+  Works with a session name argument, or detects current session if no args."
   [{:keys [arguments]}]
   (let [session (resolve-session-name (first arguments))
         wt-path (worktree-path session)]
@@ -537,7 +537,7 @@
 
 (defn kill!
   "Tear down and remove a session.
-   Works with a session name argument, or detects current session if no args."
+  Works with a session name argument, or detects current session if no args."
   [{:keys [arguments]}]
   (let [session (resolve-session-name (first arguments))]
     (println (c/yellow "Removing worktree: " session "..."))

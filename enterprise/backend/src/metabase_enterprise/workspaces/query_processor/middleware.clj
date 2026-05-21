@@ -78,8 +78,8 @@
 
 (defn- table-remapper
   "Build a function that remaps table metadata according to `remappings`.
-   The returned fn merges `:db`, `:schema`, and `:name` overrides onto any table whose
-   `(:schema, :name)` matches a `from` spec."
+  The returned fn merges `:db`, `:schema`, and `:name` overrides onto any table whose
+  `(:schema, :name)` matches a `from` spec."
   [remappings]
   (let [schema-table-index (into {}
                                  (map (fn [[from-spec to-spec]]
@@ -98,7 +98,7 @@
 
 (defn- table-transform
   "Wrap a per-table function `f` into a transform suitable for [[lib.metadata/transforming-metadata-provider]].
-   Only applies `f` when the metadata spec's `:lib/type` is `:metadata/table`; all other types pass through."
+  Only applies `f` when the metadata spec's `:lib/type` is `:metadata/table`; all other types pass through."
   [f]
   (fn [{metadata-type :lib/type} results]
     (if (= metadata-type :metadata/table)
@@ -114,19 +114,19 @@
 
 (defn- install-remapped-metadata-provider!
   "Override `:db`, `:schema`, and `:name` on table metadata in the CachedMetadataProvider
-   for each remapping. Downstream HoneySQL compilation will read the overridden values.
+  for each remapping. Downstream HoneySQL compilation will read the overridden values.
 
-   Match key is `(:schema, :name)` — sync doesn't populate `:db` on `:metadata/table`,
-   so the canonical from-side never carries it. The `to-spec`'s `:db` IS written when
-   populated; the `[:sql :metadata/table]` ->honeysql handler reads it and emits a
-   `db.schema.table` (or `db.table`) qualifier. That makes cross-DB workspaces
-   (currently MySQL — iso namespace lives in `:db`) routable through Phase 1 without
-   needing Phase 2's SQLGlot rewriter to insert a missing qualifier.
+  Match key is `(:schema, :name)` — sync doesn't populate `:db` on `:metadata/table`,
+  so the canonical from-side never carries it. The `to-spec`'s `:db` IS written when
+  populated; the `[:sql :metadata/table]` ->honeysql handler reads it and emits a
+  `db.schema.table` (or `db.table`) qualifier. That makes cross-DB workspaces
+  (currently MySQL — iso namespace lives in `:db`) routable through Phase 1 without
+  needing Phase 2's SQLGlot rewriter to insert a missing qualifier.
 
-   `denormalize-level` collapses storage's `\"\"` sentinel to `nil` on both sides of
-   the schema comparison, so a remapping row with `from_schema = \"\"` matches a
-   schema-less driver's `:metadata/table.:schema = nil` (and a Postgres remapping
-   row with `from_schema = \"public\"` matches the literal value)."
+  `denormalize-level` collapses storage's `\"\"` sentinel to `nil` on both sides of
+  the schema comparison, so a remapping row with `from_schema = \"\"` matches a
+  schema-less driver's `:metadata/table.:schema = nil` (and a Postgres remapping
+  row with `from_schema = \"public\"` matches the literal value)."
   [mp remappings]
   (let [remapping-mp (lib.metadata/transforming-metadata-provider
                       (table-transform (table-remapper remappings))
@@ -142,30 +142,30 @@
 
 (defenterprise apply-workspace-remapping
   "**Phase 1 — preprocess.** Mutate cached table metadata so every QP middleware between here
-   and execute sees workspace identifiers, not canonical ones.
+  and execute sees workspace identifiers, not canonical ones.
 
-   For each remapping, walks the cached metadata provider, finds the `:metadata/table` that
-   matches the `from` (schema, name) pair, and stores it back with `:schema`/`:name` set to
-   the `to` pair. Downstream HoneySQL compilation reads the mutated values and emits workspace
-   identifiers in the compiled SQL.
+  For each remapping, walks the cached metadata provider, finds the `:metadata/table` that
+  matches the `from` (schema, name) pair, and stores it back with `:schema`/`:name` set to
+  the `to` pair. Downstream HoneySQL compilation reads the mutated values and emits workspace
+  identifiers in the compiled SQL.
 
-   Phase 1 is **not** the security boundary — Phase 2 is. Phase 1 exists for *pipeline
-   coherence*: middleware like sandboxing, permission checks, and cache-key generation may
-   read `:schema`/`:name` off table metadata and make decisions on them. Without Phase 1
-   those decisions would be made against canonical names, which is invisible bug-bait. With
-   Phase 1, the whole pipeline sees the same identifiers Phase 2 will emit.
+  Phase 1 is **not** the security boundary — Phase 2 is. Phase 1 exists for *pipeline
+  coherence*: middleware like sandboxing, permission checks, and cache-key generation may
+  read `:schema`/`:name` off table metadata and make decisions on them. Without Phase 1
+  those decisions would be made against canonical names, which is invisible bug-bait. With
+  Phase 1, the whole pipeline sees the same identifiers Phase 2 will emit.
 
-   Native queries are intentionally untouched here — see the namespace docstring for why.
+  Native queries are intentionally untouched here — see the namespace docstring for why.
 
-   ## Why `:feature :none` and not `:feature :workspaces`
+  ## Why `:feature :none` and not `:feature :workspaces`
 
-   Workspace child instances bootstrap from `config.yml` *before* their token is installed
-   (see `metabase-enterprise.advanced-config.file/initialize!`). A child whose remap rows
-   exist but whose `:workspaces` token isn't yet active must still rewrite reads — otherwise
-   the child silently leaks production data. The same rationale documented on
-   [[metabase-enterprise.workspaces.transform-hooks/resolve-transform-target]] applies here:
-   if remap rows exist, isolation must engage regardless of token state. The internal
-   `(ws.remapping/enabled-for-db? db-id)` check is the actual gate."
+  Workspace child instances bootstrap from `config.yml` *before* their token is installed
+  (see `metabase-enterprise.advanced-config.file/initialize!`). A child whose remap rows
+  exist but whose `:workspaces` token isn't yet active must still rewrite reads — otherwise
+  the child silently leaks production data. The same rationale documented on
+  [[metabase-enterprise.workspaces.transform-hooks/resolve-transform-target]] applies here:
+  if remap rows exist, isolation must engage regardless of token state. The internal
+  `(ws.remapping/enabled-for-db? db-id)` check is the actual gate."
   :feature :none
   [{db-id :database, mp :lib/metadata, :as query}]
   (if-not (ws.remapping/enabled-for-db? db-id)
@@ -181,7 +181,7 @@
 
 (defn- rewrite-compiled-map
   "Rewrite table references in a compiled query map ({:query sql, :params [...]}). Parses the
-   complete SQL, replaces production schema/table refs with workspace equivalents, re-emits."
+  complete SQL, replaces production schema/table refs with workspace equivalents, re-emits."
   [driver compiled-map remappings]
   (let [sql       (:query compiled-map)
         rewritten (ws.table-remapping/rewrite-sql driver sql remappings)]
@@ -189,14 +189,14 @@
 
 (defn- rewrite-stages
   "Recursively walk an MBQL 5 query's `:stages` and rewrite the `:native` SQL on every native
-   stage, descending into each join's own `:stages` as well.
+  stage, descending into each join's own `:stages` as well.
 
-   The stage's `:native` is the **source of truth** for native-origin SQL.
-   `[[metabase.query-processor.execute/run]]` calls `[[lib/->legacy-MBQL]]` immediately
-   before driver dispatch; that conversion rebuilds the legacy top-level `:native` from
-   `(get-in query [:stages -1 :native])`. So patching legacy `:native` directly is futile
-   -- it gets overwritten. Patch the stage and `lib/->legacy-MBQL` propagates the rewrite
-   to the legacy form naturally."
+  The stage's `:native` is the **source of truth** for native-origin SQL.
+  `[[metabase.query-processor.execute/run]]` calls `[[lib/->legacy-MBQL]]` immediately
+  before driver dispatch; that conversion rebuilds the legacy top-level `:native` from
+  `(get-in query [:stages -1 :native])`. So patching legacy `:native` directly is futile
+  -- it gets overwritten. Patch the stage and `lib/->legacy-MBQL` propagates the rewrite
+  to the legacy form naturally."
   [driver stages remappings]
   (mapv (fn [stage]
           (cond-> stage

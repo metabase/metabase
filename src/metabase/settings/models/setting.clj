@@ -1255,9 +1255,9 @@
 
 (defn- validate-description-form*
   "Check that `description-form` is a i18n form (e.g. [[metabase.util.i18n/deferred-tru]]).
-   If not, return a form for an exception to throw at a later stage.
-   The reason for this strange behaviour is that we need to build the exception at compile time, but will only know
-   whether we should throw it once all the macro arguments have been evaluated at runtime."
+  If not, return a form for an exception to throw at a later stage.
+  The reason for this strange behaviour is that we need to build the exception at compile time, but will only know
+  whether we should throw it once all the macro arguments have been evaluated at runtime."
   [description-form]
   (when-not (valid-trs-or-tru? description-form)
     ;; this doesn't need to be i18n'ed because it's a compile-time error.
@@ -1628,7 +1628,7 @@
 
 (defn can-read-setting?
   "Returns true if a setting can be read according to the provided set of `allowed-visibilities`, and false otherwise.
-   `allowed-visibilities` is a set of visibilities that the user can read."
+  `allowed-visibilities` is a set of visibilities that the user can read."
   [setting allowed-visibilities]
   (let [setting (resolve-setting setting)]
     (boolean (and (not (:sensitive? setting))
@@ -1702,7 +1702,7 @@
 
 (defn- validate-setting
   "Test whether the value configured for a given setting can be parsed as the expected type.
-   Returns an map containing the exception if an issue is encountered, or nil if the value passes validation."
+  Returns an map containing the exception if an issue is encountered, or nil if the value passes validation."
   [setting]
   (try
     (binding [*disable-init* true]
@@ -1719,7 +1719,7 @@
 (defn validate-settings-formatting!
   "Check whether there are any issues with the format of application settings, e.g. an invalid JSON string.
 
-   Note that this will only check settings whose [[defsetting]] forms have already been evaluated."
+  Note that this will only check settings whose [[defsetting]] forms have already been evaluated."
   []
   (doseq [invalid-setting (keep validate-setting (vals @registered-settings))]
     (if (:env-var? invalid-setting)

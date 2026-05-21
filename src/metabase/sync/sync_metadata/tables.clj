@@ -31,8 +31,8 @@
 
 (def ^:private crufty-table-patterns
   "Regular expressions that match Tables that should automatically given the `visibility-type` of `:cruft`.
-   This means they are automatically hidden to users (but can be unhidden in the admin panel).
-   These `Tables` are known to not contain useful data, such as migration or web framework internal tables."
+  This means they are automatically hidden to users (but can be unhidden in the admin panel).
+  These `Tables` are known to not contain useful data, such as migration or web framework internal tables."
   #{;; Django
     #"^auth_group$"
     #"^auth_group_permissions$"
@@ -122,7 +122,7 @@
 
 (defn create-table!
   "Creates a new table in the database, ready to be synced.
-   Throws an exception if there is already a table with the same name, schema and database ID."
+  Throws an exception if there is already a table with the same name, schema and database ID."
   [database table]
   (t2/insert-returning-instance!
    :model/Table

@@ -21,7 +21,7 @@
 ;; This needs to be injected into [[metabase.server.routes/routes]] -- not [[metabase.api-routes.core/routes]] !!!
 (def routes
   "Ring routes for auth API endpoints.
-   Slack Connect (OSS) is always available. Other SSO routes (SAML, JWT, OIDC) require EE."
+  Slack Connect (OSS) is always available. Other SSO routes (SAML, JWT, OIDC) require EE."
   (handlers/routes
    ;; Slack Connect routes always available (OSS)
    (handlers/route-map-handler {"/auth" {"/sso" {"/slack-connect" slack-connect.api/routes}}})

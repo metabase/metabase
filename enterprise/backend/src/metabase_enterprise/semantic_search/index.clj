@@ -111,7 +111,7 @@
 
 (defn- to-boolean
   "MySQL booleans are represented as 0/1, so we must ensure we're casting them to
-   real booleans when inserting them into our postgres db"
+  real booleans when inserting them into our postgres db"
   [b]
   {:pre [(some? b)]}
   (cond
@@ -122,8 +122,8 @@
 
 (defn- batch-resolve-personal-owner-ids
   "Given a seq of collection-ids, return a map of collection-id -> personal_owner_id.
-   Collections not in any personal tree will be absent from the map.
-   Uses at most 2 queries regardless of the number of collection-ids."
+  Collections not in any personal tree will be absent from the map.
+  Uses at most 2 queries regardless of the number of collection-ids."
   [collection-ids]
   (when-let [collection-ids (not-empty (set (remove nil? collection-ids)))]
     (let [colls                (t2/select [:model/Collection :id :personal_owner_id :location]
@@ -449,7 +449,7 @@
 
 (defn- content-index-name
   "Returns the name for a B-tree database index on `content` for the given semantic search index configuration.
-   Used for efficient `content IN ..` queries."
+  Used for efficient `content IN ..` queries."
   [index]
   (index-name index "_content_idx"))
 
@@ -661,7 +661,7 @@
 (defn- hybrid-select
   "For a given `col-name` return a :coalesce expression to reference it from the outer hybrid search query.
 
-   (hybrid-coalesce :model_id) -> [:coalesce :v.model_id :t.model_id]"
+  (hybrid-coalesce :model_id) -> [:coalesce :v.model_id :t.model_id]"
   ([col-name-and-alias]
    (hybrid-select col-name-and-alias "v." "t."))
   ([[col-name col-alias] vector-prefix text-prefix]

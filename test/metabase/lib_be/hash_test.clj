@@ -228,7 +228,7 @@
 
 (defn- query-with-aggregation-order-by
   "Build a query with an aggregation and order-by referencing that aggregation.
-   Each call generates fresh UUIDs."
+  Each call generates fresh UUIDs."
   []
   (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
       (lib/aggregate (lib/count))
@@ -236,7 +236,7 @@
 
 (defn- query-with-aggregation-expression
   "Build a query with aggregations and an expression that references them.
-   Each call generates fresh UUIDs."
+  Each call generates fresh UUIDs."
   []
   (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
       (lib/aggregate (lib/count))
@@ -287,7 +287,7 @@
 
 (defn- query-with-join-subquery-aggregation
   "Build a query with a join that has a subquery with aggregations and order-by.
-   This tests that aggregation refs in join stages are properly handled by the encoder."
+  This tests that aggregation refs in join stages are properly handled by the encoder."
   []
   (let [subquery (-> (lib/query meta/metadata-provider (meta/table-metadata :categories))
                      (lib/aggregate (lib/count))
@@ -329,8 +329,8 @@
 
 (defn- query-with-arithmetic-expression
   "Build a query with an arithmetic expression like (+ field1 field2).
-   The :+ clause schema uses [:+ {:min 2} :any] for its args, so nested
-   field refs with :lib/uuid won't get their options maps encoded."
+  The :+ clause schema uses [:+ {:min 2} :any] for its args, so nested
+  field refs with :lib/uuid won't get their options maps encoded."
   []
   (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
       (lib/expression "sum-fields" (lib/+ (meta/field-metadata :venues :price)
@@ -338,7 +338,7 @@
 
 (defn- query-with-nested-arithmetic
   "Build a query with nested arithmetic like (+ (* field1 2) field2).
-   Tests that deeply nested clauses with :lib/uuid are handled."
+  Tests that deeply nested clauses with :lib/uuid are handled."
   []
   (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
       (lib/expression "nested" (lib/+ (lib/* (meta/field-metadata :venues :price) 2)
@@ -346,7 +346,7 @@
 
 (defn- query-with-case-expression
   "Build a query with a case expression containing field refs.
-   Tests that case/if expressions properly strip :lib/uuid from nested clauses."
+  Tests that case/if expressions properly strip :lib/uuid from nested clauses."
   []
   (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
       (lib/expression "case-expr"
@@ -356,7 +356,7 @@
 
 (defn- query-with-coalesce-expression
   "Build a query with a coalesce expression containing field refs.
-   Tests that coalesce expressions properly strip :lib/uuid from nested clauses."
+  Tests that coalesce expressions properly strip :lib/uuid from nested clauses."
   []
   (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
       (lib/expression "coalesce-expr"
@@ -365,7 +365,7 @@
 
 (defn- query-with-concat-expression
   "Build a query with a concat expression.
-   Tests string expressions with :any typed args."
+  Tests string expressions with :any typed args."
   []
   (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
       (lib/expression "concat-expr"

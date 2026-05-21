@@ -438,7 +438,7 @@
 
 (defn- time-zoned-trunc
   "Same as [[trunc]], but truncates `x` to `unit` in the results timezone
-   if `x` is a timestamp with time zone."
+  if `x` is a timestamp with time zone."
   [unit x]
   (let [x (cond-> x
             (h2x/is-of-type? x #"(?i)timestamp(\(\d\))? with time zone")
@@ -467,9 +467,9 @@
 
 (defn- utc-days-diff
   "Calculates the number of fractional days between `x` and `y`, converting to UTC if the
-   args are timestamps with time zones. This is needed because some time zones don't have
-   24 hours in every day, which can cause incorrect results if we calculate the number of
-   hours, minutes, or seconds between two timestamps with naive subtraction."
+  args are timestamps with time zones. This is needed because some time zones don't have
+  24 hours in every day, which can cause incorrect results if we calculate the number of
+  hours, minutes, or seconds between two timestamps with naive subtraction."
   [x y]
   (let [x (cond-> x
             (h2x/is-of-type? x #"(?i)timestamp(\(\d\))? with time zone")

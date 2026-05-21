@@ -19,7 +19,7 @@
 
 (def request-transformer
   "Transformer for encoding tool request arguments (snake_case -> kebab-case).
-   Converts snake_case keys to kebab-case and string enum values to keywords."
+  Converts snake_case keys to kebab-case and string enum values to keywords."
   (mtx/transformer {:name :tool-api-request}))
 
 (def ^:private response-transformer

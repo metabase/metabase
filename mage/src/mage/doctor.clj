@@ -92,8 +92,8 @@
 
 (defn- check-tool
   "Check if a tool is installed and get its version.
-   Returns {:installed? bool, :version str-or-nil}.
-   A tool is considered installed only if we can successfully get its version."
+  Returns {:installed? bool, :version str-or-nil}.
+  A tool is considered installed only if we can successfully get its version."
   [tool]
   (let [cmd (get tool-commands tool tool)]
     (if (can-run? cmd)
@@ -119,7 +119,7 @@
 
 (defn- get-mise-info
   "Get mise installation and configuration info.
-   Returns {:installed? bool, :activated? bool, :toolset map}."
+  Returns {:installed? bool, :activated? bool, :toolset map}."
   []
   (if-not (can-run? "mise")
     {:installed? false}
@@ -259,12 +259,12 @@
 
 (defn diagnose
   "Gather all environment diagnostic info. Returns a map with:
-   - :mise - mise installation/activation status
-   - :version-managers - detected version managers
-   - :tools - map of tool-name to {:installed? :version ...}
-   - :project - project file states
+  - :mise - mise installation/activation status
+  - :version-managers - detected version managers
+  - :tools - map of tool-name to {:installed? :version ...}
+  - :project - project file states
 
-   Note: Does NOT include git status (use get-git-status separately for that)."
+  Note: Does NOT include git status (use get-git-status separately for that)."
   []
   (let [mise (get-mise-info)
         toolset (:toolset mise)]

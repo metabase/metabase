@@ -403,7 +403,7 @@
 
 (defn- insert-task!
   "Helper: insert a RemoteSyncTask row with the given fields, bypassing the create-sync-task!
-   helper so we can set arbitrary timestamps for staleness testing."
+  helper so we can set arbitrary timestamps for staleness testing."
   [fields]
   (t2/insert-returning-instance! :model/RemoteSyncTask
                                  (merge {:sync_task_type "import"

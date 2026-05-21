@@ -72,9 +72,9 @@
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn validate-bot-token!
   "Validate a Slack bot token using the auth.test endpoint.
-   Throws an exception with appropriate status code if validation fails:
-   - 400 for invalid/revoked tokens
-   - 502 for Slack API errors (e.g., Slack is down)
-   Returns the response map on success."
+  Throws an exception with appropriate status code if validation fails:
+  - 400 for invalid/revoked tokens
+  - 502 for Slack API errors (e.g., Slack is down)
+  Returns the response map on success."
   [token]
   (slackbot.client/auth-test {:token token}))

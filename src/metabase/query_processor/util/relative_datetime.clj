@@ -8,7 +8,7 @@
 
 (defn- use-server-side-relative-datetime?
   "Check whether :relative-datetime clause could be computed server side. True for [[u.date/add-units]] greater than
-   or equal to day."
+  or equal to day."
   [unit]
   (contains? #{:day :week :month :quarter :year} unit))
 
@@ -21,7 +21,7 @@
 
 (defn- relative-datetime-sql-str
   "Compute relative datetime from [[qp.timezone/now]] shifted by `unit` and `amount`. Format the resulting value
-   to literal string compatible with most sql databases, to avoid possible jdbc driver timezone conversions."
+  to literal string compatible with most sql databases, to avoid possible jdbc driver timezone conversions."
   [unit amount effective-or-base-type]
   (-> (qp.timezone/now)
       (u.date/truncate unit)

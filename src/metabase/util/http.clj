@@ -24,9 +24,9 @@
 
 (defn valid-host?
   "Check whether url is valid based on the given strategy:
-   :external-only - only external hosts
-   :allow-private - external + private networks but not localhost/loopback
-   :allow-all - no restrictions"
+  :external-only - only external hosts
+  :allow-private - external + private networks but not localhost/loopback
+  :allow-all - no restrictions"
   [strategy url]
   (case strategy
     :allow-all true

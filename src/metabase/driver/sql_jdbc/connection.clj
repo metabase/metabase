@@ -186,8 +186,8 @@
 
 (defn- create-pool!
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given `database`.
-   Uses [[driver.conn/effective-details]] to select the appropriate connection details
-   based on the current [[driver.conn/*connection-type*]]."
+  Uses [[driver.conn/effective-details]] to select the appropriate connection details
+  based on the current [[driver.conn/*connection-type*]]."
   [{:keys [id], driver :engine, :as database}]
   {:pre [(map? database)]}
   (log/debug (u/format-color :cyan "Creating new connection pool for %s database %s (connection-type: %s) ..."
@@ -250,9 +250,9 @@
 
 (defn- pool-cache-key
   "Returns the cache key for connection pools: `[database-id, connection-type]`.
-   Uses [[driver.conn/effective-connection-type]] so that a requested write connection
-   without configured `:write-data-details` resolves to `:default`, reusing the
-   existing pool instead of creating a duplicate."
+  Uses [[driver.conn/effective-connection-type]] so that a requested write connection
+  without configured `:write-data-details` resolves to `:default`, reusing the
+  existing pool instead of creating a duplicate."
   [database]
   [(u/the-id database) (driver.conn/effective-connection-type database)])
 
