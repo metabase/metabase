@@ -73,14 +73,33 @@ export const MetabotPromptSuggestionPane = ({
   };
 
   const handleRegeneratePrompts = async () => {
-    const { error } = await regeneratePrompts(metabot.id);
-    if (error) {
-      sendToast({
-        message: t`Error regenerate prompts`,
-        icon: "warning",
-      });
-    } else {
-      setPage(0);
+    const { data, error } = await regeneratePrompts(metabot.id);
+    if (error || !data) {
+      sendToast({ message: t`Error regenerating prompts`, icon: "warning" });
+      return;
+    }
+    setPage(0);
+    switch (data.status) {
+      case "generated":
+        return;
+      case "no-library-content":
+        sendToast({
+          message: t`No models or metrics to summarise — add some to this Metabot's collection first.`,
+          icon: "info",
+        });
+        return;
+      case "ai-produced-no-prompts":
+        sendToast({
+          message: t`The AI didn't generate any prompts this time. Try again in a moment.`,
+          icon: "info",
+        });
+        return;
+      case "managed-free-limit-reached":
+        sendToast({
+          message: t`Your managed AI usage limit has been reached.`,
+          icon: "warning",
+        });
+        return;
     }
   };
 

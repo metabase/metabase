@@ -246,6 +246,12 @@ export type DeleteSuggestedMetabotPromptRequest = {
   prompt_id: SuggestedMetabotPrompt["id"];
 };
 
+export type RegenerateSuggestedMetabotPromptsResponse =
+  | { status: "generated"; prompt_count: number }
+  | { status: "no-library-content" }
+  | { status: "ai-produced-no-prompts" }
+  | { status: "managed-free-limit-reached" };
+
 export const METABOT_ISSUE_TYPE_VALUES = [
   "ui-bug",
   "took-incorrect-actions",

@@ -109,7 +109,7 @@ export function setupRegenerateMetabotPromptSuggestionsEndpoint(
 ) {
   fetchMock.post(
     `path:/api/metabot/metabot/${metabotId}/prompt-suggestions/regenerate`,
-    { status: 204 },
+    { status: 200, body: { status: "generated", prompt_count: 1 } },
     options,
   );
 }
