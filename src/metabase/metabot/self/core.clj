@@ -544,7 +544,7 @@
   ex-data is an explicit allow-list (`:status`, `:reason-phrase`, `:body`, plus provider tags) —
   raw clj-http responses carry a Closeable `:http-client` and other internals.
   Exceptions already tagged `:api-error true` are rethrown unchanged."
-  [provider res->message e]
+  [provider res->message ^Throwable e]
   (let [data (ex-data e)]
     (cond
       (:api-error data)
