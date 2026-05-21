@@ -56,6 +56,11 @@
   (clear-cache! [_this]
     (lib.metadata.protocols/clear-cache! parent-metadata-provider))
 
+  lib.metadata.protocols/InvocationTracker
+  (invoked-ids [_this metadata-type]
+    (when (satisfies? lib.metadata.protocols/InvocationTracker parent-metadata-provider)
+      (lib.metadata.protocols/invoked-ids parent-metadata-provider metadata-type)))
+
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]
     (and (instance? TransformingMetadataProvider another)
