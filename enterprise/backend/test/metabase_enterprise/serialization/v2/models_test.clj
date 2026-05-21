@@ -150,6 +150,19 @@
   whole import (see GDGT-2444 for an example)."
   #{:model/User :model/Table :model/Field})
 
+(def ^:private fk-completeness-known-exceptions
+  "`[model field]` pairs that look like FK-completeness violations but are intentionally
+  exempt. The map value is a human reason kept for grep-ability."
+  {["Database" :router_database_id]
+   "router_database_id rows are filtered out of `extract-query` (router DBs aren't serialized), so this FK never reaches the load path."})
+
+(defn- inlined-via-nested?
+  "True if `model-name` is loaded only as a nested child of some parent, never as a root.
+  Such models override `serdes/generate-path` to return nil so the extract pipeline skips
+  them as top-level entities, and their FKs are handled by the parent's `dependencies`."
+  [model-name]
+  (nil? (serdes/generate-path model-name {:entity_id "probe" :name "probe"})))
+
 (defn- direct-fks
   "Return a seq of `[field target-model]` for every entry in `transform-spec` that is a
   plain `(serdes/fk ...)` declaration whose target needs a `dependencies` entry. Nested
@@ -174,9 +187,15 @@
     (let [inlined? (set serdes.models/inlined-models)]
       (doseq [m (-> (methods serdes/make-spec) (dissoc :default) keys)
               ;; Inlined children are loaded inside their parent, so the FK-resolution
-              ;; check applies to the parent's `dependencies`, not theirs. Out of scope.
-              :when (not (inlined? m))
-              :let [fks (direct-fks (:transform (serdes/make-spec m nil)))]
+              ;; check applies to the parent's `dependencies`, not theirs. Skipped either
+              ;; via the explicit list in `serdes.models/inlined-models` or by detecting a
+              ;; nil `generate-path` (the convention for nested-only models like
+              ;; QueryAction / HTTPAction / ImplicitAction).
+              :when (not (or (inlined? m) (inlined-via-nested? m)))
+              :let [fks (->> (:transform (serdes/make-spec m nil))
+                             direct-fks
+                             (remove (fn [[field _]]
+                                       (contains? fk-completeness-known-exceptions [m field]))))]
               :when (seq fks)]
         (testing (format "%s\n" m)
           (let [entity     (into {:serdes/meta [{:model m :id "self"}]}
