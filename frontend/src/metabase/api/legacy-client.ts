@@ -190,7 +190,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
     };
   }
 
-  _makeMethod(
+  private _makeMethod(
     methodTemplate: RequestMethod,
     withRetries: boolean = false,
   ): MethodCreator {
@@ -320,7 +320,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
     return this._makeRequest<T>(method, url, headers, body, data, options);
   }
 
-  async _makeRequest<T = unknown>(
+  private async _makeRequest<T = unknown>(
     method: string,
     url: URL,
     headers: Record<string, string>,
