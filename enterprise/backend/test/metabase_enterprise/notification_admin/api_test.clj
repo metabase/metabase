@@ -96,7 +96,7 @@
             (is (contains? ids (:id archived-notif)))))))))
 
 (deftest filter-by-owner-test
-  (testing "owner_id filters to notifications owned by that user"
+  (testing "creator_id filters to notifications owned by that user"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/User             {user-a :id}  {}
                      :model/User             {user-b :id}  {}
@@ -110,13 +110,13 @@
                                                             :payload_id   nc2
                                                             :creator_id   user-b}]
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
-                                                   :owner_id user-a)
+                                                   :creator_id user-a)
               ids            (set (map :id data))]
           (is (contains? ids (:id notif-a)))
           (is (not (contains? ids (:id notif-b)))))))))
 
 (deftest owner-includes-is-active-test
-  (testing "the hydrated :owner map carries :is_active so FE can render the deactivated-owner state"
+  (testing "the hydrated :creator map carries :is_active so FE can render the deactivated-owner state"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/User             {active :id}      {:is_active true}
                      :model/User             {deactivated :id} {:is_active false}
@@ -131,11 +131,11 @@
                                                                 :creator_id   deactivated}]
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
               by-id          (into {} (map (juxt :id identity) data))]
-          (is (=? {:owner {:id active        :is_active true}}  (by-id active-n)))
-          (is (=? {:owner {:id deactivated   :is_active false}} (by-id deact-n))))))))
+          (is (=? {:creator {:id active        :is_active true}}  (by-id active-n)))
+          (is (=? {:creator {:id deactivated   :is_active false}} (by-id deact-n))))))))
 
 (deftest filter-by-owner-active-test
-  (testing "?owner_active=true|false filters on the owner user's is_active flag"
+  (testing "?creator_active=true|false filters on the creator user's is_active flag"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/User             {active :id}     {:is_active true}
                      :model/User             {deactivated :id} {:is_active false}
@@ -148,15 +148,15 @@
                      :model/Notification     deact-notif      {:payload_type :notification/card
                                                                :payload_id   nc2
                                                                :creator_id   deactivated}]
-        (testing "owner_active=true keeps only notifications whose owner is active"
+        (testing "creator_active=true keeps only notifications whose creator is active"
           (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
-                                                     :owner_active true)
+                                                     :creator_active true)
                 ids            (set (map :id data))]
             (is (contains? ids (:id active-notif)))
             (is (not (contains? ids (:id deact-notif))))))
-        (testing "owner_active=false keeps only notifications whose owner is deactivated"
+        (testing "creator_active=false keeps only notifications whose creator is deactivated"
           (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
-                                                     :owner_active false)
+                                                     :creator_active false)
                 ids            (set (map :id data))]
             (is (contains? ids (:id deact-notif)))
             (is (not (contains? ids (:id active-notif))))))))))
@@ -643,7 +643,7 @@
                                                                 :creator_id   other-user}]
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
                                                    :active true
-                                                   :owner_id target-user)
+                                                   :creator_id target-user)
               ids            (set (map :id data))]
           (is (contains? ids (:id matching)))
           (is (not (contains? ids (:id wrong-active))))
@@ -800,7 +800,7 @@
                      (mt/latest-audit-log-entry :notification-update (:id n)))))))))))
 
 (deftest bulk-change-owner-test
-  (testing "POST /bulk with action=change-owner sets :creator_id to owner_id for each id"
+  (testing "POST /bulk with action=change-creator sets :creator_id to creator_id for each id"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/User             {new-owner :id} {}
                      :model/Card             {card-id :id}   {}
@@ -810,12 +810,12 @@
                                                               :creator_id   (mt/user->id :rasta)}]
         (mt/user-http-request :crowberto :post 200 "ee/notifications/bulk"
                               {:notification_ids [(:id n1)]
-                               :action           "change-owner"
-                               :owner_id         new-owner})
+                               :action           "change-creator"
+                               :creator_id       new-owner})
         (is (= new-owner (t2/select-one-fn :creator_id :model/Notification (:id n1))))))))
 
 (deftest bulk-change-owner-requires-owner-id-test
-  (testing "POST /bulk with action=change-owner and no owner_id returns 400"
+  (testing "POST /bulk with action=change-creator and no creator_id returns 400"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card             {card-id :id} {}
                      :model/NotificationCard {nc1 :id}     {:card_id card-id}
@@ -824,7 +824,7 @@
                                                             :creator_id   (mt/user->id :crowberto)}]
         (mt/user-http-request :crowberto :post 400 "ee/notifications/bulk"
                               {:notification_ids [(:id n1)]
-                               :action           "change-owner"})))))
+                               :action           "change-creator"})))))
 
 ;; ---------------------------------------------------------------------------------------------
 ;; Auth + feature-flag gating for POST /bulk (mirrors the GET triad above)
@@ -865,7 +865,7 @@
 ;; ---------------------------------------------------------------------------------------------
 
 (deftest detail-returns-notification-with-run-summaries-test
-  (testing "GET /:id returns the hydrated notification with :last_check / :last_send slots and owner_id"
+  (testing "GET /:id returns the hydrated notification with :last_check / :last_send slots and creator_id"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card             {card-id :id} {:archived false}
                      :model/NotificationCard {nc :id}      {:card_id card-id}
@@ -873,7 +873,7 @@
                                                             :payload_id   nc
                                                             :creator_id   (mt/user->id :crowberto)}]
         (is (=? {:id        nid
-                 :owner_id  (mt/user->id :crowberto)
+                 :creator_id (mt/user->id :crowberto)
                  :last_check any?
                  :last_send  any?}
                 (mt/user-http-request :crowberto :get 200 (str "ee/notifications/" nid))))))))
@@ -914,7 +914,7 @@
 ;; ---------------------------------------------------------------------------------------------
 
 (deftest filter-by-ownerless-true-test
-  (testing "?ownerless=true includes notifications with a deactivated creator and excludes active owners"
+  (testing "?creatorless=true includes notifications with a deactivated creator and excludes active owners"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/User             {active-user :id}   {:is_active true}
                      :model/User             {deact-user :id}    {:is_active false}
@@ -928,7 +928,7 @@
                                                                   :payload_id   nc2
                                                                   :creator_id   deact-user}]
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
-                                                   :ownerless true)
+                                                   :creatorless true)
               ids            (set (map :id data))]
           (is (contains? ids (:id deact-owner-n))
               "deactivated creator = ownerless")
@@ -936,7 +936,7 @@
               "active owner is excluded"))))))
 
 (deftest filter-by-ownerless-false-test
-  (testing "?ownerless=false includes only notifications with an active owner"
+  (testing "?creatorless=false includes only notifications with an active owner"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/User             {active-user :id}    {:is_active true}
                      :model/User             {deact-user :id}     {:is_active false}
@@ -950,7 +950,7 @@
                                                                    :payload_id   nc2
                                                                    :creator_id   deact-user}]
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
-                                                   :ownerless false)
+                                                   :creatorless false)
               ids            (set (map :id data))]
           (is (contains? ids (:id active-owner-n))
               "active owner is included")

@@ -244,4 +244,50 @@ export type BulkNotificationPayload = {
   owner_id?: UserId;
 };
 
+// "Wire" types: the admin endpoints speak `creator_*` on the wire — matching
+// `notification.creator_id` and the public /api/notification endpoints. The FE
+// uses `owner_*` everywhere; we translate at the API-client boundary
+// (see metabase/api/notification.ts) so "owner" never leaves the frontend.
+export type WireAdminNotification = Omit<
+  AdminNotification,
+  "owner_id" | "owner"
+> & {
+  creator_id: UserId | null;
+  creator: UserInfo | null;
+};
+
+export type WireAdminNotificationDetail = WireAdminNotification & {
+  check_history: NotificationRunSummary[];
+  send_history: NotificationTickSendEntry[];
+};
+
+export type WireAdminNotificationListResponse = Omit<
+  AdminNotificationListResponse,
+  "data"
+> & {
+  data: WireAdminNotification[];
+};
+
+/** Map a wire notification (`creator_*`) to the FE shape (`owner_*`). */
+export const wireToAdminNotification = <T extends WireAdminNotification>({
+  creator_id,
+  creator,
+  ...rest
+}: T) => ({
+  ...rest,
+  owner_id: creator_id,
+  owner: creator,
+});
+
+/** Map an FE notification (`owner_*`) to the wire shape (`creator_*`). */
+export const adminNotificationToWire = <T extends AdminNotification>({
+  owner_id,
+  owner,
+  ...rest
+}: T) => ({
+  ...rest,
+  creator_id: owner_id,
+  creator: owner,
+});
+
 //#endregion

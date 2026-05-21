@@ -2,27 +2,26 @@
   "Admin endpoints for notifications (card-type alerts). Gated behind the `:audit-app` feature flag
   and `check-superuser`. Each row carries `:last_check` (latest scheduler tick — any terminal
   outcome) and `:last_send` (latest channel-send delivery attempt — any outcome, including
-  failures) computed from windowed subqueries; both expose `{at, error, status}`. The owner rename
-  (`creator_id` → `owner_id`, `creator_name` → `owner_name`) is API-surface-only — the underlying
-  `notification.creator_id` column and hydrated `:creator` map stay; we rename keys at the response
-  boundary.
+  failures) computed from windowed subqueries; both expose `{at, error, status}`. The API surface
+  uses `creator_*` throughout — matching `notification.creator_id` and the hydrated `:creator` map,
+  and consistent with the public `metabase.notification.api` endpoints. (The admin UI labels these
+  as \"owner\", but that's a frontend-only term and never appears on the wire.)
 
   Supported filters:
     - `active`            boolean — notification.active
-    - `owner_id`          int     — notification.creator_id = ?
-    - `owner_active`      boolean — core_user.is_active = ?  (active owners only / deactivated only)
-    - `ownerless`         boolean — true: creator_id IS NULL OR is_active = false;
-                                    false: inverse (has a live owner). Powers the Ownerless tab.
+    - `creator_id`        int     — notification.creator_id = ?
+    - `creator_active`    boolean — core_user.is_active = ?  (active creators only / deactivated only)
+    - `creatorless`       boolean — true: creator_id IS NULL OR is_active = false;
+                                    false: inverse (has a live creator). Powers the Ownerless tab.
     - `card_id`           int     — notification_card.card_id = ?
     - `recipient_email`   string  — exact email match across user + raw-value recipients
     - `channel`           string or vec of strings — handler channel_type IN (...), OR semantics
     - `last_send_status`  :successful/:failing — filters on the latest channel-send outcome
-    - `query`             string  — substring match across card name + owner first/last/email
+    - `query`             string  — substring match across card name + creator first/last/email
 
   `last_send_status=failing` corresponds to the Failing tab — notifications whose most recent
   send tick (rolled up across all channels) had at least one channel failure."
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
@@ -80,7 +79,7 @@
    [:channels [:sequential ::channel-entry]]])
 
 (mr/def ::sort-column
-  [:enum :id :last_send :last_check :card_name :owner_name :updated_at])
+  [:enum :id :last_send :last_check :card_name :creator_name :updated_at])
 
 (mr/def ::sort-direction
   [:enum :asc :desc])
@@ -89,7 +88,7 @@
   [:map
    [:id           ms/PositiveInt]
    [:active       :boolean]
-   [:owner_id     [:maybe ms/PositiveInt]]
+   [:creator_id   [:maybe ms/PositiveInt]]
    [:created_at   ms/TemporalInstant]
    [:updated_at   ms/TemporalInstant]
    [:payload_type :keyword]
@@ -152,7 +151,7 @@
   (str "%" (u/lower-case-en s) "%"))
 
 (defn- query-where-clause
-  "WHERE clause for the fuzzy `?query=` filter. Substring ILIKE OR'd across card name and owner
+  "WHERE clause for the fuzzy `?query=` filter. Substring ILIKE OR'd across card name and creator
   first/last/email. Recipient branches were removed in the design iteration — recipients stay as
   the structured `?recipient_email=` filter."
   [query]
@@ -250,12 +249,12 @@
   expressions rather than the SELECT aliases because H2 does not resolve aliases inside
   expressions. Whitelist; values outside this map are rejected by the `::sort-column` malli enum
   upstream."
-  {:id         :notification.id
-   :last_send  :ls.started_at
-   :last_check :lc.started_at
-   :card_name  :c.name
-   :owner_name [:coalesce :cu.last_name :cu.first_name :cu.email]
-   :updated_at :notification.updated_at})
+  {:id           :notification.id
+   :last_send    :ls.started_at
+   :last_check   :lc.started_at
+   :card_name    :c.name
+   :creator_name [:coalesce :cu.last_name :cu.first_name :cu.email]
+   :updated_at   :notification.updated_at})
 
 (defn- channel-exists
   "Honey `EXISTS` correlated with `:notification.id`: TRUE when the notification has at least one
@@ -272,12 +271,12 @@
                [:in :notification_handler.channel_type channels]]}]))
 
 (defn- base-list-query
-  "Select notifications plus run-summary columns, card name, and owner name computed inline.
+  "Select notifications plus run-summary columns, card name, and creator name computed inline.
 
   When `skip-run-joins?` is true (detail path only), the `lc`/`ls` window subqueries and their
   select columns are omitted — the detail endpoint overwrites `last_check`/`last_send` from
   per-notification histories anyway, so those joins are pure waste on that path."
-  [{:keys [active owner_id owner_active ownerless card_id recipient_email channel last_send_status query
+  [{:keys [active creator_id creator_active creatorless card_id recipient_email channel last_send_status query
            skip-run-joins?]}]
   (cond-> {:select (cond-> [:notification.id
                             :notification.active
@@ -287,8 +286,8 @@
                             :notification.payload_type
                             :notification.payload_id
                             [:c.name                                           :card_name]
-                            [:cu.is_active                                     :owner_is_active]
-                            [[:coalesce :cu.last_name :cu.first_name :cu.email] :owner_name]]
+                            [:cu.is_active                                     :creator_is_active]
+                            [[:coalesce :cu.last_name :cu.first_name :cu.email] :creator_name]]
                      (not skip-run-joins?)
                      (into [[:lc.id                                            :lc_id]
                             [:lc.status                                        :lc_status]
@@ -312,24 +311,24 @@
     (some? active)
     (sql.helpers/where [:= :notification.active active])
 
-    (some? owner_active)
-    (sql.helpers/where [:= :cu.is_active owner_active])
+    (some? creator_active)
+    (sql.helpers/where [:= :cu.is_active creator_active])
 
-    ;; `ownerless` = true:  no creator at all, OR a deactivated creator (both are "ownerless")
-    ;; `ownerless` = false: has a live (active) owner
+    ;; `creatorless` = true:  no creator at all, OR a deactivated creator (both are "creatorless")
+    ;; `creatorless` = false: has a live (active) creator
     ;; Use [:= col nil] for IS NULL and [:is-not col nil] for IS NOT NULL per HoneySQL 2 semantics.
-    (true? ownerless)
+    (true? creatorless)
     (sql.helpers/where [:or
                         [:= :notification.creator_id nil]
                         [:= :cu.is_active false]])
 
-    (false? ownerless)
+    (false? creatorless)
     (sql.helpers/where [:and
                         [:is-not :notification.creator_id nil]
                         [:= :cu.is_active true]])
 
-    owner_id
-    (sql.helpers/where [:= :notification.creator_id owner_id])
+    creator_id
+    (sql.helpers/where [:= :notification.creator_id creator_id])
 
     card_id
     (sql.helpers/where [:= :nc.card_id card_id])
@@ -461,17 +460,14 @@
                         :ls_started_at :ls_has_failure)))
           rows)))
 
-(defn- ->owner-keys
-  "Surface the `creator_id` / `creator` slots as `owner_id` / `owner` on the response. Splices
-  `:is_active` (joined from `core_user`) onto the owner map — `t2/hydrate :creator` strips it
-  because `default-user-columns` omits it. Response-boundary rename: the DB column and internal
-  hydrate key stay as `creator_*`."
-  [{:keys [creator owner_is_active] :as row}]
+(defn- splice-creator-active
+  "Splice `:is_active` (joined from `core_user`) onto the hydrated `:creator` map — `t2/hydrate
+  :creator` strips it because `default-user-columns` omits it — and drop the internal
+  `:creator_is_active` carrier column. The response keeps `creator_id` / `creator` as-is."
+  [{:keys [creator creator_is_active] :as row}]
   (-> row
-      (cond-> creator (assoc :creator (assoc creator :is_active owner_is_active)))
-      (dissoc :owner_is_active)
-      (set/rename-keys {:creator_id :owner_id
-                        :creator    :owner})))
+      (cond-> creator (assoc :creator (assoc creator :is_active creator_is_active)))
+      (dissoc :creator_is_active)))
 
 (defn- list-notifications
   "Single SQL query for the page; one extra query for failed-run error messages on that page."
@@ -485,7 +481,7 @@
         decorated    (-> page-rows
                          decorate-runs
                          models.notification/hydrate-notification)]
-    {:data    (mapv ->owner-keys decorated)
+    {:data    (mapv splice-creator-active decorated)
      :total   total
      :limit   limit
      :offset  offset}))
@@ -502,18 +498,18 @@
   notification's card (`successful` = latest channel-send succeeded; `failing` = latest
   channel-send failed). The Failing tab uses `?last_send_status=failing`.
 
-  `ownerless=true` selects notifications with no creator or a deactivated creator (the Ownerless
-  tab). `ownerless=false` selects the inverse.
+  `creatorless=true` selects notifications with no creator or a deactivated creator (the Ownerless
+  tab). `creatorless=false` selects the inverse.
 
   `channel` accepts a single string or a repeated query param for multi-select (OR logic)."
   [_route
-   {:keys [active owner_id owner_active ownerless card_id recipient_email channel last_send_status
+   {:keys [active creator_id creator_active creatorless card_id recipient_email channel last_send_status
            query sort_column sort_direction]} :-
    [:map
     [:active            {:optional true} [:maybe ms/BooleanValue]]
-    [:owner_id          {:optional true} ms/PositiveInt]
-    [:owner_active      {:optional true} [:maybe ms/BooleanValue]]
-    [:ownerless         {:optional true} [:maybe ms/BooleanValue]]
+    [:creator_id        {:optional true} ms/PositiveInt]
+    [:creator_active    {:optional true} [:maybe ms/BooleanValue]]
+    [:creatorless       {:optional true} [:maybe ms/BooleanValue]]
     [:card_id           {:optional true} ms/PositiveInt]
     [:recipient_email   {:optional true} ms/NonBlankString]
     [:channel           {:optional true} [:maybe [:or ms/NonBlankString [:sequential ms/NonBlankString]]]]
@@ -525,9 +521,9 @@
   (list-notifications {:limit            (or (request/limit) 50)
                        :offset           (or (request/offset) 0)
                        :active           active
-                       :owner_id         owner_id
-                       :owner_active     owner_active
-                       :ownerless        ownerless
+                       :creator_id       creator_id
+                       :creator_active   creator_active
+                       :creatorless      creatorless
                        :card_id          card_id
                        :recipient_email  recipient_email
                        :channel          channel
@@ -672,7 +668,7 @@
                              decorate-runs
                              models.notification/hydrate-notification
                              first
-                             ->owner-keys)
+                             splice-creator-active)
           card-id        (get-in decorated [:payload :card_id])
           check-history  (if card-id (check-history-for-notification card-id id) [])
           send-history   (if card-id (send-history-for-notification card-id id) [])
@@ -696,11 +692,11 @@
   (api/check-404 (get-notification-detail id)))
 
 (defn- action->update-map
-  [action owner-id]
+  [action creator-id]
   (case (keyword action)
-    :archive      {:active false}
-    :change-owner (do (api/check (integer? owner-id) [400 "owner_id required for change-owner"])
-                      {:creator_id owner-id})))
+    :archive        {:active false}
+    :change-creator (do (api/check (integer? creator-id) [400 "creator_id required for change-creator"])
+                        {:creator_id creator-id})))
 
 (defn- bulk-update!
   "Apply `update-map` to all card-type notifications in `ids` in a single SQL update. Returns the
@@ -720,19 +716,19 @@
       before)))
 
 (api.macros/defendpoint :post "/bulk" :- ::bulk-response
-  "Bulk-archive or -change-owner a set of notifications. The per-notification `:active` flip goes
+  "Bulk-archive or -change-creator a set of notifications. The per-notification `:active` flip goes
   through `:model/Notification`'s `before-update` hook, which creates / tears down the Quartz
   triggers. Recipient emails and `:event/notification-update` audit events are
   published via the shared [[notification-api/publish-notification-update!]] helper so this
   endpoint's side-effect contract can't drift from `PUT /api/notification/:id`."
   [_route _query
-   {:keys [notification_ids action owner_id]} :-
+   {:keys [notification_ids action creator_id]} :-
    [:map
     [:notification_ids [:sequential {:min 1} ms/PositiveInt]]
-    [:action           [:enum "archive" "change-owner"]]
-    [:owner_id         {:optional true} ms/PositiveInt]]]
+    [:action           [:enum "archive" "change-creator"]]
+    [:creator_id       {:optional true} ms/PositiveInt]]]
   (api/check-superuser)
-  (let [update-map (action->update-map action owner_id)
+  (let [update-map (action->update-map action creator_id)
         before     (bulk-update! update-map notification_ids)
         after      (->> (t2/select :model/Notification :id [:in (mapv :id before)])
                         models.notification/hydrate-notification
