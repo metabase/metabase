@@ -20,7 +20,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -41,6 +40,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field :refer [readable-fields-only]]
    [metabase.warehouse-schema.table :as schema.table]
@@ -154,7 +154,7 @@
   we can filter it out in Clojure-land."
   [{query :dataset_query, :as _card} :- [:map
                                          [:dataset_query ::queries.schema/query]]]
-  (lib.util.match/match-lite (lib/aggregations query) [#{:cum-count :cum-sum} & _] true))
+  (match/match-one (lib/aggregations query) [#{:cum-count :cum-sum} & _] true))
 
 (defn card-can-be-used-as-source-query?
   "Does `card`'s query meet the conditions required for it to be used as a source query for another query?"

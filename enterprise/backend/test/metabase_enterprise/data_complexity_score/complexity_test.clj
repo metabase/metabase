@@ -978,14 +978,36 @@
           fingerprint       "latest-score-test/current"]
       (try
         (t2/delete! :model/DataComplexityScore :fingerprint [:in [other-fingerprint fingerprint]])
-        (data-complexity-score/record-score! other-fingerprint {:meta {:label "other"}})
-        (data-complexity-score/record-score! fingerprint {:meta {:label "older"}})
-        (data-complexity-score/record-score! fingerprint {:meta {:label "newer"}})
+        (data-complexity-score/record-score! other-fingerprint "appdb" {:meta {:label "other"}})
+        (data-complexity-score/record-score! fingerprint "appdb" {:meta {:label "older"}})
+        (data-complexity-score/record-score! fingerprint "appdb" {:meta {:label "newer"}})
         (let [score (data-complexity-score/latest-score fingerprint)]
           (is (= "newer" (get-in score [:meta :label])))
           (is (some? (get-in score [:meta :calculated-at]))))
         (finally
           (t2/delete! :model/DataComplexityScore :fingerprint [:in [other-fingerprint fingerprint]]))))))
+
+(deftest ^:sequential latest-score-filters-by-source-test
+  (testing "passing source filters out representation-derived rows that share the cron's fingerprint"
+    ;; The CLI's representation mode writes under the same `task.complexity-score/current-fingerprint`
+    ;; as the cron/API so that an admin re-running the cron after a CLI scoring still benefits from
+    ;; the fingerprint short-circuit. Provenance is encoded in `source` ("appdb" vs
+    ;; "representation:<digest>"). Read paths that should only surface authoritative rows must pass
+    ;; the source filter — otherwise the most-recent representation row would shadow the appdb row.
+    (mt/initialize-if-needed! :db)
+    (let [fingerprint "latest-score-source-test/shared"]
+      (try
+        (t2/delete! :model/DataComplexityScore :fingerprint fingerprint)
+        (data-complexity-score/record-score! fingerprint "appdb"                {:meta {:label "appdb-row"}})
+        (data-complexity-score/record-score! fingerprint "representation:abcd"  {:meta {:label "representation-row"}})
+        (is (= "appdb-row"
+               (get-in (data-complexity-score/latest-score fingerprint) [:meta :label]))
+            "default source=\"appdb\" skips past the newer representation-tagged row")
+        (is (= "representation-row"
+               (get-in (data-complexity-score/latest-score fingerprint "representation:abcd") [:meta :label]))
+            "an explicit representation source still resolves its own row")
+        (finally
+          (t2/delete! :model/DataComplexityScore :fingerprint fingerprint))))))
 
 (deftest ^:sequential run-scoring-persists-latest-score-snapshot-test
   (testing "every successful computation persists a fresh snapshot for the overview endpoint"
@@ -996,9 +1018,11 @@
         (mt/with-temporary-setting-values [data-complexity-scoring-enabled true]
           (mt/with-dynamic-fn-redefs [complexity/complexity-scores (fn [& _] result)]
             (#'task.complexity-score/run-scoring! "persist-test-fp")
-            (let [{:keys [id fingerprint score_data]} (data-complexity-score/latest-entry "persist-test-fp")]
+            (let [{:keys [id fingerprint score_data source]} (data-complexity-score/latest-entry "persist-test-fp")]
               (is (= result score_data))
               (is (= "persist-test-fp" fingerprint))
+              (is (= "appdb" source)
+                  "cron-path rows must be stamped with source=\"appdb\"")
               (when before-id
                 (is (> id before-id)
                     "a new append-only snapshot should be written for each run")))))))))
@@ -1021,6 +1045,38 @@
             (#'task.complexity-score/run-scoring! "fresh-fp")
             (is (= "stale" (settings/data-complexity-scoring-last-fingerprint))
                 "fingerprint preserved — next boot / cron will retry the emission")))))))
+
+(deftest ^:sequential scoring-gate-matrix-test
+  (testing "scoring runs iff :data-complexity-score premium feature OR deprecated setting is on"
+    (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
+      (doseq [[label premium-features setting-value should-run?]
+              [["both gates on → run"           #{:data-complexity-score} true  true]
+               ["feature on, setting off → run" #{:data-complexity-score} false true]
+               ["feature off, setting on → run" #{}                       true  true]
+               ["both gates off → skip"         #{}                       false false]]]
+        (testing label
+          (mt/with-premium-features premium-features
+            (mt/with-temporary-setting-values [data-complexity-scoring-enabled         setting-value
+                                               data-complexity-scoring-last-fingerprint "stale"
+                                               data-complexity-scoring-claim            ""]
+              (testing "run-scoring! direct path"
+                (let [scoring-ran? (atom false)]
+                  (mt/with-dynamic-fn-redefs [complexity/complexity-scores
+                                              (fn [& _]
+                                                (reset! scoring-ran? true)
+                                                (stub-result true))]
+                    (#'task.complexity-score/run-scoring! "gate-matrix-test-fp")
+                    (is (= should-run? @scoring-ran?)
+                        (format "run-scoring! should %sinvoke complexity-scores for [%s]"
+                                (if should-run? "" "NOT ") label)))))
+              (testing "with-scoring-claim! cron/boot path"
+                (let [inner-ran? (atom false)]
+                  (#'task.complexity-score/with-scoring-claim!
+                   {}
+                   (fn [_fp] (reset! inner-ran? true)))
+                  (is (= should-run? @inner-ran?)
+                      (format "with-scoring-claim! should %sacquire a claim for [%s]"
+                              (if should-run? "" "NOT ") label)))))))))))
 
 (deftest ^:sequential run-scoring-keeps-fingerprint-stale-when-persistence-fails-test
   (testing "persistence is part of a successful run now — if the cache write fails we must retry"

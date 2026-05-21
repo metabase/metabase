@@ -6,11 +6,11 @@
    [hickory.select :as hik.s]
    [metabase.channel.render.card :as channel.render.card]
    [metabase.channel.render.core :as channel.render]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -39,7 +39,7 @@
                                        :display                :line
                                        :visualization_settings {:graph.dimensions ["CREATED_AT"]
                                                                 :graph.metrics    ["count"]}}]
-        (is (some? (lib.util.match/match-lite
+        (is (some? (match/match-one
                      (render-pulse-card card)
                      [:img _] true)))))))
 
@@ -293,7 +293,7 @@
                                                                                 nil
                                                                                 (qp/process-query (:dataset_query card))
                                                                                 {:channel.render/include-title? true}))]
-          (is (lib.util.match/match-lite rendered-card-content
+          (is (match/match-one rendered-card-content
                 [:a {:href (href :guard (= href (format "https://mb.com/question/%d" (:id card))))} "A Card"]
                 true)))))))
 
@@ -311,7 +311,7 @@
                                                                                 (qp/process-query (:dataset_query card))
                                                                                 {:channel.render/include-title? true}))
               expected-href         (format "https://mb.com/dashboard/%d#scrollTo=%d" (:dashboard_id dc1) (:id dc1))]
-          (is (every? #(= % expected-href) (lib.util.match/match-many rendered-card-content {:href href} href)))))))
+          (is (every? #(= % expected-href) (match/match-many rendered-card-content {:href href} href)))))))
   (testing "the title and body hrefs for visualizer cards should be of the form '.../dashboard/<DASHBOARD_ID>#scrollTo=<DASHBOARD_CARD_ID>'"
     (mt/with-temp [:model/Card           card {:name          "A Card"
                                                :dataset_query (mt/mbql-query venues {:limit 1})}
@@ -325,7 +325,7 @@
                                                                                 (qp/process-query (:dataset_query card))
                                                                                 {:channel.render/include-title? true}))
               expected-href         (format "https://mb.com/dashboard/%d#scrollTo=%d" (:dashboard_id dc1) (:id dc1))]
-          (is (every? #(= % expected-href) (lib.util.match/match-many rendered-card-content {:href href} href))))))))
+          (is (every? #(= % expected-href) (match/match-many rendered-card-content {:href href} href))))))))
 
 (deftest render-card-with-abbreviated-dates-test
   (testing "Static-viz should render without error when date formatting is abbreviated (metabase#27020)"

@@ -12,7 +12,9 @@
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (org.quartz JobKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -156,7 +158,7 @@
             (recur))))))
 
 (deftest ^:sequential backfill-scheduling-test
-  (testing "Test that the backfill job schedules and reschedules itself correctly"
+  (testing "With 2 entities and batch size 1, the job reschedules itself and processes both"
     (backfill-all-existing-entities!)
     (mt/with-temp-scheduler!
       (with-redefs [env/env (assoc env/env
@@ -167,24 +169,49 @@
           (mt/test-helpers-set-global-values!
             (mt/with-premium-features #{}
               (mt/with-temp [:model/Card {card1-id :id} card-data
-                             :model/Card {card2-id :id} card-data
-                             :model/Card {card3-id :id} card-data]
-                ;; Mark all as stale
+                             :model/Card {card2-id :id} card-data]
                 (mark-stale! :card card1-id)
                 (mark-stale! :card card2-id)
-                (mark-stale! :card card3-id)
                 (let [processed? (fn []
-                                   (= 3 (t2/count :model/DependencyStatus
+                                   (= 2 (t2/count :model/DependencyStatus
                                                   :entity_type :card
-                                                  :entity_id [:in [card1-id card2-id card3-id]]
+                                                  :entity_id [:in [card1-id card2-id]]
                                                   :stale false
                                                   :dependency_analysis_version dependencies.model/current-dependency-analysis-version)))]
                   (is (not (processed?)))
                   (mt/with-premium-features #{:dependencies}
-                    ;; Initialize the task, which should schedule the first run
                     (task/init! ::dependencies.backfill/DependencyBackfill)
-                    (wait-for-condition processed? 10000)
+                    (wait-for-condition processed? 2500)
                     (is (processed?))))))))))))
+
+(deftest ^:sequential backfill-no-trigger-pile-up-test
+  (testing "Scheduling new runs while the backfill job is executing keeps the trigger count ≤ 1"
+    (let [job-started (promise)
+          can-finish  (promise)]
+      (with-redefs [dependencies.backfill/backfill-dependencies!
+                    (fn []
+                      (deliver job-started true)
+                      (deref can-finish 1500 :timeout)
+                      ;; non-nil → the job will hit the in-job self-reschedule path on exit
+                      true)]
+        (mt/with-temp-scheduler!
+          ;; Start the job immediately.
+          (#'dependencies.backfill/schedule-run! (task/scheduler) 0)
+          (is (true? (deref job-started 1000 :timeout))
+              "BackfillDependencies job did not start within 1s")
+          (let [scheduler (task/scheduler)
+                job-key   (JobKey. "metabase.task.dependency-backfill.job")
+                trigger-count #(count (.getTriggersOfJob scheduler job-key))]
+            ;; Spam 50 event-driven schedule attempts while the job is in-flight.
+            (dotimes [_ 50]
+              (dependencies.backfill/trigger-backfill-job!))
+            (is (<= (trigger-count) 1)
+                (str "During execution: expected ≤ 1 trigger, got " (trigger-count)))
+            ;; Release the job; on exit it self-reschedules via the in-job path.
+            (deliver can-finish true)
+            (Thread/sleep 200)
+            (is (<= (trigger-count) 1)
+                (str "After self-reschedule: expected ≤ 1 trigger, got " (trigger-count)))))))))
 
 (deftest ^:sequential backfill-error-logging-test
   (testing "When calculate-deps throws, the error is logged and the entity remains stale"

@@ -1,5 +1,5 @@
 import type { MetabotProfileId } from "metabase/metabot/constants";
-import type { MetabotChatMessage } from "metabase/metabot/state";
+import type { FetchedChatMessage } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import type {
   DatasetQuery,
   MetabotFeedback,
@@ -35,10 +35,16 @@ export type ConversationSummary = {
   user: MetabotUserInfo | null;
 };
 
-export type ConversationSortColumn =
-  | "created_at"
-  | "message_count"
-  | "total_tokens";
+export const CONVERSATION_SORT_COLUMNS = [
+  "created_at",
+  "message_count",
+  "total_tokens",
+  "user",
+  "profile_id",
+  "ip_address",
+] as const;
+
+export type ConversationSortColumn = (typeof CONVERSATION_SORT_COLUMNS)[number];
 
 export type ConversationsRequest = {
   limit?: number;
@@ -87,7 +93,7 @@ export type ConversationDetail = {
   total_tokens: number;
   profile_id: MetabotProfileId | null;
   slack_permalink: string | null;
-  chat_messages: MetabotChatMessage[];
+  chat_messages: FetchedChatMessage[];
   queries: GeneratedQuery[];
   search_count: number;
   query_count: number;

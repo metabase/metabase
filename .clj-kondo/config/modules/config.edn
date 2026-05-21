@@ -322,7 +322,8 @@
    :api  #{metabase.app-db.cluster-lock ; TODO FIXME
            metabase.app-db.core
            metabase.app-db.init
-           metabase.app-db.setup}
+           metabase.app-db.setup
+           metabase.app-db.transient-error}
    :uses #{auth-provider
            classloader
            config
@@ -1082,8 +1083,7 @@
            metabase.lib.schema.util
            metabase.lib.schema.validate
            metabase.lib.types.isa
-           metabase.lib.util
-           metabase.lib.util.match}
+           metabase.lib.util}
    :uses #{config
            graph
            legacy-mbql
@@ -1680,7 +1680,6 @@
                     :model/NativeQuerySnippet
                     :model/Notification
                     :model/Revision
-                    :model/Table
                     :model/User}}
 
   queries-rest
@@ -3242,6 +3241,7 @@
    :api  #{metabase-enterprise.security-center.api
            metabase-enterprise.security-center.init}
    :uses #{analytics
+           analytics-interface
            api
            app-db
            channel

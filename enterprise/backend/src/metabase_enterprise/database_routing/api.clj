@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.settings.core :as setting]
@@ -22,9 +23,9 @@
 (api.macros/defendpoint :post "/destination-database"
   "Create new Destination Databases.
 
-  Note that unlike the normal `POST /api/database` endpoint, does NOT check the details before adding the Database.
-
-  This is OK, it's not an invariant that all database details are always valid, but it's something to note."
+  Note that unlike the normal `POST /api/database` endpoint, this endpoint does not test that the database is actually
+  reachable before adding it — destination details are not required to be valid at creation time, and an
+  unreachable destination is fine."
   [_route-params
    {:keys [check_connection_details]} :- [:map
                                           [:check_connection_details {:optional true} ms/MaybeBooleanValue]]
@@ -39,14 +40,17 @@
   (api/check-400 (not (t2/exists? :model/Database :router_database_id router_database_id :name [:in (map :name destinations)]))
                  "A destination database with that name already exists.")
   (let [{:keys [engine auto_run_queries is_on_demand] :as router-db} (t2/select-one :model/Database :id router_database_id)]
-    (if-let [invalid-destinations (and check_connection_details
-                                       (->> destinations
-                                            (keep (fn [{details :details n :name}]
-                                                    (let [details-or-error (warehouses/test-connection-details engine details)
-                                                          valid? (not= (:valid details-or-error) false)]
-                                                      (when-not valid?
-                                                        [n (dissoc details-or-error :valid)]))))
-                                            seq))]
+    (if-let [invalid-destinations (->> destinations
+                                       (keep (fn [{details :details n :name}]
+                                               (try
+                                                 (driver/validate-db-details! engine details)
+                                                 (when check_connection_details
+                                                   (let [details-or-error (warehouses/test-connection-details engine details)]
+                                                     (when (false? (:valid details-or-error))
+                                                       [n (dissoc details-or-error :valid)])))
+                                                 (catch Throwable e
+                                                   [n {:message (ex-message e)}]))))
+                                       seq)]
       {:status 400
        :body (into {} invalid-destinations)}
       (u/prog1 (t2/insert-returning-instances!

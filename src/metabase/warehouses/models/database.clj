@@ -1,6 +1,5 @@
 (ns metabase.warehouses.models.database
   (:require
-   [clojure.core.match :refer [match]]
    [clojure.data :as data]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
@@ -177,26 +176,27 @@
 (defn- infer-db-schedules
   "Infer database schedule settings based on its options."
   [{:keys [details is_full_sync is_on_demand cache_field_values_schedule metadata_sync_schedule] :as database}]
-  (match [(boolean (:let-user-control-scheduling details)) is_full_sync is_on_demand]
-    [false _ _]
-    (merge
-     database
-     (sync.schedules/schedule-map->cron-strings
-      (sync.schedules/default-randomized-schedule)))
+  (let [user-control-scheduling (boolean (:let-user-control-scheduling details))]
+    (cond (not user-control-scheduling)
+          (merge
+           database
+           (sync.schedules/schedule-map->cron-strings
+            (sync.schedules/default-randomized-schedule)))
 
-    ;; "Regularly on a schedule"
-    ;; -> sync both steps, schedule should be provided
-    [true true false]
-    (do
-      (assert (every? some? [cache_field_values_schedule metadata_sync_schedule]))
-      database)
+          (and user-control-scheduling is_full_sync (not is_on_demand))
+          ;; "Regularly on a schedule"
+          ;; -> sync both steps, schedule should be provided
+          (do
+            (assert (every? some? [cache_field_values_schedule metadata_sync_schedule]))
+            database)
 
-    ;; "Only when adding a new filter" or "Never, I'll do it myself"
-    ;; -> Sync metadata only
-    [true false _]
-    ;; schedules should only contains metadata_sync, but FE might sending both
-    ;; so we just manually nullify it here
-    (assoc database :cache_field_values_schedule nil)))
+          (and user-control-scheduling (not is_full_sync))
+          ;; schedules should only contains metadata_sync, but FE might sending both
+          ;; so we just manually nullify it here
+          (assoc database :cache_field_values_schedule nil)
+
+          :else (throw (ex-info "Illegal options combination."
+                                (select-keys database [:let-user-control-scheduling :is_full_sync :is_on_demand]))))))
 
 (defn is-destination?
   "Is this database a destination database for some router database?"
@@ -630,12 +630,20 @@
               :is_sample        false
               :uploads_enabled  false}})
 
+(def ^:dynamic *include-h2-in-extract?*
+  "When false (the default), [[serdes/extract-query]] skips H2 databases because they are rejected at import time
+  by [[assert-not-h2!]]. Round-trip tests that exercise H2 throughout — and rebind `assert-not-h2!` accordingly —
+  may rebind this to `true` to keep the H2 databases in the extract."
+  false)
+
 (defmethod serdes/extract-query "Database"
   [model-name {:keys [where]}]
   (t2/reducible-select (keyword "model" model-name)
-                       {:where [:and
-                                (or where true)
-                                [:= :router_database_id nil]]}))
+                       {:where (cond-> [:and
+                                        (or where true)
+                                        [:= :router_database_id nil]]
+                                 (not *include-h2-in-extract?*)
+                                 (conj [:not= :engine "h2"]))}))
 
 (defmethod serdes/entity-id "Database"
   [_ {:keys [name]}]

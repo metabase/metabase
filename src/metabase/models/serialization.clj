@@ -67,7 +67,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.visualization-settings :as mb.viz]
@@ -77,6 +76,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.realize :as t2.realize]))
@@ -337,7 +337,9 @@
 
 (defmethod generate-path :default [model-name entity]
   ;; This default works for most models, but needs overriding for those that don't rely on entity_id.
-  (maybe-labeled model-name entity :name))
+  (maybe-labeled model-name entity #(if (string? (:name %))
+                                      (:name %)
+                                      (:format-string (:name %)))))
 
 (defn log-path-str
   "Returns a string for logging from a serdes path sequence (i.e. in :serdes/meta)"
@@ -1096,6 +1098,13 @@
                              "Table"    "tables"
                              "Field"    "fields"})
 
+(defn serialized-query-source-table
+  "Given a serialized query (with portable references), returns the portable reference of the table it is based
+  on. Measures and segments use this to omit the table_id property when it is derivable from the query. This should be
+  an mbql query and not a native query."
+  [serialized-query]
+  (resolve/serialized-query-source-table serialized-query))
+
 (defn storage-path-prefixes
   "The [[serdes/storage-path]] for Table is a bit tricky, and shared with Fields and FieldValues, so it's
   factored out here.
@@ -1203,7 +1212,7 @@
 (mu/defn- collect-required-lib-uuids :- [:set ::lib.schema.common/uuid]
   [x]
   (set
-   (lib.util.match/match-many x
+   (match/match-many x
      [:aggregation (_opts :guard map?) (uuid :guard string?)]
      uuid)))
 
@@ -1240,7 +1249,7 @@
 
 (defn- export-mbql-ref
   [mbql]
-  (lib.util.match/replace-lite (normalize-mbql-ref mbql)
+  (match/replace (normalize-mbql-ref mbql)
     ;; `pos-int?` guard is here to make the operation idempotent
     [:field (opts :guard map?) (id :guard pos-int?)]
     [:field (export-mbql-map opts) (*export-field-fk* id)]
@@ -1319,7 +1328,7 @@
 
 (defn- import-mbql-update-refs
   [entity]
-  (lib.util.match/replace-lite entity
+  (match/replace entity
     [#{:field "field"} (opts :guard map?) (fully-qualified-name :guard vector?)]
     [:field (import-mbql-map opts) (*import-field-fk* fully-qualified-name)]
 
@@ -1351,7 +1360,7 @@
     [:measure (*import-fk* entity-id 'Measure)]))
 
 (defn- import-mbql-update-maps [x]
-  (lib.util.match/replace-lite x
+  (match/replace x
     (m :guard map?)
     (import-mbql-map m)))
 
@@ -1381,7 +1390,7 @@
 (declare ^:private mbql-deps-map)
 
 (defn- mbql-deps-vector [entity]
-  (lib.util.match/match-lite entity
+  (match/match-one entity
     [#{:field "field"} (opts :guard map?) (id :guard vector?)]
     (into #{(field->path id)} (mbql-deps-map opts))
 
@@ -1696,7 +1705,7 @@
                      id))}))))
 
 (defn- import-visualizations [entity]
-  (lib.util.match/replace-lite entity
+  (match/replace entity
     [#{:field "field"} (opts :guard map?) (fully-qualified-name :guard vector?)]
     [:field (import-visualizations opts) (*import-field-fk* fully-qualified-name)]
 

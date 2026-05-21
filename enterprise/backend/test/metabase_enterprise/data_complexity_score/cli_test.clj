@@ -6,7 +6,12 @@
    [metabase-enterprise.data-complexity-score.cli :as cli]
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
+   [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
+   [metabase-enterprise.data-complexity-score.models.data-complexity-score :as data-complexity-score]
    [metabase-enterprise.data-complexity-score.representation :as representation]
+   [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
+   [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
+   [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -273,3 +278,106 @@
         (is (empty? extra) "fail! should be called with a single message")
         (is (re-find #"does-not-exist\.json" msg)
             "the user-facing message must mention the missing file")))))
+
+;;; ----------------------------------- source + write-to-appdb dispatch -----------------------------------
+
+(deftest ^:parallel run-cli-rejects-appdb-source-combined-with-representation-dir-test
+  (testing "--source appdb + --representation-dir is a user error — these flags name mutually exclusive inputs"
+    (let [ex (try (#'cli/run-cli {:source "appdb"
+                                  :representation-dir representation-fixture-dir})
+                  nil
+                  (catch clojure.lang.ExceptionInfo e e))]
+      (is (some? ex))
+      (is (true? (:cli-validation (ex-data ex))))
+      (is (re-find #"--source appdb does not accept" (ex-message ex)))))
+  (testing "--source appdb + --embeddings is also rejected"
+    (let [ex (try (#'cli/run-cli {:source "appdb"
+                                  :embeddings "embeddings.json"})
+                  nil
+                  (catch clojure.lang.ExceptionInfo e e))]
+      (is (some? ex))
+      (is (true? (:cli-validation (ex-data ex))))
+      (is (re-find #"--source appdb does not accept" (ex-message ex))))))
+
+(deftest ^:sequential run-cli-representation-mode-default-does-not-write-test
+  (testing "representation mode with no --write-to-appdb flag never calls record-score! or bootstrap"
+    (let [persisted?     (atom false)
+          bootstrapped?  (atom false)]
+      (mt/with-dynamic-fn-redefs [data-complexity-score/record-score! (fn [& _] (reset! persisted? true))
+                                  mdb/setup-db-without-migrations!    (fn [] (reset! bootstrapped? true))]
+        (#'cli/run-cli {:representation-dir representation-fixture-dir})
+        (is (false? @persisted?)   "representation+no-write must not persist anything")
+        (is (false? @bootstrapped?) "representation+no-write must not boot the appdb at all")))))
+
+(deftest ^:sequential run-cli-representation-mode-with-write-stamps-representation-source-test
+  (testing "representation + --write-to-appdb true persists a row stamped 'representation:<digest>' and does not advance the cron fingerprint"
+    (let [calls          (atom [])
+          advance-calls  (atom 0)]
+      (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!                (fn [])
+                                  task.complexity-score/current-fingerprint       (constantly "test-fp")
+                                  task.complexity-score/maybe-advance-last-fingerprint! (fn [& _]
+                                                                                          (swap! advance-calls inc))
+                                  data-complexity-score/record-score!             (fn [fp source _result]
+                                                                                    (swap! calls conj [fp source]))]
+        (#'cli/run-cli {:representation-dir representation-fixture-dir
+                        :write-to-appdb     true})
+        (is (= 1 (count @calls)) "exactly one row written")
+        (let [[fp source] (first @calls)]
+          (is (= "test-fp" fp))
+          (is (re-find #"^representation:[0-9a-f]{64}$" source)
+              "source must be 'representation:<sha-256 hex>'"))
+        (is (zero? @advance-calls)
+            "representation-derived rows must never advance the cron's last-fingerprint setting")))))
+
+(deftest ^:sequential run-cli-appdb-mode-defaults-to-writing-test
+  (testing "appdb mode with no --write-to-appdb flag defaults to writing (true)"
+    (let [calls         (atom [])
+          advance-calls (atom [])]
+      (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!                (fn [])
+                                  complexity/complexity-scores                    (fn [& _] {:meta {}})
+                                  synonym-source/complexity-scores-opts           (constantly {})
+                                  metabot-scope/internal-metabot-scope            (constantly {})
+                                  task.complexity-score/current-fingerprint       (constantly "appdb-fp")
+                                  task.complexity-score/maybe-advance-last-fingerprint! (fn [fp _result]
+                                                                                          (swap! advance-calls conj fp))
+                                  data-complexity-score/record-score!             (fn [fp source _result]
+                                                                                    (swap! calls conj [fp source]))]
+        (#'cli/run-cli {:source "appdb"})
+        (is (= [["appdb-fp" "appdb"]] @calls)
+            "appdb-mode default must write one row stamped source=\"appdb\"")
+        (is (= ["appdb-fp"] @advance-calls)
+            "appdb-mode write path must call maybe-advance-last-fingerprint! the same way the cron does")))))
+
+(deftest ^:sequential run-cli-appdb-mode-respects-explicit-no-write-test
+  (testing "appdb + --write-to-appdb false scores but never persists or advances the fingerprint"
+    (let [persisted?    (atom false)
+          advance-calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!                (fn [])
+                                  complexity/complexity-scores                    (fn [& _] {:meta {}})
+                                  synonym-source/complexity-scores-opts           (constantly {})
+                                  metabot-scope/internal-metabot-scope            (constantly {})
+                                  data-complexity-score/record-score!             (fn [& _] (reset! persisted? true))
+                                  task.complexity-score/maybe-advance-last-fingerprint! (fn [& _]
+                                                                                          (swap! advance-calls inc))]
+        (#'cli/run-cli {:source "appdb" :write-to-appdb false})
+        (is (false? @persisted?))
+        (is (zero? @advance-calls))))))
+
+(deftest ^:parallel dir-digest-is-stable-and-content-sensitive-test
+  (testing "dir-digest produces the same value for the same content"
+    (let [d1 (#'representation/dir-digest representation-fixture-dir)
+          d2 (#'representation/dir-digest representation-fixture-dir)]
+      (is (= d1 d2) "two calls against the same dir must produce the same digest")
+      (is (re-matches #"[0-9a-f]{64}" d1) "digest must be a 64-char lowercase hex string (SHA-256)")))
+  (testing "dir-digest changes when file content changes — guards against a constant-digest regression"
+    ;; A regression that made `dir-digest` return a fixed value (e.g. `(hex (sha-256 (pr-str [])))`)
+    ;; would pass the stability assertion above. Mutating a single byte in a single file must change
+    ;; the digest.
+    (let [tmp-dir (empty-tmp-dir "dir-digest-")
+          target  (io/file tmp-dir "marker.txt")]
+      (spit target "original")
+      (let [before (#'representation/dir-digest (.getAbsolutePath tmp-dir))]
+        (spit target "originalX")
+        (let [after (#'representation/dir-digest (.getAbsolutePath tmp-dir))]
+          (is (not= before after)
+              "appending a byte to a file must change the digest"))))))

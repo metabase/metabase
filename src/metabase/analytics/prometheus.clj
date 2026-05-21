@@ -644,6 +644,9 @@
                           :labels [:profile-id]
                           ;; 1KB -> 5MB
                           :buckets [1000 5000 10000 50000 100000 500000 1000000 5000000]})
+   (prometheus/counter :metabase-metabot/turn-started
+                       {:description "A metabot turn was started (user row + assistant placeholder inserted)"
+                        :labels [:profile-id]})
 
    ;; release dashboard metrics
    (prometheus/counter :metabase-sync/failures
@@ -658,7 +661,13 @@
                        {:description "Number of frontend analytics events dropped before being POSTed to the backend, because the client-side buffer was full."})
    (prometheus/counter :metabase-export/errors
                        {:description "Number of errors during data export."
-                        :labels [:format]})])
+                        :labels [:format]})
+   ;; security center metrics
+   (prometheus/gauge :metabase-security-center/last-sync-timestamp-seconds
+                     {:description "Unix timestamp (seconds since epoch) of the last successful Security Center."})
+   (prometheus/gauge :metabase-security-center/vulnerable-advisories
+                     {:description "Number of advisories where this Metabase instance is potentially affected."
+                      :labels [:severity :acknowledged]})])
 
 (defn- quartz-collectors
   []

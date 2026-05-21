@@ -9,7 +9,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
-   [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -55,62 +54,6 @@
   (when-let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
     (api/check-403 (mi/can-read? conversation))))
 
-(defn- store-aiservice-messages!
-  "Store messages that are going from ai-service.
-
-  `hostname` is the always-on `embedding_hostname`; `pii-info` is the gated map
-  returned by `analytics.core/pii-fields-from` (nil when the retention flag is
-  off). Both apply only on first insert per conversation (first-writer-wins)."
-  [conversation-id profile-id hostname pii-info messages]
-  (let [finish   (let [m (u/last messages)]
-                   (when (= (:_type m) :FINISH_MESSAGE)
-                     m))
-        state    (u/seek #(and (= (:_type %) :DATA)
-                               (= (:type %) "state"))
-                         messages)
-        messages (-> (remove #(or (= % state) (= % finish)) messages)
-                     vec)
-        ai-proxy? (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))]
-    (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
-                              (fn [existing]
-                                (cond-> {}
-                                  (nil? existing)
-                                  (assoc :user_id api/*current-user-id*)
-
-                                  state
-                                  (assoc :state state)
-
-                                  (and hostname (nil? (:embedding_hostname existing)))
-                                  (assoc :embedding_hostname hostname)
-
-                                  (and (:embedding_path pii-info) (nil? (:embedding_path existing)))
-                                  (assoc :embedding_path (:embedding_path pii-info))
-
-                                  (and (:user_agent pii-info) (nil? (:user_agent existing)))
-                                  (assoc :user_agent (:user_agent pii-info))
-
-                                  (and (:sanitized_user_agent pii-info) (nil? (:sanitized_user_agent existing)))
-                                  (assoc :sanitized_user_agent (:sanitized_user_agent pii-info))
-
-                                  (and (:ip_address pii-info) (nil? (:ip_address existing)))
-                                  (assoc :ip_address (:ip_address pii-info)))))
-    ;; NOTE: this will need to be constrained at some point, see BOT-386
-    (t2/insert! :model/MetabotMessage
-                {:conversation_id conversation-id
-                 :user_id         api/*current-user-id*
-                 :data            messages
-                 :usage           (:usage finish)
-                 :role            (:role (first messages))
-                 :profile_id      profile-id
-                 :external_id     (str (random-uuid))
-                 :total_tokens    (->> (vals (:usage finish))
-                                       ;; NOTE: this filter is supporting backward-compatible usage format, can be
-                                       ;; removed when ai-service does not give us `completionTokens` in `usage`
-                                       (filter map?)
-                                       (map #(+ (:prompt %) (:completion %)))
-                                       (apply +))
-                 :ai_proxied      (boolean ai-proxy?)})))
-
 (defn- streaming-writer-rf
   "Creates a reducing function that writes AI SDK lines to an OutputStream.
 
@@ -118,18 +61,23 @@
   When `canceled-chan` is provided, polls it before each write and returns `reduced`
   to stop the pipeline when the client has disconnected. Also catches EofException
   (client closed connection) and converts it to `reduced` so the pipeline shuts down
-  cleanly without triggering upstream retries."
-  [^java.io.OutputStream os canceled-chan]
+  cleanly without triggering upstream retries.
+
+  `canceled?` is a `volatile!` flipped to `true` when the writer detects a
+  disconnect or canceled-chan signal to mark the assistant turn as `finished=false`."
+  [^java.io.OutputStream os canceled-chan canceled?]
   (fn
     ([] nil)
     ([_] nil)
     ([acc ^String line]
      (if (and canceled-chan (a/poll! canceled-chan))
-       (reduced acc)
+       (do (vreset! canceled? true)
+           (reduced acc))
        (try
          (.write os (.getBytes (str line "\n") "UTF-8"))
          (.flush os)
          (catch org.eclipse.jetty.io.EofException _
+           (vreset! canceled? true)
            (reduced acc)))))))
 
 (defn- native-agent-streaming-request
@@ -143,20 +91,32 @@
   connection, the pipeline stops via `reduced` and collected parts are still persisted.
 
   When `:debug?` is true, enables debug logging which emits a `debug_log` data
-  part at the end of the stream with full LLM request/response data per iteration."
-  [{:keys [metabot-id profile-id message context history conversation-id state debug? hostname pii-info]}]
+  part at the end of the stream with full LLM request/response data per iteration.
+
+  `:assistant-msg-id` is the PK of the placeholder assistant row created by
+  [[metabot.persistence/start-turn!]]; the finally block UPDATEs that row.
+  `:external-id` is the assistant row's `external_id`, threaded into the AI-SDK
+  line protocol so the client can correlate streamed messages with feedback."
+  [{:keys [metabot-id profile-id message context history conversation-id state debug?
+           assistant-msg-id external-id]}]
   (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id})
-        messages         (concat history [message])
-        external-id      (str (random-uuid))]
+        messages         (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
       (let [parts-atom (atom [])
+            canceled?  (volatile! false)
+            ;; Captures throwables that escape the agent loop's own `catch Exception`
+            ;; (e.g. setup-phase throws before the reducible is constructed, `Error`
+            ;; subclasses, or failures from the agent's recovery `rf` write). Without
+            ;; this, such turns finalize as `:finished true :error nil` — indistinguishable
+            ;; from a clean success.
+            thrown     (volatile! nil)
             ;; In dev mode, emit usage parts in the SSE stream for debugging/benchmarking.
             xf         (comp (u/tee-xf parts-atom)
                              (self.core/aisdk-line-xf {:emit-usage? config/is-dev?
                                                        :external-id external-id}))]
         (try
           (transduce xf
-                     (streaming-writer-rf os canceled-chan)
+                     (streaming-writer-rf os canceled-chan canceled?)
                      (agent/run-agent-loop
                       (cond-> {:messages      messages
                                :state         state
@@ -166,19 +126,42 @@
                                :tracking-opts {:session-id conversation-id}}
                         debug? (assoc :debug? true))))
           (catch org.eclipse.jetty.io.EofException _
+            (vreset! canceled? true)
             (log/debug "Client disconnected during native agent streaming"))
+          (catch Throwable t
+            ;; `Throwable` (not `Exception`) so `Error` subclasses (OOM, etc.) still
+            ;; get captured into the row before they propagate. Don't re-throw: the
+            ;; HTTP 202 has already been committed and `streaming-response` will close
+            ;; the socket cleanly when this body fn returns. The error is fully
+            ;; captured in the row via the `finally` below and in the log here.
+            (vreset! thrown t)
+            (log/error t "Native agent stream failed"
+                       {:conversation-id conversation-id
+                        :assistant-msg-id assistant-msg-id
+                        :external-id     external-id}))
           (finally
             (try
-              (metabot.persistence/store-native-parts!
-               conversation-id profile-id
-               (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)
-               :hostname    hostname
-               :pii-info    pii-info
-               :external-id external-id)
+              (let [combined-parts (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)
+                    aborted?       @canceled?
+                    thrown-ex      @thrown
+                    ;; Precedence: aborted > thrown > streamed `:error`.
+                    ;;   - aborted: client is gone, no point recording why — they can't see it.
+                    ;;   - thrown:  more authoritative than any partial streamed error.
+                    ;;   - streamed: today's behavior for adapter/tool errors.
+                    error-data     (cond
+                                     aborted? nil
+                                     thrown-ex (metabot.persistence/throwable->error-payload thrown-ex)
+                                     :else (:error (u/seek #(= :error (:type %)) combined-parts)))]
+                (metabot.persistence/finalize-assistant-turn!
+                 conversation-id assistant-msg-id combined-parts
+                 :profile-id profile-id
+                 :finished?  (not aborted?)
+                 :error      error-data))
               (catch Exception e
-                (log/error e "Failed to persist native agent parts"
-                           {:conversation-id conversation-id
-                            :external-id     external-id})))))))))
+                (log/error e "Failed to finalize assistant turn"
+                           {:conversation-id  conversation-id
+                            :assistant-msg-id assistant-msg-id
+                            :external-id      external-id})))))))))
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc.
@@ -198,20 +181,22 @@
         hostname   (analytics.core/extract-hostname (:origin request-info))
         pii-info   (analytics.core/pii-fields-from request-info)]
     (check-conversation-access! conversation_id)
-    (store-aiservice-messages! conversation_id profile-id hostname pii-info [message])
-
-    (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
-    (native-agent-streaming-request
-     {:metabot-id      metabot-id
-      :profile-id      profile-id
-      :message         message
-      :context         context
-      :history         history
-      :conversation-id conversation_id
-      :state           state
-      :debug?          debug?
-      :hostname        hostname
-      :pii-info        pii-info})))
+    (let [{:keys [assistant-msg-id assistant-external-id]}
+          (metabot.persistence/start-turn! conversation_id profile-id message
+                                           :hostname hostname
+                                           :pii-info pii-info)]
+      (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
+      (native-agent-streaming-request
+       {:metabot-id       metabot-id
+        :profile-id       profile-id
+        :message          message
+        :context          context
+        :history          history
+        :conversation-id  conversation_id
+        :state            state
+        :debug?           debug?
+        :assistant-msg-id assistant-msg-id
+        :external-id      assistant-external-id}))))
 
 (defn- legacy->modern-query
   [query]

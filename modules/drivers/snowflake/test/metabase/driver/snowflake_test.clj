@@ -166,15 +166,19 @@
                                                                                             (assoc :host alternative-host)
                                                                                             (assoc :use-hostname use-hostname))]
                                                                             (sql-jdbc.conn/connection-details->spec :snowflake details))))
-        true nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        true "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        true "  " "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        true "snowflake.example.com/" "//snowflake.example.com/"
-        true "snowflake.example.com" "//snowflake.example.com/"
-        false nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        false "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        false "snowflake.example.com/" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        false "snowflake.example.com" "//ls10467.us-east-2.aws.snowflakecomputing.com/"))
+        true nil "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
+        true "" "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
+        true "  " "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
+        true "snowflake.example.com/" "//snowflake.example.com/?enablePutGet=false"
+        true "snowflake.example.com" "//snowflake.example.com/?enablePutGet=false"
+        false nil "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
+        false "" "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
+        false "snowflake.example.com/" "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
+        false "snowflake.example.com" "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"))
+    (testing "Unsafe options are removed"
+      (let [details (assoc details :additional-options "enablePutGet=true")
+            spec (sql-jdbc.conn/connection-details->spec :snowflake details)]
+        (is (re-find #"enablePutGet=false" (:subname spec)))))
     (testing "Application parameter is set to identify Metabase connections"
       (is (= "Metabase_Metabase"
              (:application (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
