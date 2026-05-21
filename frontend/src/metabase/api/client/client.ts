@@ -276,7 +276,7 @@ export class ApiClient extends EventEmitter {
     method: string,
     url: URL,
     headers: Record<string, string>,
-    requestBody: string | FormData | URLSearchParams | undefined,
+    body: string | FormData | URLSearchParams | undefined,
     data: Record<string, unknown>,
     options: RequestOptions<T>,
   ): Promise<T> {
@@ -300,7 +300,7 @@ export class ApiClient extends EventEmitter {
     const request = new Request(url.href, {
       method,
       headers,
-      body: requestBody,
+      body,
       signal,
     });
 
@@ -335,7 +335,7 @@ export class ApiClient extends EventEmitter {
           });
         }
 
-        throw { status: status, data: body };
+        throw { status, data: body };
       }
     } catch (error: unknown) {
       if (signal?.aborted) {
