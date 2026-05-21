@@ -64,7 +64,12 @@ type ResponseErrorInfo = {
   metabaseVersion: string | null;
 };
 
-export class ApiClient extends EventEmitter {
+type EventMap = {
+  "401": [string];
+  "403": [string];
+};
+
+export class ApiClient extends EventEmitter<EventMap> {
   basename = "";
   apiKey = "";
   sessionToken: string | undefined;
@@ -317,7 +322,13 @@ export class ApiClient extends EventEmitter {
 
       if (!options.noEvent) {
         // Strip basename so listeners (app-main.js) see the relative path.
-        this.emit(String(status), relativePath(this.basename, url));
+        const path = relativePath(this.basename, url);
+        if (status === 401) {
+          this.emit("401", path);
+        }
+        if (status === 403) {
+          this.emit("403", path);
+        }
       }
 
       if (status >= 200 && status <= 299) {
