@@ -18,6 +18,7 @@
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
@@ -345,7 +346,7 @@
                                    :collection_id         coll-id
                                    :exploration_thread_id tid})
           _           (when (ai-summary/ai-summary-available?)
-                        (auto-insights/create-placeholder-doc! tid api/*current-user-id* coll-id))]
+                        (ai-summary/create-placeholder-doc! tid api/*current-user-id* coll-id))]
       (when (seq metrics)
         (t2/insert! :model/ExplorationThreadMetric
                     (map-indexed (fn [i m]

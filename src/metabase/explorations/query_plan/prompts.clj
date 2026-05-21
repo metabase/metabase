@@ -1,7 +1,7 @@
 (ns metabase.explorations.query-plan.prompts
   "Selmer-based loader for the query-plan prompts. Templates live in
   `resources/explorations/query_plan/prompts/`. Mirrors
-  `metabase.explorations.auto-insights.prompts` but with its own template
+  `metabase.explorations.ai-summary.prompts` but with its own template
   directory + cache so the two prompt families stay independently editable
   and the cache can be cleared per-namespace at the REPL."
   (:require

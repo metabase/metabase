@@ -8,7 +8,7 @@
   record that wires those into the protocol."
   (:require
    [clojure.string :as str]
-   [metabase.explorations.auto-insights.common :as ai.common]
+   [metabase.explorations.ai-summary.common :as ai.common]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.explorations.query-plan.planner :as planner]
@@ -23,7 +23,7 @@
 ;; ---------------------------------------------------------------------------
 
 (def llm-config
-  "Sonnet 4.6 with extended thinking, matching Phase-1 of auto-insights. The
+  "Sonnet 4.6 with extended thinking, matching Phase-1 of ai-summary. The
   planning task is structurally similar — pattern-match a moderate landscape
   against the user's intent — and benefits from the same model + budget.
   Public so the orchestrator can stamp it into the transcript preamble."

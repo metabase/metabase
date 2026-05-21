@@ -8,7 +8,7 @@
   through the protocol, materializes the returned plan items into
   `ExplorationQuery` rows via the variant builders, persists the full
   transcript to `exploration_thread.query_plan_transcript`, and on a fatal
-  failure terminally stamps the thread and replaces the Auto-Insights
+  failure terminally stamps the thread and replaces the AI Summary
   placeholder with a 'Planning failed' doc.
 
   Add a new planner by writing `metabase.explorations.query-plan.<name>`,
@@ -16,7 +16,7 @@
   instance, and teaching `pick-planner!` to dispatch to it."
   (:require
    [metabase.documents.prose-mirror :as prose-mirror]
-   [metabase.explorations.auto-insights :as auto-insights]
+   [metabase.explorations.ai-summary :as ai-summary]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.llm :as qp.llm]
    [metabase.explorations.query-plan.mbql :as qp.mbql]
@@ -130,19 +130,19 @@
 ;; ---------------------------------------------------------------------------
 
 (defn- write-planning-failed-doc!
-  "Replace the Auto-Insights placeholder with an error doc describing the
+  "Replace the AI Summary placeholder with an error doc describing the
   planning failure. Best-effort: any secondary failure here is logged but
   never thrown."
   [thread-id creator-id final-errors]
   (try
     (when-let [doc (t2/select-one :model/Document
                                   :exploration_thread_id thread-id
-                                  :name                  "Automatic Insights"
+                                  :name                  "AI Summary"
                                   :archived              false)]
       (when creator-id
         (request/with-current-user creator-id
           (t2/update! :model/Document (:id doc)
-                      {:document     (auto-insights/error-doc
+                      {:document     (ai-summary/error-doc
                                       {:phase        :query-plan
                                        :thread-id    thread-id
                                        :final-errors final-errors
@@ -153,7 +153,7 @@
 
 (defn- mark-thread-terminally-failed!
   "Stamp `analysis_started_at` and `completed_at` so the thread doesn't
-  deadlock the auto-insights completion machinery (which waits for queries
+  deadlock the AI Summary completion machinery (which waits for queries
   to finish — but there are no queries)."
   [thread-id]
   (let [now (OffsetDateTime/now)]
