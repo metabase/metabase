@@ -297,7 +297,7 @@ describe("getInitialStateForCardDataSource", () => {
     });
   });
 
-  it("should keep remapped display companion columns and rewrite references (UXW-3359)", () => {
+  it("should keep remapped display columns and rewrite references (UXW-3359)", () => {
     const dataset = createMockDataset({
       data: createMockDatasetData({
         cols: [

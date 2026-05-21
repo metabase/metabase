@@ -46,16 +46,17 @@ export const getVisualizationColumns = (
   }
 
   // Per-source rename maps so remapped_from/to rewrites don't leak across sources.
-  const renamesBySource = new Map<
+  const columnRenamesBySource = new Map<
     VisualizerDataSourceId,
     Map<string, string>
   >();
   Object.values(columnValuesMapping).forEach((mappings) =>
     mappings.forEach((mapping) => {
       if (typeof mapping !== "string") {
-        const existing = renamesBySource.get(mapping.sourceId) ?? new Map();
+        const existing =
+          columnRenamesBySource.get(mapping.sourceId) ?? new Map();
         existing.set(mapping.originalName, mapping.name);
-        renamesBySource.set(mapping.sourceId, existing);
+        columnRenamesBySource.set(mapping.sourceId, existing);
       }
     }),
   );
@@ -78,8 +79,8 @@ export const getVisualizationColumns = (
             return;
           }
 
-          const renames =
-            renamesBySource.get(columnMapping.sourceId) ?? new Map();
+          const columnRenames =
+            columnRenamesBySource.get(columnMapping.sourceId) ?? new Map();
           const visualizationColumn = rewriteRemappedReferences(
             copyColumn(
               columnMapping.name,
@@ -87,7 +88,7 @@ export const getVisualizationColumns = (
               dataSource.name,
               visualizationColumns,
             ),
-            renames,
+            columnRenames,
           );
 
           visualizationColumns.push(visualizationColumn);

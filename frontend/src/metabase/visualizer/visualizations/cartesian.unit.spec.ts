@@ -1012,7 +1012,7 @@ describe("cartesian", () => {
       });
     });
 
-    it("should attach remapped display companions silently without adding them to graph.dimensions (UXW-3359)", () => {
+    it("should attach remapped display columns silently without adding them to graph.dimensions (UXW-3359)", () => {
       const settings = createMockVisualizationSettings({
         "graph.metrics": ["COLUMN_2"],
         "graph.dimensions": ["COLUMN_1"],
@@ -1098,7 +1098,7 @@ describe("cartesian", () => {
         "COLUMN_5",
       ]);
 
-      // Text companion lives in columnValuesMapping but NOT graph.dimensions.
+      // Text display column lives in columnValuesMapping but NOT graph.dimensions.
       expect(nextState.settings["graph.dimensions"]).not.toContain("COLUMN_6");
       expect(nextState.columnValuesMapping).toMatchObject({
         COLUMN_6: [

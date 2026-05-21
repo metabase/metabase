@@ -174,7 +174,7 @@ export const ColumnsList = (props: ColumnListProps) => {
                     return null;
                   }
 
-                  // Hide remapped display companions; extractRemappedColumns pairs them at render time.
+                  // Hide remapped display columns; extractRemappedColumns pairs them at render time.
                   if (column.remapped_from != null) {
                     return null;
                   }

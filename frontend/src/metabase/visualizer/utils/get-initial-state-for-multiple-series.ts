@@ -92,14 +92,17 @@ function processColumnsForDataSource(
     });
   });
 
-  const renames = new Map(
+  const columnRenames = new Map(
     columnInfos.map(({ columnRef }) => [
       columnRef.originalName,
       columnRef.name,
     ]),
   );
   for (let i = firstNewIndex; i < state.columns.length; i++) {
-    state.columns[i] = rewriteRemappedReferences(state.columns[i], renames);
+    state.columns[i] = rewriteRemappedReferences(
+      state.columns[i],
+      columnRenames,
+    );
   }
 
   return columnInfos;

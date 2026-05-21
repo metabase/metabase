@@ -86,7 +86,13 @@ export const cartesianDropHandler = (
       );
       const dataset = datasetMap[dataSource.id];
       if (dataset) {
-        attachRemappedCompanion(state, columnRef, column, dataset, dataSource);
+        attachRemappedDisplayColumn(
+          state,
+          columnRef,
+          column,
+          dataset,
+          dataSource,
+        );
       }
       maybeImportDimensionsFromOtherDataSources(
         state,
@@ -415,24 +421,24 @@ function removeDimensionFromMultiSeriesChart(
     (name) => !state.settings["graph.dimensions"]?.includes(name),
   );
 
-  // Strip orphan companions too, or stale remapped_from refs misalign render-time rows.
+  // Strip orphan display columns too, or stale remapped_from refs misalign render-time rows.
   const removedNameSet = new Set(removedColumns);
-  const orphanedCompanions = state.columns
+  const orphanedDisplayCols = state.columns
     .filter(
       (col) =>
         col.remapped_from != null && removedNameSet.has(col.remapped_from),
     )
     .map((col) => col.name);
 
-  [...removedColumns, ...orphanedCompanions].forEach((name) => {
+  [...removedColumns, ...orphanedDisplayCols].forEach((name) => {
     state.columns = state.columns.filter((col) => col.name !== name);
     delete state.columnValuesMapping[name];
   });
 }
 
-// Silently attach a base dim's display-value companion (in state.columns/columnValuesMapping
+// Silently attach a base dim's display-value column (in state.columns/columnValuesMapping
 // but not graph.dimensions) and point both cols' remapped refs at the new COLUMN_N names.
-export function attachRemappedCompanion(
+export function attachRemappedDisplayColumn(
   state:
     | Draft<VisualizerVizDefinitionWithColumns>
     | VisualizerVizDefinitionWithColumns,
@@ -441,30 +447,30 @@ export function attachRemappedCompanion(
   dataset: Dataset,
   dataSource: VisualizerDataSource,
 ) {
-  const companionCol = dataset.data.cols.find(
+  const displayCol = dataset.data.cols.find(
     (col) => col.remapped_from === originalBaseCol.name,
   );
-  if (!companionCol) {
+  if (!displayCol) {
     return;
   }
 
-  const companionRef = createVisualizerColumnReference(
+  const displayRef = createVisualizerColumnReference(
     dataSource,
-    companionCol,
+    displayCol,
     extractReferencedColumns(state.columnValuesMapping),
   );
   state.columns.push(
-    copyColumn(companionRef.name, companionCol, dataSource.name, state.columns),
+    copyColumn(displayRef.name, displayCol, dataSource.name, state.columns),
   );
-  state.columnValuesMapping[companionRef.name] = [companionRef];
+  state.columnValuesMapping[displayRef.name] = [displayRef];
 
-  const renames = new Map([
+  const columnRenames = new Map([
     [originalBaseCol.name, baseColRef.name],
-    [companionCol.name, companionRef.name],
+    [displayCol.name, displayRef.name],
   ]);
   state.columns = state.columns.map((col) =>
-    col.name === baseColRef.name || col.name === companionRef.name
-      ? rewriteRemappedReferences(col, renames)
+    col.name === baseColRef.name || col.name === displayRef.name
+      ? rewriteRemappedReferences(col, columnRenames)
       : col,
   );
 }
@@ -506,7 +512,7 @@ export function maybeImportDimensionsFromOtherDataSources(
         columnRef,
         dataSource,
       );
-      attachRemappedCompanion(
+      attachRemappedDisplayColumn(
         state,
         columnRef,
         matchingDimension,
@@ -565,7 +571,7 @@ export function combineWithCartesianChart(
   const { data } = dataset;
 
   const metrics = data.cols.filter((col) => isMetric(col));
-  // Display-value companions are attached separately below, not as graph.dimensions slots.
+  // Display-value columns are attached separately below, not as graph.dimensions slots.
   const dimensions = data.cols.filter(
     (col) => isDimension(col) && !isMetric(col) && col.remapped_from == null,
   );
@@ -624,7 +630,7 @@ export function combineWithCartesianChart(
     }
   });
 
-  // Silent companion attach: in columnValuesMapping/state.columns, NOT graph.dimensions
+  // Silent display-column attach: in columnValuesMapping/state.columns, NOT graph.dimensions
   // (extra dim slots break cross-source axis merging).
   data.cols
     .filter(
@@ -645,9 +651,12 @@ export function combineWithCartesianChart(
     });
 
   // Point remapped_from/to at the new COLUMN_N names so extractRemappedColumns can pair them.
-  const renames = new Map(Object.entries(columnsToRefs));
+  const columnRenames = new Map(Object.entries(columnsToRefs));
   for (let i = firstNewIndex; i < state.columns.length; i++) {
-    state.columns[i] = rewriteRemappedReferences(state.columns[i], renames);
+    state.columns[i] = rewriteRemappedReferences(
+      state.columns[i],
+      columnRenames,
+    );
   }
 
   if (vizSettings && vizSettings.column_settings) {

@@ -94,7 +94,7 @@ function pickColumns(
         settings["graph.dimensions"]?.includes(name) ||
         tooltipColumns.includes(name));
 
-    // Keep the display-value companion of any selected dim.
+    // Keep the display-value column paired with any selected dim.
     return originalColumns.filter(
       (col) => isSelected(col.name) || isSelected(col.remapped_from),
     );
@@ -184,9 +184,9 @@ export function getInitialStateForCardDataSource(
     columnsToRefs[column.name] = columnRef.name;
   });
 
-  const renames = new Map(Object.entries(columnsToRefs));
+  const columnRenames = new Map(Object.entries(columnsToRefs));
   state.columns = state.columns.map((col) =>
-    rewriteRemappedReferences(col, renames),
+    rewriteRemappedReferences(col, columnRenames),
   );
 
   const entries = getColumnVizSettings(state.display!)
