@@ -1,6 +1,8 @@
 import type { Location } from "history";
 import { useEffect } from "react";
 
+import { explorationApi } from "metabase/api/exploration";
+import { timelineApi } from "metabase/api/timeline";
 import { EditableText } from "metabase/common/components/EditableText";
 import CS from "metabase/css/core/index.css";
 import { QuestionModeSwitcher } from "metabase/metabot/components/QuestionModeSwitcher";
@@ -32,6 +34,16 @@ function NewExplorationPageInner() {
   useEffect(() => {
     resetConversation();
   }, [resetConversation]);
+
+  // Warm the RTK Query cache for the Browse tab's three lists
+  const prefetchExplorationData =
+    explorationApi.usePrefetch("getExplorationData");
+  const prefetchTimelines = timelineApi.usePrefetch("listTimelines");
+
+  useEffect(() => {
+    prefetchExplorationData({});
+    prefetchTimelines({ include: "events" });
+  }, [prefetchExplorationData, prefetchTimelines]);
 
   // hide the mode switcher once the user has started chatting or selecting data
   const shouldShowModeSwitcher =

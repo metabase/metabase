@@ -28,11 +28,13 @@
 (defn- metric-with-dims
   "Build a metric-context entry matching `qp.context/metric-and-dim-context`
   shape, just enough for the mechanical planner: id, applicability map,
-  and optional `:default-temporal-breakout`."
-  ([metric-id dim-map]                   (metric-with-dims metric-id dim-map false))
-  ([metric-id dim-map metric-temporal?]
+  optional `:default-temporal-breakout`, and optional `:segments`."
+  ([metric-id dim-map] (metric-with-dims metric-id dim-map false []))
+  ([metric-id dim-map metric-temporal?] (metric-with-dims metric-id dim-map metric-temporal? []))
+  ([metric-id dim-map metric-temporal? segments]
    {:metric-id                 metric-id
     :default-temporal-breakout (when metric-temporal? {:column "created_at" :unit "month"})
+    :segments                  segments
     :applicability             (into {}
                                      (map (fn [[did d]]
                                             [did {:target [:field 1 nil] :dim d}]))
@@ -122,6 +124,45 @@
   (testing "top-n-other skipped for auto-binned numeric dim (default already caps at bin count)"
     (let [r (plan! (metric-with-dims 1 {"n" (numeric-dim "n")}))]
       (is (not (contains? (set (map :variant (:plan r))) "top-n-other"))))))
+
+(deftest segment-fan-out-test
+  (testing "Each non-time-facet variant is fanned out across [nil + segments]"
+    ;; Datetime dim → 3 variants emitted (default, temporal-day, temporal-hour).
+    ;; With 2 segments, expect (3 × (1 + 2)) = 9 items, all sharing (metric, dim).
+    (let [m (metric-with-dims 1 {"d" (datetime-dim "d")} false
+                              [{:id 100 :name "Active"} {:id 200 :name "Lapsed"}])
+          r (plan! m)
+          by-variant (group-by :variant (:plan r))]
+      (is (= 9 (count (:plan r))))
+      (is (= 3 (count (by-variant "default"))))
+      (is (= 3 (count (by-variant "temporal-pattern-day"))))
+      (is (= 3 (count (by-variant "temporal-pattern-hour"))))
+      ;; Each variant's items cover {nil, 100, 200}
+      (doseq [variant ["default" "temporal-pattern-day" "temporal-pattern-hour"]]
+        (is (= #{nil 100 200}
+               (set (map #(get-in % [:params :segment_id]) (by-variant variant))))))))
+
+  (testing "time-facet is NOT fanned across segments — per-category line series is already busy"
+    (let [m (metric-with-dims 1 {"d" (text-dim "d" 10)} true
+                              [{:id 100 :name "Active"} {:id 200 :name "Lapsed"}])
+          r (plan! m)
+          facets (filter #(= "time-facet" (:variant %)) (:plan r))]
+      (is (= 1 (count facets)))
+      (is (nil? (get-in (first facets) [:params :segment_id])))))
+
+  (testing "top-n-other fans across segments while preserving :k"
+    (let [m (metric-with-dims 1 {"d" (text-dim "d" 100)} false
+                              [{:id 100 :name "Active"}])
+          r (plan! m)
+          tons (filter #(= "top-n-other" (:variant %)) (:plan r))]
+      (is (= 2 (count tons)))
+      (is (= #{nil 100} (set (map #(get-in % [:params :segment_id]) tons))))
+      (is (every? #(= 10 (get-in % [:params :k])) tons))))
+
+  (testing "No segments → behavior matches pre-segment-fan-out output"
+    (let [r (plan! (metric-with-dims 1 {"d" (datetime-dim "d")}))]
+      (is (= 3 (count (:plan r))))
+      (is (every? #(nil? (get-in % [:params :segment_id])) (:plan r))))))
 
 (deftest no-rationale-noise-test
   (testing "Mechanical items don't carry rationale strings — the variant + dim type

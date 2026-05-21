@@ -13,7 +13,8 @@
 
 (t2/deftransforms :model/ExplorationQuery
   {:visualization_settings mi/transform-json
-   :dataset_query          mi/transform-json})
+   :dataset_query          mi/transform-json
+   :params                 mi/transform-json})
 
 (defmethod mi/can-read? :model/ExplorationQuery
   ([instance]

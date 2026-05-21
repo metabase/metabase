@@ -69,56 +69,40 @@
     (some #(when (= segment-id (:id %)) %) (:segments metric))))
 
 (defn- materialize-item
-  "Translate one plan item to a vector of candidate maps via its variant
-  builder. Returns `[]` when the builder can't produce anything (e.g.
-  discovery query returned no rows) — the caller logs and continues.
-
-  For `per-value-time-series` we pre-resolve the temporal axis (LLM-chosen
-  override or metric default) and thread it into the builder ctx. Mechanical
-  plan items never carry `:temporal_dimension_id`, so the resolution falls
-  through to the metric default and `:temporal-target` is nil — both paths
-  are equivalent through `variants/build`."
+  "Translate one plan item into a vector of row *recipes* via the variant's
+  `plan-rows` multimethod. Recipes carry `:query_type`, `:display`,
+  `:segment_id`, and `:params` — no name, no MBQL. Both are deferred to
+  the runner, which builds them just before executing each row. 1:1
+  variants emit one recipe; `per-value-time-series` fans out to K recipes
+  with `:params.value_index 0..K-1`."
   [metric-by-id item]
   (let [metric  (get metric-by-id (:metric_id item))
-        appl    (get-in metric [:applicability (:dimension_id item)])
-        dim     (:dim appl)
-        target  (:target appl)
         segment (segment-for metric (get-in item [:params :segment_id]))
-        t-res   (when (= "per-value-time-series" (:variant item))
-                  (qp.llm/temporal-axis-resolution metric (:params item) 0 (:dimension_id item)))
-        ctx     {:mp              (:mp metric)
-                 :card            (:card metric)
-                 :target          target
-                 :dim             dim
-                 :dim-label       (or (:display_name dim) (:dimension_id dim))
-                 :segment         segment
-                 :params          (:params item)
-                 :temporal-target (when (= :chosen (:from t-res)) (:target t-res))
-                 :temporal-dim    (when (= :chosen (:from t-res)) (:dim t-res))}]
-    (qp.variants/build (:variant item) ctx)))
+        ctx     {:segment segment
+                 :params  (:params item)}]
+    (qp.variants/plan-rows (:variant item) ctx)))
 
 (defn- insert-plan-rows!
-  "Materialize each plan item via its variant builder and insert the resulting
-  `ExplorationQuery` rows. Builders that fail to produce anything (discovery
-  query empty, unexpected throw) are logged and skipped. Returns the number
-  of rows inserted."
+  "Materialize each plan item into row recipes and insert them as
+  `ExplorationQuery` rows. No database I/O happens here — recipes are pure
+  structural transforms. The runner builds `:name` and `:dataset_query`
+  when it claims each row. Returns the number of rows inserted."
   [thread-id metric-by-id plan]
   (let [rows (vec
-              (for [item plan
-                    candidate (try
-                                (materialize-item metric-by-id item)
-                                (catch Throwable e
-                                  (log/warnf e "Skipping plan item that failed to materialize: %s"
-                                             (pr-str item))
-                                  []))]
+              (for [item   plan
+                    recipe (try
+                             (materialize-item metric-by-id item)
+                             (catch Throwable e
+                               (log/warnf e "Skipping plan item that failed to materialize: %s"
+                                          (pr-str item))
+                               []))]
                 {:exploration_thread_id thread-id
                  :card_id               (:metric_id item)
-                 :segment_id            (:segment_id candidate)
+                 :segment_id            (:segment_id recipe)
                  :dimension_id          (:dimension_id item)
-                 :query_type            (:query_type candidate)
-                 :display               (:display candidate)
-                 :name                  (:name candidate)
-                 :dataset_query         (:dataset_query candidate)
+                 :query_type            (:query_type recipe)
+                 :display               (:display recipe)
+                 :params                (:params recipe)
                  :status                "pending"}))]
     (when (seq rows)
       (t2/insert! :model/ExplorationQuery

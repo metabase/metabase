@@ -1,17 +1,27 @@
 (ns metabase.explorations.query-plan.variants
-  "Variant builders for LLM-planned exploration queries. Each builder takes a
-  per-pair context map and returns a vector of *candidate* maps shaped like
-  the rows the runner's caller inserts into `:model/ExplorationQuery`:
+  "Variant builders for planned exploration queries.
 
-      {:query_type   <string>
-       :name         <localized name>
-       :display      <string or nil>
-       :dataset_query <MBQL 5 query>
-       :segment_id   <int or nil>}
+  Each variant is split into three single-responsibility multimethods:
 
-  Builders are split out so the orchestrator stays a thin dispatch table —
-  add a new variant by adding one builder here plus an entry in the schema's
-  enum and the validator's per-variant rules."
+    - `plan-rows`     — eager. Emits one or more row *recipes* the
+                        orchestrator inserts as `ExplorationQuery` rows.
+                        Recipes carry `:query_type`, `:display`, `:segment_id`,
+                        and `:params` (a JSON-able map). They do NOT carry
+                        `:name` or `:dataset_query` — both are deferred.
+    - `query-name`    — runner-side. Returns the localized chart name. Pure
+                        for everything except `per-value-time-series`, which
+                        consults the discovery cache for the value at
+                        `:params.value_index`.
+    - `dataset-query` — runner-side. Returns the MBQL `:dataset_query`. Pure
+                        for default/temporal-pattern-*/time-facet/filtered-
+                        subset; runs (cached) discovery for `top-n-other` and
+                        `per-value-time-series`.
+
+  Discovery queries (`run-top-k-discovery`) for the two variants that need
+  them are deduplicated in-process via `discovery-cache`, keyed by
+  `[card-id dim-id k]`. Both `query-name` and `dataset-query` go through the
+  cache, so the underlying QP call runs at most once per (card, dim, k) per
+  JVM."
   (:require
    [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.lib.core :as lib]
@@ -27,41 +37,25 @@
   "Other")
 
 (defn- maybe-segment-filtered
-  "Apply a segment as a filter clause when `segment-id` is non-nil. The segment
-  is fetched from the metric's available-segments list, which the caller
-  pre-resolves."
   [query segment]
   (cond-> query
     segment (lib/filter segment)))
 
 (defn- with-segment-suffix
-  "If `segment` is non-nil, append its name in parentheses, matching the format
-  the pre-LLM code emitted for segment-fanned-out queries."
   [base-name segment]
   (if segment
     (tru "{0} ({1})" base-name (:name segment))
     base-name))
 
 ;; ---------------------------------------------------------------------------
-;; Discovery query — fetch top-K dim values for a (metric, dim) pair
+;; Discovery query + in-process cache
 ;; ---------------------------------------------------------------------------
 
 (defn- run-top-k-discovery
-  "Runs a single QP query that breaks the metric out by `target` (with the dim's
-  default bucket applied), orders by the aggregation descending, and limits to
-  `k`. Returns a vector of the top-K dim-value cells, or `nil` if anything
-  throws. We run this synchronously inside the planning worker because the
-  variant builders that need it (`top-n-other`, `per-value-time-series`) can't
-  emit MBQL without knowing the values.
-
-  Order-by here uses `lib/aggregation-ref` rather than the aggregation clause
-  directly: passing the aggregation clause to `lib/order-by` would route through
-  `lib.ref/ref` for `:count`/`:sum`/etc., which has no method registered for
-  those dispatch values. `aggregation-ref` builds the correct `:aggregation`
-  ref clause by index.
-
-  Failure path returns nil; the orchestrator skips the plan item rather than
-  emitting a half-built variant."
+  "Single QP query that breaks the metric out by `target` (with the dim's
+  default bucket applied), orders by the aggregation descending, and limits
+  to `k`. Returns a vector of top-K dim-value cells, or `nil` on any throw.
+  Fronted by `discovery-cache` below."
   [mp card target dim k]
   (try
     (let [base       (qp.mbql/build-snapshot-mbql mp (:dataset_query card) target dim)
@@ -82,42 +76,142 @@
                    (:rows data)))))
     (catch Throwable _ nil)))
 
+(defonce ^:private discovery-cache
+  ;; In-memory only; resets on JVM restart. Keyed by [card-id dim-id k].
+  (atom {}))
+
+(defn- cached-discovery
+  "Memoized `run-top-k-discovery` keyed by `[card-id dim-id k]`. Returns
+  the discovered vector (or `[]` on failure / no rows). Both `query-name`
+  and `dataset-query` go through this so the underlying QP query runs at
+  most once per (card, dim, k) for the lifetime of the JVM."
+  [{:keys [mp card target dim params]}]
+  (let [card-id   (:id card)
+        dim-id    (or (:dimension_id dim) (:id dim))
+        k         (:k params)
+        cache-key [card-id dim-id k]]
+    (or (get @discovery-cache cache-key)
+        (let [values (or (run-top-k-discovery mp card target dim k) [])]
+          (swap! discovery-cache assoc cache-key values)
+          values))))
+
 ;; ---------------------------------------------------------------------------
-;; Variant builders
+;; plan-rows — eager. Orchestrator calls this at plan time to produce one
+;; row recipe per chart (per-value-time-series fans out to K recipes).
 ;; ---------------------------------------------------------------------------
 
-(defn- build-default
-  [{:keys [mp card target dim dim-label segment]}]
-  [{:query_type    "default"
-    :name          (with-segment-suffix (tru "{0} by {1}" (:name card) dim-label) segment)
-    :display       nil
-    :dataset_query (-> (qp.mbql/build-snapshot-mbql mp (:dataset_query card) target dim)
-                       (maybe-segment-filtered segment))
-    :segment_id    (:id segment)}])
+(defmulti plan-rows
+  "Return a vector of row recipes for a single plan item. Each recipe is a
+  map with `:query_type`, `:display`, `:segment_id`, and `:params`."
+  {:arglists '([variant ctx])}
+  (fn [variant _ctx] variant))
 
-(defn- build-temporal-pattern
-  [{:keys [mp card target dim-label segment]} unit query-type label-fn]
+(defn- one-row
+  [query-type display {:keys [segment params]}]
+  [{:query_type query-type :display display :segment_id (:id segment) :params params}])
+
+(defmethod plan-rows "default"               [_ ctx] (one-row "default"               nil    ctx))
+(defmethod plan-rows "temporal-pattern-day"  [_ ctx] (one-row "temporal-pattern-day"  nil    ctx))
+(defmethod plan-rows "temporal-pattern-hour" [_ ctx] (one-row "temporal-pattern-hour" nil    ctx))
+(defmethod plan-rows "top-n-other"           [_ ctx] (one-row "top-n-other"           "bar"  ctx))
+(defmethod plan-rows "filtered-subset"       [_ ctx] (one-row "filtered-subset"       nil    ctx))
+
+(defmethod plan-rows "time-facet"
+  ;; time-facet never combines with segments — the per-category line series
+  ;; is already busy. The orchestrator may still pass a segment in ctx; we
+  ;; pin `:segment_id` to nil here to match pre-refactor behavior.
+  [_ {:keys [params]}]
+  [{:query_type "time-facet" :display "line" :segment_id nil :params params}])
+
+(defmethod plan-rows "per-value-time-series"
+  ;; Fan out to K rows. Each row carries `:params.value_index N` (N=0..K-1);
+  ;; the runner resolves it to the n-th discovered value when finalizing.
+  [_ {:keys [segment params]}]
+  (let [k (:k params)]
+    (mapv (fn [n]
+            {:query_type "per-value-time-series"
+             :display    "line"
+             :segment_id (:id segment)
+             :params     (assoc params :value_index n)})
+          (range k))))
+
+;; ---------------------------------------------------------------------------
+;; query-name — runner-side. Localized chart name.
+;; ---------------------------------------------------------------------------
+
+(defmulti query-name
+  "Return the localized chart name for one row. Called by the runner just
+  before executing the row."
+  {:arglists '([variant ctx])}
+  (fn [variant _ctx] variant))
+
+(defmethod query-name "default"
+  [_ {:keys [card dim-label segment]}]
+  (with-segment-suffix (tru "{0} by {1}" (:name card) dim-label) segment))
+
+(defmethod query-name "temporal-pattern-day"
+  [_ {:keys [card dim-label segment]}]
+  (with-segment-suffix (tru "{0} by {1} (day of week)" (:name card) dim-label) segment))
+
+(defmethod query-name "temporal-pattern-hour"
+  [_ {:keys [card dim-label segment]}]
+  (with-segment-suffix (tru "{0} by {1} (hour of day)" (:name card) dim-label) segment))
+
+(defmethod query-name "time-facet"
+  [_ {:keys [card dim-label]}]
+  (tru "{0} by {1} over time" (:name card) dim-label))
+
+(defmethod query-name "top-n-other"
+  [_ {:keys [card dim-label segment params]}]
+  (with-segment-suffix (tru "{0} by {1} (top {2} + Other)" (:name card) dim-label (:k params)) segment))
+
+(defmethod query-name "filtered-subset"
+  [_ {:keys [card dim-label segment params]}]
+  (let [values        (:filter_values params)
+        value-summary (if (= 1 (count values))
+                        (str (first values))
+                        (str (count values) " values"))]
+    (with-segment-suffix (tru "{0} by {1} ({2})" (:name card) dim-label value-summary) segment)))
+
+(defmethod query-name "per-value-time-series"
+  [_ {:keys [card dim-label segment params] :as ctx}]
+  (let [v (nth (cached-discovery ctx) (:value_index params) nil)]
+    (with-segment-suffix
+      (tru "{0} for {1} = {2} over time" (:name card) dim-label (str v))
+      segment)))
+
+;; ---------------------------------------------------------------------------
+;; dataset-query — runner-side. MBQL the QP will run.
+;; ---------------------------------------------------------------------------
+
+(defmulti dataset-query
+  "Return the MBQL dataset_query for one row. Pure for most variants;
+  runs cached discovery for `top-n-other` and `per-value-time-series`.
+  Returns `nil` when the variant can't produce a query (e.g. discovery
+  returned no rows). The runner treats a nil result as a row-level error."
+  {:arglists '([variant ctx])}
+  (fn [variant _ctx] variant))
+
+(defmethod dataset-query "default"
+  [_ {:keys [mp card target dim segment]}]
+  (-> (qp.mbql/build-snapshot-mbql mp (:dataset_query card) target dim)
+      (maybe-segment-filtered segment)))
+
+(defn- temporal-pattern-mbql
+  [{:keys [mp card target segment]} unit]
   (let [base-query (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
         ref-clause (qp.mbql/normalize-target-ref target)
         bucketed   (lib/breakout base-query (lib/with-temporal-bucket ref-clause unit))]
-    [{:query_type    query-type
-      :name          (with-segment-suffix (label-fn (:name card) dim-label) segment)
-      :display       nil
-      :dataset_query (maybe-segment-filtered bucketed segment)
-      :segment_id    (:id segment)}]))
+    (maybe-segment-filtered bucketed segment)))
 
-(defn- build-temporal-pattern-day
-  [ctx]
-  (build-temporal-pattern ctx :day-of-week "day-of-week"
-                          (fn [m d] (tru "{0} by {1} (day of week)" m d))))
+(defmethod dataset-query "temporal-pattern-day"
+  [_ ctx] (temporal-pattern-mbql ctx :day-of-week))
 
-(defn- build-temporal-pattern-hour
-  [ctx]
-  (build-temporal-pattern ctx :hour-of-day "hour-of-day"
-                          (fn [m d] (tru "{0} by {1} (hour of day)" m d))))
+(defmethod dataset-query "temporal-pattern-hour"
+  [_ ctx] (temporal-pattern-mbql ctx :hour-of-day))
 
-(defn- build-time-facet
-  [{:keys [mp card target dim dim-label]}]
+(defmethod dataset-query "time-facet"
+  [_ {:keys [mp card target dim]}]
   (let [base-query   (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
         ref-clause   (qp.mbql/normalize-target-ref target)
         ;; Apply the dim's default bucket/binning so numerics render as a
@@ -126,141 +220,75 @@
         dim-breakout (qp.mbql/apply-default-bucket base-query ref-clause dim)]
     (when-let [[temporal-col raw-unit] (qp.mbql/extract-default-temporal-breakout-col
                                         mp (:dataset_query card))]
-      [{:query_type    "time-facet"
-        :name          (tru "{0} by {1} over time" (:name card) dim-label)
-        :display       "line"
-        :dataset_query (-> base-query
-                           (lib/breakout dim-breakout)
-                           (lib/breakout (lib/with-temporal-bucket
-                                           temporal-col (or raw-unit :month))))
-        ;; time-facet never combines with segments — the per-category line series is already busy.
-        :segment_id    nil}])))
+      (-> base-query
+          (lib/breakout dim-breakout)
+          (lib/breakout (lib/with-temporal-bucket temporal-col (or raw-unit :month)))))))
 
-(defn- build-top-n-other
-  "Categorical dim, keep top-K values, roll the rest into `Other`. Implementation:
-  run a discovery query for the top-K values, then build MBQL that adds a `:case`
-  expression mapping each top value to itself and everything else to the literal
-  `Other` string, breakout by that expression. Result: one chart with up to
-  K+1 bars."
-  [{:keys [mp card target dim dim-label segment params]}]
-  (let [k (:k params)]
-    (when-let [top-values (seq (run-top-k-discovery mp card target dim k))]
-      (let [base-query  (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
-            ref-clause  (qp.mbql/normalize-target-ref target)
-            field-ref   (lib/find-matching-column base-query -1 ref-clause
-                                                  (lib/breakoutable-columns base-query))
-            ;; Use `lib/=` with multiple values per branch — but `lib/case` wants
-            ;; pred/value pairs where each value is a literal label. We emit one
-            ;; pair per top value: (when (= dim v) v), then the fallback "Other".
-            pairs       (mapv (fn [v] [(lib/= (or field-ref ref-clause) v) v]) top-values)
-            case-expr   (lib/case pairs other-bucket-label)
-            expr-name   (str (or (:display_name dim) (:dimension_id dim) "value") "_grouped")
-            with-expr   (lib/expression base-query expr-name case-expr)
-            expr-ref    (lib/expression-ref with-expr expr-name)
-            with-bo     (lib/breakout with-expr expr-ref)]
-        [{:query_type    "top-n-other"
-          :name          (with-segment-suffix
-                           (tru "{0} by {1} (top {2} + Other)" (:name card) dim-label k)
-                           segment)
-          :display       "bar"
-          :dataset_query (maybe-segment-filtered with-bo segment)
-          :segment_id    (:id segment)}]))))
+(defmethod dataset-query "top-n-other"
+  [_ {:keys [mp card target dim segment] :as ctx}]
+  (let [top-values (cached-discovery ctx)]
+    (when (seq top-values)
+      (let [base-query (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
+            ref-clause (qp.mbql/normalize-target-ref target)
+            field-ref  (lib/find-matching-column base-query -1 ref-clause
+                                                 (lib/breakoutable-columns base-query))
+            pairs      (mapv (fn [v] [(lib/= (or field-ref ref-clause) v) v]) top-values)
+            case-expr  (lib/case pairs other-bucket-label)
+            expr-name  (str (or (:display_name dim) (:dimension_id dim) "value") "_grouped")
+            with-expr  (lib/expression base-query expr-name case-expr)
+            expr-ref   (lib/expression-ref with-expr expr-name)
+            with-bo    (lib/breakout with-expr expr-ref)]
+        (maybe-segment-filtered with-bo segment)))))
+
+(defmethod dataset-query "filtered-subset"
+  [_ {:keys [mp card target dim segment params]}]
+  (let [values (:filter_values params)]
+    (when (seq values)
+      (let [snapshot      (qp.mbql/build-snapshot-mbql mp (:dataset_query card) target dim)
+            ref-clause    (qp.mbql/normalize-target-ref target)
+            field-ref     (lib/find-matching-column snapshot -1 ref-clause
+                                                    (lib/breakoutable-columns snapshot))
+            filter-clause (apply lib/= (or field-ref ref-clause) values)
+            filtered      (lib/filter snapshot filter-clause)]
+        (maybe-segment-filtered filtered segment)))))
 
 (defn- resolve-temporal-axis
   "Pick the temporal breakout for `per-value-time-series`. Prefers the
   LLM-chosen `temporal-target`/`temporal-dim` threaded through from the
-  orchestrator; falls back to the metric Card's own default temporal
-  breakout. Returns `[col unit]` (the shape `lib/with-temporal-bucket`
-  consumes) or `nil` when neither path resolves a column."
+  runner ctx; falls back to the metric Card's own default temporal
+  breakout. Returns `[col unit]` or nil."
   [{:keys [mp card temporal-target temporal-dim]}]
   (or (when temporal-target
         (let [base       (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
               ref-clause (qp.mbql/normalize-target-ref temporal-target)
               col        (lib/find-matching-column base -1 ref-clause
                                                    (lib/breakoutable-columns base))
-              ;; LLM-chosen axis: bucket by the dim's natural default (day for
-              ;; Date, month for DateTime, hour for Time), matching what
-              ;; `default-bucket-for-dim` picks for breakouts.
               [_ unit]   (qp.mbql/default-bucket-for-dim temporal-dim)]
           (when (or col ref-clause)
             [(or col ref-clause) unit])))
       (qp.mbql/extract-default-temporal-breakout-col mp (:dataset_query card))))
 
-(defn- build-per-value-time-series
-  "For each of the top-K values of `dim`, emit a separate filtered query that
-  breaks the metric out by a temporal column. The temporal column is either
-  the LLM-chosen `temporal_dimension_id` (threaded into ctx as
-  `:temporal-target`/`:temporal-dim`) or the metric Card's default temporal
-  breakout. Returns K candidate maps (or `nil` when discovery fails or no
-  temporal axis can be resolved)."
-  [{:keys [mp card target dim dim-label segment params] :as ctx}]
-  (let [k (:k params)]
-    (when-let [[temporal-col raw-unit] (resolve-temporal-axis ctx)]
-      (when-let [top-values (seq (run-top-k-discovery mp card target dim k))]
+(defmethod dataset-query "per-value-time-series"
+  [_ {:keys [mp card target segment params] :as ctx}]
+  (let [v (nth (cached-discovery ctx) (:value_index params) nil)]
+    (when (some? v)
+      (when-let [[temporal-col raw-unit] (resolve-temporal-axis ctx)]
         (let [base-query (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
               ref-clause (qp.mbql/normalize-target-ref target)
               field-ref  (lib/find-matching-column base-query -1 ref-clause
                                                    (lib/breakoutable-columns base-query))]
-          (mapv (fn [v]
-                  {:query_type    "per-value-time-series"
-                   :name          (with-segment-suffix
-                                    (tru "{0} for {1} = {2} over time" (:name card) dim-label (str v))
-                                    segment)
-                   :display       "line"
-                   :dataset_query (-> base-query
-                                      (lib/filter (lib/= (or field-ref ref-clause) v))
-                                      (lib/breakout (lib/with-temporal-bucket
-                                                      temporal-col (or raw-unit :month)))
-                                      (maybe-segment-filtered segment))
-                   :segment_id    (:id segment)})
-                top-values))))))
-
-(defn- build-filtered-subset
-  "Single breakout query restricted to one or more named dim values. The LLM
-  supplies `filter_values` directly — values it has high confidence will exist
-  on the dim (e.g. boolean true/false, enum-like strings)."
-  [{:keys [mp card target dim dim-label segment params]}]
-  (let [values (:filter_values params)]
-    (when (seq values)
-      (let [snapshot   (qp.mbql/build-snapshot-mbql mp (:dataset_query card) target dim)
-            ref-clause (qp.mbql/normalize-target-ref target)
-            field-ref  (lib/find-matching-column snapshot -1 ref-clause
-                                                 (lib/breakoutable-columns snapshot))
-            ;; MBQL `:=` takes multiple values for set membership.
-            filter-clause (apply lib/= (or field-ref ref-clause) values)
-            filtered      (lib/filter snapshot filter-clause)
-            value-summary (if (= 1 (count values))
-                            (str (first values))
-                            (str (count values) " values"))]
-        [{:query_type    "filtered-subset"
-          :name          (with-segment-suffix
-                           (tru "{0} by {1} ({2})" (:name card) dim-label value-summary)
-                           segment)
-          :display       nil
-          :dataset_query (maybe-segment-filtered filtered segment)
-          :segment_id    (:id segment)}]))))
-
-(def ^:private builders
-  {"default"               build-default
-   "temporal-pattern-day"  build-temporal-pattern-day
-   "temporal-pattern-hour" build-temporal-pattern-hour
-   "time-facet"            build-time-facet
-   "top-n-other"           build-top-n-other
-   "per-value-time-series" build-per-value-time-series
-   "filtered-subset"       build-filtered-subset})
-
-(defn build
-  "Dispatch a plan item to its variant builder. Returns a vector of zero or more
-  candidate maps. The orchestrator drops plan items whose builder returns an
-  empty vector (e.g. discovery query returned no rows) and continues — a single
-  unbuildable item should not fail the whole plan."
-  [variant ctx]
-  (if-let [builder (get builders variant)]
-    (or (builder ctx) [])
-    (throw (ex-info (str "Unknown query plan variant: " variant)
-                    {:variant variant}))))
+          (-> base-query
+              (lib/filter (lib/= (or field-ref ref-clause) v))
+              (lib/breakout (lib/with-temporal-bucket temporal-col (or raw-unit :month)))
+              (maybe-segment-filtered segment)))))))
 
 (def known-variants
-  "Set of variant names the builders dispatch on. Exposed for the validator so
-  the schema enum and the dispatch table can't drift."
-  (set (keys builders)))
+  "Set of variant names the multimethods dispatch on. Exposed for the LLM
+  validator so the schema enum and the dispatch table can't drift."
+  #{"default"
+    "temporal-pattern-day"
+    "temporal-pattern-hour"
+    "time-facet"
+    "top-n-other"
+    "per-value-time-series"
+    "filtered-subset"})
