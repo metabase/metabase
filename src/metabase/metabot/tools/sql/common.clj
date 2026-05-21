@@ -17,6 +17,28 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]))
 
+(def ^:private card-tag-re
+  ;; Mirrors metabase.lib.parameters.parse/card-tag-regex but anchored as a
+  ;; standalone token inside surrounding text. Captures the numeric card id;
+  ;; tolerates the optional `-some-slug` suffix and inner whitespace
+  ;; (`{{ #123 }}`, `{{#123-slug}}`).
+  #"\{\{\s*#(\d+)(?:-[a-z0-9-]*)?\s*\}\}")
+
+(defn card-refs-in-sql
+  "Extract `{{#N}}`/`{{#N-slug}}` card references from a SQL string. Returns a
+  vector of `{:type \"card\" :id N}` entries in source order, deduped while
+  preserving the first occurrence. The `:type` is the catch-all `card`;
+  consumers that need the resolved subtype (`question`/`model`/`metric`) can
+  join to `report_card.type`. Returns `[]` when `sql` is not a string or has
+  no card references."
+  [sql]
+  (if (string? sql)
+    (->> (re-seq card-tag-re sql)
+         (keep (fn [[_ id-str]] (parse-long id-str)))
+         distinct
+         (mapv (fn [id] {:type "card" :id id})))
+    []))
+
 (mr/def ::action-result
   "Each of the _operations_ performs an _action_ manipulating a query.
   Key of the action result represent

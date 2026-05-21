@@ -45,22 +45,33 @@
   Keep `import common` at the top of the file even if it is currently unused."
   :feature :transforms-python
   [{:keys [transform_id edit_action thinking transform_name transform_description
-           database_id source_tables]}
+           database_id source_tables]
+    :as args}
    :- tools.transforms/write-transform-python-schema]
-  (try
-    (tools.transforms/add-output
-     (transforms-write-tools/write-transform-python
-      {:transform_id transform_id
-       :edit_action edit_action
-       :thinking thinking
-       :transform_name transform_name
-       :transform_description transform_description
-       :source_database database_id
-       :source_tables source_tables
-       :memory-atom shared/*memory-atom*
-       :context (shared/current-context)})
-     tools.transforms/format-transform-write-output)
-    (catch Exception e
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to write Python transform: " (or (ex-message e) "Unknown error"))}))))
+  (let [base-eu (tools.transforms/entity-usage-for-transform args nil)]
+    (try
+      (let [raw-result   (tools.transforms/add-output
+                          (transforms-write-tools/write-transform-python
+                           {:transform_id transform_id
+                            :edit_action edit_action
+                            :thinking thinking
+                            :transform_name transform_name
+                            :transform_description transform_description
+                            :source_database database_id
+                            :source_tables source_tables
+                            :memory-atom shared/*memory-atom*
+                            :context (shared/current-context)})
+                          tools.transforms/format-transform-write-output)
+            transform    (get-in raw-result [:structured-output :transform])
+            final-db     (or (get-in transform [:source :source-database]) database_id)
+            final-tables (or (get-in transform [:source :source-tables]) source_tables)
+            eu           (tools.transforms/entity-usage-for-transform
+                          {:database_id final-db :source_tables final-tables}
+                          nil)]
+        (tools.transforms/entity-usage-on-result raw-result eu))
+      (catch Exception e
+        (tools.transforms/entity-usage-on-result
+         (if (:agent-error? (ex-data e))
+           {:output (ex-message e)}
+           {:output (str "Failed to write Python transform: " (or (ex-message e) "Unknown error"))})
+         base-eu)))))

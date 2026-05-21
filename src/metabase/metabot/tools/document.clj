@@ -6,6 +6,7 @@
    [metabase.metabot.tools.construct :as construct-tools]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
+   [metabase.metabot.tools.sql.common :as metabot.tools.sql.common]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.query-processor.core :as qp]
    [metabase.util.log :as log]
@@ -137,47 +138,59 @@
    [:viz_settings [:map {:closed true}
                    [:chart_type chart-type-enum]]]])
 
+(defn- sql-chart-entity-usage
+  [database-id sql]
+  {:input  (into [{:type "database" :id database-id}]
+                 (metabot.tools.sql.common/card-refs-in-sql sql))
+   :output []})
+
 (mu/defn ^{:tool-name "document_construct_sql_chart"
+           :tool-type :authoring
            :scope     scope/agent-document-create}
   document-construct-sql-chart-tool
   "Construct SQL-backed chart draft payload for document insertion."
   [{:keys [database_id name description analysis approach sql viz_settings]} :- sql-chart-schema]
-  (try
-    (let [{:keys [validation-result action-result]}
-          (create-sql-query-tools/create-sql-query {:database-id database_id
-                                                    :sql sql})
-          {:keys [valid? dialect error-message]} validation-result
-          {:keys [query-id query]} action-result
-          chart-type (get viz_settings :chart_type)]
-      (cond
-        (not valid?)
-        (sql-validation-error-result dialect error-message)
+  (let [entity-usage (sql-chart-entity-usage database_id sql)]
+    (try
+      (let [{:keys [validation-result action-result]}
+            (create-sql-query-tools/create-sql-query {:database-id database_id
+                                                      :sql sql})
+            {:keys [valid? dialect error-message]} validation-result
+            {:keys [query-id query]} action-result
+            chart-type (get viz_settings :chart_type)
+            attach-eu  (fn [r] (construct-tools/entity-usage-on-result r entity-usage))]
+        (cond
+          (not valid?)
+          (attach-eu (sql-validation-error-result dialect error-message))
 
-        (not (map? query))
-        {:output "Failed to construct SQL chart draft."}
+          (not (map? query))
+          (attach-eu {:output "Failed to construct SQL chart draft."})
 
-        :else
-        (if-let [query-error (check-query query)]
-          (query-processing-error-result query-error)
-          (let [structured {:tool          "document_construct_sql_chart"
-                            :name          name
-                            :description   description
-                            :analysis      analysis
-                            :approach      approach
-                            :dataset_query query
-                            :display       chart-type
-                            :chart_type    chart-type
-                            :query_id      query-id
-                            :query         query
-                            :result-type   :chart-draft}]
-            {:output "Draft chart payload generated from SQL query."
-             :structured-output structured
-             :final-response? true}))))
-    (catch Exception e
-      (log/error e "Error constructing SQL chart draft")
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to construct SQL chart draft: " (or (ex-message e) "Unknown error"))}))))
+          :else
+          (if-let [query-error (check-query query)]
+            (attach-eu (query-processing-error-result query-error))
+            (let [structured {:tool          "document_construct_sql_chart"
+                              :name          name
+                              :description   description
+                              :analysis      analysis
+                              :approach      approach
+                              :dataset_query query
+                              :display       chart-type
+                              :chart_type    chart-type
+                              :query_id      query-id
+                              :query         query
+                              :result-type   :chart-draft
+                              :entity-usage  entity-usage}]
+              {:output "Draft chart payload generated from SQL query."
+               :structured-output structured
+               :final-response? true}))))
+      (catch Exception e
+        (log/error e "Error constructing SQL chart draft")
+        (construct-tools/entity-usage-on-result
+         (if (:agent-error? (ex-data e))
+           {:output (ex-message e)}
+           {:output (str "Failed to construct SQL chart draft: " (or (ex-message e) "Unknown error"))})
+         entity-usage)))))
 
 (def ^:private model-chart-schema
   [:map {:closed true}
@@ -189,36 +202,46 @@
                    [:chart_type chart-type-enum]]]])
 
 (mu/defn ^{:tool-name "document_construct_model_chart"
+           :tool-type :authoring
            :scope     scope/agent-document-create}
   document-construct-model-chart-tool
   "Construct notebook/model-backed chart draft payload for document insertion."
   [{:keys [name description source_entity program viz_settings]} :- model-chart-schema]
-  (try
-    (let [chart-type (get viz_settings :chart_type)
-          result     (construct-tools/construct-notebook-query-tool
-                      {:source_entity source_entity
-                       :program program
-                       :visualization {:chart_type chart-type}})
-          structured (or (:structured-output result) (:structured_output result))
-          query-id   (:query-id structured)
-          dataset-query (:query structured)]
-      (if (map? dataset-query)
-        {:output "Draft chart payload generated from model/notebook query."
-         :structured-output {:tool          "document_construct_model_chart"
-                             :name          name
-                             :description   description
-                             :dataset_query dataset-query
-                             :display       chart-type
-                             :chart_type    chart-type
-                             :query_id      query-id
-                             :query         dataset-query
-                             :result-type   :chart-draft}
-         :final-response? true}
-        ;; Preserve tool error messaging from construct_notebook_query path.
-        (or result
-            {:output "Failed to construct model chart draft."})))
-    (catch Exception e
-      (log/error e "Error constructing model chart draft")
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to construct model chart draft: " (or (ex-message e) "Unknown error"))}))))
+  (let [entity-usage (construct-tools/construct-entity-usage source_entity nil program)]
+    (try
+      (let [chart-type (get viz_settings :chart_type)
+            result     (construct-tools/construct-notebook-query-tool
+                        {:source_entity source_entity
+                         :program program
+                         :visualization {:chart_type chart-type}})
+            structured (or (:structured-output result) (:structured_output result))
+            query-id   (:query-id structured)
+            dataset-query (:query structured)]
+        (if (map? dataset-query)
+          {:output "Draft chart payload generated from model/notebook query."
+           :structured-output {:tool          "document_construct_model_chart"
+                               :name          name
+                               :description   description
+                               :dataset_query dataset-query
+                               :display       chart-type
+                               :chart_type    chart-type
+                               :query_id      query-id
+                               :query         dataset-query
+                               :result-type   :chart-draft
+                               :entity-usage  entity-usage}
+           :final-response? true}
+          ;; Preserve tool error messaging from construct_notebook_query path.
+          ;; The inner construct result already carries entity-usage with the
+          ;; same input (same source_entity + program forwarded), so reattaching
+          ;; here is a no-op for the inner-success branch; the fallback covers
+          ;; the construct-returned-nil case.
+          (construct-tools/entity-usage-on-result
+           (or result {:output "Failed to construct model chart draft."})
+           entity-usage)))
+      (catch Exception e
+        (log/error e "Error constructing model chart draft")
+        (construct-tools/entity-usage-on-result
+         (if (:agent-error? (ex-data e))
+           {:output (ex-message e)}
+           {:output (str "Failed to construct model chart draft: " (or (ex-message e) "Unknown error"))})
+         entity-usage)))))

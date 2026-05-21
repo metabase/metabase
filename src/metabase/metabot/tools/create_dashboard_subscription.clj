@@ -97,6 +97,7 @@ Before calling the tool, ensure you have ALL of the following:
 If any required information is missing, ask the user for it rather than assuming or fabricating values.")
 
 (mu/defn ^{:tool-name           "create_dashboard_subscription"
+           :tool-type           :authoring
            :scope               scope/agent-dashboard-subscribe
            :system-instructions create-dashboard-subscription-system-instructions}
   slackbot-create-dashboard-subscription-tool
@@ -104,7 +105,10 @@ If any required information is missing, ask the user for it rather than assuming
   [{:keys [dashboard_id schedule]} :- [:map {:closed true}
                                        [:dashboard_id :int]
                                        [:schedule tools.create-alert/schedule-schema]]]
-  (let [slack-channel-id (:slack_channel_id (shared/current-context))]
+  (let [entity-usage     {:input  [{:type "dashboard" :id dashboard_id}]
+                          :output []}
+        attach-eu        (fn [r] (update r :structured-output (fnil assoc {}) :entity-usage entity-usage))
+        slack-channel-id (:slack_channel_id (shared/current-context))]
     (when-not slack-channel-id
       (throw (ex-info "This tool can only be used from a Slack channel"
                       {:agent-error? true})))
@@ -113,9 +117,11 @@ If any required information is missing, ask the user for it rather than assuming
                     {:dashboard-id  dashboard_id
                      :schedule      schedule
                      :slack-channel slack-channel-id})]
-        (if (:error result)
-          {:output (:error result)}
-          {:output (or (:output result) "Dashboard subscription created successfully.")}))
+        (attach-eu
+         (if (:error result)
+           {:output (:error result)}
+           {:output (or (:output result) "Dashboard subscription created successfully.")})))
       (catch Exception e
         (log/error e "Failed to create dashboard subscription")
-        {:output (str "Failed to create dashboard subscription: " (or (ex-message e) "Unknown error"))}))))
+        (attach-eu
+         {:output (str "Failed to create dashboard subscription: " (or (ex-message e) "Unknown error"))})))))

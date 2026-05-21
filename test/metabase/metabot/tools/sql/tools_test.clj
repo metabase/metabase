@@ -180,3 +180,25 @@
                   :edits [{:old_string "electronics"
                            :new_string "furniture"}]})]
             (is (str/includes? (:query-content edit-result) "furniture"))))))))
+
+(deftest card-refs-in-sql-test
+  (testing "extracts {{#N}} card references from SQL strings"
+    (is (= [{:type "card" :id 42}]
+           (sql-common/card-refs-in-sql "SELECT * FROM {{#42}}"))))
+
+  (testing "tolerates inner whitespace and the optional `-slug` suffix"
+    (is (= [{:type "card" :id 7} {:type "card" :id 8}]
+           (sql-common/card-refs-in-sql
+            "SELECT 1 FROM {{ #7 }} a JOIN {{#8-my-card}} b ON a.id = b.id"))))
+
+  (testing "dedupes repeated refs in source order"
+    (is (= [{:type "card" :id 1} {:type "card" :id 2}]
+           (sql-common/card-refs-in-sql
+            "SELECT * FROM {{#1}} JOIN {{#2}} JOIN {{#1-again}}"))))
+
+  (testing "returns [] for SQL without card refs"
+    (is (= [] (sql-common/card-refs-in-sql "SELECT 1"))))
+
+  (testing "returns [] for nil or non-string inputs"
+    (is (= [] (sql-common/card-refs-in-sql nil)))
+    (is (= [] (sql-common/card-refs-in-sql 42)))))

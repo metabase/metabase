@@ -4,10 +4,12 @@
    [metabase.metabot.table-utils :as table-utils]
    [metabase.metabot.tools.construct :as construct-tools]
    [metabase.metabot.tools.document :as document-tools]
+   [metabase.metabot.tools.entity-usage :as entity-usage]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]
    [metabase.warehouses.core :as warehouses]))
 
 (deftest document-schema-collect-tool-test
@@ -87,9 +89,12 @@
                      :sql "SELECT FROM test"
                      :viz_settings {:chart_type "bar"}})]
         (is (nil? (:final-response? result)))
-        (is (nil? (:structured-output result)))
         (is (re-find #"SQL chart draft generation failed" (:output result)))
-        (is (re-find #"syntax error near FROM" (:output result))))))
+        (is (re-find #"syntax error near FROM" (:output result)))
+        (testing "error branch still carries :entity-usage on :structured-output"
+          (is (= {:entity-usage {:input  [{:type "database" :id 1}]
+                                 :output []}}
+                 (:structured-output result)))))))
 
   (testing "returns instructions when query processor rejects generated SQL"
     (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
@@ -112,9 +117,12 @@
                      :sql "SELECT * FROM missing_table"
                      :viz_settings {:chart_type "bar"}})]
         (is (nil? (:final-response? result)))
-        (is (nil? (:structured-output result)))
         (is (re-find #"could not be processed by Metabase" (:output result)))
-        (is (re-find #"missing_table" (:output result)))))))
+        (is (re-find #"missing_table" (:output result)))
+        (testing "qp-rejection branch still carries :entity-usage on :structured-output"
+          (is (= {:entity-usage {:input  [{:type "database" :id 1}]
+                                 :output []}}
+                 (:structured-output result))))))))
 
 (deftest document-construct-model-chart-tool-test
   (testing "builds chart draft payload from model query"
@@ -140,3 +148,51 @@
         (is (= {:database 1
                 :type "query"}
                (:dataset_query structured)))))))
+
+;;; ----------------------------------- entity-usage ----------------------------------------
+
+(deftest document-construct-sql-chart-entity-usage-test
+  (testing "document_construct_sql_chart success path emits :entity-usage with database + {{#N}} card refs"
+    (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
+                                (fn [_]
+                                  {:validation-result {:valid? true
+                                                       :dialect "postgres"}
+                                   :action-result     {:query-id "q-1"
+                                                       :query {:database 7
+                                                               :type "native"
+                                                               :native {:query "SELECT * FROM {{#11}}"
+                                                                        :template-tags {}}}}})
+                                qp/process-query (fn [_] nil)]
+      (let [result (document-tools/document-construct-sql-chart-tool
+                    {:database_id 7
+                     :name "N"
+                     :description "D"
+                     :analysis "A"
+                     :approach "A2"
+                     :sql "SELECT * FROM {{#11}} JOIN {{#12-slug}} t ON t.id = 1"
+                     :viz_settings {:chart_type "bar"}})
+            eu     (get-in result [:structured-output :entity-usage])]
+        (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+        (is (= [{:type "database" :id 7}
+                {:type "card"     :id 11}
+                {:type "card"     :id 12}]
+               (:input eu)))
+        (is (= [] (:output eu)))))))
+
+(deftest document-construct-model-chart-entity-usage-test
+  (testing "document_construct_model_chart success path emits :entity-usage with source_entity + program refs"
+    (mt/with-dynamic-fn-redefs [construct-tools/construct-notebook-query-tool
+                                (fn [_]
+                                  {:structured-output {:query-id "3"
+                                                       :query {:database 1 :type "query"}}})]
+      (let [result (document-tools/document-construct-model-chart-tool
+                    {:name "N"
+                     :description "D"
+                     :source_entity {:type "model" :id 4}
+                     :program {:source {:type "dataset" :id 4} :operations []}
+                     :viz_settings {:chart_type "bar"}})
+            eu     (get-in result [:structured-output :entity-usage])]
+        (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+        (is (= [] (:output eu)))
+        (is (= [{:type "model" :id 4 :metadata {:arg_slot "source_entity"}}]
+               (:input eu)))))))

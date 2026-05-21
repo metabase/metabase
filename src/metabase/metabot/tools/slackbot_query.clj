@@ -23,28 +23,32 @@
     [:maybe [:enum "table" "bar" "line" "pie" "area" "row" "scatter" "funnel"]]]])
 
 (mu/defn ^{:tool-name "construct_notebook_query"
+           :tool-type :authoring
            :scope     scope/agent-notebook-create}
   slackbot-construct-notebook-query-tool
   "Construct a notebook query from a metric, model, or table. The query results will be rendered as a visualization in Slack."
   [{:keys [_reasoning source_entity referenced_entities program title display]} :- slackbot-query-schema]
-  (try
-    (let [query-result (construct/execute-program source_entity referenced_entities program)
-          structured   (or (:structured-output query-result) (:structured_output query-result))]
-      (if (and structured (:query-id structured) (:query structured))
-        (let [metabase-link (streaming/query->question-url (:query structured) display)
-              adhoc-viz-value (cond-> {:query (:query structured)
-                                       :link  metabase-link}
-                                title   (assoc :title title)
-                                display (assoc :display display))]
-          {:structured-output structured
-           :instructions (str "Query created. The visualization will be posted as a separate "
-                              "follow-up message in the thread with the query results. "
-                              "Use future tense when referring to results — they haven't "
-                              "appeared yet when the user sees your text.")
-           :data-parts [(streaming/adhoc-viz-part adhoc-viz-value)]})
-        query-result))
-    (catch Exception e
-      (log/error e "Failed to construct slackbot notebook query")
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))}))))
+  (let [entity-usage (construct/construct-entity-usage source_entity referenced_entities program)]
+    (try
+      (let [query-result (construct/execute-program source_entity referenced_entities program)
+            structured   (or (:structured-output query-result) (:structured_output query-result))]
+        (if (and structured (:query-id structured) (:query structured))
+          (let [metabase-link   (streaming/query->question-url (:query structured) display)
+                adhoc-viz-value (cond-> {:query (:query structured)
+                                         :link  metabase-link}
+                                  title   (assoc :title title)
+                                  display (assoc :display display))]
+            {:structured-output (assoc structured :entity-usage entity-usage)
+             :instructions (str "Query created. The visualization will be posted as a separate "
+                                "follow-up message in the thread with the query results. "
+                                "Use future tense when referring to results — they haven't "
+                                "appeared yet when the user sees your text.")
+             :data-parts [(streaming/adhoc-viz-part adhoc-viz-value)]})
+          (construct/entity-usage-on-result query-result entity-usage)))
+      (catch Exception e
+        (log/error e "Failed to construct slackbot notebook query")
+        (construct/entity-usage-on-result
+         (if (:agent-error? (ex-data e))
+           {:output (ex-message e)}
+           {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))})
+         entity-usage)))))

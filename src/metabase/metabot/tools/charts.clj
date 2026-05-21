@@ -15,6 +15,18 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private empty-entity-usage
+  "Authoring chart tools take memory-only refs (query_id, chart_id), not appdb
+  entity ids — so `:entity-usage` is always empty. The constant is kept so the
+  validator (per Phase 1 of bot-1569) sees a well-formed channel on every path."
+  {:input [] :output []})
+
+(defn- attach-entity-usage
+  "Attach `empty-entity-usage` under `:structured-output`, preserving any
+  structured-output already present."
+  [result]
+  (update result :structured-output (fnil assoc {}) :entity-usage empty-entity-usage))
+
 (defn- format-chart-output
   [{:keys [chart-id] :as structured}]
   (let [chart-xml (llm-rep/chart->xml structured)]
@@ -34,6 +46,7 @@
                    [:chart_type chart-type-enum]]]])
 
 (mu/defn ^{:tool-name "create_chart"
+           :tool-type :authoring
            :scope     scope/agent-viz-create}
   create-chart-tool
   "Create a chart from a query.
@@ -46,15 +59,18 @@
                        :chart-type    (keyword (get viz_settings :chart_type))
                        :queries-state (shared/current-queries-state)})
           reactions  (:reactions result)
-          structured (assoc (dissoc result :reactions) :result-type :chart)]
+          structured (assoc (dissoc result :reactions)
+                            :result-type :chart
+                            :entity-usage empty-entity-usage)]
       (-> {:output            (format-chart-output structured)
            :structured-output structured}
           (m/assoc-some :reactions (not-empty reactions))))
     (catch Exception e
       (log/error e "Error creating chart")
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to create chart: " (or (ex-message e) "Unknown error"))}))))
+      (attach-entity-usage
+       (if (:agent-error? (ex-data e))
+         {:output (ex-message e)}
+         {:output (str "Failed to create chart: " (or (ex-message e) "Unknown error"))})))))
 
 (def ^:private edit-chart-schema
   [:map {:closed true}
@@ -63,6 +79,7 @@
                        [:chart_type chart-type-enum]]]])
 
 (mu/defn ^{:tool-name "edit_chart"
+           :tool-type :authoring
            :scope     scope/agent-viz-edit}
   edit-chart-tool
   "Edit an existing chart's visualization type.
@@ -81,7 +98,7 @@
             :new-chart-type new-viz
             :charts-state (shared/current-charts-state)})
 
-          structured (assoc result :result-type :chart)]
+          structured (assoc result :result-type :chart :entity-usage empty-entity-usage)]
 
       ;; Add the new chart to memory so it can be referenced in the conversation going forward.
       (when (and (:chart_id new-chart-data) shared/*memory-atom*)
@@ -98,6 +115,7 @@
 
     (catch Exception e
       (log/error e "Error editing chart")
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to edit chart: " (or (ex-message e) "Unknown error"))}))))
+      (attach-entity-usage
+       (if (:agent-error? (ex-data e))
+         {:output (ex-message e)}
+         {:output (str "Failed to edit chart: " (or (ex-message e) "Unknown error"))})))))

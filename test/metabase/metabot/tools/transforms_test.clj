@@ -6,11 +6,13 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.metabot.tools.dependencies :as deps]
+   [metabase.metabot.tools.entity-usage :as entity-usage]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.transforms :as agent-transforms]
    [metabase.metabot.tools.transforms.write :as transforms-write]
    [metabase.premium-features.core :as premium-features]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]))
 
 ;;; ----------------------------------- write tool integration tests --------------------------------------------------
 
@@ -182,3 +184,86 @@
           (is (false? @dep-called?))
           (is (nil? (:instructions result)))
           (is (some? (:output result))))))))
+
+;;; ----------------------------------- entity-usage ----------------------------------------
+
+(deftest entity-usage-for-transform-test
+  (testing "builds :entity-usage from transform args"
+    (testing "database alone"
+      (is (= {:input  [{:type "database" :id 1}]
+              :output []}
+             (agent-transforms/entity-usage-for-transform {:database_id 1} nil))))
+    (testing "nil database is omitted"
+      (is (= {:input [] :output []}
+             (agent-transforms/entity-usage-for-transform {} nil))))
+    (testing "source-tables expand to {:type \"table\" :id N}"
+      (is (= {:input  [{:type "database" :id 1}
+                       {:type "table"    :id 10}
+                       {:type "table"    :id 11}]
+              :output []}
+             (agent-transforms/entity-usage-for-transform
+              {:database_id   1
+               :source_tables [{:alias "a" :table_id 10 :schema "PUBLIC" :database_id 1}
+                               {:alias "b" :table_id 11 :schema "PUBLIC" :database_id 1}]}
+              nil))))
+    (testing "SQL body adds {{#N}} card refs"
+      (is (= {:input  [{:type "database" :id 1}
+                       {:type "card"     :id 42}
+                       {:type "card"     :id 43}]
+              :output []}
+             (agent-transforms/entity-usage-for-transform
+              {:database_id 1}
+              "SELECT * FROM {{#42}} JOIN {{#43-slug}} t ON t.id = 1"))))
+    (testing "nil SQL body skips card-ref extraction"
+      (is (= {:input  [{:type "database" :id 1}]
+              :output []}
+             (agent-transforms/entity-usage-for-transform {:database_id 1} nil))))))
+
+(deftest write-transform-sql-entity-usage-success-test
+  (testing "write_transform_sql success path emits :entity-usage with database + {{#N}} from new SQL"
+    (let [memory-atom (atom {:state {}})
+          result      (binding [shared/*memory-atom* memory-atom]
+                        (agent-transforms/write-transform-sql-tool
+                         {:edit_action {:mode "replace" :new_content "SELECT id FROM {{#42}} JOIN {{#43-orders}} o ON o.id = 1"}
+                          :transform_name "Test"
+                          :database_id (mt/id)}))
+          eu          (get-in result [:structured-output :entity-usage])]
+      (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+      (is (= [] (:output eu)))
+      (is (= [{:type "database" :id (mt/id)}
+              {:type "card"     :id 42}
+              {:type "card"     :id 43}]
+             (:input eu))))))
+
+(deftest write-transform-sql-entity-usage-error-test
+  (testing "write_transform_sql exception path falls back to args-derived :entity-usage"
+    (let [memory-atom (atom {:state {}})]
+      (mt/with-dynamic-fn-redefs [transforms-write/write-transform-sql
+                                  (fn [_] (throw (Exception. "boom")))]
+        (let [result (binding [shared/*memory-atom* memory-atom]
+                       (agent-transforms/write-transform-sql-tool
+                        {:edit_action {:mode "replace" :new_content "SELECT 1"}
+                         :transform_name "Test"
+                         :database_id 99}))
+              eu     (get-in result [:structured-output :entity-usage])]
+          (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+          (is (= [{:type "database" :id 99}] (:input eu)))
+          (is (= [] (:output eu)))
+          (is (str/includes? (:output result) "boom")))))))
+
+(deftest write-transform-python-entity-usage-success-test
+  (when (premium-features/has-feature? :transforms-python)
+    (testing "write_transform_python success path emits :entity-usage with database + source-tables"
+      (let [memory-atom (atom {:state {}})
+            result      (binding [shared/*memory-atom* memory-atom]
+                          (agent-transforms/write-transform-python-tool
+                           {:edit_action {:mode "replace" :new_content "import common\ndef transform(t): return t"}
+                            :transform_name "Test"
+                            :database_id (mt/id)
+                            :source_tables [{:alias "t" :table_id 7 :schema "PUBLIC" :database_id (mt/id)}]}))
+            eu          (get-in result [:structured-output :entity-usage])]
+        (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+        (is (= [] (:output eu)))
+        (is (= [{:type "database" :id (mt/id)}
+                {:type "table"    :id 7}]
+               (:input eu)))))))

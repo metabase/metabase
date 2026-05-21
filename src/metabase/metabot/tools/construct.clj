@@ -161,6 +161,75 @@
                          :result-columns (result-columns-for-query mbql5-query mp)}
      :instructions      (instructions/query-created-instructions-for query-id)}))
 
+;;; ---------------------------------------- Entity usage ----------------------------------------
+
+(def ^:private program-refs-key->entity-type
+  "Map keys returned by `agent-lib.refs/collect-program-refs` to the entity-usage
+   `:type` vocabulary. `:measure-ids` are intentionally omitted — measures aren't
+   addressable as standalone entities in `entity-types`."
+  {:table-ids  "table"
+   :field-ids  "field"
+   :card-ids   "card"
+   :metric-ids "metric"})
+
+(defn- entry
+  [type id arg-slot]
+  {:type     type
+   :id       id
+   :metadata {:arg_slot arg-slot}})
+
+(defn- program-ref-entries
+  [program]
+  ;; Skip the program's own `:source` — it's the same referent as `source_entity`
+  ;; in the tool args, just under a different type vocabulary (dataset/card/metric).
+  ;; The source_entity slot records it with the more specific subtype.
+  (let [refs (agent-lib/collect-program-refs (dissoc program :source))]
+    (into []
+          (mapcat (fn [[refs-key type]]
+                    (->> (get refs refs-key)
+                         (sort)
+                         (map (fn [id] (entry type id "program"))))))
+          program-refs-key->entity-type)))
+
+(defn construct-entity-usage
+  "Build the `:entity-usage` map for an authoring construct tool call.
+
+  `:input` is the union of `source_entity`, each `referenced_entities` ref,
+  and every reference walked out of `program` via
+  `agent-lib.refs/collect-program-refs`. Order: source_entity, then
+  referenced_entities (in order), then program refs grouped by ref-type
+  (table, field, card, metric) and sorted by id. Duplicates across slots are
+  deduplicated by `[:type :id]`, preserving first occurrence so the
+  highest-precedence slot's `:arg_slot` annotation wins."
+  [source-entity referenced-entities program]
+  (let [base    (cond-> []
+                  source-entity
+                  (conj (entry (:type source-entity) (:id source-entity) "source_entity"))
+                  (seq referenced-entities)
+                  (into (map (fn [{:keys [type id]}] (entry type id "referenced_entities"))
+                             referenced-entities))
+                  (some? program)
+                  (into (program-ref-entries program)))
+        ;; Dedupe by [:type :id], preserving the first occurrence (which carries
+        ;; the highest-precedence slot annotation).
+        deduped (->> base
+                     (reduce (fn [{:keys [seen entries]} e]
+                               (let [k [(:type e) (:id e)]]
+                                 (if (contains? seen k)
+                                   {:seen seen :entries entries}
+                                   {:seen    (conj seen k)
+                                    :entries (conj entries e)})))
+                             {:seen #{} :entries []})
+                     :entries)]
+    {:input  deduped
+     :output []}))
+
+(defn entity-usage-on-result
+  "Attach an `:entity-usage` map under `:structured-output` on a tool result,
+   preserving any structured-output already present."
+  [result entity-usage]
+  (update result :structured-output (fnil assoc {}) :entity-usage entity-usage))
+
 ;;; ---------------------------------------- Chart helpers ----------------------------------------
 
 (defn- chart-type->keyword
@@ -195,55 +264,62 @@
 ;;; ---------------------------------------- Main tool ----------------------------------------
 
 (mu/defn ^{:tool-name "construct_notebook_query"
+           :tool-type :authoring
            :scope     scope/agent-notebook-create}
   construct-notebook-query-tool
   "Construct and visualize a notebook query from a metric, model, or table."
   [{:keys [_reasoning source_entity referenced_entities program visualization]} :- construct-notebook-query-args-schema]
-  (try
-    (let [;; LLM sometimes nests visualization inside program — pull it out
-          effective-viz            (or visualization (:visualization program))
-          normalized-visualization (some-> effective-viz (update-keys (comp keyword u/->kebab-case-en name)))
-          chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
-                                      :table)
-          query-result            (execute-program source_entity referenced_entities (dissoc program :visualization))
-          structured              (or (:structured-output query-result) (:structured_output query-result))]
-      (if (and structured (:query-id structured) (:query structured))
-        (let [chart-result (create-chart-tools/create-chart
-                            {:query-id      (:query-id structured)
-                             :chart-type    chart-type
-                             :queries-state {(:query-id structured) (:query structured)}})
-              navigate-url (get-in chart-result [:reactions 0 :url])
-              full-structured (assoc structured
-                                     :result-type   :query
-                                     :chart-id      (:chart-id chart-result)
-                                     :chart-type    (:chart-type chart-result)
-                                     :chart-link    (:chart-link chart-result)
-                                     :chart-content (:chart-content chart-result))
-              instruction-text
-              (let [link (te/link "Chart" "metabase://chart/" (:chart-id chart-result))]
-                (te/lines
-                 "Your query and chart have been created successfully."
-                 ""
-                 "Next steps to present the chart to the user:"
-                 (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
-                 "- If creating multiple charts, present all chart links"))
-              chart-xml (structured->chart-xml structured (:chart-id chart-result) chart-type)]
-          {:output (str "<result>\n" chart-xml "\n</result>\n"
-                        "<instructions>\n" instruction-text "\n</instructions>")
-           :data-parts        (when navigate-url
-                                [(streaming/navigate-to-part navigate-url)])
-           :structured-output full-structured
-           :instructions      instruction-text})
-        ;; query-result may already have :output (error) or only :structured-output
-        (if-let [s (or (:structured-output query-result) (:structured_output query-result))]
-          (let [query-xml        (llm-rep/query->xml (structured->query-data s))
-                instruction-text (instructions/query-created-instructions-for (:query-id s))]
-            (assoc query-result
-                   :output (str "<result>\n" query-xml "\n</result>\n"
-                                "<instructions>\n" instruction-text "\n</instructions>")))
-          query-result)))
-    (catch Exception e
-      (log/error e "Failed to construct notebook query")
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))}))))
+  (let [entity-usage (construct-entity-usage source_entity referenced_entities
+                                             (dissoc program :visualization))]
+    (try
+      (let [;; LLM sometimes nests visualization inside program — pull it out
+            effective-viz            (or visualization (:visualization program))
+            normalized-visualization (some-> effective-viz (update-keys (comp keyword u/->kebab-case-en name)))
+            chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
+                                        :table)
+            query-result            (execute-program source_entity referenced_entities (dissoc program :visualization))
+            structured              (or (:structured-output query-result) (:structured_output query-result))]
+        (if (and structured (:query-id structured) (:query structured))
+          (let [chart-result (create-chart-tools/create-chart
+                              {:query-id      (:query-id structured)
+                               :chart-type    chart-type
+                               :queries-state {(:query-id structured) (:query structured)}})
+                navigate-url (get-in chart-result [:reactions 0 :url])
+                full-structured (assoc structured
+                                       :result-type   :query
+                                       :chart-id      (:chart-id chart-result)
+                                       :chart-type    (:chart-type chart-result)
+                                       :chart-link    (:chart-link chart-result)
+                                       :chart-content (:chart-content chart-result)
+                                       :entity-usage  entity-usage)
+                instruction-text
+                (let [link (te/link "Chart" "metabase://chart/" (:chart-id chart-result))]
+                  (te/lines
+                   "Your query and chart have been created successfully."
+                   ""
+                   "Next steps to present the chart to the user:"
+                   (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
+                   "- If creating multiple charts, present all chart links"))
+                chart-xml (structured->chart-xml structured (:chart-id chart-result) chart-type)]
+            {:output (str "<result>\n" chart-xml "\n</result>\n"
+                          "<instructions>\n" instruction-text "\n</instructions>")
+             :data-parts        (when navigate-url
+                                  [(streaming/navigate-to-part navigate-url)])
+             :structured-output full-structured
+             :instructions      instruction-text})
+          ;; query-result may already have :output (error) or only :structured-output
+          (if-let [s (or (:structured-output query-result) (:structured_output query-result))]
+            (let [query-xml        (llm-rep/query->xml (structured->query-data s))
+                  instruction-text (instructions/query-created-instructions-for (:query-id s))]
+              (-> query-result
+                  (assoc :output (str "<result>\n" query-xml "\n</result>\n"
+                                      "<instructions>\n" instruction-text "\n</instructions>"))
+                  (entity-usage-on-result entity-usage)))
+            (entity-usage-on-result query-result entity-usage))))
+      (catch Exception e
+        (log/error e "Failed to construct notebook query")
+        (entity-usage-on-result
+         (if (:agent-error? (ex-data e))
+           {:output (ex-message e)}
+           {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))})
+         entity-usage)))))
