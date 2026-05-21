@@ -66,7 +66,12 @@ export default (ComposedComponent) =>
 
       render() {
         const { metadata, fetchRemapping, ...props } = this.props;
-        const field = props.column;
+        // Read the field from metadata so we pick up remappings stored
+        // asynchronously by fetchRemapping (e.g. card/question label columns);
+        // the column passed in props can be a stale instance.
+        const field =
+          (props.column?.id != null && metadata?.field(props.column.id)) ||
+          props.column;
         const displayValue = field && field.remappedValue(props.value);
         const displayColumn =
           (displayValue != null && field && field.remappedField()) || null;

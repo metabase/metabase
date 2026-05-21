@@ -15,6 +15,7 @@ import { isProduction } from "metabase/env";
 import { createThunkAction } from "metabase/redux";
 import { DatabaseSchema, FieldSchema } from "metabase/schema";
 import { RevisionsApi } from "metabase/services";
+import { hasRemappedParameterValues } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import { updateMetadata } from "./metadata-typed";
@@ -220,7 +221,7 @@ export const fetchRemapping = createThunkAction(
     async (dispatch, getState) => {
       if (
         field == null ||
-        field.remappedField() == null ||
+        !hasRemappedParameterValues(parameter, [field]) ||
         field.hasRemappedValue(value)
       ) {
         return;

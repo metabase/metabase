@@ -1,4 +1,4 @@
-import type Field from "metabase-lib/v1/metadata/Field";
+import Field from "metabase-lib/v1/metadata/Field";
 import { isFuzzyOperator } from "metabase-lib/v1/operators/utils";
 import type {
   Parameter,
@@ -36,6 +36,29 @@ export const getSourceType = (parameter: Parameter): ValuesSourceType => {
 
 export const getSourceConfig = (parameter: Parameter): ValuesSourceConfig => {
   return parameter.values_source_config ?? {};
+};
+
+/**
+ * Whether the parameter's selected values can be remapped to human-readable
+ * labels. True when a connected field has a remapping, when a static list
+ * includes [value, label] pairs, or when a card/question source configures a
+ * label column.
+ */
+export const hasRemappedParameterValues = (
+  parameter: Parameter,
+  fields: Field[],
+): boolean => {
+  const sourceType = getSourceType(parameter);
+  const sourceConfig = getSourceConfig(parameter);
+  const sourceLabelField = sourceConfig.label_field;
+  const sourceValues = sourceConfig.values ?? [];
+
+  return (
+    Field.remappedField(fields) != null ||
+    (sourceType === "static-list" &&
+      sourceValues.some((value) => Array.isArray(value) && value.length > 1)) ||
+    (sourceType === "card" && sourceLabelField != null)
+  );
 };
 
 export const canUseCustomSource = (parameter: Parameter) => {

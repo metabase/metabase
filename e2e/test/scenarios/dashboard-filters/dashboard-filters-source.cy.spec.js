@@ -177,6 +177,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
 
       H.editDashboard();
       H.setFilter("Number", "Equal to", "Number");
+
       mapFilterToQuestion("Rating");
       H.setFilterQuestionSource({
         question: "Number label source",

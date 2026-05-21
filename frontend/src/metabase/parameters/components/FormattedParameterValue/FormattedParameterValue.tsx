@@ -53,14 +53,9 @@ function FormattedParameterValue({
   }
 
   const first = getValue(value);
-  const values = parameter?.values_source_config?.values;
-  const displayValue = values?.find(
-    (value) => getValue(value)?.toString() === first?.toString(),
-  );
-
-  const label = !isBooleanParameter(parameter)
-    ? getLabel(displayValue)
-    : getBooleanLabel(first as boolean);
+  const label = isBooleanParameter(parameter)
+    ? getBooleanLabel(first as boolean)
+    : undefined;
 
   const renderContent = () => {
     if (
@@ -119,15 +114,6 @@ function getValue(
 ): RowValue | undefined {
   if (Array.isArray(value)) {
     return value[0];
-  }
-  return value?.toString();
-}
-
-function getLabel(
-  value: boolean | string | ParameterValue | undefined,
-): string | undefined {
-  if (Array.isArray(value)) {
-    return value[1];
   }
   return value?.toString();
 }
