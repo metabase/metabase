@@ -8,10 +8,7 @@ import type {
   Notification,
   NotificationId,
   UpdateNotificationRequest,
-  WireAdminNotificationDetail,
-  WireAdminNotificationListResponse,
 } from "metabase-types/api/notification";
-import { wireToAdminNotification } from "metabase-types/api/notification";
 
 import { Api } from "./api";
 import {
@@ -24,35 +21,6 @@ import {
   provideNotificationListTags,
   provideNotificationTags,
 } from "./tags";
-
-// The admin endpoints speak `creator_*` on the wire (matching the public
-// /api/notification endpoints). The FE uses `owner_*` everywhere; we translate
-// requests/responses here so "owner" never leaves the frontend.
-const toWireListParams = (params?: AdminNotificationListParams | void) => {
-  if (!params) {
-    return undefined;
-  }
-  const { owner_id, owner_active, ownerless, sort_column, ...rest } = params;
-  return {
-    ...rest,
-    ...(owner_id !== undefined ? { creator_id: owner_id } : {}),
-    ...(owner_active !== undefined ? { creator_active: owner_active } : {}),
-    ...(ownerless !== undefined ? { creatorless: ownerless } : {}),
-    ...(sort_column !== undefined
-      ? { sort_column: sort_column === "owner_name" ? "creator_name" : sort_column }
-      : {}),
-  };
-};
-
-const toWireBulkPayload = ({
-  action,
-  owner_id,
-  ...rest
-}: BulkNotificationPayload) => ({
-  ...rest,
-  action: action === "change-owner" ? "change-creator" : action,
-  ...(owner_id !== undefined ? { creator_id: owner_id } : {}),
-});
 
 export const notificationApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -133,13 +101,7 @@ export const notificationApi = Api.injectEndpoints({
       query: (params) => ({
         method: "GET",
         url: "/api/ee/notifications",
-        params: toWireListParams(params),
-      }),
-      transformResponse: (
-        response: WireAdminNotificationListResponse,
-      ): AdminNotificationListResponse => ({
-        ...response,
-        data: response.data.map(wireToAdminNotification),
+        params: params ?? undefined,
       }),
       providesTags: (result) =>
         result
@@ -153,7 +115,7 @@ export const notificationApi = Api.injectEndpoints({
       query: (body) => ({
         method: "POST",
         url: "/api/ee/notifications/bulk",
-        body: toWireBulkPayload(body),
+        body,
       }),
       invalidatesTags: (_result, error, { notification_ids }) =>
         invalidateTags(
@@ -171,9 +133,6 @@ export const notificationApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/ee/notifications/${id}`,
       }),
-      transformResponse: (
-        response: WireAdminNotificationDetail,
-      ): AdminNotificationDetail => wireToAdminNotification(response),
       providesTags: (result) =>
         result ? provideAdminNotificationTags(result) : [],
     }),

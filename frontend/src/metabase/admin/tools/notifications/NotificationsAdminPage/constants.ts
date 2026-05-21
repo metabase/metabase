@@ -20,14 +20,14 @@ export const SORT_COLUMN_VALUES: AdminNotificationSortColumn[] = [
   "last_send",
   "last_check",
   "card_name",
-  "owner_name",
+  "creator_name",
   "updated_at",
 ];
 
 export const TAB_FILTERS: Record<NotificationsTab, TabFilters> = {
   all: {},
   failing: { last_send_status: "failing" },
-  ownerless: { ownerless: true },
+  ownerless: { creatorless: true },
 };
 
 export const CHANNEL_VALUES: NotificationChannelType[] = [

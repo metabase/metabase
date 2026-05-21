@@ -23,7 +23,7 @@ export type NotificationsUrlState = {
   query: string;
   channel: NotificationChannelType[];
   last_send_status: NotificationRunStatus | null;
-  ownerless: boolean | null;
+  creatorless: boolean | null;
   recipient_email: string;
   tab: NotificationsTab;
   sort_column: AdminNotificationSortColumn;
@@ -31,12 +31,12 @@ export type NotificationsUrlState = {
 };
 
 export type TabFilters = Partial<
-  Pick<NotificationsUrlState, "last_send_status" | "ownerless">
+  Pick<NotificationsUrlState, "last_send_status" | "creatorless">
 >;
 
 export type FilterDraft = {
   channel: NotificationChannelType[];
-  ownerless: boolean | null;
+  creatorless: boolean | null;
   last_send_status: NotificationRunStatus | null;
   recipient_email: string;
 };

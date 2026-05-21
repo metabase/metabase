@@ -5,7 +5,7 @@ import type {
 
 export const stateToDraft = (state: NotificationsUrlState): FilterDraft => ({
   channel: state.channel,
-  ownerless: state.ownerless,
+  creatorless: state.creatorless,
   last_send_status: state.last_send_status,
   recipient_email: state.recipient_email,
 });
@@ -20,5 +20,5 @@ export const hasActiveFilters = (state: NotificationsUrlState): boolean => {
   if (state.recipient_email !== "") {
     return true;
   }
-  return state.tab !== "ownerless" && state.ownerless !== null;
+  return state.tab !== "ownerless" && state.creatorless !== null;
 };

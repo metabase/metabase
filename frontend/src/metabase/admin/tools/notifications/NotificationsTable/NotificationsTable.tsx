@@ -161,16 +161,18 @@ export const NotificationsTable = ({
         },
       },
       {
-        id: "owner_name",
+        id: "creator_name",
         header: t`Owner`,
         width: 200,
         enableSorting: true,
         accessorFn: (notification) =>
-          notification.owner?.common_name ?? notification.owner?.email ?? "",
+          notification.creator?.common_name ??
+          notification.creator?.email ??
+          "",
         cell: ({ row }) => {
-          const owner = row.original.owner;
-          const name = owner?.common_name ?? owner?.email ?? t`Unknown`;
-          const isDeactivated = owner?.is_active === false;
+          const creator = row.original.creator;
+          const name = creator?.common_name ?? creator?.email ?? t`Unknown`;
+          const isDeactivated = creator?.is_active === false;
           return (
             <Flex gap="xs" align="center" miw={0}>
               <Ellipsified tooltip={name}>{name}</Ellipsified>

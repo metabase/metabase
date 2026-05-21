@@ -6,10 +6,8 @@ import type {
   ListNotificationsRequest,
   Notification,
   NotificationId,
-  WireAdminNotificationListResponse,
 } from "metabase-types/api";
 import { createMockNotification } from "metabase-types/api/mocks";
-import { adminNotificationToWire } from "metabase-types/api/notification";
 
 export const setupListNotificationEndpoints = (
   { card_id }: Partial<ListNotificationsRequest>,
@@ -33,15 +31,12 @@ export const setupAdminListNotificationsEndpoint = (
   notifications: AdminNotification[] = [],
   overrides: Partial<AdminNotificationListResponse> = {},
 ) => {
-  // The endpoint serves the wire shape (`creator_*`); the API client translates
-  // it back to `owner_*`. Callers pass FE-shaped (`owner_*`) mocks for ergonomics.
-  const { data, ...restOverrides } = overrides;
-  const response: WireAdminNotificationListResponse = {
-    data: (data ?? notifications).map(adminNotificationToWire),
+  const response: AdminNotificationListResponse = {
+    data: notifications,
     total: notifications.length,
     limit: null,
     offset: null,
-    ...restOverrides,
+    ...overrides,
   };
   fetchMock.get("path:/api/ee/notifications", response);
 };
@@ -49,10 +44,7 @@ export const setupAdminListNotificationsEndpoint = (
 export const setupAdminNotificationDetailEndpoint = (
   notification: AdminNotification,
 ) => {
-  fetchMock.get(
-    `path:/api/ee/notifications/${notification.id}`,
-    adminNotificationToWire(notification),
-  );
+  fetchMock.get(`path:/api/ee/notifications/${notification.id}`, notification);
 };
 
 export const setupAdminNotificationDetailErrorEndpoint = (

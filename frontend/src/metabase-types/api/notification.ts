@@ -198,12 +198,14 @@ export type AdminNotificationSortColumn =
   | "last_send"
   | "last_check"
   | "card_name"
-  | "owner_name"
+  | "creator_name"
   | "updated_at";
 
+// Admin notifications carry a nullable creator: the row may have no creator, or
+// a deactivated one (the "Ownerless" tab). The UI labels the creator as "Owner".
 export type AdminNotification = Omit<Notification, "creator_id" | "creator"> & {
-  owner_id: UserId | null;
-  owner: UserInfo | null;
+  creator_id: UserId | null;
+  creator: UserInfo | null;
   last_check: NotificationRunSummary | null;
   last_send: NotificationRunSummary | null;
 };
@@ -217,9 +219,9 @@ export type AdminNotificationListParams = {
   limit?: number;
   offset?: number;
   active?: boolean;
-  owner_id?: UserId;
-  owner_active?: boolean;
-  ownerless?: boolean;
+  creator_id?: UserId;
+  creator_active?: boolean;
+  creatorless?: boolean;
   card_id?: CardId;
   recipient_email?: string;
   channel?: NotificationChannelType | NotificationChannelType[];
@@ -236,58 +238,12 @@ export type AdminNotificationListResponse = {
   offset: number | null;
 };
 
-export type BulkNotificationAction = "archive" | "change-owner";
+export type BulkNotificationAction = "archive" | "change-creator";
 
 export type BulkNotificationPayload = {
   notification_ids: NotificationId[];
   action: BulkNotificationAction;
-  owner_id?: UserId;
+  creator_id?: UserId;
 };
-
-// "Wire" types: the admin endpoints speak `creator_*` on the wire — matching
-// `notification.creator_id` and the public /api/notification endpoints. The FE
-// uses `owner_*` everywhere; we translate at the API-client boundary
-// (see metabase/api/notification.ts) so "owner" never leaves the frontend.
-export type WireAdminNotification = Omit<
-  AdminNotification,
-  "owner_id" | "owner"
-> & {
-  creator_id: UserId | null;
-  creator: UserInfo | null;
-};
-
-export type WireAdminNotificationDetail = WireAdminNotification & {
-  check_history: NotificationRunSummary[];
-  send_history: NotificationTickSendEntry[];
-};
-
-export type WireAdminNotificationListResponse = Omit<
-  AdminNotificationListResponse,
-  "data"
-> & {
-  data: WireAdminNotification[];
-};
-
-/** Map a wire notification (`creator_*`) to the FE shape (`owner_*`). */
-export const wireToAdminNotification = <T extends WireAdminNotification>({
-  creator_id,
-  creator,
-  ...rest
-}: T) => ({
-  ...rest,
-  owner_id: creator_id,
-  owner: creator,
-});
-
-/** Map an FE notification (`owner_*`) to the wire shape (`creator_*`). */
-export const adminNotificationToWire = <T extends AdminNotification>({
-  owner_id,
-  owner,
-  ...rest
-}: T) => ({
-  ...rest,
-  creator_id: owner_id,
-  creator: owner,
-});
 
 //#endregion

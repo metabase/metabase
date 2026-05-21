@@ -466,10 +466,10 @@ export function provideNotificationTags(
 }
 
 export const provideAdminNotificationTags = (
-  notification: Pick<AdminNotification, "id" | "owner">,
+  notification: Pick<AdminNotification, "id" | "creator">,
 ): TagDescription<TagType>[] => [
   idTag("notification", notification.id),
-  ...(notification.owner ? provideUserTags(notification.owner) : []),
+  ...(notification.creator ? provideUserTags(notification.creator) : []),
 ];
 
 export const adminNotificationListTag = (): TagDescription<TagType> =>

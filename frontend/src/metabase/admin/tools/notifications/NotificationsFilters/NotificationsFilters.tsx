@@ -53,7 +53,7 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
   const handleApply = () => {
     onChange({
       channel: draft.channel,
-      ownerless: draft.ownerless,
+      creatorless: draft.creatorless,
       last_send_status: draft.last_send_status,
       recipient_email: draft.recipient_email.trim(),
       page: 0,
@@ -64,7 +64,7 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
   const handleClear = () => {
     onChange({
       channel: [],
-      ownerless: null,
+      creatorless: null,
       last_send_status: null,
       recipient_email: "",
       page: 0,
@@ -81,10 +81,10 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
     }));
   };
 
-  const toggleOwnerless = (ownerless: boolean) => {
+  const toggleCreatorless = (creatorless: boolean) => {
     setDraft((prev) => ({
       ...prev,
-      ownerless: prev.ownerless === ownerless ? null : ownerless,
+      creatorless: prev.creatorless === creatorless ? null : creatorless,
     }));
   };
 
@@ -151,14 +151,14 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
               <FilterPill
                 icon="person"
                 label={t`Active`}
-                selected={draft.ownerless === false}
-                onClick={() => toggleOwnerless(false)}
+                selected={draft.creatorless === false}
+                onClick={() => toggleCreatorless(false)}
               />
               <FilterPill
                 icon="ghost"
                 label={t`Deactivated`}
-                selected={draft.ownerless === true}
-                onClick={() => toggleOwnerless(true)}
+                selected={draft.creatorless === true}
+                onClick={() => toggleCreatorless(true)}
               />
             </FilterSection>
           )}

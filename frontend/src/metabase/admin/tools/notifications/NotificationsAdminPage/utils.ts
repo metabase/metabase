@@ -99,7 +99,7 @@ const parseLastSendStatusEnum = (
 ): NotificationsUrlState["last_send_status"] =>
   parseGuardedEnum(getFirstParamValue(param), guardLastSendStatus, null);
 
-const parseOwnerless = (param: QueryParam): boolean | null => {
+const parseCreatorless = (param: QueryParam): boolean | null => {
   const value = getFirstParamValue(param);
   if (value === "true") {
     return true;
@@ -146,7 +146,7 @@ export const urlStateConfig: UrlStateConfig<NotificationsUrlState> = {
     query: parseQuery(query.query),
     channel: parseChannels(query.channel),
     last_send_status: parseLastSendStatusEnum(query.last_send_status),
-    ownerless: parseOwnerless(query.ownerless),
+    creatorless: parseCreatorless(query.creatorless),
     recipient_email: parseRecipientEmail(query.recipient_email),
     tab: parseTabEnum(query.tab),
     sort_column: parseSortColumnEnum(query.sort_column),
@@ -158,7 +158,8 @@ export const urlStateConfig: UrlStateConfig<NotificationsUrlState> = {
     query: state.query || undefined,
     channel: state.channel.length === 0 ? undefined : state.channel,
     last_send_status: state.last_send_status ?? undefined,
-    ownerless: state.ownerless === null ? undefined : String(state.ownerless),
+    creatorless:
+      state.creatorless === null ? undefined : String(state.creatorless),
     recipient_email: state.recipient_email || undefined,
     tab: state.tab === DEFAULT_TAB ? undefined : state.tab,
     sort_column:
@@ -183,7 +184,7 @@ export const buildListParams = (
     channel: state.channel.length === 0 ? undefined : state.channel,
     last_send_status:
       tabFilters.last_send_status ?? state.last_send_status ?? undefined,
-    ownerless: tabFilters.ownerless ?? state.ownerless ?? undefined,
+    creatorless: tabFilters.creatorless ?? state.creatorless ?? undefined,
     recipient_email: state.recipient_email || undefined,
     sort_column: state.sort_column,
     sort_direction: state.sort_direction,

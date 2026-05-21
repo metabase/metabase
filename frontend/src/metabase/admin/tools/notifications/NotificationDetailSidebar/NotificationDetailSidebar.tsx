@@ -449,8 +449,8 @@ const DetailsSection = ({
     slackChannelCount,
     httpHandler,
   });
-  const owner = notification.owner;
-  const ownerName = owner?.common_name ?? owner?.email ?? t`Unknown`;
+  const creator = notification.creator;
+  const ownerName = creator?.common_name ?? creator?.email ?? t`Unknown`;
 
   return (
     <SidebarSection title={t`Details`}>

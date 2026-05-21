@@ -35,25 +35,16 @@ export const NotificationOwner = ({ editingNotification, onChange }: Props) => {
   );
 };
 
-const isAdminNotification = (
-  notification: Notification | AdminNotification,
-): notification is AdminNotification => "owner_id" in notification;
-
 const buildInitialOwnerOption = (
   notification: Notification | AdminNotification,
 ): UserOption | null => {
-  const owner = isAdminNotification(notification)
-    ? notification.owner
-    : notification.creator;
-  const ownerId = isAdminNotification(notification)
-    ? notification.owner_id
-    : notification.creator_id;
-  if (!owner || ownerId === null || ownerId === undefined) {
+  const { creator, creator_id } = notification;
+  if (!creator || creator_id === null || creator_id === undefined) {
     return null;
   }
-  const label = owner.common_name || owner.email || t`Unknown`;
+  const label = creator.common_name || creator.email || t`Unknown`;
   return {
-    id: ownerId,
-    label: !owner.is_active ? t`${label} (deactivated)` : label,
+    id: creator_id,
+    label: !creator.is_active ? t`${label} (deactivated)` : label,
   };
 };

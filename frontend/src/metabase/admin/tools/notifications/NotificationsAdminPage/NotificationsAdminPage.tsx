@@ -85,7 +85,7 @@ export const NotificationsAdminPage = ({
       limit: 1,
       offset: 0,
       active: true,
-      ownerless: true,
+      creatorless: true,
     });
   const failingCount = failingData?.total ?? 0;
   const ownerlessCount = ownerlessData?.total ?? 0;
@@ -117,7 +117,7 @@ export const NotificationsAdminPage = ({
     urlState.active,
     urlState.tab,
     urlState.last_send_status,
-    urlState.ownerless,
+    urlState.creatorless,
     urlState.query,
     urlState.channel,
     urlState.recipient_email,
@@ -245,8 +245,8 @@ export const NotificationsAdminPage = ({
       try {
         await bulkAction({
           notification_ids: ids,
-          action: "change-owner",
-          owner_id: ownerId,
+          action: "change-creator",
+          creator_id: ownerId,
         }).unwrap();
         dispatch(
           addUndo({
