@@ -92,7 +92,7 @@ describe("NotebookNativePreview (controlled wrapper)", () => {
     await clickConvert();
 
     expect(
-      screen.queryByText(/Convert this question to SQL\?/),
+      screen.queryByText(/Converting this question to SQL will break/),
     ).not.toBeInTheDocument();
   });
 
@@ -102,11 +102,9 @@ describe("NotebookNativePreview (controlled wrapper)", () => {
     await clickConvert();
 
     expect(
-      await screen.findByText(/Convert this question to SQL\?/),
+      await screen.findByText(/Converting this question to SQL will break/),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/may silently break dashboard filters/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/won't include SQL variables/)).toBeInTheDocument();
   });
 
   it("warns before converting when the question appears in an embedded dashboard", async () => {
@@ -117,7 +115,7 @@ describe("NotebookNativePreview (controlled wrapper)", () => {
     await clickConvert();
 
     expect(
-      await screen.findByText(/Convert this question to SQL\?/),
+      await screen.findByText(/Converting this question to SQL will break/),
     ).toBeInTheDocument();
   });
 
@@ -129,7 +127,7 @@ describe("NotebookNativePreview (controlled wrapper)", () => {
     await clickConvert();
 
     expect(
-      screen.queryByText(/Convert this question to SQL\?/),
+      screen.queryByText(/Converting this question to SQL will break/),
     ).not.toBeInTheDocument();
   });
 
@@ -143,7 +141,7 @@ describe("NotebookNativePreview (controlled wrapper)", () => {
     );
 
     expect(
-      screen.queryByText(/Convert this question to SQL\?/),
+      screen.queryByText(/Converting this question to SQL will break/),
     ).not.toBeInTheDocument();
   });
 
@@ -157,7 +155,7 @@ describe("NotebookNativePreview (controlled wrapper)", () => {
     );
 
     expect(
-      screen.queryByText(/Convert this question to SQL\?/),
+      screen.queryByText(/Converting this question to SQL will break/),
     ).not.toBeInTheDocument();
   });
 });
