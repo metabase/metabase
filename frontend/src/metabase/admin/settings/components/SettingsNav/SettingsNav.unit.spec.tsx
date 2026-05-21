@@ -69,7 +69,10 @@ describe("SettingsNav", () => {
   });
 
   it("should hide Remote sync upsell nav item for pro plans", async () => {
-    await setup({ initialRoute: "/admin/settings/general" });
+    await setup({
+      initialRoute: "/admin/settings/general",
+      tokenFeatures: { advanced_permissions: true },
+    });
 
     expect(screen.queryByText("Remote sync")).not.toBeInTheDocument();
   });
