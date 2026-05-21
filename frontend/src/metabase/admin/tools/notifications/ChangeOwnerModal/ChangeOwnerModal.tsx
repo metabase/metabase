@@ -11,7 +11,7 @@ type Props = {
   count: number;
   isSubmitting?: boolean;
   onClose: () => void;
-  onConfirm: (ownerId: UserId) => void;
+  onConfirm: (creatorId: UserId) => void;
 };
 
 export const ChangeOwnerModal = ({
@@ -21,16 +21,18 @@ export const ChangeOwnerModal = ({
   onClose,
   onConfirm,
 }: Props) => {
-  const [selectedOwner, setSelectedOwner] = useState<UserOption | null>(null);
+  const [selectedCreator, setSelectedCreator] = useState<UserOption | null>(
+    null,
+  );
 
   const handleClose = () => {
-    setSelectedOwner(null);
+    setSelectedCreator(null);
     onClose();
   };
 
   const handleSubmit = () => {
-    if (selectedOwner !== null) {
-      onConfirm(selectedOwner.id);
+    if (selectedCreator !== null) {
+      onConfirm(selectedCreator.id);
     }
   };
 
@@ -44,8 +46,8 @@ export const ChangeOwnerModal = ({
       <Flex direction="column" gap="md">
         <UserPicker
           label={t`New owner`}
-          value={selectedOwner}
-          onChange={setSelectedOwner}
+          value={selectedCreator}
+          onChange={setSelectedCreator}
         />
 
         <Flex justify="flex-end" gap="sm">
@@ -54,7 +56,7 @@ export const ChangeOwnerModal = ({
           </Button>
           <Button
             variant="filled"
-            disabled={selectedOwner === null || isSubmitting}
+            disabled={selectedCreator === null || isSubmitting}
             loading={isSubmitting}
             onClick={handleSubmit}
           >

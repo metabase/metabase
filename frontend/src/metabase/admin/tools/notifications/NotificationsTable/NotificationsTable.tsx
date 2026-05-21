@@ -17,6 +17,7 @@ import {
   TreeTable,
   useTreeTableInstance,
 } from "metabase/ui";
+import { getUserLabel } from "metabase/utils/user";
 import type {
   AdminNotification,
   NotificationChannelType,
@@ -171,7 +172,7 @@ export const NotificationsTable = ({
           "",
         cell: ({ row }) => {
           const creator = row.original.creator;
-          const name = creator?.common_name ?? creator?.email ?? t`Unknown`;
+          const name = getUserLabel(creator);
           const isDeactivated = creator?.is_active === false;
           return (
             <Flex gap="xs" align="center" miw={0}>

@@ -4,6 +4,7 @@ import { t } from "ttag";
 import type { UserOption } from "metabase/admin/tools/notifications/UserPicker";
 import { UserPicker } from "metabase/admin/tools/notifications/UserPicker";
 import { Flex, Text } from "metabase/ui";
+import { getUserLabel } from "metabase/utils/user";
 import type {
   AdminNotification,
   Notification,
@@ -42,7 +43,7 @@ const buildInitialOwnerOption = (
   if (!creator || creator_id === null || creator_id === undefined) {
     return null;
   }
-  const label = creator.common_name || creator.email || t`Unknown`;
+  const label = getUserLabel(creator);
   return {
     id: creator_id,
     label: !creator.is_active ? t`${label} (deactivated)` : label,

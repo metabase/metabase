@@ -236,7 +236,7 @@ export const NotificationsAdminPage = ({
   );
 
   const handleChangeOwnerConfirm = useCallback(
-    async (ownerId: UserId) => {
+    async (creatorId: UserId) => {
       if (!changeOwnerTarget) {
         return;
       }
@@ -246,7 +246,7 @@ export const NotificationsAdminPage = ({
         await bulkAction({
           notification_ids: ids,
           action: "change-creator",
-          creator_id: ownerId,
+          creator_id: creatorId,
         }).unwrap();
         dispatch(
           addUndo({
