@@ -158,6 +158,17 @@ jobs:
         # whether to fail or to pass the whole job, based on the quarantine list.
         continue-on-error: true
 
+      - name: Rewrite JUnit hook failures (dry-run)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          if [ -d ./target/junit ]; then
+            ./bin/mage rewrite-junit-hooks --dry-run ./target/junit
+          else
+            echo "No ./target/junit directory; nothing to process."
+          fi
+
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()

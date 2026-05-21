@@ -248,6 +248,17 @@
    :requires [[mage.quick-test-runner :as qtr]]
    :task (task! (qtr/go parsed))}
 
+  rewrite-junit-hooks
+  {:doc "Rewrite JUnit XML to attribute Mocha-style hook failures to the underlying test."
+   :examples [["./bin/mage rewrite-junit-hooks ./target/junit" "Rewrite hook failures in place"]
+              ["./bin/mage rewrite-junit-hooks -n ./target/junit" "Dry run: log intended changes only"]]
+   :options [["-n" "--dry-run" "Log intended changes without writing rewritten XML"]
+             ["-i" "--include SUBSTR" "Only rewrite when the spec file path contains SUBSTR (repeatable)"
+              :multi true :default [] :update-fn conj]]
+   :arg-schema [:tuple [:string {:name "input-dir" :description "Directory of JUnit XML files to process"}]]
+   :requires [[mage.junit-hooks :as junit-hooks]]
+   :task (task! (junit-hooks/rewrite parsed))}
+
   affected-modules
   {:doc "Which backend modules have changes?"
    :examples [["./bin/mage affected-modules master" "prints changes compared to `master`"]

@@ -12,6 +12,7 @@
    [mage.bot.prompt-test]
    [mage.doctor-test]
    [mage.fix-unused-requires-test]
+   [mage.junit-hooks-test]
    [mage.merge-yaml-migrations-test :as merge-yaml-migrations-test]
    [mage.modules-test]
    [mage.token-scan-test]
