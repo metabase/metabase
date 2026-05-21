@@ -82,12 +82,12 @@
   (str (metabot-v3.settings/ai-service-base-url) path))
 
 (def ^:private max-body-preview-chars
-  "Cap on the body snippet spliced into the exception message; the full body is still logged and in ex-data."
+  "Cap on the body snippet spliced into the exception message."
   500)
 
 (defn- coerce-body
-  "Read a response body into a printable value, slurping `InputStream` bodies so they survive into logs and
-  ex-data. Returns `nil` when the body is empty or unreadable."
+  "Read a response body into a printable value, slurping `InputStream` bodies.
+  Returns nil for empty or unreadable bodies."
   [body]
   (try
     (if (instance? InputStream body)
@@ -96,13 +96,11 @@
     (catch Throwable _ nil)))
 
 (defn- extract-error-message
-  "Pull a human-readable error string out of a JSON envelope map — `{:error {:message ...}}` or top-level
-  `:error`/`:detail`/`:message`.
-  Only accepts scalars (numbers/keywords/booleans are stringified, but maps/vectors fall through) — a raw
-  envelope under one of these keys would otherwise leak into the user-facing message. Per-lookup filtering
-  also means a non-string/blank value at one key falls through to the next, e.g.
-  `{:error \"\" :detail \"real msg\"}` → \"real msg\"."
+  "First non-blank scalar under `[:error :message]`, `:error`, `:detail`, or `:message`, or nil."
   [m]
+  ;; Scalars only — a raw map/vector under one of these keys would otherwise `str`-coerce and leak the
+  ;; envelope into the user-facing message. Per-lookup filtering also means a non-string or blank value
+  ;; at one key falls through to the next, e.g. `{:error "" :detail "real msg"}` → "real msg".
   (let [scalar (fn [v] (when-not (coll? v) (not-empty (str/trim (str v)))))]
     (or (scalar (get-in m [:error :message]))
         (scalar (get m :error))
@@ -111,9 +109,8 @@
 
 (defn- body-preview
   "Short snippet of an already-coerced response body for the user-facing exception message.
-  Non-empty maps/arrays without a recognised human-readable field fall back to `pr-str` and emit a warn —
-  better some context than none, and the warn tells operators to add the envelope shape to
-  [[extract-error-message]]. Nil/empty bodies return nil."
+  Non-empty maps/arrays without a recognised human-readable field fall back to `pr-str` (and warn).
+  Nil/empty bodies return nil."
   [body]
   (let [extracted (cond
                     (nil? body)        nil
@@ -125,6 +122,8 @@
                                            (string? head) head
                                            :else          nil))
                     :else              nil)
+        ;; pr-str fallback gives operators something to act on — better some context in the user-facing
+        ;; message than none, and the warn signals "add this envelope shape to extract-error-message".
         s         (or extracted
                       (when (and (or (map? body) (sequential? body)) (seq body))
                         (let [printed (pr-str body)]
@@ -137,9 +136,9 @@
 
 (defn- check-response!
   "Return the response body on success (HTTP 200 or 202); throw on failure.
-  On failure the exception message includes a truncated preview of the response body when one can be
-  extracted, a `log/warnf` emits the *full* body alongside status and url, and the slurped body lives in
-  `ex-data` for downstream callers."
+  On failure the thrown `ex-info` carries `:error-code :ai-service-error`, the upstream `:status`, and the
+  slurped body under `[:response :body]`. The exception message includes a body preview when one can be
+  extracted (truncated to [[max-body-preview-chars]])."
   [response request]
   (if (#{200 202} (:status response))
     (:body response)
@@ -166,11 +165,9 @@
                                        (assoc :body body))})))))
 
 (defn- rethrow-with-context!
-  "Log a request-level failure with the throwable (so the stacktrace is captured) and rethrow with a
-  `label`-prefixed message.
-  Preserves the original `ex-data` so downstream handlers see the `:error-code :ai-service-error` fields
-  built up in `check-response!` — without this they'd see only the wrapper's empty map and have to walk
-  `(ex-cause ...)`."
+  "Log a request-level failure (with the throwable) and rethrow with a `label`-prefixed message.
+  Preserves the original `ex-data` so downstream handlers see the structured fields from `check-response!`
+  on the outer exception, not just via `(ex-cause ...)`."
   [label ^Throwable e]
   (let [{:keys [error-code status response]} (ex-data e)
         body (:body response)

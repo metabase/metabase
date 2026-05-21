@@ -240,7 +240,8 @@
             ex (is (thrown? Exception (check! response request)))]
         (is (str/includes? (ex-message ex) "…"))
         (is (< (count (ex-message ex)) 1200) "exception message is truncated near the body-preview cap")
-        (is (= long-body (get-in (ex-data ex) [:response :body])))))
+        (is (= long-body (get-in (ex-data ex) [:response :body])))
+        (assert-no-headers! (ex-data ex))))
     (testing "ex-data :response is an explicit allow-list, not a passthrough of clj-http internals"
       (let [{:keys [request]} (check-response!-input {})
             ;; clj-http responses can carry `:http-client` (a Closeable), `:trace-redirects`,
