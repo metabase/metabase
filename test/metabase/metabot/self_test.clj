@@ -948,7 +948,9 @@
                              (constantly "OpenRouter upstream provider returned an error")
                              upstream))]
       (is (str/includes? (ex-message ex) "OpenRouter upstream provider returned an error"))
-      (is (str/includes? (ex-message ex) "upstream gateway timeout"))))
+      (is (str/includes? (ex-message ex) "upstream gateway timeout"))
+      (is (= #{:status :reason-phrase :body :api-error :provider :error-code}
+             (set (keys (ex-data ex)))))))
 
   (testing "structured maps without :error/:detail/:message keep the user-facing message clean"
     (let [upstream (ex-info "clj-http error"
@@ -961,7 +963,9 @@
                              upstream))]
       (is (= "Anthropic API is not working but not saying why" (ex-message ex)))
       (is (= {:request-id "abc" :trace ["frame1"]} (:body (ex-data ex)))
-          "the full body is still preserved in ex-data for debugging")))
+          "the full body is still preserved in ex-data for debugging")
+      (is (= #{:status :reason-phrase :body :api-error :provider :error-code}
+             (set (keys (ex-data ex)))))))
 
   (testing "non-HTTP errors (no :body) fall through to the request-failed branch"
     (let [ex (caught #(self.core/rethrow-api-error!
@@ -977,7 +981,9 @@
 
   (testing "no-body branch drops the trailing colon when ex-message is blank"
     (let [ex (caught #(self.core/rethrow-api-error! "openai" (constantly "unused") (RuntimeException.)))]
-      (is (= "openai API request failed" (ex-message ex)))))
+      (is (= "openai API request failed" (ex-message ex)))
+      (is (= #{:api-error :provider :error-code :exception-class}
+             (set (keys (ex-data ex)))))))
 
   (testing "the full upstream body is emitted at warn level alongside provider and status"
     (let [upstream (ex-info "clj-http error"
