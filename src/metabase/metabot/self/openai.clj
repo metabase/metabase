@@ -161,7 +161,7 @@
      :parameters  (mjs/transform params {:additionalProperties false})}))
 
 (defn- openai-error-msg
-  "Canonical, status-specific OpenAI error message; the upstream body is appended out of scope."
+  "Canonical, status-specific OpenAI error message; the upstream body is appended separately."
   [res]
   (let [status (long (:status res 0))]
     (case status
