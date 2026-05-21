@@ -70,7 +70,7 @@
             (with-redefs [metabot.example-question-generator/generate-example-questions prompt-generator]
               ;; Trigger prompt generation by calling the regenerate endpoint
               (is (=? {:status       "generated"
-                       :prompt-count (reduce + (map count (vals prompts)))}
+                       :prompt_count (reduce + (map count (vals prompts)))}
                       (mt/user-http-request :crowberto :post 200
                                             (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))))
             (let [added-prompts (t2/select [:model/MetabotPrompt [:card.name :model_name] :prompt]
@@ -145,7 +145,7 @@
                     (is (= remaining-prompt-ids (current-prompt-ids))))
                   (testing "admin users are allowed"
                     (with-redefs [metabot.example-question-generator/generate-example-questions prompt-generator]
-                      (is (=? {:status "generated" :prompt-count pos-int?}
+                      (is (=? {:status "generated" :prompt_count pos-int?}
                               (mt/user-http-request :crowberto :post 200 url)))))))
 
               (let [new-prompt-ids (current-prompt-ids)]
@@ -332,7 +332,7 @@
         ;; No cards in the collection — the LLM should never be called.
         (with-redefs [metabot.example-question-generator/generate-example-questions
                       (fn [& _] (throw (ex-info "LLM should not be called for an empty library" {})))]
-          (is (= {:status "empty" :reason "no-library-content"}
+          (is (= {:status "no-library-content"}
                  (mt/user-http-request :crowberto :post 200
                                        (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))))))
     (testing "distinguish 'LLM produced nothing' from 'LLM errored'"
@@ -348,7 +348,7 @@
             (with-redefs [metabot.example-question-generator/generate-example-questions
                           (constantly {:table_questions  [{:questions []}]
                                        :metric_questions []})]
-              (is (= {:status "empty" :reason "ai-produced-no-prompts"}
+              (is (= {:status "ai-produced-no-prompts"}
                      (mt/user-http-request :crowberto :post 200
                                            (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id))))
               (is (empty? (t2/select :model/MetabotPrompt :metabot_id metabot-id))

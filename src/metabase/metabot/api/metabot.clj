@@ -62,15 +62,17 @@
       (t2/select-one :model/Metabot :id id))))
 
 (api.macros/defendpoint :post "/:id/prompt-suggestions/regenerate"
-  :- [:map
-      [:status :keyword]
-      [:reason       {:optional true} :keyword]
-      [:prompt-count {:optional true} nat-int?]]
+  :- [:multi {:dispatch :status}
+      [:generated                  [:map
+                                    [:status [:= :generated]]
+                                    [:prompt_count nat-int?]]]
+      [:no-library-content         [:map [:status [:= :no-library-content]]]]
+      [:ai-produced-no-prompts     [:map [:status [:= :ai-produced-no-prompts]]]]
+      [:managed-free-limit-reached [:map [:status [:= :managed-free-limit-reached]]]]]
   "Remove any existing prompt suggestions for the Metabot instance with `id` and generate new ones.
 
-   Returns a map describing the outcome so the UI can distinguish a successful regeneration
-   from the various 'no error, but nothing produced' cases — e.g. the metabot has no models or
-   metrics in its library yet, or the LLM returned no questions for the inputs we supplied.
+   Returns a single-tag discriminated union so the UI can `switch` on `:status` to distinguish a
+   successful regeneration from the various 'no error, but nothing produced' cases.
 
    Response shape: see [[metabase.metabot.suggested-prompts/generate-sample-prompts]]."
   [{:keys [id]} :- [:map [:id pos-int?]]]

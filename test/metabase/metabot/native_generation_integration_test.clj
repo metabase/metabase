@@ -47,8 +47,10 @@
               native-mock (make-native-prompt-generator prompts-by-name)]
           (testing "regenerate endpoint works with native path"
             (with-redefs [native-generator/generate-example-questions native-mock]
-              (mt/user-http-request :crowberto :post 204
-                                    (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))
+              (is (=? {:status "generated" :prompt_count 10}
+                      (mt/user-http-request :crowberto :post 200
+                                            (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))))
+
             (let [prompts (t2/select [:model/MetabotPrompt :prompt :model [:card.name :model_name]]
                                      :metabot_id metabot-id
                                      {:join     [[:report_card :card] [:= :card.id :card_id]]
@@ -61,8 +63,9 @@
           (testing "native path prompts are replaced on re-regenerate"
             (let [old-ids (t2/select-pks-set :model/MetabotPrompt :metabot_id metabot-id)]
               (with-redefs [native-generator/generate-example-questions native-mock]
-                (mt/user-http-request :crowberto :post 204
-                                      (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))
+                (is (=? {:status "generated" :prompt_count 10}
+                        (mt/user-http-request :crowberto :post 200
+                                              (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))))
               (let [new-ids (t2/select-pks-set :model/MetabotPrompt :metabot_id metabot-id)]
                 (is (= 10 (count new-ids)))
                 (is (empty? (set/intersection old-ids new-ids)))))))))))

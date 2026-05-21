@@ -50,12 +50,13 @@
   "Generate suggested prompts for the Metabot instance with `metabot-id`.
 
    Returns a map describing the outcome so callers can distinguish success from
-   the various 'no error, but nothing produced' cases:
+   the various 'no error, but nothing produced' cases. The `:status` key is a
+   single discriminator so the frontend can switch on one field:
 
-     {:status :generated :prompt-count N}            ; happy path
-     {:status :empty :reason :no-library-content}    ; metabot has no models/metrics to summarise
-     {:status :empty :reason :ai-produced-no-prompts} ; LLM returned 0 questions for the inputs
-     {:status :empty :reason :managed-free-limit-reached}  ; managed AI usage cap hit
+     {:status :generated :prompt_count N}        ; happy path
+     {:status :no-library-content}               ; metabot has no models/metrics to summarise
+     {:status :ai-produced-no-prompts}           ; LLM returned 0 questions for the inputs
+     {:status :managed-free-limit-reached}       ; managed AI usage cap hit
 
    Skips the LLM call entirely on the `:no-library-content` and `:managed-free-limit-reached`
    branches so we don't burn tokens (or AI-service round-trips) generating nothing."
@@ -64,7 +65,7 @@
     (do
       (log/info "Skipping suggested prompt generation because the managed AI free limit has been reached."
                 {:metabot-id metabot-id})
-      {:status :empty :reason :managed-free-limit-reached})
+      {:status :managed-free-limit-reached})
     (let [opts (merge default-opts opts)]
       (lib-be/with-metadata-provider-cache
         (let [{metrics :metric models :model} (->> (metabot.tools.u/get-metrics-and-models metabot-id opts)
@@ -85,7 +86,7 @@
             (do
               (log/info "Skipping suggested prompt generation: metabot has no models or metrics to summarise."
                         {:metabot-id metabot-id})
-              {:status :empty :reason :no-library-content})
+              {:status :no-library-content})
             (let [{:keys [table_questions metric_questions]}
                   (generate-questions-with-fallback {:metrics metric-inputs, :tables model-inputs})
                   ->prompt (fn [{:keys [questions]} {::keys [origin]}]
@@ -101,8 +102,8 @@
               (when (seq model-prompts)
                 (t2/insert! :model/MetabotPrompt model-prompts))
               (if (zero? total)
-                {:status :empty :reason :ai-produced-no-prompts}
-                {:status :generated :prompt-count total}))))))))
+                {:status :ai-produced-no-prompts}
+                {:status :generated :prompt_count total}))))))))
 
 (defn delete-all-metabot-prompts
   "Drop suggested prompts for instance of Metabot."
