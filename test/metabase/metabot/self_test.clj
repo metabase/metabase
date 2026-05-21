@@ -6,10 +6,12 @@
    [clojure.test :refer :all]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.llm.settings :as llm]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as test-util]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [ring.adapter.jetty :as jetty]))
@@ -76,6 +78,27 @@
                   (when-not (::skip (ex-data e))
                     (throw e))))
               (is (= expected (:tool_choice @captured))))))))))
+
+;;; resolve-auth tests
+
+(deftest resolve-auth-proxy-url-test
+  (testing "Properly genrates the url with initial components and headers for proxied auth"
+    (mt/with-dynamic-fn-redefs [llm/llm-proxy-base-url                    (constantly "http://proxy.example")
+                                premium-features/premium-embedding-token (constantly "tok")]
+      (is (= {:url     "http://proxy.example/llm/anthropic"
+              :headers {"x-metabase-instance-token" "tok"}}
+             (self.core/resolve-auth "anthropic" "Anthropic" nil #_ai-service? true)))))
+  (testing "Identity for non ai-service proxy auth"
+    (let [auth {:what "ever"}]
+      (is (= auth
+             (self.core/resolve-auth "anthropic" "Anthropic" auth #_ai-service? false)))))
+  (testing "Throws on missing auth for byok"
+    (is (thrown? Exception (self.core/resolve-auth "anthropic" "Anthropic" nil #_ai-service? false))))
+  (mt/with-dynamic-fn-redefs [llm/llm-proxy-base-url                   (constantly "http://proxy.example")
+                              premium-features/premium-embedding-token (constantly nil)]
+    (testing "Throws on missing token for ai service proxy"
+      (is (thrown-with-msg? Exception #"Premium embedding token not set."
+                            (self.core/resolve-auth "anthropic" "Anthropic" nil #_ai-service? true))))))
 
 ;;; utils tests
 
