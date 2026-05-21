@@ -15,7 +15,8 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.io ByteArrayOutputStream)
    (java.net URLEncoder)
@@ -23,11 +24,44 @@
 
 (set! *warn-on-reflection* true)
 
+;;; ---------------------------- MCP outputSchema overrides -------------------------------
+;;
+;; A few tools body-transform the endpoint response on the MCP boundary (see
+;; `make-store-construct-query-result`), so the MCP-visible shape differs from the
+;; endpoint's `:response-schema`. Owning the override here keeps `agent-api` ignorant
+;; of MCP: the endpoint describes the wire shape, and this layer publishes the shape
+;; MCP clients actually see. The body-transform validates against the same Malli
+;; schema so the published manifest and the emitted body can't drift apart.
+
+(def ^:private construct-query-mcp-output-malli
+  "MCP-visible output of `construct_query`.
+   The agent_api endpoint returns `{:query base64}`; the MCP body transform stores
+   that and emits `{:query_handle}`."
+  [:map
+   [:query_handle
+    {:tool/description "Opaque UUID handle for the stored query. Pass as `query_handle` to `execute_query` or `visualize_query`."}
+    ms/UUIDString]])
+
+(def ^:private mcp-output-overrides
+  "tool-name → Malli schema. Applied to the tools-manifest output before publishing."
+  {"construct_query" construct-query-mcp-output-malli})
+
+(defn- apply-output-overrides
+  "Replace `:outputSchema` on tools that body-transform their endpoint response."
+  [tools]
+  (mapv (fn [tool]
+          (if-let [override (mcp-output-overrides (:name tool))]
+            (assoc tool :outputSchema (tools-manifest/malli->json-schema override))
+            tool))
+        tools))
+
 (defn- generate-manifest
-  "Generate tools manifest from agent API endpoint metadata."
+  "Generate tools manifest from agent API endpoint metadata, then patch outputSchemas
+  for tools whose MCP body transform reshapes the endpoint response."
   []
-  (tools-manifest/generate-tools-manifest
-   {'metabase.agent-api.api "/api/agent"}))
+  (-> (tools-manifest/generate-tools-manifest
+       {'metabase.agent-api.api "/api/agent"})
+      (update :tools apply-output-overrides)))
 
 (def ^:private manifest-delay
   (delay (generate-manifest)))
@@ -108,10 +142,7 @@
   "Resolve the query argument for tools that accept a handle.
    If :query_handle is present, look it up and replace with :query.
    If :query is itself a UUID (the LLM passed the handle in the wrong field), resolve
-   it too — but log a warning so we can track how often this antipattern fires.
-   Handles are scoped to the calling user; [[mcp.session/resolve-query-handle]]
-   prefers the current MCP session before falling back across the user's other
-   sessions, so harnesses that rotate session ids between calls still resolve.
+   it too (and log a warning).
    Returns updated arguments, or ::handle-not-found if the handle doesn't exist."
   [session-id tool-name arguments]
   (let [user-id api/*current-user-id*]
@@ -134,18 +165,19 @@
       arguments)))
 
 (def ^:private construct-query-output-validator
-  (mr/validator agent-api/construct-query-tool-output-malli))
+  (mr/validator construct-query-mcp-output-malli))
 
 (defn- make-store-construct-query-result
-  "Build a body-transform fn for construct_query. Stores the base64 payload server-side
-   under the calling user (with the current MCP session id recorded for cleanup) and
-   returns {:query_handle uuid} instead of {:query base64}, so the LLM carries a short
-   opaque UUID rather than the full base64 string. Also stores the optional prompt
-   with the handle, used for submitting feedback on visualizations.
+  "Build a body-transform fn for construct_query.
+   The fn stores the base64 payload server-side under the calling user (with the
+   current MCP session id recorded for cleanup) and returns {:query_handle uuid}
+   instead of {:query base64}, so the LLM carries a short opaque UUID rather than
+   the full base64 string.
+   The optional prompt is stored with the handle for later feedback submission.
 
-   Validates the emitted shape against `agent-api/construct-query-tool-output-malli`
-   — the same schema the manifest publishes as the tool's outputSchema — so the
-   published schema and the actual emitted body stay in lockstep."
+   The fn validates its emitted shape against `construct-query-mcp-output-malli` —
+   the same schema the manifest publishes as the tool's outputSchema — keeping the
+   published schema and the actual emitted body in lockstep."
   [session-id user-id]
   (fn [body]
     (if-let [encoded (:query body)]
@@ -165,10 +197,11 @@
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------
 
 (defn- text-content
-  "Wrap a value as an MCP tool-call result. Map/sequential values are surfaced
-  as `structuredContent` — MCP spec requires this for any tool that declares an
-  `outputSchema`. The `content` array carries a text serialization for clients
-  that don't consume structuredContent."
+  "Wrap a value as an MCP tool-call result.
+   Map/sequential values are surfaced as `structuredContent` — MCP spec requires this
+   for any tool that declares an `outputSchema`.
+   The `content` array carries a text serialization for clients that don't consume
+   structuredContent."
   [v]
   (cond-> {:content [{:type "text" :text (if (string? v) v (json/encode v))}]}
     (or (map? v) (sequential? v)) (assoc :structuredContent v)))

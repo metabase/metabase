@@ -538,15 +538,10 @@
    "- When the user asks for an exact year (e.g. 2024), use `[\"=\", [\"field\", year_field], 2024]` or a `between` with explicit dates — not relative filters like `time-interval`.\n"))
 
 (def ^:private construct-query-tool-input-malli
-  "LLM-facing Malli schema for the construct_query tool input. Deliberately
-  flatter than `::construct-query-request` — the operator/ref grammar is
-  conveyed through the tool description and the construct-query.md MCP
-  resource, not the schema. Server-side wire validation still goes through
-  `::construct-query-request`.
-
-  Driving the tool schema from Malli rather than hand-written JSON avoids
-  duplication and ensures the standard tools-manifest pipeline (ref inlining,
-  `:tool/description` lifting, strict transform) is applied uniformly."
+  "Malli schema for the construct_query tool's MCP input.
+  Deliberately flatter than `::construct-query-request` — the operator/ref grammar
+  is conveyed through the tool description and the construct-query.md MCP resource,
+  not the schema. Server-side wire validation still goes through `::construct-query-request`."
   [:map
    [:source
     {:tool/description "Database entity to query."}
@@ -566,18 +561,6 @@
       :any]]]
    [:prompt {:optional true}
     [:maybe ConstructQueryPrompt]]])
-
-(def construct-query-tool-output-malli
-  "LLM-facing Malli schema for the construct_query *tool* output. Differs from
-  `::construct-query-response` because `make-store-construct-query-result`
-  body-transforms the endpoint's `{:query, :prompt?}` response into
-  `{:query_handle}` before the MCP client sees it. Exposed (not private) so the
-  MCP body transformer can validate against the same schema at runtime — keeping
-  the published outputSchema and the actual emitted shape from drifting apart."
-  [:map
-   [:query_handle
-    {:tool/description "Opaque UUID handle for the stored query. Pass as `query_handle` to `execute_query` or `visualize_query`."}
-    ms/UUIDString]])
 
 (defn- evaluate-program-to-live-query
   "Resolve a program's source entity, evaluate the program via agent-lib, and return
@@ -609,7 +592,6 @@
    :tool  {:name "construct_query"
            :description construct-query-tool-description
            :input-schema construct-query-tool-input-malli
-           :output-schema construct-query-tool-output-malli
            :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params

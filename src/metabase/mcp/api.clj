@@ -153,9 +153,9 @@
 ;;; ------------------------------------------------- Validation --------------------------------------------------
 
 (defn- normalize-domain
-  "Extract and lowercase the domain from a URL or Host-style header value. Uses
-   `mw.security/parse-url` so bracketed IPv6 forms (`[::1]:3000`) and ports are
-   handled correctly. Returns nil for unparsable input."
+  "Extract and lowercase the domain from a URL or Host-style header value.
+   Bracketed IPv6 forms (`[::1]:3000`) and ports are handled correctly.
+   Returns nil for unparsable input."
   [url]
   (some-> url str mw.security/parse-url :domain u/lower-case-en))
 
@@ -178,8 +178,8 @@
 (defn- validate-origin
   "Validate the Origin header to prevent DNS rebinding attacks (MCP spec requirement).
    Returns a 403 response if Origin is present and is neither same-host nor an
-   explicitly configured MCP app origin. Non-browser clients that omit the Origin
-   header are allowed through."
+   explicitly configured MCP app origin.
+   Non-browser clients that omit the Origin header are allowed through."
   [request]
   (when-let [origin (get-in request [:headers "origin"])]
     (let [host (get-in request [:headers "host"])]

@@ -84,9 +84,9 @@
          :tools         (sorted-map)}))
 
 (defn- ui-meta
-  "MCP `_meta.ui` block returned alongside UI resources. Hosts that render the
-   resource in a sandboxed iframe (notably ChatGPT's MCP app surface) use this to
-   pick a sandbox configuration:
+  "MCP `_meta.ui` block returned alongside UI resources.
+   Hosts that render the resource in a sandboxed iframe (notably ChatGPT's MCP app
+   surface) use this to pick a sandbox configuration:
 
    - `prefersBorder`    — presentation hint asking the host to draw a frame border
    - `domain`           — the origin the iframe content is anchored at
@@ -134,9 +134,7 @@
     resource))
 
 (defn- malli->ui-input-schema
-  "Convert a Malli schema for a UI-tool input into the published JSON Schema.
-   Runs through the same pipeline as defendpoint tools (`malli->json-schema` +
-   strict transform) so behavior is consistent across all MCP tools."
+  "Convert a Malli schema for a UI-tool input into the published JSON Schema."
   [schema]
   (-> schema tools-manifest/malli->json-schema tools-manifest/strict-tool-input-schema))
 
@@ -147,9 +145,7 @@
   (tools-manifest/malli->json-schema schema))
 
 (mu/defn- register-ui-tool!
-  "Register a UI tool. `inputSchema` and `outputSchema` are Malli schemas; the
-   JSON Schemas exported to MCP clients are derived from them via the same
-   pipeline used for defendpoint tools."
+  "Register a UI tool. `inputSchema` and `outputSchema` are Malli schemas (not JSON Schema)."
   [resource-key :- :keyword
    tool         :- [:map
                     [:name :string]
