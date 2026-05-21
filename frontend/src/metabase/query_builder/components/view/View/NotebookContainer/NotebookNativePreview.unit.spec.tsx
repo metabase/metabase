@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { setupCardDashboardsEndpoint } from "__support__/server-mocks/card";
 import { createMockEntitiesState } from "__support__/store";
@@ -15,19 +14,25 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { NotebookNativePreview } from "./NotebookNativePreview";
 
+// The inner controlled component disables its Convert button while the
+// embedded-dashboards query is loading. The mock mirrors that contract so the
+// tests exercise the wrapper's logic only after the data is in.
 jest.mock(
   "metabase/querying/notebook/components/NotebookNativePreview",
   () => ({
     NotebookNativePreview: ({
       question,
       onConvertClick,
+      disableConvert,
     }: {
       question: Question;
       onConvertClick: (q: Question) => void;
+      disableConvert?: boolean;
     }) => (
       <button
         data-testid="convert-trigger"
         onClick={() => onConvertClick(question)}
+        disabled={disableConvert}
       >
         convert
       </button>
@@ -72,13 +77,19 @@ const setup = ({
   });
 };
 
+const clickConvert = async () => {
+  const button = await screen.findByTestId("convert-trigger");
+  await waitFor(() => expect(button).toBeEnabled());
+  await userEvent.click(button);
+};
+
 describe("NotebookNativePreview (controlled wrapper)", () => {
   it("converts directly when the question is not embedded and not in any embedded dashboard", async () => {
     setup({
       plainDashboards: [{ id: 1, name: "Plain Dashboard" }],
     });
 
-    await userEvent.click(await screen.findByTestId("convert-trigger"));
+    await clickConvert();
 
     expect(
       screen.queryByText(/Convert this question to SQL\?/),
@@ -88,7 +99,7 @@ describe("NotebookNativePreview (controlled wrapper)", () => {
   it("warns before converting when the question itself is embedded", async () => {
     setup({ cardOverrides: { enable_embedding: true } });
 
-    await userEvent.click(await screen.findByTestId("convert-trigger"));
+    await clickConvert();
 
     expect(
       await screen.findByText(/Convert this question to SQL\?/),
@@ -103,15 +114,7 @@ describe("NotebookNativePreview (controlled wrapper)", () => {
       embeddedDashboards: [{ id: 10, name: "Embedded Dashboard" }],
     });
 
-    // Wait for the dashboards endpoint to be hit so the wrapper knows the
-    // card is in an embedded dashboard before the user clicks.
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.called(`path:/api/card/${CARD_ID}/dashboards`),
-      ).toBe(true);
-    });
-
-    await userEvent.click(await screen.findByTestId("convert-trigger"));
+    await clickConvert();
 
     expect(
       await screen.findByText(/Convert this question to SQL\?/),
@@ -123,7 +126,7 @@ describe("NotebookNativePreview (controlled wrapper)", () => {
       plainDashboards: [{ id: 5, name: "Some Dashboard" }],
     });
 
-    await userEvent.click(await screen.findByTestId("convert-trigger"));
+    await clickConvert();
 
     expect(
       screen.queryByText(/Convert this question to SQL\?/),
@@ -133,7 +136,7 @@ describe("NotebookNativePreview (controlled wrapper)", () => {
   it("cancels the conversion when the user clicks Cancel in the warning modal", async () => {
     setup({ cardOverrides: { enable_embedding: true } });
 
-    await userEvent.click(await screen.findByTestId("convert-trigger"));
+    await clickConvert();
 
     await userEvent.click(
       await screen.findByRole("button", { name: "Cancel" }),
@@ -147,7 +150,7 @@ describe("NotebookNativePreview (controlled wrapper)", () => {
   it("closes the warning modal after the user confirms the conversion", async () => {
     setup({ cardOverrides: { enable_embedding: true } });
 
-    await userEvent.click(await screen.findByTestId("convert-trigger"));
+    await clickConvert();
 
     await userEvent.click(
       await screen.findByRole("button", { name: "Convert to SQL" }),

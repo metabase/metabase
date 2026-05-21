@@ -17,12 +17,11 @@ export const NotebookNativePreview = () => {
   const cardId = question.id();
   const isCardEmbedded = question.card().enable_embedding === true;
 
-  const { data: dashboards = [] } = useGetCardDashboardsQuery(
-    cardId != null ? { id: cardId } : skipToken,
-  );
+  const { data: dashboards, isLoading: isLoadingDashboards } =
+    useGetCardDashboardsQuery(cardId != null ? { id: cardId } : skipToken);
 
   const isInEmbeddedDashboard = useMemo(
-    () => dashboards.some((dashboard) => dashboard.enable_embedding),
+    () => (dashboards ?? []).some((dashboard) => dashboard.enable_embedding),
     [dashboards],
   );
 
@@ -67,6 +66,7 @@ export const NotebookNativePreview = () => {
       <ControlledNotebookNativePreview
         question={question}
         onConvertClick={handleConvertClick}
+        disableConvert={isLoadingDashboards}
       />
       {pendingQuestion && (
         <ConfirmModal
