@@ -111,16 +111,37 @@
     (assoc dim :group group)
     dim))
 
+(defn- column-fingerprint-for-target
+  "Resolve `target` against `base-query`'s breakoutable columns and return the
+  resolved column's `:fingerprint` (or nil). Thread-dim rows don't carry
+  fingerprints — the metadata provider does, via the underlying Field. Without
+  this lookup, categorical-dim cardinality probes (`effective-cardinality`)
+  always come up nil for text dims, so eligibility heuristics like
+  `top-n-other-eligible?` fail closed every time."
+  [base-query columns target]
+  (try
+    (let [ref-clause (qp.mbql/normalize-target-ref target)
+          col        (lib/find-matching-column base-query -1 ref-clause columns)]
+      (:fingerprint col))
+    (catch Exception _ nil)))
+
 (defn- applicability
   "For each chosen `dim`, decide whether it has a resolvable target on
   `card`'s `dimension_mappings`. Returns
-  `{dimension_id {:target :enriched-dim} | nil}` keyed by dim id."
-  [dim-by-id metric]
-  (let [mappings (:dimension_mappings metric)]
+  `{dimension_id {:target :enriched-dim} | nil}` keyed by dim id. The dim
+  is enriched with the resolved column's `:fingerprint`, looked up through
+  the metadata provider — bare thread-dim rows don't store fingerprints, so
+  categorical-cardinality probes have nothing to read without this lookup."
+  [dim-by-id metric mp card-dataset-query]
+  (let [mappings (:dimension_mappings metric)
+        base    (try (lib/query mp card-dataset-query) (catch Exception _ nil))
+        columns (when base (lib/breakoutable-columns base))]
     (into {}
           (keep (fn [[dim-id dim]]
                   (when-let [target (qp.mbql/find-dimension-target dim-id mappings)]
-                    [dim-id {:target target :dim dim}])))
+                    (let [fp   (when base (column-fingerprint-for-target base columns target))
+                          dim' (cond-> dim fp (assoc :fingerprint fp))]
+                      [dim-id {:target target :dim dim'}]))))
           dim-by-id)))
 
 (defn metric-and-dim-context
@@ -159,7 +180,7 @@
                                                            (map (fn [[dim-id d]]
                                                                   [dim-id (enrich-dim-with-card-group d card-dims)]))
                                                            dim-by-id)
-                                appl            (applicability enriched-thread-dims tm)
+                                appl            (applicability enriched-thread-dims tm mp (:dataset_query card))
                                 default-temp    (qp.mbql/extract-default-temporal-breakout-col
                                                  mp (:dataset_query card))
                                 result-col-name (metrics/aggregation-column-name
@@ -168,7 +189,6 @@
                             {:metric-id                 (:card_id tm)
                              :card                      card
                              :mp                        mp
-                             :enriched-thread-dims      enriched-thread-dims
                              :applicability             appl
                              :default-temporal-breakout (when default-temp
                                                           {:column (some-> (first default-temp) :display-name)
@@ -187,15 +207,22 @@
                                         (keys (:applicability m))))
                               {}
                               metrics)
-        ;; A single enriched thread-dim (use the first metric's enrichment, which has the
-        ;; richest :group info since it's the only place :group lives).
-        enriched-by-id (or (some :enriched-thread-dims metrics) dim-by-id)
+        ;; Take the per-dim enriched dim from the first metric whose applicability
+        ;; resolves it — that copy carries both `:group` and `:fingerprint`. Dims that
+        ;; resolve on no metric are dropped: nothing can be charted from them, so
+        ;; surfacing them in the prompt would just be noise.
+        enriched-by-id (into {}
+                             (keep (fn [dim-id]
+                                     (when-let [d (some #(get-in % [:applicability dim-id :dim]) metrics)]
+                                       [dim-id d])))
+                             (keys dim-by-id))
         dimensions    (vec
                        (for [td thread-dims
                              :let [dim-id   (:dimension_id td)
-                                   dim      (get enriched-by-id dim-id td)
+                                   dim      (get enriched-by-id dim-id)
                                    [k _]    (qp.mbql/default-bucket-for-dim dim)
-                                   binned?  (= k :binning)]]
+                                   binned?  (= k :binning)]
+                             :when dim]
                          {:dimension-id   dim-id
                           :dim            dim
                           :display-name   (or (:display_name dim) dim-id)
