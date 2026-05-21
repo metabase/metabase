@@ -178,7 +178,7 @@ function DataComplexityBreakdown({
               <Text fw={700} lh="1rem">
                 {title}
               </Text>
-              <ScoreDisplayInline score={group} mr="2.75rem" />
+              <ScoreDisplayInline withTitle score={group} mr="2.75rem" />
             </Flex>
 
             <Accordion
@@ -369,33 +369,42 @@ export function DataComplexityCards() {
 }
 
 function ScoreDisplayInline({
+  withTitle,
   score,
   ...rest
 }: {
+  withTitle?: boolean;
   score: ScoreAndRating | ScoreAndRatingError | DataComplexityFailure;
 } & MantineStyleProps) {
   return match(score)
     .with({ score: P.nullish }, { error: P.nonNullable }, () => (
       <Text c="error" fw={700} lh="1rem" ml="auto" {...rest}>
-        {t`Unavailable`}
+        {withTitle ? t`Complexity score unavailable` : t`Unavailable`}
       </Text>
     ))
     .with({ score: P.nonNullable }, ({ score, rating }) => {
       const ratingColorKey = rating ?? "default";
 
       return (
-        <Box
+        <Flex
           ml="auto"
           px={8}
           py={4}
           bdrs="sm"
           bg={RATING_BADGE_BACKGROUND_COLORS[ratingColorKey]}
           {...rest}
+          gap="sm"
         >
+          {withTitle && (
+            <Text
+              lh="1rem"
+              c={RATING_BADGE_TEXT_COLORS[ratingColorKey]}
+            >{t`Complexity score`}</Text>
+          )}
           <Text fw={700} lh="1rem" c={RATING_BADGE_TEXT_COLORS[ratingColorKey]}>
             {formatNumber(score, { maximumFractionDigits: 0 })}
           </Text>
-        </Box>
+        </Flex>
       );
     })
     .exhaustive();
