@@ -1,5 +1,27 @@
 import { useCallback, useMemo } from "react";
 
+import type {
+  MetricSourceId,
+  MetricsViewerDefinitionEntry,
+  MetricsViewerDisplayType,
+  MetricsViewerFormulaEntity,
+  MetricsViewerTabProjectionConfig,
+  MetricsViewerTabState,
+  SourceColorMap,
+} from "metabase/metrics-viewer/types/viewer-state";
+import { getProjectionInfo } from "metabase/metrics-viewer/utils/definition-builder";
+import type { DimensionFilterValue } from "metabase/metrics-viewer/utils/dimension-filters";
+import type {
+  AvailableDimensionsResult,
+  SourceDisplayInfo,
+} from "metabase/metrics-viewer/utils/dimension-picker";
+import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
+import {
+  buildDimensionItemsFromDefinitions,
+  shouldShowStackSeries,
+} from "metabase/metrics-viewer/utils/series";
+import { getTabConfig } from "metabase/metrics-viewer/utils/tab-config";
+import type { TabInfo } from "metabase/metrics-viewer/utils/tabs";
 import { Box, Flex, Stack } from "metabase/ui";
 import { getObjectKeys, getObjectValues } from "metabase/utils/objects";
 import { isNotNull } from "metabase/utils/types";
@@ -12,28 +34,6 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import type {
-  MetricSourceId,
-  MetricsViewerDefinitionEntry,
-  MetricsViewerDisplayType,
-  MetricsViewerFormulaEntity,
-  MetricsViewerTabProjectionConfig,
-  MetricsViewerTabState,
-  SourceColorMap,
-} from "../../../types/viewer-state";
-import { getProjectionInfo } from "../../../utils/definition-builder";
-import type { DimensionFilterValue } from "../../../utils/dimension-filters";
-import type {
-  AvailableDimensionsResult,
-  SourceDisplayInfo,
-} from "../../../utils/dimension-picker";
-import type { MetricSlot } from "../../../utils/metric-slots";
-import {
-  buildDimensionItemsFromDefinitions,
-  shouldShowStackSeries,
-} from "../../../utils/series";
-import { getTabConfig } from "../../../utils/tab-config";
-import type { TabInfo } from "../../../utils/tabs";
 import { DimensionPillBar } from "../../DimensionPillBar";
 import { MetricControls } from "../../MetricControls";
 import { MetricsViewerVisualization } from "../../MetricsViewerVisualization";

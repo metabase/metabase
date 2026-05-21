@@ -2,18 +2,13 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-
-import type { MetricSourceId } from "../../../types/viewer-state";
+import type { MetricSourceId } from "metabase/metrics-viewer/types";
 import type {
   AvailableDimensionsResult,
   SourceDisplayInfo,
-} from "../../../utils/dimension-picker";
+} from "metabase/metrics-viewer/utils/dimension-picker";
 
 import { AddDimensionPopover } from "./AddDimensionPopover";
-
-jest.mock("metabase/metrics-viewer/analytics", () => ({
-  trackMetricsViewerDimensionTabAdded: jest.fn(),
-}));
 
 const SOURCE_ID: MetricSourceId = "metric:1";
 
