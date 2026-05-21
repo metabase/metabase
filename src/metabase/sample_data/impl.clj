@@ -1,78 +1,41 @@
 (ns metabase.sample-data.impl
-  "Code related to adding the Sample Database on launch, or adding it back programmatically (used by the REST API)."
+  "Code related to adding the Sample Database on launch, or adding it back programmatically (used by the REST API).
+
+   The sample database is hosted by an embedded Postgres instance managed
+   in [[metabase.sample-data.embedded-postgres]]. We start that instance (or
+   reuse a running one) and then upsert a `:model/Database` row whose
+   `:details` point at the running server. The Postgres port is dynamic per
+   JVM boot, so `update-sample-database-if-needed!` re-writes the details on
+   every startup."
   (:require
-   [clojure.java.io :as io]
-   [metabase.plugins.core :as plugins]
+   [metabase.sample-data.embedded-postgres :as embedded-postgres]
    [metabase.sync.core :as sync]
-   [metabase.util.files :as u.files]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [ring.util.codec :as codec]
-   [toucan2.core :as t2])
-  (:import
-   (java.net URL)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ^String sample-database-name     "Sample Database")
-(def ^:private ^String sample-database-filename "sample-database.sqlite")
+(def ^:private ^String sample-database-name "Sample Database")
 
-(defn- sample-db-dir-from-env
-  "Change the folder from which we load the sample database, used locally to avoid E2E to use the same file used for local development"
-  []
-  (when-let [path (System/getenv "MB_INTERNAL_DO_NOT_USE_SAMPLE_DB_DIR")]
-    (u.files/get-path path)))
-
-;; Reuse the plugins directory for the destination to extract the sample database because it's pretty much guaranteed
-;; to exist and be writable.
-(defn- target-path
-  []
-  (let [base-dir (or (sample-db-dir-from-env)
-                     (plugins/plugins-dir))]
-    (u.files/append-to-path base-dir sample-database-filename)))
-
-(defn- process-sample-db-path
-  "SQLite `:details` only need a filesystem path. URL-decode in case the path
-   gets URL-encoded when sourced from a JAR `URL`."
-  [base-path]
-  (codec/url-decode base-path))
-
-(defn- extract-sample-database!
-  []
-  (u.files/with-open-path-to-resource [sample-db-path sample-database-filename]
-    (let [dest-path (target-path)]
-      (u.files/copy-file! sample-db-path dest-path)
-      (process-sample-db-path (str dest-path)))))
-
-(defn- try-to-extract-sample-database!
-  "Extracts the sample database out of the JAR to the plugins dir and returns a
-   db-details map containing the filesystem path. SQLite-JDBC requires a real
-   file on disk; unlike H2 it cannot read straight from a JAR, so the
-   plugins-dir-must-be-writable assumption is now load-bearing."
-  []
-  (let [^URL resource (io/resource sample-database-filename)]
-    (when-not resource
-      (throw (ex-info (trs "Sample database file ''{0}'' cannot be found."
-                           sample-database-filename)
-                      {:filename sample-database-filename})))
-    (when (:temp (plugins/plugins-dir-info))
-      (log/warn (str "Plugins directory is a temp directory; the sample database will be re-extracted on every startup. "
-                     "Set MB_PLUGINS_DIR to a writable directory to make this stable.")))
-    {:db (extract-sample-database!)}))
+(defn- sample-db-details []
+  (embedded-postgres/ensure-started!))
 
 (defn extract-and-sync-sample-database!
-  "Adds the sample database as a Metabase DB if it doesn't already exist. If it does exist in the app DB,
-  we update its details."
+  "Starts the embedded sample-data Postgres if needed, then adds or updates
+   the corresponding `:model/Database` row and runs a sync against it."
   []
   (try
     (log/info "Loading sample database")
-    (let [details (try-to-extract-sample-database!)
+    (let [details (sample-db-details)
           db (if (t2/exists? :model/Database :is_sample true)
-               (t2/select-one :model/Database (first (t2/update-returning-pks! :model/Database :is_sample true {:details details})))
+               (t2/select-one :model/Database
+                              (first (t2/update-returning-pks! :model/Database
+                                                               :is_sample true
+                                                               {:details details})))
                (first (t2/insert-returning-instances! :model/Database
                                                       :name      sample-database-name
                                                       :details   details
-                                                      :engine    :sqlite
+                                                      :engine    :postgres
                                                       :is_sample true)))]
       (log/debug "Syncing Sample Database...")
       (sync/sync-database! db))
@@ -81,12 +44,14 @@
       (log/error e "Failed to load sample database"))))
 
 (defn update-sample-database-if-needed!
-  "Update the path to the sample database DB if it exists in case the JAR has moved."
+  "Re-write the sample database's connection details if they no longer match
+   the running embedded Postgres (always true on a fresh JVM boot, since the
+   port is dynamic)."
   ([]
    (update-sample-database-if-needed! (t2/select-one :model/Database :is_sample true)))
 
   ([sample-db]
    (when sample-db
-     (let [intended (try-to-extract-sample-database!)]
+     (let [intended (sample-db-details)]
        (when (not= (:details sample-db) intended)
          (t2/update! :model/Database (:id sample-db) {:details intended}))))))

@@ -1,12 +1,11 @@
 (ns metabase.sample-data.impl-test
   "Tests to make sure the Sample Database syncs the way we would expect."
   (:require
-   [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.plugins.impl :as plugins]
+   [metabase.sample-data.embedded-postgres :as embedded-postgres]
    [metabase.sample-data.impl :as sample-data]
    [metabase.sync.core :as sync]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
@@ -18,16 +17,15 @@
 
 ;;; ---------------------------------------------------- Tooling -----------------------------------------------------
 
-;; These tools are pretty sophisticated for the amount of tests we have!
-
 (defn- sample-database-db
-  "POC: sample DB now SQLite-backed. `read-write?` was used to add
-  `;ACCESS_MODE_DATA=r` to the H2 URL; SQLite read-only mode is set via the
-  `mode=ro` query parameter on the JDBC URL, not via Metabase details, so we
-  drop that toggle here and rely on `mt/with-temp` cleanup."
+  "POC: sample DB is hosted by an embedded Postgres started via
+   [[metabase.sample-data.embedded-postgres/ensure-started!]]. The
+   `read-write?` argument exists for historical parity; PG doesn't have an
+   easy URL-level read-only toggle and the existing write tests rely on a
+   fresh sync after every test, so we ignore the flag."
   [_read-write?]
-  {:details (#'sample-data/try-to-extract-sample-database!)
-   :engine  :sqlite
+  {:details (embedded-postgres/ensure-started!)
+   :engine  :postgres
    :name    "Sample Database"})
 
 (defmacro ^:private with-temp-sample-database-db
@@ -51,19 +49,14 @@
 
 ;;; ----------------------------------------------------- Tests ------------------------------------------------------
 
-(def ^:private extracted-db-path-regex #".*plugins/sample-database\.sqlite$")
-
-(deftest extract-sample-database-test
-  (testing "The Sample Database is copied out of the JAR into the plugins directory before the DB details are saved."
-    (mt/with-dynamic-fn-redefs [sync/sync-database! (constantly nil)]
-      (with-temp-sample-database-db [db]
-        (let [db-path (get-in db [:details :db])]
-          (is (re-matches extracted-db-path-regex db-path))))))
-
-  ;; POC NOTE: removed the JAR-direct fallback test. SQLite-JDBC requires a
-  ;; real file on disk; we can no longer fall back to reading from inside the
-  ;; JAR. Subsequent startups with a writable plugins dir still extract OK.
-  (memoize/memo-clear! @#'plugins/plugins-dir*))
+(deftest start-embedded-postgres-test
+  (testing "ensure-started! returns details usable for a Metabase Database row"
+    (let [details (embedded-postgres/ensure-started!)]
+      (is (= "localhost" (:host details)))
+      (is (integer? (:port details)))
+      (is (pos-int? (:port details)))
+      (is (= "sample" (:dbname details)))
+      (is (= "postgres" (:user details))))))
 
 (deftest sync-sample-database-test
   (testing "Make sure the Sample Database is getting synced correctly."
@@ -71,7 +64,7 @@
       ;; Manually activate Field values since they are not created during sync (#53387)
       (field-values/get-or-create-full-field-values! (field db "PEOPLE" "NAME"))
       (is (= {:description      "The name of the user who owns an account"
-              :database_type    "CHARACTER VARYING"
+              :database_type    "varchar"
               :semantic_type    :type/Name
               :name             "NAME"
               :has_field_values :list
@@ -108,29 +101,28 @@
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
           (testing "update row"
             (let [quantity (fn []
-                             (->> (jdbc/query conn-spec "SELECT QUANTITY FROM ORDERS WHERE ID = 1;")
+                             (->> (jdbc/query conn-spec ["SELECT \"QUANTITY\" FROM \"ORDERS\" WHERE \"ID\" = 1"])
                                   (map :quantity)))]
               (testing "before"
                 (is (= [2]
                        (quantity))))
               (is (= [1]
-                     (jdbc/execute! conn-spec "UPDATE ORDERS SET QUANTITY = 1 WHERE ID = 1;")))
+                     (jdbc/execute! conn-spec ["UPDATE \"ORDERS\" SET \"QUANTITY\" = 1 WHERE \"ID\" = 1"])))
               (testing "after"
                 (is (= [1]
                        (quantity))))
-              ;; TODO: this shouldn't be necessary, since we're modifying a temp sample database.
               (testing "restore"
                 (is (= [1]
-                       (jdbc/execute! conn-spec "UPDATE ORDERS SET QUANTITY = 2 WHERE ID = 1;"))))))
+                       (jdbc/execute! conn-spec ["UPDATE \"ORDERS\" SET \"QUANTITY\" = 2 WHERE \"ID\" = 1"]))))))
           (let [rating (fn []
-                         (->> (jdbc/query conn-spec "SELECT RATING FROM PRODUCTS WHERE PRICE = 12.345;")
+                         (->> (jdbc/query conn-spec ["SELECT \"RATING\" FROM \"PRODUCTS\" WHERE \"PRICE\" = 12.345"])
                               (map :rating)))]
             (testing "before"
               (is (= []
                      (rating))))
             (testing "insert row"
               (is (= [1]
-                     (jdbc/execute! conn-spec "INSERT INTO PRODUCTS (price, rating) VALUES (12.345, 6.789);")))
+                     (jdbc/execute! conn-spec ["INSERT INTO \"PRODUCTS\" (\"PRICE\", \"RATING\") VALUES (12.345, 6.789)"])))
               (is (= [6.789]
                      (rating))))
             (testing "delete row"
@@ -138,20 +130,51 @@
                 (is (= [6.789]
                        (rating))))
               (is (= [1]
-                     (jdbc/execute! conn-spec "DELETE FROM PRODUCTS WHERE PRICE = 12.345;")))
+                     (jdbc/execute! conn-spec ["DELETE FROM \"PRODUCTS\" WHERE \"PRICE\" = 12.345"])))
               (testing "after"
                 (is (= []
                        (rating)))))))))))
 
-;; POC NOTE: the original `ddl-sample-database-test` exercised H2-specific
-;; DDL (`SHOW TABLES`, `CREATE SCHEMA`, `SHOW COLUMNS FROM`). SQLite has no
-;; schemas and no `SHOW` statements. The equivalent SQLite test would use
-;; `sqlite_master`, `PRAGMA table_info(...)`, and would skip the schema
-;; subtests entirely. Leaving disabled until the POC is promoted to a real
-;; design; rewriting it is mechanical but out of scope.
-(deftest ^:disabled ddl-sample-database-test
-  (testing "disabled in SQLite POC — rewrite needed"
-    (is true)))
+(deftest ddl-sample-database-test
+  (testing "should be able to execute DDL statements on the Sample Database"
+    (mt/with-temp [:model/Database db (sample-database-db true)]
+      (sync/sync-database! db)
+      (mt/with-db db
+        (let [conn-spec       (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              get-tables      (fn [] (set (mapv :table_name
+                                                (jdbc/query conn-spec
+                                                            ["SELECT table_name FROM information_schema.tables
+                                                              WHERE table_schema = current_schema()"]))))
+              show-columns    (fn [table-name]
+                                (set (mapv :column_name
+                                           (jdbc/query conn-spec
+                                                       ["SELECT column_name FROM information_schema.columns
+                                                         WHERE table_schema = current_schema() AND table_name = ?"
+                                                        table-name]))))
+              get-schemas     (fn [] (set (mapv :schema_name
+                                                (jdbc/query conn-spec
+                                                            ["SELECT schema_name FROM information_schema.schemata"]))))]
+          (testing "create schema"
+            (is (not (contains? (get-schemas) "new_schema")))
+            (jdbc/execute! conn-spec ["CREATE SCHEMA new_schema"])
+            (is (contains? (get-schemas) "new_schema")))
+          (testing "drop schema"
+            (jdbc/execute! conn-spec ["DROP SCHEMA new_schema"])
+            (is (not (contains? (get-schemas) "new_schema"))))
+          (testing "create table"
+            (is (not (contains? (get-tables) "new_table")))
+            (jdbc/execute! conn-spec ["CREATE TABLE new_table (id INTEGER)"])
+            (is (contains? (get-tables) "new_table"))
+            (testing "add column"
+              (is (not (contains? (show-columns "new_table") "new_column")))
+              (jdbc/execute! conn-spec ["ALTER TABLE new_table ADD COLUMN new_column VARCHAR(255)"])
+              (is (contains? (show-columns "new_table") "new_column"))
+              (testing "remove column"
+                (jdbc/execute! conn-spec ["ALTER TABLE new_table DROP COLUMN new_column"])
+                (is (not (contains? (show-columns "new_table") "new_column")))
+                (testing "drop table"
+                  (jdbc/execute! conn-spec ["DROP TABLE new_table"])
+                  (is (not (contains? (get-tables) "new_table"))))))))))))
 
 (deftest sample-database-schedule-sync-test
   (testing "Check that the sample database has scheduled sync jobs, just like a newly created database"

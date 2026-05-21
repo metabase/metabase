@@ -19,7 +19,7 @@
    :is_sample true,
    :id 1,
    :is_on_demand false,
-   :engine "sqlite",
+   :engine "postgres",
    :initial_sync_status "complete",
    :is_audit false,
    :dbms_version "{}",
@@ -94,7 +94,7 @@
  :metabase_table
  ({:description "Information on the user accounts registered with Sample Company.",
    :entity_type "entity/UserTable",
-   :schema nil,
+   :schema "public",
    :database_require_filter nil,
    :show_in_getting_started false,
    :name "PEOPLE",
@@ -113,7 +113,7 @@
    :points_of_interest "Is it? You tell us!"}
   {:description "Confirmed Sample Company orders for a product, from a user.",
    :entity_type "entity/TransactionTable",
-   :schema nil,
+   :schema "public",
    :database_require_filter nil,
    :show_in_getting_started false,
    :name "ORDERS",
@@ -133,7 +133,7 @@
    :points_of_interest "Is it? You tell us!"}
   {:description "Includes a catalog of all the products ever sold by the famed Sample Company.",
    :entity_type "entity/ProductTable",
-   :schema nil,
+   :schema "public",
    :database_require_filter nil,
    :show_in_getting_started false,
    :name "PRODUCTS",
@@ -152,7 +152,7 @@
    :points_of_interest "Is it? You tell us!"}
   {:description "Reviews that Sample Company customers have left on our products.",
    :entity_type "entity/GenericTable",
-   :schema nil,
+   :schema "public",
    :database_require_filter nil,
    :show_in_getting_started false,
    :name "REVIEWS",
@@ -173,7 +173,7 @@
   {:description
    "With each order of pies sent out, Piespace includes a place for customers to submit feedback and review their order.",
    :entity_type "entity/GenericTable",
-   :schema nil,
+   :schema "public",
    :database_require_filter nil,
    :show_in_getting_started false,
    :name "FEEDBACK",
@@ -194,7 +194,7 @@
   {:description
    "Information on customer accounts registered with Piespace. Each account represents a new organization signing up for on-demand pies.",
    :entity_type "entity/UserTable",
-   :schema nil,
+   :schema "public",
    :database_require_filter nil,
    :show_in_getting_started false,
    :name "ACCOUNTS",
@@ -215,7 +215,7 @@
   {:description
    "Piespace does some anonymous analytics tracking on how users interact with their platform. They’ve only had time to implement a few events, but you know how it is. Pies come first.",
    :entity_type "entity/EventTable",
-   :schema nil,
+   :schema "public",
    :database_require_filter nil,
    :show_in_getting_started false,
    :name "ANALYTIC_EVENTS",
@@ -236,7 +236,7 @@
   {:description
    "Confirmed payments from Piespace’s customers. Most accounts pay for their pie subscription on a monthly basis.",
    :entity_type "entity/GenericTable",
-   :schema nil,
+   :schema "public",
    :database_require_filter nil,
    :show_in_getting_started false,
    :name "INVOICES",
@@ -826,7 +826,7 @@
    :updated_at #t "2026-02-23T11:14:53.782096Z"}),
  :metabase_field
  ({:description "The state or province of the account’s billing address",
-   :database_type "CHARACTER",
+   :database_type "text",
    :semantic_type "type/State",
    :table_id 1,
    :coercion_strategy nil,
@@ -848,7 +848,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description "Number of products bought.",
-   :database_type "INTEGER",
+   :database_type "int4",
    :semantic_type "type/Quantity",
    :table_id 2,
    :coercion_strategy nil,
@@ -870,7 +870,7 @@
    :base_type "type/Integer",
    :points_of_interest nil}
   {:description "Discount amount.",
-   :database_type "DOUBLE PRECISION",
+   :database_type "float8",
    :semantic_type "type/Discount",
    :table_id 2,
    :coercion_strategy nil,
@@ -892,7 +892,7 @@
    :base_type "type/Float",
    :points_of_interest nil}
   {:description "A unique identifier given to each user.",
-   :database_type "BIGINT",
+   :database_type "int8",
    :semantic_type "type/PK",
    :table_id 1,
    :coercion_strategy nil,
@@ -914,7 +914,7 @@
    :base_type "type/BigInteger",
    :points_of_interest nil}
   {:description "The total billed amount.",
-   :database_type "DOUBLE PRECISION",
+   :database_type "float8",
    :semantic_type nil,
    :table_id 2,
    :coercion_strategy nil,
@@ -937,7 +937,7 @@
    :points_of_interest nil}
   {:description
    "This is the amount of local and federal taxes that are collected on the purchase. Note that other governmental fees on some products are not included here, but instead are accounted for in the subtotal.",
-   :database_type "DOUBLE PRECISION",
+   :database_type "float8",
    :semantic_type nil,
    :table_id 2,
    :coercion_strategy nil,
@@ -959,7 +959,7 @@
    :base_type "type/Float",
    :points_of_interest nil}
   {:description "The contact email for the account.",
-   :database_type "CHARACTER VARYING",
+   :database_type "varchar",
    :semantic_type "type/Email",
    :table_id 1,
    :coercion_strategy nil,
@@ -982,7 +982,7 @@
    :points_of_interest nil}
   {:description
    "The numerical product number. Only used internally. All external communication should use the title or EAN.",
-   :database_type "BIGINT",
+   :database_type "int8",
    :semantic_type "type/PK",
    :table_id 3,
    :coercion_strategy nil,
@@ -1005,7 +1005,7 @@
    :points_of_interest nil}
   {:description
    "This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens.",
-   :database_type "BIGINT",
+   :database_type "int8",
    :semantic_type "type/PK",
    :table_id 2,
    :coercion_strategy nil,
@@ -1028,7 +1028,7 @@
    :points_of_interest nil}
   {:description
    "The raw, pre-tax cost of the order. Note that this might be different in the future from the product price due to promotions, credits, etc.",
-   :database_type "DOUBLE PRECISION",
+   :database_type "float8",
    :semantic_type nil,
    :table_id 2,
    :coercion_strategy nil,
@@ -1051,7 +1051,7 @@
    :points_of_interest nil}
   {:description
    "The id of the user who made this order. Note that in some cases where an order was created on behalf of a customer who phoned the order in, this might be the employee who handled the request.",
-   :database_type "INTEGER",
+   :database_type "int4",
    :semantic_type "type/FK",
    :table_id 2,
    :coercion_strategy nil,
@@ -1073,7 +1073,7 @@
    :base_type "type/Integer",
    :points_of_interest nil}
   {:description "The date of birth of the user",
-   :database_type "DATE",
+   :database_type "date",
    :semantic_type nil,
    :table_id 1,
    :coercion_strategy nil,
@@ -1095,7 +1095,7 @@
    :base_type "type/Date",
    :points_of_interest nil}
   {:description "The date and time an order was submitted.",
-   :database_type "TIMESTAMP",
+   :database_type "timestamp",
    :semantic_type "type/CreationTimestamp",
    :table_id 2,
    :coercion_strategy nil,
@@ -1117,7 +1117,7 @@
    :base_type "type/DateTime",
    :points_of_interest nil}
   {:description "The product ID. This is an internal identifier for the product, NOT the SKU.",
-   :database_type "INTEGER",
+   :database_type "int4",
    :semantic_type "type/FK",
    :table_id 2,
    :coercion_strategy nil,
@@ -1139,7 +1139,7 @@
    :base_type "type/Integer",
    :points_of_interest nil}
   {:description "The international article number. A 13 digit number uniquely identifying the product.",
-   :database_type "CHARACTER",
+   :database_type "text",
    :semantic_type nil,
    :table_id 3,
    :coercion_strategy nil,
@@ -1161,7 +1161,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description "The average rating users have given the product. This ranges from 1 - 5",
-   :database_type "DOUBLE PRECISION",
+   :database_type "float8",
    :semantic_type "type/Score",
    :table_id 3,
    :coercion_strategy nil,
@@ -1183,7 +1183,7 @@
    :base_type "type/Float",
    :points_of_interest nil}
   {:description "The name of the product as it should be displayed to customers.",
-   :database_type "CHARACTER VARYING",
+   :database_type "varchar",
    :semantic_type "type/Title",
    :table_id 3,
    :coercion_strategy nil,
@@ -1205,7 +1205,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
-   :database_type "CHARACTER VARYING",
+   :database_type "varchar",
    :semantic_type "type/Category",
    :table_id 3,
    :coercion_strategy nil,
@@ -1227,7 +1227,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description "The rating (on a scale of 1-5) the user left.",
-   :database_type "SMALLINT",
+   :database_type "int2",
    :semantic_type "type/Score",
    :table_id 4,
    :coercion_strategy nil,
@@ -1249,7 +1249,7 @@
    :base_type "type/Integer",
    :points_of_interest nil}
   {:description nil,
-   :database_type "BIGINT",
+   :database_type "int8",
    :semantic_type "type/PK",
    :table_id 5,
    :coercion_strategy nil,
@@ -1271,7 +1271,7 @@
    :base_type "type/BigInteger",
    :points_of_interest nil}
   {:description nil,
-   :database_type "DOUBLE PRECISION",
+   :database_type "float8",
    :semantic_type "type/Longitude",
    :table_id 6,
    :coercion_strategy nil,
@@ -1293,7 +1293,7 @@
    :base_type "type/Float",
    :points_of_interest nil}
   {:description nil,
-   :database_type "SMALLINT",
+   :database_type "int2",
    :semantic_type "type/Score",
    :table_id 5,
    :coercion_strategy nil,
@@ -1315,7 +1315,7 @@
    :base_type "type/Integer",
    :points_of_interest nil}
   {:description nil,
-   :database_type "CHARACTER VARYING",
+   :database_type "varchar",
    :semantic_type "type/Category",
    :table_id 5,
    :coercion_strategy nil,
@@ -1337,7 +1337,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description nil,
-   :database_type "BIGINT",
+   :database_type "int8",
    :semantic_type "type/PK",
    :table_id 6,
    :coercion_strategy nil,
@@ -1359,7 +1359,7 @@
    :base_type "type/BigInteger",
    :points_of_interest nil}
   {:description nil,
-   :database_type "BIGINT",
+   :database_type "int8",
    :semantic_type "type/FK",
    :table_id 5,
    :coercion_strategy nil,
@@ -1381,7 +1381,7 @@
    :base_type "type/BigInteger",
    :points_of_interest nil}
   {:description nil,
-   :database_type "CHARACTER VARYING",
+   :database_type "varchar",
    :semantic_type "type/Email",
    :table_id 5,
    :coercion_strategy nil,
@@ -1403,7 +1403,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description nil,
-   :database_type "TIMESTAMP",
+   :database_type "timestamp",
    :semantic_type nil,
    :table_id 5,
    :coercion_strategy nil,
@@ -1425,7 +1425,7 @@
    :base_type "type/DateTime",
    :points_of_interest nil}
   {:description nil,
-   :database_type "CHARACTER LARGE OBJECT",
+   :database_type "text",
    :semantic_type nil,
    :table_id 5,
    :coercion_strategy nil,
@@ -1447,7 +1447,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description nil,
-   :database_type "CHARACTER VARYING",
+   :database_type "varchar",
    :semantic_type "type/Category",
    :table_id 7,
    :coercion_strategy nil,
@@ -1470,7 +1470,7 @@
    :points_of_interest nil}
   {:description
    "The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter",
-   :database_type "CHARACTER VARYING",
+   :database_type "varchar",
    :semantic_type "type/Source",
    :table_id 1,
    :coercion_strategy nil,
@@ -1492,7 +1492,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description nil,
-   :database_type "TIMESTAMP",
+   :database_type "timestamp",
    :semantic_type "type/CreationTimestamp",
    :table_id 6,
    :coercion_strategy nil,
@@ -1514,7 +1514,7 @@
    :base_type "type/DateTime",
    :points_of_interest nil}
   {:description nil,
-   :database_type "CHARACTER VARYING",
+   :database_type "varchar",
    :semantic_type "type/Category",
    :table_id 7,
    :coercion_strategy nil,
@@ -1536,7 +1536,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description nil,
-   :database_type "INTEGER",
+   :database_type "int4",
    :semantic_type nil,
    :table_id 6,
    :coercion_strategy nil,
@@ -1558,7 +1558,7 @@
    :base_type "type/Integer",
    :points_of_interest nil}
   {:description "The source of the product.",
-   :database_type "CHARACTER VARYING",
+   :database_type "varchar",
    :semantic_type "type/Company",
    :table_id 3,
    :coercion_strategy nil,
@@ -1580,7 +1580,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description nil,
-   :database_type "TIMESTAMP",
+   :database_type "timestamp",
    :semantic_type nil,
    :table_id 7,
    :coercion_strategy nil,
@@ -1602,7 +1602,7 @@
    :base_type "type/DateTime",
    :points_of_interest nil}
   {:description nil,
-   :database_type "CHARACTER VARYING",
+   :database_type "varchar",
    :semantic_type "type/Name",
    :table_id 6,
    :coercion_strategy nil,
@@ -1624,7 +1624,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description nil,
-   :database_type "CHARACTER VARYING",
+   :database_type "varchar",
    :semantic_type "type/Name",
    :table_id 6,
    :coercion_strategy nil,
@@ -1646,7 +1646,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description nil,
-   :database_type "BOOLEAN",
+   :database_type "bool",
    :semantic_type nil,
    :table_id 6,
    :coercion_strategy nil,
@@ -1668,7 +1668,7 @@
    :base_type "type/Boolean",
    :points_of_interest nil}
   {:description nil,
-   :database_type "TIMESTAMP",
+   :database_type "timestamp",
    :semantic_type "type/CancelationTimestamp",
    :table_id 6,
    :coercion_strategy nil,
@@ -1690,7 +1690,7 @@
    :base_type "type/DateTime",
    :points_of_interest nil}
   {:description nil,
-   :database_type "TIMESTAMP",
+   :database_type "timestamp",
    :semantic_type nil,
    :table_id 6,
    :coercion_strategy nil,
@@ -1712,7 +1712,7 @@
    :base_type "type/DateTime",
    :points_of_interest nil}
   {:description nil,
-   :database_type "CHARACTER VARYING",
+   :database_type "varchar",
    :semantic_type "type/Source",
    :table_id 6,
    :coercion_strategy nil,
@@ -1734,7 +1734,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description nil,
-   :database_type "BOOLEAN",
+   :database_type "bool",
    :semantic_type nil,
    :table_id 6,
    :coercion_strategy nil,
@@ -1756,7 +1756,7 @@
    :base_type "type/Boolean",
    :points_of_interest nil}
   {:description nil,
-   :database_type "CHARACTER VARYING",
+   :database_type "varchar",
    :semantic_type "type/Category",
    :table_id 6,
    :coercion_strategy nil,
@@ -1779,7 +1779,7 @@
    :points_of_interest nil}
   {:description
    "The list price of the product. Note that this is not always the price the product sold for due to discounts, promotions, etc.",
-   :database_type "DOUBLE PRECISION",
+   :database_type "float8",
    :semantic_type nil,
    :table_id 3,
    :coercion_strategy nil,
@@ -1801,7 +1801,7 @@
    :base_type "type/Float",
    :points_of_interest nil}
   {:description nil,
-   :database_type "BIGINT",
+   :database_type "int8",
    :semantic_type "type/FK",
    :table_id 7,
    :coercion_strategy nil,
@@ -1823,7 +1823,7 @@
    :base_type "type/BigInteger",
    :points_of_interest nil}
   {:description nil,
-   :database_type "CHARACTER VARYING",
+   :database_type "varchar",
    :semantic_type "type/Category",
    :table_id 8,
    :coercion_strategy nil,
@@ -1845,7 +1845,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description nil,
-   :database_type "BOOLEAN",
+   :database_type "bool",
    :semantic_type nil,
    :table_id 6,
    :coercion_strategy nil,
@@ -1867,7 +1867,7 @@
    :base_type "type/Boolean",
    :points_of_interest nil}
   {:description "The name of the user who owns an account",
-   :database_type "CHARACTER VARYING",
+   :database_type "varchar",
    :semantic_type "type/Name",
    :table_id 1,
    :coercion_strategy nil,
@@ -1889,7 +1889,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description nil,
-   :database_type "CHARACTER VARYING",
+   :database_type "varchar",
    :semantic_type "type/URL",
    :table_id 7,
    :coercion_strategy nil,
@@ -1911,7 +1911,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description "The date the user record was created. Also referred to as the user’s \"join date\"",
-   :database_type "TIMESTAMP",
+   :database_type "timestamp",
    :semantic_type "type/CreationTimestamp",
    :table_id 1,
    :coercion_strategy nil,
@@ -1933,7 +1933,7 @@
    :base_type "type/DateTime",
    :points_of_interest nil}
   {:description "The street address of the account’s billing address",
-   :database_type "CHARACTER VARYING",
+   :database_type "varchar",
    :semantic_type nil,
    :table_id 1,
    :coercion_strategy nil,
@@ -1956,7 +1956,7 @@
    :points_of_interest nil}
   {:description
    "This is the latitude of the user on sign-up. It might be updated in the future to the last seen location.",
-   :database_type "DOUBLE PRECISION",
+   :database_type "float8",
    :semantic_type "type/Latitude",
    :table_id 1,
    :coercion_strategy nil,
@@ -1978,7 +1978,7 @@
    :base_type "type/Float",
    :points_of_interest nil}
   {:description "The city of the account’s billing address",
-   :database_type "CHARACTER VARYING",
+   :database_type "varchar",
    :semantic_type "type/City",
    :table_id 1,
    :coercion_strategy nil,
@@ -2000,7 +2000,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description "This is the salted password of the user. It should not be visible",
-   :database_type "CHARACTER VARYING",
+   :database_type "varchar",
    :semantic_type nil,
    :table_id 1,
    :coercion_strategy nil,
@@ -2022,7 +2022,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description "The day and time a review was written by a user.",
-   :database_type "TIMESTAMP",
+   :database_type "timestamp",
    :semantic_type "type/CreationTimestamp",
    :table_id 4,
    :coercion_strategy nil,
@@ -2044,7 +2044,7 @@
    :base_type "type/DateTime",
    :points_of_interest nil}
   {:description nil,
-   :database_type "CHARACTER",
+   :database_type "text",
    :semantic_type "type/Country",
    :table_id 6,
    :coercion_strategy nil,
@@ -2066,7 +2066,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description nil,
-   :database_type "DOUBLE PRECISION",
+   :database_type "float8",
    :semantic_type "type/Latitude",
    :table_id 6,
    :coercion_strategy nil,
@@ -2089,7 +2089,7 @@
    :points_of_interest nil}
   {:description
    "This is the longitude of the user on sign-up. It might be updated in the future to the last seen location.",
-   :database_type "DOUBLE PRECISION",
+   :database_type "float8",
    :semantic_type "type/Longitude",
    :table_id 1,
    :coercion_strategy nil,
@@ -2111,7 +2111,7 @@
    :base_type "type/Float",
    :points_of_interest nil}
   {:description "A unique internal identifier for the review. Should not be used externally.",
-   :database_type "BIGINT",
+   :database_type "int8",
    :semantic_type "type/PK",
    :table_id 4,
    :coercion_strategy nil,
@@ -2133,7 +2133,7 @@
    :base_type "type/BigInteger",
    :points_of_interest nil}
   {:description nil,
-   :database_type "BIGINT",
+   :database_type "int8",
    :semantic_type "type/PK",
    :table_id 7,
    :coercion_strategy nil,
@@ -2155,7 +2155,7 @@
    :base_type "type/BigInteger",
    :points_of_interest nil}
   {:description "The postal code of the account’s billing address",
-   :database_type "CHARACTER",
+   :database_type "text",
    :semantic_type "type/ZipCode",
    :table_id 1,
    :coercion_strategy nil,
@@ -2177,7 +2177,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description nil,
-   :database_type "CHARACTER VARYING",
+   :database_type "varchar",
    :semantic_type "type/Email",
    :table_id 6,
    :coercion_strategy nil,
@@ -2199,7 +2199,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description "The date the product was added to our catalog.",
-   :database_type "TIMESTAMP",
+   :database_type "timestamp",
    :semantic_type "type/CreationTimestamp",
    :table_id 3,
    :coercion_strategy nil,
@@ -2221,7 +2221,7 @@
    :base_type "type/DateTime",
    :points_of_interest nil}
   {:description nil,
-   :database_type "DOUBLE PRECISION",
+   :database_type "float8",
    :semantic_type nil,
    :table_id 8,
    :coercion_strategy nil,
@@ -2243,7 +2243,7 @@
    :base_type "type/Float",
    :points_of_interest nil}
   {:description "The product the review was for",
-   :database_type "INTEGER",
+   :database_type "int4",
    :semantic_type "type/FK",
    :table_id 4,
    :coercion_strategy nil,
@@ -2265,7 +2265,7 @@
    :base_type "type/Integer",
    :points_of_interest nil}
   {:description nil,
-   :database_type "BIGINT",
+   :database_type "int8",
    :semantic_type "type/FK",
    :table_id 8,
    :coercion_strategy nil,
@@ -2287,7 +2287,7 @@
    :base_type "type/BigInteger",
    :points_of_interest nil}
   {:description "The user who left the review",
-   :database_type "CHARACTER VARYING",
+   :database_type "varchar",
    :semantic_type nil,
    :table_id 4,
    :coercion_strategy nil,
@@ -2309,7 +2309,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description nil,
-   :database_type "BIGINT",
+   :database_type "int8",
    :semantic_type "type/PK",
    :table_id 8,
    :coercion_strategy nil,
@@ -2331,7 +2331,7 @@
    :base_type "type/BigInteger",
    :points_of_interest nil}
   {:description "The review the user left. Limited to 2000 characters.",
-   :database_type "CHARACTER VARYING",
+   :database_type "varchar",
    :semantic_type "type/Description",
    :table_id 4,
    :coercion_strategy nil,
@@ -2353,7 +2353,7 @@
    :base_type "type/Text",
    :points_of_interest nil}
   {:description nil,
-   :database_type "BOOLEAN",
+   :database_type "bool",
    :semantic_type nil,
    :table_id 8,
    :coercion_strategy nil,
@@ -2375,7 +2375,7 @@
    :base_type "type/Boolean",
    :points_of_interest nil}
   {:description nil,
-   :database_type "TIMESTAMP",
+   :database_type "timestamp",
    :semantic_type nil,
    :table_id 8,
    :coercion_strategy nil,
@@ -2474,7 +2474,7 @@
    :source_card_id nil,
    :table_id 2,
    :result_metadata
-   "[{\"description\":\"The average rating users have given the product. This ranges from 1 - 5\",\"database_type\":\"DOUBLE PRECISION\",\"semantic_type\":\"type/Score\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"RATING\",\"lib/original-name\":\"RATING\",\"lib/breakout?\":true,\"name\":\"RATING\",\"lib/source\":\"source/implicitly-joinable\",\"lib/source-column-alias\":\"RATING\",\"lib/original-display-name\":\"Rating\",\"source\":\"breakout\",\"fk_field_id\":14,\"field_ref\":[\"field\",16,{\"source-field\":14}],\"effective_type\":\"type/Float\",\"active\":true,\"id\":16,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__RATING\",\"position\":6,\"visibility_type\":\"normal\",\"display_name\":\"Product → Rating\",\"fingerprint\":{\"global\":{\"distinct-count\":23,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":0.0,\"q1\":3.5120465053408525,\"q3\":4.216124969497314,\"max\":5.0,\"sd\":1.3605488657451452,\"avg\":3.4715}}},\"base_type\":\"type/Float\"},{\"description\":\"The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget\",\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":\"type/Category\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"CATEGORY\",\"lib/original-name\":\"CATEGORY\",\"lib/breakout?\":true,\"name\":\"CATEGORY\",\"lib/source\":\"source/implicitly-joinable\",\"lib/source-column-alias\":\"CATEGORY\",\"lib/original-display-name\":\"Category\",\"source\":\"breakout\",\"fk_field_id\":14,\"field_ref\":[\"field\",18,{\"source-field\":14}],\"effective_type\":\"type/Text\",\"active\":true,\"id\":18,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__CATEGORY\",\"position\":3,\"visibility_type\":\"normal\",\"display_name\":\"Product → Category\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":6.375}}},\"base_type\":\"type/Text\"},{\"database_type\":\"BIGINT\",\"semantic_type\":\"type/Quantity\",\"lib/deduplicated-name\":\"count\",\"lib/original-name\":\"count\",\"name\":\"count\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"count\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",0],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"count\",\"display_name\":\"Count\",\"fingerprint\":{\"global\":{\"distinct-count\":57,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":70.0,\"q1\":105.0,\"q3\":370.0,\"max\":1093.0,\"sd\":229.88812521865958,\"avg\":281.6060606060606}}},\"base_type\":\"type/BigInteger\"}]",
+   "[{\"description\":\"The average rating users have given the product. This ranges from 1 - 5\",\"database_type\":\"float8\",\"semantic_type\":\"type/Score\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"RATING\",\"lib/original-name\":\"RATING\",\"lib/breakout?\":true,\"name\":\"RATING\",\"lib/source\":\"source/implicitly-joinable\",\"lib/source-column-alias\":\"RATING\",\"lib/original-display-name\":\"Rating\",\"source\":\"breakout\",\"fk_field_id\":14,\"field_ref\":[\"field\",16,{\"source-field\":14}],\"effective_type\":\"type/Float\",\"active\":true,\"id\":16,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__RATING\",\"position\":6,\"visibility_type\":\"normal\",\"display_name\":\"Product → Rating\",\"fingerprint\":{\"global\":{\"distinct-count\":23,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":0.0,\"q1\":3.5120465053408525,\"q3\":4.216124969497314,\"max\":5.0,\"sd\":1.3605488657451452,\"avg\":3.4715}}},\"base_type\":\"type/Float\"},{\"description\":\"The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget\",\"database_type\":\"varchar\",\"semantic_type\":\"type/Category\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"CATEGORY\",\"lib/original-name\":\"CATEGORY\",\"lib/breakout?\":true,\"name\":\"CATEGORY\",\"lib/source\":\"source/implicitly-joinable\",\"lib/source-column-alias\":\"CATEGORY\",\"lib/original-display-name\":\"Category\",\"source\":\"breakout\",\"fk_field_id\":14,\"field_ref\":[\"field\",18,{\"source-field\":14}],\"effective_type\":\"type/Text\",\"active\":true,\"id\":18,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__CATEGORY\",\"position\":3,\"visibility_type\":\"normal\",\"display_name\":\"Product → Category\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":6.375}}},\"base_type\":\"type/Text\"},{\"database_type\":\"int8\",\"semantic_type\":\"type/Quantity\",\"lib/deduplicated-name\":\"count\",\"lib/original-name\":\"count\",\"name\":\"count\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"count\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",0],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"count\",\"display_name\":\"Count\",\"fingerprint\":{\"global\":{\"distinct-count\":57,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":70.0,\"q1\":105.0,\"q3\":370.0,\"max\":1093.0,\"sd\":229.88812521865958,\"avg\":281.6060606060606}}},\"base_type\":\"type/BigInteger\"}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,
@@ -2544,7 +2544,7 @@
    :source_card_id nil,
    :table_id 5,
    :result_metadata
-   "[{\"database_type\":\"BIGINT\",\"semantic_type\":\"type/PK\",\"table_id\":5,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"ID\",\"lib/original-name\":\"ID\",\"name\":\"ID\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"ID\",\"lib/original-display-name\":\"ID\",\"source\":\"fields\",\"field_ref\":[\"field\",20,null],\"effective_type\":\"type/BigInteger\",\"active\":true,\"id\":20,\"lib/desired-column-alias\":\"ID\",\"position\":0,\"visibility_type\":\"normal\",\"display_name\":\"ID\",\"fingerprint\":null,\"base_type\":\"type/BigInteger\"},{\"database_type\":\"BIGINT\",\"semantic_type\":\"type/FK\",\"table_id\":5,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"ACCOUNT_ID\",\"lib/original-name\":\"ACCOUNT_ID\",\"name\":\"ACCOUNT_ID\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"ACCOUNT_ID\",\"lib/original-display-name\":\"Account ID\",\"lib/external-remap\":{\"lib/type\":\"metadata.column.remapping/external\",\"id\":4,\"name\":\"Account ID\",\"field-id\":62},\"source\":\"fields\",\"fk_target_field_id\":24,\"field_ref\":[\"field\",25,null],\"effective_type\":\"type/BigInteger\",\"remapped_to\":\"EMAIL_2\",\"active\":true,\"id\":25,\"lib/desired-column-alias\":\"ACCOUNT_ID\",\"position\":1,\"visibility_type\":\"normal\",\"options\":{\"metabase.query-processor.middleware.add-remaps/original-field-dimension-id\":4},\"display_name\":\"Account ID\",\"fingerprint\":{\"global\":{\"distinct-count\":642,\"nil%\":0.0}},\"base_type\":\"type/BigInteger\"},{\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":\"type/Email\",\"table_id\":5,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"EMAIL\",\"lib/original-name\":\"EMAIL\",\"name\":\"EMAIL\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"EMAIL\",\"lib/original-display-name\":\"Email\",\"source\":\"fields\",\"field_ref\":[\"field\",26,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":26,\"lib/desired-column-alias\":\"EMAIL\",\"position\":2,\"visibility_type\":\"normal\",\"display_name\":\"Email\",\"fingerprint\":{\"global\":{\"distinct-count\":642,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":1.0,\"percent-state\":0.0,\"average-length\":28.327102803738317}}},\"base_type\":\"type/Text\"},{\"database_type\":\"TIMESTAMP\",\"semantic_type\":null,\"table_id\":5,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"DATE_RECEIVED\",\"lib/original-name\":\"DATE_RECEIVED\",\"name\":\"DATE_RECEIVED\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"DATE_RECEIVED\",\"lib/original-display-name\":\"Date Received\",\"source\":\"fields\",\"field_ref\":[\"field\",27,null],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":27,\"lib/desired-column-alias\":\"DATE_RECEIVED\",\"position\":3,\"visibility_type\":\"normal\",\"display_name\":\"Date Received\",\"fingerprint\":{\"global\":{\"distinct-count\":576,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2020-11-20T00:00:00Z\",\"latest\":\"2031-12-01T00:00:00Z\"}}},\"base_type\":\"type/DateTime\"},{\"database_type\":\"SMALLINT\",\"semantic_type\":\"type/Score\",\"table_id\":5,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"RATING\",\"lib/original-name\":\"RATING\",\"name\":\"RATING\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"RATING\",\"lib/original-display-name\":\"Rating\",\"source\":\"fields\",\"field_ref\":[\"field\",22,null],\"effective_type\":\"type/Integer\",\"active\":true,\"id\":22,\"lib/desired-column-alias\":\"RATING\",\"position\":4,\"visibility_type\":\"normal\",\"display_name\":\"Rating\",\"fingerprint\":{\"global\":{\"distinct-count\":5,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":1.0,\"q1\":2.7545289729206877,\"q3\":4.004191340512663,\"max\":5.0,\"sd\":0.8137255616667736,\"avg\":3.3629283489096573}}},\"base_type\":\"type/Integer\"},{\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":\"type/Category\",\"table_id\":5,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"RATING_MAPPED\",\"lib/original-name\":\"RATING_MAPPED\",\"name\":\"RATING_MAPPED\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"RATING_MAPPED\",\"lib/original-display-name\":\"Rating Mapped\",\"source\":\"fields\",\"field_ref\":[\"field\",23,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":23,\"lib/desired-column-alias\":\"RATING_MAPPED\",\"position\":5,\"visibility_type\":\"normal\",\"display_name\":\"Rating Mapped\",\"fingerprint\":{\"global\":{\"distinct-count\":5,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":6.453271028037383}}},\"base_type\":\"type/Text\"},{\"database_type\":\"CHARACTER LARGE OBJECT\",\"semantic_type\":null,\"table_id\":5,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"BODY\",\"lib/original-name\":\"BODY\",\"name\":\"BODY\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"BODY\",\"lib/original-display-name\":\"Body\",\"source\":\"fields\",\"field_ref\":[\"field\",28,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":28,\"lib/desired-column-alias\":\"BODY\",\"position\":6,\"visibility_type\":\"normal\",\"display_name\":\"Body\",\"fingerprint\":{\"global\":{\"distinct-count\":642,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":438.15264797507785}}},\"base_type\":\"type/Text\"},{\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":\"type/Email\",\"table_id\":6,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"EMAIL_2\",\"lib/original-name\":\"EMAIL\",\"lib/breakout?\":false,\"name\":\"EMAIL_2\",\"lib/source\":\"source/implicitly-joinable\",\"lib/source-column-alias\":\"EMAIL\",\"lib/original-display-name\":\"Email\",\"source\":\"fields\",\"remapped_from\":\"ACCOUNT_ID\",\"fk_field_id\":25,\"field_ref\":[\"field\",62,{\"source-field\":25}],\"effective_type\":\"type/Text\",\"active\":true,\"id\":62,\"lib/desired-column-alias\":\"ACCOUNTS__via__ACCOUNT_ID__EMAIL\",\"position\":1,\"visibility_type\":\"normal\",\"options\":{\"metabase.query-processor.middleware.add-remaps/new-field-dimension-id\":4},\"display_name\":\"Account ID\",\"fingerprint\":{\"global\":{\"distinct-count\":2494,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":1.0,\"percent-state\":0.0,\"average-length\":28.185971943887775}}},\"base_type\":\"type/Text\"}]",
+   "[{\"database_type\":\"int8\",\"semantic_type\":\"type/PK\",\"table_id\":5,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"ID\",\"lib/original-name\":\"ID\",\"name\":\"ID\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"ID\",\"lib/original-display-name\":\"ID\",\"source\":\"fields\",\"field_ref\":[\"field\",20,null],\"effective_type\":\"type/BigInteger\",\"active\":true,\"id\":20,\"lib/desired-column-alias\":\"ID\",\"position\":0,\"visibility_type\":\"normal\",\"display_name\":\"ID\",\"fingerprint\":null,\"base_type\":\"type/BigInteger\"},{\"database_type\":\"int8\",\"semantic_type\":\"type/FK\",\"table_id\":5,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"ACCOUNT_ID\",\"lib/original-name\":\"ACCOUNT_ID\",\"name\":\"ACCOUNT_ID\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"ACCOUNT_ID\",\"lib/original-display-name\":\"Account ID\",\"lib/external-remap\":{\"lib/type\":\"metadata.column.remapping/external\",\"id\":4,\"name\":\"Account ID\",\"field-id\":62},\"source\":\"fields\",\"fk_target_field_id\":24,\"field_ref\":[\"field\",25,null],\"effective_type\":\"type/BigInteger\",\"remapped_to\":\"EMAIL_2\",\"active\":true,\"id\":25,\"lib/desired-column-alias\":\"ACCOUNT_ID\",\"position\":1,\"visibility_type\":\"normal\",\"options\":{\"metabase.query-processor.middleware.add-remaps/original-field-dimension-id\":4},\"display_name\":\"Account ID\",\"fingerprint\":{\"global\":{\"distinct-count\":642,\"nil%\":0.0}},\"base_type\":\"type/BigInteger\"},{\"database_type\":\"varchar\",\"semantic_type\":\"type/Email\",\"table_id\":5,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"EMAIL\",\"lib/original-name\":\"EMAIL\",\"name\":\"EMAIL\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"EMAIL\",\"lib/original-display-name\":\"Email\",\"source\":\"fields\",\"field_ref\":[\"field\",26,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":26,\"lib/desired-column-alias\":\"EMAIL\",\"position\":2,\"visibility_type\":\"normal\",\"display_name\":\"Email\",\"fingerprint\":{\"global\":{\"distinct-count\":642,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":1.0,\"percent-state\":0.0,\"average-length\":28.327102803738317}}},\"base_type\":\"type/Text\"},{\"database_type\":\"timestamp\",\"semantic_type\":null,\"table_id\":5,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"DATE_RECEIVED\",\"lib/original-name\":\"DATE_RECEIVED\",\"name\":\"DATE_RECEIVED\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"DATE_RECEIVED\",\"lib/original-display-name\":\"Date Received\",\"source\":\"fields\",\"field_ref\":[\"field\",27,null],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":27,\"lib/desired-column-alias\":\"DATE_RECEIVED\",\"position\":3,\"visibility_type\":\"normal\",\"display_name\":\"Date Received\",\"fingerprint\":{\"global\":{\"distinct-count\":576,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2020-11-20T00:00:00Z\",\"latest\":\"2031-12-01T00:00:00Z\"}}},\"base_type\":\"type/DateTime\"},{\"database_type\":\"int2\",\"semantic_type\":\"type/Score\",\"table_id\":5,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"RATING\",\"lib/original-name\":\"RATING\",\"name\":\"RATING\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"RATING\",\"lib/original-display-name\":\"Rating\",\"source\":\"fields\",\"field_ref\":[\"field\",22,null],\"effective_type\":\"type/Integer\",\"active\":true,\"id\":22,\"lib/desired-column-alias\":\"RATING\",\"position\":4,\"visibility_type\":\"normal\",\"display_name\":\"Rating\",\"fingerprint\":{\"global\":{\"distinct-count\":5,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":1.0,\"q1\":2.7545289729206877,\"q3\":4.004191340512663,\"max\":5.0,\"sd\":0.8137255616667736,\"avg\":3.3629283489096573}}},\"base_type\":\"type/Integer\"},{\"database_type\":\"varchar\",\"semantic_type\":\"type/Category\",\"table_id\":5,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"RATING_MAPPED\",\"lib/original-name\":\"RATING_MAPPED\",\"name\":\"RATING_MAPPED\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"RATING_MAPPED\",\"lib/original-display-name\":\"Rating Mapped\",\"source\":\"fields\",\"field_ref\":[\"field\",23,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":23,\"lib/desired-column-alias\":\"RATING_MAPPED\",\"position\":5,\"visibility_type\":\"normal\",\"display_name\":\"Rating Mapped\",\"fingerprint\":{\"global\":{\"distinct-count\":5,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":6.453271028037383}}},\"base_type\":\"type/Text\"},{\"database_type\":\"text\",\"semantic_type\":null,\"table_id\":5,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"BODY\",\"lib/original-name\":\"BODY\",\"name\":\"BODY\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"BODY\",\"lib/original-display-name\":\"Body\",\"source\":\"fields\",\"field_ref\":[\"field\",28,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":28,\"lib/desired-column-alias\":\"BODY\",\"position\":6,\"visibility_type\":\"normal\",\"display_name\":\"Body\",\"fingerprint\":{\"global\":{\"distinct-count\":642,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":438.15264797507785}}},\"base_type\":\"type/Text\"},{\"database_type\":\"varchar\",\"semantic_type\":\"type/Email\",\"table_id\":6,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"EMAIL_2\",\"lib/original-name\":\"EMAIL\",\"lib/breakout?\":false,\"name\":\"EMAIL_2\",\"lib/source\":\"source/implicitly-joinable\",\"lib/source-column-alias\":\"EMAIL\",\"lib/original-display-name\":\"Email\",\"source\":\"fields\",\"remapped_from\":\"ACCOUNT_ID\",\"fk_field_id\":25,\"field_ref\":[\"field\",62,{\"source-field\":25}],\"effective_type\":\"type/Text\",\"active\":true,\"id\":62,\"lib/desired-column-alias\":\"ACCOUNTS__via__ACCOUNT_ID__EMAIL\",\"position\":1,\"visibility_type\":\"normal\",\"options\":{\"metabase.query-processor.middleware.add-remaps/new-field-dimension-id\":4},\"display_name\":\"Account ID\",\"fingerprint\":{\"global\":{\"distinct-count\":2494,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":1.0,\"percent-state\":0.0,\"average-length\":28.185971943887775}}},\"base_type\":\"type/Text\"}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,
@@ -2579,7 +2579,7 @@
    :source_card_id nil,
    :table_id 7,
    :result_metadata
-   "[{\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":\"type/Category\",\"table_id\":7,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"BUTTON_LABEL\",\"lib/original-name\":\"BUTTON_LABEL\",\"lib/breakout?\":false,\"name\":\"BUTTON_LABEL\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"BUTTON_LABEL\",\"lib/original-display-name\":\"Button Label\",\"source\":\"fields\",\"field_ref\":[\"field\",29,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":29,\"lib/desired-column-alias\":\"BUTTON_LABEL\",\"position\":5,\"visibility_type\":\"normal\",\"display_name\":\"Button Label\",\"fingerprint\":{\"global\":{\"distinct-count\":6,\"nil%\":0.8698},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":1.0552}}},\"base_type\":\"type/Text\"},{\"database_type\":\"BIGINT\",\"semantic_type\":\"type/Quantity\",\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"count\",\"lib/original-name\":\"count\",\"lib/breakout?\":false,\"name\":\"count\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"count\",\"source\":\"fields\",\"field_ref\":[\"field\",\"count\",{\"base-type\":\"type/BigInteger\"}],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"count\",\"display_name\":\"Count\",\"fingerprint\":{\"global\":{\"distinct-count\":5,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":975.0,\"q1\":1011.75,\"q3\":1065.0,\"max\":1071.0,\"sd\":38.86129179530706,\"avg\":1036.8}}},\"base_type\":\"type/BigInteger\"}]",
+   "[{\"database_type\":\"varchar\",\"semantic_type\":\"type/Category\",\"table_id\":7,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"BUTTON_LABEL\",\"lib/original-name\":\"BUTTON_LABEL\",\"lib/breakout?\":false,\"name\":\"BUTTON_LABEL\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"BUTTON_LABEL\",\"lib/original-display-name\":\"Button Label\",\"source\":\"fields\",\"field_ref\":[\"field\",29,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":29,\"lib/desired-column-alias\":\"BUTTON_LABEL\",\"position\":5,\"visibility_type\":\"normal\",\"display_name\":\"Button Label\",\"fingerprint\":{\"global\":{\"distinct-count\":6,\"nil%\":0.8698},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":1.0552}}},\"base_type\":\"type/Text\"},{\"database_type\":\"int8\",\"semantic_type\":\"type/Quantity\",\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"count\",\"lib/original-name\":\"count\",\"lib/breakout?\":false,\"name\":\"count\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"count\",\"source\":\"fields\",\"field_ref\":[\"field\",\"count\",{\"base-type\":\"type/BigInteger\"}],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"count\",\"display_name\":\"Count\",\"fingerprint\":{\"global\":{\"distinct-count\":5,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":975.0,\"q1\":1011.75,\"q3\":1065.0,\"max\":1071.0,\"sd\":38.86129179530706,\"avg\":1036.8}}},\"base_type\":\"type/BigInteger\"}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,
@@ -2614,7 +2614,7 @@
    :source_card_id nil,
    :table_id 2,
    :result_metadata
-   "[{\"description\":\"The name of the product as it should be displayed to customers.\",\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":\"type/Title\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"TITLE\",\"lib/original-name\":\"TITLE\",\"lib/breakout?\":false,\"name\":\"TITLE\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"PRODUCTS__via__PRODUCT_ID__TITLE\",\"lib/original-display-name\":\"Title\",\"lib/original-fk-field-id\":14,\"source\":\"fields\",\"field_ref\":[\"field\",17,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":17,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__TITLE\",\"position\":2,\"visibility_type\":\"normal\",\"display_name\":\"Product → Title\",\"fingerprint\":{\"global\":{\"distinct-count\":199,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":21.495}}},\"base_type\":\"type/Text\"},{\"description\":\"The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget\",\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":\"type/Category\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"CATEGORY\",\"lib/original-name\":\"CATEGORY\",\"lib/breakout?\":false,\"name\":\"CATEGORY\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"PRODUCTS__via__PRODUCT_ID__CATEGORY\",\"lib/original-display-name\":\"Category\",\"lib/original-fk-field-id\":14,\"source\":\"fields\",\"field_ref\":[\"field\",18,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":18,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__CATEGORY\",\"position\":3,\"visibility_type\":\"normal\",\"display_name\":\"Product → Category\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":6.375}}},\"base_type\":\"type/Text\"},{\"database_type\":\"BIGINT\",\"semantic_type\":\"type/Quantity\",\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"count\",\"lib/original-name\":\"count\",\"lib/breakout?\":false,\"name\":\"count\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"count\",\"source\":\"fields\",\"field_ref\":[\"field\",\"count\",{\"base-type\":\"type/BigInteger\"}],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"count\",\"display_name\":\"Count\",\"fingerprint\":{\"global\":{\"distinct-count\":11,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":105.0,\"q1\":105.7090055512642,\"q3\":113.19615242270663,\"max\":120.0,\"sd\":4.945860740208771,\"avg\":109.6923076923077}}},\"base_type\":\"type/BigInteger\"}]",
+   "[{\"description\":\"The name of the product as it should be displayed to customers.\",\"database_type\":\"varchar\",\"semantic_type\":\"type/Title\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"TITLE\",\"lib/original-name\":\"TITLE\",\"lib/breakout?\":false,\"name\":\"TITLE\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"PRODUCTS__via__PRODUCT_ID__TITLE\",\"lib/original-display-name\":\"Title\",\"lib/original-fk-field-id\":14,\"source\":\"fields\",\"field_ref\":[\"field\",17,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":17,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__TITLE\",\"position\":2,\"visibility_type\":\"normal\",\"display_name\":\"Product → Title\",\"fingerprint\":{\"global\":{\"distinct-count\":199,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":21.495}}},\"base_type\":\"type/Text\"},{\"description\":\"The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget\",\"database_type\":\"varchar\",\"semantic_type\":\"type/Category\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"CATEGORY\",\"lib/original-name\":\"CATEGORY\",\"lib/breakout?\":false,\"name\":\"CATEGORY\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"PRODUCTS__via__PRODUCT_ID__CATEGORY\",\"lib/original-display-name\":\"Category\",\"lib/original-fk-field-id\":14,\"source\":\"fields\",\"field_ref\":[\"field\",18,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":18,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__CATEGORY\",\"position\":3,\"visibility_type\":\"normal\",\"display_name\":\"Product → Category\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":6.375}}},\"base_type\":\"type/Text\"},{\"database_type\":\"int8\",\"semantic_type\":\"type/Quantity\",\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"count\",\"lib/original-name\":\"count\",\"lib/breakout?\":false,\"name\":\"count\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"count\",\"source\":\"fields\",\"field_ref\":[\"field\",\"count\",{\"base-type\":\"type/BigInteger\"}],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"count\",\"display_name\":\"Count\",\"fingerprint\":{\"global\":{\"distinct-count\":11,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":105.0,\"q1\":105.7090055512642,\"q3\":113.19615242270663,\"max\":120.0,\"sd\":4.945860740208771,\"avg\":109.6923076923077}}},\"base_type\":\"type/BigInteger\"}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,
@@ -2649,7 +2649,7 @@
    :source_card_id nil,
    :table_id 2,
    :result_metadata
-   "[{\"description\":\"The date and time an order was submitted.\",\"database_type\":\"TIMESTAMP\",\"semantic_type\":\"type/CreationTimestamp\",\"table_id\":2,\"lib/deduplicated-name\":\"CREATED_AT\",\"lib/original-name\":\"CREATED_AT\",\"lib/breakout?\":true,\"unit\":\"quarter\",\"name\":\"CREATED_AT\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"CREATED_AT\",\"lib/original-display-name\":\"Created At\",\"source\":\"breakout\",\"field_ref\":[\"field\",13,{\"temporal-unit\":\"quarter\"}],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":13,\"lib/desired-column-alias\":\"CREATED_AT\",\"metabase.lib.field/temporal-unit\":\"quarter\",\"position\":7,\"visibility_type\":\"normal\",\"inherited_temporal_unit\":\"quarter\",\"display_name\":\"Created At: Quarter\",\"fingerprint\":{\"global\":{\"distinct-count\":10001,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2022-04-30T18:56:13.352Z\",\"latest\":\"2026-04-19T14:07:15.657Z\"}}},\"base_type\":\"type/DateTime\"},{\"description\":\"Number of products bought.\",\"database_type\":\"NUMERIC\",\"semantic_type\":\"type/Quantity\",\"table_id\":2,\"lib/deduplicated-name\":\"QUANTITY\",\"lib/original-name\":\"QUANTITY\",\"lib/breakout?\":true,\"binning_info\":{\"binning_strategy\":\"num-bins\",\"strategy\":\"num-bins\",\"min_value\":0.0,\"max_value\":100.0,\"num_bins\":8,\"bin_width\":12.5},\"name\":\"QUANTITY\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"QUANTITY\",\"lib/original-display-name\":\"Quantity\",\"source\":\"breakout\",\"metabase.lib.field/binning\":{\"strategy\":\"num-bins\",\"min-value\":0.0,\"max-value\":100.0,\"num-bins\":8,\"bin-width\":12.5},\"field_ref\":[\"field\",2,{\"binning\":{\"strategy\":\"num-bins\",\"min-value\":0.0,\"max-value\":100.0,\"num-bins\":8,\"bin-width\":12.5}}],\"lib/original-binning\":{\"strategy\":\"num-bins\",\"min-value\":0.0,\"max-value\":100.0,\"num-bins\":8,\"bin-width\":12.5},\"effective_type\":\"type/Decimal\",\"active\":true,\"id\":2,\"lib/desired-column-alias\":\"QUANTITY\",\"position\":8,\"visibility_type\":\"normal\",\"display_name\":\"Quantity: 8 bins\",\"fingerprint\":{\"global\":{\"distinct-count\":62,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":0.0,\"q1\":1.755882607764982,\"q3\":4.882654507928044,\"max\":100.0,\"sd\":4.214258386403798,\"avg\":3.7015}}},\"base_type\":\"type/Decimal\"},{\"description\":\"The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget\",\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":\"type/Category\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"CATEGORY\",\"lib/original-name\":\"CATEGORY\",\"lib/breakout?\":true,\"name\":\"CATEGORY\",\"lib/source\":\"source/implicitly-joinable\",\"lib/source-column-alias\":\"CATEGORY\",\"lib/original-display-name\":\"Category\",\"source\":\"breakout\",\"fk_field_id\":14,\"field_ref\":[\"field\",18,{\"source-field\":14}],\"effective_type\":\"type/Text\",\"active\":true,\"id\":18,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__CATEGORY\",\"position\":3,\"visibility_type\":\"normal\",\"display_name\":\"Product → Category\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":6.375}}},\"base_type\":\"type/Text\"},{\"database_type\":\"DECFLOAT\",\"semantic_type\":null,\"lib/deduplicated-name\":\"sum\",\"lib/original-name\":\"sum\",\"name\":\"sum\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"sum\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",0],\"effective_type\":\"type/Float\",\"lib/desired-column-alias\":\"sum\",\"display_name\":\"Sum of Total\",\"fingerprint\":{\"global\":{\"distinct-count\":177,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":20.95809834572766,\"q1\":93.71778101397813,\"q3\":12864.142636111297,\"max\":43186.48117654797,\"sd\":13661.41283269102,\"avg\":8534.585779947069}}},\"base_type\":\"type/Float\"},{\"database_type\":\"DECFLOAT\",\"semantic_type\":\"type/Discount\",\"lib/deduplicated-name\":\"sum_2\",\"lib/original-name\":\"sum\",\"name\":\"sum_2\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"sum\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",1],\"effective_type\":\"type/Float\",\"lib/desired-column-alias\":\"sum_2\",\"display_name\":\"Sum of Discount\",\"fingerprint\":{\"global\":{\"distinct-count\":88,\"nil%\":0.5084745762711864},\"type\":{\"type/Number\":{\"min\":1.5030327089601887,\"q1\":10.431821917042786,\"q3\":191.37331425402215,\"max\":302.4567767826503,\"sd\":93.38028022351212,\"avg\":114.42325088818538}}},\"base_type\":\"type/Float\"},{\"database_type\":\"BIGINT\",\"semantic_type\":\"type/Quantity\",\"lib/deduplicated-name\":\"count\",\"lib/original-name\":\"count\",\"name\":\"count\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"count\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",2],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"count\",\"display_name\":\"Count\",\"fingerprint\":{\"global\":{\"distinct-count\":67,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":1.0,\"q1\":1.2600882835670644,\"q3\":225.5,\"max\":464.0,\"sd\":158.82906995224747,\"avg\":105.98870056497175}}},\"base_type\":\"type/BigInteger\"}]",
+   "[{\"description\":\"The date and time an order was submitted.\",\"database_type\":\"timestamp\",\"semantic_type\":\"type/CreationTimestamp\",\"table_id\":2,\"lib/deduplicated-name\":\"CREATED_AT\",\"lib/original-name\":\"CREATED_AT\",\"lib/breakout?\":true,\"unit\":\"quarter\",\"name\":\"CREATED_AT\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"CREATED_AT\",\"lib/original-display-name\":\"Created At\",\"source\":\"breakout\",\"field_ref\":[\"field\",13,{\"temporal-unit\":\"quarter\"}],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":13,\"lib/desired-column-alias\":\"CREATED_AT\",\"metabase.lib.field/temporal-unit\":\"quarter\",\"position\":7,\"visibility_type\":\"normal\",\"inherited_temporal_unit\":\"quarter\",\"display_name\":\"Created At: Quarter\",\"fingerprint\":{\"global\":{\"distinct-count\":10001,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2022-04-30T18:56:13.352Z\",\"latest\":\"2026-04-19T14:07:15.657Z\"}}},\"base_type\":\"type/DateTime\"},{\"description\":\"Number of products bought.\",\"database_type\":\"NUMERIC\",\"semantic_type\":\"type/Quantity\",\"table_id\":2,\"lib/deduplicated-name\":\"QUANTITY\",\"lib/original-name\":\"QUANTITY\",\"lib/breakout?\":true,\"binning_info\":{\"binning_strategy\":\"num-bins\",\"strategy\":\"num-bins\",\"min_value\":0.0,\"max_value\":100.0,\"num_bins\":8,\"bin_width\":12.5},\"name\":\"QUANTITY\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"QUANTITY\",\"lib/original-display-name\":\"Quantity\",\"source\":\"breakout\",\"metabase.lib.field/binning\":{\"strategy\":\"num-bins\",\"min-value\":0.0,\"max-value\":100.0,\"num-bins\":8,\"bin-width\":12.5},\"field_ref\":[\"field\",2,{\"binning\":{\"strategy\":\"num-bins\",\"min-value\":0.0,\"max-value\":100.0,\"num-bins\":8,\"bin-width\":12.5}}],\"lib/original-binning\":{\"strategy\":\"num-bins\",\"min-value\":0.0,\"max-value\":100.0,\"num-bins\":8,\"bin-width\":12.5},\"effective_type\":\"type/Decimal\",\"active\":true,\"id\":2,\"lib/desired-column-alias\":\"QUANTITY\",\"position\":8,\"visibility_type\":\"normal\",\"display_name\":\"Quantity: 8 bins\",\"fingerprint\":{\"global\":{\"distinct-count\":62,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":0.0,\"q1\":1.755882607764982,\"q3\":4.882654507928044,\"max\":100.0,\"sd\":4.214258386403798,\"avg\":3.7015}}},\"base_type\":\"type/Decimal\"},{\"description\":\"The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget\",\"database_type\":\"varchar\",\"semantic_type\":\"type/Category\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"CATEGORY\",\"lib/original-name\":\"CATEGORY\",\"lib/breakout?\":true,\"name\":\"CATEGORY\",\"lib/source\":\"source/implicitly-joinable\",\"lib/source-column-alias\":\"CATEGORY\",\"lib/original-display-name\":\"Category\",\"source\":\"breakout\",\"fk_field_id\":14,\"field_ref\":[\"field\",18,{\"source-field\":14}],\"effective_type\":\"type/Text\",\"active\":true,\"id\":18,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__CATEGORY\",\"position\":3,\"visibility_type\":\"normal\",\"display_name\":\"Product → Category\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":6.375}}},\"base_type\":\"type/Text\"},{\"database_type\":\"DECFLOAT\",\"semantic_type\":null,\"lib/deduplicated-name\":\"sum\",\"lib/original-name\":\"sum\",\"name\":\"sum\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"sum\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",0],\"effective_type\":\"type/Float\",\"lib/desired-column-alias\":\"sum\",\"display_name\":\"Sum of Total\",\"fingerprint\":{\"global\":{\"distinct-count\":177,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":20.95809834572766,\"q1\":93.71778101397813,\"q3\":12864.142636111297,\"max\":43186.48117654797,\"sd\":13661.41283269102,\"avg\":8534.585779947069}}},\"base_type\":\"type/Float\"},{\"database_type\":\"DECFLOAT\",\"semantic_type\":\"type/Discount\",\"lib/deduplicated-name\":\"sum_2\",\"lib/original-name\":\"sum\",\"name\":\"sum_2\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"sum\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",1],\"effective_type\":\"type/Float\",\"lib/desired-column-alias\":\"sum_2\",\"display_name\":\"Sum of Discount\",\"fingerprint\":{\"global\":{\"distinct-count\":88,\"nil%\":0.5084745762711864},\"type\":{\"type/Number\":{\"min\":1.5030327089601887,\"q1\":10.431821917042786,\"q3\":191.37331425402215,\"max\":302.4567767826503,\"sd\":93.38028022351212,\"avg\":114.42325088818538}}},\"base_type\":\"type/Float\"},{\"database_type\":\"int8\",\"semantic_type\":\"type/Quantity\",\"lib/deduplicated-name\":\"count\",\"lib/original-name\":\"count\",\"name\":\"count\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"count\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",2],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"count\",\"display_name\":\"Count\",\"fingerprint\":{\"global\":{\"distinct-count\":67,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":1.0,\"q1\":1.2600882835670644,\"q3\":225.5,\"max\":464.0,\"sd\":158.82906995224747,\"avg\":105.98870056497175}}},\"base_type\":\"type/BigInteger\"}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,
@@ -2684,7 +2684,7 @@
    :source_card_id nil,
    :table_id 2,
    :result_metadata
-   "[{\"active\":true,\"base_type\":\"type/DateTime\",\"coercion_strategy\":null,\"database_type\":\"TIMESTAMP\",\"description\":\"The date and time an order was submitted.\",\"display_name\":\"Created At: Quarter\",\"effective_type\":\"type/DateTime\",\"field_ref\":[\"field\",13,{\"base-type\":\"type/DateTime\",\"temporal-unit\":\"quarter\"}],\"fk_target_field_id\":null,\"id\":13,\"name\":\"CREATED_AT\",\"nfc_path\":null,\"parent_id\":null,\"position\":7,\"semantic_type\":\"type/CreationTimestamp\",\"settings\":{\"time_enabled\":\"milliseconds\"},\"source\":\"breakout\",\"table_id\":2,\"unit\":\"quarter\",\"visibility_type\":\"normal\"},{\"base_type\":\"type/Float\",\"display_name\":\"Sum of Total\",\"field_ref\":[\"aggregation\",0],\"name\":\"sum\",\"semantic_type\":\"type/Currency\",\"settings\":{\"currency\":\"USD\"},\"source\":\"aggregation\"}]",
+   "[{\"active\":true,\"base_type\":\"type/DateTime\",\"coercion_strategy\":null,\"database_type\":\"timestamp\",\"description\":\"The date and time an order was submitted.\",\"display_name\":\"Created At: Quarter\",\"effective_type\":\"type/DateTime\",\"field_ref\":[\"field\",13,{\"base-type\":\"type/DateTime\",\"temporal-unit\":\"quarter\"}],\"fk_target_field_id\":null,\"id\":13,\"name\":\"CREATED_AT\",\"nfc_path\":null,\"parent_id\":null,\"position\":7,\"semantic_type\":\"type/CreationTimestamp\",\"settings\":{\"time_enabled\":\"milliseconds\"},\"source\":\"breakout\",\"table_id\":2,\"unit\":\"quarter\",\"visibility_type\":\"normal\"},{\"base_type\":\"type/Float\",\"display_name\":\"Sum of Total\",\"field_ref\":[\"aggregation\",0],\"name\":\"sum\",\"semantic_type\":\"type/Currency\",\"settings\":{\"currency\":\"USD\"},\"source\":\"aggregation\"}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,
@@ -2719,7 +2719,7 @@
    :source_card_id nil,
    :table_id 2,
    :result_metadata
-   "[{\"description\":\"The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter\",\"lib/type\":\"metadata/column\",\"qp/implicit-field?\":true,\"base-type\":\"type/Text\",\"lib/deduplicated-name\":\"SOURCE\",\"semantic-type\":\"type/Source\",\"lib/original-name\":\"SOURCE\",\"lib/breakout?\":true,\"table-id\":1,\"name\":\"SOURCE\",\"lib/source\":\"source/implicitly-joinable\",\"lib/source-column-alias\":\"SOURCE\",\"lib/original-display-name\":\"Source\",\"database-type\":\"CHARACTER VARYING\",\"effective-type\":\"type/Text\",\"active\":true,\"id\":30,\"visibility-type\":\"normal\",\"lib/desired-column-alias\":\"PEOPLE__via__USER_ID__SOURCE\",\"display-name\":\"User → Source\",\"position\":8,\"fk-field-id\":11,\"fingerprint\":{\"global\":{\"distinct-count\":5,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":7.4084}}}},{\"description\":\"The date and time an order was submitted.\",\"inherited-temporal-unit\":\"quarter\",\"lib/type\":\"metadata/column\",\"base-type\":\"type/DateTime\",\"lib/deduplicated-name\":\"CREATED_AT\",\"semantic-type\":\"type/CreationTimestamp\",\"lib/original-name\":\"CREATED_AT\",\"lib/breakout?\":true,\"table-id\":2,\"name\":\"CREATED_AT\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"CREATED_AT\",\"lib/original-display-name\":\"Created At\",\"database-type\":\"TIMESTAMP\",\"effective-type\":\"type/DateTime\",\"active\":true,\"id\":13,\"visibility-type\":\"normal\",\"lib/desired-column-alias\":\"CREATED_AT\",\"metabase.lib.field/temporal-unit\":\"quarter\",\"display-name\":\"Created At: Quarter\",\"position\":7,\"fingerprint\":{\"global\":{\"distinct-count\":10001,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2022-04-30T18:56:13.352Z\",\"latest\":\"2026-04-19T14:07:15.657Z\"}}}},{\"lib/type\":\"metadata/column\",\"base-type\":\"type/Float\",\"lib/deduplicated-name\":\"sum\",\"lib/original-name\":\"sum\",\"name\":\"sum\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"sum\",\"effective-type\":\"type/Float\",\"lib/desired-column-alias\":\"sum\",\"display-name\":\"Sum of Total\"}]",
+   "[{\"description\":\"The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter\",\"lib/type\":\"metadata/column\",\"qp/implicit-field?\":true,\"base-type\":\"type/Text\",\"lib/deduplicated-name\":\"SOURCE\",\"semantic-type\":\"type/Source\",\"lib/original-name\":\"SOURCE\",\"lib/breakout?\":true,\"table-id\":1,\"name\":\"SOURCE\",\"lib/source\":\"source/implicitly-joinable\",\"lib/source-column-alias\":\"SOURCE\",\"lib/original-display-name\":\"Source\",\"database-type\":\"varchar\",\"effective-type\":\"type/Text\",\"active\":true,\"id\":30,\"visibility-type\":\"normal\",\"lib/desired-column-alias\":\"PEOPLE__via__USER_ID__SOURCE\",\"display-name\":\"User → Source\",\"position\":8,\"fk-field-id\":11,\"fingerprint\":{\"global\":{\"distinct-count\":5,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":7.4084}}}},{\"description\":\"The date and time an order was submitted.\",\"inherited-temporal-unit\":\"quarter\",\"lib/type\":\"metadata/column\",\"base-type\":\"type/DateTime\",\"lib/deduplicated-name\":\"CREATED_AT\",\"semantic-type\":\"type/CreationTimestamp\",\"lib/original-name\":\"CREATED_AT\",\"lib/breakout?\":true,\"table-id\":2,\"name\":\"CREATED_AT\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"CREATED_AT\",\"lib/original-display-name\":\"Created At\",\"database-type\":\"timestamp\",\"effective-type\":\"type/DateTime\",\"active\":true,\"id\":13,\"visibility-type\":\"normal\",\"lib/desired-column-alias\":\"CREATED_AT\",\"metabase.lib.field/temporal-unit\":\"quarter\",\"display-name\":\"Created At: Quarter\",\"position\":7,\"fingerprint\":{\"global\":{\"distinct-count\":10001,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2022-04-30T18:56:13.352Z\",\"latest\":\"2026-04-19T14:07:15.657Z\"}}}},{\"lib/type\":\"metadata/column\",\"base-type\":\"type/Float\",\"lib/deduplicated-name\":\"sum\",\"lib/original-name\":\"sum\",\"name\":\"sum\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"sum\",\"effective-type\":\"type/Float\",\"lib/desired-column-alias\":\"sum\",\"display-name\":\"Sum of Total\"}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,
@@ -2754,7 +2754,7 @@
    :source_card_id nil,
    :table_id 7,
    :result_metadata
-   "[{\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":\"type/Category\",\"table_id\":7,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"BUTTON_LABEL\",\"lib/original-name\":\"BUTTON_LABEL\",\"lib/breakout?\":false,\"name\":\"BUTTON_LABEL\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"BUTTON_LABEL\",\"lib/original-display-name\":\"Button Label\",\"source\":\"fields\",\"field_ref\":[\"field\",29,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":29,\"lib/desired-column-alias\":\"BUTTON_LABEL\",\"position\":5,\"visibility_type\":\"normal\",\"display_name\":\"Button Label\",\"fingerprint\":{\"global\":{\"distinct-count\":6,\"nil%\":0.8698},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":1.0552}}},\"base_type\":\"type/Text\"},{\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":\"type/Category\",\"table_id\":7,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"EVENT\",\"lib/original-name\":\"EVENT\",\"lib/breakout?\":false,\"name\":\"EVENT\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"EVENT\",\"lib/original-display-name\":\"Event\",\"source\":\"fields\",\"field_ref\":[\"field\",32,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":32,\"lib/desired-column-alias\":\"EVENT\",\"position\":2,\"visibility_type\":\"normal\",\"display_name\":\"Event\",\"fingerprint\":{\"global\":{\"distinct-count\":2,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":11.3906}}},\"base_type\":\"type/Text\"},{\"database_type\":\"BIGINT\",\"semantic_type\":\"type/Quantity\",\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"count\",\"lib/original-name\":\"count\",\"lib/breakout?\":false,\"name\":\"count\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"count\",\"source\":\"fields\",\"field_ref\":[\"field\",\"count\",{\"base-type\":\"type/BigInteger\"}],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"count\",\"display_name\":\"Count\",\"fingerprint\":{\"global\":{\"distinct-count\":5,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":975.0,\"q1\":1011.75,\"q3\":1065.0,\"max\":1071.0,\"sd\":38.86129179530706,\"avg\":1036.8}}},\"base_type\":\"type/BigInteger\"},{\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":null,\"lib/expression-name\":\"Step\",\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"Step\",\"lib/original-name\":\"Step\",\"name\":\"Step\",\"lib/source\":\"source/expressions\",\"lib/source-column-alias\":\"Step\",\"source\":\"fields\",\"field_ref\":[\"expression\",\"Step\"],\"effective_type\":\"type/Text\",\"lib/desired-column-alias\":\"Step\",\"display_name\":\"Step\",\"fingerprint\":{\"global\":{\"distinct-count\":5,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":8.0}}},\"base_type\":\"type/Text\"}]",
+   "[{\"database_type\":\"varchar\",\"semantic_type\":\"type/Category\",\"table_id\":7,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"BUTTON_LABEL\",\"lib/original-name\":\"BUTTON_LABEL\",\"lib/breakout?\":false,\"name\":\"BUTTON_LABEL\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"BUTTON_LABEL\",\"lib/original-display-name\":\"Button Label\",\"source\":\"fields\",\"field_ref\":[\"field\",29,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":29,\"lib/desired-column-alias\":\"BUTTON_LABEL\",\"position\":5,\"visibility_type\":\"normal\",\"display_name\":\"Button Label\",\"fingerprint\":{\"global\":{\"distinct-count\":6,\"nil%\":0.8698},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":1.0552}}},\"base_type\":\"type/Text\"},{\"database_type\":\"varchar\",\"semantic_type\":\"type/Category\",\"table_id\":7,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"EVENT\",\"lib/original-name\":\"EVENT\",\"lib/breakout?\":false,\"name\":\"EVENT\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"EVENT\",\"lib/original-display-name\":\"Event\",\"source\":\"fields\",\"field_ref\":[\"field\",32,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":32,\"lib/desired-column-alias\":\"EVENT\",\"position\":2,\"visibility_type\":\"normal\",\"display_name\":\"Event\",\"fingerprint\":{\"global\":{\"distinct-count\":2,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":11.3906}}},\"base_type\":\"type/Text\"},{\"database_type\":\"int8\",\"semantic_type\":\"type/Quantity\",\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"count\",\"lib/original-name\":\"count\",\"lib/breakout?\":false,\"name\":\"count\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"count\",\"source\":\"fields\",\"field_ref\":[\"field\",\"count\",{\"base-type\":\"type/BigInteger\"}],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"count\",\"display_name\":\"Count\",\"fingerprint\":{\"global\":{\"distinct-count\":5,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":975.0,\"q1\":1011.75,\"q3\":1065.0,\"max\":1071.0,\"sd\":38.86129179530706,\"avg\":1036.8}}},\"base_type\":\"type/BigInteger\"},{\"database_type\":\"varchar\",\"semantic_type\":null,\"lib/expression-name\":\"Step\",\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"Step\",\"lib/original-name\":\"Step\",\"name\":\"Step\",\"lib/source\":\"source/expressions\",\"lib/source-column-alias\":\"Step\",\"source\":\"fields\",\"field_ref\":[\"expression\",\"Step\"],\"effective_type\":\"type/Text\",\"lib/desired-column-alias\":\"Step\",\"display_name\":\"Step\",\"fingerprint\":{\"global\":{\"distinct-count\":5,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":8.0}}},\"base_type\":\"type/Text\"}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,
@@ -2789,7 +2789,7 @@
    :source_card_id nil,
    :table_id 2,
    :result_metadata
-   "[{\"description\":\"The date and time an order was submitted.\",\"database_type\":\"TIMESTAMP\",\"semantic_type\":\"type/CreationTimestamp\",\"table_id\":2,\"lib/deduplicated-name\":\"CREATED_AT\",\"lib/original-name\":\"CREATED_AT\",\"lib/breakout?\":true,\"unit\":\"quarter\",\"name\":\"CREATED_AT\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"CREATED_AT\",\"lib/original-display-name\":\"Created At\",\"source\":\"breakout\",\"field_ref\":[\"field\",13,{\"temporal-unit\":\"quarter\"}],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":13,\"lib/desired-column-alias\":\"CREATED_AT\",\"metabase.lib.field/temporal-unit\":\"quarter\",\"position\":7,\"visibility_type\":\"normal\",\"inherited_temporal_unit\":\"quarter\",\"display_name\":\"Created At: Quarter\",\"fingerprint\":{\"global\":{\"distinct-count\":10001,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2022-04-30T18:56:13.352Z\",\"latest\":\"2026-04-19T14:07:15.657Z\"}}},\"base_type\":\"type/DateTime\"},{\"description\":\"The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget\",\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":\"type/Category\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"CATEGORY\",\"lib/original-name\":\"CATEGORY\",\"lib/breakout?\":true,\"name\":\"CATEGORY\",\"lib/source\":\"source/implicitly-joinable\",\"lib/source-column-alias\":\"CATEGORY\",\"lib/original-display-name\":\"Category\",\"source\":\"breakout\",\"fk_field_id\":14,\"field_ref\":[\"field\",18,{\"source-field\":14}],\"effective_type\":\"type/Text\",\"active\":true,\"id\":18,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__CATEGORY\",\"position\":3,\"visibility_type\":\"normal\",\"display_name\":\"Product → Category\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":6.375}}},\"base_type\":\"type/Text\"},{\"database_type\":\"DECFLOAT\",\"semantic_type\":null,\"lib/deduplicated-name\":\"sum\",\"lib/original-name\":\"sum\",\"name\":\"sum\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"sum\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",0],\"effective_type\":\"type/Float\",\"lib/desired-column-alias\":\"sum\",\"display_name\":\"Sum of Total\",\"fingerprint\":{\"global\":{\"distinct-count\":37,\"nil%\":0.1},\"type\":{\"type/Number\":{\"min\":19878.640993177505,\"q1\":28620.297685934947,\"q3\":39045.94440543998,\"max\":43535.518815369454,\"sd\":5756.094724745224,\"avg\":34234.70338751517}}},\"base_type\":\"type/Float\"},{\"database_type\":\"BIGINT\",\"semantic_type\":\"type/Quantity\",\"lib/deduplicated-name\":\"sum_2\",\"lib/original-name\":\"sum\",\"name\":\"sum_2\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"sum\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",1],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"sum_2\",\"display_name\":\"Sum of Quantity\",\"fingerprint\":{\"global\":{\"distinct-count\":40,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":202.0,\"q1\":623.0,\"q3\":1923.5,\"max\":2630.0,\"sd\":734.3309841146355,\"avg\":1298.825}}},\"base_type\":\"type/BigInteger\"},{\"database_type\":\"DECFLOAT\",\"semantic_type\":\"type/Discount\",\"lib/deduplicated-name\":\"sum_3\",\"lib/original-name\":\"sum\",\"name\":\"sum_3\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"sum\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",2],\"effective_type\":\"type/Float\",\"lib/desired-column-alias\":\"sum_3\",\"display_name\":\"Sum of Discount\",\"fingerprint\":{\"global\":{\"distinct-count\":40,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":28.05522447069486,\"q1\":174.34418384765237,\"q3\":232.9906260927989,\"max\":302.4567767826503,\"sd\":66.22303526422644,\"avg\":191.49152439651462}}},\"base_type\":\"type/Float\"},{\"database_type\":\"BIGINT\",\"semantic_type\":\"type/Quantity\",\"lib/deduplicated-name\":\"count\",\"lib/original-name\":\"count\",\"name\":\"count\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"count\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",3],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"count\",\"display_name\":\"Count\",\"fingerprint\":{\"global\":{\"distinct-count\":38,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":73.0,\"q1\":332.5,\"q3\":429.5,\"max\":467.0,\"sd\":105.26609749606602,\"avg\":360.15}}},\"base_type\":\"type/BigInteger\"}]",
+   "[{\"description\":\"The date and time an order was submitted.\",\"database_type\":\"timestamp\",\"semantic_type\":\"type/CreationTimestamp\",\"table_id\":2,\"lib/deduplicated-name\":\"CREATED_AT\",\"lib/original-name\":\"CREATED_AT\",\"lib/breakout?\":true,\"unit\":\"quarter\",\"name\":\"CREATED_AT\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"CREATED_AT\",\"lib/original-display-name\":\"Created At\",\"source\":\"breakout\",\"field_ref\":[\"field\",13,{\"temporal-unit\":\"quarter\"}],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":13,\"lib/desired-column-alias\":\"CREATED_AT\",\"metabase.lib.field/temporal-unit\":\"quarter\",\"position\":7,\"visibility_type\":\"normal\",\"inherited_temporal_unit\":\"quarter\",\"display_name\":\"Created At: Quarter\",\"fingerprint\":{\"global\":{\"distinct-count\":10001,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2022-04-30T18:56:13.352Z\",\"latest\":\"2026-04-19T14:07:15.657Z\"}}},\"base_type\":\"type/DateTime\"},{\"description\":\"The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget\",\"database_type\":\"varchar\",\"semantic_type\":\"type/Category\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"CATEGORY\",\"lib/original-name\":\"CATEGORY\",\"lib/breakout?\":true,\"name\":\"CATEGORY\",\"lib/source\":\"source/implicitly-joinable\",\"lib/source-column-alias\":\"CATEGORY\",\"lib/original-display-name\":\"Category\",\"source\":\"breakout\",\"fk_field_id\":14,\"field_ref\":[\"field\",18,{\"source-field\":14}],\"effective_type\":\"type/Text\",\"active\":true,\"id\":18,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__CATEGORY\",\"position\":3,\"visibility_type\":\"normal\",\"display_name\":\"Product → Category\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":6.375}}},\"base_type\":\"type/Text\"},{\"database_type\":\"DECFLOAT\",\"semantic_type\":null,\"lib/deduplicated-name\":\"sum\",\"lib/original-name\":\"sum\",\"name\":\"sum\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"sum\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",0],\"effective_type\":\"type/Float\",\"lib/desired-column-alias\":\"sum\",\"display_name\":\"Sum of Total\",\"fingerprint\":{\"global\":{\"distinct-count\":37,\"nil%\":0.1},\"type\":{\"type/Number\":{\"min\":19878.640993177505,\"q1\":28620.297685934947,\"q3\":39045.94440543998,\"max\":43535.518815369454,\"sd\":5756.094724745224,\"avg\":34234.70338751517}}},\"base_type\":\"type/Float\"},{\"database_type\":\"int8\",\"semantic_type\":\"type/Quantity\",\"lib/deduplicated-name\":\"sum_2\",\"lib/original-name\":\"sum\",\"name\":\"sum_2\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"sum\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",1],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"sum_2\",\"display_name\":\"Sum of Quantity\",\"fingerprint\":{\"global\":{\"distinct-count\":40,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":202.0,\"q1\":623.0,\"q3\":1923.5,\"max\":2630.0,\"sd\":734.3309841146355,\"avg\":1298.825}}},\"base_type\":\"type/BigInteger\"},{\"database_type\":\"DECFLOAT\",\"semantic_type\":\"type/Discount\",\"lib/deduplicated-name\":\"sum_3\",\"lib/original-name\":\"sum\",\"name\":\"sum_3\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"sum\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",2],\"effective_type\":\"type/Float\",\"lib/desired-column-alias\":\"sum_3\",\"display_name\":\"Sum of Discount\",\"fingerprint\":{\"global\":{\"distinct-count\":40,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":28.05522447069486,\"q1\":174.34418384765237,\"q3\":232.9906260927989,\"max\":302.4567767826503,\"sd\":66.22303526422644,\"avg\":191.49152439651462}}},\"base_type\":\"type/Float\"},{\"database_type\":\"int8\",\"semantic_type\":\"type/Quantity\",\"lib/deduplicated-name\":\"count\",\"lib/original-name\":\"count\",\"name\":\"count\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"count\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",3],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"count\",\"display_name\":\"Count\",\"fingerprint\":{\"global\":{\"distinct-count\":38,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":73.0,\"q1\":332.5,\"q3\":429.5,\"max\":467.0,\"sd\":105.26609749606602,\"avg\":360.15}}},\"base_type\":\"type/BigInteger\"}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,
@@ -2824,7 +2824,7 @@
    :source_card_id nil,
    :table_id 2,
    :result_metadata
-   "[{\"description\":\"The date and time an order was submitted.\",\"database_type\":\"TIMESTAMP\",\"semantic_type\":\"type/CreationTimestamp\",\"table_id\":2,\"lib/deduplicated-name\":\"CREATED_AT\",\"lib/original-name\":\"CREATED_AT\",\"lib/breakout?\":true,\"unit\":\"month\",\"name\":\"CREATED_AT\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"CREATED_AT\",\"lib/original-display-name\":\"Created At\",\"source\":\"breakout\",\"field_ref\":[\"field\",13,{\"temporal-unit\":\"month\"}],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":13,\"lib/desired-column-alias\":\"CREATED_AT\",\"metabase.lib.field/temporal-unit\":\"month\",\"position\":7,\"visibility_type\":\"normal\",\"inherited_temporal_unit\":\"month\",\"display_name\":\"Created At: Month\",\"fingerprint\":{\"global\":{\"distinct-count\":10001,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2022-04-30T18:56:13.352Z\",\"latest\":\"2026-04-19T14:07:15.657Z\"}}},\"base_type\":\"type/DateTime\"},{\"description\":\"The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget\",\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":\"type/Category\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"CATEGORY\",\"lib/original-name\":\"CATEGORY\",\"lib/breakout?\":true,\"name\":\"CATEGORY\",\"lib/source\":\"source/implicitly-joinable\",\"lib/source-column-alias\":\"CATEGORY\",\"lib/original-display-name\":\"Category\",\"source\":\"breakout\",\"fk_field_id\":14,\"field_ref\":[\"field\",18,{\"source-field\":14}],\"effective_type\":\"type/Text\",\"active\":true,\"id\":18,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__CATEGORY\",\"position\":3,\"visibility_type\":\"normal\",\"display_name\":\"Product → Category\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":6.375}}},\"base_type\":\"type/Text\"},{\"database_type\":\"DECFLOAT\",\"semantic_type\":null,\"lib/deduplicated-name\":\"sum\",\"lib/original-name\":\"sum\",\"name\":\"sum\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"sum\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",0],\"effective_type\":\"type/Float\",\"lib/desired-column-alias\":\"sum\",\"display_name\":\"Sum of Total\",\"fingerprint\":{\"global\":{\"distinct-count\":16,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":7964.421789154249,\"q1\":11002.236740543147,\"q3\":13916.514530548517,\"max\":14870.965932493753,\"sd\":2185.7490840675837,\"avg\":12137.14505798909}}},\"base_type\":\"type/Float\"},{\"database_type\":\"DECFLOAT\",\"semantic_type\":null,\"lib/deduplicated-name\":\"avg\",\"lib/original-name\":\"avg\",\"name\":\"avg\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"avg\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",1],\"effective_type\":\"type/Float\",\"lib/desired-column-alias\":\"avg\",\"display_name\":\"Average of Total\",\"fingerprint\":{\"global\":{\"distinct-count\":16,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":79.6442178915425,\"q1\":84.87314355167331,\"q3\":90.16751604831889,\"max\":95.94171569350807,\"sd\":4.551518432822324,\"avg\":87.35037077070169}}},\"base_type\":\"type/Float\"},{\"database_type\":\"DOUBLE PRECISION\",\"semantic_type\":null,\"lib/deduplicated-name\":\"max\",\"lib/original-name\":\"max\",\"name\":\"max\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"max\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",2],\"effective_type\":\"type/Float\",\"lib/desired-column-alias\":\"max\",\"display_name\":\"Max of Total\",\"fingerprint\":{\"global\":{\"distinct-count\":16,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":132.67312547576884,\"q1\":150.74040629997404,\"q3\":156.9340052655229,\"max\":158.4190052655229,\"sd\":6.132452440391181,\"avg\":152.5964043543571}}},\"base_type\":\"type/Float\"},{\"database_type\":\"DECFLOAT\",\"semantic_type\":\"type/Discount\",\"lib/deduplicated-name\":\"sum_2\",\"lib/original-name\":\"sum\",\"name\":\"sum_2\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"sum\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",3],\"effective_type\":\"type/Float\",\"lib/desired-column-alias\":\"sum_2\",\"display_name\":\"Sum of Discount\",\"fingerprint\":{\"global\":{\"distinct-count\":16,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":23.50010582323818,\"q1\":59.909314722591276,\"q3\":77.56127617998636,\"max\":110.72998819991292,\"sd\":20.472145174127174,\"avg\":67.58078379166977}}},\"base_type\":\"type/Float\"}]",
+   "[{\"description\":\"The date and time an order was submitted.\",\"database_type\":\"timestamp\",\"semantic_type\":\"type/CreationTimestamp\",\"table_id\":2,\"lib/deduplicated-name\":\"CREATED_AT\",\"lib/original-name\":\"CREATED_AT\",\"lib/breakout?\":true,\"unit\":\"month\",\"name\":\"CREATED_AT\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"CREATED_AT\",\"lib/original-display-name\":\"Created At\",\"source\":\"breakout\",\"field_ref\":[\"field\",13,{\"temporal-unit\":\"month\"}],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":13,\"lib/desired-column-alias\":\"CREATED_AT\",\"metabase.lib.field/temporal-unit\":\"month\",\"position\":7,\"visibility_type\":\"normal\",\"inherited_temporal_unit\":\"month\",\"display_name\":\"Created At: Month\",\"fingerprint\":{\"global\":{\"distinct-count\":10001,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2022-04-30T18:56:13.352Z\",\"latest\":\"2026-04-19T14:07:15.657Z\"}}},\"base_type\":\"type/DateTime\"},{\"description\":\"The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget\",\"database_type\":\"varchar\",\"semantic_type\":\"type/Category\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"CATEGORY\",\"lib/original-name\":\"CATEGORY\",\"lib/breakout?\":true,\"name\":\"CATEGORY\",\"lib/source\":\"source/implicitly-joinable\",\"lib/source-column-alias\":\"CATEGORY\",\"lib/original-display-name\":\"Category\",\"source\":\"breakout\",\"fk_field_id\":14,\"field_ref\":[\"field\",18,{\"source-field\":14}],\"effective_type\":\"type/Text\",\"active\":true,\"id\":18,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__CATEGORY\",\"position\":3,\"visibility_type\":\"normal\",\"display_name\":\"Product → Category\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":6.375}}},\"base_type\":\"type/Text\"},{\"database_type\":\"DECFLOAT\",\"semantic_type\":null,\"lib/deduplicated-name\":\"sum\",\"lib/original-name\":\"sum\",\"name\":\"sum\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"sum\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",0],\"effective_type\":\"type/Float\",\"lib/desired-column-alias\":\"sum\",\"display_name\":\"Sum of Total\",\"fingerprint\":{\"global\":{\"distinct-count\":16,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":7964.421789154249,\"q1\":11002.236740543147,\"q3\":13916.514530548517,\"max\":14870.965932493753,\"sd\":2185.7490840675837,\"avg\":12137.14505798909}}},\"base_type\":\"type/Float\"},{\"database_type\":\"DECFLOAT\",\"semantic_type\":null,\"lib/deduplicated-name\":\"avg\",\"lib/original-name\":\"avg\",\"name\":\"avg\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"avg\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",1],\"effective_type\":\"type/Float\",\"lib/desired-column-alias\":\"avg\",\"display_name\":\"Average of Total\",\"fingerprint\":{\"global\":{\"distinct-count\":16,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":79.6442178915425,\"q1\":84.87314355167331,\"q3\":90.16751604831889,\"max\":95.94171569350807,\"sd\":4.551518432822324,\"avg\":87.35037077070169}}},\"base_type\":\"type/Float\"},{\"database_type\":\"float8\",\"semantic_type\":null,\"lib/deduplicated-name\":\"max\",\"lib/original-name\":\"max\",\"name\":\"max\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"max\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",2],\"effective_type\":\"type/Float\",\"lib/desired-column-alias\":\"max\",\"display_name\":\"Max of Total\",\"fingerprint\":{\"global\":{\"distinct-count\":16,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":132.67312547576884,\"q1\":150.74040629997404,\"q3\":156.9340052655229,\"max\":158.4190052655229,\"sd\":6.132452440391181,\"avg\":152.5964043543571}}},\"base_type\":\"type/Float\"},{\"database_type\":\"DECFLOAT\",\"semantic_type\":\"type/Discount\",\"lib/deduplicated-name\":\"sum_2\",\"lib/original-name\":\"sum\",\"name\":\"sum_2\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"sum\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",3],\"effective_type\":\"type/Float\",\"lib/desired-column-alias\":\"sum_2\",\"display_name\":\"Sum of Discount\",\"fingerprint\":{\"global\":{\"distinct-count\":16,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":23.50010582323818,\"q1\":59.909314722591276,\"q3\":77.56127617998636,\"max\":110.72998819991292,\"sd\":20.472145174127174,\"avg\":67.58078379166977}}},\"base_type\":\"type/Float\"}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,
@@ -2859,7 +2859,7 @@
    :source_card_id nil,
    :table_id 6,
    :result_metadata
-   "[{\"database_type\":\"TIMESTAMP\",\"semantic_type\":\"type/CreationTimestamp\",\"table_id\":6,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"CREATED_AT\",\"lib/original-name\":\"CREATED_AT\",\"lib/breakout?\":false,\"unit\":\"year\",\"name\":\"CREATED_AT\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"CREATED_AT\",\"lib/original-display-name\":\"Created At\",\"source\":\"fields\",\"field_ref\":[\"field\",31,null],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":31,\"lib/desired-column-alias\":\"CREATED_AT\",\"position\":7,\"visibility_type\":\"normal\",\"inherited_temporal_unit\":\"year\",\"display_name\":\"Created At: Year\",\"fingerprint\":{\"global\":{\"distinct-count\":2495,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2020-09-15T16:11:50Z\",\"latest\":\"2031-10-10T19:14:48Z\"}}},\"base_type\":\"type/DateTime\"},{\"database_type\":\"BIGINT\",\"semantic_type\":null,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"sum\",\"lib/original-name\":\"sum\",\"lib/breakout?\":false,\"name\":\"sum\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"sum\",\"source\":\"fields\",\"field_ref\":[\"field\",\"sum\",{\"base-type\":\"type/BigInteger\"}],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"sum\",\"display_name\":\"Sum of Seats\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":1932.0,\"q1\":3090.5,\"q3\":4546.0,\"max\":4680.0,\"sd\":1269.99169944794,\"avg\":3818.25}}},\"base_type\":\"type/BigInteger\"}]",
+   "[{\"database_type\":\"timestamp\",\"semantic_type\":\"type/CreationTimestamp\",\"table_id\":6,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"CREATED_AT\",\"lib/original-name\":\"CREATED_AT\",\"lib/breakout?\":false,\"unit\":\"year\",\"name\":\"CREATED_AT\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"CREATED_AT\",\"lib/original-display-name\":\"Created At\",\"source\":\"fields\",\"field_ref\":[\"field\",31,null],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":31,\"lib/desired-column-alias\":\"CREATED_AT\",\"position\":7,\"visibility_type\":\"normal\",\"inherited_temporal_unit\":\"year\",\"display_name\":\"Created At: Year\",\"fingerprint\":{\"global\":{\"distinct-count\":2495,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2020-09-15T16:11:50Z\",\"latest\":\"2031-10-10T19:14:48Z\"}}},\"base_type\":\"type/DateTime\"},{\"database_type\":\"int8\",\"semantic_type\":null,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"sum\",\"lib/original-name\":\"sum\",\"lib/breakout?\":false,\"name\":\"sum\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"sum\",\"source\":\"fields\",\"field_ref\":[\"field\",\"sum\",{\"base-type\":\"type/BigInteger\"}],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"sum\",\"display_name\":\"Sum of Seats\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":1932.0,\"q1\":3090.5,\"q3\":4546.0,\"max\":4680.0,\"sd\":1269.99169944794,\"avg\":3818.25}}},\"base_type\":\"type/BigInteger\"}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,
@@ -2894,7 +2894,7 @@
    :source_card_id nil,
    :table_id 2,
    :result_metadata
-   "[{\"description\":\"The date and time an order was submitted.\",\"database_type\":\"TIMESTAMP\",\"semantic_type\":\"type/CreationTimestamp\",\"table_id\":2,\"lib/deduplicated-name\":\"CREATED_AT\",\"lib/original-name\":\"CREATED_AT\",\"lib/breakout?\":true,\"unit\":\"quarter\",\"name\":\"CREATED_AT\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"CREATED_AT\",\"lib/original-display-name\":\"Created At\",\"source\":\"breakout\",\"field_ref\":[\"field\",13,{\"temporal-unit\":\"quarter\"}],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":13,\"lib/desired-column-alias\":\"CREATED_AT\",\"metabase.lib.field/temporal-unit\":\"quarter\",\"position\":7,\"visibility_type\":\"normal\",\"inherited_temporal_unit\":\"quarter\",\"display_name\":\"Created At: Quarter\",\"fingerprint\":{\"global\":{\"distinct-count\":10001,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2022-04-30T18:56:13.352Z\",\"latest\":\"2026-04-19T14:07:15.657Z\"}}},\"base_type\":\"type/DateTime\"},{\"database_type\":\"DECFLOAT\",\"semantic_type\":null,\"lib/deduplicated-name\":\"sum\",\"lib/original-name\":\"sum\",\"name\":\"sum\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"sum\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",0],\"effective_type\":\"type/Float\",\"lib/desired-column-alias\":\"sum\",\"display_name\":\"Sum of Total\",\"fingerprint\":{\"global\":{\"distinct-count\":14,\"nil%\":0.2352941176470588},\"type\":{\"type/Number\":{\"min\":36453.92923470405,\"q1\":65069.208990113075,\"q3\":142628.11468257313,\"max\":150057.1074961184,\"sd\":42907.89243122207,\"avg\":110592.71874078922}}},\"base_type\":\"type/Float\"}]",
+   "[{\"description\":\"The date and time an order was submitted.\",\"database_type\":\"timestamp\",\"semantic_type\":\"type/CreationTimestamp\",\"table_id\":2,\"lib/deduplicated-name\":\"CREATED_AT\",\"lib/original-name\":\"CREATED_AT\",\"lib/breakout?\":true,\"unit\":\"quarter\",\"name\":\"CREATED_AT\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"CREATED_AT\",\"lib/original-display-name\":\"Created At\",\"source\":\"breakout\",\"field_ref\":[\"field\",13,{\"temporal-unit\":\"quarter\"}],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":13,\"lib/desired-column-alias\":\"CREATED_AT\",\"metabase.lib.field/temporal-unit\":\"quarter\",\"position\":7,\"visibility_type\":\"normal\",\"inherited_temporal_unit\":\"quarter\",\"display_name\":\"Created At: Quarter\",\"fingerprint\":{\"global\":{\"distinct-count\":10001,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2022-04-30T18:56:13.352Z\",\"latest\":\"2026-04-19T14:07:15.657Z\"}}},\"base_type\":\"type/DateTime\"},{\"database_type\":\"DECFLOAT\",\"semantic_type\":null,\"lib/deduplicated-name\":\"sum\",\"lib/original-name\":\"sum\",\"name\":\"sum\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"sum\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",0],\"effective_type\":\"type/Float\",\"lib/desired-column-alias\":\"sum\",\"display_name\":\"Sum of Total\",\"fingerprint\":{\"global\":{\"distinct-count\":14,\"nil%\":0.2352941176470588},\"type\":{\"type/Number\":{\"min\":36453.92923470405,\"q1\":65069.208990113075,\"q3\":142628.11468257313,\"max\":150057.1074961184,\"sd\":42907.89243122207,\"avg\":110592.71874078922}}},\"base_type\":\"type/Float\"}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,
@@ -2929,7 +2929,7 @@
    :source_card_id nil,
    :table_id 7,
    :result_metadata
-   "[{\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":\"type/Category\",\"table_id\":7,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"BUTTON_LABEL\",\"lib/original-name\":\"BUTTON_LABEL\",\"lib/breakout?\":false,\"name\":\"BUTTON_LABEL\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"BUTTON_LABEL\",\"lib/original-display-name\":\"Button Label\",\"source\":\"fields\",\"field_ref\":[\"field\",29,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":29,\"lib/desired-column-alias\":\"BUTTON_LABEL\",\"position\":5,\"visibility_type\":\"normal\",\"display_name\":\"Button Label\",\"fingerprint\":{\"global\":{\"distinct-count\":6,\"nil%\":0.8698},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":1.0552}}},\"base_type\":\"type/Text\"},{\"database_type\":\"TIMESTAMP\",\"semantic_type\":null,\"table_id\":7,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"TIMESTAMP\",\"lib/original-name\":\"TIMESTAMP\",\"lib/breakout?\":false,\"unit\":\"month\",\"name\":\"TIMESTAMP\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"TIMESTAMP\",\"lib/original-display-name\":\"Timestamp\",\"source\":\"fields\",\"field_ref\":[\"field\",35,null],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":35,\"lib/desired-column-alias\":\"TIMESTAMP\",\"position\":3,\"visibility_type\":\"normal\",\"inherited_temporal_unit\":\"month\",\"display_name\":\"Timestamp: Month\",\"fingerprint\":{\"global\":{\"distinct-count\":8576,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2022-03-15T00:18:25Z\",\"latest\":\"2022-04-11T20:24:02Z\"}}},\"base_type\":\"type/DateTime\"},{\"database_type\":\"BIGINT\",\"semantic_type\":\"type/Quantity\",\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"count\",\"lib/original-name\":\"count\",\"lib/breakout?\":false,\"name\":\"count\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"count\",\"source\":\"fields\",\"field_ref\":[\"field\",\"count\",{\"base-type\":\"type/BigInteger\"}],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"count\",\"display_name\":\"Count\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":160.0,\"q1\":208.5,\"q3\":317.0,\"max\":321.0,\"sd\":74.18164642731156,\"avg\":262.75}}},\"base_type\":\"type/BigInteger\"}]",
+   "[{\"database_type\":\"varchar\",\"semantic_type\":\"type/Category\",\"table_id\":7,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"BUTTON_LABEL\",\"lib/original-name\":\"BUTTON_LABEL\",\"lib/breakout?\":false,\"name\":\"BUTTON_LABEL\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"BUTTON_LABEL\",\"lib/original-display-name\":\"Button Label\",\"source\":\"fields\",\"field_ref\":[\"field\",29,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":29,\"lib/desired-column-alias\":\"BUTTON_LABEL\",\"position\":5,\"visibility_type\":\"normal\",\"display_name\":\"Button Label\",\"fingerprint\":{\"global\":{\"distinct-count\":6,\"nil%\":0.8698},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":1.0552}}},\"base_type\":\"type/Text\"},{\"database_type\":\"timestamp\",\"semantic_type\":null,\"table_id\":7,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"TIMESTAMP\",\"lib/original-name\":\"TIMESTAMP\",\"lib/breakout?\":false,\"unit\":\"month\",\"name\":\"TIMESTAMP\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"TIMESTAMP\",\"lib/original-display-name\":\"Timestamp\",\"source\":\"fields\",\"field_ref\":[\"field\",35,null],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":35,\"lib/desired-column-alias\":\"TIMESTAMP\",\"position\":3,\"visibility_type\":\"normal\",\"inherited_temporal_unit\":\"month\",\"display_name\":\"Timestamp: Month\",\"fingerprint\":{\"global\":{\"distinct-count\":8576,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2022-03-15T00:18:25Z\",\"latest\":\"2022-04-11T20:24:02Z\"}}},\"base_type\":\"type/DateTime\"},{\"database_type\":\"int8\",\"semantic_type\":\"type/Quantity\",\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"count\",\"lib/original-name\":\"count\",\"lib/breakout?\":false,\"name\":\"count\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"count\",\"source\":\"fields\",\"field_ref\":[\"field\",\"count\",{\"base-type\":\"type/BigInteger\"}],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"count\",\"display_name\":\"Count\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":160.0,\"q1\":208.5,\"q3\":317.0,\"max\":321.0,\"sd\":74.18164642731156,\"avg\":262.75}}},\"base_type\":\"type/BigInteger\"}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,
@@ -3070,7 +3070,7 @@
    :source_card_id nil,
    :table_id 2,
    :result_metadata
-   "[{\"description\":\"The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget\",\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":\"type/Category\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"CATEGORY\",\"lib/original-name\":\"CATEGORY\",\"lib/breakout?\":true,\"name\":\"CATEGORY\",\"lib/source\":\"source/implicitly-joinable\",\"lib/source-column-alias\":\"CATEGORY\",\"lib/original-display-name\":\"Category\",\"source\":\"breakout\",\"fk_field_id\":14,\"field_ref\":[\"field\",18,{\"source-field\":14}],\"effective_type\":\"type/Text\",\"active\":true,\"id\":18,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__CATEGORY\",\"position\":3,\"visibility_type\":\"normal\",\"display_name\":\"Product → Category\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":6.375}}},\"base_type\":\"type/Text\"},{\"database_type\":\"BIGINT\",\"semantic_type\":\"type/Quantity\",\"lib/deduplicated-name\":\"count\",\"lib/original-name\":\"count\",\"name\":\"count\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"count\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",0],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"count\",\"display_name\":\"Count\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":3799.0,\"q1\":4212.5,\"q3\":4795.5,\"max\":4851.0,\"sd\":478.8924722732651,\"avg\":4504.0}}},\"base_type\":\"type/BigInteger\"}]",
+   "[{\"description\":\"The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget\",\"database_type\":\"varchar\",\"semantic_type\":\"type/Category\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"CATEGORY\",\"lib/original-name\":\"CATEGORY\",\"lib/breakout?\":true,\"name\":\"CATEGORY\",\"lib/source\":\"source/implicitly-joinable\",\"lib/source-column-alias\":\"CATEGORY\",\"lib/original-display-name\":\"Category\",\"source\":\"breakout\",\"fk_field_id\":14,\"field_ref\":[\"field\",18,{\"source-field\":14}],\"effective_type\":\"type/Text\",\"active\":true,\"id\":18,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__CATEGORY\",\"position\":3,\"visibility_type\":\"normal\",\"display_name\":\"Product → Category\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":6.375}}},\"base_type\":\"type/Text\"},{\"database_type\":\"int8\",\"semantic_type\":\"type/Quantity\",\"lib/deduplicated-name\":\"count\",\"lib/original-name\":\"count\",\"name\":\"count\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"count\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",0],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"count\",\"display_name\":\"Count\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":3799.0,\"q1\":4212.5,\"q3\":4795.5,\"max\":4851.0,\"sd\":478.8924722732651,\"avg\":4504.0}}},\"base_type\":\"type/BigInteger\"}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,
@@ -3105,7 +3105,7 @@
    :source_card_id nil,
    :table_id 2,
    :result_metadata
-   "[{\"description\":\"The name of the product as it should be displayed to customers.\",\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":\"type/Title\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"TITLE\",\"lib/original-name\":\"TITLE\",\"lib/breakout?\":false,\"name\":\"TITLE\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"PRODUCTS__via__PRODUCT_ID__TITLE\",\"lib/original-display-name\":\"Title\",\"lib/original-fk-field-id\":14,\"source\":\"fields\",\"field_ref\":[\"field\",17,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":17,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__TITLE\",\"position\":2,\"visibility_type\":\"normal\",\"display_name\":\"Product → Title\",\"fingerprint\":{\"global\":{\"distinct-count\":199,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":21.495}}},\"base_type\":\"type/Text\"},{\"description\":\"The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget\",\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":\"type/Category\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"CATEGORY\",\"lib/original-name\":\"CATEGORY\",\"lib/breakout?\":false,\"name\":\"CATEGORY\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"PRODUCTS__via__PRODUCT_ID__CATEGORY\",\"lib/original-display-name\":\"Category\",\"lib/original-fk-field-id\":14,\"source\":\"fields\",\"field_ref\":[\"field\",18,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":18,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__CATEGORY\",\"position\":3,\"visibility_type\":\"normal\",\"display_name\":\"Product → Category\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":6.375}}},\"base_type\":\"type/Text\"},{\"database_type\":\"BIGINT\",\"semantic_type\":\"type/Quantity\",\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"count\",\"lib/original-name\":\"count\",\"lib/breakout?\":false,\"name\":\"count\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"count\",\"source\":\"fields\",\"field_ref\":[\"field\",\"count\",{\"base-type\":\"type/BigInteger\"}],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"count\",\"display_name\":\"Count\",\"fingerprint\":{\"global\":{\"distinct-count\":7,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":110.0,\"q1\":112.74341649025257,\"q3\":118.25,\"max\":120.0,\"sd\":3.5039660069381062,\"avg\":115.55555555555556}}},\"base_type\":\"type/BigInteger\"}]",
+   "[{\"description\":\"The name of the product as it should be displayed to customers.\",\"database_type\":\"varchar\",\"semantic_type\":\"type/Title\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"TITLE\",\"lib/original-name\":\"TITLE\",\"lib/breakout?\":false,\"name\":\"TITLE\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"PRODUCTS__via__PRODUCT_ID__TITLE\",\"lib/original-display-name\":\"Title\",\"lib/original-fk-field-id\":14,\"source\":\"fields\",\"field_ref\":[\"field\",17,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":17,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__TITLE\",\"position\":2,\"visibility_type\":\"normal\",\"display_name\":\"Product → Title\",\"fingerprint\":{\"global\":{\"distinct-count\":199,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":21.495}}},\"base_type\":\"type/Text\"},{\"description\":\"The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget\",\"database_type\":\"varchar\",\"semantic_type\":\"type/Category\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"CATEGORY\",\"lib/original-name\":\"CATEGORY\",\"lib/breakout?\":false,\"name\":\"CATEGORY\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"PRODUCTS__via__PRODUCT_ID__CATEGORY\",\"lib/original-display-name\":\"Category\",\"lib/original-fk-field-id\":14,\"source\":\"fields\",\"field_ref\":[\"field\",18,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":18,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__CATEGORY\",\"position\":3,\"visibility_type\":\"normal\",\"display_name\":\"Product → Category\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":6.375}}},\"base_type\":\"type/Text\"},{\"database_type\":\"int8\",\"semantic_type\":\"type/Quantity\",\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"count\",\"lib/original-name\":\"count\",\"lib/breakout?\":false,\"name\":\"count\",\"lib/source\":\"source/previous-stage\",\"lib/source-column-alias\":\"count\",\"source\":\"fields\",\"field_ref\":[\"field\",\"count\",{\"base-type\":\"type/BigInteger\"}],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"count\",\"display_name\":\"Count\",\"fingerprint\":{\"global\":{\"distinct-count\":7,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":110.0,\"q1\":112.74341649025257,\"q3\":118.25,\"max\":120.0,\"sd\":3.5039660069381062,\"avg\":115.55555555555556}}},\"base_type\":\"type/BigInteger\"}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,
@@ -3175,7 +3175,7 @@
    :source_card_id nil,
    :table_id 6,
    :result_metadata
-   "[{\"database_type\":\"BIGINT\",\"semantic_type\":\"type/PK\",\"table_id\":6,\"lib/deduplicated-name\":\"ID\",\"lib/original-name\":\"ID\",\"name\":\"ID\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"ID\",\"lib/original-display-name\":\"ID\",\"source\":\"fields\",\"field_ref\":[\"field\",24,null],\"effective_type\":\"type/BigInteger\",\"active\":true,\"id\":24,\"lib/desired-column-alias\":\"ID\",\"position\":0,\"visibility_type\":\"normal\",\"display_name\":\"ID\",\"fingerprint\":null,\"base_type\":\"type/BigInteger\"},{\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":\"type/Name\",\"table_id\":6,\"lib/deduplicated-name\":\"FIRST_NAME\",\"lib/original-name\":\"FIRST_NAME\",\"name\":\"FIRST_NAME\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"FIRST_NAME\",\"lib/original-display-name\":\"First Name\",\"source\":\"fields\",\"field_ref\":[\"field\",37,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":37,\"lib/desired-column-alias\":\"FIRST_NAME\",\"position\":2,\"visibility_type\":\"normal\",\"display_name\":\"First Name\",\"fingerprint\":{\"global\":{\"distinct-count\":1687,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.001603206412825651,\"average-length\":5.997595190380761}}},\"base_type\":\"type/Text\"},{\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":\"type/Name\",\"table_id\":6,\"lib/deduplicated-name\":\"LAST_NAME\",\"lib/original-name\":\"LAST_NAME\",\"name\":\"LAST_NAME\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"LAST_NAME\",\"lib/original-display-name\":\"Last Name\",\"source\":\"fields\",\"field_ref\":[\"field\",36,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":36,\"lib/desired-column-alias\":\"LAST_NAME\",\"position\":3,\"visibility_type\":\"normal\",\"display_name\":\"Last Name\",\"fingerprint\":{\"global\":{\"distinct-count\":473,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":6.536673346693386}}},\"base_type\":\"type/Text\"},{\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":\"type/Category\",\"table_id\":6,\"lib/deduplicated-name\":\"PLAN\",\"lib/original-name\":\"PLAN\",\"name\":\"PLAN\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"PLAN\",\"lib/original-display-name\":\"Plan\",\"source\":\"fields\",\"field_ref\":[\"field\",43,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":43,\"lib/desired-column-alias\":\"PLAN\",\"position\":4,\"visibility_type\":\"normal\",\"display_name\":\"Plan\",\"fingerprint\":{\"global\":{\"distinct-count\":3,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":5.1062124248497}}},\"base_type\":\"type/Text\"},{\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":\"type/Source\",\"table_id\":6,\"lib/deduplicated-name\":\"SOURCE\",\"lib/original-name\":\"SOURCE\",\"name\":\"SOURCE\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"SOURCE\",\"lib/original-display-name\":\"Source\",\"source\":\"fields\",\"field_ref\":[\"field\",41,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":41,\"lib/desired-column-alias\":\"SOURCE\",\"position\":5,\"visibility_type\":\"normal\",\"display_name\":\"Source\",\"fingerprint\":{\"global\":{\"distinct-count\":5,\"nil%\":0.3346693386773547},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":4.4705410821643286}}},\"base_type\":\"type/Text\"},{\"database_type\":\"TIMESTAMP\",\"semantic_type\":\"type/CreationTimestamp\",\"table_id\":6,\"lib/deduplicated-name\":\"CREATED_AT\",\"lib/original-name\":\"CREATED_AT\",\"name\":\"CREATED_AT\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"CREATED_AT\",\"lib/original-display-name\":\"Created At\",\"source\":\"fields\",\"field_ref\":[\"field\",31,null],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":31,\"lib/desired-column-alias\":\"CREATED_AT\",\"position\":7,\"visibility_type\":\"normal\",\"display_name\":\"Created At\",\"fingerprint\":{\"global\":{\"distinct-count\":2495,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2020-09-15T16:11:50Z\",\"latest\":\"2031-10-10T19:14:48Z\"}}},\"base_type\":\"type/DateTime\"},{\"database_type\":\"TIMESTAMP\",\"semantic_type\":null,\"table_id\":6,\"lib/deduplicated-name\":\"TRIAL_ENDS_AT\",\"lib/original-name\":\"TRIAL_ENDS_AT\",\"name\":\"TRIAL_ENDS_AT\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"TRIAL_ENDS_AT\",\"lib/original-display-name\":\"Trial Ends At\",\"source\":\"fields\",\"field_ref\":[\"field\",40,null],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":40,\"lib/desired-column-alias\":\"TRIAL_ENDS_AT\",\"position\":8,\"visibility_type\":\"normal\",\"display_name\":\"Trial Ends At\",\"fingerprint\":{\"global\":{\"distinct-count\":1712,\"nil%\":0.001202404809619238},\"type\":{\"type/DateTime\":{\"earliest\":\"2020-09-30T12:00:00Z\",\"latest\":\"2031-10-25T12:00:00Z\"}}},\"base_type\":\"type/DateTime\"},{\"database_type\":\"TIMESTAMP\",\"semantic_type\":\"type/CancelationTimestamp\",\"table_id\":6,\"lib/deduplicated-name\":\"CANCELED_AT\",\"lib/original-name\":\"CANCELED_AT\",\"name\":\"CANCELED_AT\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"CANCELED_AT\",\"lib/original-display-name\":\"Canceled At\",\"source\":\"fields\",\"field_ref\":[\"field\",39,null],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":39,\"lib/desired-column-alias\":\"CANCELED_AT\",\"position\":9,\"visibility_type\":\"normal\",\"display_name\":\"Canceled At\",\"fingerprint\":{\"global\":{\"distinct-count\":2021,\"nil%\":0.1859719438877756},\"type\":{\"type/DateTime\":{\"earliest\":\"2020-10-01T15:43:40Z\",\"latest\":\"2032-06-03T14:01:15Z\"}}},\"base_type\":\"type/DateTime\"},{\"database_type\":\"BOOLEAN\",\"semantic_type\":null,\"table_id\":6,\"lib/deduplicated-name\":\"TRIAL_CONVERTED\",\"lib/original-name\":\"TRIAL_CONVERTED\",\"name\":\"TRIAL_CONVERTED\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"TRIAL_CONVERTED\",\"lib/original-display-name\":\"Trial Converted\",\"source\":\"fields\",\"field_ref\":[\"field\",38,null],\"effective_type\":\"type/Boolean\",\"active\":true,\"id\":38,\"lib/desired-column-alias\":\"TRIAL_CONVERTED\",\"position\":10,\"visibility_type\":\"normal\",\"display_name\":\"Trial Converted\",\"fingerprint\":{\"global\":{\"distinct-count\":2,\"nil%\":0.0}},\"base_type\":\"type/Boolean\"},{\"database_type\":\"BOOLEAN\",\"semantic_type\":null,\"table_id\":6,\"lib/deduplicated-name\":\"ACTIVE_SUBSCRIPTION\",\"lib/original-name\":\"ACTIVE_SUBSCRIPTION\",\"name\":\"ACTIVE_SUBSCRIPTION\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"ACTIVE_SUBSCRIPTION\",\"lib/original-display-name\":\"Active Subscription\",\"source\":\"fields\",\"field_ref\":[\"field\",42,null],\"effective_type\":\"type/Boolean\",\"active\":true,\"id\":42,\"lib/desired-column-alias\":\"ACTIVE_SUBSCRIPTION\",\"position\":11,\"visibility_type\":\"normal\",\"display_name\":\"Active Subscription\",\"fingerprint\":{\"global\":{\"distinct-count\":2,\"nil%\":0.0}},\"base_type\":\"type/Boolean\"}]",
+   "[{\"database_type\":\"int8\",\"semantic_type\":\"type/PK\",\"table_id\":6,\"lib/deduplicated-name\":\"ID\",\"lib/original-name\":\"ID\",\"name\":\"ID\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"ID\",\"lib/original-display-name\":\"ID\",\"source\":\"fields\",\"field_ref\":[\"field\",24,null],\"effective_type\":\"type/BigInteger\",\"active\":true,\"id\":24,\"lib/desired-column-alias\":\"ID\",\"position\":0,\"visibility_type\":\"normal\",\"display_name\":\"ID\",\"fingerprint\":null,\"base_type\":\"type/BigInteger\"},{\"database_type\":\"varchar\",\"semantic_type\":\"type/Name\",\"table_id\":6,\"lib/deduplicated-name\":\"FIRST_NAME\",\"lib/original-name\":\"FIRST_NAME\",\"name\":\"FIRST_NAME\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"FIRST_NAME\",\"lib/original-display-name\":\"First Name\",\"source\":\"fields\",\"field_ref\":[\"field\",37,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":37,\"lib/desired-column-alias\":\"FIRST_NAME\",\"position\":2,\"visibility_type\":\"normal\",\"display_name\":\"First Name\",\"fingerprint\":{\"global\":{\"distinct-count\":1687,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.001603206412825651,\"average-length\":5.997595190380761}}},\"base_type\":\"type/Text\"},{\"database_type\":\"varchar\",\"semantic_type\":\"type/Name\",\"table_id\":6,\"lib/deduplicated-name\":\"LAST_NAME\",\"lib/original-name\":\"LAST_NAME\",\"name\":\"LAST_NAME\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"LAST_NAME\",\"lib/original-display-name\":\"Last Name\",\"source\":\"fields\",\"field_ref\":[\"field\",36,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":36,\"lib/desired-column-alias\":\"LAST_NAME\",\"position\":3,\"visibility_type\":\"normal\",\"display_name\":\"Last Name\",\"fingerprint\":{\"global\":{\"distinct-count\":473,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":6.536673346693386}}},\"base_type\":\"type/Text\"},{\"database_type\":\"varchar\",\"semantic_type\":\"type/Category\",\"table_id\":6,\"lib/deduplicated-name\":\"PLAN\",\"lib/original-name\":\"PLAN\",\"name\":\"PLAN\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"PLAN\",\"lib/original-display-name\":\"Plan\",\"source\":\"fields\",\"field_ref\":[\"field\",43,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":43,\"lib/desired-column-alias\":\"PLAN\",\"position\":4,\"visibility_type\":\"normal\",\"display_name\":\"Plan\",\"fingerprint\":{\"global\":{\"distinct-count\":3,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":5.1062124248497}}},\"base_type\":\"type/Text\"},{\"database_type\":\"varchar\",\"semantic_type\":\"type/Source\",\"table_id\":6,\"lib/deduplicated-name\":\"SOURCE\",\"lib/original-name\":\"SOURCE\",\"name\":\"SOURCE\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"SOURCE\",\"lib/original-display-name\":\"Source\",\"source\":\"fields\",\"field_ref\":[\"field\",41,null],\"effective_type\":\"type/Text\",\"active\":true,\"id\":41,\"lib/desired-column-alias\":\"SOURCE\",\"position\":5,\"visibility_type\":\"normal\",\"display_name\":\"Source\",\"fingerprint\":{\"global\":{\"distinct-count\":5,\"nil%\":0.3346693386773547},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":4.4705410821643286}}},\"base_type\":\"type/Text\"},{\"database_type\":\"timestamp\",\"semantic_type\":\"type/CreationTimestamp\",\"table_id\":6,\"lib/deduplicated-name\":\"CREATED_AT\",\"lib/original-name\":\"CREATED_AT\",\"name\":\"CREATED_AT\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"CREATED_AT\",\"lib/original-display-name\":\"Created At\",\"source\":\"fields\",\"field_ref\":[\"field\",31,null],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":31,\"lib/desired-column-alias\":\"CREATED_AT\",\"position\":7,\"visibility_type\":\"normal\",\"display_name\":\"Created At\",\"fingerprint\":{\"global\":{\"distinct-count\":2495,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2020-09-15T16:11:50Z\",\"latest\":\"2031-10-10T19:14:48Z\"}}},\"base_type\":\"type/DateTime\"},{\"database_type\":\"timestamp\",\"semantic_type\":null,\"table_id\":6,\"lib/deduplicated-name\":\"TRIAL_ENDS_AT\",\"lib/original-name\":\"TRIAL_ENDS_AT\",\"name\":\"TRIAL_ENDS_AT\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"TRIAL_ENDS_AT\",\"lib/original-display-name\":\"Trial Ends At\",\"source\":\"fields\",\"field_ref\":[\"field\",40,null],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":40,\"lib/desired-column-alias\":\"TRIAL_ENDS_AT\",\"position\":8,\"visibility_type\":\"normal\",\"display_name\":\"Trial Ends At\",\"fingerprint\":{\"global\":{\"distinct-count\":1712,\"nil%\":0.001202404809619238},\"type\":{\"type/DateTime\":{\"earliest\":\"2020-09-30T12:00:00Z\",\"latest\":\"2031-10-25T12:00:00Z\"}}},\"base_type\":\"type/DateTime\"},{\"database_type\":\"timestamp\",\"semantic_type\":\"type/CancelationTimestamp\",\"table_id\":6,\"lib/deduplicated-name\":\"CANCELED_AT\",\"lib/original-name\":\"CANCELED_AT\",\"name\":\"CANCELED_AT\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"CANCELED_AT\",\"lib/original-display-name\":\"Canceled At\",\"source\":\"fields\",\"field_ref\":[\"field\",39,null],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":39,\"lib/desired-column-alias\":\"CANCELED_AT\",\"position\":9,\"visibility_type\":\"normal\",\"display_name\":\"Canceled At\",\"fingerprint\":{\"global\":{\"distinct-count\":2021,\"nil%\":0.1859719438877756},\"type\":{\"type/DateTime\":{\"earliest\":\"2020-10-01T15:43:40Z\",\"latest\":\"2032-06-03T14:01:15Z\"}}},\"base_type\":\"type/DateTime\"},{\"database_type\":\"bool\",\"semantic_type\":null,\"table_id\":6,\"lib/deduplicated-name\":\"TRIAL_CONVERTED\",\"lib/original-name\":\"TRIAL_CONVERTED\",\"name\":\"TRIAL_CONVERTED\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"TRIAL_CONVERTED\",\"lib/original-display-name\":\"Trial Converted\",\"source\":\"fields\",\"field_ref\":[\"field\",38,null],\"effective_type\":\"type/Boolean\",\"active\":true,\"id\":38,\"lib/desired-column-alias\":\"TRIAL_CONVERTED\",\"position\":10,\"visibility_type\":\"normal\",\"display_name\":\"Trial Converted\",\"fingerprint\":{\"global\":{\"distinct-count\":2,\"nil%\":0.0}},\"base_type\":\"type/Boolean\"},{\"database_type\":\"bool\",\"semantic_type\":null,\"table_id\":6,\"lib/deduplicated-name\":\"ACTIVE_SUBSCRIPTION\",\"lib/original-name\":\"ACTIVE_SUBSCRIPTION\",\"name\":\"ACTIVE_SUBSCRIPTION\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"ACTIVE_SUBSCRIPTION\",\"lib/original-display-name\":\"Active Subscription\",\"source\":\"fields\",\"field_ref\":[\"field\",42,null],\"effective_type\":\"type/Boolean\",\"active\":true,\"id\":42,\"lib/desired-column-alias\":\"ACTIVE_SUBSCRIPTION\",\"position\":11,\"visibility_type\":\"normal\",\"display_name\":\"Active Subscription\",\"fingerprint\":{\"global\":{\"distinct-count\":2,\"nil%\":0.0}},\"base_type\":\"type/Boolean\"}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,
@@ -3210,7 +3210,7 @@
    :source_card_id nil,
    :table_id 2,
    :result_metadata
-   "[{\"description\":\"The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget\",\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":\"type/Category\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"CATEGORY\",\"lib/original-name\":\"CATEGORY\",\"lib/breakout?\":true,\"name\":\"CATEGORY\",\"lib/source\":\"source/implicitly-joinable\",\"lib/source-column-alias\":\"CATEGORY\",\"lib/original-display-name\":\"Category\",\"source\":\"breakout\",\"fk_field_id\":14,\"field_ref\":[\"field\",18,{\"source-field\":14}],\"effective_type\":\"type/Text\",\"active\":true,\"id\":18,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__CATEGORY\",\"position\":3,\"visibility_type\":\"normal\",\"display_name\":\"Product → Category\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":6.375}}},\"base_type\":\"type/Text\"},{\"description\":\"The date and time an order was submitted.\",\"database_type\":\"TIMESTAMP\",\"semantic_type\":\"type/CreationTimestamp\",\"table_id\":2,\"lib/deduplicated-name\":\"CREATED_AT\",\"lib/original-name\":\"CREATED_AT\",\"lib/breakout?\":true,\"unit\":\"quarter\",\"name\":\"CREATED_AT\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"CREATED_AT\",\"lib/original-display-name\":\"Created At\",\"source\":\"breakout\",\"field_ref\":[\"field\",13,{\"temporal-unit\":\"quarter\"}],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":13,\"lib/desired-column-alias\":\"CREATED_AT\",\"metabase.lib.field/temporal-unit\":\"quarter\",\"position\":7,\"visibility_type\":\"normal\",\"inherited_temporal_unit\":\"quarter\",\"display_name\":\"Created At: Quarter\",\"fingerprint\":{\"global\":{\"distinct-count\":10001,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2022-04-30T18:56:13.352Z\",\"latest\":\"2026-04-19T14:07:15.657Z\"}}},\"base_type\":\"type/DateTime\"},{\"database_type\":\"BIGINT\",\"semantic_type\":\"type/Quantity\",\"lib/deduplicated-name\":\"count\",\"lib/original-name\":\"count\",\"name\":\"count\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"count\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",0],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"count\",\"display_name\":\"Count\",\"fingerprint\":{\"global\":{\"distinct-count\":38,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":73.0,\"q1\":332.5,\"q3\":429.5,\"max\":467.0,\"sd\":105.26609749606602,\"avg\":360.15}}},\"base_type\":\"type/BigInteger\"}]",
+   "[{\"description\":\"The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget\",\"database_type\":\"varchar\",\"semantic_type\":\"type/Category\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"CATEGORY\",\"lib/original-name\":\"CATEGORY\",\"lib/breakout?\":true,\"name\":\"CATEGORY\",\"lib/source\":\"source/implicitly-joinable\",\"lib/source-column-alias\":\"CATEGORY\",\"lib/original-display-name\":\"Category\",\"source\":\"breakout\",\"fk_field_id\":14,\"field_ref\":[\"field\",18,{\"source-field\":14}],\"effective_type\":\"type/Text\",\"active\":true,\"id\":18,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__CATEGORY\",\"position\":3,\"visibility_type\":\"normal\",\"display_name\":\"Product → Category\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":6.375}}},\"base_type\":\"type/Text\"},{\"description\":\"The date and time an order was submitted.\",\"database_type\":\"timestamp\",\"semantic_type\":\"type/CreationTimestamp\",\"table_id\":2,\"lib/deduplicated-name\":\"CREATED_AT\",\"lib/original-name\":\"CREATED_AT\",\"lib/breakout?\":true,\"unit\":\"quarter\",\"name\":\"CREATED_AT\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"CREATED_AT\",\"lib/original-display-name\":\"Created At\",\"source\":\"breakout\",\"field_ref\":[\"field\",13,{\"temporal-unit\":\"quarter\"}],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":13,\"lib/desired-column-alias\":\"CREATED_AT\",\"metabase.lib.field/temporal-unit\":\"quarter\",\"position\":7,\"visibility_type\":\"normal\",\"inherited_temporal_unit\":\"quarter\",\"display_name\":\"Created At: Quarter\",\"fingerprint\":{\"global\":{\"distinct-count\":10001,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2022-04-30T18:56:13.352Z\",\"latest\":\"2026-04-19T14:07:15.657Z\"}}},\"base_type\":\"type/DateTime\"},{\"database_type\":\"int8\",\"semantic_type\":\"type/Quantity\",\"lib/deduplicated-name\":\"count\",\"lib/original-name\":\"count\",\"name\":\"count\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"count\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",0],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"count\",\"display_name\":\"Count\",\"fingerprint\":{\"global\":{\"distinct-count\":38,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":73.0,\"q1\":332.5,\"q3\":429.5,\"max\":467.0,\"sd\":105.26609749606602,\"avg\":360.15}}},\"base_type\":\"type/BigInteger\"}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,
@@ -3661,7 +3661,7 @@
    :source_card_id nil,
    :table_id 2,
    :result_metadata
-   "[{\"description\":\"The date and time an order was submitted.\",\"database_type\":\"TIMESTAMP\",\"semantic_type\":\"type/CreationTimestamp\",\"table_id\":2,\"lib/deduplicated-name\":\"CREATED_AT\",\"lib/original-name\":\"CREATED_AT\",\"lib/breakout?\":true,\"unit\":\"month\",\"name\":\"CREATED_AT\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"CREATED_AT\",\"lib/original-display-name\":\"Created At\",\"source\":\"breakout\",\"field_ref\":[\"field\",13,{\"temporal-unit\":\"month\"}],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":13,\"lib/desired-column-alias\":\"CREATED_AT\",\"metabase.lib.field/temporal-unit\":\"month\",\"position\":7,\"visibility_type\":\"normal\",\"inherited_temporal_unit\":\"month\",\"display_name\":\"Created At: Month\",\"fingerprint\":{\"global\":{\"distinct-count\":10001,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2022-04-30T18:56:13.352Z\",\"latest\":\"2026-04-19T14:07:15.657Z\"}}},\"base_type\":\"type/DateTime\"},{\"database_type\":\"BIGINT\",\"semantic_type\":\"type/Quantity\",\"lib/deduplicated-name\":\"sum\",\"lib/original-name\":\"sum\",\"name\":\"sum\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"sum\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",0],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"sum\",\"display_name\":\"Sum of Quantity\",\"fingerprint\":{\"global\":{\"distinct-count\":7,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":1.0,\"q1\":3.25,\"q3\":6.0,\"max\":74.0,\"sd\":22.086949389477336,\"avg\":11.5}}},\"base_type\":\"type/BigInteger\"}]",
+   "[{\"description\":\"The date and time an order was submitted.\",\"database_type\":\"timestamp\",\"semantic_type\":\"type/CreationTimestamp\",\"table_id\":2,\"lib/deduplicated-name\":\"CREATED_AT\",\"lib/original-name\":\"CREATED_AT\",\"lib/breakout?\":true,\"unit\":\"month\",\"name\":\"CREATED_AT\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"CREATED_AT\",\"lib/original-display-name\":\"Created At\",\"source\":\"breakout\",\"field_ref\":[\"field\",13,{\"temporal-unit\":\"month\"}],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":13,\"lib/desired-column-alias\":\"CREATED_AT\",\"metabase.lib.field/temporal-unit\":\"month\",\"position\":7,\"visibility_type\":\"normal\",\"inherited_temporal_unit\":\"month\",\"display_name\":\"Created At: Month\",\"fingerprint\":{\"global\":{\"distinct-count\":10001,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2022-04-30T18:56:13.352Z\",\"latest\":\"2026-04-19T14:07:15.657Z\"}}},\"base_type\":\"type/DateTime\"},{\"database_type\":\"int8\",\"semantic_type\":\"type/Quantity\",\"lib/deduplicated-name\":\"sum\",\"lib/original-name\":\"sum\",\"name\":\"sum\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"sum\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",0],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"sum\",\"display_name\":\"Sum of Quantity\",\"fingerprint\":{\"global\":{\"distinct-count\":7,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":1.0,\"q1\":3.25,\"q3\":6.0,\"max\":74.0,\"sd\":22.086949389477336,\"avg\":11.5}}},\"base_type\":\"type/BigInteger\"}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,
@@ -3696,7 +3696,7 @@
    :source_card_id nil,
    :table_id 2,
    :result_metadata
-   "[{\"description\":\"The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget\",\"database_type\":\"CHARACTER VARYING\",\"semantic_type\":\"type/Category\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"CATEGORY\",\"lib/original-name\":\"CATEGORY\",\"lib/breakout?\":true,\"name\":\"CATEGORY\",\"lib/source\":\"source/implicitly-joinable\",\"lib/source-column-alias\":\"CATEGORY\",\"lib/original-display-name\":\"Category\",\"source\":\"breakout\",\"fk_field_id\":14,\"field_ref\":[\"field\",18,{\"source-field\":14}],\"effective_type\":\"type/Text\",\"active\":true,\"id\":18,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__CATEGORY\",\"position\":3,\"visibility_type\":\"normal\",\"display_name\":\"Product → Category\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":6.375}}},\"base_type\":\"type/Text\"},{\"description\":\"This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens.\",\"database_type\":\"BIGINT\",\"semantic_type\":\"type/PK\",\"table_id\":2,\"lib/deduplicated-name\":\"ID\",\"lib/original-name\":\"ID\",\"lib/breakout?\":true,\"name\":\"ID\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"ID\",\"lib/original-display-name\":\"ID\",\"source\":\"breakout\",\"field_ref\":[\"field\",9,null],\"effective_type\":\"type/BigInteger\",\"active\":true,\"id\":9,\"lib/desired-column-alias\":\"ID\",\"position\":0,\"visibility_type\":\"normal\",\"display_name\":\"ID\",\"fingerprint\":null,\"base_type\":\"type/BigInteger\"},{\"database_type\":\"DECFLOAT\",\"semantic_type\":null,\"lib/deduplicated-name\":\"sum\",\"lib/original-name\":\"sum\",\"name\":\"sum\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"sum\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",0],\"effective_type\":\"type/Float\",\"lib/desired-column-alias\":\"sum\",\"display_name\":\"Sum of Total\",\"fingerprint\":{\"global\":{\"distinct-count\":2768,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":17.37274156138626,\"q1\":59.11078403152785,\"q3\":118.53731448130873,\"max\":158.6090052655229,\"sd\":34.19707462997857,\"avg\":87.87381771617375}}},\"base_type\":\"type/Float\"}]",
+   "[{\"description\":\"The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget\",\"database_type\":\"varchar\",\"semantic_type\":\"type/Category\",\"table_id\":3,\"qp/implicit-field?\":true,\"lib/deduplicated-name\":\"CATEGORY\",\"lib/original-name\":\"CATEGORY\",\"lib/breakout?\":true,\"name\":\"CATEGORY\",\"lib/source\":\"source/implicitly-joinable\",\"lib/source-column-alias\":\"CATEGORY\",\"lib/original-display-name\":\"Category\",\"source\":\"breakout\",\"fk_field_id\":14,\"field_ref\":[\"field\",18,{\"source-field\":14}],\"effective_type\":\"type/Text\",\"active\":true,\"id\":18,\"lib/desired-column-alias\":\"PRODUCTS__via__PRODUCT_ID__CATEGORY\",\"position\":3,\"visibility_type\":\"normal\",\"display_name\":\"Product → Category\",\"fingerprint\":{\"global\":{\"distinct-count\":4,\"nil%\":0.0},\"type\":{\"type/Text\":{\"percent-json\":0.0,\"percent-url\":0.0,\"percent-email\":0.0,\"percent-state\":0.0,\"average-length\":6.375}}},\"base_type\":\"type/Text\"},{\"description\":\"This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens.\",\"database_type\":\"int8\",\"semantic_type\":\"type/PK\",\"table_id\":2,\"lib/deduplicated-name\":\"ID\",\"lib/original-name\":\"ID\",\"lib/breakout?\":true,\"name\":\"ID\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"ID\",\"lib/original-display-name\":\"ID\",\"source\":\"breakout\",\"field_ref\":[\"field\",9,null],\"effective_type\":\"type/BigInteger\",\"active\":true,\"id\":9,\"lib/desired-column-alias\":\"ID\",\"position\":0,\"visibility_type\":\"normal\",\"display_name\":\"ID\",\"fingerprint\":null,\"base_type\":\"type/BigInteger\"},{\"database_type\":\"DECFLOAT\",\"semantic_type\":null,\"lib/deduplicated-name\":\"sum\",\"lib/original-name\":\"sum\",\"name\":\"sum\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"sum\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",0],\"effective_type\":\"type/Float\",\"lib/desired-column-alias\":\"sum\",\"display_name\":\"Sum of Total\",\"fingerprint\":{\"global\":{\"distinct-count\":2768,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":17.37274156138626,\"q1\":59.11078403152785,\"q3\":118.53731448130873,\"max\":158.6090052655229,\"sd\":34.19707462997857,\"avg\":87.87381771617375}}},\"base_type\":\"type/Float\"}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,
@@ -3731,7 +3731,7 @@
    :source_card_id nil,
    :table_id 2,
    :result_metadata
-   "[{\"description\":\"The date and time an order was submitted.\",\"database_type\":\"TIMESTAMP\",\"semantic_type\":\"type/CreationTimestamp\",\"table_id\":2,\"lib/deduplicated-name\":\"CREATED_AT\",\"lib/original-name\":\"CREATED_AT\",\"lib/breakout?\":true,\"unit\":\"quarter\",\"name\":\"CREATED_AT\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"CREATED_AT\",\"lib/original-display-name\":\"Created At\",\"source\":\"breakout\",\"field_ref\":[\"field\",13,{\"temporal-unit\":\"quarter\"}],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":13,\"lib/desired-column-alias\":\"CREATED_AT\",\"metabase.lib.field/temporal-unit\":\"quarter\",\"position\":7,\"visibility_type\":\"normal\",\"inherited_temporal_unit\":\"quarter\",\"display_name\":\"Created At: Quarter\",\"fingerprint\":{\"global\":{\"distinct-count\":10001,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2022-04-30T18:56:13.352Z\",\"latest\":\"2026-04-19T14:07:15.657Z\"}}},\"base_type\":\"type/DateTime\"},{\"database_type\":\"BIGINT\",\"semantic_type\":\"type/Quantity\",\"lib/deduplicated-name\":\"count\",\"lib/original-name\":\"count\",\"name\":\"count\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"count\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",0],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"count\",\"display_name\":\"Count\",\"fingerprint\":{\"global\":{\"distinct-count\":1,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":1650.0,\"q1\":1650.0,\"q3\":1650.0,\"max\":1650.0,\"sd\":null,\"avg\":1650.0}}},\"base_type\":\"type/BigInteger\"}]",
+   "[{\"description\":\"The date and time an order was submitted.\",\"database_type\":\"timestamp\",\"semantic_type\":\"type/CreationTimestamp\",\"table_id\":2,\"lib/deduplicated-name\":\"CREATED_AT\",\"lib/original-name\":\"CREATED_AT\",\"lib/breakout?\":true,\"unit\":\"quarter\",\"name\":\"CREATED_AT\",\"lib/source\":\"source/table-defaults\",\"lib/source-column-alias\":\"CREATED_AT\",\"lib/original-display-name\":\"Created At\",\"source\":\"breakout\",\"field_ref\":[\"field\",13,{\"temporal-unit\":\"quarter\"}],\"effective_type\":\"type/DateTime\",\"active\":true,\"id\":13,\"lib/desired-column-alias\":\"CREATED_AT\",\"metabase.lib.field/temporal-unit\":\"quarter\",\"position\":7,\"visibility_type\":\"normal\",\"inherited_temporal_unit\":\"quarter\",\"display_name\":\"Created At: Quarter\",\"fingerprint\":{\"global\":{\"distinct-count\":10001,\"nil%\":0.0},\"type\":{\"type/DateTime\":{\"earliest\":\"2022-04-30T18:56:13.352Z\",\"latest\":\"2026-04-19T14:07:15.657Z\"}}},\"base_type\":\"type/DateTime\"},{\"database_type\":\"int8\",\"semantic_type\":\"type/Quantity\",\"lib/deduplicated-name\":\"count\",\"lib/original-name\":\"count\",\"name\":\"count\",\"lib/source\":\"source/aggregations\",\"lib/source-column-alias\":\"count\",\"source\":\"aggregation\",\"field_ref\":[\"aggregation\",0],\"effective_type\":\"type/BigInteger\",\"lib/desired-column-alias\":\"count\",\"display_name\":\"Count\",\"fingerprint\":{\"global\":{\"distinct-count\":1,\"nil%\":0.0},\"type\":{\"type/Number\":{\"min\":1650.0,\"q1\":1650.0,\"q3\":1650.0,\"max\":1650.0,\"sd\":null,\"avg\":1650.0}}},\"base_type\":\"type/BigInteger\"}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,

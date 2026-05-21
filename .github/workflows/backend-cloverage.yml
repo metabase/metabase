@@ -50,7 +50,7 @@ jobs:
           MB_EDITION: ee
       - name: Collect the test coverage
         run: |
-          clojure -X:dev:ci:ee:ee-dev:test:cloverage:drivers:drivers-dev \
+          clojure -X:dev:ci:ee:ee-dev:test:cloverage \
             :ns-regex     '["^metabase\\.${{ matrix.modules }}\\..*"]' \
             :test-ns-path '["test/metabase/${{ matrix.modules }}"]'
         continue-on-error: true
@@ -97,7 +97,7 @@ jobs:
           MB_EDITION: ee
       - name: Collect the test coverage
         run: |
-          clojure -X:dev:ci:ee:ee-dev:test:cloverage:drivers:drivers-dev \
+          clojure -X:dev:ci:ee:ee-dev:test:cloverage \
             :ns-regex     '["^metabase-enterprise\\.${{ matrix.modules }}\\..*"]' \
             :test-ns-path '["enterprise/backend/test/metabase/${{ matrix.modules }}"]'
         continue-on-error: true
