@@ -35,10 +35,16 @@ export type ConversationSummary = {
   user: MetabotUserInfo | null;
 };
 
-export type ConversationSortColumn =
-  | "created_at"
-  | "message_count"
-  | "total_tokens";
+export const CONVERSATION_SORT_COLUMNS = [
+  "created_at",
+  "message_count",
+  "total_tokens",
+  "user",
+  "profile_id",
+  "ip_address",
+] as const;
+
+export type ConversationSortColumn = (typeof CONVERSATION_SORT_COLUMNS)[number];
 
 export type ConversationsRequest = {
   limit?: number;
