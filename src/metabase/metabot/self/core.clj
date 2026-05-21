@@ -517,20 +517,26 @@
 
 (defn- body-preview
   "Short snippet of an upstream response body for the user-facing exception message.
-  Returns nil for bodies with no recognised human-readable field — those still survive
-  in ex-data and logs for debugging."
+  Non-empty maps/arrays without a recognised human-readable field fall back to `pr-str`
+  and emit a warn — better some context than none, and the warn tells operators to add
+  the envelope shape to [[extract-error-message]]. Nil/empty bodies return nil."
   [body]
-  (let [s (cond
-            (nil? body)                  nil
-            (string? body)               body
-            (map? body)                  (extract-error-message body)
-            (sequential? body)           (let [head (first body)]
-                                           (cond
-                                             (map? head)    (extract-error-message head)
-                                             (string? head) head
-                                             :else          nil))
-            (instance? InputStream body) (try (slurp body) (catch Throwable _ nil))
-            :else                        nil)]
+  (let [extracted (cond
+                    (nil? body)                  nil
+                    (string? body)               body
+                    (map? body)                  (extract-error-message body)
+                    (sequential? body)           (let [head (first body)]
+                                                   (cond
+                                                     (map? head)    (extract-error-message head)
+                                                     (string? head) head
+                                                     :else          nil))
+                    (instance? InputStream body) (try (slurp body) (catch Throwable _ nil))
+                    :else                        nil)
+        s         (or extracted
+                      (when (and (or (map? body) (sequential? body)) (seq body))
+                        (let [printed (pr-str body)]
+                          (log/warnf "body-preview: unrecognised error body shape; pr-str=%s" printed)
+                          printed)))]
     (when-let [trimmed (some-> s str/trim not-empty)]
       (if (<= (count trimmed) max-body-preview-chars)
         trimmed

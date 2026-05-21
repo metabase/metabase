@@ -892,18 +892,34 @@
       (is (= "invalid metric"       (body-preview {:error  "invalid metric"})))
       (is (= "missing prompt"       (body-preview {:detail "missing prompt"})))
       (is (= "bad request"          (body-preview {:message "bad request"}))))
-    (testing "maps and arrays without a recognised error field → nil (no leak to users)"
-      (is (every? nil? (map body-preview [{} {:request-id "abc" :trace ["frame1"]}
-                                          [] [42 :kw] [{:request-id "abc"}]]))))
-    (testing "structured values under :error/:detail/:message don't get coerced via str"
-      (is (every? nil? (map body-preview [{:error  {:code 42 :type "x"}}
-                                          {:detail [{:loc ["body" "prompt"]}]}
-                                          {:message {:code "missing"}}
-                                          {:error  {:message {:code 500}}}
-                                          {:error  42}]))))
+    (testing "extract-error-message returns nil for non-string values at the recognised keys"
+      (let [extract #'self.core/extract-error-message]
+        (is (every? nil? (map extract [{:error  {:code 42 :type "x"}}
+                                       {:detail [{:loc ["body" "prompt"]}]}
+                                       {:message {:code "missing"}}
+                                       {:error  {:message {:code 500}}}
+                                       {:error  42}])))))
     (testing "a non-string or blank at one key falls through to a later key with a real message"
       (is (= "real error" (body-preview {:error {:message {:code 500}} :detail "real error"})))
       (is (= "real error" (body-preview {:error "" :detail "real error"}))))
+    (testing "empty maps and arrays return nil (nothing to preview, no warn)"
+      (let [msgs (log.capture/with-log-messages-for-level [msgs [metabase.metabot.self.core :warn]]
+                   (is (every? nil? (map body-preview [{} []])))
+                   (msgs))]
+        (is (empty? msgs))))
+    (testing "non-empty maps/arrays without a recognised error field pr-str into the preview + warn"
+      (let [bodies [{:request-id "abc" :trace ["frame1"]}
+                    [42 :kw]
+                    [{:request-id "abc"}]
+                    {:error {:code 42 :type "x"}}]
+            msgs   (log.capture/with-log-messages-for-level [msgs [metabase.metabot.self.core :warn]]
+                     (doseq [b bodies]
+                       (is (= (pr-str b) (body-preview b))
+                           (str "pr-str fallback for " (pr-str b))))
+                     (msgs))]
+        (is (= (count bodies) (count msgs))
+            "one warn line per pr-str fallback")
+        (is (every? #(re-find #"unrecognised error body shape" (:message %)) msgs))))
     (testing "JSON arrays probe their first element"
       (is (= "rate limited"  (body-preview [{:error {:message "rate limited"}} {:type "x"}])))
       (is (= "first message" (body-preview ["first message" "ignored"]))))
@@ -961,7 +977,7 @@
       (is (= #{:status :reason-phrase :body :api-error :provider :error-code}
              (set (keys (ex-data ex)))))))
 
-  (testing "structured maps without :error/:detail/:message keep the user-facing message clean"
+  (testing "structured maps without :error/:detail/:message pr-str into the user-facing message"
     (let [upstream (ex-info "clj-http error"
                             {:status 500 :reason-phrase "Internal Server Error"
                              :headers {"content-type" "application/json"}
@@ -970,7 +986,9 @@
                              "anthropic"
                              (constantly "Anthropic API is not working but not saying why")
                              upstream))]
-      (is (= "Anthropic API is not working but not saying why" (ex-message ex)))
+      (is (str/includes? (ex-message ex) "Anthropic API is not working but not saying why"))
+      (is (str/includes? (ex-message ex) ":request-id")
+          "the unrecognised envelope's pr-str is appended so operators see what we got")
       (is (= {:request-id "abc" :trace ["frame1"]} (:body (ex-data ex)))
           "the full body is still preserved in ex-data for debugging")
       (is (= #{:status :reason-phrase :body :api-error :provider :error-code}
