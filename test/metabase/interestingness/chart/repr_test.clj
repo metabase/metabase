@@ -171,9 +171,9 @@
 
 ;;; ----------------------------------------- Time Series Repr Tests -------------------------------------------------
 
-(deftest ^:parallel generate-temporal-context-test
+(deftest ^:parallel temporal-context-test
   (testing "temporal context includes current date, day of week, week, month, and quarter"
-    (let [result (#'repr/generate-temporal-context)]
+    (let [result (#'repr/temporal-context)]
       (is (str/includes? result "Today is"))
       (is (some #(str/includes? result %)
                 ["Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday" "Sunday"]))
