@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.config.core :as config]
+   [metabase.sync.sync :as sync]
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]))
 
@@ -26,20 +27,35 @@
                 {:name "Routing transform"}
                 (mt/db)))))))))
 
-(deftest ^:parallel first-incremental-run?-test
+(deftest activate-table-syncs-despite-disable-auto-sync-test
+  (testing "disable-auto-sync gates *automatic* syncs only; a transform finalizing its"
+    (testing "output table still calls sync/sync-table! so the new table's fields are populated."
+      (let [calls (atom 0)]
+        (mt/with-temp [:model/Table _ {:db_id  (mt/id)
+                                       :schema nil
+                                       :name   "disable_auto_sync_target"}]
+          (with-redefs [sync/sync-table! (fn [_] (swap! calls inc))]
+            (mt/with-temporary-setting-values [disable-auto-sync true]
+              (transforms-base.u/activate-table-and-mark-computed!
+               (mt/db)
+               {:type "table" :schema nil :name "disable_auto_sync_target"}))
+            (is (= 1 @calls)
+                "Expected the transform path to run sync/sync-table! exactly once with disable-auto-sync on.")))))))
+
+(deftest ^:parallel full-incremental-run?-test
   (testing "true for an incremental transform with no checkpoint yet"
-    (is (true? (transforms-base.u/first-incremental-run?
+    (is (true? (transforms-base.u/full-incremental-run?
                 {:target {:type "table-incremental"} :last_checkpoint_value nil}))))
   (testing "false for an incremental transform that has already recorded a watermark"
-    (is (false? (transforms-base.u/first-incremental-run?
+    (is (false? (transforms-base.u/full-incremental-run?
                  {:target {:type "table-incremental"} :last_checkpoint_value "42"}))))
   (testing "false for non-incremental targets regardless of checkpoint value"
-    (is (false? (transforms-base.u/first-incremental-run?
+    (is (false? (transforms-base.u/full-incremental-run?
                  {:target {:type "table"} :last_checkpoint_value nil})))
-    (is (false? (transforms-base.u/first-incremental-run?
+    (is (false? (transforms-base.u/full-incremental-run?
                  {:target {:type :table} :last_checkpoint_value nil}))))
   (testing "accepts both string and keyword target types"
-    (is (true? (transforms-base.u/first-incremental-run?
+    (is (true? (transforms-base.u/full-incremental-run?
                 {:target {:type :table-incremental} :last_checkpoint_value nil})))))
 
 (deftest ^:parallel checkpoint-span-attrs-test

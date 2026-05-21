@@ -1,5 +1,6 @@
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
+import type { OptionsType } from "metabase/utils/formatting/types";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { ParameterValueOrArray } from "metabase-types/api";
 import type { DatasetColumn, RowValue } from "metabase-types/api/dataset";
@@ -30,6 +31,25 @@ function formatValueForLinkTemplate(value: Value, column: DatasetColumn) {
   return value;
 }
 
+// Strip per-column settings that describe the link itself or the header so
+// the substituted value is formatted as a plain value, not as another link.
+// `view_as`, `link_text`, `link_url`, `click_behavior` would route formatValue
+// back through the link branches (recursion); `column_title` only affects the
+// column header.
+function pickColumnFormattingOptions(
+  settings: DatasetColumn["settings"] = {},
+): OptionsType {
+  const {
+    view_as: _view_as,
+    link_text: _link_text,
+    link_url: _link_url,
+    click_behavior: _click_behavior,
+    column_title: _column_title,
+    ...formatting
+  } = settings;
+  return formatting;
+}
+
 export function renderLinkTextForClick(
   template: string,
   data: ValueAndColumnForColumnNameDate,
@@ -37,8 +57,10 @@ export function renderLinkTextForClick(
   return renderTemplateForClick(
     template,
     data,
-    ({ value, column }: TemplateForClickFormatFunctionParamsType) =>
-      formatValue(value, { column }),
+    ({ value, column }: TemplateForClickFormatFunctionParamsType) => {
+      const columnSettings = pickColumnFormattingOptions(column?.settings);
+      return formatValue(value, { ...columnSettings, column });
+    },
   );
 }
 

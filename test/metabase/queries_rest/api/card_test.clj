@@ -38,11 +38,11 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as api.pivots]
+   [metabase.query-processor.util :as qp.util]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.http-client :as client]
-   [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -315,22 +315,21 @@
         (is (= {:embedding_client client-string, :embedding_sdk_version version-string}
                (t2/select-one [:model/ViewLog :embedding_client :embedding_sdk_version] :model "card" :model_id (u/the-id card-1))))))))
 
-(deftest embedding-sdk-info-saves-query-execution
+(deftest embedding-sdk-info-saves-query-execution-test
   (testing "GET /api/card with embedding headers set"
-    (mt/with-temp [:model/Card card-1 {:name "Card 1"
-                                       ;; This query is just to make sure the card actually runs a query, otherwise
-                                       ;; there won't be a QueryExecution record to check!
-                                       :dataset_query {:database (mt/id)
-                                                       :type     :native
-                                                       :native   {:query "select (TIMESTAMP '2023-01-01 12:34:56') as T"}}}]
-      (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card-1))
-                            {:request-options {:headers {"x-metabase-client" "client-B"
-                                                         "x-metabase-client-version" "2"}}})
-      (is (=? {:embedding_client "client-B", :embedding_sdk_version "2"}
-              ;; The query metadata is handled asynchronously, so we need to poll until it's available:
-              (tu/poll-until 2000
-                             (t2/select-one [:model/QueryExecution :embedding_client :embedding_sdk_version]
-                                            :card_id (u/the-id card-1))))))))
+    (binding [qp.util/*execute-async?* false]
+      (mt/with-temp [:model/Card card-1 {:name "Card 1"
+                                         ;; This query is just to make sure the card actually runs a query, otherwise
+                                         ;; there won't be a QueryExecution record to check!
+                                         :dataset_query {:database (mt/id)
+                                                         :type     :native
+                                                         :native   {:query "select (TIMESTAMP '2023-01-01 12:34:56') as T"}}}]
+        (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card-1))
+                              {:request-options {:headers {"x-metabase-client" "client-B"
+                                                           "x-metabase-client-version" "2"}}})
+        (is (=? {:embedding_client "client-B", :embedding_sdk_version "2"}
+                (t2/select-one [:model/QueryExecution :embedding_client :embedding_sdk_version]
+                               :card_id (u/the-id card-1))))))))
 
 (deftest filter-by-bookmarked-test
   (testing "Filter by `bookmarked`"
@@ -1069,11 +1068,11 @@
 (deftest updating-card-updates-metadata-2
   (let [query (updating-card-updates-metadata-query)]
     (testing "Updating other parts but not query does not update the metadata"
-      (let [orig   @#'card.metadata/legacy-result-metadata-future
+      (let [orig   (mt/original-fn #'card.metadata/legacy-result-metadata-future)
             called (atom 0)]
-        (with-redefs [card.metadata/legacy-result-metadata-future (fn [q]
-                                                                    (swap! called inc)
-                                                                    (orig q))]
+        (mt/with-dynamic-fn-redefs [card.metadata/legacy-result-metadata-future (fn [q]
+                                                                                  (swap! called inc)
+                                                                                  (orig q))]
           (mt/with-model-cleanup [:model/Card]
             (let [card (mt/user-http-request :crowberto :post 200 "card"
                                              (card-with-name-and-query "card-name"
@@ -2656,16 +2655,16 @@
                                                    :middleware {:add-default-userland-constraints? true
                                                                 :userland-query?                   true}}}]
     (with-cards-in-readable-collection! card
-      (let [orig qp.card/process-query-for-card]
-        (with-redefs [qp.card/process-query-for-card (fn [card-id export-format & options]
-                                                       (apply orig card-id export-format
-                                                              :make-run (constantly (fn [{:keys [constraints]} _]
-                                                                                      {:constraints constraints}))
-                                                              options))]
+      (let [orig (mt/original-fn #'qp.card/process-query-for-card)]
+        (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card (fn [card-id export-format & options]
+                                                                     (apply orig card-id export-format
+                                                                            :make-run (constantly (fn [{:keys [constraints]} _]
+                                                                                                    {:constraints constraints}))
+                                                                            options))]
           (testing "Sanity check: this CSV download should not be subject to C O N S T R A I N T S"
             (is (= {:constraints nil}
                    (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))))))
-          (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+          (mt/with-dynamic-fn-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
             (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even "
                           "if the query comes in with `add-default-userland-constraints` (as will be the case if the query "
                           "gets saved from one that had it -- see #9831)")
@@ -3445,7 +3444,7 @@
   (testing "fallback to field-values"
     (let [mock-default-result {:values          [["field-values"]]
                                :has_more_values false}]
-      (with-redefs [queries.card/mapping->field-values (constantly mock-default-result)]
+      (mt/with-dynamic-fn-redefs [queries.card/mapping->field-values (constantly mock-default-result)]
         (testing "if value-field not found in source card"
           (mt/with-temp
             [:model/Card {source-card-id :id} {}

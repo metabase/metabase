@@ -4,10 +4,10 @@ import { AdminNavWrapper } from "metabase/admin/components/AdminNav";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { getPlan, isProPlan } from "metabase/common/utils/plan";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC, PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Divider, Flex } from "metabase/ui";
+import { Box, Divider, Flex } from "metabase/ui";
 
 import { CustomVisualizationsNav } from "./CustomVisualizationsNav";
 import { SettingsNavItem } from "./SettingsNavItem";
@@ -27,6 +27,8 @@ export function SettingsNav() {
   const tokenFeatures = useSetting("token-features");
   const isAdmin = useSelector(getUserIsAdmin);
   const isPro = isProPlan(getPlan(tokenFeatures));
+  const { isEnabled: isSecurityCenterEnabled, SecurityCenterPromoCard } =
+    PLUGIN_SECURITY_CENTER;
 
   return (
     <AdminNavWrapper>
@@ -130,6 +132,17 @@ export function SettingsNav() {
         }
         icon="cloud"
       />
+      {isSecurityCenterEnabled && (
+        <Box
+          pos="sticky"
+          bottom={0}
+          pt="md"
+          bg="background-primary"
+          style={{ marginTop: "auto", zIndex: 1 }}
+        >
+          <SecurityCenterPromoCard />
+        </Box>
+      )}
     </AdminNavWrapper>
   );
 }

@@ -4,8 +4,6 @@ title: "AI in Metabase"
 
 # AI in Metabase
 
-> AI features are available on [Metabase Cloud](https://www.metabase.com/features/metabot-ai) and on self-hosted Metabase, using either the Metabase AI service or your own AI provider API key. Enable them from **Admin settings > AI**.
-
 ## [Metabot](./metabot.md)
 
 Metabot is an AI assistant that helps you explore and analyze your data.
@@ -41,4 +39,3 @@ Chat with Metabot directly in Slack — ask questions, get charts, and manage su
 ## [AI usage auditing](./usage-auditing.md)
 
 See how people are using the AI features in your Metabase.
-

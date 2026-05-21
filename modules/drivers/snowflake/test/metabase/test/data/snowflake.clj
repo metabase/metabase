@@ -89,7 +89,7 @@
 (defmethod sql.tx/create-db-sql :snowflake
   [driver dbdef]
   (let [db (sql.tx/qualify-and-quote driver (qualified-db-name dbdef))]
-    (format "DROP DATABASE IF EXISTS %s; CREATE DATABASE %s;" db db)))
+    (format "CREATE DATABASE IF NOT EXISTS %s;" db)))
 
 (defn- no-db-connection-spec
   "Connection spec for connecting to our Snowflake instance without specifying a DB."
@@ -98,9 +98,9 @@
 
 (defn- old-dataset-names
   "Return a collection of all dataset names that are old
-   -- tracked that haven't been touched in 2 days or are not tracked and two days old"
+   -- tracked that haven't been touched in a while or are not tracked and too old"
   []
-  (let [days-ago -2
+  (let [days-ago -5
         ;; tracked UNION ALL untracked
         query "(select name from metabase_test_tracking.PUBLIC.datasets
                 where accessed_at < dateadd(day, ?, current_timestamp()))

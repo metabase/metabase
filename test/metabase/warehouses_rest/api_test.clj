@@ -305,10 +305,10 @@
       [:model/Database {db-id :id} {}
        :model/Table    _           {:db_id db-id}]
       (let [queries    (volatile! [])
-            orig-query mdb/query]
-        (with-redefs [mdb/query (fn [hsql]
-                                  (vswap! queries conj hsql)
-                                  (orig-query hsql))]
+            orig-query (mt/original-fn #'mdb/query)]
+        (mt/with-dynamic-fn-redefs [mdb/query (fn [hsql]
+                                                (vswap! queries conj hsql)
+                                                (orig-query hsql))]
           (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))
         (doseq [q @queries]
           (is (empty? (find-in-clauses q))
@@ -1251,7 +1251,7 @@
 (deftest databases-list-include-saved-questions-tables-test-6
   (testing "GET /api/database?saved=true&include=tables"
     (testing "should work when there are no DBs that support nested queries"
-      (with-redefs [driver.u/supports? (constantly false)]
+      (mt/with-dynamic-fn-redefs [driver.u/supports? (constantly false)]
         (is (nil? (fetch-virtual-database)))))))
 
 (deftest ^:parallel databases-list-include-saved-questions-tables-test-7
@@ -1298,7 +1298,7 @@
 (deftest db-metadata-saved-questions-db-test-2
   (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"
     (testing "\nif no eligible Saved Questions exist the endpoint should return empty tables"
-      (with-redefs [api.database/cards-virtual-tables (constantly [])]
+      (mt/with-dynamic-fn-redefs [api.database/cards-virtual-tables (constantly [])]
         (is (= {:name               "Saved Questions"
                 :id                 lib.schema.id/saved-questions-virtual-database-id
                 :features           ["basic-aggregations"]
@@ -1529,10 +1529,11 @@
           analyze-called? (promise)]
       (mt/with-premium-features #{:audit-app}
         (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}]
-          ;; redefine quick-task/submit-task! so as not to depend on the capacity of the quick-task executor
-          (with-redefs [quick-task/submit-task!         future-call
-                        sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db-id)
-                        analyze/analyze-db!             (deliver-when-db analyze-called? db-id)]
+          ;; redefine quick-task/submit-task! so as not to depend on the capacity of the quick-task executor.
+          ;; The Sync-now endpoint dispatches to the *explicit* sync fns (which bypass disable-auto-sync).
+          (with-redefs [quick-task/submit-task!                   future-call
+                        sync-metadata/sync-db-metadata-explicit! (deliver-when-db sync-called? db-id)
+                        analyze/analyze-db-explicit!             (deliver-when-db analyze-called? db-id)]
             (snowplow-test/with-fake-snowplow-collector
               (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id))
               ;; Block waiting for the promises from sync and analyze to be delivered. Should be delivered instantly,
@@ -1551,17 +1552,43 @@
                      {"event" "database_manual_sync", "target_id" db-id}
                      (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))))))))
 
+(deftest manual-sync-schema-runs-despite-disable-auto-sync-test
+  (testing (str "POST /api/database/:id/sync_schema is an explicit-request sync and must actually run "
+                "(not merely dispatch) when disable-auto-sync=true — the setting suppresses only "
+                "automatically-triggered syncs.")
+    ;; Resolve the test-data H2 connection details OUTSIDE the disable-auto-sync window, so loading the
+    ;; reference DB isn't itself suppressed. Create the target DB INSIDE the window so its creation event
+    ;; doesn't auto-sync it — then the only thing that can flip initial_sync_status to "complete" is the
+    ;; explicit Sync-now request under test. We deliberately do NOT stub sync-db-metadata!/analyze-db!:
+    ;; the real sync body must execute so the should-sync? gate inside do-sync-operation is genuinely
+    ;; exercised. The submit-task! redef runs the sync synchronously (so we can assert its effect) with
+    ;; H2 connections permitted on whatever thread the endpoint dispatches to.
+    (let [details (:details (mt/db))]
+      (mt/with-temporary-setting-values [disable-auto-sync true]
+        (mt/with-temp [:model/Database {db-id :id} {:engine              "h2"
+                                                    :details             details
+                                                    :initial_sync_status "incomplete"}]
+          (with-redefs [quick-task/submit-task! (fn [f]
+                                                  (binding [driver.settings/*allow-testing-h2-connections* true]
+                                                    (f)))]
+            (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id)))
+          (testing "the explicit sync actually ran, not merely dispatched"
+            (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id db-id))
+                "Sync-now must complete the sync even when disable-auto-sync is on")
+            (is (pos? (t2/count :model/Table :db_id db-id))
+                "Sync-now must populate tables even when disable-auto-sync is on")))))))
+
 (deftest sync-schema-executes-when-executor-busy-test
   (testing "POST /api/database/:id/sync_schema should execute sync even when quick-task executor is busy (GHY-3254)"
     (let [sync-called?  (promise)
           blocker-latch (CountDownLatch. 1)]
       (mt/with-temp [:model/Database {db-id :id} {:engine "h2" :details (:details (mt/db))}]
-        (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db-id)
-                      analyze/analyze-db!             (constantly nil)]
+        (with-redefs [sync-metadata/sync-db-metadata-explicit! (deliver-when-db sync-called? db-id)
+                      analyze/analyze-db-explicit!             (constantly nil)]
           ;; Submit a blocking task with a 1-second timeout so it gets cancelled quickly.
           ;; This simulates a stuck sync (e.g., hanging JDBC connection) that exceeds
           ;; the quick-task timeout and gets evicted.
-          (with-redefs [quick-task/task-timeout-ms (constantly 1000)]
+          (mt/with-dynamic-fn-redefs [quick-task/task-timeout-ms (constantly 1000)]
             (quick-task/submit-task! (fn [] (.await blocker-latch))))
           (try
             (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id))
@@ -1599,9 +1626,9 @@
     (mt/with-premium-features #{:audit-app}
       (let [update-field-values-called? (promise)]
         (mt/with-temp [:model/Database db {:engine "h2", :details (:details (mt/db))}]
-          (with-redefs [sync.field-values/update-field-values! (fn [synced-db]
-                                                                 (when (= (u/the-id synced-db) (u/the-id db))
-                                                                   (deliver update-field-values-called? :sync-called)))]
+          (mt/with-dynamic-fn-redefs [sync.field-values/update-field-values! (fn [synced-db]
+                                                                               (when (= (u/the-id synced-db) (u/the-id db))
+                                                                                 (deliver update-field-values-called? :sync-called)))]
             (snowplow-test/with-fake-snowplow-collector
               (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
               (is (= :sync-called
@@ -1714,10 +1741,10 @@
     (let [call-count (atom 0)
           ssl-values (atom [])
           valid?     (atom false)]
-      (with-redefs [warehouses.util/test-database-connection (fn [_ details & _]
-                                                               (swap! call-count inc)
-                                                               (swap! ssl-values conj (:ssl details))
-                                                               (if @valid? nil {:valid false}))]
+      (mt/with-dynamic-fn-redefs [warehouses.util/test-database-connection (fn [_ details & _]
+                                                                             (swap! call-count inc)
+                                                                             (swap! ssl-values conj (:ssl details))
+                                                                             (if @valid? nil {:valid false}))]
         (testing "with SSL enabled, do not allow non-SSL connections"
           (#'warehouses.util/test-connection-details "postgres" {:ssl true})
           (is (= 1 @call-count))
@@ -2498,7 +2525,7 @@
                      (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck?connection-type=write-data")))))))))
     (testing "connection-type passed but not configured returns 400"
       (mt/with-temp [:model/Database {id :id} {:details {:host "primary"}}]
-        (with-redefs [driver/available? (constantly true)]
+        (mt/with-dynamic-fn-redefs [driver/available? (constantly true)]
           (is (mt/user-http-request :crowberto :get 400 (str "database/" id "/healthcheck?connection-type=write-data"))))))
     (testing "invalid connection-type value returns 400"
       (mt/with-temp [:model/Database {id :id} {}]

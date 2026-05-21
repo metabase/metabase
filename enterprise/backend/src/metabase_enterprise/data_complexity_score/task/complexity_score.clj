@@ -23,19 +23,13 @@
 (def ^:private trigger-key (triggers/key "metabase.task.data-complexity-score.trigger"))
 
 (defn current-fingerprint
-  "String capturing everything that changes the meaning of an emitted score.
-
-  Mirrors the Snowplow `formula_version` + `parameters` fields. `weights` is included so re-tuning
-  forces a re-score without a `formula-version` bump; only structural scoring-algorithm changes
-  need that.
-
-  The synonym-axis fragment comes from [[synonym-source/fingerprint-fragment]] so the fingerprint
-  reacts to the source toggle and the configured model — and on the search-index path also picks
-  up swaps in the active pgvector model so a re-index that swaps the model invalidates prior
-  scores."
+  "String capturing everything that changes the meaning or shape of an emitted score.
+  Includes `formula-version`, `format-version`, `weights`, `synonym-threshold`, and the synonym-axis fragment
+  from [[synonym-source/fingerprint-fragment]] (source toggles, configured embedder, pgvector index swaps)."
   []
   (pr-str (into (sorted-map)
                 (merge {:formula-version   complexity/formula-version
+                        :format-version    complexity/format-version
                         :synonym-threshold complexity/synonym-similarity-threshold
                         :weights           complexity/weights}
                        (synonym-source/fingerprint-fragment)))))

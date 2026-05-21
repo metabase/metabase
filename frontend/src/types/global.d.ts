@@ -65,4 +65,12 @@ declare module "*.css" {
 
 declare module "iframe-resizer/js/iframeResizer.contentWindow.js";
 
+declare module "simple-statistics" {
+  const ss: {
+    ckmeans: (data: number[], nClusters: number) => number[][];
+  };
+  // eslint-disable-next-line import/no-default-export -- third-party module declaration
+  export default ss;
+}
+
 type Nullable<T> = T | null;

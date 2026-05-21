@@ -3,10 +3,13 @@
   See the detailed breakdown of the (de)serialization processes in [[metabase.models.serialization]]."
   (:require
    [clojure.string :as str]
+   [diehard.core :as dh]
    [medley.core :as m]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
+   [metabase.app-db.core :as mdb]
+   [metabase.app-db.transient-error :as transient-error]
    [metabase.config.core :as config]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
@@ -15,7 +18,24 @@
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
+(set! *warn-on-reflection* true)
+
 (declare load-one!)
+
+(defn- with-retries
+  "Retries `f` up to `max-retries` times when it throws a transient DB error (deadlock, lock timeout, etc.).
+  Uses exponential backoff starting at `base-delay-ms`. Error classification is appdb-type-aware
+  via [[metabase.app-db.transient-error/transient-error?]]."
+  [max-retries base-delay-ms f]
+  (let [db-type (mdb/db-type)]
+    (dh/with-retry {:max-retries max-retries
+                    :backoff-ms  [base-delay-ms (* base-delay-ms (bit-shift-left 1 max-retries)) 2.0]
+                    :retry-if    (fn [_result exception]
+                                   (transient-error/transient-error? db-type exception))
+                    :on-retry    (fn [_result exception]
+                                   (log/warnf "Transient DB error, retrying: %s"
+                                              (ex-message exception)))}
+      (f))))
 
 (def ^:private model->circular-dependency-keys
   "Sometimes models have circular dependencies. For example, a card for a Dashboard Question has a `dashboard_id`
@@ -66,8 +86,8 @@
 (defn- safe-local-id
   "Looks up the local primary key for `path`, swallowing any exception from the DB lookup.
 
-  [[path-error-data]] is called from catch blocks inside the outer load transaction. When the original
-  failure was a SQL error it will have poisoned the transaction, so any subsequent query (including
+  [[path-error-data]] is called from catch blocks. When the original failure was a SQL error it may
+  have poisoned the current transaction, so any subsequent query (including
   [[serdes/load-find-local]]) will throw `current transaction is aborted, commands ignored until end of
   transaction block` and shadow the real cause. We prefer losing `:local-id` over losing the exception chain."
   [path]
@@ -192,7 +212,10 @@
               local-or-nil       (when-not require-new-entity (serdes/load-find-local rebuilt-path))]
           (try
             (warn-if-version-mismatch ingested path)
-            (serdes/load-one! ingested local-or-nil)
+            (with-retries 3 200
+              (fn []
+                (t2/with-transaction [_tx]
+                  (serdes/load-one! ingested local-or-nil))))
             ctx
             (catch Exception e
               ;; ugly mapv here to convert #ordered/map into normal map so it's readable in the logs
@@ -225,11 +248,14 @@
                        reindex?          true}}]
   (binding [*warned-version-mismatch* (atom false)]
     (u/prog1
-      (t2/with-transaction [_tx]
-        ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared dependencies
-        ;; guide the import, and make sure all containers are imported before contents, etc.
+      ;; Each entity is loaded in its own transaction (inside load-one!), so a deadlock or transient
+      ;; failure on one entity doesn't abort the entire import. See #74412.
+      (do
         (when backfill?
-          (serdes.backfill/backfill-ids!))
+          (t2/with-transaction [_tx]
+            (serdes.backfill/backfill-ids!)))
+        ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared
+        ;; dependencies guide the import, and make sure all containers are imported before contents, etc.
         (let [contents      (serdes.ingest/ingest-list ingestion)
               ingest-errors (serdes.ingest/ingest-errors ingestion)
               ctx           (cond-> (new-context ingestion)
@@ -255,8 +281,6 @@
                   ctx
                   contents)))
       (when reindex?
-      ;; Hack: the transaction above typically takes much longer than our delay on the search indexing queue.
-      ;;       this means that the corresponding entries would have been missing or stale when we indexed them.
-      ;;       ideally, we would delay the indexing somehow, or only reindex what we've loaded.
-      ;;       while we're figuring that out, here's a crude stopgap.
+        ;; Reindex after all entities are loaded. Individual entity commits may have produced stale
+        ;; search index entries; this ensures the index reflects the final state.
         (search/reindex!)))))

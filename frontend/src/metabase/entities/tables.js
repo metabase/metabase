@@ -7,6 +7,7 @@ import _ from "underscore";
 
 import {
   databaseApi,
+  fieldApi,
   skipToken,
   tableApi,
   useGetDatabaseMetadataQuery,
@@ -15,7 +16,6 @@ import {
   useListDatabaseSchemaTablesQuery,
   useListTablesQuery,
 } from "metabase/api";
-import { Fields } from "metabase/entities/fields";
 import { Questions } from "metabase/entities/questions";
 import {
   compose,
@@ -196,7 +196,12 @@ export const Tables = createEntity({
               dispatch(Tables.actions.fetchMetadataDeprecated({ id }, options)),
             ),
             ...getTableForeignKeyFieldIds(table).map((id) =>
-              dispatch(Fields.actions.fetch({ id }, options)),
+              entityCompatibleQuery(
+                { id },
+                dispatch,
+                fieldApi.endpoints.getField,
+                { forceRefetch: options.reload ?? false },
+              ),
             ),
           ]);
         },
@@ -235,24 +240,6 @@ export const Tables = createEntity({
   },
 
   reducer: (state = {}, { type, payload, error }) => {
-    if (type === Fields.actionTypes.UPDATE && !error) {
-      const updatedField = payload.field;
-      const tableId = updatedField.table_id;
-      const table = state[tableId];
-
-      if (table) {
-        return {
-          ...state,
-          [tableId]: {
-            ...table,
-            original_fields: table.original_fields?.map((field) => {
-              return field.id === updatedField.id ? updatedField : field;
-            }),
-          },
-        };
-      }
-    }
-
     if (type === Questions.actionTypes.CREATE && !error) {
       const card = payload.question;
       const virtualQuestionTable = convertSavedQuestionToVirtualTable(card);
@@ -319,6 +306,49 @@ export const Tables = createEntity({
       }
     }
 
+    // Keep `original_fields` in sync when something dispatches
+    // `updateMetadata(field, FieldSchema)` (e.g. RTK Query's getField
+    // onQueryStarted, or the deprecated redux/metadata wrappers). Without this,
+    // edits land in state.entities.fields but hydrateTableFields keeps reading
+    // stale data from original_fields.
+    //
+    // Virtual card tables can have multiple `original_fields` entries with the
+    // same `id` (a model with two columns both mapped to the same source
+    // field). Normalization collapses those into one entry in
+    // `payload.entities.fields`, so we can't tell which `original_fields` entry
+    // the update belongs to — skip the sync for ambiguous matches.
+    if (
+      type === "metabase/entities/UPDATE" &&
+      !error &&
+      payload?.entities?.fields
+    ) {
+      let nextState = state;
+      for (const updated of Object.values(payload.entities.fields)) {
+        const tableId = updated.table_id;
+        const table = nextState[tableId];
+        if (!table?.original_fields) {
+          continue;
+        }
+        const matchingIndex = findUniqueIndex(
+          table.original_fields,
+          (field) => field.id === updated.id,
+        );
+        if (matchingIndex < 0) {
+          continue;
+        }
+        const nextOriginalFields = [...table.original_fields];
+        nextOriginalFields[matchingIndex] = {
+          ...nextOriginalFields[matchingIndex],
+          ...updated,
+        };
+        nextState = {
+          ...nextState,
+          [tableId]: { ...table, original_fields: nextOriginalFields },
+        };
+      }
+      return nextState;
+    }
+
     return state;
   },
 
@@ -370,12 +400,30 @@ const useGetMetadataAndForeignTables = (entityQuery, options) => {
 
   useEffect(() => {
     for (const id of tableForeignKeyFieldIds) {
-      dispatch(Fields.actions.fetch({ id }, options));
+      entityCompatibleQuery({ id }, dispatch, fieldApi.endpoints.getField, {
+        forceRefetch: options.reload ?? false,
+      });
     }
   }, [dispatch, options, tableForeignKeyFieldIds]);
 
   return result;
 };
+
+// Returns the index of the only element matching the predicate, or -1 if there
+// are zero or more than one matches.
+function findUniqueIndex(array, predicate) {
+  let found = -1;
+  for (let index = 0; index < array.length; index++) {
+    if (!predicate(array[index])) {
+      continue;
+    }
+    if (found !== -1) {
+      return -1;
+    }
+    found = index;
+  }
+  return found;
+}
 
 function getTableForeignKeyTableIds(table) {
   return _.chain(table.fields)

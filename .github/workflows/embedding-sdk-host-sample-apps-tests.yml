@@ -28,7 +28,7 @@ jobs:
       branch_name: ${{ fromJson(steps.build-sample-apps-data.outputs.result).branch_name }}
       matrix: ${{ toJSON(fromJson(steps.build-sample-apps-data.outputs.result).matrix) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
@@ -110,7 +110,7 @@ jobs:
       actions: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: ./.github/actions/maximize-disk-space
 
@@ -219,7 +219,7 @@ jobs:
       actions: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Prepare Shoppy E2E environment
         uses: ./.github/actions/prepare-shoppy-e2e
@@ -284,7 +284,7 @@ jobs:
       actions: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Prepare Shoppy E2E environment
         uses: ./.github/actions/prepare-shoppy-e2e
@@ -371,7 +371,7 @@ jobs:
       actions: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Retrieve uberjar artifact for ee
         uses: ./.github/actions/fetch-artifact

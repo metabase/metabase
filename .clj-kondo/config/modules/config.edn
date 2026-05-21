@@ -323,7 +323,8 @@
    :api  #{metabase.app-db.cluster-lock ; TODO FIXME
            metabase.app-db.core
            metabase.app-db.init
-           metabase.app-db.setup}
+           metabase.app-db.setup
+           metabase.app-db.transient-error}
    :uses #{auth-provider
            classloader
            config
@@ -3261,6 +3262,7 @@
    :api  #{metabase-enterprise.security-center.api
            metabase-enterprise.security-center.init}
    :uses #{analytics
+           analytics-interface
            api
            app-db
            channel
@@ -3307,6 +3309,7 @@
    :api  #{metabase-enterprise.serialization.api
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core
+           metabase-enterprise.serialization.init
            metabase-enterprise.serialization.v2.backfill-ids}
    :uses #{analytics
            api
@@ -3323,7 +3326,9 @@
            search
            server
            setup
-           util}
+           sync
+           util
+           warehouse-schema}
    :model-imports :bypass}
 
   enterprise/snippet-collections

@@ -166,11 +166,11 @@
         (tracing/init-enabled-groups! "tasks" "INFO")
         (tracing/with-span :tasks "test.span" {:foo/id 42 :foo/seed "yes"}
           (tracing/add-span-attrs! :tasks {:foo/incremental true})
-          (tracing/add-span-attrs! :tasks {:foo/first-incremental-run false})
+          (tracing/add-span-attrs! :tasks {:foo/full-incremental-run false})
           (tracing/add-span-attrs! :tasks {})
           (tracing/add-span-attrs! :tasks nil))
         ;; clj-otel encodes namespaced keywords with `.` separator and `-` as `_`,
-        ;; e.g. :foo/first-incremental-run -> "foo.first_incremental_run".
+        ;; e.g. :foo/full-incremental-run -> "foo.full_incremental_run".
         ;; It also auto-adds default attrs (thread.*, code.*) on every span, so we filter to our prefix
         ;; before counting to detect any spurious contributions.
         (let [finished  (tracing.tu/finished-spans exporter)
@@ -182,7 +182,7 @@
           (is (= 42 (get our-attrs "foo.id")))
           (is (= "yes" (get our-attrs "foo.seed")))
           (is (true? (get our-attrs "foo.incremental")))
-          (is (false? (get our-attrs "foo.first_incremental_run"))))
+          (is (false? (get our-attrs "foo.full_incremental_run"))))
         (finally
           (tracing/shutdown-groups!))))))
 

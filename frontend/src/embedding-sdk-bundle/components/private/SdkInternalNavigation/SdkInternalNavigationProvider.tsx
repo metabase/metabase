@@ -137,6 +137,19 @@ const SdkInternalNavigationProviderInner = ({
     [stack.length],
   );
 
+  // "Virtual" entries are entries that are rendered by the previous entity (ie: drills, new question from dashboard)
+  // we don't have to render them, but we need them in the stack to make the back button work correctly
+  const nonVirtualEntries = useMemo(
+    () => stack.filter((entry) => !entry.virtual),
+    [stack],
+  );
+
+  const entryToRender = nonVirtualEntries.at(-1);
+  const entryIndex = entryToRender ? stack.indexOf(entryToRender) : -1;
+  // If the entry is the original entry, we just need to return the children.
+  const entryIsOriginalEntity = stack.length === 0 || entryIndex === 0;
+  const hasNavigatedToEntity = !entryIsOriginalEntity;
+
   const value = useMemo(
     () => ({
       stack,
@@ -149,21 +162,10 @@ const SdkInternalNavigationProviderInner = ({
       // the breadcrumbs.
       canGoBack: stack.filter((e) => e.type !== "metabase-browser").length > 1,
       initWithDashboard,
+      hasNavigatedToEntity,
     }),
-    [stack, push, pop, initWithDashboard],
+    [stack, push, pop, initWithDashboard, hasNavigatedToEntity],
   );
-
-  // "Virtual" entries are entries that are rendered by the previous entity (ie: drills, new question from dashboard)
-  // we don't have to render them, but we need them in the stack to make the back button work correctly
-  const nonVirtualEntries = useMemo(
-    () => stack.filter((entry) => !entry.virtual),
-    [stack],
-  );
-
-  const entryToRender = nonVirtualEntries.at(-1);
-  const entryIndex = entryToRender ? stack.indexOf(entryToRender) : -1;
-  // If the entry is the original entry, we just need to return the children.
-  const entryIsOriginalEntity = stack.length === 0 || entryIndex === 0;
 
   const shouldRenderBackButton = match(stack.at(-1)?.type ?? null)
     .with(null, () => false)
@@ -182,8 +184,6 @@ const SdkInternalNavigationProviderInner = ({
     .with({ activeEntry: { type: "dashboard" } }, ({ activeEntry }) => (
       <InteractiveDashboardContent
         {...dashboardProps}
-        style={undefined}
-        className={undefined}
         dashboardId={activeEntry.id}
         initialParameters={activeEntry.parameters}
         enableEntityNavigation

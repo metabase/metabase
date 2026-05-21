@@ -69,6 +69,7 @@
   :metabase/modules                                          {:level :warning} ; more config in `.clj-kondo/config/modules/config.edn`
   :metabase/namespace-name                                   {:level :warning}
   :metabase/no-jsqlparser-imports                            {:level :warning}
+  :metabase/prefer-with-dynamic-fn-redefs                    {:level :warning}
   :metabase/toucan-model-ns                                  {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
@@ -310,8 +311,7 @@
    metabase-enterprise.transforms.interface/execute!  {:message "Use metabase-enterprise.transforms.execute/execute! instead of metabase-enterprise.transforms.interface/execute!"}
    next.jdbc/active-tx?                               {:message "Use metabase.app-db.core/in-transaction? to see if we are in a transaction"}
    toucan2.core/debug                                 {:message "Don't commit code using t2/debug"}
-   toucan2.tools.debug/debug                          {:message "Don't commit code using t2/debug"}
-   }
+   toucan2.tools.debug/debug                          {:message "Don't commit code using t2/debug"}}
 
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
@@ -429,6 +429,7 @@
   instaparse.core/defparser                                                             clojure.core/def
   metabase-enterprise.action-v2.test-util/with-test-tables!                             clojure.core/let
   metabase-enterprise.content-translation.routes-test/with-new-secret-key!              clojure.core/fn
+  metabase-enterprise.serialization.metadata-file-import.wire-format-test/with-tiny-fixture! clojure.core/fn
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
   metabase-enterprise.workspaces.test-util/with-resources!                              clojure.core/let
@@ -537,6 +538,7 @@
    clojure.core/ns                                                                                                           hooks.clojure.core.ns/lint-ns
    clojure.core/require                                                                                                      hooks.clojure.core.require/lint-require
    clojure.core/requiring-resolve                                                                                            hooks.clojure.core.require/lint-requiring-resolve
+   clojure.core/with-redefs                                                                                                  hooks.clojure.core.with-redefs/lint-with-redefs
    clojure.core/-                                                                                                            hooks.metabase.util.timing/discourage-millis-duration
    clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
    clojure.test/is                                                                                                           hooks.clojure.test/is
@@ -784,7 +786,14 @@
    :name    general-qp-and-driver-test-namespaces}
 
   {:pattern "(?:^mage.*)"
-   :name    mage-namespaces}]
+   :name    mage-namespaces}
+  ;;
+  ;; Namespaces where `with-redefs` is still the idiom because they haven't been audited for conversion
+  ;; to `with-dynamic-fn-redefs` yet (enterprise tests, driver tests). The linter's nudge is too noisy
+  ;; here — audit can happen in follow-up PRs.
+  ;;
+  {:pattern "^(?:metabase-enterprise\\..+-test(?:\\..+)?|metabase\\.driver\\..+-test(?:\\..+)?)$"
+   :name    prefer-with-dynamic-fn-redefs-unaudited}]
 
  :config-in-ns
  {test-namespaces
@@ -801,9 +810,21 @@
      metabase.lib.convert/->legacy-MBQL {:level :off}
      metabase.lib.core/->legacy-MBQL    {:level :off}}}}
 
+  ;; .cljc tests run in both Clojure and ClojureScript — `with-dynamic-fn-redefs` is JVM-only,
+  ;; so leave these alone.
+  metabase.lib.aggregation-test
+  {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
+  metabase.util.time-test
+  {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
+
+  ;; Enterprise tests and driver tests haven't been audited yet — silence the linter so CI can ship.
+  prefer-with-dynamic-fn-redefs-unaudited
+  {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
+
   source-namespaces
   {:linters
    {:metabase/discourage-millis-duration               {:level :warning}
+    :metabase/prefer-with-dynamic-fn-redefs            {:level :off}
     :metabase/validate-defendpoint-has-response-schema {:level :warning}
     :metabase/validate-escaped-single-quotes-in-i18n   {:level :warning}
     :metabase/validate-string-or-str-args-to-i18n      {:level :warning}
@@ -813,9 +834,7 @@
      clojure.core/eval        {:message "Don't use eval outside of tests"}}
 
     :discouraged-namespace
-    {metabase.legacy-mbql.jvm-util       {:message "Avoid legacy MBQL utils, use Lib instead"}
-     metabase.legacy-mbql.normalize      {:message "Avoid legacy MBQL normalization, use MBQL 5 + lib/normalize instead"}
-     metabase.legacy-mbql.predicates     {:message "Avoid legacy MBQL utils, use Lib instead"}
+    {metabase.legacy-mbql.normalize      {:message "Avoid legacy MBQL normalization, use MBQL 5 + lib/normalize instead"}
      metabase.legacy-mbql.schema         {:message "Avoid the legacy MBQL schema, use MBQL 5 + lib.schema instead"}
      metabase.legacy-mbql.schema.helpers {:message "Avoid the legacy MBQL schema, use MBQL 5 + lib.schema instead"}
      metabase.legacy-mbql.schema.macros  {:message "Avoid the legacy MBQL schema, use MBQL 5 + lib.schema instead"}
@@ -867,9 +886,7 @@
   legacy-mbql-namespaces
   {:linters
    {:discouraged-namespace
-    {metabase.legacy-mbql.jvm-util       {:level :off}
-     metabase.legacy-mbql.normalize      {:level :off}
-     metabase.legacy-mbql.predicates     {:level :off}
+    {metabase.legacy-mbql.normalize      {:level :off}
      metabase.legacy-mbql.schema         {:level :off}
      metabase.legacy-mbql.schema.helpers {:level :off}
      metabase.legacy-mbql.schema.macros  {:level :off}
@@ -889,9 +906,7 @@
     ;; don't warn about the legacy MBQL namespaces being deprecated or discouraged in driver code now, we don't have a
     ;; real alternative YET so it's not a helpful warning.
     :discouraged-namespace
-    {metabase.legacy-mbql.jvm-util       {:level :off}
-     metabase.legacy-mbql.normalize      {:level :off}
-     metabase.legacy-mbql.predicates     {:level :off}
+    {metabase.legacy-mbql.normalize      {:level :off}
      metabase.legacy-mbql.schema         {:level :off}
      metabase.legacy-mbql.schema.helpers {:level :off}
      metabase.legacy-mbql.schema.macros  {:level :off}
@@ -903,9 +918,7 @@
      [metabase.driver.common.parameters.dates
       metabase.driver.common.parameters.operators
       metabase.driver.common.parameters.values
-      metabase.legacy-mbql.jvm-util
       metabase.legacy-mbql.normalize
-      metabase.legacy-mbql.predicates
       metabase.legacy-mbql.schema
       metabase.legacy-mbql.schema.helpers
       metabase.legacy-mbql.schema.macros
