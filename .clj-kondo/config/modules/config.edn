@@ -161,6 +161,7 @@
    :uses    #{api
               auth-identity
               collections
+              collections-rest
               dashboards
               events
               lib

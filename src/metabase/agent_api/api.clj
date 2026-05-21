@@ -11,8 +11,8 @@
    [metabase.api.macros.scope :as scope]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.collections-rest.api :as collections-rest]
    [metabase.collections.models.collection :as collection]
-   [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.events.core :as events]
@@ -680,7 +680,7 @@
    _query-params
    body :- ::update-question-request]
   (let [card-before-update (api/write-check :model/Card id)
-        card-updates       (cond-> {}
+        raw-updates        (cond-> {}
                              (contains? body :name)
                              (assoc :name (:name body))
 
@@ -702,6 +702,14 @@
                              (contains? body :query)
                              (assoc :dataset_query
                                     (-> (:query body) u/decode-base64 json/decode+kw)))
+        ;; Set :archived_directly to mirror :archived (mark as Trash if explicitly archived).
+        ;; The REST endpoint at queries_rest/api/card.clj:686 runs this on every update; we
+        ;; need it too so LLM-archived cards behave the same as UI-archived ones.
+        card-updates       (api/updates-with-archived-directly card-before-update raw-updates)
+        ;; A move (or archive that retargets the collection) requires write on BOTH the source
+        ;; and the target collection. `api/write-check :model/Card` above only covered the source
+        ;; entity. Mirror the REST endpoint's `check-allowed-to-move` gate.
+        _                  (collection/check-allowed-to-change-collection card-before-update card-updates)
         _                  (queries/update-card! {:card-before-update    card-before-update
                                                   :card-updates          card-updates
                                                   :actor                 @api/*current-user*
@@ -838,56 +846,67 @@
                        :added   []
                        :removed []
                        :moved   []})]
-    (doseq [{:keys [action card_id dashcard_id display_size position]} mutations]
-      (case action
-        "add"
-        (let [card     (api/read-check :model/Card card_id)
-              display  (or (:display card) :table)
-              override (size-override display_size)
-              position-fields (if override
-                                (autoplace/get-position-for-new-dashcard
-                                 (:placed @state) (:width override) (:height override)
-                                 autoplace/default-grid-width)
-                                (autoplace/get-position-for-new-dashcard
-                                 (:placed @state) display))
-              new-dashcard (first (t2/insert-returning-instances!
-                                   :model/DashboardCard
-                                   (merge position-fields
-                                          {:dashboard_id dashboard-id
-                                           :card_id      card_id})))]
-          (swap! state #(-> %
-                            (update :placed conj position-fields)
-                            (update :added conj new-dashcard))))
+    (doseq [[mutation-index {:keys [action card_id dashcard_id display_size position] :as mutation}]
+            (map-indexed vector mutations)]
+      (try
+        (case action
+          "add"
+          (let [card     (api/read-check :model/Card card_id)
+                display  (or (:display card) :table)
+                override (size-override display_size)
+                position-fields (if override
+                                  (autoplace/get-position-for-new-dashcard
+                                   (:placed @state) (:width override) (:height override)
+                                   autoplace/default-grid-width)
+                                  (autoplace/get-position-for-new-dashcard
+                                   (:placed @state) display))
+                new-dashcard (first (t2/insert-returning-instances!
+                                     :model/DashboardCard
+                                     (merge position-fields
+                                            {:dashboard_id dashboard-id
+                                             :card_id      card_id})))]
+            (swap! state #(-> %
+                              (update :placed conj position-fields)
+                              (update :added conj new-dashcard))))
 
-        "remove"
-        (let [existing (api/check-404
-                        (t2/select-one :model/DashboardCard
-                                       :id dashcard_id :dashboard_id dashboard-id))]
-          (t2/delete! :model/DashboardCard :id dashcard_id)
-          (swap! state #(-> %
-                            (update :placed (fn [cards] (vec (remove (comp #{dashcard_id} :id) cards))))
-                            (update :removed conj existing))))
+          "remove"
+          (let [existing (api/check-404
+                          (t2/select-one :model/DashboardCard
+                                         :id dashcard_id :dashboard_id dashboard-id))]
+            (t2/delete! :model/DashboardCard :id dashcard_id)
+            (swap! state #(-> %
+                              (update :placed (fn [cards] (vec (remove (comp #{dashcard_id} :id) cards))))
+                              (update :removed conj existing))))
 
-        "move"
-        (let [existing (api/check-404
-                        (t2/select-one :model/DashboardCard
-                                       :id dashcard_id :dashboard_id dashboard-id))
+          "move"
+          (let [existing (api/check-404
+                          (t2/select-one :model/DashboardCard
+                                         :id dashcard_id :dashboard_id dashboard-id))
               ;; Strip the moved card from the placed list while we recompute its position,
               ;; otherwise autoplace will treat it as still occupying its old slot.
-              other-placed (vec (remove (comp #{dashcard_id} :id) (:placed @state)))
-              new-pos  (case position
-                         "top"    {:row 0 :col 0
-                                   :size_x (:size_x existing) :size_y (:size_y existing)}
-                         "bottom" (autoplace/get-position-for-new-dashcard
-                                   other-placed
-                                   (:size_x existing) (:size_y existing)
-                                   autoplace/default-grid-width))]
-          (t2/update! :model/DashboardCard dashcard_id
-                      (select-keys new-pos [:row :col]))
-          (swap! state #(-> %
-                            (assoc :placed (conj other-placed
-                                                 (merge existing (select-keys new-pos [:row :col]))))
-                            (update :moved conj (merge existing new-pos)))))))
+                other-placed (vec (remove (comp #{dashcard_id} :id) (:placed @state)))
+                new-pos  (case position
+                           "top"    {:row 0 :col 0
+                                     :size_x (:size_x existing) :size_y (:size_y existing)}
+                           "bottom" (autoplace/get-position-for-new-dashcard
+                                     other-placed
+                                     (:size_x existing) (:size_y existing)
+                                     autoplace/default-grid-width))]
+            (t2/update! :model/DashboardCard dashcard_id
+                        (select-keys new-pos [:row :col]))
+            (swap! state #(-> %
+                              (assoc :placed (conj other-placed
+                                                   (merge existing (select-keys new-pos [:row :col]))))
+                              (update :moved conj (merge existing new-pos))))))
+        (catch Exception e
+          ;; Re-throw with the mutation index so the LLM can tell which entry failed when
+          ;; submitting a batch. The whole batch rolls back via the surrounding transaction.
+          (throw (ex-info (str "Dashcard mutation #" mutation-index " (" action ") failed: "
+                               (ex-message e))
+                          (assoc (ex-data e)
+                                 :mutation-index mutation-index
+                                 :mutation       mutation)
+                          e)))))
     (select-keys @state [:added :removed :moved])))
 
 (api.macros/defendpoint :put "/v1/dashboard/:id" :- ::update-dashboard-response
@@ -913,6 +932,9 @@
                        (contains? body :description)   (assoc :description (:description body))
                        (contains? body :collection_id) (assoc :collection_id (:collection_id body))
                        (contains? body :archived)      (assoc :archived (boolean (:archived body))))
+        ;; A move requires write on BOTH source and target collection. `api/write-check :model/Dashboard`
+        ;; above only covered the source entity. Mirror the REST endpoint's gate.
+        _            (collection/check-allowed-to-change-collection current-dash updates)
         mutations    (:dashcards body)
         result       (t2/with-transaction [_conn]
                        (when (seq updates)
@@ -982,18 +1004,14 @@
    {:keys [description parent_collection_id]
     collection-name :name}
    :- ::create-collection-request]
-  (let [parent   (if parent_collection_id
-                   (api/check-404 (t2/select-one :model/Collection :id parent_collection_id))
-                   collection.root/root-collection)
-        _        (api/write-check parent)
-        location (collection/children-location parent)
-        coll     (first (t2/insert-returning-instances!
-                         :model/Collection
-                         {:name        collection-name
-                          :description description
-                          :location    location}))]
-    (events/publish-event! :event/collection-create
-                           {:object coll :user-id api/*current-user-id*})
+  ;; Delegate to collections-rest/create-collection! so MCP-created collections behave the same
+  ;; as UI/REST-created ones: namespace/type/is_remote_synced inheritance from parent, the
+  ;; authority-level check, the tenant-collection validation, and both :event/collection-create
+  ;; and :event/collection-touch firings all live in one place.
+  (let [coll (collections-rest/create-collection!
+              (cond-> {:name collection-name}
+                description          (assoc :description description)
+                parent_collection_id (assoc :parent_id parent_collection_id)))]
     {:id            (:id coll)
      :name          (:name coll)
      :parent_id     parent_collection_id
