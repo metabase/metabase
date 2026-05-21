@@ -25,7 +25,6 @@ export const NewEmbedButton = ({ forceIsGuest }: NewEmbedButtonProps) => {
             props: {
               initialState: {
                 isGuest: forceIsGuest,
-                useExistingUserSession: true,
               },
             },
           }),
