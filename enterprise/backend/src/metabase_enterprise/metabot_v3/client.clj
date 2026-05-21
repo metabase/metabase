@@ -90,10 +90,9 @@
   ex-data. Returns `nil` when the body is empty or unreadable."
   [body]
   (try
-    (cond
-      (nil? body)                  nil
-      (instance? InputStream body) (slurp body)
-      :else                        body)
+    (if (instance? InputStream body)
+      (slurp body)
+      body)
     (catch Throwable _ nil)))
 
 (defn- body-preview
@@ -117,7 +116,11 @@
                                  (scalar (get body :error))
                                  (scalar (get body :detail))
                                  (scalar (get body :message))))
-            :else          nil)]
+            :else          (do (log/warnf (str "body-preview: unexpected body shape (type=%s), falling back to nil "
+                                               "preview — the full body is still in ex-data and the "
+                                               "failure-boundary warn log")
+                                          (some-> body class .getName))
+                               nil))]
     (when-let [trimmed (some-> s str/trim not-empty)]
       (if (<= (count trimmed) max-body-preview-chars)
         trimmed

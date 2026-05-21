@@ -159,6 +159,32 @@
   (is (not (contains? (:response data) :headers))
       "response headers should be stripped from ex-data"))
 
+(deftest ^:parallel body-preview-test
+  (let [body-preview #'metabot-v3.client/body-preview]
+    (testing "nil, unexpected scalars, and unrecognised collections → nil (warn fires for non-nil shapes)"
+      (is (every? nil? (map body-preview [nil 500 :error true [] [42 :kw]]))))
+    (testing "plain strings pass through trimmed"
+      (is (= "Internal Server Error" (body-preview "  Internal Server Error  "))))
+    (testing "JSON envelopes prefer [:error :message] over :error/:detail/:message"
+      (is (= "model decommissioned" (body-preview {:error {:message "model decommissioned" :type "x"}})))
+      (is (= "invalid metric"       (body-preview {:error  "invalid metric" :request-id "abc"})))
+      (is (= "missing prompt"       (body-preview {:detail "missing prompt"})))
+      (is (= "bad request"          (body-preview {:message "bad request"}))))
+    (testing "non-scalar values under :error/:detail/:message don't get str-coerced"
+      (is (every? nil? (map body-preview [{}
+                                          {:request-id "abc" :trace ["frame1"]}
+                                          {:error  {:code 42 :type "x"}}
+                                          {:detail [{:loc ["body" "prompt"]}]}
+                                          {:message {:code "missing"}}
+                                          {:error  {:message {:code 500}}}]))))
+    (testing "non-string or blank at one key falls through to a later key with a real message"
+      (is (= "real error" (body-preview {:error {:message {:code 500}} :detail "real error"})))
+      (is (= "real error" (body-preview {:error "" :detail "real error"}))))
+    (testing "long bodies are truncated to 500 chars with an ellipsis"
+      (let [preview (body-preview (apply str (repeat 2000 \x)))]
+        (is (str/ends-with? preview "…"))
+        (is (= 501 (count preview)))))))
+
 (deftest check-response!-test
   (let [check! #'metabot-v3.client/check-response!]
     (testing "200/202 returns the body unchanged"
@@ -179,34 +205,14 @@
                  :response   {:status 500 :body "Internal Server Error"}}
                 data))
         (assert-no-headers! data)))
-    (testing "structured JSON error bodies surface the upstream :error/:detail/:message"
-      (let [{:keys [response request]} (check-response!-input {:status        400
-                                                               :reason-phrase "Bad Request"
-                                                               :body          {:error      "invalid metric"
-                                                                               :request-id "abc"}})
-            ex (is (thrown-with-msg?
-                    Exception
-                    #"AI service request failed: HTTP 400 Bad Request — invalid metric"
-                    (check! response request)))]
-        (testing "and the full body survives into ex-data"
-          (is (=? {:response {:body {:error "invalid metric" :request-id "abc"}}}
-                  (ex-data ex))))
-        (assert-no-headers! (ex-data ex))))
-    (testing "nested {:error {:message ...}} envelopes are unwrapped — wrapper map doesn't leak into the message"
-      (let [{:keys [response request]} (check-response!-input {:status        500
+    (testing "bodies without an extractable preview yield the canonical message; full body still in ex-data"
+      (let [body {:request-id "abc" :trace ["frame1" "frame2"]}
+            {:keys [response request]} (check-response!-input {:status        500
                                                                :reason-phrase "Internal Server Error"
-                                                               :body          {:error {:message "upstream went boom"
-                                                                                       :code    500}}})
-            ex  (is (thrown-with-msg?
-                     Exception
-                     #"AI service request failed: HTTP 500 Internal Server Error — upstream went boom"
-                     (check! response request)))
-            msg (ex-message ex)]
-        (is (not (str/includes? msg ":code"))
-            "the :code sibling field shouldn't leak into the user-facing message")
-        (is (=? {:response {:body {:error {:message "upstream went boom" :code 500}}}}
-                (ex-data ex))
-            "the full nested envelope still lives in ex-data for debugging")
+                                                               :body          body})
+            ex   (is (thrown? Exception (check! response request)))]
+        (is (= "AI service request failed: HTTP 500 Internal Server Error" (ex-message ex)))
+        (is (= body (get-in (ex-data ex) [:response :body])))
         (assert-no-headers! (ex-data ex))))
     (testing "stream bodies get slurped — preview surfaces in the message and the full body survives in ex-data"
       (let [stream (java.io.ByteArrayInputStream. (.getBytes "boom from upstream" "UTF-8"))
@@ -224,74 +230,10 @@
             {:keys [response request]} (check-response!-input {:status        500
                                                                :reason-phrase "ISE"
                                                                :body          long-body})
-            ex (is (thrown? Exception (check! response request)))
-            msg (ex-message ex)]
-        (is (str/includes? msg "…"))
-        (is (< (count msg) 1200) "exception message is truncated near the body-preview cap")
-        (is (= long-body (get-in (ex-data ex) [:response :body]))
-            "full body is preserved in ex-data")
-        (assert-no-headers! (ex-data ex))))
-    (testing "structured maps without :error/:detail/:message keep the user-facing message clean"
-      (let [body {:request-id "abc" :trace ["frame1" "frame2"]}
-            {:keys [response request]} (check-response!-input {:status        500
-                                                               :reason-phrase "Internal Server Error"
-                                                               :body          body})
-            ex   (is (thrown? Exception (check! response request)))
-            msg  (ex-message ex)]
-        (is (= "AI service request failed: HTTP 500 Internal Server Error" msg)
-            "no internal body fields leak into the exception message")
-        (is (= body (get-in (ex-data ex) [:response :body]))
-            "the full body is still preserved in ex-data for debugging")
-        (assert-no-headers! (ex-data ex))))
-    (testing "{:error <map-without-:message>} doesn't stringify the raw envelope into the user message"
-      (let [body {:error {:code 500 :request-id "abc"}}
-            {:keys [response request]} (check-response!-input {:status        500
-                                                               :reason-phrase "Internal Server Error"
-                                                               :body          body})
-            ex   (is (thrown? Exception (check! response request)))
-            msg  (ex-message ex)]
-        (is (= "AI service request failed: HTTP 500 Internal Server Error" msg)
-            "the nested error map shouldn't leak into the user-facing message")
-        (is (= body (get-in (ex-data ex) [:response :body]))
-            "the full body is still preserved in ex-data for debugging")
-        (assert-no-headers! (ex-data ex))))
-    (testing "{:error {:message <non-scalar>}} doesn't stringify the raw envelope into the user message"
-      (doseq [body [{:error {:message {:code 500}}}
-                    {:error {:message ["a" "b"]}}]]
-        (let [{:keys [response request]} (check-response!-input {:status        500
-                                                                 :reason-phrase "Internal Server Error"
-                                                                 :body          body})
-              ex  (is (thrown? Exception (check! response request)))
-              msg (ex-message ex)]
-          (is (= "AI service request failed: HTTP 500 Internal Server Error" msg)
-              (str "non-scalar nested :error :message shouldn't leak for " (pr-str body)))
-          (is (= body (get-in (ex-data ex) [:response :body]))
-              "the full body is still preserved in ex-data for debugging")
-          (assert-no-headers! (ex-data ex)))))
-    (testing "structured :detail/:message values fall through to nil instead of getting str-coerced"
-      (doseq [body [{:detail [{:loc ["body" "prompt"] :msg "field required"}]}
-                    {:message {:code "missing" :type "validation"}}]]
-        (let [{:keys [response request]} (check-response!-input {:status        422
-                                                                 :reason-phrase "Unprocessable Entity"
-                                                                 :body          body})
-              ex  (is (thrown? Exception (check! response request)))
-              msg (ex-message ex)]
-          (is (= "AI service request failed: HTTP 422 Unprocessable Entity" msg)
-              (str "raw envelope shouldn't leak into the message for " (pr-str body)))
-          (is (= body (get-in (ex-data ex) [:response :body]))
-              "the full structured body is still preserved in ex-data")
-          (assert-no-headers! (ex-data ex)))))
-    (testing "a non-string or blank value at one key falls through to a later key with a real message"
-      (doseq [body [{:error {:message {:code 500}} :detail "real error"}
-                    {:error "" :detail "real error"}]]
-        (let [{:keys [response request]} (check-response!-input {:status        500
-                                                                 :reason-phrase "Internal Server Error"
-                                                                 :body          body})
-              ex (is (thrown-with-msg?
-                      Exception
-                      #"AI service request failed: HTTP 500 Internal Server Error — real error"
-                      (check! response request)))]
-          (assert-no-headers! (ex-data ex)))))
+            ex (is (thrown? Exception (check! response request)))]
+        (is (str/includes? (ex-message ex) "…"))
+        (is (< (count (ex-message ex)) 1200) "exception message is truncated near the body-preview cap")
+        (is (= long-body (get-in (ex-data ex) [:response :body])))))
     (testing "ex-data :response is an explicit allow-list, not a passthrough of clj-http internals"
       (let [{:keys [request]} (check-response!-input {})
             ;; clj-http responses can carry `:http-client` (a Closeable), `:trace-redirects`,
@@ -303,11 +245,9 @@
                       :http-client           (reify java.io.Closeable (close [_]))
                       :trace-redirects       ["http://elsewhere"]
                       :orig-content-encoding "gzip"}
-            ex   (is (thrown? Exception (check! response request)))
-            data (ex-data ex)]
-        (is (= #{:status :reason-phrase :body} (set (keys (:response data))))
-            "only the allow-listed response keys appear in ex-data")
-        (is (= {:status 500 :reason-phrase "ISE" :body "boom"} (:response data)))))))
+            ex   (is (thrown? Exception (check! response request)))]
+        (is (=? {:response {:status 500 :reason-phrase "ISE" :body "boom"}} (ex-data ex)))
+        (is (= #{:status :reason-phrase :body} (set (keys (:response (ex-data ex))))))))))
 
 (deftest example-generation-payload-unknown-field-types-test
   (let [mp (mt/metadata-provider)
