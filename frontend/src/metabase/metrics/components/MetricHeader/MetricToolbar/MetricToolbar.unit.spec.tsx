@@ -1,6 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import {
+  setupEnterpriseOnlyPlugin,
+  setupEnterprisePlugins,
+} from "__support__/enterprise";
 import { setupBookmarksEndpoints } from "__support__/server-mocks/bookmark";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { mockSettings } from "__support__/settings";
@@ -59,6 +62,7 @@ function setup({
   const card = createMockCard({
     can_write: canWrite,
     collection: createMockCollection({ type: collectionType }),
+    last_query_start: "2024-01-01T00:00:00Z",
     type: "metric",
   });
 
@@ -67,7 +71,10 @@ function setup({
   });
 
   const settingValues = createMockSettings({
-    "token-features": createMockTokenFeatures({ library: true }),
+    "token-features": createMockTokenFeatures({
+      library: true,
+      cache_granular_controls: true,
+    }),
   });
 
   const state = createMockState({
@@ -113,6 +120,17 @@ describe("MetricToolbar", () => {
   // Note: In OSS, canManageSubscriptions always returns true via the
   // PLUGIN_APPLICATION_PERMISSIONS default, so the alert item is always visible.
 
+  beforeAll(() => {
+    // Enable cache_granular_controls so the Caching menu item is reachable in tests.
+    mockSettings({
+      "token-features": createMockTokenFeatures({
+        library: true,
+        cache_granular_controls: true,
+      }),
+    });
+    setupEnterprisePlugins();
+  });
+
   describe("menu items", () => {
     it("should show bookmark, move, duplicate, add-to-dashboard, alert, and trash for writable metric", async () => {
       setup({ canWrite: true });
@@ -124,7 +142,8 @@ describe("MetricToolbar", () => {
       expect(screen.getByText("Add to a dashboard")).toBeInTheDocument();
       expect(screen.getByText("Create an alert")).toBeInTheDocument();
       expect(screen.getByText("Move to trash")).toBeInTheDocument();
-      expect(getDividers()).toHaveLength(2);
+      // Bookmark/Move/Duplicate ─ Add-to-dash/Alert ─ Caching ─ Trash
+      expect(getDividers()).toHaveLength(3);
       expectNoConsecutiveOrTrailingDividers();
     });
 
@@ -146,7 +165,7 @@ describe("MetricToolbar", () => {
       await openMenu();
 
       expect(screen.queryByText("Duplicate")).not.toBeInTheDocument();
-      expect(getDividers()).toHaveLength(2);
+      expect(getDividers()).toHaveLength(3);
       expectNoConsecutiveOrTrailingDividers();
     });
 
@@ -159,7 +178,8 @@ describe("MetricToolbar", () => {
       await openMenu();
 
       expect(screen.getByText("Open in Data Studio")).toBeInTheDocument();
-      expect(getDividers()).toHaveLength(3);
+      // Bookmark/Move/Duplicate ─ Add-to-dash/Alert ─ Caching ─ DataStudio/Insights ─ Trash
+      expect(getDividers()).toHaveLength(4);
       expectNoConsecutiveOrTrailingDividers();
     });
 
@@ -168,7 +188,7 @@ describe("MetricToolbar", () => {
       await openMenu();
 
       expect(screen.queryByText("Open in Data Studio")).not.toBeInTheDocument();
-      expect(getDividers()).toHaveLength(2);
+      expect(getDividers()).toHaveLength(3);
       expectNoConsecutiveOrTrailingDividers();
     });
 
@@ -181,7 +201,7 @@ describe("MetricToolbar", () => {
       await openMenu();
 
       expect(screen.queryByText("Open in Data Studio")).not.toBeInTheDocument();
-      expect(getDividers()).toHaveLength(2);
+      expect(getDividers()).toHaveLength(3);
       expectNoConsecutiveOrTrailingDividers();
     });
 
@@ -190,8 +210,23 @@ describe("MetricToolbar", () => {
       await openMenu();
 
       expect(screen.queryByText("Open in Data Studio")).not.toBeInTheDocument();
-      expect(getDividers()).toHaveLength(2);
+      expect(getDividers()).toHaveLength(3);
       expectNoConsecutiveOrTrailingDividers();
+    });
+
+    it("should show 'Caching' as a menu item when the metric is cacheable", async () => {
+      setup({ canWrite: true });
+      await openMenu();
+
+      expect(screen.getByText("Caching")).toBeInTheDocument();
+      expectNoConsecutiveOrTrailingDividers();
+    });
+
+    it("should hide 'Caching' when the user cannot write the metric", async () => {
+      setup({ canWrite: false });
+      await openMenu();
+
+      expect(screen.queryByText("Caching")).not.toBeInTheDocument();
     });
   });
 });

@@ -81,20 +81,19 @@ describe("MetricTabs", () => {
     ).map((element) => element.textContent);
   }
 
-  it("should show the caching tab when the user has write access", async () => {
+  it("does not show the caching tab in the tabs row regardless of write access", async () => {
     setup({ card: { can_write: true } });
     await waitFor(() => {
       expect(getTabLabels()).toEqual([
         "About",
         "Overview",
         "Definition",
-        "Caching",
         "History",
       ]);
     });
   });
 
-  it("should not show the caching tab when the user has no write access", async () => {
+  it("does not show the caching tab when the user has no write access", async () => {
     setup({ card: { can_write: false } });
     await waitFor(() => {
       expect(getTabLabels()).toEqual([
@@ -109,12 +108,7 @@ describe("MetricTabs", () => {
   it("should hide the overview tab when metric has no dimensions", async () => {
     setup({ hasDimensions: false });
     await waitFor(() => {
-      expect(getTabLabels()).toEqual([
-        "About",
-        "Definition",
-        "Caching",
-        "History",
-      ]);
+      expect(getTabLabels()).toEqual(["About", "Definition", "History"]);
     });
   });
 

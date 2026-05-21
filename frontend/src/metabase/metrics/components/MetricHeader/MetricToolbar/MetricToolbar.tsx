@@ -10,12 +10,12 @@ import {
 } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
-import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/data-studio/selectors";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
 import {
   PLUGIN_AUDIT,
+  PLUGIN_CACHING,
   PLUGIN_LIBRARY,
   PLUGIN_MODERATION,
 } from "metabase/plugins";
@@ -26,7 +26,7 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
-import { Button, Group, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Button, Group, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -58,6 +58,7 @@ export function MetricToolbar({
     <>
       <MetricToolbarButtons
         card={card}
+        urls={urls}
         showDataStudioLink={showDataStudioLink}
         onOpenModal={setModalType}
       />
@@ -75,12 +76,14 @@ export function MetricToolbar({
 
 interface MetricToolbarButtonsProps {
   card: Card;
+  urls: MetricUrls;
   showDataStudioLink: boolean;
   onOpenModal: (modalType: MetricModalType) => void;
 }
 
 function MetricToolbarButtons({
   card,
+  urls,
   showDataStudioLink: showDataStudioLinkProp,
   onOpenModal,
 }: MetricToolbarButtonsProps) {
@@ -111,6 +114,11 @@ function MetricToolbarButtons({
     PLUGIN_LIBRARY.isLibraryCollectionType(card.collection?.type) &&
     canAccessDataStudio;
 
+  const isCacheableQuestion =
+    card.can_write &&
+    PLUGIN_CACHING.isGranularCachingEnabled() &&
+    PLUGIN_CACHING.hasQuestionCacheSection(new Question(card));
+
   return (
     <Group wrap="nowrap" gap="sm">
       {isNumericMetric(card) && (
@@ -125,7 +133,14 @@ function MetricToolbarButtons({
       )}
       <Menu position="bottom-end">
         <Menu.Target>
-          <ToolbarButton icon="ellipsis" aria-label={t`More options`} />
+          <ActionIcon
+            variant="default"
+            size="lg"
+            bd="1px solid var(--mb-color-border)"
+            aria-label={t`More options`}
+          >
+            <Icon name="ellipsis" />
+          </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Item
@@ -176,6 +191,19 @@ function MetricToolbarButtons({
                 ? t`Edit alerts`
                 : t`Create an alert`}
             </Menu.Item>
+          )}
+
+          {isCacheableQuestion && (
+            <>
+              <Menu.Divider role="separator" />
+              <Menu.Item
+                leftSection={<Icon name="gear" />}
+                component={ForwardRefLink}
+                to={urls.caching(card.id)}
+              >
+                {t`Caching`}
+              </Menu.Item>
+            </>
           )}
 
           {(PLUGIN_AUDIT.isEnabled || showDataStudioLink) && (
