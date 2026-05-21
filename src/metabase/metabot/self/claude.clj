@@ -261,7 +261,7 @@
           :text suffix}]))))
 
 (defn- anthropic-error-msg
-  "Canonical, status-specific Anthropic error message; the upstream body is appended separately."
+  "Canonical, status-specific Anthropic error message."
   [res]
   (let [status (long (:status res 0))]
     (case status

@@ -507,9 +507,11 @@
 
 (defn- extract-error-message
   "First non-blank string under `[:error :message]`, `:error`, `:detail`, or `:message`.
-  Non-strings and whitespace-only strings fall through so neither the raw envelope nor a
-  meaningless blank can `str`-leak into the user-facing message."
+  Non-strings and whitespace-only strings fall through to the next key."
   [m]
+  ;; Filter per-lookup so a structured value (e.g. {:error {:code 500}}) never gets
+  ;; str-coerced into the user-facing exception message — bad shapes fall through to
+  ;; the next key instead.
   (let [s (fn [v] (when (string? v) (not-empty (str/trim v))))]
     (or (s (get-in m [:error :message]))
         (s (:error m))
@@ -519,8 +521,7 @@
 (defn- body-preview
   "Short snippet of an upstream response body for the user-facing exception message.
   Non-empty maps/arrays without a recognised human-readable field fall back to `pr-str`
-  and emit a warn — better some context than none, and the warn tells operators to add
-  the envelope shape to [[extract-error-message]]. Nil/empty bodies return nil."
+  and emit a warn. Nil/empty bodies return nil."
   [body]
   (let [extracted (cond
                     (nil? body)                  nil
@@ -533,6 +534,8 @@
                                                      :else          nil))
                     (instance? InputStream body) (try (slurp body) (catch Throwable _ nil))
                     :else                        nil)
+        ;; Surface *some* context to the user even for unrecognised shapes — the warn
+        ;; signals operators to add the new envelope shape to [[extract-error-message]].
         s         (or extracted
                       (when (and (or (map? body) (sequential? body)) (seq body))
                         (let [printed (pr-str body)]
@@ -545,11 +548,9 @@
 
 (defn rethrow-api-error!
   "Rethrow a provider HTTP exception with a translated, user-facing message.
-
-  `res->message` returns the provider-specific message; a body preview is appended when
-  one is available, and the full body is logged.
-  ex-data is an explicit allow-list (`:status`, `:reason-phrase`, `:body`, plus provider tags) —
-  raw clj-http responses carry a Closeable `:http-client` and other internals.
+  `res->message` receives the decoded response map and returns the provider-specific message.
+  A body preview is appended to the message and the full body is logged.
+  ex-data is an explicit allow-list of `:status`, `:reason-phrase`, `:body`, plus provider tags.
   Exceptions already tagged `:api-error true` are rethrown unchanged."
   [provider res->message ^Throwable e]
   (let [data (ex-data e)]
@@ -566,6 +567,8 @@
         ;; warnf (not warn) so the body renders into the message string, not as MDC.
         (log/warnf "Provider API request failed: provider=%s status=%s body=%s"
                    provider (:status res) (pr-str (:body res)))
+        ;; Allow-list explicitly — clj-http responses carry :http-client (a Closeable),
+        ;; :trace-redirects, :orig-content-encoding, etc., none of which should propagate downstream.
         (throw (ex-info msg
                         (merge (select-keys res [:status :reason-phrase :body])
                                {:api-error  true

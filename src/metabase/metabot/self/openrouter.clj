@@ -93,7 +93,7 @@
                 :parameters  (mjs/transform params {:additionalProperties false})}}))
 
 (defn- openrouter-error-msg
-  "Canonical, status-specific OpenRouter error message; the upstream body is appended separately."
+  "Canonical, status-specific OpenRouter error message."
   [res]
   (let [status (long (:status res 0))]
     (case status
