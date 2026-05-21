@@ -1228,8 +1228,7 @@
               metabase.metabot.core
               metabase.metabot.init
               metabase.metabot.self
-              metabase.metabot.settings
-              metabase.metabot.tools.resources}
+              metabase.metabot.settings}
    :friends #{agent-api
               enterprise/metabot
               enterprise/metabot-analytics
